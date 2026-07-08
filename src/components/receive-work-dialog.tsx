@@ -56,7 +56,6 @@ export function ReceiveWorkDialog({
   const appendLedger = useLedger((s) => s.append);
   const addStock = useStock((s) => s.add);
 
-  const issued = job?.goldIssue;
 
   const [finishedGrossStr, setFinishedGrossStr] = useState("0.000");
   const [finishedPurity, setFinishedPurity] = useState<number>(job?.purity ?? 916);
@@ -104,7 +103,6 @@ export function ReceiveWorkDialog({
     );
   }
 
-  const issuedFine = issued?.fineMg ?? 0;
   const finishedGrossMg = safeMg(finishedGrossStr);
   const finishedFineMg = finishedGrossMg > 0 ? fineGoldMg(finishedGrossMg, finishedPurity) : 0;
   const scrapGrossMg = safeMg(scrapGrossStr);
@@ -113,19 +111,8 @@ export function ReceiveWorkDialog({
   const filingsFineMg = filingsGrossMg > 0 ? fineGoldMg(filingsGrossMg, filingsPurity) : 0;
   const dustFineMg = safeMg(dustStr);
 
-  const actualLossMg = Math.max(
-    0,
-    issuedFine - finishedFineMg - scrapFineMg - filingsFineMg - dustFineMg,
-  );
-  const expectedLossMg = Math.round((issuedFine * wastagePct) / 100);
-  const overlossMg = Math.max(0, actualLossMg - expectedLossMg);
-
-  // Validate: returned cannot exceed issued
-  const returned = finishedFineMg + scrapFineMg + filingsFineMg + dustFineMg;
-  const exceedsIssued = returned > issuedFine;
-
   async function confirm() {
-    if (!job || !issued) return;
+    if (!job) return;
     setError(null);
     const karigar = usePeople.getState().people.find((p) => p.id === job.karigarId);
     if (karigar && !kycComplete(karigar)) {
@@ -134,7 +121,6 @@ export function ReceiveWorkDialog({
       );
     }
     if (finishedFineMg <= 0) return setError("Finished weight is required.");
-    if (exceedsIssued) return setError("Returned gold exceeds issued gold.");
 
     const ledgerIds: string[] = [];
 
@@ -189,28 +175,6 @@ export function ReceiveWorkDialog({
       });
       ledgerIds.push(e.id);
     }
-    if (actualLossMg > 0) {
-      const e = await appendLedger({
-        type: "wastage",
-        netFineMg: -actualLossMg,
-        deltas: { karigar: -actualLossMg },
-        fineMg: actualLossMg,
-        reference: job.jobNo,
-        notes: `Wastage on ${job.jobNo} (expected ${mgToGrams(expectedLossMg)} g)`,
-      });
-      ledgerIds.push(e.id);
-    }
-    if (overlossMg > 0) {
-      const e = await appendLedger({
-        type: "overloss",
-        netFineMg: 0,
-        deltas: {},
-        fineMg: overlossMg,
-        reference: job.jobNo,
-        notes: `Overloss ${mgToGrams(overlossMg)} g flagged on ${job.jobNo}`,
-      });
-      ledgerIds.push(e.id);
-    }
 
     // Create finished stock item (non-double-counting: finished bucket already counts it)
     let stockId: string | undefined;
@@ -246,9 +210,9 @@ export function ReceiveWorkDialog({
       filingsFineMg,
       dustFineMg,
       expectedWastagePct: wastagePct,
-      expectedLossMg,
-      actualLossMg,
-      overlossMg,
+      expectedLossMg: 0,
+      actualLossMg: 0,
+      overlossMg: 0,
       qa,
       notes: notes.trim() || undefined,
       finishedStockId: stockId,
@@ -331,24 +295,7 @@ export function ReceiveWorkDialog({
           reference: job.jobNo,
         });
       }
-      if (actualLossMg > 0) {
-        useWorkerGoldBook.getState().addEntry({
-          workerId,
-          workerName,
-          particulars: "Melt Loss / Wastage",
-          grossMg: 0,
-          lessMg: 0,
-          netMg: 0,
-          purity: 0,
-          fineMg: actualLossMg,
-          quantity: 1,
-          notes: `Actual loss/wastage on job ${job.jobNo}`,
-          givenBy: workerName,
-          receivedBy: "Staff",
-          type: "return",
-          reference: job.jobNo,
-        });
-      }
+
     }
 
     setWorkReceipt(job.id, rec);
@@ -357,23 +304,7 @@ export function ReceiveWorkDialog({
   }
 
   if (!job) return null;
-  if (!issued) {
-    return (
-      <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Receive Work</DialogTitle>
-            <DialogDescription>
-              Gold has not been issued for this job card yet. Issue gold first.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={onClose}>OK</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -383,17 +314,12 @@ export function ReceiveWorkDialog({
             <PackageCheck className="h-4 w-4 text-gold" /> Receive Work from Karigar
           </DialogTitle>
           <DialogDescription>
-            {job?.jobNo} · {job?.karigarName ?? "karigar"} · Issued {mgToGrams(issuedFine)} g fine
+            {job?.jobNo} · {job?.karigarName ?? "karigar"}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid sm:grid-cols-3 gap-3">
-          <Stat label="Issued fine" value={`${mgToGrams(issuedFine)} g`} accent />
-          <Stat label="Returned fine" value={`${mgToGrams(returned)} g`} />
-          <Stat
-            label="Outstanding"
-            value={`${mgToGrams(Math.max(0, issuedFine - returned - actualLossMg))} g`}
-          />
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Stat label="Returned fine" value={`${mgToGrams(finishedFineMg + scrapFineMg + filingsFineMg + dustFineMg)} g`} />
         </div>
 
         <Section title="Finished">
@@ -462,33 +388,7 @@ export function ReceiveWorkDialog({
           />
         </Section>
 
-        <Section title="Wastage">
-          <Grid3>
-            <Field label="Expected wastage %">
-              <Input
-                type="number"
-                value={wastagePct}
-                onChange={(e) => setWastagePct(Math.max(0, Number(e.target.value) || 0))}
-                className="max-w-xs"
-              />
-            </Field>
-            <Field label="Expected loss (auto)">
-              <Mono>{mgToGrams(expectedLossMg)} g</Mono>
-            </Field>
-            <Field label="Actual loss (auto)">
-              <Mono className={overlossMg > 0 ? "text-red-300" : ""}>
-                {mgToGrams(actualLossMg)} g
-              </Mono>
-            </Field>
-          </Grid3>
-          {overlossMg > 0 && (
-            <div className="mt-2 rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300 flex items-center gap-2">
-              <AlertTriangle className="h-3 w-3" />
-              Overloss {mgToGrams(overlossMg)} g · will be flagged on the job card for future
-              rate-cut.
-            </div>
-          )}
-        </Section>
+
 
         <Section title="QA Checklist">
           <div className="grid sm:grid-cols-2 gap-2 text-sm">
@@ -520,11 +420,6 @@ export function ReceiveWorkDialog({
           />
         </Section>
 
-        {exceedsIssued && (
-          <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300 flex items-center gap-2">
-            <AlertTriangle className="h-3 w-3" /> Returned gold exceeds issued gold.
-          </div>
-        )}
         {error && (
           <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">
             {error}
@@ -537,7 +432,7 @@ export function ReceiveWorkDialog({
           </Button>
           <Button
             onClick={confirm}
-            disabled={exceedsIssued || finishedFineMg <= 0}
+            disabled={finishedFineMg <= 0}
             className="gap-2"
           >
             <PackageCheck className="h-4 w-4" /> Confirm Receive
@@ -592,6 +487,7 @@ function PuritySelect({ value, onChange }: { value: number; onChange: (n: number
     </Select>
   );
 }
+
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="rounded-lg border border-border bg-background/40 px-3 py-2">

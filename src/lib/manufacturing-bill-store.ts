@@ -25,7 +25,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { supabase } from "@/integrations/supabase/client";
-import type { JobCard, GoldIssueRecord, WorkReceiptRecord } from "./jobcards-store";
+import type { JobCard, WorkReceiptRecord } from "./jobcards-store";
 import { useWorkflowEngine } from "./workflow-engine";
 import { commService } from "./comm/service";
 import { useSettings } from "./settings-store";
@@ -282,12 +282,11 @@ export function buildBillFromJobCard(
   billNo: string,
   branchId: string,
 ): ManufacturingBill {
-  const gi = jobCard.goldIssue;
   const wr = jobCard.workReceipt;
 
-  const goldIssuedGrossMg = gi?.grossMg ?? 0;
-  const goldIssuedPurity = gi?.purity ?? 916;
-  const goldIssuedFineMg = gi?.fineMg ?? 0;
+  const goldIssuedGrossMg = 0;
+  const goldIssuedPurity = 916;
+  const goldIssuedFineMg = 0;
 
   const finishedGrossMg = wr?.finishedGrossMg ?? 0;
   const finishedPurity = wr?.finishedPurity ?? 916;
@@ -333,7 +332,7 @@ export function buildBillFromJobCard(
     goldIssuedGrossMg,
     goldIssuedPurity,
     goldIssuedFineMg,
-    goldIssueSlipNo: gi?.slipNo ?? "",
+    goldIssueSlipNo: "",
 
     pEntries: [],
 

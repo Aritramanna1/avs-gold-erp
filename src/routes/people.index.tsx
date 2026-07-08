@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
+import { usePrintEngine } from "@/lib/print-engine";
 import { useDraft } from "@/lib/drafts-store";
 import { useSaveShortcut } from "@/lib/keyboard/use-save-shortcut";
 import { PageHeader } from "@/components/app-shell";
@@ -63,7 +64,6 @@ import { toast } from "sonner";
 import { AttachmentButton } from "@/components/attachment-placeholder-modal";
 import { useAttachments } from "@/lib/attachments-store";
 import { useSettings } from "@/lib/settings-store";
-import { PrintPreviewModal } from "@/components/print/PrintPreviewModal";
 
 import { compileCustomerLedger } from "@/lib/customer-account-ledger";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
@@ -111,16 +111,7 @@ function PeoplePage() {
   const [addingType, setAddingType] = useState<PersonType | null>(null);
   const [storageNotice, setStorageNotice] = useState(false);
 
-  const [printOpen, setPrintOpen] = useState(false);
-  const [printUrl, setPrintUrl] = useState("");
-  const [printTitle, setPrintTitle] = useState("");
-
-  const triggerPrint = (url: string, titleName: string) => {
-    setPrintUrl(url);
-    setPrintTitle(titleName);
-    setPrintOpen(true);
-  };
-
+  const { triggerPrint } = usePrintEngine();
   const selected = useMemo(
     () => people.find((p) => p.id === selectedId) ?? null,
     [people, selectedId],
@@ -278,14 +269,6 @@ function PeoplePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <PrintPreviewModal
-        isOpen={printOpen}
-        onClose={() => setPrintOpen(false)}
-        title={printTitle}
-        printUrl={printUrl}
-        docNo=""
-      />
     </div>
   );
 }

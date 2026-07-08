@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { usePrintEngine } from "@/lib/print-engine";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +37,6 @@ import { ArrowLeft, Printer, Receipt, Trash2, FileText, Ban } from "lucide-react
 import { useCan } from "@/lib/rbac";
 import { useSettings } from "@/lib/settings-store";
 import { supabase } from "@/integrations/supabase/client";
-import { PrintDialog } from "@/components/print-dialog";
 import { usePeople } from "@/lib/people-store";
 import { DocCommActions } from "@/components/doc-comm-actions";
 import { toast } from "sonner";
@@ -92,11 +92,7 @@ function InvoiceDetailPage() {
   const [payRef, setPayRef] = useState("");
   const [payNotes, setPayNotes] = useState("");
 
-  const [printOpen, setPrintOpen] = useState(false);
-  const [printUrl, setPrintUrl] = useState("");
-  const [printTitle, setPrintTitle] = useState("");
-
-  if (!inv) {
+  const { triggerPrint } = usePrintEngine();  if (!inv) {
     return (
       <div className="p-8 max-w-3xl mx-auto text-center">
         <h1 className="font-serif text-2xl text-gold">Invoice not found</h1>
@@ -125,37 +121,24 @@ function InvoiceDetailPage() {
   }
 
   function triggerPrintInvoice() {
-    setPrintUrl(`/billing/print/${inv!.id}`);
-    setPrintTitle(`Invoice Preview · ${inv!.invoiceNo}`);
-    setPrintOpen(true);
+    triggerPrint(`/billing/print/${inv!.id}`, `Invoice Preview · ${inv!.invoiceNo}`);
   }
 
   function triggerPrintReceipt() {
-    setPrintUrl(`/billing/receipt/${inv!.id}`);
-    setPrintTitle(`Receipt Preview · ${inv!.invoiceNo}`);
-    setPrintOpen(true);
+    triggerPrint(`/billing/receipt/${inv!.id}`, `Receipt Preview · ${inv!.invoiceNo}`);
   }
 
   function triggerPrintSettlementSlip() {
-    setPrintUrl(`/billing/settlement-slip/${inv!.id}`);
-    setPrintTitle(`Customer Settlement Slip · ${inv!.invoiceNo}`);
-    setPrintOpen(true);
+    triggerPrint(`/billing/settlement-slip/${inv!.id}`, `Customer Settlement Slip · ${inv!.invoiceNo}`);
   }
 
   function triggerPrintEstimate() {
-    setPrintUrl(`/billing/estimate/${inv!.id}`);
-    setPrintTitle(`Estimate · ${inv!.invoiceNo}`);
-    setPrintOpen(true);
+    triggerPrint(`/billing/estimate/${inv!.id}`, `Estimate · ${inv!.invoiceNo}`);
   }
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
-      <PrintDialog
-        isOpen={printOpen}
-        onClose={() => setPrintOpen(false)}
-        printUrl={printUrl}
-        title={printTitle}
-      />
+
       <PageHeader
         title={inv.invoiceNo}
         subtitle={`${inv.customerName} · ${new Date(inv.createdAt).toLocaleString("en-IN")}`}

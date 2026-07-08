@@ -88,6 +88,8 @@ import {
   APP_TAGLINE,
 } from "@/lib/app-info";
 
+import { FactoryResetDialog } from "@/components/security/FactoryResetDialog";
+
 const SearchSchema = z.object({
   tab: z.string().optional(),
 });
@@ -103,6 +105,7 @@ function SettingsPage() {
   const s = useSettings();
   const { tab } = useSearch({ from: "/settings/" });
   const [activeTab, setActiveTab] = useState(tab || "firm");
+  const [isFactoryResetOpen, setIsFactoryResetOpen] = useState(false);
 
   useEffect(() => {
     if (tab) {
@@ -353,18 +356,39 @@ function SettingsPage() {
         </TabsContent>
       </Tabs>
 
-      <p className="text-xs text-muted-foreground mt-6">
-        Reset everything:{" "}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            if (confirm("Reset all settings to defaults?")) s.resetAll();
-          }}
-        >
-          Reset Settings
-        </Button>
-      </p>
+      <div className="mt-8 pt-6 border-t border-red-200">
+        <h3 className="text-lg font-bold text-red-600 flex items-center gap-2 mb-2">
+          <AlertTriangle className="h-5 w-5" /> Danger Zone
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Irreversible and destructive actions for this device's local data.
+        </p>
+        <div className="flex gap-4">
+          <Button
+            variant="destructive"
+            onClick={() => setIsFactoryResetOpen(true)}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Factory Reset App
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              if (confirm("Reset all settings to defaults?")) s.resetAll();
+            }}
+            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+          >
+            Reset Settings to Default
+          </Button>
+        </div>
+      </div>
+
+      <FactoryResetDialog
+        open={isFactoryResetOpen}
+        onOpenChange={setIsFactoryResetOpen}
+        firmName={s.firm?.shopName || "AVS Gold"}
+      />
     </div>
   );
 }

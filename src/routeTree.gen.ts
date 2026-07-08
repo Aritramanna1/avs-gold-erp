@@ -117,7 +117,6 @@ import { Route as BillingCreditNotesIndexRouteImport } from './routes/billing.cr
 import { Route as WorkshopReceiveSlipIdRouteImport } from './routes/workshop.receive-slip.$id'
 import { Route as WorkshopPrintIdRouteImport } from './routes/workshop.print.$id'
 import { Route as WorkshopJobCardOrderIdRouteImport } from './routes/workshop.job-card.$orderId'
-import { Route as WorkshopIssueSlipIdRouteImport } from './routes/workshop.issue-slip.$id'
 import { Route as WorkshopFilingsSlipIdRouteImport } from './routes/workshop.filings-slip.$id'
 import { Route as StockPrintIdRouteImport } from './routes/stock.print.$id'
 import { Route as SettlementDraftPrintIdRouteImport } from './routes/settlement.draft-print.$id'
@@ -689,11 +688,6 @@ const WorkshopJobCardOrderIdRoute = WorkshopJobCardOrderIdRouteImport.update({
   path: '/job-card/$orderId',
   getParentRoute: () => WorkshopRoute,
 } as any)
-const WorkshopIssueSlipIdRoute = WorkshopIssueSlipIdRouteImport.update({
-  id: '/issue-slip/$id',
-  path: '/issue-slip/$id',
-  getParentRoute: () => WorkshopRoute,
-} as any)
 const WorkshopFilingsSlipIdRoute = WorkshopFilingsSlipIdRouteImport.update({
   id: '/filings-slip/$id',
   path: '/filings-slip/$id',
@@ -929,7 +923,6 @@ export interface FileRoutesByFullPath {
   '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
-  '/workshop/issue-slip/$id': typeof WorkshopIssueSlipIdRoute
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
   '/workshop/print/$id': typeof WorkshopPrintIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
@@ -1050,7 +1043,6 @@ export interface FileRoutesByTo {
   '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
-  '/workshop/issue-slip/$id': typeof WorkshopIssueSlipIdRoute
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
   '/workshop/print/$id': typeof WorkshopPrintIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
@@ -1184,7 +1176,6 @@ export interface FileRoutesById {
   '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
-  '/workshop/issue-slip/$id': typeof WorkshopIssueSlipIdRoute
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
   '/workshop/print/$id': typeof WorkshopPrintIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
@@ -1319,7 +1310,6 @@ export interface FileRouteTypes {
     | '/settlement/draft-print/$id'
     | '/stock/print/$id'
     | '/workshop/filings-slip/$id'
-    | '/workshop/issue-slip/$id'
     | '/workshop/job-card/$orderId'
     | '/workshop/print/$id'
     | '/workshop/receive-slip/$id'
@@ -1440,7 +1430,6 @@ export interface FileRouteTypes {
     | '/settlement/draft-print/$id'
     | '/stock/print/$id'
     | '/workshop/filings-slip/$id'
-    | '/workshop/issue-slip/$id'
     | '/workshop/job-card/$orderId'
     | '/workshop/print/$id'
     | '/workshop/receive-slip/$id'
@@ -1573,7 +1562,6 @@ export interface FileRouteTypes {
     | '/settlement/draft-print/$id'
     | '/stock/print/$id'
     | '/workshop/filings-slip/$id'
-    | '/workshop/issue-slip/$id'
     | '/workshop/job-card/$orderId'
     | '/workshop/print/$id'
     | '/workshop/receive-slip/$id'
@@ -2384,13 +2372,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkshopJobCardOrderIdRouteImport
       parentRoute: typeof WorkshopRoute
     }
-    '/workshop/issue-slip/$id': {
-      id: '/workshop/issue-slip/$id'
-      path: '/issue-slip/$id'
-      fullPath: '/workshop/issue-slip/$id'
-      preLoaderRoute: typeof WorkshopIssueSlipIdRouteImport
-      parentRoute: typeof WorkshopRoute
-    }
     '/workshop/filings-slip/$id': {
       id: '/workshop/filings-slip/$id'
       path: '/filings-slip/$id'
@@ -2845,7 +2826,6 @@ interface WorkshopRouteChildren {
   WorkshopPolishingRoute: typeof WorkshopPolishingRoute
   WorkshopIndexRoute: typeof WorkshopIndexRoute
   WorkshopFilingsSlipIdRoute: typeof WorkshopFilingsSlipIdRoute
-  WorkshopIssueSlipIdRoute: typeof WorkshopIssueSlipIdRoute
   WorkshopJobCardOrderIdRoute: typeof WorkshopJobCardOrderIdRoute
   WorkshopPrintIdRoute: typeof WorkshopPrintIdRoute
   WorkshopReceiveSlipIdRoute: typeof WorkshopReceiveSlipIdRoute
@@ -2859,7 +2839,6 @@ const WorkshopRouteChildren: WorkshopRouteChildren = {
   WorkshopPolishingRoute: WorkshopPolishingRoute,
   WorkshopIndexRoute: WorkshopIndexRoute,
   WorkshopFilingsSlipIdRoute: WorkshopFilingsSlipIdRoute,
-  WorkshopIssueSlipIdRoute: WorkshopIssueSlipIdRoute,
   WorkshopJobCardOrderIdRoute: WorkshopJobCardOrderIdRoute,
   WorkshopPrintIdRoute: WorkshopPrintIdRoute,
   WorkshopReceiveSlipIdRoute: WorkshopReceiveSlipIdRoute,

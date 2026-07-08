@@ -70,7 +70,7 @@ function WorkshopPage() {
     [jobs, receiveJobId],
   );
   const custody = useMemo(() => karigarCustodySummaries(jobs), [jobs]);
-  const activeJobs = useMemo(() => jobs.filter((j) => j.goldIssue && !j.workReceipt), [jobs]);
+  const activeJobs = useMemo(() => jobs.filter((j) => (j.status === "in_progress" || j.status === "rework") && !j.workReceipt), [jobs]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -88,17 +88,7 @@ function WorkshopPage() {
   const reworkJobs = jobs.filter((j) => j.status === "rework");
   const readyJobs = jobs.filter((j) => j.status === "ready_for_gold_issue" || j.status === "draft");
 
-  // Board groups by Job Card status.
-  const board = useMemo(() => {
-    const groups: Record<string, typeof jobs> = {};
-    for (const j of jobs) {
-      if (j.status === "closed") continue;
-      const key = JOB_STATUS_LABELS[j.status] ?? "—";
-      groups[key] ??= [];
-      groups[key].push(j);
-    }
-    return groups;
-  }, [jobs]);
+
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
@@ -144,9 +134,7 @@ function WorkshopPage() {
           <TabsTrigger value="jobs" className="gap-2">
             <ClipboardList className="h-4 w-4" /> Job Cards
           </TabsTrigger>
-          <TabsTrigger value="board" className="gap-2">
-            <Hammer className="h-4 w-4" /> Process Board
-          </TabsTrigger>
+
           <TabsTrigger value="rework" className="gap-2">
             <AlertTriangle className="h-4 w-4" /> Rework ({reworkJobs.length})
           </TabsTrigger>
@@ -260,53 +248,7 @@ function WorkshopPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="board">
-          {Object.keys(board).length === 0 ? (
-            <EmptyState
-              title="No active job cards"
-              body="Cards in progress will appear here grouped by status."
-            />
-          ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(board).map(([step, list]) => (
-                <div key={step} className="rounded-2xl border border-border bg-card p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-serif text-gold">{step}</h3>
-                    <Badge variant="outline">{list.length}</Badge>
-                  </div>
-                  <div className="space-y-2">
-                    {list.map((j) => (
-                      <Link
-                        key={j.id}
-                        to="/workshop/$id"
-                        params={{ id: j.id }}
-                        className="block rounded-lg border border-border bg-background/40 p-3 hover:border-gold/40"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="font-mono text-xs text-gold truncate">{j.jobNo}</div>
-                            <div className="text-sm truncate">
-                              {j.customerName} · {j.itemName}
-                            </div>
-                            <div className="text-[11px] text-muted-foreground truncate">
-                              {j.karigarName ?? "Unassigned"}
-                            </div>
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className={STATUS_TONE[j.status] + " text-[10px]"}
-                          >
-                            {JOB_STATUS_LABELS[j.status]}
-                          </Badge>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+
 
         <TabsContent value="rework">
           {reworkJobs.length === 0 ? (
@@ -397,7 +339,7 @@ function WorkshopPage() {
           {activeJobs.length === 0 ? (
             <EmptyState
               title="No jobs in karigar custody"
-              body="After Issue Gold, the job appears here until Work is Received."
+              body="Assign orders to the workshop and create job cards. Gold should be issued via the Worker Gold Book."
             />
           ) : (
             <div className="space-y-2">
@@ -413,9 +355,8 @@ function WorkshopPage() {
                     <div className="text-sm">
                       {j.customerName} · {j.itemName} · {j.karigarName ?? "—"}
                     </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Issued {mgToGrams(j.goldIssue!.fineMg)} g fine ·{" "}
-                      {new Date(j.goldIssue!.ts).toLocaleDateString("en-IN")}
+                    <div className="text-muted-foreground flex gap-2 truncate">
+                      {/* Issue details moved to Worker Gold Book */}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -495,7 +436,7 @@ function WorkshopPage() {
       </Tabs>
 
       <p className="mt-6 text-xs text-muted-foreground">
-        Workflow: Order → Job Card → <span className="text-gold">Issue Gold → Receive Work</span> →
+        Workflow: Order → Job Card → <span className="text-gold">Worker Gold Book</span> → Receive Work →
         Stock → Billing → Daily Close.
       </p>
 

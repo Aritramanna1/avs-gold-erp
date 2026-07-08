@@ -522,7 +522,6 @@ function ReportsIndex() {
                 "Order",
                 "Karigar",
                 "Status",
-                "Issued (g)",
                 "Received (g)",
                 "Overloss (g)",
               ]}
@@ -531,7 +530,6 @@ function ReportsIndex() {
                 j.orderNo,
                 j.karigarName ?? "—",
                 JOB_STATUS_LABELS[j.status],
-                j.goldIssue ? mgToGrams(j.goldIssue.fineMg) : "—",
                 j.workReceipt ? mgToGrams(j.workReceipt.finishedFineMg) : "—",
                 j.workReceipt ? mgToGrams(j.workReceipt.overlossMg) : "—",
               ])}
@@ -539,13 +537,12 @@ function ReportsIndex() {
             <ExportRow
               onCsv={() =>
                 downloadCSV("workshop.csv", [
-                  ["No.", "Order", "Karigar", "Status", "Issued g", "Received g", "Overloss g"],
+                  ["No.", "Order", "Karigar", "Status", "Received g", "Overloss g"],
                   ...filteredJobs.map((j) => [
                     j.jobNo,
                     j.orderNo,
                     j.karigarName ?? "",
                     JOB_STATUS_LABELS[j.status],
-                    j.goldIssue ? mgToGrams(j.goldIssue.fineMg) : "",
                     j.workReceipt ? mgToGrams(j.workReceipt.finishedFineMg) : "",
                     j.workReceipt ? mgToGrams(j.workReceipt.overlossMg) : "",
                   ]),

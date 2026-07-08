@@ -41,6 +41,12 @@ export function PrintToolbar({
   const [selectedReason, setSelectedReason] = useState<ReprintReason>("wrong_printer");
   const [note, setNote] = useState("");
 
+  const isIframe = typeof window !== "undefined" && window !== window.parent;
+
+  if (isIframe) {
+    return null;
+  }
+
   const handleBack = () => {
     if (backUrl) {
       window.location.href = backUrl;

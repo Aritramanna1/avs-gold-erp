@@ -32,3 +32,4 @@ DROP TABLE IF EXISTS public.user_profiles CASCADE;
 DROP TABLE IF EXISTS public.gold_issue_register CASCADE;
 DROP TABLE IF EXISTS public.gold_receive_register CASCADE;
 DROP TABLE IF EXISTS public.kyc_documents CASCADE;
+DROP TABLE IF EXISTS public.job_process_steps CASCADE;

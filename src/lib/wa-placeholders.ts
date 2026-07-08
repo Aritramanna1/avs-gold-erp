@@ -95,7 +95,7 @@ export function buildContext(args: BuildCtxArgs): PlaceholderCtx {
   ctx.repair_number = repair?.repairNo ?? BLANK;
   ctx.repair_status = repair ? REPAIR_STATUS_LABELS[repair.status] : BLANK;
 
-  ctx.gold_issued = g(job?.goldIssue?.fineMg);
+  ctx.gold_issued = BLANK;
   ctx.gold_received = g(job?.workReceipt?.finishedFineMg);
   ctx.current_status = order
     ? order.status

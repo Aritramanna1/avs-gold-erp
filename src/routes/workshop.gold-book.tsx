@@ -88,8 +88,7 @@ function WorkerGoldBookPage() {
     "given",
   );
 
-  // Print view state (renders receipt if set, hiding main layout)
-  const [activePrintEntry, setActivePrintEntry] = useState<WorkerGoldBookEntry | null>(null);
+  // Print view state (renders ledger if set, hiding main layout)
   const [activePrintLedgerWorkerId, setActivePrintLedgerWorkerId] = useState<string | null>(null);
 
   // Filters state
@@ -289,8 +288,8 @@ function WorkerGoldBookPage() {
     clearFormCustomParticulars();
     clearFormParticulars();
 
-    // Trigger immediate print preview
-    setActivePrintEntry(newEntry);
+    // Return to ledger view instead of printing
+    setActiveTab("ledger");
   };
 
   // Filter and process ledger entries
@@ -363,25 +362,6 @@ function WorkerGoldBookPage() {
   }, [workers, getWorkerBalance, entries]);
 
   // Active worker's previous balances before activePrintEntry
-  const printEntryPreviousBalance = useMemo(() => {
-    if (!activePrintEntry) return { fine: 0, qty: 0 };
-    const wEntries = entries.filter(
-      (e) => e.workerId === activePrintEntry.workerId && e.createdAt < activePrintEntry.createdAt,
-    );
-    let fine = 0;
-    let qty = 0;
-    for (const e of wEntries) {
-      if (e.type === "given") {
-        fine += e.fineMg;
-        qty += e.quantity;
-      } else {
-        fine -= e.fineMg;
-        qty -= e.quantity;
-      }
-    }
-    return { fine, qty };
-  }, [activePrintEntry, entries]);
-
   // Active ledger report data
   const printLedgerData = useMemo(() => {
     if (!activePrintLedgerWorkerId) return null;
@@ -412,259 +392,6 @@ function WorkerGoldBookPage() {
   };
 
   /* ==================== SAME-TAB PRINT VIEWS ==================== */
-
-  // 1. Given/Return Entry Receipt Print View
-  if (activePrintEntry) {
-    const isGiven = activePrintEntry.type === "given";
-    const previousFine = printEntryPreviousBalance.fine;
-    const previousQty = printEntryPreviousBalance.qty;
-    const currentFine = activePrintEntry.fineMg;
-    const currentQty = activePrintEntry.quantity;
-
-    const closingFine = isGiven ? previousFine + currentFine : previousFine - currentFine;
-    const closingQty = isGiven ? previousQty + currentQty : previousQty - currentQty;
-
-    return (
-      <div className="min-h-screen bg-neutral-100 text-black py-8 px-4 print:p-0 print:bg-white flex flex-col items-center">
-        {/* Print Controls Header */}
-        <div className="no-print w-full max-w-2xl bg-white rounded-2xl shadow-sm p-4 border border-neutral-200/80 mb-6 flex items-center justify-between">
-          <button
-            onClick={() => setActivePrintEntry(null)}
-            className="flex items-center text-sm font-semibold text-neutral-600 hover:text-black transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Gold Book
-          </button>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => window.print()}
-              className="gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold"
-            >
-              <Printer className="h-4 w-4" /> Print Receipt
-            </Button>
-          </div>
-        </div>
-
-        {/* Paper Receipt container */}
-        <div className="bg-white w-full max-w-2xl border border-neutral-300 shadow-md p-8 print:border-none print:shadow-none font-sans relative">
-          {/* Header Details */}
-          <div className="flex items-center justify-between border-b-2 border-neutral-800 pb-4 mb-6">
-            <div className="flex items-center gap-3">
-              <Logo variant="svg" className="h-14 w-14 object-contain text-amber-600" />
-              <div>
-                <h1 className="font-serif text-2xl font-bold tracking-tight text-neutral-900">
-                  {firm.shopName}
-                </h1>
-                <p className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold">
-                  {isGiven ? "Worker Material Given Slip" : "Worker Material Return Slip"}
-                </p>
-                <p className="text-[10px] text-neutral-500 font-medium">Workshop Support Desk</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <span
-                className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider mb-1 ${isGiven ? "bg-red-50 text-red-600 border border-red-200/55" : "bg-green-50 text-green-600 border border-green-200/55"}`}
-              >
-                {isGiven ? "Material Issue" : "Material Return"}
-              </span>
-              <div className="text-[10px] font-bold uppercase text-neutral-400">Voucher No</div>
-              <div className="font-mono text-xs font-semibold text-neutral-800">
-                {activePrintEntry.entryNo}
-              </div>
-            </div>
-          </div>
-
-          {/* Metadata Grid */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-xs border-b border-neutral-100 pb-4 mb-6">
-            <div>
-              <div className="text-[9px] uppercase tracking-wider text-neutral-400 font-bold mb-0.5">
-                Worker Name
-              </div>
-              <div className="font-bold text-neutral-900 text-sm">
-                {activePrintEntry.workerName}
-              </div>
-              <div className="text-neutral-500 text-[10px] mt-0.5">Custody Ledger Account</div>
-            </div>
-            <div className="text-right">
-              <div className="text-[9px] uppercase tracking-wider text-neutral-400 font-bold mb-0.5">
-                Date &amp; Time
-              </div>
-              <div className="font-semibold text-neutral-800">{activePrintEntry.date}</div>
-              <div className="font-mono text-[10px] text-neutral-500 font-semibold">
-                {activePrintEntry.time}
-              </div>
-            </div>
-          </div>
-
-          {/* Receipt Particulars Table */}
-          <div className="border border-neutral-200 rounded-lg overflow-hidden mb-6">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-neutral-50 border-b border-neutral-200 text-[10px] uppercase tracking-wider text-neutral-500 font-bold">
-                <tr>
-                  <th className="p-3">Particulars / Material</th>
-                  <th className="p-3 text-right">Gross (g)</th>
-                  <th className="p-3 text-right">Less (g)</th>
-                  <th className="p-3 text-right">Net (g)</th>
-                  <th className="p-3 text-right">Purity</th>
-                  <th className="p-3 text-right">Fine Gold (g)</th>
-                  <th className="p-3 text-right">Qty / Pcs</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-neutral-100 text-neutral-800 font-medium">
-                  <td className="p-3">
-                    <span className="font-semibold text-neutral-900">
-                      {activePrintEntry.particulars}
-                    </span>
-                    {activePrintEntry.reference && (
-                      <div className="text-[10px] text-neutral-400 font-normal mt-0.5">
-                        Ref: {activePrintEntry.reference}
-                      </div>
-                    )}
-                  </td>
-                  <td className="p-3 text-right font-mono">
-                    {mgToGrams(activePrintEntry.grossMg)}
-                  </td>
-                  <td className="p-3 text-right font-mono">{mgToGrams(activePrintEntry.lessMg)}</td>
-                  <td className="p-3 text-right font-mono">{mgToGrams(activePrintEntry.netMg)}</td>
-                  <td className="p-3 text-right font-mono">
-                    {activePrintEntry.purity > 0 ? `${activePrintEntry.purity}` : "—"}
-                  </td>
-                  <td className="p-3 text-right font-mono font-bold text-amber-600">
-                    {activePrintEntry.fineMg > 0 ? `${mgToGrams(activePrintEntry.fineMg)} g` : "—"}
-                  </td>
-                  <td className="p-3 text-right font-mono">
-                    {activePrintEntry.quantity > 0 ? activePrintEntry.quantity : "—"}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Ledger Impact / Balance Summary Block */}
-          <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 mb-8">
-            <h3 className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold mb-3 border-b border-neutral-200/60 pb-1.5">
-              Worker Account Balance Impact
-            </h3>
-
-            <div className="grid grid-cols-2 gap-6">
-              {/* Fine Gold Balance */}
-              <div>
-                <div className="text-[10px] font-bold text-neutral-450 mb-1.5">
-                  Gold Balance (Fine)
-                </div>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-neutral-500">Previous Pending:</span>
-                    <span className="font-mono font-semibold">{mgToGrams(previousFine)} g</span>
-                  </div>
-                  <div className="flex justify-between text-neutral-700">
-                    <span className="text-neutral-500">
-                      {isGiven ? "Issued Today:" : "Returned Today:"}
-                    </span>
-                    <span
-                      className={`font-mono font-bold ${isGiven ? "text-red-500" : "text-green-500"}`}
-                    >
-                      {isGiven ? "+" : "-"}
-                      {mgToGrams(currentFine)} g
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-t border-neutral-200 pt-1 font-bold text-neutral-900 mt-1">
-                    <span>New Closing Balance:</span>
-                    <span className="font-mono text-amber-600">{mgToGrams(closingFine)} g</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Pieces/Quantity Balance */}
-              <div>
-                <div className="text-[10px] font-bold text-neutral-450 mb-1.5">
-                  Material Balance (Pieces)
-                </div>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-neutral-500">Previous Pending:</span>
-                    <span className="font-mono font-semibold">{previousQty} pcs</span>
-                  </div>
-                  <div className="flex justify-between text-neutral-700">
-                    <span className="text-neutral-500">
-                      {isGiven ? "Issued Today:" : "Returned Today:"}
-                    </span>
-                    <span
-                      className={`font-mono font-bold ${isGiven ? "text-red-500" : "text-green-500"}`}
-                    >
-                      {isGiven ? "+" : "-"}
-                      {currentQty} pcs
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-t border-neutral-200 pt-1 font-bold text-neutral-900 mt-1">
-                    <span>New Closing Balance:</span>
-                    <span className="font-mono text-amber-600">{closingQty} pcs</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-[9px] text-neutral-400 mt-3 text-center border-t border-neutral-200/60 pt-2 italic">
-              Balance rules: Issued gold/materials increase worker custody (debit), returned
-              materials decrease custody (credit).
-            </div>
-          </div>
-
-          {/* Notes & Staff info */}
-          <div className="grid grid-cols-2 gap-4 text-xs mb-8">
-            <div>
-              {activePrintEntry.notes && (
-                <div className="p-2 bg-amber-50/40 border border-amber-200/50 rounded-lg text-neutral-600 text-[11px] italic">
-                  <strong>Notes:</strong> {activePrintEntry.notes}
-                </div>
-              )}
-            </div>
-            <div className="text-right space-y-1 text-[11px]">
-              <div>
-                <span className="text-neutral-400">Given By:</span>{" "}
-                <strong className="text-neutral-800">{activePrintEntry.givenBy}</strong>
-              </div>
-              <div>
-                <span className="text-neutral-400">Received By:</span>{" "}
-                <strong className="text-neutral-800">{activePrintEntry.receivedBy}</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* Signatures & Footer Layout */}
-          <footer className="mt-12 grid grid-cols-[1fr_auto_1fr] gap-4 text-xs items-end border-t border-neutral-200 pt-6">
-            <div className="text-center">
-              <div className="h-10"></div>
-              <div className="border-t border-neutral-300 pt-1.5 text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">
-                Worker Signature
-              </div>
-            </div>
-
-            {/* Real QR code matching our pattern */}
-            <div className="px-2">
-              <PrintQR
-                docType={isGiven ? "worker_material_given" : "worker_material_return"}
-                docNumber={activePrintEntry.entryNo}
-                recordId={activePrintEntry.id}
-                createdAt={activePrintEntry.createdAt}
-              />
-            </div>
-
-            <div className="text-center">
-              <div className="h-10"></div>
-              <div className="border-t border-neutral-300 pt-1.5 text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">
-                Authorized Signature
-              </div>
-            </div>
-          </footer>
-
-          <div className="mt-6">
-            <AvsPrintFooter />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // 2. Worker Ledger Statement Print View
   if (printLedgerData) {
@@ -1142,15 +869,6 @@ function WorkerGoldBookPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => setActivePrintEntry(e)}
-                                className="h-8 px-2 text-gold hover:bg-gold/5"
-                                title="Print Receipt"
-                              >
-                                <Printer className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
                                 onClick={() => {
                                   if (
                                     confirm("Are you sure you want to delete this gold book entry?")
@@ -1158,7 +876,7 @@ function WorkerGoldBookPage() {
                                     removeEntry(e.id);
                                   }
                                 }}
-                                className="h-8 px-2 text-destructive hover:bg-destructive/5"
+                                className="h-8 px-2 text-muted-foreground hover:bg-red-500/10 hover:text-red-500"
                                 title="Delete Entry"
                               >
                                 <X className="h-4 w-4" />

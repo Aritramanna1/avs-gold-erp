@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { usePrintEngine } from "@/lib/print-engine";
 import { PageHeader } from "@/components/app-shell";
 import { AttachmentsSection } from "@/components/attachments-section";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,6 @@ import {
 import {
   useJobCards,
   JOB_STATUS_LABELS,
-  jobKarigarCustodyMg,
   type JobStatus,
 } from "@/lib/jobcards-store";
 import { referenceImagesForOrder } from "@/lib/job-card-engine";
@@ -46,7 +46,7 @@ import {
   Trash2,
   User as UserIcon,
 } from "lucide-react";
-import { PrintPreviewModal } from "@/components/print/PrintPreviewModal";
+
 
 export const Route = createFileRoute("/workshop/$id")({
   head: () => ({ meta: [{ title: "Job Card · AVS Gold ERP" }] }),
@@ -80,9 +80,7 @@ function JobCardDetail() {
   const [receiveOpen, setReceiveOpen] = useState(false);
 
   // Print Dialog States
-  const [printOpen, setPrintOpen] = useState(false);
-  const [printUrl, setPrintUrl] = useState("");
-  const [printTitle, setPrintTitle] = useState("");
+  const { triggerPrint } = usePrintEngine();
 
   if (!job) {
     return (
@@ -93,12 +91,6 @@ function JobCardDetail() {
         </Link>
       </div>
     );
-  }
-
-  function triggerPrint(url: string, titleName: string) {
-    setPrintUrl(url);
-    setPrintTitle(titleName);
-    setPrintOpen(true);
   }
 
   const customer = people.find((p) => p.id === job.customerId);
@@ -135,36 +127,6 @@ function JobCardDetail() {
 
   return (
     <div data-testid="workshop-detail-root" className="p-4 md:p-8 max-w-6xl mx-auto">
-      <PrintPreviewModal
-        isOpen={printOpen}
-        onClose={() => setPrintOpen(false)}
-        title={printTitle}
-        docNo={job.jobNo}
-        relatedTable="jobcards"
-        relatedRecordId={job.id}
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-xs border border-neutral-200 p-3 rounded bg-neutral-50/50 text-left">
-            <div>
-              <strong className="text-[11px] uppercase tracking-wider text-neutral-500 block">
-                Item Details
-              </strong>
-              <p className="mt-1 font-semibold">Category: {job.category}</p>
-              <p>Item Name: {job.itemName}</p>
-              <p>Target Net: {mgToGrams(job.targetNetMg)} g</p>
-              <p>Target Fine: {mgToGrams(job.targetFineMg)} g</p>
-            </div>
-            <div>
-              <strong className="text-[11px] uppercase tracking-wider text-neutral-500 block">
-                Karigar &amp; Customer
-              </strong>
-              <p className="mt-1 font-semibold">Karigar: {karigar?.fullName || "Unassigned"}</p>
-              <p>Customer: {customer?.fullName || "Unknown"}</p>
-              <p>Purity Required: {job.purity}</p>
-            </div>
-          </div>
-        </div>
-      </PrintPreviewModal>
       <PageHeader
         title={job.jobNo}
         subtitle={`From order ${job.orderNo} · created ${new Date(job.createdAt).toLocaleString("en-IN")}`}
@@ -191,21 +153,12 @@ function JobCardDetail() {
               <Printer className="h-4 w-4" /> Print Job Card
             </Button>
             {!job.workReceipt && (
-              <Button
-                data-testid="workshop-issue-gold"
-                className="gap-2"
-                onClick={() => navigate({ to: "/workshop/gold-book" })}
-              >
-                <Hammer className="h-4 w-4" /> {job.goldIssue ? "Additional Issue" : "Issue Gold"}
+              <Button size="sm" className="gap-1" onClick={() => navigate({ to: '/workshop/gold-book' })}>
+                <Hammer className="h-4 w-4" /> Worker Gold Book
               </Button>
             )}
-            {job.goldIssue && !job.workReceipt && (
-              <Button
-                data-testid="workshop-receive-work"
-                className="gap-2"
-                variant="default"
-                onClick={() => setReceiveOpen(true)}
-              >
+            {!job.workReceipt && (
+              <Button size="sm" className="gap-1" onClick={() => setReceiveOpen(true)}>
                 <PackageCheck className="h-4 w-4" /> Receive Work
               </Button>
             )}
@@ -345,9 +298,6 @@ function JobCardDetail() {
                   {karigar.workType ? ` · ${karigar.workType}` : ""}
                 </div>
                 <div className="mt-2 text-[11px]">
-                  <Badge variant="outline" className="border-gold/30 text-gold">
-                    Gold custody this job: {mgToGrams(jobKarigarCustodyMg(job))} g fine
-                  </Badge>
                 </div>
                 <div className="mt-2 flex gap-2">
                   <Link to="/people" className="text-xs text-gold underline">
@@ -380,54 +330,7 @@ function JobCardDetail() {
             )}
           </Section>
 
-          {/* Gold Issue summary */}
-          {job.goldIssue && (
-            <Section title="Gold Issued" icon={Hammer}>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Slip</span>
-                  <span className="font-mono">{job.goldIssue.slipNo}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Gross</span>
-                  <span className="font-mono">
-                    {mgToGrams(job.goldIssue.grossMg)} g @ {job.goldIssue.purity}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Fine</span>
-                  <span className="font-mono text-gold">{mgToGrams(job.goldIssue.fineMg)} g</span>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Issued</span>
-                  <span>{new Date(job.goldIssue.ts).toLocaleString("en-IN")}</span>
-                </div>
-                {job.goldIssue.referencePhotoDataUrl && (
-                  <img
-                    src={job.goldIssue.referencePhotoDataUrl}
-                    alt="Reference"
-                    className="h-12 w-12 object-cover rounded border border-border mt-1.5"
-                  />
-                )}
-                <div className="pt-2">
-                  <Button
-                    data-testid="workshop-print-issue-slip"
-                    variant="outline"
-                    size="sm"
-                    className="w-full gap-2 text-xs"
-                    onClick={() =>
-                      triggerPrint(
-                        `/workshop/issue-slip/${job.id}`,
-                        `Issue Slip Preview · ${job.goldIssue?.slipNo}`,
-                      )
-                    }
-                  >
-                    <Printer className="h-3 w-3" /> Print Gold Issue Slip
-                  </Button>
-                </div>
-              </div>
-            </Section>
-          )}
+
 
           {/* Work Receipt summary */}
           {job.workReceipt && (
@@ -514,13 +417,12 @@ function JobCardDetail() {
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
-                  onClick={() => navigate({ to: "/workshop/gold-book" })}
+                  onClick={() => navigate({ to: '/workshop/gold-book' })}
                 >
-                  <Hammer className="h-4 w-4" />{" "}
-                  {job.goldIssue ? "Additional Gold Issue" : "Issue Gold to Karigar"}
+                  <Hammer className="h-4 w-4" /> Issue Gold to Karigar (Worker Gold Book)
                 </Button>
               )}
-              {job.goldIssue && !job.workReceipt && (
+              {!job.workReceipt && (
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"

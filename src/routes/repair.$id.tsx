@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { usePrintEngine } from "@/lib/print-engine";
 import { PageHeader } from "@/components/app-shell";
 import { AttachmentsSection } from "@/components/attachments-section";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,6 @@ import { mgToGrams } from "@/lib/gold";
 import { paiseToRupees, rupeesToPaise, PAYMENT_MODE_LABELS } from "@/lib/billing-store";
 import type { PaymentMode } from "@/lib/billing-store";
 import { ArrowLeft, Printer, Wrench, CheckCircle2, Truck, Wallet, FileText } from "lucide-react";
-import { PrintDialog } from "@/components/print-dialog";
 import { DocCommActions } from "@/components/doc-comm-actions";
 import { useSettings } from "@/lib/settings-store";
 
@@ -59,10 +59,7 @@ function RepairDetail() {
   const [payRef, setPayRef] = useState("");
   const [workerId, setWorkerId] = useState("");
 
-  // Print Dialog States
-  const [printOpen, setPrintOpen] = useState(false);
-  const [printUrl, setPrintUrl] = useState("");
-  const [printTitle, setPrintTitle] = useState("");
+  const { triggerPrint } = usePrintEngine();
 
   if (!repair) {
     return (
@@ -73,12 +70,6 @@ function RepairDetail() {
         <div className="mt-4 text-muted-foreground">Repair not found.</div>
       </div>
     );
-  }
-
-  function triggerPrint(url: string, titleName: string) {
-    setPrintUrl(url);
-    setPrintTitle(titleName);
-    setPrintOpen(true);
   }
 
   const totals = computeRepairTotals(repair);
@@ -118,12 +109,6 @@ function RepairDetail() {
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
-      <PrintDialog
-        isOpen={printOpen}
-        onClose={() => setPrintOpen(false)}
-        printUrl={printUrl}
-        title={printTitle}
-      />
       <div className="flex items-center gap-2 mb-4">
         <Link to="/repair">
           <Button variant="ghost" size="sm" className="gap-1">

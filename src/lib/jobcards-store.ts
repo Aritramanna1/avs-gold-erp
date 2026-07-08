@@ -129,7 +129,6 @@ export interface JobCard {
   branchId?: string;
 
   // gold movement
-  goldIssue?: GoldIssueRecord;
   workReceipt?: WorkReceiptRecord;
 
   timeline: JobTimelineEvent[];
@@ -149,21 +148,11 @@ interface JobCardsState {
   appendTimeline: (id: string, ev: JobTimelineEvent) => Promise<void>;
   /** Sets the Job Card's overall status directly — replaces the old per-step-derived status transition. */
   setStatus: (jobId: string, status: JobStatus, notes?: string) => Promise<void>;
-  setGoldIssue: (jobId: string, rec: GoldIssueRecord) => Promise<void>;
   setWorkReceipt: (jobId: string, rec: WorkReceiptRecord) => Promise<void>;
   reset: () => void;
 }
 
-/** Compute current outstanding karigar custody (mg fine) for a job. */
-export function jobKarigarCustodyMg(j: JobCard): number {
-  if (!j.goldIssue) return 0;
-  const issued = j.goldIssue.fineMg;
-  const r = j.workReceipt;
-  if (!r) return issued;
-  return (
-    issued - r.finishedFineMg - r.scrapFineMg - r.filingsFineMg - r.dustFineMg - r.actualLossMg
-  );
-}
+
 
 export interface KarigarCustodySummary {
   karigarId: string;
@@ -233,9 +222,8 @@ export function karigarCustodySummaries(jobs: JobCard[]): KarigarCustodySummary[
       .map((j) => ({
         jobId: j.id,
         jobNo: j.jobNo,
-        outstandingMg: jobKarigarCustodyMg(j),
-      }))
-      .filter((item) => item.outstandingMg > 0);
+        outstandingMg: 0,
+      }));
 
     map.set(workerId, {
       karigarId: workerId,
@@ -346,45 +334,7 @@ export const useJobCards = create<JobCardsState>()((set, get) => ({
     await jobCardRepository.save(updated);
     await get().refresh();
   },
-  setGoldIssue: async (jobId, rec) => {
-    const current = get().jobs.find((j) => j.id === jobId);
-    if (!current) return;
-    const updated = {
-      ...current,
-      goldIssue: rec,
-      status: "gold_issued" as JobStatus,
-      updatedAt: Date.now(),
-      timeline: [
-        ...current.timeline,
-        {
-          ts: rec.ts,
-          label: `Gold issued · ${rec.slipNo}`,
-          note: `${(rec.fineMg / 1000).toFixed(3)} g fine`,
-        },
-      ],
-    };
-    await jobCardRepository.save(updated);
-    await get().refresh();
-    try {
-      const [{ append: appendAudit }, { supabase: sb }] = await Promise.all([
-        import("./security/audit-log"),
-        import("@/integrations/supabase/client"),
-      ]);
-      const { data } = await sb.auth.getSession();
-      await appendAudit({
-        actorId: data.session?.user.id ?? null,
-        actorEmail: data.session?.user.email ?? null,
-        action: "job_card.gold_issue",
-        entityType: "job_cards",
-        entityId: jobId,
-        before: null,
-        after: rec,
-        deviceId: null,
-      });
-    } catch (err) {
-      console.error("[JobCards] Failed to audit-log gold issue:", err);
-    }
-  },
+
   setWorkReceipt: async (jobId, rec) => {
     const current = get().jobs.find((j) => j.id === jobId);
     if (!current) return;

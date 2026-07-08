@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { usePrintEngine } from "@/lib/print-engine";
 import { PageHeader } from "@/components/app-shell";
 import { AttachmentsSection } from "@/components/attachments-section";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,6 @@ import {
   ClipboardList,
   Sparkles,
 } from "lucide-react";
-import { PrintDialog } from "@/components/print-dialog";
 
 export const Route = createFileRoute("/orders/$id")({
   head: () => ({ meta: [{ title: "Order Detail · AVS Gold ERP" }] }),
@@ -133,10 +133,7 @@ function OrderDetailPage() {
     refreshManufacturingBarcodes,
   ]);
 
-  // Print Dialog States
-  const [printOpen, setPrintOpen] = useState(false);
-  const [printUrl, setPrintUrl] = useState("");
-  const [printTitle, setPrintTitle] = useState("");
+  const { triggerPrint } = usePrintEngine();
 
   if (!order) {
     return (
@@ -148,12 +145,6 @@ function OrderDetailPage() {
         </Link>
       </div>
     );
-  }
-
-  function triggerPrint(url: string, titleName: string) {
-    setPrintUrl(url);
-    setPrintTitle(titleName);
-    setPrintOpen(true);
   }
 
   const customer = people.find((p) => p.id === order.customerId);
@@ -196,12 +187,7 @@ function OrderDetailPage() {
 
   return (
     <div data-testid="order-detail-root" className="p-4 md:p-8 max-w-6xl mx-auto">
-      <PrintDialog
-        isOpen={printOpen}
-        onClose={() => setPrintOpen(false)}
-        printUrl={printUrl}
-        title={printTitle}
-      />
+
       <PageHeader
         title={order.orderNo}
         subtitle={`${t("orders.type_" + order.type)} · created ${new Date(order.createdAt).toLocaleString("en-IN")}`}
@@ -557,11 +543,10 @@ function OrderDetailPage() {
                   </Button>
                   {!linkedJob.workReceipt && (
                     <Button size="sm" className="gap-1" onClick={() => navigate({ to: '/workshop/gold-book' })}>
-                      <Hammer className="h-3 w-3" />{" "}
-                      {linkedJob.goldIssue ? "Additional Issue" : "Issue Gold"}
+                      <Hammer className="h-3 w-3" /> Worker Gold Book
                     </Button>
                   )}
-                  {linkedJob.goldIssue && !linkedJob.workReceipt && (
+                  {!linkedJob.workReceipt && (
                     <Button size="sm" className="gap-1" onClick={() => setReceiveOpen(true)}>
                       <PackageCheck className="h-3 w-3" /> Receive Work
                     </Button>
@@ -700,11 +685,10 @@ function OrderDetailPage() {
                   className="w-full justify-start gap-2"
                   onClick={() => navigate({ to: '/workshop/gold-book' })}
                 >
-                  <Hammer className="h-4 w-4" />{" "}
-                  {linkedJob.goldIssue ? "Additional Gold Issue" : "Issue Gold to Karigar"}
+                  <Hammer className="h-4 w-4" /> Issue Gold to Karigar (Gold Book)
                 </Button>
               )}
-              {linkedJob?.goldIssue && !linkedJob.workReceipt && (
+              {linkedJob && !linkedJob.workReceipt && (
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"

@@ -63,7 +63,7 @@ function CommunicationAnalyticsPage() {
       e.recipientLabel,
       e.recipientPhone,
       e.templateName,
-      COMM_KIND_LABELS[e.kind],
+      COMM_KIND_LABELS[e.kind as keyof typeof COMM_KIND_LABELS] || e.kind || "unknown",
       e.deliveryStatus ?? "manual",
       e.linkedType,
       e.linkedId,

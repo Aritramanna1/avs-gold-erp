@@ -1527,50 +1527,7 @@ export type Database = {
           },
         ];
       };
-      job_process_steps: {
-        Row: {
-          created_at: string;
-          data: Json;
-          firm_id: string | null;
-          id: string;
-          job_id: string;
-          name: string;
-          ordinal: number;
-          status: string;
-          updated_at: string;
-        };
-        Insert: {
-          created_at?: string;
-          data?: Json;
-          firm_id?: string | null;
-          id: string;
-          job_id: string;
-          name: string;
-          ordinal: number;
-          status: string;
-          updated_at?: string;
-        };
-        Update: {
-          created_at?: string;
-          data?: Json;
-          firm_id?: string | null;
-          id?: string;
-          job_id?: string;
-          name?: string;
-          ordinal?: number;
-          status?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "job_process_steps_job_id_fkey";
-            columns: ["job_id"];
-            isOneToOne: false;
-            referencedRelation: "job_cards";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
+
       kyc_documents: {
         Row: {
           created_at: string;

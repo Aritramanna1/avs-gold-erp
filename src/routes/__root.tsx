@@ -95,6 +95,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useRouterState } from "@tanstack/react-router";
 import { useSupabaseSync } from "@/lib/supabase-sync";
+import { usePrintEngine } from "@/lib/print-engine";
 
 function RootComponent() {
   useSupabaseSync();
@@ -102,9 +103,7 @@ function RootComponent() {
   const location = useRouterState({ select: (s) => s.location });
   const currentPath = location.pathname;
 
-  const [globalPrintOpen, setGlobalPrintOpen] = useState(false);
-  const [globalPrintUrl, setGlobalPrintUrl] = useState("");
-  const [globalPrintTitle, setGlobalPrintTitle] = useState("");
+  const { isOpen, printUrl, printTitle, closePrint } = usePrintEngine();
 
   const isPublic =
     [
@@ -124,61 +123,7 @@ function RootComponent() {
     currentPath.includes("-print") ||
     currentPath.includes("print-log");
 
-  useEffect(() => {
-    if (typeof window === "undefined" || isPrintRoute) return;
 
-    function handleGlobalClick(e: MouseEvent) {
-      const origin = e.target as HTMLElement | null;
-      if (!origin) return;
-
-      // Most "Print A4"/"Thermal"/etc. buttons are a <Button> (a <button>
-      // element) wrapped INSIDE a router <Link> (an <a> with the real
-      // href) — walking up and stopping at the first A-or-BUTTON tag would
-      // stop at the inner <button>, which has no href/to attribute, so the
-      // intercept silently never fired for the app's most common print
-      // trigger pattern. closest("a[href]") finds the actual anchor
-      // regardless of how many non-anchor elements (button, icon, span)
-      // sit between the click target and it.
-      const anchor = origin.closest("a[href]") as HTMLElement | null;
-      let target: HTMLElement | null = anchor;
-      if (!target) {
-        // Fall back to the original walk for plain <button>-only triggers
-        // (a button with its own onClick, not wrapped in a Link) that use
-        // a `to`/data-attribute convention instead of a real href.
-        target = origin;
-        while (
-          target &&
-          target.tagName !== "A" &&
-          target.tagName !== "BUTTON" &&
-          target.parentElement
-        ) {
-          target = target.parentElement;
-        }
-      }
-      if (!target) return;
-
-      const href = target.getAttribute("href") || target.getAttribute("to");
-      // Safe trap for print, slips, or tags
-      if (
-        href &&
-        (href.includes("/print/") ||
-          href.includes("-print") ||
-          href.includes("/print-log") ||
-          href.includes("slip")) &&
-        !href.includes("javascript:")
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        setGlobalPrintUrl(href);
-        setGlobalPrintTitle(target.innerText?.trim() || "Print Preview");
-        setGlobalPrintOpen(true);
-      }
-    }
-
-    window.addEventListener("click", handleGlobalClick, { capture: true });
-    return () => window.removeEventListener("click", handleGlobalClick, { capture: true });
-  }, [isPrintRoute]);
 
   // Test-only seed helper — DEV builds only, for Playwright E2E harness.
   useEffect(() => {
@@ -405,10 +350,10 @@ function RootComponent() {
           <SessionLockOverlay />
           <GlobalCommandPalette />
           <PrintPreviewModal
-            isOpen={globalPrintOpen}
-            onClose={() => setGlobalPrintOpen(false)}
-            title={globalPrintTitle}
-            printUrl={globalPrintUrl}
+            isOpen={isOpen}
+            onClose={closePrint}
+            title={printTitle}
+            printUrl={printUrl}
           />
         </LanguageProvider>
       </ThemeProvider>

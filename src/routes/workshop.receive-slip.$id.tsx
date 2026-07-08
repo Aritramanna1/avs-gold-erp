@@ -93,8 +93,6 @@ function ReceiveSlipPage() {
             <div>
               <div className="text-xs uppercase text-gray-500">Karigar</div>
               <div className="font-medium">{karigar?.fullName ?? job.karigarName ?? "—"}</div>
-              <div className="text-xs uppercase text-gray-500 mt-2">Issued</div>
-              <div className="font-mono">{mgToGrams(job.goldIssue?.fineMg ?? 0)} g fine</div>
             </div>
           </section>
 
