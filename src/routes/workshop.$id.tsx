@@ -33,6 +33,7 @@ import { mgToGrams } from "@/lib/gold";
 import { ReceiveWorkDialog } from "@/components/receive-work-dialog";
 import { EmailSendPanel } from "@/components/email-send-panel";
 import { CommLogCard } from "@/components/comm-log-card";
+import { ReferenceNotesPanel } from "@/components/reference-notes/ReferenceNotesPanel";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -462,6 +463,11 @@ function JobCardDetail() {
                 </li>
               ))}
             </ol>
+          </Section>
+
+          {/* Reference Notes */}
+          <Section title="Reference Notes">
+            <ReferenceNotesPanel entityType="job" entityId={job.id} />
           </Section>
         </div>
       </div>

@@ -81,6 +81,9 @@ export interface Person {
 
   /** Whether the placeholder doc slots are marked "on file" (paper register). */
   docs: Partial<Record<KycDocKey, boolean>>;
+
+  /** Dynamic forms data attached to this person. */
+  customForms?: Record<string, Record<string, any>>;
 }
 
 interface PeopleState {

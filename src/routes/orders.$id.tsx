@@ -51,6 +51,7 @@ import { ReceiveWorkDialog } from "@/components/receive-work-dialog";
 import { EmailSendPanel } from "@/components/email-send-panel";
 import { DocCommActions } from "@/components/doc-comm-actions";
 import { CommLogCard } from "@/components/comm-log-card";
+import { ReferenceNotesPanel } from "@/components/reference-notes/ReferenceNotesPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getNextSequenceNumber } from "@/lib/sequence-manager";
 import {
@@ -728,6 +729,11 @@ function OrderDetailPage() {
                 </li>
               ))}
             </ol>
+          </Section>
+
+          {/* Reference Notes */}
+          <Section title="Reference Notes">
+            <ReferenceNotesPanel entityType="order" entityId={order.id} />
           </Section>
         </div>
       </div>

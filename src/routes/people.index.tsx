@@ -59,11 +59,14 @@ import {
   Coins,
   Clock,
   Trash2,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AttachmentButton } from "@/components/attachment-placeholder-modal";
 import { useAttachments } from "@/lib/attachments-store";
 import { useSettings } from "@/lib/settings-store";
+import { DynamicFormRenderer } from "@/components/forms/DynamicFormRenderer";
+import { ReferenceNotesPanel } from "@/components/reference-notes/ReferenceNotesPanel";
 
 import { compileCustomerLedger } from "@/lib/customer-account-ledger";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
@@ -519,6 +522,8 @@ function SelectedPersonCard({
   const navigate = useNavigate();
   const toggleDoc = usePeople((s) => s.toggleDoc);
   const [photosOpen, setPhotosOpen] = useState(false);
+  const [formsOpen, setFormsOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   if (!person) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card/40 p-6 text-sm text-muted-foreground">
@@ -635,6 +640,24 @@ function SelectedPersonCard({
             {t("people.btn_photos_files")}
           </Button>
         )}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setFormsOpen(true)}
+          className="col-span-2"
+        >
+          <FileText className="h-3.5 w-3.5 mr-1" />
+          Forms
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setNotesOpen(true)}
+          className="col-span-2"
+        >
+          <MessageSquare className="h-3.5 w-3.5 mr-1" />
+          Reference Notes
+        </Button>
         {isCustomerLike && (
           <Button
             size="sm"
@@ -670,6 +693,22 @@ function SelectedPersonCard({
           if (current !== nextFiled) toggleDoc(person.id, k);
         }}
       />
+
+      <PersonFormsDialog
+        open={formsOpen}
+        onOpenChange={setFormsOpen}
+        person={person}
+      />
+
+      <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Reference Notes</DialogTitle>
+            <DialogDescription>Internal notes attached to {person.fullName}.</DialogDescription>
+          </DialogHeader>
+          <ReferenceNotesPanel entityType="person" entityId={person.id} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -739,6 +778,61 @@ function PersonPhotosDialog({
             Close
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PersonFormsDialog({
+  open,
+  onOpenChange,
+  person,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  person: Person;
+}) {
+  const settings = useSettings();
+  const updatePerson = usePeople((s) => s.update);
+  const kycForms = settings.formsMetadata.filter((f) => f.type === "kyc" || f.type === "custom");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Dynamic Forms - {person.fullName}</DialogTitle>
+          <DialogDescription>Fill out requested forms and save them to the profile.</DialogDescription>
+        </DialogHeader>
+        
+        {kycForms.length === 0 ? (
+          <div className="text-sm text-muted-foreground py-4 text-center">No forms configured in settings.</div>
+        ) : (
+          <Tabs defaultValue={kycForms[0].id}>
+            <TabsList className="mb-4">
+              {kycForms.map((f) => (
+                <TabsTrigger key={f.id} value={f.id}>{f.name}</TabsTrigger>
+              ))}
+            </TabsList>
+            {kycForms.map((f) => (
+              <TabsContent key={f.id} value={f.id}>
+                <DynamicFormRenderer
+                  formMeta={f}
+                  initialData={person.customForms?.[f.id] || {}}
+                  onSave={(data) => {
+                    const currentForms = person.customForms || {};
+                    updatePerson(person.id, {
+                      customForms: {
+                        ...currentForms,
+                        [f.id]: data,
+                      }
+                    });
+                    toast.success(`${f.name} saved!`);
+                  }}
+                />
+              </TabsContent>
+            ))}
+          </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   );
