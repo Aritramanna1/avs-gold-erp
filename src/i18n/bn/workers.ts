@@ -1,0 +1,6 @@
+const translations = {
+  title: "স্টাফ হাজিরা",
+  subtitle: "কর্মী উপস্থিতি, বেতন, অগ্রিম পেমেন্ট এবং কর্মী সেটেলমেন্ট ট্র্যাক করুন।",
+};
+
+export default translations;

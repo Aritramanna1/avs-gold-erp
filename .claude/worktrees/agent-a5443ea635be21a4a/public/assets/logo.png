@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 170" width="100%" height="100%">
+  <defs>
+    <!-- Luxurious Metallic Gold Linear Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#9A7B1C" />
+      <stop offset="25%" stop-color="#E1C15E" />
+      <stop offset="50%" stop-color="#FFF0A5" />
+      <stop offset="75%" stop-color="#DFBA51" />
+      <stop offset="100%" stop-color="#A4852A" />
+    </linearGradient>
+
+    <!-- Drop Shadow for elevation from white backgrounds -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Symmetrical 5-Petal Gold Lotus (Replica of the Maa Tara design) -->
+  <g filter="url(#shadow)" fill="url(#goldGrad)">
+    <!-- Central Vertical Petal -->
+    <path d="M100,84 C92,66 92,38 100,18 C108,38 108,66 100,84 Z" />
+
+    <!-- Left Upper Diagonal Petal -->
+    <path d="M98,84 C78,73 56,58 50,40 C62,44 85,65 98,84 Z" />
+
+    <!-- Right Upper Diagonal Petal -->
+    <path d="M102,84 C122,73 144,58 150,40 C138,44 115,65 102,84 Z" />
+
+    <!-- Left Lower Petal -->
+    <path d="M98,85 C75,87 50,79 39,66 C50,65 77,78 98,85 Z" />
+
+    <!-- Right Lower Petal -->
+    <path d="M102,85 C125,87 150,79 161,66 C150,65 123,78 102,85 Z" />
+  </g>
+
+  <!-- Typography: Maa Tara -->
+  <text x="100" y="124" 
+        font-family="'Playfair Display', 'Georgia', 'Times New Roman', serif" 
+        font-size="34" 
+        font-weight="500" 
+        fill="url(#goldGrad)" 
+        text-anchor="middle" 
+        letter-spacing="0.5">Maa Tara</text>
+
+  <!-- Typography: Jewellers -->
+  <text x="100" y="146" 
+        font-family="'Inter', -apple-system, sans-serif" 
+        font-size="9" 
+        font-weight="700" 
+        fill="#7c6018" 
+        text-anchor="middle" 
+        letter-spacing="4.5" 
+        opacity="0.9">JEWELLERS</text>
+</svg>

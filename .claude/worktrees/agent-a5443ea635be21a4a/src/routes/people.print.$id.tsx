@@ -1,0 +1,555 @@
+import { createFileRoute, useParams, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import {
+  usePeople,
+  PERSON_TYPE_LABELS,
+  KYC_DOC_LABELS,
+  maskAadhaar,
+  kycComplete,
+  type KycDocKey,
+} from "@/lib/people-store";
+import { Logo } from "@/components/ui/Logo";
+import { Button } from "@/components/ui/button";
+import { Printer, ArrowLeft, FileText, CheckCircle2, AlertCircle, Shield } from "lucide-react";
+import { useSettings } from "@/lib/settings-store";
+import { AvsPrintFooter } from "@/components/AvsPrintFooter";
+import { listAttachments } from "@/lib/fileUpload";
+
+export const Route = createFileRoute("/people/print/$id")({
+  head: () => {
+    const shopName = useSettings.getState().firm?.shopName;
+    const shortName =
+      shopName
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase() || shopName.slice(0, 3).toUpperCase();
+    return {
+      meta: [{ title: `KYC Sheet · ${shortName} ERP` }],
+    };
+  },
+  component: PrintPage,
+});
+
+function PrintPage() {
+  const { firm } = useSettings();
+  const { id } = useParams({ from: "/people/print/$id" });
+  const person = usePeople((s) => s.people.find((p) => p.id === id));
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchAttachments() {
+      if (!person?.id) return;
+      try {
+        const list = await listAttachments("person", person.id);
+        setAttachments(list);
+      } catch (e) {
+        console.error("Error loading KYC attachments:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAttachments();
+  }, [person?.id]);
+
+  if (!person) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-background text-foreground p-6">
+        <div className="text-center space-y-3">
+          <h1 className="font-serif text-2xl text-gold">Record not found</h1>
+          <p className="text-sm text-muted-foreground">This person may have been removed.</p>
+          <Link to="/people" className="text-gold underline">
+            Back to People
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const docKeys: KycDocKey[] = [
+    "photo",
+    "aadhaar_front",
+    "aadhaar_back",
+    "pan",
+    "address_proof",
+    "signature",
+  ];
+
+  const photoFile =
+    attachments.find((a) => {
+      const n = (a.notes || "").toLowerCase();
+      const f = (a.original_file_name || "").toLowerCase();
+      return (
+        n.includes("photo") ||
+        n.includes("face") ||
+        n.includes("avatar") ||
+        f.includes("photo") ||
+        f.includes("face") ||
+        f.includes("avatar")
+      );
+    }) || attachments.find((a) => a.mime_type?.startsWith("image/"));
+
+  const docAttachments = attachments.filter((a) => a !== photoFile);
+  const isKycComplete = kycComplete(person);
+  const isWorkerType = ["karigar", "worker", "employee", "outside_worker"].includes(person.type);
+  const printDate = new Date().toLocaleString("en-IN");
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="no-print sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur px-4 py-3 flex items-center justify-between">
+        <Link
+          to="/people"
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-gold"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to People
+        </Link>
+        <Button onClick={() => window.print()} size="sm">
+          <Printer className="h-4 w-4 mr-1" /> Print KYC Sheet
+        </Button>
+      </div>
+
+      <style>{`
+        @page { size: A4; margin: 15mm; }
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; color: black !important; }
+          .print-sheet { box-shadow: none !important; }
+          .page-break { page-break-before: always; break-before: page; }
+          .avoid-break { page-break-inside: avoid; break-inside: avoid; }
+          .page-counter::after { content: counter(page); }
+          body { counter-reset: page; }
+          @page { counter-increment: page; }
+        }
+      `}</style>
+
+      <div className="max-w-[210mm] mx-auto p-4 print:p-0">
+        {/* PAGE 1 — KYC Summary */}
+        <div className="print-sheet bg-white text-black border border-gray-300 rounded-lg print:rounded-none print:border-gray-400 p-8">
+          {/* ── HEADER ── */}
+          <div className="flex items-start justify-between border-b-2 border-gray-800 pb-4 mb-1">
+            {/* Left: logo + firm details */}
+            <div className="flex items-start gap-3">
+              <Logo variant="svg" className="h-16 w-16 object-contain flex-shrink-0" />
+              <div>
+                <div className="font-bold text-xl text-gray-900 leading-tight">{firm.shopName}</div>
+                {firm.address && (
+                  <div className="text-[11px] text-gray-600 mt-0.5 max-w-xs">{firm.address}</div>
+                )}
+                <div className="flex flex-wrap gap-x-4 mt-1 text-[10px] text-gray-500">
+                  {firm.gstin && (
+                    <span>
+                      GSTIN:{" "}
+                      <span className="font-mono font-semibold text-gray-700">{firm.gstin}</span>
+                    </span>
+                  )}
+                  {firm.phone && <span>Ph: {firm.phone}</span>}
+                  {firm.email && <span>{firm.email}</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: passport photo box */}
+            <div className="flex-shrink-0 text-center">
+              <div className="text-[9px] text-gray-500 mb-1 uppercase tracking-wider">
+                Passport Photo
+              </div>
+              {photoFile ? (
+                <div className="h-28 w-24 border-2 border-gray-400 overflow-hidden bg-gray-100">
+                  <img
+                    src={photoFile.file_url}
+                    alt={person.fullName}
+                    className="h-full w-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              ) : (
+                <div className="h-28 w-24 border-2 border-dashed border-gray-400 bg-gray-50 flex items-center justify-center text-[10px] text-gray-400 text-center">
+                  Affix
+                  <br />
+                  Photo
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── DOCUMENT TITLE ── */}
+          <div className="text-center my-3">
+            <div className="inline-block border border-gray-400 px-6 py-1.5 rounded">
+              <span className="text-[13px] font-bold uppercase tracking-[0.2em] text-gray-800">
+                {isWorkerType
+                  ? "Worker / Karigar KYC & Identity Sheet"
+                  : "Customer / Party KYC Sheet"}
+              </span>
+            </div>
+          </div>
+
+          {/* ── PERSON INFO GRID ── */}
+          <div className="border border-gray-300 rounded mt-3">
+            {/* Name + ID row */}
+            <div className="flex border-b border-gray-300">
+              <div className="flex-1 px-3 py-2 border-r border-gray-300">
+                <div className="text-[9px] text-gray-500 uppercase tracking-wider">Full Name</div>
+                <div className="font-bold text-base text-gray-900 mt-0.5">{person.fullName}</div>
+              </div>
+              <div className="w-40 px-3 py-2 border-r border-gray-300">
+                <div className="text-[9px] text-gray-500 uppercase tracking-wider">Type / Role</div>
+                <div className="font-semibold text-sm mt-0.5">
+                  {PERSON_TYPE_LABELS[person.type]}
+                </div>
+              </div>
+              <div className="w-36 px-3 py-2">
+                <div className="text-[9px] text-gray-500 uppercase tracking-wider">Status</div>
+                <div
+                  className={`font-semibold text-sm mt-0.5 ${person.active ? "text-green-700" : "text-red-600"}`}
+                >
+                  {person.active ? "Active" : "Inactive"}
+                </div>
+              </div>
+            </div>
+
+            {/* Contact row */}
+            <div className="flex border-b border-gray-300">
+              <InfoCell label="Mobile" value={person.phone} className="flex-1 border-r" />
+              <InfoCell label="Alt. Mobile" value={person.altPhone} className="flex-1 border-r" />
+              <InfoCell label="Email" value={person.email} className="flex-1 border-r" />
+              <InfoCell label="Work / Trade" value={person.workType} className="flex-1" />
+            </div>
+
+            {/* Date rows */}
+            <div className="flex border-b border-gray-300">
+              <InfoCell
+                label="Joining Date"
+                value={person.joiningDate}
+                className="flex-1 border-r"
+              />
+              <InfoCell
+                label="Date of Birth"
+                value={person.dateOfBirth}
+                className="flex-1 border-r"
+              />
+              {isWorkerType && (
+                <InfoCell
+                  label="Daily Wage (₹)"
+                  value={
+                    person.dailyWagePaise
+                      ? `₹${(person.dailyWagePaise / 100).toFixed(2)}`
+                      : undefined
+                  }
+                  className="flex-1 border-r"
+                />
+              )}
+              <InfoCell
+                label="Branch"
+                value={useSettings.getState().branches.find((b) => b.id === person.branchId)?.name}
+                className="flex-1"
+              />
+            </div>
+
+            {/* Identity */}
+            <div className="flex border-b border-gray-300">
+              <InfoCell
+                label="Aadhaar (Masked)"
+                value={maskAadhaar(person.aadhaar)}
+                className="flex-1 border-r"
+              />
+              <InfoCell label="PAN Card" value={person.pan} className="flex-1 border-r" />
+              <InfoCell label="GSTIN" value={person.gstin} className="flex-1" />
+            </div>
+
+            {/* Address */}
+            <div className="flex border-b border-gray-300">
+              <InfoCell
+                label="Current Address"
+                value={person.currentAddress}
+                className="flex-1 border-r"
+              />
+              <InfoCell
+                label="Permanent / Native Address"
+                value={person.permanentAddress}
+                className="flex-1"
+              />
+            </div>
+            <div className="flex border-b border-gray-300">
+              <InfoCell
+                label="Village / City"
+                value={person.villageCity}
+                className="flex-1 border-r"
+              />
+              <InfoCell label="State" value={person.state} className="flex-1 border-r" />
+              <InfoCell
+                label="Ref: Person ID"
+                value={person.id.slice(0, 8).toUpperCase()}
+                className="flex-1"
+              />
+            </div>
+
+            {/* Emergency & Reference */}
+            <div className="flex border-b border-gray-300">
+              <InfoCell
+                label="Emergency Contact Name"
+                value={person.emergencyName}
+                className="flex-1 border-r"
+              />
+              <InfoCell
+                label="Emergency Phone"
+                value={person.emergencyPhone}
+                className="flex-1 border-r"
+              />
+              <InfoCell
+                label="Reference Name"
+                value={person.referenceName}
+                className="flex-1 border-r"
+              />
+              <InfoCell label="Reference Phone" value={person.referencePhone} className="flex-1" />
+            </div>
+
+            {/* Skills & Experience (workers only) */}
+            {isWorkerType && (
+              <div className="flex border-b border-gray-300">
+                <InfoCell label="Skills" value={person.skills} className="flex-1 border-r" />
+                <InfoCell label="Experience" value={person.experience} className="flex-1" />
+              </div>
+            )}
+
+            {/* Bank details (workers only) */}
+            {isWorkerType && (
+              <div className="flex border-b border-gray-300">
+                <InfoCell
+                  label="Bank Account Name"
+                  value={person.bankAccountName}
+                  className="flex-1 border-r"
+                />
+                <InfoCell
+                  label="Account Number"
+                  value={person.bankAccountNumber}
+                  className="flex-1 border-r"
+                />
+                <InfoCell label="IFSC Code" value={person.bankIfsc} className="flex-1 border-r" />
+                <InfoCell label="Bank Name" value={person.bankName} className="flex-1" />
+              </div>
+            )}
+
+            {/* Notes */}
+            {person.notes && (
+              <div className="px-3 py-2 border-b border-gray-300">
+                <div className="text-[9px] text-gray-500 uppercase tracking-wider">
+                  Notes / Remarks
+                </div>
+                <div className="text-sm mt-0.5 whitespace-pre-wrap">{person.notes}</div>
+              </div>
+            )}
+
+            {/* KYC Verification Status */}
+            <div className="flex items-center justify-between px-3 py-2 bg-gray-50">
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-gray-600" />
+                <div>
+                  <div className="text-[9px] text-gray-500 uppercase tracking-wider">
+                    KYC Verification Status
+                  </div>
+                  <div className="font-bold text-sm">
+                    {isKycComplete ? "COMPLETE — FULLY VERIFIED" : "INCOMPLETE — PENDING DOCUMENTS"}
+                  </div>
+                </div>
+              </div>
+              {isKycComplete ? (
+                <div className="flex items-center gap-1 border border-green-600 text-green-700 text-xs font-bold px-2.5 py-1 rounded uppercase">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Verified
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 border border-amber-500 text-amber-700 text-xs font-bold px-2.5 py-1 rounded uppercase">
+                  <AlertCircle className="h-3.5 w-3.5" /> Pending
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── KYC CHECKLIST ── */}
+          <div className="mt-5">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-700 border-b border-gray-400 pb-1 mb-2">
+              KYC Documents Checklist
+            </div>
+            <table className="w-full text-xs border border-gray-300">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="text-left px-3 py-1.5 font-semibold border-b border-r border-gray-300">
+                    Document
+                  </th>
+                  <th className="text-center px-3 py-1.5 font-semibold border-b border-r border-gray-300 w-28">
+                    Status
+                  </th>
+                  <th className="text-left px-3 py-1.5 font-semibold border-b border-gray-300">
+                    Verified By / Remarks
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {docKeys.map((k, i) => (
+                  <tr key={k} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <td className="px-3 py-1.5 border-b border-r border-gray-200">
+                      {KYC_DOC_LABELS[k]}
+                    </td>
+                    <td
+                      className={`px-3 py-1.5 text-center border-b border-r border-gray-200 font-semibold ${person.docs[k] ? "text-green-700" : "text-red-600"}`}
+                    >
+                      {person.docs[k] ? "✓ On File" : "✗ Missing"}
+                    </td>
+                    <td className="px-3 py-1.5 border-b border-gray-200 text-gray-400 italic text-[10px]">
+                      {person.docs[k] ? "Verified & filed" : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ── SIGNATURES ── */}
+          <div className="mt-8 grid grid-cols-3 gap-8">
+            <div>
+              <div className="h-14 border-b-2 border-gray-400" />
+              <div className="mt-1.5 text-[10px] text-gray-600 font-semibold">
+                {person.fullName} — Signature / Thumb Impression
+              </div>
+            </div>
+            <div>
+              <div className="h-14 border-b-2 border-gray-400" />
+              <div className="mt-1.5 text-[10px] text-gray-600 font-semibold">
+                {firm.signatureLabelLeft || "Staff / Manager Signature"}
+              </div>
+            </div>
+            <div>
+              <div className="h-14 border-b-2 border-gray-400" />
+              <div className="mt-1.5 text-[10px] text-gray-600 font-semibold">
+                {firm.signatureLabelRight || "Authorised Signatory"}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 text-[9px] text-gray-400 text-center border-t border-gray-200 pt-2">
+            Printed: {printDate} · This is a confidential internal KYC record of {firm.shopName}.
+            Not for circulation.
+          </div>
+          <AvsPrintFooter />
+        </div>
+
+        {/* PAGE 2+ — KYC Document Images */}
+        {!loading && attachments.length > 0 && (
+          <div className="print-sheet page-break bg-white text-black border border-gray-300 rounded-lg print:rounded-none print:border-gray-400 p-8 mt-6 print:mt-0">
+            {/* Header repeat */}
+            <div className="flex items-center justify-between border-b-2 border-gray-800 pb-3 mb-5">
+              <div className="flex items-center gap-3">
+                <Logo variant="svg" className="h-10 w-10 object-contain" />
+                <div>
+                  <div className="font-bold text-base text-gray-900">{firm.shopName}</div>
+                  <div className="text-[10px] text-gray-500">
+                    KYC Documents & Proofs — {person.fullName}
+                  </div>
+                </div>
+              </div>
+              <div className="text-right text-[10px] text-gray-500">
+                <div>ID: {person.id.slice(0, 8).toUpperCase()}</div>
+                <div>Printed: {printDate}</div>
+              </div>
+            </div>
+
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-700 border-b border-gray-400 pb-1 mb-4">
+              Uploaded KYC Documents & Proofs ({attachments.length} file
+              {attachments.length !== 1 ? "s" : ""})
+            </div>
+
+            <div className="grid grid-cols-2 gap-5">
+              {attachments.map((file) => {
+                const isImage = file.mime_type?.startsWith("image/");
+                return (
+                  <div
+                    key={file.id}
+                    className="avoid-break border border-gray-300 rounded p-3 bg-gray-50"
+                  >
+                    <div className="mb-2 flex items-start justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-gray-800 truncate max-w-[200px]">
+                          {file.notes || file.original_file_name}
+                        </div>
+                        <div className="text-[9px] text-gray-500">
+                          Uploaded:{" "}
+                          {file.uploaded_at
+                            ? new Date(file.uploaded_at).toLocaleDateString("en-IN")
+                            : "—"}
+                        </div>
+                      </div>
+                      {file.notes && (
+                        <span className="text-[9px] bg-gray-200 text-gray-600 rounded px-1.5 py-0.5 font-semibold uppercase ml-1 whitespace-nowrap">
+                          {file.notes.slice(0, 20)}
+                        </span>
+                      )}
+                    </div>
+                    {isImage ? (
+                      <div className="h-52 w-full border border-gray-300 bg-white overflow-hidden flex items-center justify-center rounded">
+                        <img
+                          src={file.file_url}
+                          alt={file.notes || file.original_file_name}
+                          className="max-h-full max-w-full object-contain"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-52 w-full border border-gray-300 bg-white flex flex-col items-center justify-center gap-2 text-gray-500 rounded">
+                        <FileText className="h-10 w-10 text-gray-400" />
+                        <span className="text-xs font-semibold">Non-image Document</span>
+                        <span className="text-[10px] font-mono text-gray-400 max-w-[180px] truncate">
+                          {file.original_file_name}
+                        </span>
+                        <span className="text-[9px] text-gray-400">
+                          See physical file or digital copy
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-8 flex justify-between items-end border-t border-gray-300 pt-4">
+              <div>
+                <div className="h-12 w-44 border-b-2 border-gray-400 mb-1" />
+                <div className="text-[10px] text-gray-600">Document Verification Officer</div>
+              </div>
+              <div className="text-right text-[9px] text-gray-400">
+                <div>Page 2 of 2 — KYC Proofs</div>
+                <div>{firm.shopName} · Confidential</div>
+              </div>
+            </div>
+            <AvsPrintFooter />
+          </div>
+        )}
+
+        {loading && (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            Loading document attachments...
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InfoCell({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value?: string | null;
+  className?: string;
+}) {
+  return (
+    <div className={`px-3 py-2 ${className}`}>
+      <div className="text-[9px] text-gray-500 uppercase tracking-wider">{label}</div>
+      <div className="text-sm font-medium text-gray-900 mt-0.5">
+        {value || <span className="text-gray-400 font-normal">—</span>}
+      </div>
+    </div>
+  );
+}

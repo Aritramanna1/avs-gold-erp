@@ -1,0 +1,19 @@
+{
+  "name": "mtj-erp-desktop",
+  "version": "1.0.0",
+  "description": "MTJ ERP — Maa Tara Jewellers desktop shell (Electron wrapper around the online ERP).",
+  "main": "main.cjs",
+  "author": "Maa Tara Jewellers",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "package:win": "electron-packager . \"MTJ ERP\" --platform=win32 --arch=x64 --out=release --overwrite --icon=icon.ico --asar",
+    "package:linux": "electron-packager . \"MTJ ERP\" --platform=linux --arch=x64 --out=release --overwrite --asar",
+    "package:mac": "electron-packager . \"MTJ ERP\" --platform=darwin --arch=x64 --out=release --overwrite --asar"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "@electron/packager": "^18.3.6"
+  }
+}

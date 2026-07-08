@@ -1,0 +1,31 @@
+const translations = {
+  signIn: "সাইন ইন",
+  emailLabel: "কর্পà§‹রেট ইমেল",
+  emailPlaceholder: "employee@maatarajewellers.com",
+  passwordLabel: "পাসওয়ার্ড",
+  passwordPlaceholder: "••••••••",
+  forgotBtn: "ভুলে গেছেন?",
+  signInBtn: "নিরাপদ সাইন ইন",
+  otpBtn: "ওটিপি দিয়ে সাইন ইন করুন",
+  inviteBtn: "আমন্ত্রণ কোড গ্রহণ করুন",
+  resetHeader: "পাসওয়ার্ড রিসেট লিংক",
+  resetPlaceholder: "you@example.com",
+  resetBtn: "রিসেট লিংক পাঠান",
+  inviteHeader: "আমন্ত্রণ কোড গ্রহণ করুন",
+  inviteCodeLabel: "অনুমà§‹দিত আমন্ত্রণ কোড",
+  inviteCodePlaceholder: "আমন্ত্রণ কোড টাইপ বা পেস্ট করুন যেমন INV-XXXX",
+  employeeNameLabel: "কর্মচারà§€র পুরà§‹ নাম",
+  employeeNamePlaceholder: "আপনার নাম লিখুন",
+  employeePhoneLabel: "কর্মচারà§€র মà§‹বাইল নম্বর",
+  employeePhonePlaceholder: "+91 XXXXX XXXXX",
+  employeePasswordLabel: "পাসওয়ার্ড চয়ন করুন",
+  employeePasswordPlaceholder: "আপনার সুরক্ষিত পাসওয়ার্ড",
+  registerBtn: "কর্পà§‹রেট পাসওয়ার্ড নিবন্ধিত করুন",
+  publicSignupDisabled:
+    "পাবলিক সাইন-আপ নিষ্ক্রিয় আছে। সাধারণ ব্যবহারকারà§€রা কেবল তখনই সাইন আপ করতে পারেন যদি সুপারওনার আমন্ত্রণ জানান।",
+  standardSignInHeader: "স্ট্যান্ডার্ড সাইন ইন",
+  securingSession: "সেশন চেক করা হচ্ছে…",
+  productionPortal: "মা তারা জুয়েলার্স · প্রà§‹ডাকশন পà§‹র্টাল",
+};
+
+export default translations;

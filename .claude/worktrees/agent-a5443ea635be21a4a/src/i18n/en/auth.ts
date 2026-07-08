@@ -1,0 +1,31 @@
+const translations = {
+  signIn: "Sign In",
+  emailLabel: "Corporation Email",
+  emailPlaceholder: "employee@maatarajewellers.com",
+  passwordLabel: "Password",
+  passwordPlaceholder: "••••••••",
+  forgotBtn: "Forgot?",
+  signInBtn: "Secure Sign In",
+  otpBtn: "Sign In with OTP",
+  inviteBtn: "Accept Invitation Code",
+  resetHeader: "Reset Password Link",
+  resetPlaceholder: "you@example.com",
+  resetBtn: "Send Reset Link",
+  inviteHeader: "Accept Invitation Code",
+  inviteCodeLabel: "Authorized Invite Code",
+  inviteCodePlaceholder: "Type or paste invite code e.g. INV-XXXX",
+  employeeNameLabel: "Employee Full Name",
+  employeeNamePlaceholder: "Enter your name",
+  employeePhoneLabel: "Employee Mobile No.",
+  employeePhonePlaceholder: "+91 XXXXX XXXXX",
+  employeePasswordLabel: "Choose Password",
+  employeePasswordPlaceholder: "Your secure password",
+  registerBtn: "Register Corporate Password",
+  publicSignupDisabled:
+    "Public sign-up is disabled. Standard users can only sign up if invited by the Superowner.",
+  standardSignInHeader: "Standard Sign In",
+  securingSession: "Checking session…",
+  productionPortal: "Jewellery ERP · Production Portal",
+};
+
+export default translations;

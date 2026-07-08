@@ -1,0 +1,7 @@
+# Prevent directory listing for privacy and security of files on Hostinger
+Options -Indexes
+
+# Block access to any potentially dangerous scripts or files uploaded maliciously
+<FilesMatch "\.(php|php5|phtml|js|html|exe|sh|bat|cmd)$">
+  Require all denied
+</FilesMatch>

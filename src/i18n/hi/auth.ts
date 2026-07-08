@@ -1,0 +1,31 @@
+const translations = {
+  signIn: "साइन इन",
+  emailLabel: "कॉर्पोरेशन ईमेल",
+  emailPlaceholder: "employee@maatarajewellers.com",
+  passwordLabel: "पासवर्ड",
+  passwordPlaceholder: "••••••••",
+  forgotBtn: "भूल गए?",
+  signInBtn: "सुरक्षित साइन इन",
+  otpBtn: "ओटीपी से साइन इन करें",
+  inviteBtn: "निमंत्रण कोड स्वीकार करें",
+  resetHeader: "पासवर्ड रीसेट लिंक",
+  resetPlaceholder: "you@example.com",
+  resetBtn: "रीसेट लिंक भेजें",
+  inviteHeader: "निमंत्रण कोड स्वीकार करें",
+  inviteCodeLabel: "अधिकृत निमंत्रण कोड",
+  inviteCodePlaceholder: "निमंत्रण कोड प्रविष्ट करें या पेस्ट करें उदा. INV-XXXX",
+  employeeNameLabel: "कर्मचारी का पूरा नाम",
+  employeeNamePlaceholder: "अपना नाम दर्ज करें",
+  employeePhoneLabel: "कर्मचारी मोबाइल नंबर",
+  employeePhonePlaceholder: "+91 XXXXX XXXXX",
+  employeePasswordLabel: "पासवर्ड चुनें",
+  employeePasswordPlaceholder: "आपका सुरक्षित पासवर्ड",
+  registerBtn: "कॉर्पोरेट पासवर्ड पंजीकृत करें",
+  publicSignupDisabled:
+    "सार्वजनिक साइन-अप अक्षम है। मानक उपयोगकर्ता केवल तभी साइन अप कर सकते हैं जब उन्हें सुपरऑनर द्वारा आमंत्रित किया गया हो।",
+  standardSignInHeader: "मानक साइन इन",
+  securingSession: "सत्र की जाँच की जा रही है…",
+  productionPortal: "माँ तारा ज्वेलर्स · प्रोडक्शन पोर्टल",
+};
+
+export default translations;

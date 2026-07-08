@@ -1,0 +1,4 @@
+project_id = "kjfjsfhftytezsjyegmb"
+
+[functions.example-api]
+verify_jwt = true # Set to false if you are using non-"user" auth modes like "publishable" or "secret"

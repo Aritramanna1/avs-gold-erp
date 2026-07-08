@@ -1,0 +1,1758 @@
+/**
+ * MTJ ERP — Settings / Masters store
+ * Pilot-controlled firm profile, branding, GST, purity, dropdown masters.
+ */
+import { create } from "zustand";
+import { supabase } from "@/integrations/supabase/client";
+
+// ── Supabase persistence helpers ──────────────────────────────────────────────
+
+/** Saves the main firm settings blob to app_settings[id="firm"] */
+async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<void> {
+  try {
+    await supabase.from("app_settings").upsert(
+      [
+        {
+          id: "firm",
+          scope: "firm",
+          data: snapshot as any,
+          updated_at: new Date().toISOString(),
+        },
+      ],
+      { onConflict: "id" },
+    );
+  } catch (err) {
+    console.warn("[settings] Failed to persist to Supabase:", err);
+  }
+}
+
+/** Saves a single branch row to the branches table */
+async function saveBranchToDb(b: {
+  id: string;
+  name: string;
+  code: string;
+  address: string;
+  phone: string;
+  managerName: string;
+  gstin?: string;
+  active: boolean;
+  isDefault?: boolean;
+}): Promise<void> {
+  try {
+    await supabase.from("branches").upsert(
+      [
+        {
+          id: b.id,
+          name: b.name,
+          code: b.code,
+          address: b.address,
+          phone: b.phone,
+          manager_name: b.managerName,
+          gstin: b.gstin ?? null,
+          active: b.active,
+          is_default: b.isDefault ?? false,
+          updated_at: new Date().toISOString(),
+        },
+      ],
+      { onConflict: "id" },
+    );
+  } catch (err) {
+    console.warn("[settings] Failed to persist branch:", err);
+  }
+}
+
+async function deleteBranchFromDb(id: string): Promise<void> {
+  try {
+    await supabase.from("branches").delete().eq("id", id);
+  } catch (err) {
+    console.warn("[settings] Failed to delete branch:", err);
+  }
+}
+
+async function saveWorkshopToDb(w: {
+  id: string;
+  name: string;
+  type: string;
+  branchId: string;
+  active: boolean;
+  description?: string;
+}): Promise<void> {
+  try {
+    await supabase.from("workshops").upsert(
+      [
+        {
+          id: w.id,
+          name: w.name,
+          type: w.type,
+          branch_id: w.branchId,
+          active: w.active,
+          description: w.description ?? null,
+        },
+      ],
+      { onConflict: "id" },
+    );
+  } catch (err) {
+    console.warn("[settings] Failed to persist workshop:", err);
+  }
+}
+
+async function deleteWorkshopFromDb(id: string): Promise<void> {
+  try {
+    await supabase.from("workshops").delete().eq("id", id);
+  } catch (err) {
+    console.warn("[settings] Failed to delete workshop:", err);
+  }
+}
+
+/** Collects the current state snapshot and saves it to app_settings */
+function persistSettings(get: () => any): void {
+  const s = get();
+  void saveAppSettingsToDb({
+    firm: s.firm,
+    branding: s.branding,
+    print: s.print,
+    gst: s.gst,
+    purities: s.purities,
+    making: s.making,
+    hardware: s.hardware,
+    catalog: s.catalog,
+    goldRatePerGramPaise: s.goldRatePerGramPaise,
+    goldRate24KPerGramPaise: s.goldRate24KPerGramPaise,
+    goldRate18KPerGramPaise: s.goldRate18KPerGramPaise,
+    silverRatePerGramPaise: s.silverRatePerGramPaise,
+    language: s.language,
+    developer: s.developer,
+    users: s.users,
+    invitations: s.invitations,
+    securityLogs: s.securityLogs,
+    printerProfiles: s.printerProfiles,
+    documentTemplates: s.documentTemplates,
+    complianceProfile: s.complianceProfile,
+    formsMetadata: s.formsMetadata,
+    campaignTemplates: s.campaignTemplates,
+    commAutomation: s.commAutomation,
+  });
+}
+
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  htmlBody: string;
+  variables: string[]; // custom placeholder names, e.g. ["customer_name", "order_number"]
+  createdAt: number;
+}
+
+export interface RegisteredUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string; // e.g. Super Owner, Owner, Admin, Manager, Billing Staff, Workshop Manager, etc.
+  permissions: Record<string, boolean>;
+  active: boolean;
+  createdAt: number;
+  // Org placement
+  branchId?: string;
+  workshopId?: string; // e.g. "workshop_mfg_ich", "workshop_retail"
+  department?: string; // e.g. "Accounts", "CRM", "Manufacturing"
+  reportingManagerId?: string; // ID of the user they report to
+  // Super Owner flag — above normal Owner, manages the ERP platform itself
+  isSuperOwner?: boolean;
+  locked?: boolean;
+  landingDashboard?: string;
+}
+
+export interface WorkshopDefinition {
+  id: string;
+  name: string; // e.g. "Manufacturing Workshop — ICH"
+  type: "manufacturing" | "repair" | "retail_counter" | "hallmark" | "accounts" | "crm" | "other";
+  branchId: string;
+  active: boolean;
+  description?: string;
+}
+
+export interface InvitationItem {
+  id: string;
+  email: string;
+  role: string;
+  code: string;
+  createdAt: number;
+  expiresAt?: number; // Unix ms
+  status: "pending" | "used" | "expired";
+  // Extra details included in invitation email
+  branchId?: string;
+  workshopId?: string;
+  tempPassword?: string; // optional one-time password
+  invitedBy?: string; // email of the inviter
+}
+
+export interface BranchSettings {
+  branchId: string;
+  // Identity
+  logoUrl?: string;
+  logoStoragePath?: string;
+  gstin?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  // Invoice / barcode series
+  invoiceSeries?: string;
+  receiptSeries?: string;
+  barcodeSeries?: string;
+  // Communication per branch
+  smtpHost?: string;
+  smtpPort?: string;
+  smtpUser?: string;
+  smtpPassword?: string;
+  smtpFromName?: string;
+  smtpFromEmail?: string;
+  waPhoneNumber?: string;
+  // Hardware
+  thermalPrinterIp?: string;
+  thermalPrinterPort?: string;
+  // Gold rate preferences
+  defaultKarat?: 22 | 24 | 18;
+  goldRateSource?: "manual" | "api";
+  // Print templates
+  invoiceTemplateId?: string;
+  receiptTemplateId?: string;
+}
+
+export interface SecurityLogItem {
+  id: string;
+  ts: number;
+  action:
+    | "login"
+    | "failed login"
+    | "rate limited"
+    | "user created"
+    | "permission changed"
+    | "invoice deleted"
+    | "gold edited";
+  details: string;
+  userEmail: string;
+}
+
+export interface FirmProfile {
+  shopName: string;
+  phone: string;
+  email: string;
+  address: string;
+  gstin: string;
+  footerLine: string;
+  terms: string;
+  signatureLabelLeft: string;
+  signatureLabelRight: string;
+  ownerName?: string;
+  pan?: string;
+  cityState?: string;
+  website?: string;
+  whatsappNumber?: string;
+  tagline?: string;
+  logoUrl?: string;
+  logoStoragePath?: string;
+  legalName?: string;
+  brandName?: string;
+  branchAddress?: string;
+  stateCode?: string;
+  registrationNo?: string;
+  bankDetails?: { bankName?: string; accountNo?: string; ifsc?: string; branch?: string };
+  upiQr?: string;
+  defaultCurrency?: string;
+  timeZone?: string;
+  themeColors?: { primaryColor?: string; goldAccent?: string };
+  socialLinks?: { instagram?: string; facebook?: string; twitter?: string };
+  legalDisclaimer?: string;
+  hostingerUploadUrl?: string;
+}
+
+export interface Branch {
+  id: string;
+  name: string;
+  code: string;
+  address: string;
+  phone: string;
+  managerName: string;
+  gstin?: string;
+  active: boolean;
+  isDefault: boolean;
+  email?: string;
+  bankAccount?: { bankName?: string; accountNo?: string; ifsc?: string; branch?: string };
+  logoOverrideUrl?: string;
+  printerProfiles?: string[];
+  invoiceSeries?: string;
+  receiptSeries?: string;
+}
+
+export interface PrinterProfile {
+  id: string;
+  name: string;
+  type: "thermal" | "laser" | "inkjet" | "label";
+  paperSize: "A4" | "A5" | "80mm" | "58mm" | "40x25" | "50x25";
+  orientation: "portrait" | "landscape";
+  margins: { top: number; right: number; bottom: number; left: number };
+  colorMode: "bw" | "color";
+  defaultCopies: number;
+  quality: "draft" | "normal" | "high";
+  archivalMode: boolean;
+  templateMapping: string[]; // e.g. ["Invoice", "Receipt", "Job Card"]
+}
+
+export interface DocumentTemplate {
+  id: string;
+  name: string;
+  fontSize: "xs" | "sm" | "base" | "lg";
+  fontFamily: "Inter" | "Space Grotesk" | "Outfit" | "JetBrains Mono" | "Playfair Display";
+  primaryColor: string;
+  accentColor: string;
+  showLogo: boolean;
+  showHeaderAddress: boolean;
+  showContact: boolean;
+  showBranchDetails: boolean;
+  showGst: boolean;
+  showPan: boolean;
+  showTerms: boolean;
+  showSignatureBlocks: boolean;
+  showBankDetails: boolean;
+  showDisclaimer: boolean;
+  showHuid: boolean;
+  showPrintTimestamp: boolean;
+  showPageNumbers: boolean;
+  headerLayout: "standard" | "compact" | "centered";
+  footerLayout: "standard" | "two_column" | "minimal";
+  termsAndConditions: string;
+  disclaimer: string;
+  fieldsVisibility: Record<string, boolean>;
+}
+
+export interface ComplianceProfile {
+  hsnCodeJewellery: string;
+  sacCodeServices: string;
+  hallmarkLicenseNo: string;
+  bisRegistrationNo: string;
+  panRequiredThresholdPaise: number;
+  taxFields: { label: string; ratePct: number; active: boolean }[];
+  stateCode: string;
+}
+
+export interface FormFieldMetadata {
+  name: string;
+  label: string;
+  type: "text" | "number" | "select" | "date" | "boolean" | "textarea";
+  required: boolean;
+  defaultValue?: string;
+  options?: string[];
+  validationRule?: string;
+}
+
+export interface FormMetadata {
+  id: string;
+  name: string;
+  type: string;
+  fields: FormFieldMetadata[];
+  printTemplateId: string;
+  pdfTemplateId: string;
+  emailTemplateId: string;
+  permissionsRequired: string[];
+  approvalRequired: boolean;
+}
+
+export interface BranchRules {
+  goldBookingMode: "centralized" | "branch-wise";
+  stockAccessMode: "universal" | "branch-wise";
+  billingSequenceMode: "universal" | "branch-wise";
+}
+
+export interface LanguageSettings {
+  appLanguage: "en" | "mr" | "hi" | "bn";
+  printLanguage: "en" | "mr" | "hi" | "bn";
+  whatsappLanguage: "en" | "mr" | "hi" | "bn";
+  staffLanguage: "en" | "mr" | "hi" | "bn";
+}
+
+export interface DeveloperSettings {
+  avsName: string;
+  contactNumber: string;
+  email: string;
+  logoUrl?: string;
+  footerEnabled: boolean;
+}
+
+export interface Branding {
+  primaryColor: string;
+  goldAccent: string;
+  printHeader: string;
+}
+
+export interface PrintTemplateSettings {
+  invoiceHeader: string;
+  invoiceFooter: string;
+  showHUID: boolean;
+  showPriceOnTag: boolean;
+  showMakingOnTag: boolean;
+  tagSize: "40x25" | "50x25";
+  copyLabels: string[];
+  voucherCalculationMode?: "fine_only" | "fine_wastage" | "custom";
+  balanceSideLabels?: "jama_naam" | "credit_debit";
+}
+
+export interface GstSettings {
+  enabled: boolean;
+  splitMode: "cgst_sgst" | "igst";
+  applyOnMakingAndStoneOnly: boolean;
+  cgstPct: number; // store as tenths of percent? we'll keep as float
+  sgstPct: number;
+  igstPct: number;
+  gstRatePct?: number;
+  makingRatePct?: number;
+  metalSplitPct?: number;
+  makingSplitPct?: number;
+  hsnJewellery?: string;
+  sacServices?: string;
+  panRequiredThresholdPaise?: number;
+  cashLimitPaise?: number;
+}
+
+export interface Purity {
+  id: string;
+  label: string;
+  permille: number;
+  active: boolean;
+}
+
+export interface MakingTemplate {
+  id: string;
+  category: string;
+  purity: string;
+  type: "per_gram" | "fixed";
+  ratePerGramPaise: number;
+  fixedPaise: number;
+  notes?: string;
+}
+
+export interface HardwareSettings {
+  scannerEnabled: boolean;
+  printerLabel: string;
+  labelSize: "40x25" | "50x25";
+  f2FocusScanner: boolean;
+  browserPrintMode: "dialog" | "silent_placeholder";
+  scaleMode: "simulation" | "webserial";
+  autoPopulateWeight: boolean;
+  scaleBaudRate: number;
+}
+
+export interface CatalogSettings {
+  categories: string[];
+  tags: string[];
+  defaultPurity: string;
+  defaultWeightMinG: number;
+  defaultWeightMaxG: number;
+}
+
+export interface SmtpSettings {
+  host: string;
+  port: number;
+  username: string;
+  passKey: string;
+  fromEmail: string;
+  fromName: string;
+  useSsl: boolean;
+  apiProvider: "smtp" | "resend" | "sendgrid" | "supabase" | "mock_api";
+  apiKey: string;
+}
+
+export interface CampaignTemplates {
+  emailInvoice: string;
+  waInvoice: string;
+  emailBirthday: string;
+  waBirthday: string;
+}
+
+export interface CommAutomation {
+  birthday: boolean;
+  anniversary: boolean;
+  invoice: boolean;
+  payment: boolean;
+  orderReady: boolean;
+  repairReady: boolean;
+}
+
+export type DropdownKey =
+  | "orderType"
+  | "itemCategory"
+  | "metalColor"
+  | "repairType"
+  | "paymentMode"
+  | "workerRole"
+  | "processTemplate"
+  | "stockLocation"
+  | "stockStatus"
+  | "priority"
+  | "sourceType"
+  | "stoneType";
+
+export const DROPDOWN_LABELS: Record<DropdownKey, string> = {
+  orderType: "Order Type",
+  itemCategory: "Item Category",
+  metalColor: "Metal Color",
+  repairType: "Repair Type",
+  paymentMode: "Payment Mode",
+  workerRole: "Worker Role",
+  processTemplate: "Process Template",
+  stockLocation: "Stock Location",
+  stockStatus: "Stock Status",
+  priority: "Priority",
+  sourceType: "Source Type",
+  stoneType: "Stone Type",
+};
+
+export interface SettingsState {
+  firm: FirmProfile;
+  branding: Branding;
+  print: PrintTemplateSettings;
+  gst: GstSettings;
+  purities: Purity[];
+  making: MakingTemplate[];
+  hardware: HardwareSettings;
+  catalog: CatalogSettings;
+  smtp: SmtpSettings;
+  dropdowns: Record<DropdownKey, string[]>;
+  goldRatePerGramPaise: number;
+  goldRate24KPerGramPaise: number;
+  goldRate18KPerGramPaise: number;
+  silverRatePerGramPaise: number;
+  language: LanguageSettings;
+  developer: DeveloperSettings;
+  branches: Branch[];
+  selectedBranchId: string;
+  branchRules: BranchRules;
+  users: RegisteredUser[];
+  invitations: InvitationItem[];
+  securityLogs: SecurityLogItem[];
+  printerProfiles: PrinterProfile[];
+  documentTemplates: DocumentTemplate[];
+  complianceProfile: ComplianceProfile;
+  formsMetadata: FormMetadata[];
+
+  /** Custom email templates for the owner email panel. */
+  emailTemplates: EmailTemplate[];
+  saveEmailTemplate: (t: Omit<EmailTemplate, "id" | "createdAt"> & { id?: string }) => void;
+  deleteEmailTemplate: (id: string) => void;
+
+  /** Campaign message templates (WhatsApp & Email bodies for automated sends). */
+  campaignTemplates: CampaignTemplates;
+  setCampaignTemplates: (t: Partial<CampaignTemplates>) => void;
+
+  /** Automation rules — which channels auto-send on events. */
+  commAutomation: CommAutomation;
+  setCommAutomation: (a: Partial<CommAutomation>) => void;
+
+  /** Workshop definitions — each branch can have multiple workshops */
+  workshops: WorkshopDefinition[];
+  setWorkshops: (workshops: WorkshopDefinition[]) => void;
+  addWorkshop: (w: Omit<WorkshopDefinition, "id">) => void;
+  updateWorkshop: (id: string, patch: Partial<WorkshopDefinition>) => void;
+  removeWorkshop: (id: string) => void;
+
+  /** Per-branch settings (overrides global firm settings for that branch) */
+  branchSettings: BranchSettings[];
+  getBranchSettings: (branchId: string) => BranchSettings;
+  setBranchSettings: (branchId: string, patch: Partial<BranchSettings>) => void;
+
+  /** Currently logged-in user's role — set by AuthGate on login. */
+  currentUserRole: string | null;
+  setCurrentUserRole: (role: string | null) => void;
+
+  /** When false the workshop uses a simplified flow with no step templates. */
+  workshopTemplatesEnabled: boolean;
+  setWorkshopTemplatesEnabled: (enabled: boolean) => void;
+
+  setFirm: (p: Partial<FirmProfile>) => void;
+  setSmtp: (s: Partial<SmtpSettings>) => void;
+  setUsers: (users: RegisteredUser[]) => void;
+  addUser: (user: RegisteredUser) => void;
+  updateUser: (id: string, patch: Partial<RegisteredUser>) => void;
+  deleteUser: (id: string) => void;
+  addInvitation: (invite: InvitationItem) => void;
+  updateInvitation: (id: string, patch: Partial<InvitationItem>) => void;
+  addSecurityLog: (
+    action:
+      | "login"
+      | "failed login"
+      | "rate limited"
+      | "user created"
+      | "permission changed"
+      | "invoice deleted"
+      | "gold edited",
+    details: string,
+    email: string,
+  ) => void;
+  setBranding: (p: Partial<Branding>) => void;
+  setPrint: (p: Partial<PrintTemplateSettings>) => void;
+  setGst: (p: Partial<GstSettings>) => void;
+  setHardware: (p: Partial<HardwareSettings>) => void;
+  setCatalog: (p: Partial<CatalogSettings>) => void;
+  setGoldRate: (paise: number) => void;
+  setGoldRate24K: (paise: number) => void;
+  setGoldRate18K: (paise: number) => void;
+  setSilverRate: (paise: number) => void;
+  setLanguage: (l: Partial<LanguageSettings>) => void;
+  setDeveloper: (d: Partial<DeveloperSettings>) => void;
+  setSelectedBranchId: (id: string) => void;
+  setBranches: (branches: Branch[]) => void;
+  addBranch: (b: Omit<Branch, "id" | "isDefault">) => void;
+  updateBranch: (id: string, patch: Partial<Branch>) => void;
+  removeBranch: (id: string) => void;
+  setDefaultBranch: (id: string) => void;
+  setBranchRules: (rules: Partial<BranchRules>) => void;
+
+  addPurity: (p: Omit<Purity, "id">) => void;
+  updatePurity: (id: string, patch: Partial<Purity>) => void;
+  removePurity: (id: string) => void;
+
+  addMaking: (m: Omit<MakingTemplate, "id">) => void;
+  updateMaking: (id: string, patch: Partial<MakingTemplate>) => void;
+  removeMaking: (id: string) => void;
+
+  setDropdown: (key: DropdownKey, values: string[]) => void;
+  addDropdownItem: (key: DropdownKey, value: string) => void;
+  removeDropdownItem: (key: DropdownKey, value: string) => void;
+
+  setPrinterProfiles: (profiles: PrinterProfile[]) => void;
+  addPrinterProfile: (profile: Omit<PrinterProfile, "id">) => void;
+  updatePrinterProfile: (id: string, patch: Partial<PrinterProfile>) => void;
+  removePrinterProfile: (id: string) => void;
+  setDocumentTemplates: (templates: DocumentTemplate[]) => void;
+  updateDocumentTemplate: (id: string, patch: Partial<DocumentTemplate>) => void;
+  setComplianceProfile: (profile: Partial<ComplianceProfile>) => void;
+  setFormsMetadata: (forms: FormMetadata[]) => void;
+  addFormMetadata: (form: Omit<FormMetadata, "id">) => void;
+  updateFormMetadata: (id: string, patch: Partial<FormMetadata>) => void;
+  removeFormMetadata: (id: string) => void;
+
+  resetAll: () => void;
+}
+
+const DEFAULT_PURITIES: Purity[] = [
+  { id: "p_999", label: "24K / 999", permille: 999, active: true },
+  { id: "p_916", label: "22K / 916", permille: 916, active: true },
+  { id: "p_750", label: "18K / 750", permille: 750, active: true },
+  { id: "p_585", label: "14K / 585", permille: 585, active: true },
+];
+
+const DEFAULT_DROPDOWNS: Record<DropdownKey, string[]> = {
+  orderType: ["Custom", "Repair", "Polishing", "Ready Stock", "Wholesale"],
+  itemCategory: [
+    "Ring",
+    "Chain",
+    "Earring",
+    "Pendant",
+    "Bangle",
+    "Necklace",
+    "Bracelet",
+    "Nose Pin",
+  ],
+  metalColor: ["Yellow", "White", "Rose"],
+  repairType: ["Soldering", "Polish", "Re-size", "Re-string", "Tip Change", "Stone Setting"],
+  paymentMode: ["Cash", "UPI", "Bank Transfer", "Card", "Gold Exchange"],
+  workerRole: ["Master Karigar", "Helper", "Polisher", "Stone Setter", "Finisher"],
+  processTemplate: ["Casting", "Filing", "Setting", "Polishing", "Plating", "QC"],
+  stockLocation: ["Showroom", "Vault", "Display", "Workshop", "Repair Bench"],
+  stockStatus: ["In Stock", "Reserved", "Sold", "On Approval"],
+  priority: ["Normal", "High", "Urgent"],
+  sourceType: ["Walk-in", "Phone", "WhatsApp", "Referral", "Repeat Customer"],
+  stoneType: ["Diamond", "Ruby", "Emerald", "Pearl", "CZ", "Other"],
+};
+
+const DEFAULT_PRINTER_PROFILES: PrinterProfile[] = [
+  {
+    id: "pr_laser_office",
+    name: "Office Laser Printer",
+    type: "laser",
+    paperSize: "A4",
+    orientation: "portrait",
+    margins: { top: 12, right: 15, bottom: 15, left: 15 },
+    colorMode: "color",
+    defaultCopies: 1,
+    quality: "normal",
+    archivalMode: false,
+    templateMapping: ["Invoice", "Estimate", "Ledger", "Reports"],
+  },
+  {
+    id: "pr_thermal_slip",
+    name: "Billing Slip Printer (Thermal)",
+    type: "thermal",
+    paperSize: "80mm",
+    orientation: "portrait",
+    margins: { top: 2, right: 2, bottom: 2, left: 2 },
+    colorMode: "bw",
+    defaultCopies: 1,
+    quality: "normal",
+    archivalMode: true,
+    templateMapping: ["Receipt", "Repair Slip", "Worker Settlement", "Job Card"],
+  },
+  {
+    id: "pr_label_tags",
+    name: "Tag Label Printer",
+    type: "label",
+    paperSize: "40x25",
+    orientation: "portrait",
+    margins: { top: 1, right: 1, bottom: 1, left: 1 },
+    colorMode: "bw",
+    defaultCopies: 1,
+    quality: "normal",
+    archivalMode: false,
+    templateMapping: ["Label"],
+  },
+];
+
+const DEFAULT_DOCUMENT_TEMPLATES: DocumentTemplate[] = [
+  {
+    id: "invoice",
+    name: "Standard Invoice Template",
+    fontSize: "sm",
+    fontFamily: "Inter",
+    primaryColor: "#0F172A",
+    accentColor: "#C8A24B",
+    showLogo: true,
+    showHeaderAddress: true,
+    showContact: true,
+    showBranchDetails: true,
+    showGst: true,
+    showPan: true,
+    showTerms: true,
+    showSignatureBlocks: true,
+    showBankDetails: true,
+    showDisclaimer: true,
+    showHuid: true,
+    showPrintTimestamp: true,
+    showPageNumbers: true,
+    headerLayout: "standard",
+    footerLayout: "standard",
+    termsAndConditions:
+      "Goods once sold will not be taken back. Subject to local jurisdiction. Gold purity as per specifications.",
+    disclaimer: "This is a computer generated invoice and does not require physical signatures.",
+    fieldsVisibility: {
+      grossWeight: true,
+      netWeight: true,
+      makingCharge: true,
+      stoneCharge: true,
+      huid: true,
+      purity: true,
+    },
+  },
+  {
+    id: "jobcard",
+    name: "Workshop Job Card Template",
+    fontSize: "xs",
+    fontFamily: "JetBrains Mono",
+    primaryColor: "#1E293B",
+    accentColor: "#C8A24B",
+    showLogo: false,
+    showHeaderAddress: true,
+    showContact: true,
+    showBranchDetails: false,
+    showGst: false,
+    showPan: false,
+    showTerms: true,
+    showSignatureBlocks: true,
+    showBankDetails: false,
+    showDisclaimer: false,
+    showHuid: true,
+    showPrintTimestamp: true,
+    showPageNumbers: false,
+    headerLayout: "compact",
+    footerLayout: "minimal",
+    termsAndConditions:
+      "Please retain this slip. Gold purity and weight will be confirmed on final receipt.",
+    disclaimer: "Workshop authorized processing copy.",
+    fieldsVisibility: {
+      karigarName: true,
+      expectedDate: true,
+      metalPurity: true,
+      designCategory: true,
+    },
+  },
+  {
+    id: "receipt",
+    name: "Payment Receipt Template",
+    fontSize: "sm",
+    fontFamily: "Outfit",
+    primaryColor: "#0F172A",
+    accentColor: "#10B981",
+    showLogo: true,
+    showHeaderAddress: true,
+    showContact: true,
+    showBranchDetails: true,
+    showGst: true,
+    showPan: false,
+    showTerms: false,
+    showSignatureBlocks: true,
+    showBankDetails: false,
+    showDisclaimer: true,
+    showHuid: false,
+    showPrintTimestamp: true,
+    showPageNumbers: false,
+    headerLayout: "standard",
+    footerLayout: "standard",
+    termsAndConditions: "Receipt valid subject to realization of cheque/digital transaction.",
+    disclaimer: "Thank you for your transaction.",
+    fieldsVisibility: {
+      paymentMode: true,
+      referenceNo: true,
+      receivedFrom: true,
+    },
+  },
+  {
+    id: "estimate",
+    name: "Customer Estimate Template",
+    fontSize: "sm",
+    fontFamily: "Space Grotesk",
+    primaryColor: "#334155",
+    accentColor: "#C8A24B",
+    showLogo: true,
+    showHeaderAddress: true,
+    showContact: true,
+    showBranchDetails: true,
+    showGst: false,
+    showPan: false,
+    showTerms: false,
+    showSignatureBlocks: false,
+    showBankDetails: false,
+    showDisclaimer: true,
+    showHuid: false,
+    showPrintTimestamp: true,
+    showPageNumbers: true,
+    headerLayout: "centered",
+    footerLayout: "minimal",
+    termsAndConditions: "Estimate valid for current day rates only. Values tentative.",
+    disclaimer: "This is an estimate/quotation slip, not a valid tax invoice.",
+    fieldsVisibility: {
+      estimatedCost: true,
+      currentGoldRate: true,
+    },
+  },
+  {
+    id: "repair_slip",
+    name: "Repair Intake Slip Template",
+    fontSize: "sm",
+    fontFamily: "Inter",
+    primaryColor: "#1E293B",
+    accentColor: "#F59E0B",
+    showLogo: true,
+    showHeaderAddress: true,
+    showContact: true,
+    showBranchDetails: false,
+    showGst: false,
+    showPan: false,
+    showTerms: true,
+    showSignatureBlocks: true,
+    showBankDetails: false,
+    showDisclaimer: true,
+    showHuid: false,
+    showPrintTimestamp: true,
+    showPageNumbers: false,
+    headerLayout: "standard",
+    footerLayout: "standard",
+    termsAndConditions: "Goods are stored at owner's risk. No responsibility for stone breakage.",
+    disclaimer: "Intake receipt copy.",
+    fieldsVisibility: {
+      repairType: true,
+      description: true,
+      advancePaid: true,
+    },
+  },
+  {
+    id: "gold_settlement",
+    name: "Metal Settlement Template",
+    fontSize: "sm",
+    fontFamily: "JetBrains Mono",
+    primaryColor: "#0F172A",
+    accentColor: "#C8A24B",
+    showLogo: false,
+    showHeaderAddress: true,
+    showContact: true,
+    showBranchDetails: true,
+    showGst: false,
+    showPan: true,
+    showTerms: true,
+    showSignatureBlocks: true,
+    showBankDetails: false,
+    showDisclaimer: true,
+    showHuid: false,
+    showPrintTimestamp: true,
+    showPageNumbers: true,
+    headerLayout: "compact",
+    footerLayout: "two_column",
+    termsAndConditions:
+      "Settlement calculated at declared touches and rates. Signatures enforce finality.",
+    disclaimer: "Durable ledger balance acknowledgement.",
+    fieldsVisibility: {
+      goldWeight: true,
+      purity: true,
+      adjustedGoldValue: true,
+    },
+  },
+  {
+    id: "worker_settlement",
+    name: "Worker Settlement Template",
+    fontSize: "sm",
+    fontFamily: "Inter",
+    primaryColor: "#0F172A",
+    accentColor: "#C8A24B",
+    showLogo: false,
+    showHeaderAddress: true,
+    showContact: false,
+    showBranchDetails: true,
+    showGst: false,
+    showPan: false,
+    showTerms: true,
+    showSignatureBlocks: true,
+    showBankDetails: false,
+    showDisclaimer: true,
+    showHuid: false,
+    showPrintTimestamp: true,
+    showPageNumbers: false,
+    headerLayout: "compact",
+    footerLayout: "standard",
+    termsAndConditions: "Wages settled as per job work calculations. Final balances signed off.",
+    disclaimer: "Internal payroll / subcontractor payment voucher.",
+    fieldsVisibility: {
+      wagesEarned: true,
+      tdsDeducted: true,
+      netPaid: true,
+    },
+  },
+  {
+    id: "ledger",
+    name: "Customer Ledger Template",
+    fontSize: "sm",
+    fontFamily: "Inter",
+    primaryColor: "#0F172A",
+    accentColor: "#C8A24B",
+    showLogo: true,
+    showHeaderAddress: true,
+    showContact: true,
+    showBranchDetails: true,
+    showGst: false,
+    showPan: false,
+    showTerms: false,
+    showSignatureBlocks: true,
+    showBankDetails: true,
+    showDisclaimer: true,
+    showHuid: false,
+    showPrintTimestamp: true,
+    showPageNumbers: true,
+    headerLayout: "standard",
+    footerLayout: "two_column",
+    termsAndConditions: "Ledger subject to continuous audit. Report discrepancies immediately.",
+    disclaimer: "Statement of Account.",
+    fieldsVisibility: {
+      runningBalance: true,
+      paymentDetails: true,
+    },
+  },
+  {
+    id: "reports",
+    name: "Dynamic Report Layout Template",
+    fontSize: "xs",
+    fontFamily: "Inter",
+    primaryColor: "#1E293B",
+    accentColor: "#334155",
+    showLogo: false,
+    showHeaderAddress: true,
+    showContact: false,
+    showBranchDetails: true,
+    showGst: false,
+    showPan: false,
+    showTerms: false,
+    showSignatureBlocks: false,
+    showBankDetails: false,
+    showDisclaimer: false,
+    showHuid: false,
+    showPrintTimestamp: true,
+    showPageNumbers: true,
+    headerLayout: "centered",
+    footerLayout: "minimal",
+    termsAndConditions: "",
+    disclaimer: "Areva ERP Auto-Generated Analytical Summary. Confidential.",
+    fieldsVisibility: {
+      totals: true,
+      subtotals: true,
+    },
+  },
+];
+
+const DEFAULT_COMPLIANCE_PROFILE: ComplianceProfile = {
+  hsnCodeJewellery: "7113",
+  sacCodeServices: "9988",
+  hallmarkLicenseNo: "HM-W-916053",
+  bisRegistrationNo: "BIS-MTJ-882",
+  panRequiredThresholdPaise: 20000000,
+  stateCode: "19",
+  taxFields: [
+    { label: "CGST @ 1.5%", ratePct: 1.5, active: true },
+    { label: "SGST @ 1.5%", ratePct: 1.5, active: true },
+    { label: "IGST @ 3%", ratePct: 3, active: false },
+  ],
+};
+
+const DEFAULT_FORMS_METADATA: FormMetadata[] = [
+  {
+    id: "customer_kyc",
+    name: "Customer KYC Form",
+    type: "kyc",
+    fields: [
+      { name: "fullName", label: "Full Name", type: "text", required: true },
+      {
+        name: "phone",
+        label: "Phone Number",
+        type: "text",
+        required: true,
+        validationRule: "phone",
+      },
+      { name: "aadhaar", label: "Aadhaar Card No", type: "text", required: true },
+      { name: "pan", label: "PAN Card No", type: "text", required: false, validationRule: "pan" },
+      { name: "address", label: "Residential Address", type: "textarea", required: true },
+      { name: "dob", label: "Date of Birth", type: "date", required: false },
+    ],
+    printTemplateId: "ledger",
+    pdfTemplateId: "ledger",
+    emailTemplateId: "ledger",
+    permissionsRequired: ["people.edit"],
+    approvalRequired: false,
+  },
+  {
+    id: "order_intake",
+    name: "Custom Order Intake Form",
+    type: "order",
+    fields: [
+      {
+        name: "itemCategory",
+        label: "Item Category",
+        type: "select",
+        required: true,
+        options: ["Ring", "Chain", "Earring", "Pendant", "Bangle", "Necklace"],
+      },
+      {
+        name: "metalPurity",
+        label: "Purity Required",
+        type: "select",
+        required: true,
+        options: ["22K / 916", "24K / 999", "18K / 750"],
+      },
+      { name: "approxWeightG", label: "Estimated Weight (g)", type: "number", required: true },
+      { name: "advancePaidPaise", label: "Advance Amount (Rs.)", type: "number", required: false },
+      { name: "expectedDelivery", label: "Expected Delivery Date", type: "date", required: true },
+      {
+        name: "designNotes",
+        label: "Design Notes / Instructions",
+        type: "textarea",
+        required: false,
+      },
+    ],
+    printTemplateId: "jobcard",
+    pdfTemplateId: "jobcard",
+    emailTemplateId: "jobcard",
+    permissionsRequired: ["orders.edit"],
+    approvalRequired: true,
+  },
+  {
+    id: "repair_intake",
+    name: "Repair Slip Intake Form",
+    type: "repair",
+    fields: [
+      {
+        name: "repairType",
+        label: "Repair Type",
+        type: "select",
+        required: true,
+        options: ["Soldering", "Polish", "Re-size", "Stone Setting"],
+      },
+      { name: "itemDescription", label: "Item Description", type: "text", required: true },
+      { name: "weightG", label: "Intake Weight (g)", type: "number", required: true },
+      {
+        name: "advancePaidPaise",
+        label: "Advance Received (Rs.)",
+        type: "number",
+        required: false,
+      },
+      { name: "instructions", label: "Repair Instructions", type: "textarea", required: false },
+    ],
+    printTemplateId: "repair_slip",
+    pdfTemplateId: "repair_slip",
+    emailTemplateId: "repair_slip",
+    permissionsRequired: ["repair.edit"],
+    approvalRequired: false,
+  },
+];
+
+const DEFAULTS: Omit<SettingsState, keyof Functions> = {
+  firm: {
+    shopName: "",
+    phone: "",
+    email: "",
+    address: "",
+    gstin: "",
+    footerLine: "Thank you for shopping with us.",
+    terms: "Goods once sold will not be taken back. Subject to local jurisdiction.",
+    signatureLabelLeft: "Customer Signature",
+    signatureLabelRight: "Authorised Signatory",
+    ownerName: "Manager",
+    pan: "",
+    cityState: "Kolkata, West Bengal",
+    website: "",
+    whatsappNumber: "",
+    tagline: "Fine Artistry in Pure Gold",
+    logoUrl: "",
+    logoStoragePath: "",
+    legalName: "",
+    brandName: "",
+    branchAddress: "",
+    stateCode: "19",
+    registrationNo: "",
+    bankDetails: {
+      bankName: "",
+      accountNo: "",
+      ifsc: "",
+      branch: "",
+    },
+    upiQr: "",
+    defaultCurrency: "INR",
+    timeZone: "Asia/Kolkata",
+    themeColors: { primaryColor: "#0F172A", goldAccent: "#C8A24B" },
+    socialLinks: {
+      instagram: "",
+      facebook: "",
+    },
+    legalDisclaimer:
+      "Purity certified under BIS guidelines. Hallmark charges applicable extra as per regulations.",
+  },
+  branding: {
+    primaryColor: "#0F172A",
+    goldAccent: "#C8A24B",
+    printHeader: "",
+  },
+  print: {
+    invoiceHeader: "TAX INVOICE",
+    invoiceFooter: "Thank you for your business.",
+    showHUID: true,
+    showPriceOnTag: true,
+    showMakingOnTag: false,
+    tagSize: "40x25",
+    copyLabels: ["Customer Copy", "Office Copy", "Karigar Copy"],
+    voucherCalculationMode: "fine_only",
+    balanceSideLabels: "jama_naam",
+  },
+  gst: {
+    enabled: false, // Defaulting to FALSE as confirmed ("likely OFF unless the bill is a GST bill")
+    splitMode: "cgst_sgst",
+    applyOnMakingAndStoneOnly: true,
+    cgstPct: 1.5,
+    sgstPct: 1.5,
+    igstPct: 3,
+    gstRatePct: 3,
+    makingRatePct: 5,
+    metalSplitPct: 85,
+    makingSplitPct: 15,
+    hsnJewellery: "71131910",
+    sacServices: "9988",
+    panRequiredThresholdPaise: 20000000, // ₹2,00,000
+    cashLimitPaise: 1000000, // ₹10,000
+  },
+  purities: DEFAULT_PURITIES,
+  making: [],
+  hardware: {
+    scannerEnabled: true,
+    printerLabel: "Default browser printer",
+    labelSize: "40x25",
+    f2FocusScanner: true,
+    browserPrintMode: "dialog",
+    scaleMode: "simulation",
+    autoPopulateWeight: true,
+    scaleBaudRate: 9600,
+  },
+  catalog: {
+    categories: ["Ring", "Chain", "Earring", "Pendant", "Bangle", "Necklace"],
+    tags: ["Bestseller", "New", "Festival", "Bridal"],
+    defaultPurity: "22K / 916",
+    defaultWeightMinG: 2,
+    defaultWeightMaxG: 25,
+  },
+  smtp: {
+    host: "smtp.maatarajewellers.com",
+    port: 587,
+    username: "",
+    passKey: "",
+    fromEmail: "",
+    fromName: "",
+    useSsl: false,
+    apiProvider: "mock_api",
+    apiKey: "",
+  },
+  dropdowns: DEFAULT_DROPDOWNS,
+  goldRatePerGramPaise: 0,
+  goldRate24KPerGramPaise: 0,
+  goldRate18KPerGramPaise: 0,
+  silverRatePerGramPaise: 0,
+  language: {
+    appLanguage: "en",
+    printLanguage: "en",
+    whatsappLanguage: "en",
+    staffLanguage: "en",
+  },
+  developer: {
+    avsName: "Areva VentureSphere ERP (AVS ERP)",
+    contactNumber: "+91 90070 12345",
+    email: "support@areva.co",
+    logoUrl: "",
+    footerEnabled: true,
+  },
+  branches: [
+    {
+      id: "MAIN",
+      name: "Main Branch",
+      code: "MAIN",
+      address: "",
+      phone: "",
+      managerName: "",
+      gstin: "",
+      active: true,
+      isDefault: true,
+      email: "",
+      bankAccount: {
+        bankName: "",
+        accountNo: "",
+        ifsc: "",
+        branch: "",
+      },
+      logoOverrideUrl: "",
+      printerProfiles: ["pr_laser_office"],
+      invoiceSeries: "INV-2026-",
+      receiptSeries: "REC-2026-",
+    },
+    {
+      id: "WORKSHOP",
+      name: "Workshop Branch",
+      code: "WORKSHOP",
+      address: "",
+      phone: "",
+      managerName: "",
+      gstin: "",
+      active: true,
+      isDefault: false,
+      email: "",
+      bankAccount: {
+        bankName: "HDFC Bank",
+        accountNo: "",
+        ifsc: "",
+        branch: "Workshop Branch",
+      },
+      logoOverrideUrl: "",
+      printerProfiles: ["pr_thermal_slip"],
+      invoiceSeries: "WKJ-2026-",
+      receiptSeries: "WREC-2026-",
+    },
+  ],
+  selectedBranchId: "MAIN",
+  branchRules: {
+    goldBookingMode: "branch-wise",
+    stockAccessMode: "branch-wise",
+    billingSequenceMode: "branch-wise",
+  },
+  users: [
+    {
+      id: "owner_default",
+      name: "Owner",
+      email: "",
+      phone: "",
+      role: "Owner",
+      permissions: {},
+      active: true,
+      createdAt: 1718841600000,
+    },
+  ],
+  invitations: [],
+  securityLogs: [],
+  printerProfiles: DEFAULT_PRINTER_PROFILES,
+  documentTemplates: DEFAULT_DOCUMENT_TEMPLATES,
+  complianceProfile: DEFAULT_COMPLIANCE_PROFILE,
+  formsMetadata: DEFAULT_FORMS_METADATA,
+  workshopTemplatesEnabled: true,
+  currentUserRole: null,
+  emailTemplates: [],
+  campaignTemplates: {
+    emailInvoice:
+      "Namaste {{customer_name}}, your invoice {{invoice_number}} is ready. Total due: {{due_amount}}.",
+    waInvoice:
+      "नमस्कार {{customer_name}} जी, आपका Invoice {{invoice_number}} तैयार है। कुल: {{due_amount}}।",
+    emailBirthday:
+      "Dear {{customer_name}}, wishing you a very happy birthday from {{branch_name}}!",
+    waBirthday: "नमस्कार {{customer_name}} जी, आपकी ओर से जन्मदिन की हार्दिक शुभकामनाएं! 🎉",
+  },
+  commAutomation: {
+    birthday: true,
+    anniversary: true,
+    invoice: true,
+    payment: true,
+    orderReady: true,
+    repairReady: true,
+  },
+  workshops: [
+    {
+      id: "workshop_mfg_ich",
+      name: "Manufacturing Workshop — Ichalkaranji",
+      type: "manufacturing",
+      branchId: "branch_mfg_ich",
+      active: true,
+    },
+    {
+      id: "workshop_mfg_gkp",
+      name: "Manufacturing Workshop — Gorakhpur",
+      type: "manufacturing",
+      branchId: "branch_mfg_gkp",
+      active: true,
+    },
+    {
+      id: "workshop_retail",
+      name: "Retail Counter — Ichalkaranji",
+      type: "retail_counter",
+      branchId: "branch_retail_ich",
+      active: true,
+    },
+    {
+      id: "workshop_repair",
+      name: "Repair Workshop",
+      type: "repair",
+      branchId: "branch_retail_ich",
+      active: true,
+    },
+    {
+      id: "workshop_accounts",
+      name: "Accounts / Finance",
+      type: "accounts",
+      branchId: "branch_retail_ich",
+      active: true,
+    },
+  ] as WorkshopDefinition[],
+  branchSettings: [] as BranchSettings[],
+};
+
+type Functions = Pick<
+  SettingsState,
+  | "setFirm"
+  | "setSmtp"
+  | "setBranding"
+  | "setPrint"
+  | "setGst"
+  | "setHardware"
+  | "setCatalog"
+  | "setGoldRate"
+  | "setGoldRate24K"
+  | "setGoldRate18K"
+  | "setSilverRate"
+  | "setLanguage"
+  | "setDeveloper"
+  | "setSelectedBranchId"
+  | "setBranches"
+  | "addBranch"
+  | "updateBranch"
+  | "removeBranch"
+  | "setDefaultBranch"
+  | "setBranchRules"
+  | "deleteUser"
+  | "addPurity"
+  | "updatePurity"
+  | "removePurity"
+  | "addMaking"
+  | "updateMaking"
+  | "removeMaking"
+  | "setDropdown"
+  | "addDropdownItem"
+  | "removeDropdownItem"
+  | "resetAll"
+  | "setUsers"
+  | "addUser"
+  | "updateUser"
+  | "addInvitation"
+  | "updateInvitation"
+  | "addSecurityLog"
+  | "setPrinterProfiles"
+  | "addPrinterProfile"
+  | "updatePrinterProfile"
+  | "removePrinterProfile"
+  | "setDocumentTemplates"
+  | "updateDocumentTemplate"
+  | "setComplianceProfile"
+  | "setFormsMetadata"
+  | "addFormMetadata"
+  | "updateFormMetadata"
+  | "removeFormMetadata"
+  | "setWorkshopTemplatesEnabled"
+  | "saveEmailTemplate"
+  | "deleteEmailTemplate"
+  | "setWorkshops"
+  | "addWorkshop"
+  | "updateWorkshop"
+  | "removeWorkshop"
+  | "setBranchSettings"
+  | "getBranchSettings"
+  | "setCurrentUserRole"
+  | "setCampaignTemplates"
+  | "setCommAutomation"
+>;
+
+function id(prefix: string) {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto)
+    return `${prefix}_${crypto.randomUUID().slice(0, 8)}`;
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export const useSettings = create<SettingsState>()((set, get) => ({
+  ...DEFAULTS,
+  setFirm: (p) => {
+    set({ firm: { ...get().firm, ...p } });
+    persistSettings(get);
+  },
+  setSmtp: (s) => set({ smtp: { ...get().smtp, ...s } }),
+  setBranding: (p) => {
+    set({ branding: { ...get().branding, ...p } });
+    persistSettings(get);
+  },
+  setPrint: (p) => {
+    set({ print: { ...get().print, ...p } });
+    persistSettings(get);
+  },
+  setGst: (p) => {
+    set({ gst: { ...get().gst, ...p } });
+    persistSettings(get);
+  },
+  setHardware: (p) => {
+    set({ hardware: { ...get().hardware, ...p } });
+    persistSettings(get);
+  },
+  setCatalog: (p) => set({ catalog: { ...get().catalog, ...p } }),
+  setGoldRate: (paise) => {
+    set({ goldRatePerGramPaise: paise });
+    persistSettings(get);
+  },
+  setGoldRate24K: (paise) => {
+    set({ goldRate24KPerGramPaise: paise });
+    persistSettings(get);
+  },
+  setGoldRate18K: (paise) => {
+    set({ goldRate18KPerGramPaise: paise });
+    persistSettings(get);
+  },
+  setSilverRate: (paise) => {
+    set({ silverRatePerGramPaise: paise });
+    persistSettings(get);
+  },
+  setLanguage: (l) => set({ language: { ...get().language, ...l } }),
+  setDeveloper: (d) => set({ developer: { ...get().developer, ...d } }),
+  setSelectedBranchId: (id) => set({ selectedBranchId: id }),
+  setBranches: (branches) => set({ branches }),
+  addBranch: (b) => {
+    const newBranchId = id("br");
+    const newBranch = { ...b, id: newBranchId, isDefault: false };
+    set({ branches: [...get().branches, newBranch] });
+    void saveBranchToDb(newBranch);
+  },
+  updateBranch: (bid, patch) => {
+    set({ branches: get().branches.map((b) => (b.id === bid ? { ...b, ...patch } : b)) });
+    const updated = get().branches.find((b) => b.id === bid);
+    if (updated) void saveBranchToDb(updated);
+  },
+  removeBranch: (bid) => {
+    const remaining = get().branches.filter((b) => b.id !== bid);
+    let selectedId = get().selectedBranchId;
+    if (selectedId === bid) {
+      const newDefault = remaining.find((b) => b.isDefault) || remaining[0];
+      selectedId = newDefault ? newDefault.id : "MAIN";
+    }
+    set({ branches: remaining, selectedBranchId: selectedId });
+    void deleteBranchFromDb(bid);
+  },
+  setDefaultBranch: (bid) => {
+    const updated = get().branches.map((b) => ({ ...b, isDefault: b.id === bid }));
+    set({ branches: updated });
+    // Update all branches in DB (clear then set default)
+    updated.forEach((b) => void saveBranchToDb(b));
+  },
+  setBranchRules: (rules) => {
+    set({ branchRules: { ...get().branchRules, ...rules } });
+    persistSettings(get);
+  },
+
+  addPurity: (p) => {
+    set({ purities: [...get().purities, { ...p, id: id("p") }] });
+    persistSettings(get);
+  },
+  updatePurity: (pid, patch) => {
+    set({ purities: get().purities.map((x) => (x.id === pid ? { ...x, ...patch } : x)) });
+    persistSettings(get);
+  },
+  removePurity: (pid) => {
+    set({ purities: get().purities.filter((x) => x.id !== pid) });
+    persistSettings(get);
+  },
+
+  addMaking: (m) => {
+    set({ making: [...get().making, { ...m, id: id("m") }] });
+    persistSettings(get);
+  },
+  updateMaking: (mid, patch) => {
+    set({ making: get().making.map((x) => (x.id === mid ? { ...x, ...patch } : x)) });
+    persistSettings(get);
+  },
+  removeMaking: (mid) => {
+    set({ making: get().making.filter((x) => x.id !== mid) });
+    persistSettings(get);
+  },
+
+  setDropdown: (key, values) => {
+    set({ dropdowns: { ...get().dropdowns, [key]: values } });
+    persistSettings(get);
+  },
+  addDropdownItem: (key, value) => {
+    const v = value.trim();
+    if (!v) return;
+    const cur = get().dropdowns[key];
+    if (cur.includes(v)) return;
+    set({ dropdowns: { ...get().dropdowns, [key]: [...cur, v] } });
+    persistSettings(get);
+  },
+  removeDropdownItem: (key, value) => {
+    set({
+      dropdowns: { ...get().dropdowns, [key]: get().dropdowns[key].filter((v) => v !== value) },
+    });
+    persistSettings(get);
+  },
+
+  setUsers: (users) => {
+    set({ users });
+    persistSettings(get);
+  },
+  addUser: (user) => {
+    set({ users: [...get().users, user] });
+    persistSettings(get);
+  },
+  updateUser: (uid, patch) => {
+    set({ users: get().users.map((u) => (u.id === uid ? { ...u, ...patch } : u)) });
+    persistSettings(get);
+  },
+  deleteUser: (uid) => {
+    set({ users: get().users.filter((u) => u.id !== uid) });
+    persistSettings(get);
+  },
+  addInvitation: (invite) => {
+    set({ invitations: [...get().invitations, invite] });
+    persistSettings(get);
+  },
+  updateInvitation: (iid, patch) => {
+    set({ invitations: get().invitations.map((i) => (i.id === iid ? { ...i, ...patch } : i)) });
+    persistSettings(get);
+  },
+  addSecurityLog: (action, details, email) => {
+    const newLog: SecurityLogItem = {
+      id: id("log"),
+      ts: Date.now(),
+      action,
+      details,
+      userEmail: email || "unknown@system.com",
+    };
+    set({ securityLogs: [newLog, ...get().securityLogs].slice(0, 1000) });
+    persistSettings(get);
+  },
+
+  setPrinterProfiles: (profiles) => set({ printerProfiles: profiles }),
+  addPrinterProfile: (profile) => {
+    const newId = id("pr");
+    set({ printerProfiles: [...get().printerProfiles, { ...profile, id: newId }] });
+    persistSettings(get);
+  },
+  updatePrinterProfile: (id, patch) => {
+    set({
+      printerProfiles: get().printerProfiles.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+    });
+    persistSettings(get);
+  },
+  removePrinterProfile: (id) => {
+    set({ printerProfiles: get().printerProfiles.filter((p) => p.id !== id) });
+    persistSettings(get);
+  },
+  setDocumentTemplates: (templates) => set({ documentTemplates: templates }),
+  updateDocumentTemplate: (id, patch) => {
+    set({
+      documentTemplates: get().documentTemplates.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+    });
+    persistSettings(get);
+  },
+  setComplianceProfile: (profile) =>
+    set({ complianceProfile: { ...get().complianceProfile, ...profile } }),
+  setWorkshopTemplatesEnabled: (enabled) => set({ workshopTemplatesEnabled: enabled }),
+  setCurrentUserRole: (role) => set({ currentUserRole: role }),
+
+  setWorkshops: (workshops) => set({ workshops }),
+
+  // Workshop CRUD — writes to Supabase workshops table
+  addWorkshop: (w) => {
+    const newId = `workshop_${Date.now()}`;
+    const newW = { ...w, id: newId };
+    set({ workshops: [...get().workshops, newW] });
+    void saveWorkshopToDb(newW);
+  },
+  updateWorkshop: (wId, patch) => {
+    set({ workshops: get().workshops.map((w) => (w.id === wId ? { ...w, ...patch } : w)) });
+    const updated = get().workshops.find((w) => w.id === wId);
+    if (updated) void saveWorkshopToDb(updated);
+  },
+  removeWorkshop: (wId) => {
+    set({ workshops: get().workshops.filter((w) => w.id !== wId) });
+    void deleteWorkshopFromDb(wId);
+  },
+
+  // Per-branch settings
+  getBranchSettings: (branchId) => {
+    return get().branchSettings.find((b) => b.branchId === branchId) ?? { branchId };
+  },
+  setBranchSettings: (branchId, patch) => {
+    const existing = get().branchSettings;
+    const idx = existing.findIndex((b) => b.branchId === branchId);
+    if (idx >= 0) {
+      const next = [...existing];
+      next[idx] = { ...next[idx], ...patch };
+      set({ branchSettings: next });
+    } else {
+      set({ branchSettings: [...existing, { branchId, ...patch }] });
+    }
+  },
+  setFormsMetadata: (forms) => set({ formsMetadata: forms }),
+  addFormMetadata: (form) => {
+    const newId = id("form");
+    set({ formsMetadata: [...get().formsMetadata, { ...form, id: newId }] });
+    persistSettings(get);
+  },
+  updateFormMetadata: (id, patch) => {
+    set({
+      formsMetadata: get().formsMetadata.map((f) => (f.id === id ? { ...f, ...patch } : f)),
+    });
+    persistSettings(get);
+  },
+  removeFormMetadata: (id) => {
+    set({ formsMetadata: get().formsMetadata.filter((f) => f.id !== id) });
+    persistSettings(get);
+  },
+
+  saveEmailTemplate: (t) => {
+    const now = Date.now();
+    const templates = get().emailTemplates;
+    if (t.id) {
+      set({ emailTemplates: templates.map((x) => (x.id === t.id ? { ...x, ...t } : x)) });
+    } else {
+      const newId = id("etpl");
+      set({ emailTemplates: [...templates, { ...t, id: newId, createdAt: now }] });
+    }
+    persistSettings(get);
+  },
+  deleteEmailTemplate: (tid) => {
+    set({ emailTemplates: get().emailTemplates.filter((t) => t.id !== tid) });
+    persistSettings(get);
+  },
+  setCampaignTemplates: (t) => {
+    set({ campaignTemplates: { ...get().campaignTemplates, ...t } });
+    persistSettings(get);
+  },
+  setCommAutomation: (a) => {
+    set({ commAutomation: { ...get().commAutomation, ...a } });
+    persistSettings(get);
+  },
+
+  resetAll: () => set({ ...DEFAULTS }),
+}));
+
+/** All Zustand stores in MTJ. Used by Backup/Export. */
+export const PILOT_STORAGE_KEYS = [
+  "mtj-settings-v1",
+  "mtj-people-v1",
+  "mtj-orders-v1",
+  "mtj-ledger-v1",
+  "mtj-jobcards-v1",
+  "mtj-workers-v1",
+  "mtj-catalog-v1",
+  "mtj-stock-v1",
+  "mtj-billing-v1",
+  "mtj-ratecut-v1",
+  "mtj-repair-v1",
+  "mtj-dailyclose-v1",
+  "mtj-printlog-v1",
+  "mtj-whatsapp-v1",
+];
+
+export function exportPilotData(): string {
+  if (typeof window === "undefined") return "{}";
+  const out: Record<string, unknown> = {
+    _exportedAt: new Date().toISOString(),
+    _app: "MTJ ERP v1 pilot",
+  };
+  for (const k of PILOT_STORAGE_KEYS) {
+    const v = window.localStorage.getItem(k);
+    if (v) {
+      try {
+        out[k] = JSON.parse(v);
+      } catch {
+        out[k] = v;
+      }
+    }
+  }
+  return JSON.stringify(out, null, 2);
+}
+
+export function importPilotData(json: string): { ok: boolean; restored: string[]; error?: string } {
+  if (typeof window === "undefined") return { ok: false, restored: [], error: "Not in browser" };
+  try {
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    const restored: string[] = [];
+    for (const k of PILOT_STORAGE_KEYS) {
+      if (parsed[k] !== undefined) {
+        window.localStorage.setItem(
+          k,
+          typeof parsed[k] === "string" ? (parsed[k] as string) : JSON.stringify(parsed[k]),
+        );
+        restored.push(k);
+      }
+    }
+    return { ok: true, restored };
+  } catch (e) {
+    return { ok: false, restored: [], error: e instanceof Error ? e.message : "Invalid JSON" };
+  }
+}
+
+export function clearPilotData() {
+  if (typeof window === "undefined") return;
+  for (const k of PILOT_STORAGE_KEYS) window.localStorage.removeItem(k);
+
+  // Clean up all legacy migration / truth keys
+  window.localStorage.removeItem("mtj_source_of_truth");
+  window.localStorage.removeItem("mtj_migrated_snapshot_hash");
+  window.localStorage.removeItem("mtj_last_migration_at");
+
+  // Dynamically remove any other leftover mtj keys (except drafts and preferences)
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const key = window.localStorage.key(i);
+    if (key && (key.startsWith("mtj-") || key.startsWith("mtj_"))) {
+      if (
+        !key.startsWith("mtj-drafts-") &&
+        !key.startsWith("mtj-app-") &&
+        !key.includes("-draft")
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+  }
+  for (const key of keysToRemove) {
+    window.localStorage.removeItem(key);
+  }
+}
