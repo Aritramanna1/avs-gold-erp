@@ -1,6 +1,0 @@
-const translations = {
-  title: "তৈরি গহনার ফিজিক্যাল স্টক ব্যস্থাপনা",
-  subtitle: "তৈরি গহনার ফিজিক্যাল স্টক ব্যস্থাপনা, বারকোডিং এবং অনুসন্ধান।",
-};
-
-export default translations;

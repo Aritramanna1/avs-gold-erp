@@ -1,6 +1,0 @@
-const translations = {
-  title: "সক্রিয় ওয়ার্কশপ কাজ",
-  subtitle: "চলতি ম্যানুফ্যাকচারিং জব, সোনা ইস্যু, প্রাপ্তি এবং লস ট্র্যাকিং।",
-};
-
-export default translations;

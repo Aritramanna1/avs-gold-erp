@@ -1,6 +1,0 @@
-const translations = {
-  title: "খরচ ট্র্যাকার",
-  subtitle: "দোকানের পরিচালনা সংক্রান্ত খরচ, বিনিয়োগ এবং ব্যক্তিগত প্রোফাইল ট্র্যাক করুন।",
-};
-
-export default translations;

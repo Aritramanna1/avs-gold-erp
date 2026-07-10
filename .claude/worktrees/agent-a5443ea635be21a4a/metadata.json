@@ -1,6 +1,0 @@
-{
-  "name": "Remix: final erp ",
-  "description": "Gold jewellery manufacturing ERP for Maa Tara Jewellers",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
