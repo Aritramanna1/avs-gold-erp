@@ -2,9 +2,9 @@
  * MTJ ERP — Synchronization Engine (Plan 1, Step 4)
  *
  * Drains the local SQLite outbox (see local-db.ts) to Supabase, and pulls
- * incremental remote changes back into local SQLite. Not wired to run
- * automatically anywhere yet, and nothing redirects reads/writes to it —
- * this is tested, standalone infrastructure per Plan 1's phased rollout.
+ * incremental remote changes back into local SQLite. `startSyncOutboxScheduler()`
+ * is started from `__root.tsx` at app bootstrap, and `pullChangesSince()` is
+ * called from `base-repository.ts` on local-first read fallback.
  * See C:\Users\aritr\.claude\plans\hashed-churning-rocket.md.
  *
  * Design:

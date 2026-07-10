@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -88,74 +87,3 @@ export function getSupabaseClient(): SupabaseClient<Database> {
 }
 
 export const supabase = getSupabaseClient();
-
-export interface AuthState {
-  user: any;
-  session: any;
-  loading: boolean;
-  isAuthenticated: boolean;
-}
-
-/**
- * A highly responsive, secure authentication hook for real-time session tracking,
- * token lifecycle updates, and signing out users safely.
- */
-export function useAuthCheck() {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    session: null,
-    loading: true,
-    isAuthenticated: false,
-  });
-
-  useEffect(() => {
-    let active = true;
-
-    // Check existing active session of the user
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error("[Supabase Auth] Failed to check active session:", error.message);
-      }
-      if (active) {
-        setAuthState({
-          user: session?.user ?? null,
-          session: session ?? null,
-          loading: false,
-          isAuthenticated: !!session,
-        });
-      }
-    });
-
-    // Hook up real-time listener to automatically capture auth events (e.g. login, sign out, token refresh)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
-
-      setAuthState({
-        user: session?.user ?? null,
-        session: session ?? null,
-        loading: false,
-        isAuthenticated: !!session,
-      });
-    });
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const signOut = async () => {
-    setAuthState((prev) => ({ ...prev, loading: true }));
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("[Supabase Auth] Failed to sign out:", error.message);
-    }
-  };
-
-  return {
-    ...authState,
-    signOut,
-  };
-}
