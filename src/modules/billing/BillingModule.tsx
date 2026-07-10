@@ -35,6 +35,7 @@ import { useJobCards } from "@/lib/jobcards-store";
 import { usePeople } from "@/lib/people-store";
 import { useLedger } from "@/lib/ledger-store";
 import { useSettings } from "@/lib/settings-store";
+import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useAttachments } from "@/lib/attachments-store";
 import { useBillingStore } from "./billingStore";
 import { useModuleStore } from "@/lib/module-store";
@@ -74,9 +75,12 @@ import {
   Mail,
 } from "lucide-react";
 import { RequireAction } from "@/components/role-gate";
+import { WeightInput } from "@/components/hardware/WeightInput";
+import { CashDrawerButton } from "@/components/hardware/CashDrawerButton";
 import { getNextSequenceNumber } from "@/lib/sequence-manager";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
-import { hardwareService, type ScaleReading } from "@/lib/hardware-service";
+import { useScaleReading, type ScaleReading } from "@/lib/hardware-service";
+import { thermalPrinterService } from "@/lib/thermal-printer";
 import { isValidWaPhone } from "@/lib/wa-link";
 import { commService } from "@/lib/comm/service";
 import { getAttachmentSignedUrl } from "@/lib/supabase-storage";
@@ -303,12 +307,15 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
   const addPaymentRowRef = useRef(addPaymentRow);
   const confirmRef = useRef(confirm);
 
-  const [scaleReading, setScaleReading] = useState<ScaleReading>({
+  // Shared scale-subscription hook (also used by WeightInput.tsx) — one
+  // implementation of scale device handling/connection lifecycle, this
+  // table just adds its own focused-field auto-fill on top (below).
+  const { reading: liveScaleReading, connected: scaleConnected } = useScaleReading();
+  const scaleReading: ScaleReading = liveScaleReading ?? {
     weightGrams: 0,
     isStable: true,
     rawString: "ST,GS,+0000.000g",
-  });
-  const [scaleConnected, setScaleConnected] = useState(false);
+  };
   const [confirmedInvoice, setConfirmedInvoice] = useState<Invoice | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmedCustomerEmail, setConfirmedCustomerEmail] = useState("");
@@ -365,45 +372,29 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       }
     }
 
-    // 2. Hardware Weigh Scale Connection
-    let scaleSub: { unsubscribe: () => void } | null = null;
-    try {
-      if (hardwareService && typeof hardwareService.subscribeToScale === "function") {
-        scaleSub = hardwareService.subscribeToScale((reading) => {
-          setScaleConnected(hardwareService.isScaleConnected);
-          setScaleReading(reading);
-          const target = focusedWeightFieldRef.current;
-          if (target && reading.weightGrams > 0) {
-            const item = itemsRef.current.find((it) => it.id === target.itemId);
-            if (item) {
-              const updatedVal = gramsToMg(reading.weightGrams.toFixed(3));
-              if (target.type === "gross") {
-                patchItemRef.current?.(target.itemId, { grossMg: updatedVal });
-              } else {
-                patchItemRef.current?.(target.itemId, { netMg: updatedVal });
-              }
-            }
-          }
-        });
-      } else {
-        console.warn("[Billing] hardwareService or subscribeToScale is unavailable.");
-      }
-    } catch (err) {
-      console.error("[Billing] Failed to subscribe to scale:", err);
-    }
-
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      if (scaleSub && typeof scaleSub.unsubscribe === "function") {
-        try {
-          scaleSub.unsubscribe();
-        } catch (err) {
-          console.error("[Billing] Failed to unsubscribe scale:", err);
-        }
-      }
     };
   }, []);
+
+  // Auto-fill whichever item weight field currently has focus when a new
+  // scale reading arrives — the table-specific behavior layered on top of
+  // the shared useScaleReading() subscription above.
+  useEffect(() => {
+    const target = focusedWeightFieldRef.current;
+    if (target && liveScaleReading && liveScaleReading.weightGrams > 0) {
+      const item = itemsRef.current.find((it) => it.id === target.itemId);
+      if (item) {
+        const updatedVal = gramsToMg(liveScaleReading.weightGrams.toFixed(3));
+        if (target.type === "gross") {
+          patchItemRef.current?.(target.itemId, { grossMg: updatedVal });
+        } else {
+          patchItemRef.current?.(target.itemId, { netMg: updatedVal });
+        }
+      }
+    }
+  }, [liveScaleReading]);
 
   const [customerSearch, setCustomerSearch] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
@@ -651,7 +642,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     const ratePaise =
       firstItemGoldRate ??
       (adv.goldRatePerGram ? Math.round(adv.goldRatePerGram * 100) : 0) ??
-      useSettings.getState().goldRatePerGramPaise ??
+      getCurrentGoldRatePaise() ??
       0;
     const goldValue = adv.goldGrossMg > 0 ? Math.round((adv.goldFineMg * ratePaise) / 1000) : 0;
     return {
@@ -843,7 +834,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
   patchItemRef.current = patchItem;
 
   function addItem() {
-    const defaultGoldRate = useSettings.getState().goldRatePerGramPaise || 0;
+    const defaultGoldRate = getCurrentGoldRatePaise() || 0;
     const isService =
       billingType === "repair" ||
       billingType === "polishing" ||
@@ -896,9 +887,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       return;
     }
 
-    const goldValuePaise = Math.round(
-      (stock.fineMg * (useSettings.getState().goldRatePerGramPaise || 0)) / 1000,
-    );
+    const goldValuePaise = Math.round((stock.fineMg * (getCurrentGoldRatePaise() || 0)) / 1000);
     // Making charge is always a percentage of gold value — the legacy
     // per-gram rate on older stock rows is only used as a one-time fallback
     // to derive an equivalent percentage, never applied as a flat amount.
@@ -921,7 +910,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       grossMg: stock.grossMg,
       netMg: stock.netMg,
       fineMg: stock.fineMg,
-      goldRatePerGramPaise: useSettings.getState().goldRatePerGramPaise || 0,
+      goldRatePerGramPaise: getCurrentGoldRatePaise() || 0,
       goldValuePaise,
       makingChargesPaise,
       makingChargePct,
@@ -1171,7 +1160,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     );
     const isGoldExchange = !!goldPayment;
 
-    const goldRatePaise = useSettings.getState().goldRatePerGramPaise || 1;
+    const goldRatePaise = getCurrentGoldRatePaise() || 1;
     const goldRequiredGrams = isGoldExchange ? computed.grandTotalPaise / goldRatePaise : 0;
     const goldReceivedGrams = isGoldExchange ? (goldPayment.goldGrossMg ?? 0) / 1000 : 0;
     const goldShortfallGrams = Math.max(0, goldRequiredGrams - goldReceivedGrams);
@@ -1218,7 +1207,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           gross_mg: Math.round(goldShortfallGrams * 1000),
           net_mg: Math.round(goldShortfallGrams * 1000),
           wastage_mg: 0,
-          rate_per_gram_paise: useSettings.getState().goldRatePerGramPaise || 0,
+          rate_per_gram_paise: getCurrentGoldRatePaise() || 0,
           amount_paise: 0,
           notes: `Gold payment shortfall receivable from Invoice ${allocatedInvoiceNo}`,
           payment_mode: "gold_exchange",
@@ -1278,7 +1267,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           gross_mg: Math.round(goldSurplusGrams * 1000),
           net_mg: Math.round(goldSurplusGrams * 1000),
           wastage_mg: 0,
-          rate_per_gram_paise: useSettings.getState().goldRatePerGramPaise || 0,
+          rate_per_gram_paise: getCurrentGoldRatePaise() || 0,
           amount_paise: 0,
           notes: `Excess gold received against Invoice ${allocatedInvoiceNo} — recorded as customer credit`,
           payment_mode: "gold_exchange",
@@ -1349,6 +1338,21 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       });
     }
 
+    // Cash-drawer auto-open — only for a fully-cash payment (no mixed UPI/
+    // card/bank/cheque), and only when both Settings toggles allow it.
+    // Best-effort: never blocks or fails invoice creation.
+    const hw = useSettings.getState().hardware;
+    if (
+      hw.cashDrawerEnabled &&
+      hw.cashDrawerAutoOpenOnCash &&
+      realPayments.length > 0 &&
+      realPayments.every((p) => p.mode === "cash")
+    ) {
+      thermalPrinterService.openCashDrawer().catch((err) => {
+        console.error("[Billing] Cash drawer auto-open failed:", err);
+      });
+    }
+
     const savedEmail = customer?.email ?? "";
     clearBillingType();
     clearCustomerId();
@@ -1413,7 +1417,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     stock?: ReturnType<typeof useStock.getState>["items"][number],
     order?: ReturnType<typeof useOrders.getState>["orders"][number],
   ): InvoiceItem {
-    const currentGoldRate = useSettings.getState().goldRatePerGramPaise || 0;
+    const currentGoldRate = getCurrentGoldRatePaise() || 0;
     if (stock) {
       const ratePaise = currentGoldRate;
       const goldValuePaise2 = Math.round((stock.fineMg * ratePaise) / 1000);
@@ -2504,14 +2508,17 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           <Section
             title="Payment Collection"
             right={
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 h-8 border-gold/40 text-gold hover:bg-gold/5"
-                onClick={addPaymentRow}
-              >
-                <Plus className="h-3.5 w-3.5" /> F9 Add Mode
-              </Button>
+              <div className="flex items-center gap-2">
+                <CashDrawerButton />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 h-8 border-gold/40 text-gold hover:bg-gold/5"
+                  onClick={addPaymentRow}
+                >
+                  <Plus className="h-3.5 w-3.5" /> F9 Add Mode
+                </Button>
+              </div>
             }
           >
             <div className="space-y-3">
@@ -2665,14 +2672,13 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                             <Label className="text-[10px] text-gold/80 font-semibold block mb-1">
                               Gross Wt (g)
                             </Label>
-                            <Input
-                              value={p.goldGramsStr}
-                              onChange={(e) => {
-                                patchPayment(idx, { goldGramsStr: e.target.value });
-                                autoFillFromGold(idx, { goldGramsStr: e.target.value });
+                            <WeightInput
+                              valueGrams={p.goldGramsStr ? parseFloat(p.goldGramsStr) : null}
+                              onChange={(g) => {
+                                const val = g != null ? String(g) : "";
+                                patchPayment(idx, { goldGramsStr: val });
+                                autoFillFromGold(idx, { goldGramsStr: val });
                               }}
-                              placeholder="0.000"
-                              className="h-8 text-xs font-mono border-gold/30 focus-visible:border-gold"
                             />
                           </div>
                           <div>
@@ -2888,7 +2894,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           {activeInspectedStock &&
             (() => {
               const s = activeInspectedStock;
-              const currentGoldRate = useSettings.getState().goldRatePerGramPaise || 0;
+              const currentGoldRate = getCurrentGoldRatePaise() || 0;
               const ratePaise = currentGoldRate;
               const previewGoldValuePaise = Math.round((s.fineMg * ratePaise) / 1000);
 
