@@ -19,7 +19,12 @@ export const Route = createFileRoute("/reports")({
 function ReportsLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isIndex = pathname === "/reports" || pathname === "/reports/";
-  const isPrintRoute = pathname.includes("-print") || pathname.includes("/print");
+  // Real print-chrome routes are named "<report>-print" (e.g.
+  // dailyclose-print). The old broader check also matched "/print" as a
+  // plain substring, which silently swallowed print-queue and print-log —
+  // ordinary report pages that happen to have "print" in their own name,
+  // not print-chrome routes — leaving them with no Back button at all.
+  const isPrintRoute = pathname.includes("-print");
 
   return (
     <>

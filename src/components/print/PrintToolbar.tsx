@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Printer, ArrowLeft, AlertTriangle } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Printer, ArrowLeft, AlertTriangle, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +24,9 @@ interface PrintToolbarProps {
   backUrl?: string; // Optional custom fallback URL
   layoutSize?: "a4" | "a5" | "thermal" | "thermal58" | "tag";
   onLayoutSizeChange?: (size: "a4" | "a5" | "thermal" | "thermal58" | "tag") => void;
+  /** Unified Print Engine: renders a "Download PDF" button when provided. Absent for every non-migrated route — no behavior change there. */
+  onDownloadPdf?: () => void;
+  downloadingPdf?: boolean;
 }
 
 export function PrintToolbar({
@@ -37,9 +41,12 @@ export function PrintToolbar({
   backUrl,
   layoutSize,
   onLayoutSizeChange,
+  onDownloadPdf,
+  downloadingPdf = false,
 }: PrintToolbarProps) {
   const [selectedReason, setSelectedReason] = useState<ReprintReason>("wrong_printer");
   const [note, setNote] = useState("");
+  const navigate = useNavigate();
 
   const isIframe = typeof window !== "undefined" && window !== window.parent;
 
@@ -49,7 +56,13 @@ export function PrintToolbar({
 
   const handleBack = () => {
     if (backUrl) {
-      window.location.href = backUrl;
+      // Route through the app router, not window.location.href — under the
+      // packaged Electron build (file:// + hash history, see router.tsx),
+      // a bare app path like "/people" is not a real filesystem path or
+      // hash fragment, so assigning it to location.href fails to load and
+      // Chromium shows its chrome-error://chromewebdata/ page (a blank
+      // white screen) instead of navigating back into the app.
+      navigate({ to: backUrl as any });
     } else {
       window.history.back();
     }
@@ -125,6 +138,22 @@ export function PrintToolbar({
                 Reprint Required (Prev: <strong>{reprintCount}</strong>)
               </span>
             </div>
+          )}
+
+          {onDownloadPdf && (
+            <Button
+              variant="outline"
+              onClick={onDownloadPdf}
+              disabled={downloadingPdf}
+              className="text-xs gap-1.5 px-4 h-9"
+            >
+              {downloadingPdf ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Download PDF
+            </Button>
           )}
 
           <Button

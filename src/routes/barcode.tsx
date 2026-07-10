@@ -447,6 +447,14 @@ function SavedTagsPreview({ ids }: { ids: string[] }) {
   if (items.length === 0) return null;
   return (
     <div className="rounded-2xl border border-border bg-card p-4">
+      <style>{`
+        @media print {
+          @page {
+            size: auto;
+            margin: 5mm;
+          }
+        }
+      `}</style>
       <div className="flex items-center justify-between mb-3">
         <div className="font-serif text-lg text-gold">Generated tags ({items.length})</div>
         <Button onClick={() => window.print()} variant="outline" className="gap-2">

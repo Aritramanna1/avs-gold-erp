@@ -31,6 +31,8 @@ export type PrintDocType =
   | "worker_passbook"
   | "home_settlement_slip"
   | "gold_settlement"
+  | "settlement_draft"
+  | "manufacturing_bill"
   | "daily_close_report"
   | "customer_ledger_statement"
   | "karigar_custody_statement"
@@ -39,6 +41,7 @@ export type PrintDocType =
   | "credit_note"
   | "debit_note"
   | "estimate_doc"
+  | "invoice_quote_preview"
   | "delivery_challan";
 
 export const PRINT_DOC_LABELS: Record<PrintDocType, string> = {
@@ -68,6 +71,8 @@ export const PRINT_DOC_LABELS: Record<PrintDocType, string> = {
   worker_passbook: "Worker Passbook",
   home_settlement_slip: "Home-Going Settlement Slip",
   gold_settlement: "Gold Settlement Receipt",
+  settlement_draft: "Settlement Draft",
+  manufacturing_bill: "Manufacturing Bill",
   daily_close_report: "Daily Close Report",
   customer_ledger_statement: "Customer Ledger Statement",
   karigar_custody_statement: "Karigar Custody Statement",
@@ -76,6 +81,7 @@ export const PRINT_DOC_LABELS: Record<PrintDocType, string> = {
   credit_note: "Credit Note",
   debit_note: "Debit Note",
   estimate_doc: "Estimate",
+  invoice_quote_preview: "Estimate (from Invoice)",
   delivery_challan: "Delivery Challan",
 };
 

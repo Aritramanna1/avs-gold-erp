@@ -12,7 +12,8 @@ import {
   type FinancialLockPeriod,
 } from "@/lib/financial-lock-store";
 import { supabase } from "@/integrations/supabase/client";
-import { Lock, LockOpen, Loader2 } from "lucide-react";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { Lock, LockOpen, Loader2, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports/month-end-close")({
@@ -83,11 +84,33 @@ function MonthEndClosePage() {
     }
   }
 
+  function handleCSV() {
+    const header = ["Branch", "Period", "Locked At", "Locked By", "Reason"];
+    const data = locks.map((l) => [
+      l.branchId,
+      l.period,
+      new Date(l.lockedAt).toLocaleString(),
+      l.lockedByEmail ?? "",
+      l.reason ?? "",
+    ]);
+    exportToCSV("month-end-close-locks.csv", [header, ...data]);
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <PageHeader
         title="Month-End Close"
         subtitle="Lock a financial period once close-out is verified. Locked periods block dated postings."
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => triggerPrint()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
+        }
       />
 
       <div className="rounded-2xl border border-border bg-card p-4 mb-6 flex flex-wrap gap-4 items-end">

@@ -28,10 +28,16 @@ export default async function globalSetup(config: FullConfig) {
   await page.getByTestId("auth-submit").click();
   await page.getByTestId("auth-form").waitFor({ state: "hidden", timeout: 30_000 });
 
-  // Seed the pilot dataset once. __mtjSeed is only installed in DEV builds
-  // (see src/routes/__root.tsx) — if it's missing (e.g. a production build
-  // target), skip seeding rather than fail the whole run; tests that depend
-  // on seeded records will fail individually with a clear error instead.
+  // Seed the pilot dataset once. __mtjSeed is installed asynchronously (a
+  // dynamic import() inside a useEffect in src/routes/__root.tsx, DEV builds
+  // only) which races against the check below — wait for it to land instead
+  // of checking once immediately after login. If it's genuinely absent (e.g.
+  // a production build target), skip seeding rather than fail the whole run;
+  // tests that depend on seeded records will fail individually with a clear
+  // error instead.
+  await page
+    .waitForFunction(() => typeof (window as any).__mtjSeed === "function", { timeout: 15_000 })
+    .catch(() => {});
   const seedResult = await page.evaluate(() => {
     const w = window as unknown as { __mtjSeed?: () => Record<string, unknown> };
     return typeof w.__mtjSeed === "function" ? w.__mtjSeed() : null;

@@ -123,8 +123,6 @@ function RootComponent() {
     currentPath.includes("-print") ||
     currentPath.includes("print-log");
 
-
-
   // Test-only seed helper — DEV builds only, for Playwright E2E harness.
   useEffect(() => {
     if (import.meta.env.DEV) {

@@ -1,19 +1,20 @@
 /**
  * Worker Return workflow — records material/gold physically handed back by
  * a worker against a Production Order (not a Job Card). Mirrors
- * order-issue-store.ts's OrderIssue exactly: a Production Order can have
- * any number of returns, each is an immutable record here plus a mirrored
- * Gold Ledger entry and Worker Gold Book entry, and the actual gold-ledger/
- * worker-gold-book updates are orchestrated by the calling dialog
- * (worker-return-dialog.tsx), not by this store — same convention
- * order-issue-store.ts already established.
+ * worker-gold-book-store.ts's order-linked "given" entries exactly: a
+ * Production Order can have any number of returns, each is an immutable
+ * record here plus a mirrored Gold Ledger entry and Worker Gold Book entry,
+ * and the actual gold-ledger/worker-gold-book updates are orchestrated by
+ * the calling dialog (worker-return-dialog.tsx), not by this store — same
+ * convention the Worker Issue flow (worker-issue-dialog.tsx) already
+ * established.
  *
  * Scope for this phase: recording the return and simple issued/returned/
  * pending totals only. Wastage, recovery, over/loss, salary deduction, and
  * manufacturing billing are NOT calculated or settled here — see the
  * reserved, documented (but unused) extension-point fields on
  * `WorkerReturn` below, the same "reserve the field, don't populate it yet"
- * pattern used by OrderIssue and job-card-engine.ts.
+ * pattern used by job-card-engine.ts.
  */
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
@@ -127,8 +128,9 @@ export const useWorkerReturns = create<WorkerReturnState>()((set, get) => ({
  * Visibility-only gold position for a Production Order — no settlement math
  * (wastage/recovery/over-loss are deliberately excluded, per this phase's
  * scope). `issuedFineMg` is the caller's responsibility to supply (sum of
- * OrderIssue.fineMg for the order) so this store doesn't need to import
- * order-issue-store.ts just to add two numbers together.
+ * the order's issued fine gold, summed from worker-gold-book-store.ts's
+ * order-linked "given" entries) so this store doesn't need to import
+ * worker-gold-book-store.ts just to add two numbers together.
  */
 export function computeGoldPosition(
   issuedFineMg: number,

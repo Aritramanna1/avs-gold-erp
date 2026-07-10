@@ -3,13 +3,11 @@ import { useMemo, useState } from "react";
 import { useDraft } from "@/lib/drafts-store";
 import { useSettings } from "@/lib/settings-store";
 import { usePeople } from "@/lib/people-store";
-import { useWorkerGoldBook, type WorkerGoldBookEntry } from "@/lib/worker-gold-book-store";
+import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
+import { usePrintEngine } from "@/lib/print-engine";
 import { mgToGrams, gramsToMg, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Logo } from "@/components/ui/Logo";
-import { PrintQR } from "@/components/print-qr";
-import { AvsPrintFooter } from "@/components/AvsPrintFooter";
 import {
   ArrowLeft,
   Printer,
@@ -88,8 +86,7 @@ function WorkerGoldBookPage() {
     "given",
   );
 
-  // Print view state (renders ledger if set, hiding main layout)
-  const [activePrintLedgerWorkerId, setActivePrintLedgerWorkerId] = useState<string | null>(null);
+  const { triggerPrint } = usePrintEngine();
 
   // Filters state
   const [workerFilter, setWorkerFilter] = useState<string>("all");
@@ -361,26 +358,6 @@ function WorkerGoldBookPage() {
     });
   }, [workers, getWorkerBalance, entries]);
 
-  // Active worker's previous balances before activePrintEntry
-  // Active ledger report data
-  const printLedgerData = useMemo(() => {
-    if (!activePrintLedgerWorkerId) return null;
-    const worker = workers.find((w) => w.id === activePrintLedgerWorkerId);
-    if (!worker) return null;
-
-    const wEntries = entries
-      .filter((e) => e.workerId === activePrintLedgerWorkerId)
-      .sort((a, b) => a.createdAt - b.createdAt); // oldest first for chronological ledger statement
-
-    const balance = getWorkerBalance(activePrintLedgerWorkerId);
-
-    return {
-      worker,
-      entries: wEntries,
-      summary: balance,
-    };
-  }, [activePrintLedgerWorkerId, workers, entries, getWorkerBalance]);
-
   // Quick reset filters
   const resetFilters = () => {
     setWorkerFilter("all");
@@ -390,215 +367,6 @@ function WorkerGoldBookPage() {
     setTypeFilter("all");
     setPendingOnly(false);
   };
-
-  /* ==================== SAME-TAB PRINT VIEWS ==================== */
-
-  // 2. Worker Ledger Statement Print View
-  if (printLedgerData) {
-    const { worker, entries: wEntries, summary } = printLedgerData;
-    let runningFine = 0;
-    let runningQty = 0;
-
-    return (
-      <div className="min-h-screen bg-neutral-100 text-black py-8 px-4 print:p-0 print:bg-white flex flex-col items-center">
-        {/* Print Controls Header */}
-        <div className="no-print w-full max-w-4xl bg-white rounded-2xl shadow-sm p-4 border border-neutral-200/80 mb-6 flex items-center justify-between">
-          <button
-            onClick={() => setActivePrintLedgerWorkerId(null)}
-            className="flex items-center text-sm font-semibold text-neutral-600 hover:text-black transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Gold Book
-          </button>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => window.print()}
-              className="gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold"
-            >
-              <Printer className="h-4 w-4" /> Print Ledger Statement
-            </Button>
-          </div>
-        </div>
-
-        {/* Paper Statement container */}
-        <div className="bg-white w-full max-w-4xl border border-neutral-300 shadow-md p-8 print:border-none print:shadow-none font-sans">
-          {/* Header Details */}
-          <div className="flex items-center justify-between border-b-2 border-neutral-800 pb-4 mb-6">
-            <div className="flex items-center gap-3">
-              <Logo variant="svg" className="h-14 w-14 object-contain text-amber-600" />
-              <div>
-                <h1 className="font-serif text-2xl font-bold tracking-tight text-neutral-900">
-                  {firm.shopName}
-                </h1>
-                <p className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold">
-                  Worker Custody Ledger Statement
-                </p>
-                <p className="text-[10px] text-neutral-500 font-medium">Full Account History</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-[10px] font-bold uppercase text-neutral-400">
-                Statement Generated On
-              </div>
-              <div className="font-mono text-xs font-semibold text-neutral-800">
-                {new Date().toLocaleDateString("en-IN")}
-              </div>
-              <div className="font-mono text-[9px] text-neutral-500">
-                {new Date().toLocaleTimeString("en-IN")}
-              </div>
-            </div>
-          </div>
-
-          {/* Worker profile details */}
-          <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 mb-6 grid grid-cols-3 gap-4 text-xs">
-            <div>
-              <span className="text-neutral-400 block mb-0.5">Worker Name</span>
-              <strong className="text-neutral-800 text-sm">{worker.fullName}</strong>
-              <span className="text-neutral-500 block text-[10px] mt-0.5">{worker.phone}</span>
-            </div>
-            <div className="border-l border-neutral-200 pl-4">
-              <span className="text-neutral-400 block mb-0.5">Cumulative Fine Gold</span>
-              <div className="space-y-0.5 font-mono">
-                <div>
-                  Given:{" "}
-                  <strong className="text-red-600">{mgToGrams(summary.totalGivenFine)} g</strong>
-                </div>
-                <div>
-                  Returned:{" "}
-                  <strong className="text-green-600">
-                    {mgToGrams(summary.totalReturnedFine)} g
-                  </strong>
-                </div>
-              </div>
-            </div>
-            <div className="border-l border-neutral-200 pl-4">
-              <span className="text-neutral-400 block mb-0.5">Closing Balance Pending</span>
-              <div className="text-sm font-bold text-amber-600 font-mono mt-1">
-                {mgToGrams(summary.pendingFine)} g Fine Gold
-              </div>
-              <div className="text-[10px] text-neutral-500 font-medium font-mono">
-                {summary.pendingQty} pieces Material Qty
-              </div>
-            </div>
-          </div>
-
-          {/* Statement Table */}
-          <div className="border border-neutral-200 rounded-lg overflow-hidden mb-8">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-neutral-50 border-b border-neutral-200 text-[10px] uppercase tracking-wider text-neutral-500 font-bold">
-                <tr>
-                  <th className="p-2.5">Date &amp; Time</th>
-                  <th className="p-2.5">Voucher / Slip No.</th>
-                  <th className="p-2.5">Particulars / Details</th>
-                  <th className="p-2.5">Type</th>
-                  <th className="p-2.5 text-right">Net Wt. (g)</th>
-                  <th className="p-2.5 text-right">Fine Gold (g)</th>
-                  <th className="p-2.5 text-right">Qty</th>
-                  <th className="p-2.5 text-right">Bal (Fine)</th>
-                  <th className="p-2.5 text-right">Bal (Qty)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {wEntries.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="p-8 text-center text-neutral-400 italic">
-                      No ledger transactions found for this worker.
-                    </td>
-                  </tr>
-                ) : (
-                  wEntries.map((e) => {
-                    const isG = e.type === "given";
-                    if (isG) {
-                      runningFine += e.fineMg;
-                      runningQty += e.quantity;
-                    } else {
-                      runningFine -= e.fineMg;
-                      runningQty -= e.quantity;
-                    }
-
-                    return (
-                      <tr
-                        key={e.id}
-                        className="border-b border-neutral-100 text-neutral-800 hover:bg-neutral-50/50"
-                      >
-                        <td className="p-2.5 whitespace-nowrap">
-                          <div>{e.date}</div>
-                          <div className="text-[9px] text-neutral-400 font-mono">{e.time}</div>
-                        </td>
-                        <td className="p-2.5 font-mono font-medium text-neutral-900">
-                          {e.entryNo}
-                        </td>
-                        <td
-                          className="p-2.5 max-w-[150px] truncate"
-                          title={`${e.particulars} ${e.reference ? `(${e.reference})` : ""}`}
-                        >
-                          <span className="font-semibold">{e.particulars}</span>
-                          {e.reference && (
-                            <span className="text-[9px] text-neutral-400 block">
-                              Ref: {e.reference}
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-2.5">
-                          <span
-                            className={`inline-block text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${isG ? "bg-red-50 text-red-600 border border-red-100" : "bg-green-50 text-green-600 border border-green-100"}`}
-                          >
-                            {isG ? "Issued" : "Returned"}
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-right font-mono">{mgToGrams(e.netMg)}</td>
-                        <td
-                          className={`p-2.5 text-right font-mono font-semibold ${isG ? "text-red-500" : "text-green-600"}`}
-                        >
-                          {e.fineMg > 0 ? `${mgToGrams(e.fineMg)}` : "—"}
-                        </td>
-                        <td className="p-2.5 text-right font-mono">
-                          {e.quantity > 0 ? e.quantity : "—"}
-                        </td>
-                        <td className="p-2.5 text-right font-mono font-bold text-neutral-900">
-                          {mgToGrams(runningFine)} g
-                        </td>
-                        <td className="p-2.5 text-right font-mono text-neutral-600">
-                          {runningQty} pcs
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Signatures & Footer Layout */}
-          <footer className="mt-16 grid grid-cols-[1fr_auto_1fr] gap-4 text-xs items-end border-t border-neutral-200 pt-6">
-            <div className="text-center">
-              <div className="h-10"></div>
-              <div className="border-t border-neutral-300 pt-1.5 text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">
-                Worker Signature
-              </div>
-            </div>
-
-            <div className="text-neutral-400 text-[10px] text-center max-w-xs">
-              Statement generated directly from MTJ ERP Worker Gold Custody Module. Security
-              authenticated logs.
-            </div>
-
-            <div className="text-center">
-              <div className="h-10"></div>
-              <div className="border-t border-neutral-300 pt-1.5 text-[10px] text-neutral-500 font-semibold uppercase tracking-wider">
-                Authorized Supervisor
-              </div>
-            </div>
-          </footer>
-
-          <div className="mt-6">
-            <AvsPrintFooter />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ==================== CORE USER INTERFACES ==================== */
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto" id="worker-gold-book-root">
@@ -1047,7 +815,12 @@ function WorkerGoldBookPage() {
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => setActivePrintLedgerWorkerId(item.worker.id)}
+                      onClick={() =>
+                        triggerPrint(
+                          `/workshop/gold-book-print/${item.worker.id}`,
+                          `Worker Custody Statement · ${item.worker.fullName}`,
+                        )
+                      }
                       className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold gap-1.5"
                     >
                       <Printer className="h-4 w-4" /> Print Statement

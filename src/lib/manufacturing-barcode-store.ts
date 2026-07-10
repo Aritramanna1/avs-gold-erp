@@ -18,7 +18,7 @@ import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { append as appendAuditEntry } from "./security/audit-log";
 import { nextDocumentNumber } from "./document-numbering";
-import { useOrderIssues } from "./order-issue-store";
+import { useWorkerGoldBook } from "./worker-gold-book-store";
 import { useWorkerReturns, computeGoldPosition } from "./worker-return-store";
 import { usePolishing } from "./polishing-store";
 import { useLedger } from "./ledger-store";
@@ -98,7 +98,9 @@ export interface EligibilityResult {
 
 /** Worker Return is "complete" once every gram issued to a worker for this order has been accounted for by a return. */
 export function isWorkerReturnComplete(orderId: string): boolean {
-  const issues = useOrderIssues.getState().issues.filter((i) => i.orderId === orderId);
+  const issues = useWorkerGoldBook
+    .getState()
+    .entries.filter((e) => e.orderId === orderId && e.type === "given");
   if (issues.length === 0) return false;
   const returns = useWorkerReturns.getState().returns.filter((r) => r.orderId === orderId);
   const issuedFineMg = issues.reduce((s, i) => s + i.fineMg, 0);

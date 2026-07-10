@@ -1,3 +1,38 @@
+## [1.1.0] — 2026-07-09
+
+### Version 1.1 Pilot — Integrated Smoke Test & Critical Print/Communications Fixes
+
+Full click-through smoke test of the packaged Electron build (not just `tsc`/lint/build) across Startup, Authentication, First-Time Setup, Customer, Orders, Workshop, Job Card, Worker Gold Book, Billing, Settlement, Reports, Printing, KYC, Communications, Settings, and CEO Dashboard. Every Critical/High finding below was reproduced live, fixed, and re-verified live before this release.
+
+#### Critical — Print Preview Modal showed a permanently blank document (`src/components/print/PrintPreviewModal.tsx`)
+
+Every one of the ~30 `triggerPrint(url, ...)` call sites across Billing (invoices, receipts, settlement slips, estimates, credit/debit notes, delivery challans), Orders, Repair, and Workshop (job cards, gold book) passes a bare app path (e.g. `/workshop/gold-book-print/abc123`) into the preview modal's `<iframe src>`. Under the packaged Electron build (`file://` protocol + hash-based routing — see `router.tsx`), a bare path is not a valid iframe source: the browser resolves it as an absolute filesystem path, which fails to load anything and leaves the preview permanently blank with no console error. Fixed once, at the single point these URLs are actually consumed (`toIframeSrc()`), rather than at each of the ~30 call sites. This is the "Fully integrated standard Print Layouts across all 13 printable modules" work referenced in the prior test-build's release notes — that claim did not hold up under live packaged-build testing until this fix.
+
+#### Critical — Communications Hub crashed on open (`src/lib/branch-store.ts`)
+
+`getAllBranches()` rebuilt brand-new `Branch` objects on every call, even when the underlying data hadn't changed. This broke `useShallow`'s referential-stability check on `getAccessibleBranches()`, causing an infinite re-render loop ("Maximum update depth exceeded") on every screen with a branch picker — Communications Hub, Settings → Communications, and Settings → WhatsApp all crashed identically. Fixed with reference-stable memoization keyed on the source array's identity.
+
+#### High — KYC/Printing Back button crashed to a blank white screen (`src/components/print/PrintToolbar.tsx`)
+
+`handleBack()` used `window.location.href = backUrl` for in-app navigation. Under the packaged build's `file://` + hash-history setup, a bare path like `/people` is not a real filesystem path, so the navigation fails and Chromium shows its `chrome-error://chromewebdata/` page. Shared across all 16 print-preview pages (Billing, Workshop, Settlement, People/KYC). Fixed by routing through the app router's `navigate()` instead.
+
+#### High — Save-before-load could silently overwrite live settings (3 files)
+
+`communications.index.tsx` (campaign templates), `settings.whatsapp.tsx` (WhatsApp Business API credentials/template mappings), and `settings.communications.tsx` (every provider's SMTP/API credentials) each snapshotted store data into local component state via `useState()` at mount, with no resync when the async Supabase hydration completed afterward. Opening any of these screens before hydration finished showed stale/default values; saving in that window would silently overwrite the real saved configuration — including live WhatsApp/SMTP credentials. Fixed with the same resync-on-store-change pattern already established for the firm profile form (`settings.index.tsx`, see `[0.8.0]`).
+
+#### Medium — WhatsApp message re-parse didn't visually update (`src/routes/whatsapp.tsx`)
+
+Clicking "Reset Parsed" updated the store correctly but the on-screen editable fields kept showing the pre-reparse values, since they were seeded once at mount and never resynced.
+
+#### Validation
+
+- `npx tsc --noEmit` ✓ 0 errors (whole repo)
+- `npm run build` / `npm run build:electron` ✓ 0 errors
+- Full integrated smoke test of the packaged Electron app: 0 remaining Critical/High findings after fixes above
+- Known non-blocking item: a `payments` count-only health-check query in `data-loader.ts`'s `pullAll()` times out at the client's 10s fetch limit on every boot; silently caught, result was never used, zero visible impact — left as-is (out of this release's scope)
+
+---
+
 ## [0.8.0] — 2026-07-07
 
 ### Pilot Stabilization Sprint — Priority 1 & 2

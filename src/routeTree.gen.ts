@@ -67,6 +67,7 @@ import { Route as SettingsWhatsappTemplatesRouteImport } from './routes/settings
 import { Route as SettingsWhatsappRouteImport } from './routes/settings.whatsapp'
 import { Route as SettingsStorageDiagnosticsRouteImport } from './routes/settings.storage-diagnostics'
 import { Route as SettingsSecurityCenterRouteImport } from './routes/settings.security-center'
+import { Route as SettingsPrintTemplatesRouteImport } from './routes/settings.print-templates'
 import { Route as SettingsDocumentVaultRouteImport } from './routes/settings.document-vault'
 import { Route as SettingsCommunicationsRouteImport } from './routes/settings.communications'
 import { Route as SettingsBranchSettingsRouteImport } from './routes/settings.branch-settings'
@@ -115,8 +116,8 @@ import { Route as BillingDeliveryChallansIndexRouteImport } from './routes/billi
 import { Route as BillingDebitNotesIndexRouteImport } from './routes/billing.debit-notes.index'
 import { Route as BillingCreditNotesIndexRouteImport } from './routes/billing.credit-notes.index'
 import { Route as WorkshopReceiveSlipIdRouteImport } from './routes/workshop.receive-slip.$id'
-import { Route as WorkshopPrintIdRouteImport } from './routes/workshop.print.$id'
 import { Route as WorkshopJobCardOrderIdRouteImport } from './routes/workshop.job-card.$orderId'
+import { Route as WorkshopGoldBookPrintWorkerIdRouteImport } from './routes/workshop.gold-book-print.$workerId'
 import { Route as WorkshopFilingsSlipIdRouteImport } from './routes/workshop.filings-slip.$id'
 import { Route as StockPrintIdRouteImport } from './routes/stock.print.$id'
 import { Route as SettlementDraftPrintIdRouteImport } from './routes/settlement.draft-print.$id'
@@ -128,13 +129,17 @@ import { Route as ManufacturingBillIdRouteImport } from './routes/manufacturing.
 import { Route as BillingSettlementSlipIdRouteImport } from './routes/billing.settlement-slip.$id'
 import { Route as BillingReceiptIdRouteImport } from './routes/billing.receipt.$id'
 import { Route as BillingPrintIdRouteImport } from './routes/billing.print.$id'
-import { Route as BillingMfgBillIdRouteImport } from './routes/billing.mfg-bill.$id'
 import { Route as BillingGoldSettlementPrintIdRouteImport } from './routes/billing.gold-settlement-print.$id'
 import { Route as BillingEstimatesIdRouteImport } from './routes/billing.estimates.$id'
 import { Route as BillingEstimateIdRouteImport } from './routes/billing.estimate.$id'
+import { Route as BillingEstimatePrintIdRouteImport } from './routes/billing.estimate-print.$id'
 import { Route as BillingDeliveryChallansIdRouteImport } from './routes/billing.delivery-challans.$id'
+import { Route as BillingDeliveryChallanPrintIdRouteImport } from './routes/billing.delivery-challan-print.$id'
 import { Route as BillingDebitNotesIdRouteImport } from './routes/billing.debit-notes.$id'
+import { Route as BillingDebitNotePrintIdRouteImport } from './routes/billing.debit-note-print.$id'
 import { Route as BillingCreditNotesIdRouteImport } from './routes/billing.credit-notes.$id'
+import { Route as BillingCreditNotePrintIdRouteImport } from './routes/billing.credit-note-print.$id'
+import { Route as WorkshopPrintJobCardOrderIdRouteImport } from './routes/workshop.print.job-card.$orderId'
 import { Route as RepairPrintKindIdRouteImport } from './routes/repair.print.$kind.$id'
 import { Route as OrdersPrintKindIdRouteImport } from './routes/orders.print.$kind.$id'
 import { Route as ManufacturingBillNewJobIdRouteImport } from './routes/manufacturing.bill.new.$jobId'
@@ -432,6 +437,11 @@ const SettingsSecurityCenterRoute = SettingsSecurityCenterRouteImport.update({
   path: '/security-center',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsPrintTemplatesRoute = SettingsPrintTemplatesRouteImport.update({
+  id: '/print-templates',
+  path: '/print-templates',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsDocumentVaultRoute = SettingsDocumentVaultRouteImport.update({
   id: '/document-vault',
   path: '/document-vault',
@@ -678,16 +688,17 @@ const WorkshopReceiveSlipIdRoute = WorkshopReceiveSlipIdRouteImport.update({
   path: '/receive-slip/$id',
   getParentRoute: () => WorkshopRoute,
 } as any)
-const WorkshopPrintIdRoute = WorkshopPrintIdRouteImport.update({
-  id: '/print/$id',
-  path: '/print/$id',
-  getParentRoute: () => WorkshopRoute,
-} as any)
 const WorkshopJobCardOrderIdRoute = WorkshopJobCardOrderIdRouteImport.update({
   id: '/job-card/$orderId',
   path: '/job-card/$orderId',
   getParentRoute: () => WorkshopRoute,
 } as any)
+const WorkshopGoldBookPrintWorkerIdRoute =
+  WorkshopGoldBookPrintWorkerIdRouteImport.update({
+    id: '/gold-book-print/$workerId',
+    path: '/gold-book-print/$workerId',
+    getParentRoute: () => WorkshopRoute,
+  } as any)
 const WorkshopFilingsSlipIdRoute = WorkshopFilingsSlipIdRouteImport.update({
   id: '/filings-slip/$id',
   path: '/filings-slip/$id',
@@ -744,11 +755,6 @@ const BillingPrintIdRoute = BillingPrintIdRouteImport.update({
   path: '/print/$id',
   getParentRoute: () => BillingRoute,
 } as any)
-const BillingMfgBillIdRoute = BillingMfgBillIdRouteImport.update({
-  id: '/mfg-bill/$id',
-  path: '/mfg-bill/$id',
-  getParentRoute: () => BillingRoute,
-} as any)
 const BillingGoldSettlementPrintIdRoute =
   BillingGoldSettlementPrintIdRouteImport.update({
     id: '/gold-settlement-print/$id',
@@ -765,10 +771,21 @@ const BillingEstimateIdRoute = BillingEstimateIdRouteImport.update({
   path: '/estimate/$id',
   getParentRoute: () => BillingRoute,
 } as any)
+const BillingEstimatePrintIdRoute = BillingEstimatePrintIdRouteImport.update({
+  id: '/estimate-print/$id',
+  path: '/estimate-print/$id',
+  getParentRoute: () => BillingRoute,
+} as any)
 const BillingDeliveryChallansIdRoute =
   BillingDeliveryChallansIdRouteImport.update({
     id: '/delivery-challans/$id',
     path: '/delivery-challans/$id',
+    getParentRoute: () => BillingRoute,
+  } as any)
+const BillingDeliveryChallanPrintIdRoute =
+  BillingDeliveryChallanPrintIdRouteImport.update({
+    id: '/delivery-challan-print/$id',
+    path: '/delivery-challan-print/$id',
     getParentRoute: () => BillingRoute,
   } as any)
 const BillingDebitNotesIdRoute = BillingDebitNotesIdRouteImport.update({
@@ -776,11 +793,28 @@ const BillingDebitNotesIdRoute = BillingDebitNotesIdRouteImport.update({
   path: '/debit-notes/$id',
   getParentRoute: () => BillingRoute,
 } as any)
+const BillingDebitNotePrintIdRoute = BillingDebitNotePrintIdRouteImport.update({
+  id: '/debit-note-print/$id',
+  path: '/debit-note-print/$id',
+  getParentRoute: () => BillingRoute,
+} as any)
 const BillingCreditNotesIdRoute = BillingCreditNotesIdRouteImport.update({
   id: '/credit-notes/$id',
   path: '/credit-notes/$id',
   getParentRoute: () => BillingRoute,
 } as any)
+const BillingCreditNotePrintIdRoute =
+  BillingCreditNotePrintIdRouteImport.update({
+    id: '/credit-note-print/$id',
+    path: '/credit-note-print/$id',
+    getParentRoute: () => BillingRoute,
+  } as any)
+const WorkshopPrintJobCardOrderIdRoute =
+  WorkshopPrintJobCardOrderIdRouteImport.update({
+    id: '/print/job-card/$orderId',
+    path: '/print/job-card/$orderId',
+    getParentRoute: () => WorkshopRoute,
+  } as any)
 const RepairPrintKindIdRoute = RepairPrintKindIdRouteImport.update({
   id: '/print/$kind/$id',
   path: '/print/$kind/$id',
@@ -871,6 +905,7 @@ export interface FileRoutesByFullPath {
   '/settings/branch-settings': typeof SettingsBranchSettingsRoute
   '/settings/communications': typeof SettingsCommunicationsRoute
   '/settings/document-vault': typeof SettingsDocumentVaultRoute
+  '/settings/print-templates': typeof SettingsPrintTemplatesRoute
   '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
   '/settings/whatsapp': typeof SettingsWhatsappRoute
@@ -905,13 +940,16 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/stock/': typeof StockIndexRoute
   '/workshop/': typeof WorkshopIndexRoute
+  '/billing/credit-note-print/$id': typeof BillingCreditNotePrintIdRoute
   '/billing/credit-notes/$id': typeof BillingCreditNotesIdRoute
+  '/billing/debit-note-print/$id': typeof BillingDebitNotePrintIdRoute
   '/billing/debit-notes/$id': typeof BillingDebitNotesIdRoute
+  '/billing/delivery-challan-print/$id': typeof BillingDeliveryChallanPrintIdRoute
   '/billing/delivery-challans/$id': typeof BillingDeliveryChallansIdRoute
+  '/billing/estimate-print/$id': typeof BillingEstimatePrintIdRoute
   '/billing/estimate/$id': typeof BillingEstimateIdRoute
   '/billing/estimates/$id': typeof BillingEstimatesIdRoute
   '/billing/gold-settlement-print/$id': typeof BillingGoldSettlementPrintIdRoute
-  '/billing/mfg-bill/$id': typeof BillingMfgBillIdRoute
   '/billing/print/$id': typeof BillingPrintIdRoute
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
   '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
@@ -923,8 +961,8 @@ export interface FileRoutesByFullPath {
   '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
+  '/workshop/gold-book-print/$workerId': typeof WorkshopGoldBookPrintWorkerIdRoute
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
-  '/workshop/print/$id': typeof WorkshopPrintIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
   '/billing/credit-notes/': typeof BillingCreditNotesIndexRoute
   '/billing/debit-notes/': typeof BillingDebitNotesIndexRoute
@@ -934,6 +972,7 @@ export interface FileRoutesByFullPath {
   '/manufacturing/bill/new/$jobId': typeof ManufacturingBillNewJobIdRoute
   '/orders/print/$kind/$id': typeof OrdersPrintKindIdRoute
   '/repair/print/$kind/$id': typeof RepairPrintKindIdRoute
+  '/workshop/print/job-card/$orderId': typeof WorkshopPrintJobCardOrderIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -991,6 +1030,7 @@ export interface FileRoutesByTo {
   '/settings/branch-settings': typeof SettingsBranchSettingsRoute
   '/settings/communications': typeof SettingsCommunicationsRoute
   '/settings/document-vault': typeof SettingsDocumentVaultRoute
+  '/settings/print-templates': typeof SettingsPrintTemplatesRoute
   '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
   '/settings/whatsapp': typeof SettingsWhatsappRoute
@@ -1025,13 +1065,16 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/stock': typeof StockIndexRoute
   '/workshop': typeof WorkshopIndexRoute
+  '/billing/credit-note-print/$id': typeof BillingCreditNotePrintIdRoute
   '/billing/credit-notes/$id': typeof BillingCreditNotesIdRoute
+  '/billing/debit-note-print/$id': typeof BillingDebitNotePrintIdRoute
   '/billing/debit-notes/$id': typeof BillingDebitNotesIdRoute
+  '/billing/delivery-challan-print/$id': typeof BillingDeliveryChallanPrintIdRoute
   '/billing/delivery-challans/$id': typeof BillingDeliveryChallansIdRoute
+  '/billing/estimate-print/$id': typeof BillingEstimatePrintIdRoute
   '/billing/estimate/$id': typeof BillingEstimateIdRoute
   '/billing/estimates/$id': typeof BillingEstimatesIdRoute
   '/billing/gold-settlement-print/$id': typeof BillingGoldSettlementPrintIdRoute
-  '/billing/mfg-bill/$id': typeof BillingMfgBillIdRoute
   '/billing/print/$id': typeof BillingPrintIdRoute
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
   '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
@@ -1043,8 +1086,8 @@ export interface FileRoutesByTo {
   '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
+  '/workshop/gold-book-print/$workerId': typeof WorkshopGoldBookPrintWorkerIdRoute
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
-  '/workshop/print/$id': typeof WorkshopPrintIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
   '/billing/credit-notes': typeof BillingCreditNotesIndexRoute
   '/billing/debit-notes': typeof BillingDebitNotesIndexRoute
@@ -1054,6 +1097,7 @@ export interface FileRoutesByTo {
   '/manufacturing/bill/new/$jobId': typeof ManufacturingBillNewJobIdRoute
   '/orders/print/$kind/$id': typeof OrdersPrintKindIdRoute
   '/repair/print/$kind/$id': typeof RepairPrintKindIdRoute
+  '/workshop/print/job-card/$orderId': typeof WorkshopPrintJobCardOrderIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1124,6 +1168,7 @@ export interface FileRoutesById {
   '/settings/branch-settings': typeof SettingsBranchSettingsRoute
   '/settings/communications': typeof SettingsCommunicationsRoute
   '/settings/document-vault': typeof SettingsDocumentVaultRoute
+  '/settings/print-templates': typeof SettingsPrintTemplatesRoute
   '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
   '/settings/whatsapp': typeof SettingsWhatsappRoute
@@ -1158,13 +1203,16 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/stock/': typeof StockIndexRoute
   '/workshop/': typeof WorkshopIndexRoute
+  '/billing/credit-note-print/$id': typeof BillingCreditNotePrintIdRoute
   '/billing/credit-notes/$id': typeof BillingCreditNotesIdRoute
+  '/billing/debit-note-print/$id': typeof BillingDebitNotePrintIdRoute
   '/billing/debit-notes/$id': typeof BillingDebitNotesIdRoute
+  '/billing/delivery-challan-print/$id': typeof BillingDeliveryChallanPrintIdRoute
   '/billing/delivery-challans/$id': typeof BillingDeliveryChallansIdRoute
+  '/billing/estimate-print/$id': typeof BillingEstimatePrintIdRoute
   '/billing/estimate/$id': typeof BillingEstimateIdRoute
   '/billing/estimates/$id': typeof BillingEstimatesIdRoute
   '/billing/gold-settlement-print/$id': typeof BillingGoldSettlementPrintIdRoute
-  '/billing/mfg-bill/$id': typeof BillingMfgBillIdRoute
   '/billing/print/$id': typeof BillingPrintIdRoute
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
   '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
@@ -1176,8 +1224,8 @@ export interface FileRoutesById {
   '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
+  '/workshop/gold-book-print/$workerId': typeof WorkshopGoldBookPrintWorkerIdRoute
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
-  '/workshop/print/$id': typeof WorkshopPrintIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
   '/billing/credit-notes/': typeof BillingCreditNotesIndexRoute
   '/billing/debit-notes/': typeof BillingDebitNotesIndexRoute
@@ -1187,6 +1235,7 @@ export interface FileRoutesById {
   '/manufacturing/bill/new/$jobId': typeof ManufacturingBillNewJobIdRoute
   '/orders/print/$kind/$id': typeof OrdersPrintKindIdRoute
   '/repair/print/$kind/$id': typeof RepairPrintKindIdRoute
+  '/workshop/print/job-card/$orderId': typeof WorkshopPrintJobCardOrderIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1258,6 +1307,7 @@ export interface FileRouteTypes {
     | '/settings/branch-settings'
     | '/settings/communications'
     | '/settings/document-vault'
+    | '/settings/print-templates'
     | '/settings/security-center'
     | '/settings/storage-diagnostics'
     | '/settings/whatsapp'
@@ -1292,13 +1342,16 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/stock/'
     | '/workshop/'
+    | '/billing/credit-note-print/$id'
     | '/billing/credit-notes/$id'
+    | '/billing/debit-note-print/$id'
     | '/billing/debit-notes/$id'
+    | '/billing/delivery-challan-print/$id'
     | '/billing/delivery-challans/$id'
+    | '/billing/estimate-print/$id'
     | '/billing/estimate/$id'
     | '/billing/estimates/$id'
     | '/billing/gold-settlement-print/$id'
-    | '/billing/mfg-bill/$id'
     | '/billing/print/$id'
     | '/billing/receipt/$id'
     | '/billing/settlement-slip/$id'
@@ -1310,8 +1363,8 @@ export interface FileRouteTypes {
     | '/settlement/draft-print/$id'
     | '/stock/print/$id'
     | '/workshop/filings-slip/$id'
+    | '/workshop/gold-book-print/$workerId'
     | '/workshop/job-card/$orderId'
-    | '/workshop/print/$id'
     | '/workshop/receive-slip/$id'
     | '/billing/credit-notes/'
     | '/billing/debit-notes/'
@@ -1321,6 +1374,7 @@ export interface FileRouteTypes {
     | '/manufacturing/bill/new/$jobId'
     | '/orders/print/$kind/$id'
     | '/repair/print/$kind/$id'
+    | '/workshop/print/job-card/$orderId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1378,6 +1432,7 @@ export interface FileRouteTypes {
     | '/settings/branch-settings'
     | '/settings/communications'
     | '/settings/document-vault'
+    | '/settings/print-templates'
     | '/settings/security-center'
     | '/settings/storage-diagnostics'
     | '/settings/whatsapp'
@@ -1412,13 +1467,16 @@ export interface FileRouteTypes {
     | '/settings'
     | '/stock'
     | '/workshop'
+    | '/billing/credit-note-print/$id'
     | '/billing/credit-notes/$id'
+    | '/billing/debit-note-print/$id'
     | '/billing/debit-notes/$id'
+    | '/billing/delivery-challan-print/$id'
     | '/billing/delivery-challans/$id'
+    | '/billing/estimate-print/$id'
     | '/billing/estimate/$id'
     | '/billing/estimates/$id'
     | '/billing/gold-settlement-print/$id'
-    | '/billing/mfg-bill/$id'
     | '/billing/print/$id'
     | '/billing/receipt/$id'
     | '/billing/settlement-slip/$id'
@@ -1430,8 +1488,8 @@ export interface FileRouteTypes {
     | '/settlement/draft-print/$id'
     | '/stock/print/$id'
     | '/workshop/filings-slip/$id'
+    | '/workshop/gold-book-print/$workerId'
     | '/workshop/job-card/$orderId'
-    | '/workshop/print/$id'
     | '/workshop/receive-slip/$id'
     | '/billing/credit-notes'
     | '/billing/debit-notes'
@@ -1441,6 +1499,7 @@ export interface FileRouteTypes {
     | '/manufacturing/bill/new/$jobId'
     | '/orders/print/$kind/$id'
     | '/repair/print/$kind/$id'
+    | '/workshop/print/job-card/$orderId'
   id:
     | '__root__'
     | '/'
@@ -1510,6 +1569,7 @@ export interface FileRouteTypes {
     | '/settings/branch-settings'
     | '/settings/communications'
     | '/settings/document-vault'
+    | '/settings/print-templates'
     | '/settings/security-center'
     | '/settings/storage-diagnostics'
     | '/settings/whatsapp'
@@ -1544,13 +1604,16 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/stock/'
     | '/workshop/'
+    | '/billing/credit-note-print/$id'
     | '/billing/credit-notes/$id'
+    | '/billing/debit-note-print/$id'
     | '/billing/debit-notes/$id'
+    | '/billing/delivery-challan-print/$id'
     | '/billing/delivery-challans/$id'
+    | '/billing/estimate-print/$id'
     | '/billing/estimate/$id'
     | '/billing/estimates/$id'
     | '/billing/gold-settlement-print/$id'
-    | '/billing/mfg-bill/$id'
     | '/billing/print/$id'
     | '/billing/receipt/$id'
     | '/billing/settlement-slip/$id'
@@ -1562,8 +1625,8 @@ export interface FileRouteTypes {
     | '/settlement/draft-print/$id'
     | '/stock/print/$id'
     | '/workshop/filings-slip/$id'
+    | '/workshop/gold-book-print/$workerId'
     | '/workshop/job-card/$orderId'
-    | '/workshop/print/$id'
     | '/workshop/receive-slip/$id'
     | '/billing/credit-notes/'
     | '/billing/debit-notes/'
@@ -1573,6 +1636,7 @@ export interface FileRouteTypes {
     | '/manufacturing/bill/new/$jobId'
     | '/orders/print/$kind/$id'
     | '/repair/print/$kind/$id'
+    | '/workshop/print/job-card/$orderId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -2022,6 +2086,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsSecurityCenterRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/print-templates': {
+      id: '/settings/print-templates'
+      path: '/print-templates'
+      fullPath: '/settings/print-templates'
+      preLoaderRoute: typeof SettingsPrintTemplatesRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/document-vault': {
       id: '/settings/document-vault'
       path: '/document-vault'
@@ -2358,18 +2429,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkshopReceiveSlipIdRouteImport
       parentRoute: typeof WorkshopRoute
     }
-    '/workshop/print/$id': {
-      id: '/workshop/print/$id'
-      path: '/print/$id'
-      fullPath: '/workshop/print/$id'
-      preLoaderRoute: typeof WorkshopPrintIdRouteImport
-      parentRoute: typeof WorkshopRoute
-    }
     '/workshop/job-card/$orderId': {
       id: '/workshop/job-card/$orderId'
       path: '/job-card/$orderId'
       fullPath: '/workshop/job-card/$orderId'
       preLoaderRoute: typeof WorkshopJobCardOrderIdRouteImport
+      parentRoute: typeof WorkshopRoute
+    }
+    '/workshop/gold-book-print/$workerId': {
+      id: '/workshop/gold-book-print/$workerId'
+      path: '/gold-book-print/$workerId'
+      fullPath: '/workshop/gold-book-print/$workerId'
+      preLoaderRoute: typeof WorkshopGoldBookPrintWorkerIdRouteImport
       parentRoute: typeof WorkshopRoute
     }
     '/workshop/filings-slip/$id': {
@@ -2449,13 +2520,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BillingPrintIdRouteImport
       parentRoute: typeof BillingRoute
     }
-    '/billing/mfg-bill/$id': {
-      id: '/billing/mfg-bill/$id'
-      path: '/mfg-bill/$id'
-      fullPath: '/billing/mfg-bill/$id'
-      preLoaderRoute: typeof BillingMfgBillIdRouteImport
-      parentRoute: typeof BillingRoute
-    }
     '/billing/gold-settlement-print/$id': {
       id: '/billing/gold-settlement-print/$id'
       path: '/gold-settlement-print/$id'
@@ -2477,11 +2541,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BillingEstimateIdRouteImport
       parentRoute: typeof BillingRoute
     }
+    '/billing/estimate-print/$id': {
+      id: '/billing/estimate-print/$id'
+      path: '/estimate-print/$id'
+      fullPath: '/billing/estimate-print/$id'
+      preLoaderRoute: typeof BillingEstimatePrintIdRouteImport
+      parentRoute: typeof BillingRoute
+    }
     '/billing/delivery-challans/$id': {
       id: '/billing/delivery-challans/$id'
       path: '/delivery-challans/$id'
       fullPath: '/billing/delivery-challans/$id'
       preLoaderRoute: typeof BillingDeliveryChallansIdRouteImport
+      parentRoute: typeof BillingRoute
+    }
+    '/billing/delivery-challan-print/$id': {
+      id: '/billing/delivery-challan-print/$id'
+      path: '/delivery-challan-print/$id'
+      fullPath: '/billing/delivery-challan-print/$id'
+      preLoaderRoute: typeof BillingDeliveryChallanPrintIdRouteImport
       parentRoute: typeof BillingRoute
     }
     '/billing/debit-notes/$id': {
@@ -2491,12 +2569,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BillingDebitNotesIdRouteImport
       parentRoute: typeof BillingRoute
     }
+    '/billing/debit-note-print/$id': {
+      id: '/billing/debit-note-print/$id'
+      path: '/debit-note-print/$id'
+      fullPath: '/billing/debit-note-print/$id'
+      preLoaderRoute: typeof BillingDebitNotePrintIdRouteImport
+      parentRoute: typeof BillingRoute
+    }
     '/billing/credit-notes/$id': {
       id: '/billing/credit-notes/$id'
       path: '/credit-notes/$id'
       fullPath: '/billing/credit-notes/$id'
       preLoaderRoute: typeof BillingCreditNotesIdRouteImport
       parentRoute: typeof BillingRoute
+    }
+    '/billing/credit-note-print/$id': {
+      id: '/billing/credit-note-print/$id'
+      path: '/credit-note-print/$id'
+      fullPath: '/billing/credit-note-print/$id'
+      preLoaderRoute: typeof BillingCreditNotePrintIdRouteImport
+      parentRoute: typeof BillingRoute
+    }
+    '/workshop/print/job-card/$orderId': {
+      id: '/workshop/print/job-card/$orderId'
+      path: '/print/job-card/$orderId'
+      fullPath: '/workshop/print/job-card/$orderId'
+      preLoaderRoute: typeof WorkshopPrintJobCardOrderIdRouteImport
+      parentRoute: typeof WorkshopRoute
     }
     '/repair/print/$kind/$id': {
       id: '/repair/print/$kind/$id'
@@ -2547,13 +2646,16 @@ interface BillingRouteChildren {
   BillingIdRoute: typeof BillingIdRoute
   BillingNewRoute: typeof BillingNewRoute
   BillingIndexRoute: typeof BillingIndexRoute
+  BillingCreditNotePrintIdRoute: typeof BillingCreditNotePrintIdRoute
   BillingCreditNotesIdRoute: typeof BillingCreditNotesIdRoute
+  BillingDebitNotePrintIdRoute: typeof BillingDebitNotePrintIdRoute
   BillingDebitNotesIdRoute: typeof BillingDebitNotesIdRoute
+  BillingDeliveryChallanPrintIdRoute: typeof BillingDeliveryChallanPrintIdRoute
   BillingDeliveryChallansIdRoute: typeof BillingDeliveryChallansIdRoute
+  BillingEstimatePrintIdRoute: typeof BillingEstimatePrintIdRoute
   BillingEstimateIdRoute: typeof BillingEstimateIdRoute
   BillingEstimatesIdRoute: typeof BillingEstimatesIdRoute
   BillingGoldSettlementPrintIdRoute: typeof BillingGoldSettlementPrintIdRoute
-  BillingMfgBillIdRoute: typeof BillingMfgBillIdRoute
   BillingPrintIdRoute: typeof BillingPrintIdRoute
   BillingReceiptIdRoute: typeof BillingReceiptIdRoute
   BillingSettlementSlipIdRoute: typeof BillingSettlementSlipIdRoute
@@ -2567,13 +2669,16 @@ const BillingRouteChildren: BillingRouteChildren = {
   BillingIdRoute: BillingIdRoute,
   BillingNewRoute: BillingNewRoute,
   BillingIndexRoute: BillingIndexRoute,
+  BillingCreditNotePrintIdRoute: BillingCreditNotePrintIdRoute,
   BillingCreditNotesIdRoute: BillingCreditNotesIdRoute,
+  BillingDebitNotePrintIdRoute: BillingDebitNotePrintIdRoute,
   BillingDebitNotesIdRoute: BillingDebitNotesIdRoute,
+  BillingDeliveryChallanPrintIdRoute: BillingDeliveryChallanPrintIdRoute,
   BillingDeliveryChallansIdRoute: BillingDeliveryChallansIdRoute,
+  BillingEstimatePrintIdRoute: BillingEstimatePrintIdRoute,
   BillingEstimateIdRoute: BillingEstimateIdRoute,
   BillingEstimatesIdRoute: BillingEstimatesIdRoute,
   BillingGoldSettlementPrintIdRoute: BillingGoldSettlementPrintIdRoute,
-  BillingMfgBillIdRoute: BillingMfgBillIdRoute,
   BillingPrintIdRoute: BillingPrintIdRoute,
   BillingReceiptIdRoute: BillingReceiptIdRoute,
   BillingSettlementSlipIdRoute: BillingSettlementSlipIdRoute,
@@ -2768,6 +2873,7 @@ interface SettingsRouteChildren {
   SettingsBranchSettingsRoute: typeof SettingsBranchSettingsRoute
   SettingsCommunicationsRoute: typeof SettingsCommunicationsRoute
   SettingsDocumentVaultRoute: typeof SettingsDocumentVaultRoute
+  SettingsPrintTemplatesRoute: typeof SettingsPrintTemplatesRoute
   SettingsSecurityCenterRoute: typeof SettingsSecurityCenterRoute
   SettingsStorageDiagnosticsRoute: typeof SettingsStorageDiagnosticsRoute
   SettingsWhatsappRoute: typeof SettingsWhatsappRoute
@@ -2782,6 +2888,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsBranchSettingsRoute: SettingsBranchSettingsRoute,
   SettingsCommunicationsRoute: SettingsCommunicationsRoute,
   SettingsDocumentVaultRoute: SettingsDocumentVaultRoute,
+  SettingsPrintTemplatesRoute: SettingsPrintTemplatesRoute,
   SettingsSecurityCenterRoute: SettingsSecurityCenterRoute,
   SettingsStorageDiagnosticsRoute: SettingsStorageDiagnosticsRoute,
   SettingsWhatsappRoute: SettingsWhatsappRoute,
@@ -2826,9 +2933,10 @@ interface WorkshopRouteChildren {
   WorkshopPolishingRoute: typeof WorkshopPolishingRoute
   WorkshopIndexRoute: typeof WorkshopIndexRoute
   WorkshopFilingsSlipIdRoute: typeof WorkshopFilingsSlipIdRoute
+  WorkshopGoldBookPrintWorkerIdRoute: typeof WorkshopGoldBookPrintWorkerIdRoute
   WorkshopJobCardOrderIdRoute: typeof WorkshopJobCardOrderIdRoute
-  WorkshopPrintIdRoute: typeof WorkshopPrintIdRoute
   WorkshopReceiveSlipIdRoute: typeof WorkshopReceiveSlipIdRoute
+  WorkshopPrintJobCardOrderIdRoute: typeof WorkshopPrintJobCardOrderIdRoute
 }
 
 const WorkshopRouteChildren: WorkshopRouteChildren = {
@@ -2839,9 +2947,10 @@ const WorkshopRouteChildren: WorkshopRouteChildren = {
   WorkshopPolishingRoute: WorkshopPolishingRoute,
   WorkshopIndexRoute: WorkshopIndexRoute,
   WorkshopFilingsSlipIdRoute: WorkshopFilingsSlipIdRoute,
+  WorkshopGoldBookPrintWorkerIdRoute: WorkshopGoldBookPrintWorkerIdRoute,
   WorkshopJobCardOrderIdRoute: WorkshopJobCardOrderIdRoute,
-  WorkshopPrintIdRoute: WorkshopPrintIdRoute,
   WorkshopReceiveSlipIdRoute: WorkshopReceiveSlipIdRoute,
+  WorkshopPrintJobCardOrderIdRoute: WorkshopPrintJobCardOrderIdRoute,
 }
 
 const WorkshopRouteWithChildren = WorkshopRoute._addFileChildren(

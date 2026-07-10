@@ -13,6 +13,9 @@ const workerTransactionRepository = createRepository<{ id: string } & Record<str
 
 export type MaterialPurity = Purity | "none"; // none for non-gold/silver items
 
+/** Materials a structured, order-linked Issue can post (mirrors the vault-category mapping in material-vault-sync.ts's issueMaterialToVaultCategory). */
+export const WORKER_ISSUE_MATERIALS = ["Gold", "KDM", "Ball", "Die", "Wire", "Finding", "Other"];
+
 export interface WorkerGoldBookEntry {
   id: string;
   entryNo: string;
@@ -33,6 +36,14 @@ export interface WorkerGoldBookEntry {
   type: "given" | "return";
   reference?: string; // Optional reference note / order name / design reference
   createdAt: number;
+
+  // ── Order linkage — populated by the structured Issue/Return dialogs
+  // (worker-issue-dialog.tsx, worker-return-dialog.tsx); absent on manual
+  // entries made from the general Worker Gold Book page. ──────────────────
+  orderId?: string;
+  orderNo?: string;
+  /** Stamps this entry as consumed by a Manufacturing Bill — guards against a later auto-collect pass double-counting it. */
+  manufacturingBillId?: string;
 }
 
 export interface WorkerMaterialBalance {
@@ -59,6 +70,9 @@ export interface WorkerGoldBookState {
     },
   ) => Promise<WorkerGoldBookEntry>;
   removeEntry: (id: string) => Promise<void>;
+  forOrder: (orderId: string) => WorkerGoldBookEntry[];
+  /** Stamps this entry as consumed by a Manufacturing Bill — guards against a later auto-collect pass double-counting it. */
+  linkToManufacturingBill: (id: string, billId: string) => Promise<void>;
   getWorkerBalance: (workerId: string) => {
     totalGivenFine: number;
     totalReturnedFine: number;
@@ -159,6 +173,8 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
       type: input.type,
       reference: input.reference || "",
       createdAt: Date.now(),
+      orderId: input.orderId,
+      orderNo: input.orderNo,
     };
 
     // Financial lock: block postings dated inside a month-end-closed period.
@@ -198,6 +214,20 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
   removeEntry: async (id) => {
     await workerTransactionRepository.delete(id);
     await get().refresh();
+  },
+
+  forOrder: (orderId) =>
+    get()
+      .entries.filter((e) => e.orderId === orderId)
+      .sort((a, b) => b.createdAt - a.createdAt),
+
+  linkToManufacturingBill: async (id, billId) => {
+    const entry = get().entries.find((e) => e.id === id);
+    if (!entry || entry.manufacturingBillId) return;
+    const updated: WorkerGoldBookEntry = { ...entry, manufacturingBillId: billId };
+    const kind = updated.type === "given" ? "gold_book_given" : "gold_book_return";
+    await workerTransactionRepository.save({ ...updated, kind });
+    set((s) => ({ entries: s.entries.map((e) => (e.id === id ? updated : e)) }));
   },
 
   getWorkerBalance: (workerId) => {

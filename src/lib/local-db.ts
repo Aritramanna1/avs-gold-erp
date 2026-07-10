@@ -43,8 +43,20 @@ function normalizeRow(row: Record<string, unknown>): Record<string, unknown> {
   return normalized;
 }
 
+// A fresh window.indexedDB.open() per call (the previous approach) leaked one
+// live IDBDatabase connection per call site — persistDatabase() alone runs on
+// every runLocal() transaction commit, so a normal session accumulated an
+// unbounded number of never-closed connections. That both degrades the app
+// over a long session and means indexedDB.deleteDatabase() (factory reset)
+// can never complete, since deletion blocks until every open connection to
+// the database closes. Caching a single shared connection — closed only by
+// clearLocalDatabase() — matches the singleton pattern already used for the
+// sql.js `db`/`dbReady` state above.
+let idbConnection: Promise<IDBDatabase> | null = null;
+
 function openIndexedDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (idbConnection) return idbConnection;
+  idbConnection = new Promise((resolve, reject) => {
     const request = window.indexedDB.open(SQLITE_DB_KEY, SQLITE_DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -55,9 +67,19 @@ function openIndexedDb(): Promise<IDBDatabase> {
         db.createObjectStore("crypto");
       }
     };
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => {
+      idbConnection = null;
+      reject(request.error);
+    };
+    request.onsuccess = () => {
+      const idb = request.result;
+      idb.onclose = () => {
+        idbConnection = null;
+      };
+      resolve(idb);
+    };
   });
+  return idbConnection;
 }
 
 const DEVICE_ID_KEY = "mtj_erp_device_id";
@@ -790,6 +812,17 @@ function createTables(): void {
   );`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_print_jobs_status ON print_jobs(status);`);
 
+  // Unified Print Engine (Phase 0): one row per template, generic
+  // id/data/updated_at shape — same pattern as print_logs and the other
+  // 15+ JSON-blob tables in this file, so it works with createRepository()
+  // unchanged. `data` holds the full PrintTemplate (see
+  // src/lib/print-engine/types.ts), including its own version history.
+  db.run(`CREATE TABLE IF NOT EXISTS print_templates (
+    id TEXT PRIMARY KEY,
+    data TEXT,
+    updated_at TEXT
+  );`);
+
   // Gold Reconciliation Engine (Priority 6): one row per reconciliation run,
   // storing the full report (including every exception found) so past runs
   // remain reviewable even after the underlying bills change — the report
@@ -1115,6 +1148,11 @@ export async function clearLocalDatabase(): Promise<void> {
   db = null;
   dbReady = null;
   SQL = null;
+  if (idbConnection) {
+    const idb = await idbConnection.catch(() => null);
+    idb?.close();
+    idbConnection = null;
+  }
   await new Promise<void>((resolve, reject) => {
     const request = window.indexedDB.deleteDatabase(SQLITE_DB_KEY);
     request.onsuccess = () => resolve();

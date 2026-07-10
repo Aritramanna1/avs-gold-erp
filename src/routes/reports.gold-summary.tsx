@@ -7,8 +7,8 @@ import { useMfgBills } from "@/lib/manufacturing-bill-store";
 import { useJobCards, karigarCustodySummaries } from "@/lib/jobcards-store";
 import { useSettings } from "@/lib/settings-store";
 import { mgToGrams } from "@/lib/gold";
-import { exportToCSV } from "@/lib/report-engine";
-import { Coins, Download } from "lucide-react";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { Coins, Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/gold-summary")({
   head: () => ({ meta: [{ title: "Manufacturing Gold Summary · AVS Gold ERP" }] }),
@@ -108,9 +108,14 @@ function GoldSummaryPage() {
         title="Manufacturing Gold Summary"
         subtitle="Gold is the primary accounting unit — every figure below is fine gold, not cash."
         actions={
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
-            <Download className="h-4 w-4" /> CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => triggerPrint()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
         }
       />
 

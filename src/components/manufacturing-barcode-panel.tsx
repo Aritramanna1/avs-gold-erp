@@ -9,7 +9,7 @@ import {
   BARCODE_STATUS_LABELS,
   type BarcodeStatus,
 } from "@/lib/manufacturing-barcode-store";
-import { useOrderIssues } from "@/lib/order-issue-store";
+import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { useWorkerReturns } from "@/lib/worker-return-store";
 import { usePolishing } from "@/lib/polishing-store";
 import { useBusinessRules } from "@/lib/business-rules-store";
@@ -53,7 +53,7 @@ export function ManufacturingBarcodePanel({
   // must explicitly depend on those stores' live arrays, or eligibility
   // would silently go stale the moment a Gold Issue/Worker Return/Polishing
   // transaction is recorded elsewhere on this same page without a reload.
-  const allIssues = useOrderIssues((s) => s.issues);
+  const allIssues = useWorkerGoldBook((s) => s.entries);
   const allReturns = useWorkerReturns((s) => s.returns);
   const allPolishingTxns = usePolishing((s) => s.transactions);
   const eligibility = useMemo(

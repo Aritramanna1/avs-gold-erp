@@ -5,6 +5,18 @@ import { AvsPrintFooter } from "@/components/AvsPrintFooter";
 import { Logo } from "@/components/ui/Logo";
 import type { PrintDocType } from "@/lib/printlog-store";
 
+export type PrintSize = "a4" | "a5" | "a6" | "thermal" | "thermal58" | "tag";
+
+/** Physical dimensions per size, for anything (e.g. the print preview modal) that needs to display them without duplicating this table. */
+export const PRINT_SIZE_LABELS: Record<PrintSize, string> = {
+  a4: "A4 (210 × 297mm)",
+  a5: "A5 (148 × 210mm)",
+  a6: "A6 (105 × 148mm)",
+  thermal: "Thermal 80mm",
+  thermal58: "Thermal 58mm",
+  tag: "Tag / Label (50 × 30mm)",
+};
+
 interface PrintLayoutProps {
   children: ReactNode;
   title: string;
@@ -12,7 +24,7 @@ interface PrintLayoutProps {
   docType?: PrintDocType;
   recordId?: string;
   createdAt?: number | string | Date;
-  size?: "a4" | "a5" | "thermal" | "thermal58" | "tag";
+  size?: PrintSize;
   showQR?: boolean;
   qrLabel?: string;
   qrPosition?: "header" | "footer" | "none";
@@ -63,7 +75,7 @@ export function PrintLayout({
   const displayGstin = branch?.gstin || profile.gstin;
   const bodyRef = useRef<HTMLDivElement>(null);
   const [fitScale, setFitScale] = useState(1);
-  const shouldAutoFit = autoFit && (size === "a4" || size === "a5");
+  const shouldAutoFit = autoFit && (size === "a4" || size === "a5" || size === "a6");
 
   useLayoutEffect(() => {
     if (!shouldAutoFit || !bodyRef.current) return;
@@ -89,6 +101,7 @@ export function PrintLayout({
   const sizeClasses = {
     a4: "w-[210mm] min-h-[297mm] p-8 mx-auto bg-white text-black border border-stone-200 shadow-md print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
     a5: "w-[148mm] min-h-[210mm] p-6 mx-auto bg-white text-black border border-stone-200 shadow-sm print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
+    a6: "w-[105mm] min-h-[148mm] p-4 mx-auto bg-white text-black border border-stone-200 shadow-sm print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
     thermal:
       "w-[80mm] p-4 mx-auto bg-white text-black border border-stone-200 print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
     thermal58:
@@ -98,8 +111,29 @@ export function PrintLayout({
 
   const isThermalOrTag = size === "thermal" || size === "thermal58" || size === "tag";
 
+  // Physical @page size/margin per format. Previously every non-thermal/tag
+  // size (including a5) fell through to "A4 portrait" here — meaning A5
+  // documents were told to print on A4 stock. Each size now maps to its own
+  // real page size.
+  const PAGE_SIZE: Record<PrintSize, string> = {
+    a4: "A4 portrait",
+    a5: "A5 portrait",
+    a6: "A6 portrait",
+    thermal: "80mm auto",
+    thermal58: "58mm auto",
+    tag: "50mm 30mm",
+  };
+  const PAGE_MARGIN: Record<PrintSize, string> = {
+    a4: "12mm 15mm 15mm 15mm",
+    a5: "10mm 12mm 12mm 12mm",
+    a6: "8mm 10mm 10mm 10mm",
+    thermal: "2mm",
+    thermal58: "1mm",
+    tag: "1mm",
+  };
+
   return (
-    <div className={sizeClasses[size]} data-testid="print-layout-root">
+    <div className={sizeClasses[size]} data-testid="print-layout-root" data-print-size={size}>
       {/* Universal Print System Overrides */}
       <style>{`
         @media print {
@@ -116,8 +150,8 @@ export function PrintLayout({
             display: none !important;
           }
           @page {
-            size: ${size === "thermal" ? "80mm auto" : size === "thermal58" ? "58mm auto" : size === "tag" ? "50mm 30mm" : "A4 portrait"};
-            margin: ${size === "thermal" ? "2mm" : size === "thermal58" ? "1mm" : size === "tag" ? "1mm" : "12mm 15mm 15mm 15mm"};
+            size: ${PAGE_SIZE[size]};
+            margin: ${PAGE_MARGIN[size]};
           }
           /* High-Contrast Table Border Enforcement */
           table {

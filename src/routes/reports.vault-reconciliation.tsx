@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { useLedger, computeBalances } from "@/lib/ledger-store";
 import { usePhysicalStockCounts } from "@/lib/physical-stock-verification-store";
 import { mgToGrams } from "@/lib/gold";
-import { fmtDate } from "@/lib/report-engine";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { fmtDate, triggerPrint } from "@/lib/report-engine";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, CheckCircle2, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/vault-reconciliation")({
   head: () => ({ meta: [{ title: "Vault Reconciliation · AVS Gold ERP" }] }),
@@ -48,6 +49,11 @@ function VaultReconciliationPage() {
       <PageHeader
         title="Vault Reconciliation"
         subtitle="Gold Ledger book balance vs. the most recent Physical Stock Count"
+        actions={
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => triggerPrint()}>
+            <Printer className="h-4 w-4" /> Print
+          </Button>
+        }
       />
 
       <div className="grid sm:grid-cols-2 gap-4 mt-4">

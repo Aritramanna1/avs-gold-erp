@@ -49,18 +49,34 @@ export interface Branch {
  * consumed by any caller), so they're filled with harmless, unused
  * defaults rather than invented as new UI/data to manage.
  */
+// Memoized on the source array's identity: settings-store only replaces
+// `branches` when it's actually mutated, so returning the same output array
+// (and same element references) for an unchanged source keeps this safe to
+// call from a Zustand selector. Without this, every call built brand-new
+// Branch objects even when nothing changed, which broke referential
+// stability for any selector reading it (e.g. `getAccessibleBranches()`
+// below via `useShallow`) and caused an infinite re-render loop ("Maximum
+// update depth exceeded") on every screen with a branch picker.
+type SettingsBranches = ReturnType<typeof useSettings.getState>["branches"];
+let _allBranchesCache: { source: SettingsBranches; result: Branch[] } | null = null;
 export function getAllBranches(): Branch[] {
-  return useSettings.getState().branches.map((b) => ({
+  const source = useSettings.getState().branches;
+  if (_allBranchesCache && _allBranchesCache.source === source) {
+    return _allBranchesCache.result;
+  }
+  const result = source.map((b) => ({
     id: b.id,
     name: b.name,
     shortName: b.code || b.name,
-    type: "retail",
+    type: "retail" as const,
     city: "",
     state: "",
     invoicePrefix: b.invoiceSeries ?? "",
     barcodePrefix: "",
     active: b.active,
   }));
+  _allBranchesCache = { source, result };
+  return result;
 }
 
 // ── User roles ────────────────────────────────────────────────────────────────

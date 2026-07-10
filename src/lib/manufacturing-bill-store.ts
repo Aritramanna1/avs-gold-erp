@@ -30,7 +30,7 @@ import { useWorkflowEngine } from "./workflow-engine";
 import { commService } from "./comm/service";
 import { useSettings } from "./settings-store";
 import { createRepository } from "./repositories/base-repository";
-import { useOrderIssues } from "./order-issue-store";
+import { useWorkerGoldBook } from "./worker-gold-book-store";
 import { useWorkerReturns } from "./worker-return-store";
 import { useOutsideWork } from "./outside-work-store";
 import { useOutsideWorkLabour } from "./outside-work-labour-store";
@@ -194,8 +194,9 @@ export interface ManufacturingBill {
 
   // ── Gold-First Order-Level Auto-Collection (additive) ──────────────────
   // Everything below is populated by autoCollectManufacturingBillData() from
-  // order-issue-store.ts / worker-return-store.ts / outside-work-store.ts /
-  // outside-work-labour-store.ts / polishing-store.ts / material-vault-store.ts
+  // worker-gold-book-store.ts (order-linked "given" entries) / worker-return-store.ts /
+  // outside-work-store.ts / outside-work-labour-store.ts / polishing-store.ts /
+  // material-vault-store.ts
   // — read-only rollups, never manually re-entered. Each source record gets
   // stamped with this bill's id (its own `manufacturingBillId` field) once
   // collected, so a later auto-collect pass never double-counts it. This is
@@ -206,7 +207,7 @@ export interface ManufacturingBill {
 
   /** Fine gold received directly from the customer for this order (read from Gold Ledger `customer_gold_received` entries referencing this order — informational, gold-first). */
   goldReceivedFromCustomerFineMg: number;
-  /** Fine gold issued to workers via order-issue-store.ts (Order-level Issue, distinct from the Job-Card goldIssuedFineMg above). */
+  /** Fine gold issued to workers via worker-gold-book-store.ts's order-linked "given" entries (Order-level Issue, distinct from the Job-Card goldIssuedFineMg above). */
   orderIssuedFineMg: number;
   /** Fine gold returned by workers via worker-return-store.ts (Order-level Return). */
   orderReturnedFineMg: number;
@@ -428,10 +429,10 @@ export function autoCollectManufacturingBillData(
   orderId: string,
   orderNo: string,
 ): AutoCollectedManufacturingData {
-  const unlinkedIssues = useOrderIssues
+  const unlinkedIssues = useWorkerGoldBook
     .getState()
     .forOrder(orderId)
-    .filter((i) => !i.manufacturingBillId);
+    .filter((e) => e.type === "given" && !e.manufacturingBillId);
   const orderIssuedFineMg = unlinkedIssues.reduce((s, i) => s + i.fineMg, 0);
 
   const unlinkedReturns = useWorkerReturns
@@ -516,7 +517,7 @@ export async function linkAutoCollectedSources(
 ): Promise<void> {
   await Promise.all([
     ...data.linkedOrderIssueIds.map((id) =>
-      useOrderIssues.getState().linkToManufacturingBill(id, billId),
+      useWorkerGoldBook.getState().linkToManufacturingBill(id, billId),
     ),
     ...data.linkedWorkerReturnIds.map((id) =>
       useWorkerReturns.getState().linkToManufacturingBill(id, billId),

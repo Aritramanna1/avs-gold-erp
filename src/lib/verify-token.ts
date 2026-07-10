@@ -6,12 +6,15 @@
  *     MTJ|<DOC_TYPE>|<DOC_NUMBER>|<RECORD_ID>|<CHECKSUM>
  *
  * The checksum is the first 8 hex chars of a deterministic non-crypto hash
- * over (firmName, docType, docNumber, recordId, createdAtISO). This is NOT
- * a cryptographic signature — it is a tamper-detection token for in-shop
- * receipt verification.
+ * over (docType, docNumber, recordId, createdAtISO). This is NOT a
+ * cryptographic signature — it is a tamper-detection token for in-shop
+ * receipt verification. Deliberately excludes the shop name: /verify is a
+ * public, unauthenticated route (so a customer's phone can scan without an
+ * ERP login) and never hydrates useSettings, so including firm.shopName
+ * here made every checksum unrecomputable on the verify side — the token
+ * would never match, ever, even for a genuine unmodified document.
  */
 import type { PrintDocType } from "@/lib/printlog-store";
-import { useSettings } from "@/lib/settings-store";
 import { useOrders } from "@/lib/orders-store";
 import { useJobCards } from "@/lib/jobcards-store";
 import { useBilling } from "@/lib/billing-store";
@@ -46,17 +49,9 @@ export interface PayloadInput {
   createdAt?: number | string | Date;
 }
 
-function firmName(): string {
-  try {
-    return useSettings.getState().firm.shopName || "MTJ";
-  } catch {
-    return "MTJ";
-  }
-}
-
 export function payloadFor(d: PayloadInput): string {
   const iso = d.createdAt ? new Date(d.createdAt).toISOString().slice(0, 10) : "";
-  const checksum = simpleHash([firmName(), d.docType, d.docNumber, d.recordId, iso].join("|"));
+  const checksum = simpleHash([d.docType, d.docNumber, d.recordId, iso].join("|"));
   return `MTJ|${d.docType}|${d.docNumber}|${d.recordId}|${checksum}`;
 }
 

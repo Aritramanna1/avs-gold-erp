@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useStock, STOCK_LOCATION_LABELS, type StockItem } from "@/lib/stock-store";
 import { useSettings } from "@/lib/settings-store";
-import { exportToCSV, fmtG } from "@/lib/report-engine";
-import { Download } from "lucide-react";
+import { exportToCSV, fmtG, triggerPrint } from "@/lib/report-engine";
+import { Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/inventory-ageing")({
   head: () => ({ meta: [{ title: "Inventory Ageing · AVS Gold ERP" }] }),
@@ -117,6 +117,9 @@ function InventoryAgeingPage() {
             </select>
             <Button variant="outline" onClick={handleExport} className="gap-2">
               <Download className="h-4 w-4" /> Export CSV
+            </Button>
+            <Button variant="outline" onClick={() => triggerPrint()} className="gap-2">
+              <Printer className="h-4 w-4" /> Print
             </Button>
           </div>
         }

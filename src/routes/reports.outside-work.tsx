@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useOutsideWork, computeOutsideWorkPosition } from "@/lib/outside-work-store";
 import { mgToGrams } from "@/lib/gold";
-import { exportToCSV, fmtDate } from "@/lib/report-engine";
-import { Download } from "lucide-react";
+import { exportToCSV, fmtDate, triggerPrint } from "@/lib/report-engine";
+import { Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/outside-work")({
   head: () => ({ meta: [{ title: "Outside Work Report · AVS Gold ERP" }] }),
@@ -73,9 +73,14 @@ function OutsideWorkReportPage() {
         title="Outside Work Report"
         subtitle="Per-jeweller pending gold and material across every Outside Work transaction"
         actions={
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
-            <Download className="h-4 w-4" /> CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => triggerPrint()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
         }
       />
 

@@ -1,6 +1,6 @@
 /**
  * Workflow integration glue — maps the free-text material labels used by
- * Gold/Material Issue (order-issue-store.ts's COMMON_MATERIALS) and Worker
+ * Worker Issue (worker-gold-book-store.ts's WORKER_ISSUE_MATERIALS) and Worker
  * Return (worker-return-store.ts's COMMON_RETURN_MATERIALS) onto the Gold &
  * Material Vault's category keys (material-vault-store.ts), so both
  * dialogs can synchronize the vault without duplicating this mapping.

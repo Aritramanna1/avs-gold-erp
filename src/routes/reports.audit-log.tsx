@@ -10,8 +10,8 @@ import {
   type AuditEntry,
   type ChainVerificationResult,
 } from "@/lib/security/audit-log";
-import { exportToCSV } from "@/lib/report-engine";
-import { ShieldCheck, ShieldAlert, RefreshCw, Loader2, Download } from "lucide-react";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { ShieldCheck, ShieldAlert, RefreshCw, Loader2, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports/audit-log")({
@@ -95,6 +95,9 @@ function AuditLogPage() {
             </Button>
             <Button variant="outline" onClick={handleCSV} className="gap-2">
               <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" onClick={() => triggerPrint()} className="gap-2">
+              <Printer className="h-4 w-4" /> Print
             </Button>
             <Button onClick={handleVerify} disabled={verifying} className="gap-2">
               {verifying ? (

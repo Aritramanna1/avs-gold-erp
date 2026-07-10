@@ -15,7 +15,8 @@ import {
 import { useWorkflowEngine } from "@/lib/workflow-engine";
 import { useSettings } from "@/lib/settings-store";
 import { useFinancialLocks, loadFinancialLocks } from "@/lib/financial-lock-store";
-import { Send, Loader2, AlertTriangle, Calendar } from "lucide-react";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { Send, Loader2, AlertTriangle, Calendar, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports/reminders")({
@@ -78,11 +79,31 @@ function RemindersPage() {
     }
   }
 
+  function handleCSV() {
+    const header = ["Category", "Name", "Entity Id"];
+    const data = [
+      ...outstanding.map((r) => ["Outstanding Cash Balance", r.name, r.entityId]),
+      ...workerGold.map((r) => ["Worker Gold Settlement Pending", r.name, r.entityId]),
+      ...customerGold.map((r) => ["Customer Gold Credit Owed", r.name, r.entityId]),
+    ];
+    exportToCSV("pending-reminders.csv", [header, ...data]);
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <PageHeader
         title="Payment & Gold Reminders"
         subtitle={`Nothing here sends automatically. Outstanding balances shown are due for at least ${paymentReminderDays} day(s) — change this in Settings → Workflow.`}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => triggerPrint()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
+        }
       />
 
       {overdueMonthEndBranches.length > 0 && (

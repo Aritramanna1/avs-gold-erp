@@ -34,10 +34,12 @@ import {
   Recycle,
   Printer,
   ArrowRightLeft,
+  Download,
 } from "lucide-react";
 import { PrintHeader } from "@/components/print-header";
 import { AvsPrintFooter } from "@/components/AvsPrintFooter";
 import { MaterialVaultPanel } from "@/components/material-vault-panel";
+import { exportToCSV } from "@/lib/report-engine";
 
 import { guardRoute } from "@/lib/permissions";
 
@@ -51,8 +53,40 @@ function LedgerPage() {
   const entries = useLedger((s) => s.entries);
   const balance = useMemo(() => computeBalances(entries), [entries]);
 
+  function handleCSV() {
+    const header = [
+      "Date",
+      "Type",
+      "Net Fine (g)",
+      "Gross (g)",
+      "Purity",
+      "Form",
+      "Reference",
+      "Notes",
+    ];
+    const data = entries.map((e) => [
+      new Date(e.createdAt).toLocaleString("en-IN"),
+      MOVEMENT_LABELS[e.type] ?? e.type,
+      mgToGrams(e.netFineMg),
+      e.grossMg ? mgToGrams(e.grossMg) : "",
+      e.purity ?? "",
+      e.form ?? "",
+      e.reference ?? "",
+      e.notes ?? "",
+    ]);
+    exportToCSV("gold-material-ledger.csv", [header, ...data]);
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto print:p-0 print:m-0 print:bg-white print:text-black">
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 12mm;
+          }
+        }
+      `}</style>
       <div className="hidden print:block">
         <PrintHeader title="Gold & Material Vault Report" />
       </div>
@@ -61,14 +95,14 @@ function LedgerPage() {
         title="Gold & Material Vault"
         subtitle="Every gram is traceable. Vault, karigar, finished stock, customer gold, scrap, and every workshop material reconcile to the ledger."
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 no-print"
-            onClick={() => window.print()}
-          >
-            <Printer className="h-4 w-4" /> Print Ledger
-          </Button>
+          <div className="flex gap-2 no-print">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCSV}>
+              <Download className="h-4 w-4" /> Export CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" /> Print Ledger
+            </Button>
+          </div>
         }
       />
 

@@ -10,8 +10,8 @@ import {
   type ReconciliationReport,
 } from "@/lib/reconciliation/gold-reconciliation";
 import { mgToGrams } from "@/lib/gold";
-import { exportToCSV } from "@/lib/report-engine";
-import { RefreshCw, Loader2, AlertTriangle, CheckCircle2, Download } from "lucide-react";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { RefreshCw, Loader2, AlertTriangle, CheckCircle2, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports/gold-reconciliation")({
@@ -76,6 +76,9 @@ function GoldReconciliationPage() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleCSV} className="gap-2">
               <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" onClick={() => triggerPrint()} className="gap-2">
+              <Printer className="h-4 w-4" /> Print
             </Button>
             <Button onClick={handleRunNow} disabled={running} className="gap-2">
               {running ? (

@@ -34,7 +34,8 @@ export function searchCommunicationHistory(filter: CommHistoryFilter = {}): Comm
     if (filter.recipientQuery) {
       const q = filter.recipientQuery.toLowerCase();
       const matches =
-        (e.recipientLabel || "").toLowerCase().includes(q) || (e.recipientPhone || "").toLowerCase().includes(q);
+        (e.recipientLabel || "").toLowerCase().includes(q) ||
+        (e.recipientPhone || "").toLowerCase().includes(q);
       if (!matches) return false;
     }
     if (filter.templateName && e.templateName !== filter.templateName) return false;

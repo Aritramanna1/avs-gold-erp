@@ -274,8 +274,8 @@ function OrdersListPage() {
       )}
 
       <p className="mt-6 text-xs text-muted-foreground">
-        {t("orders.workflow")}: <span className="text-gold">Order</span> → Job Card → Issue Gold →
-        Receive Work → Stock → Billing → Daily Close.
+        {t("orders.workflow")}: <span className="text-gold">Order</span> → Job Card → Receive Work →
+        Stock → Billing → Daily Close.
       </p>
 
       <ReminderDialog

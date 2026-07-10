@@ -22,6 +22,7 @@ import {
 import { useMfgBills, MFG_BILL_STATUS_LABELS } from "@/lib/manufacturing-bill-store";
 import { useSettings } from "@/lib/settings-store";
 import { useWorkflowEngine } from "@/lib/workflow-engine";
+import { usePrintRecord } from "@/components/print/usePrintRecord";
 import {
   ArrowLeft,
   Printer,
@@ -58,6 +59,17 @@ export default function MfgBillView() {
   const [deliverOpen, setDeliverOpen] = useState(false);
 
   const bill = bills.find((b) => b.id === id)!;
+
+  const {
+    docNumber,
+    isReprint,
+    reprintCount,
+    reprintOpen,
+    setReprintOpen,
+    handlePrintTrigger,
+    recordReprint,
+  } = usePrintRecord(bill ? "manufacturing_bill" : null, id);
+
   if (!bill) {
     return (
       <div className="p-8 text-center space-y-2">
@@ -147,8 +159,15 @@ export default function MfgBillView() {
               </Button>
             </Link>
           )}
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
-            <Printer className="h-4 w-4" /> Print Bill
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handlePrintTrigger}
+            data-testid="mfg-bill-print"
+          >
+            <Printer className="h-4 w-4" />
+            {isReprint ? `Reprint (${reprintCount})` : "Print Bill"}
           </Button>
           {bill.status === "finalised" && (
             <>
@@ -306,6 +325,14 @@ export default function MfgBillView() {
       </div>
 
       {/* ── A4 Print Document ───────────────────────────────────────────── */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+          }
+        }
+      `}</style>
       <div
         className="bg-white text-black shadow-xl mx-auto print:shadow-none"
         style={{
@@ -779,6 +806,25 @@ export default function MfgBillView() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-emerald-600 text-white" onClick={handleMarkDelivered}>
               Confirm Delivery
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reprint confirmation — this bill was already printed once before */}
+      <AlertDialog open={reprintOpen} onOpenChange={setReprintOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reprint Manufacturing Bill?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {docNumber} has been printed before ({reprintCount} time
+              {reprintCount === 1 ? "" : "s"}). This reprint will be recorded in the audit log.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => recordReprint("other")}>
+              Confirm &amp; Print
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

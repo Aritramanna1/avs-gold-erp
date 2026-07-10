@@ -45,14 +45,19 @@ export function ReferenceNotesPanel({ entityType, entityId }: Props) {
           </div>
         ) : (
           notes.map((note) => (
-            <div key={note.id} className="p-3 rounded-lg border bg-card/50 text-sm flex gap-3 relative group">
+            <div
+              key={note.id}
+              className="p-3 rounded-lg border bg-card/50 text-sm flex gap-3 relative group"
+            >
               <div className="pt-1 text-muted-foreground shrink-0">
                 <MessageSquare className="h-4 w-4" />
               </div>
               <div className="space-y-1 flex-1">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-xs">{note.author}</span>
-                  <span className="text-[10px] text-muted-foreground">{format(note.createdAt, "PP p")}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(note.createdAt, "PP p")}
+                  </span>
                 </div>
                 <div className="whitespace-pre-wrap">{note.note}</div>
               </div>

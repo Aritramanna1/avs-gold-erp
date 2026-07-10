@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { startCloudSync, stopCloudSync, pullAll } from "@/lib/data-loader";
+import { resetAllBusinessStores } from "@/lib/session-cleanup";
 import { useSettings } from "@/lib/settings-store";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 
@@ -18,6 +19,11 @@ let _checkInFlight: Promise<{ allowed: boolean; error?: string }> | null = null;
 export function AuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
+  // Restoring a session from localStorage (as opposed to a fresh sign-in)
+  // can legitimately take up to ~25s (see the account-lookup race below).
+  // Without this, that entire window renders the same UI as "logged out" —
+  // indistinguishable from an actual sign-out to a real user reopening the app.
+  const [checking, setChecking] = useState(true);
 
   const checkUserAllowed = async (
     userEmail: string,
@@ -111,18 +117,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // Safety valve so a hung/slow auth check (e.g. autoRefreshToken retrying
+    // a token refresh while offline at startup) doesn't leave the user
+    // staring at an infinite loading state — falls through to the login
+    // screen. Deliberately does NOT delete the persisted Supabase auth token:
+    // a slow check isn't an invalid session, and wiping it here would force
+    // a full re-login even once the network/refresh that was merely slow
+    // eventually succeeds (this app must keep working once reconnected).
     const authTimeout = setTimeout(() => {
       if (!mounted) return;
-      try {
-        const tokenKey = Object.keys(localStorage).find(
-          (k) => k.includes("supabase") && k.includes("auth-token"),
-        );
-        if (tokenKey) localStorage.removeItem(tokenKey);
-      } catch (_) {}
-      if (mounted) {
-        setSession(null);
-        setBootError(null);
-      }
+      setSession(null);
+      setBootError(null);
+      setChecking(false);
     }, 25_000);
 
     const finalizeSession = async (s: Session | null, evt: string) => {
@@ -130,14 +136,20 @@ export function AuthGate({ children }: { children: ReactNode }) {
         if (evt === "SIGNED_OUT" || !s) {
           setSession(null);
           setBootError(null);
+          setChecking(false);
           stopCloudSync();
           _initialSyncDone = false;
+          // Clears cached orders/invoices/ledger/customer data from memory
+          // so it can't flash on screen for the next person who logs in on
+          // this device before their own fresh pull completes.
+          void resetAllBusinessStores();
         }
         return;
       }
 
       if (_initialSyncDone) {
         setSession(s);
+        setChecking(false);
         const loggedIn = useSettings
           .getState()
           .users.find((u) => u.email.toLowerCase() === s.user.email!.toLowerCase());
@@ -170,11 +182,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
       if (!check.allowed) {
         setBootError(check.error || "Account is not authorized.");
         setSession(null);
+        setChecking(false);
         return;
       }
 
       setSession(s);
       setBootError(null);
+      setChecking(false);
       _initialSyncDone = true;
       const loggedIn = useSettings
         .getState()
@@ -205,6 +219,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
       unsubBranch();
     };
   }, []);
+
+  if (checking) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-background text-foreground">
+        <span className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+        <p className="mt-2 text-xs font-mono text-muted-foreground">Restoring session...</p>
+      </div>
+    );
+  }
 
   if (!session) {
     return <AuthLayout prefilledError={bootError} onClearError={() => setBootError(null)} />;

@@ -36,7 +36,9 @@ import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
 import { useSettings } from "@/lib/settings-store";
 import { mgToGrams } from "@/lib/gold";
 import { useWorkerReturns, computeGoldPosition } from "@/lib/worker-return-store";
+import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { WorkerReturnDialog } from "@/components/worker-return-dialog";
+import { WorkerIssueDialog } from "@/components/worker-issue-dialog";
 import {
   useOutsideWorkLabour,
   computeOutsideWorkCostForOrder,
@@ -56,6 +58,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { getNextSequenceNumber } from "@/lib/sequence-manager";
 import {
   ArrowLeft,
+  BookOpen,
   Calendar,
   CheckCircle2,
   Eye,
@@ -88,18 +91,32 @@ function OrderDetailPage() {
   const addJob = useJobCards((s) => s.add);
   const removeJob = useJobCards((s) => s.remove);
   const [jobOpen, setJobOpen] = useState(false);
-    const [receiveOpen, setReceiveOpen] = useState(false);
-    const [workerReturnOpen, setWorkerReturnOpen] = useState(false);
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [workerReturnOpen, setWorkerReturnOpen] = useState(false);
+  const [workerIssueOpen, setWorkerIssueOpen] = useState(false);
   const [sendPolishingOpen, setSendPolishingOpen] = useState(false);
   const [receivePolishingOpen, setReceivePolishingOpen] = useState(false);
-      
+
   const refreshWorkerReturns = useWorkerReturns((s) => s.refresh);
   const allWorkerReturns = useWorkerReturns((s) => s.returns);
   const workerReturnHistory = useMemo(
     () => allWorkerReturns.filter((r) => r.orderId === order?.id),
     [allWorkerReturns, order?.id],
   );
-  const goldPosition = { pendingFineMg: 0, returnedFineMg: 0, issuedFineMg: 0 };
+  const refreshGoldBook = useWorkerGoldBook((s) => s.refresh);
+  const allGoldBookEntries = useWorkerGoldBook((s) => s.entries);
+  const workerIssueHistory = useMemo(
+    () => allGoldBookEntries.filter((e) => e.orderId === order?.id && e.type === "given"),
+    [allGoldBookEntries, order?.id],
+  );
+  const goldPosition = useMemo(
+    () =>
+      computeGoldPosition(
+        workerIssueHistory.reduce((s, e) => s + e.fineMg, 0),
+        workerReturnHistory,
+      ),
+    [workerIssueHistory, workerReturnHistory],
+  );
 
   const refreshOutsideWorkLabour = useOutsideWorkLabour((s) => s.refresh);
   const allOutsideWorkCharges = useOutsideWorkLabour((s) => s.charges);
@@ -121,13 +138,15 @@ function OrderDetailPage() {
   const refreshManufacturingBarcodes = useManufacturingBarcodes((s) => s.refresh);
 
   useEffect(() => {
-        refreshWorkerReturns();
+    refreshWorkerReturns();
+    refreshGoldBook();
     refreshOutsideWorkLabour();
     refreshPolishing();
     refreshBusinessRules();
     refreshManufacturingBarcodes();
   }, [
-        refreshWorkerReturns,
+    refreshWorkerReturns,
+    refreshGoldBook,
     refreshOutsideWorkLabour,
     refreshPolishing,
     refreshBusinessRules,
@@ -159,15 +178,7 @@ function OrderDetailPage() {
   const currentWorkerName = karigar?.fullName ?? "Not assigned";
   const lastActivity = [...order.timeline].sort((a, b) => b.ts - a.ts)[0];
 
-  const breadcrumb = [
-    "Order",
-    "Job Card",
-    "Issue Gold",
-    "Receive Work",
-    "Stock",
-    "Billing",
-    "Daily Close",
-  ];
+  const breadcrumb = ["Order", "Job Card", "Receive Work", "Stock", "Billing", "Daily Close"];
 
   function setStatus(s: OrderStatus) {
     update(order!.id, { status: s });
@@ -188,7 +199,6 @@ function OrderDetailPage() {
 
   return (
     <div data-testid="order-detail-root" className="p-4 md:p-8 max-w-6xl mx-auto">
-
       <PageHeader
         title={order.orderNo}
         subtitle={`${t("orders.type_" + order.type)} · created ${new Date(order.createdAt).toLocaleString("en-IN")}`}
@@ -451,8 +461,6 @@ function OrderDetailPage() {
             </div>
           </Section>
 
-
-
           {/* Polishing — optional business process, hidden entirely if the module is off */}
           {polishingModuleEnabled && (
             <Section title="Polishing" icon={Sparkles}>
@@ -535,7 +543,7 @@ function OrderDetailPage() {
                     className="gap-1"
                     onClick={() =>
                       triggerPrint(
-                        `/workshop/print/${linkedJob.id}`,
+                        `/workshop/print/job-card/${order.id}`,
                         `Job Card Preview · ${linkedJob.jobNo}`,
                       )
                     }
@@ -543,7 +551,11 @@ function OrderDetailPage() {
                     <Printer className="h-3 w-3" /> Print Job Card
                   </Button>
                   {!linkedJob.workReceipt && (
-                    <Button size="sm" className="gap-1" onClick={() => navigate({ to: '/workshop/gold-book' })}>
+                    <Button
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => navigate({ to: "/workshop/gold-book" })}
+                    >
                       <Hammer className="h-3 w-3" /> Worker Gold Book
                     </Button>
                   )}
@@ -565,6 +577,49 @@ function OrderDetailPage() {
                   <Hammer className="h-4 w-4" /> Create Job Card
                 </Button>
               </div>
+            )}
+          </Section>
+
+          {/* Worker Issues */}
+          <Section title="Worker Issues" icon={Hammer}>
+            <p className="text-xs text-muted-foreground mb-3">
+              Record gold or material physically handed to a worker against this order — any number
+              of times. This is the structured, order-linked issue that Manufacturing Barcode
+              eligibility and Manufacturing Bill auto-collect read from.
+            </p>
+            <Button
+              className="w-full gap-2"
+              onClick={() => setWorkerIssueOpen(true)}
+              data-testid="order-issue-to-worker"
+            >
+              <Hammer className="h-4 w-4" /> Issue to Worker
+            </Button>
+            {workerIssueHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground mt-3">No issues recorded yet.</p>
+            ) : (
+              <ul className="space-y-2 text-xs mt-3">
+                {workerIssueHistory.map((iss) => (
+                  <li
+                    key={iss.id}
+                    className="rounded-lg border border-border bg-background/40 px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">
+                        {iss.particulars} · {mgToGrams(iss.grossMg)} g
+                        {iss.purity > 0 ? ` @ ${iss.purity}` : ""}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {new Date(iss.createdAt).toLocaleDateString("en-IN")}
+                      </span>
+                    </div>
+                    <div className="text-muted-foreground mt-0.5">
+                      To {iss.workerName}
+                      {iss.purity > 0 ? ` · Fine ${mgToGrams(iss.fineMg)} g` : ""}
+                    </div>
+                    {iss.notes && <div className="text-muted-foreground mt-0.5">{iss.notes}</div>}
+                  </li>
+                ))}
+              </ul>
             )}
           </Section>
 
@@ -681,13 +736,11 @@ function OrderDetailPage() {
           <Section title="Next actions">
             <div className="space-y-2 text-sm">
               {linkedJob && !linkedJob.workReceipt && (
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-2"
-                  onClick={() => navigate({ to: '/workshop/gold-book' })}
-                >
-                  <Hammer className="h-4 w-4" /> Issue Gold to Karigar (Gold Book)
-                </Button>
+                <Link to="/workshop/gold-book">
+                  <Button variant="outline" className="w-full justify-start gap-2">
+                    <BookOpen className="h-4 w-4" /> Worker Gold Book
+                  </Button>
+                </Link>
               )}
               {linkedJob && !linkedJob.workReceipt && (
                 <Button
@@ -786,13 +839,27 @@ function OrderDetailPage() {
         addJob={addJob}
       />
 
-      
       <ReceiveWorkDialog
         open={receiveOpen}
         onClose={() => setReceiveOpen(false)}
         job={linkedJob ?? null}
       />
-      
+
+      <WorkerIssueDialog
+        open={workerIssueOpen}
+        onClose={() => setWorkerIssueOpen(false)}
+        orderId={order.id}
+        orderNo={order.orderNo}
+        defaultPurity={order.item.purity}
+        onSaved={(info) => {
+          append(order!.id, {
+            ts: Date.now(),
+            label: "Worker Issue",
+            note: `${(info.grossMg / 1000).toFixed(3)}g ${info.material} → ${info.workerName}`,
+          });
+        }}
+      />
+
       <WorkerReturnDialog
         open={workerReturnOpen}
         onClose={() => setWorkerReturnOpen(false)}
@@ -1056,4 +1123,3 @@ function CreateJobCardDialog({
     </Dialog>
   );
 }
-

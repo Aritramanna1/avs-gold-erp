@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -27,12 +27,9 @@ import {
   Hammer,
   AlertTriangle,
   ClipboardList,
-  ArrowRightCircle,
   Wallet,
   PackageCheck,
   BookOpen,
-  UserPlus,
-  ArrowRightLeft,
   Truck,
   Sparkles,
   ScanLine,
@@ -64,13 +61,16 @@ function WorkshopPage() {
   const [query, setQuery] = useState("");
   const [statusF, setStatusF] = useState<"all" | JobStatus>("all");
   const [receiveJobId, setReceiveJobId] = useState<string | null>(null);
-  const navigate = useNavigate();
   const receiveJob = useMemo(
     () => jobs.find((j) => j.id === receiveJobId) ?? null,
     [jobs, receiveJobId],
   );
   const custody = useMemo(() => karigarCustodySummaries(jobs), [jobs]);
-  const activeJobs = useMemo(() => jobs.filter((j) => (j.status === "in_progress" || j.status === "rework") && !j.workReceipt), [jobs]);
+  const activeJobs = useMemo(
+    () =>
+      jobs.filter((j) => (j.status === "in_progress" || j.status === "rework") && !j.workReceipt),
+    [jobs],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -86,9 +86,6 @@ function WorkshopPage() {
   }, [jobs, query, statusF]);
 
   const reworkJobs = jobs.filter((j) => j.status === "rework");
-  const readyJobs = jobs.filter((j) => j.status === "ready_for_gold_issue" || j.status === "draft");
-
-
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
@@ -137,9 +134,6 @@ function WorkshopPage() {
 
           <TabsTrigger value="rework" className="gap-2">
             <AlertTriangle className="h-4 w-4" /> Rework ({reworkJobs.length})
-          </TabsTrigger>
-          <TabsTrigger value="ready" className="gap-2">
-            <ArrowRightCircle className="h-4 w-4" /> Ready for Gold Issue ({readyJobs.length})
           </TabsTrigger>
           <TabsTrigger value="active" className="gap-2">
             <PackageCheck className="h-4 w-4" /> In Progress ({activeJobs.length})
@@ -248,8 +242,6 @@ function WorkshopPage() {
           )}
         </TabsContent>
 
-
-
         <TabsContent value="rework">
           {reworkJobs.length === 0 ? (
             <EmptyState
@@ -290,47 +282,6 @@ function WorkshopPage() {
                   </Link>
                 );
               })}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="ready">
-          {readyJobs.length === 0 ? (
-            <EmptyState
-              title="Nothing ready for gold issue"
-              body="Confirmed job cards waiting for vault gold will appear here."
-            />
-          ) : (
-            <div className="space-y-2">
-              {readyJobs.map((j) => (
-                <div
-                  key={j.id}
-                  className="rounded-2xl border border-border bg-card p-4 flex items-center justify-between gap-3 flex-wrap"
-                >
-                  <div className="min-w-0">
-                    <div className="font-mono text-xs text-gold">
-                      {j.jobNo} · {j.orderNo}
-                    </div>
-                    <div className="text-sm">
-                      {j.customerName} · {j.itemName}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      Target fine {mgToGrams(j.targetFineMg)} g
-                      {j.karigarName ? ` · ${j.karigarName}` : ""}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link to="/workshop/$id" params={{ id: j.id }}>
-                      <Button variant="outline" size="sm" className="gap-1">
-                        <Eye className="h-3 w-3" /> View
-                      </Button>
-                    </Link>
-                    <Button size="sm" className="gap-1" onClick={() => navigate({ to: '/workshop/gold-book' })}>
-                      <Hammer className="h-3 w-3" /> Issue Gold
-                    </Button>
-                  </div>
-                </div>
-              ))}
             </div>
           )}
         </TabsContent>
@@ -436,10 +387,9 @@ function WorkshopPage() {
       </Tabs>
 
       <p className="mt-6 text-xs text-muted-foreground">
-        Workflow: Order → Job Card → <span className="text-gold">Worker Gold Book</span> → Receive Work →
-        Stock → Billing → Daily Close.
+        Workflow: Order → Job Card → <span className="text-gold">Worker Gold Book</span> → Receive
+        Work → Stock → Billing → Daily Close.
       </p>
-
 
       <ReceiveWorkDialog
         open={!!receiveJob}

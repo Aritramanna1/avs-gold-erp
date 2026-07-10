@@ -13,7 +13,7 @@ interface PrintStore extends PrintState {
   triggerPrint: (
     url: string,
     title: string,
-    options?: { docNo?: string; relatedTable?: string; relatedRecordId?: string }
+    options?: { docNo?: string; relatedTable?: string; relatedRecordId?: string },
   ) => void;
   closePrint: () => void;
 }
@@ -53,7 +53,7 @@ export const usePrintEngine = create<PrintStore>((set) => ({
 export function triggerGlobalPrint(
   url: string,
   title: string,
-  options?: { docNo?: string; relatedTable?: string; relatedRecordId?: string }
+  options?: { docNo?: string; relatedTable?: string; relatedRecordId?: string },
 ) {
   usePrintEngine.getState().triggerPrint(url, title, options);
 }

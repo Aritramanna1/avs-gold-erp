@@ -10,7 +10,16 @@ import {
   type ApprovalRequest,
 } from "@/lib/workflow/approval-workflow";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, XCircle, RefreshCw, Loader2, ShieldCheck } from "lucide-react";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
+import {
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
+  Loader2,
+  ShieldCheck,
+  Printer,
+  Download,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports/approvals")({
@@ -77,20 +86,39 @@ function ApprovalsPage() {
     }
   }
 
+  function handleCSV() {
+    const header = ["Type", "Reason", "Requested By", "Requested At"];
+    const data = requests.map((r) => [
+      ENTITY_TYPE_LABELS[r.entityType] ?? r.entityType,
+      r.reason,
+      r.requestedByEmail ?? "",
+      new Date(r.requestedAt).toLocaleString(),
+    ]);
+    exportToCSV("pending-approvals.csv", [header, ...data]);
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <PageHeader
         title="Pending Approvals"
         subtitle="Discount overrides, manual stock adjustments, financial-lock unlocks and other sign-off-required actions waiting on a decision."
         actions={
-          <Button variant="outline" onClick={refresh} disabled={loading} className="gap-2">
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            Refresh
-          </Button>
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="outline" onClick={refresh} disabled={loading} className="gap-2">
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Refresh
+            </Button>
+            <Button variant="outline" onClick={handleCSV} className="gap-2">
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" onClick={() => triggerPrint()} className="gap-2">
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
         }
       />
 

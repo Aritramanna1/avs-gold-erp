@@ -14,6 +14,7 @@ import { useDailyCloses } from "@/lib/dailyclose-store";
 import { useStock } from "@/lib/stock-store";
 import { usePeople } from "@/lib/people-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
+import { useMfgBills } from "@/lib/manufacturing-bill-store";
 import { useWorkers } from "@/lib/workers-store";
 import { hardwareService, type PrinterType } from "@/lib/hardware-service";
 import {
@@ -62,6 +63,7 @@ export function usePrintRecord(
   const stockRecord = useStock((s) => s.items.find((x) => x.id === id));
   const peopleRecord = usePeople((s) => s.people.find((x) => x.id === id));
   const goldSettlementRecord = useGoldSettlement((s) => s.settlements.find((x) => x.id === id));
+  const mfgBillRecord = useMfgBills((s) => s.bills.find((x) => x.id === id));
   const workerSettlementRecord = useWorkers((s) => s.settlements.find((x) => x.id === id));
   const goldAdvanceRecord = useWorkers((s) => s.goldAdvances.find((x) => x.id === id));
   const wastageReturnRecord = useWorkers((s) => s.wastageReturns.find((x) => x.id === id));
@@ -108,7 +110,8 @@ export function usePrintRecord(
       }
       case "gst_invoice":
       case "retail_invoice":
-      case "payment_receipt": {
+      case "payment_receipt":
+      case "invoice_quote_preview": {
         const i = billingRecord;
         if (i) {
           record = i;
@@ -160,6 +163,16 @@ export function usePrintRecord(
           docNumber = `KYC-${pPerson.id.toUpperCase().slice(-6)}`;
           customerName = pPerson.fullName;
           linkedLabel = `Role: ${pPerson.type || "Worker"} · KYC progress: ${pPerson.kycProgress || "Pending"}`;
+        }
+        break;
+      }
+      case "manufacturing_bill": {
+        const mb = mfgBillRecord;
+        if (mb) {
+          record = mb;
+          docNumber = mb.billNo;
+          linkedLabel = `${mb.itemName} · Karigar: ${mb.karigarName ?? "—"}`;
+          customerName = mb.customerName || "";
         }
         break;
       }

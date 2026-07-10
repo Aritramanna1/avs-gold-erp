@@ -4,9 +4,9 @@ import { PageHeader } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { useLedger, computeBalances, type Bucket } from "@/lib/ledger-store";
 import { mgToGrams } from "@/lib/gold";
-import { exportToCSV } from "@/lib/report-engine";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/daily-gold-flow")({
   head: () => ({ meta: [{ title: "Daily Gold Flow · AVS Gold ERP" }] }),
@@ -104,6 +104,9 @@ function DailyGoldFlowPage() {
             </select>
             <Button variant="outline" onClick={handleExport} className="gap-2">
               <Download className="h-4 w-4" /> Export CSV
+            </Button>
+            <Button variant="outline" onClick={() => triggerPrint()} className="gap-2">
+              <Printer className="h-4 w-4" /> Print
             </Button>
           </div>
         }

@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSettlements, previewSettlementTotals } from "@/lib/settlement-store";
 import { useBilling } from "@/lib/billing-store";
-import { fmtRs, fmtDate, exportToCSV } from "@/lib/report-engine";
-import { AlertTriangle, CheckCircle2, Download } from "lucide-react";
+import { fmtRs, fmtDate, exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { AlertTriangle, CheckCircle2, Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/settlement-reconciliation")({
   head: () => ({ meta: [{ title: "Settlement Reconciliation · AVS Gold ERP" }] }),
@@ -81,9 +81,14 @@ function SettlementReconciliationPage() {
         title="Settlement Reconciliation"
         subtitle="Every finalised Settlement vs. the GST Invoice it created — verifies the link exists and is active"
         actions={
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
-            <Download className="h-4 w-4" /> CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => triggerPrint()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
         }
       />
 

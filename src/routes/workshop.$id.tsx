@@ -21,21 +21,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  useJobCards,
-  JOB_STATUS_LABELS,
-  type JobStatus,
-} from "@/lib/jobcards-store";
+import { useJobCards, JOB_STATUS_LABELS, type JobStatus } from "@/lib/jobcards-store";
 import { referenceImagesForOrder } from "@/lib/job-card-engine";
 import { usePeople } from "@/lib/people-store";
 import { mgToGrams } from "@/lib/gold";
 
 import { ReceiveWorkDialog } from "@/components/receive-work-dialog";
+import { WorkerIssueDialog } from "@/components/worker-issue-dialog";
 import { EmailSendPanel } from "@/components/email-send-panel";
 import { CommLogCard } from "@/components/comm-log-card";
 import { ReferenceNotesPanel } from "@/components/reference-notes/ReferenceNotesPanel";
 import {
   ArrowLeft,
+  BookOpen,
   CheckCircle2,
   Hammer,
   PackageCheck,
@@ -47,7 +45,6 @@ import {
   Trash2,
   User as UserIcon,
 } from "lucide-react";
-
 
 export const Route = createFileRoute("/workshop/$id")({
   head: () => ({ meta: [{ title: "Job Card · AVS Gold ERP" }] }),
@@ -98,15 +95,7 @@ function JobCardDetail() {
   const karigar = job.karigarId ? people.find((p) => p.id === job.karigarId) : null;
   const referenceImages = referenceImagesForOrder(job.orderId);
 
-  const breadcrumb = [
-    "Order",
-    "Job Card",
-    "Issue Gold",
-    "Receive Work",
-    "Stock",
-    "Billing",
-    "Daily Close",
-  ];
+  const breadcrumb = ["Order", "Job Card", "Receive Work", "Stock", "Billing", "Daily Close"];
 
   function del() {
     if (confirm("Delete this job card? The linked order will become 'Awaiting Job Card' again.")) {
@@ -148,13 +137,20 @@ function JobCardDetail() {
               variant="outline"
               className="gap-2"
               onClick={() =>
-                triggerPrint(`/workshop/print/${job.id}`, `Job Card Preview · ${job.jobNo}`)
+                triggerPrint(
+                  `/workshop/print/job-card/${job.orderId}`,
+                  `Job Card Preview · ${job.jobNo}`,
+                )
               }
             >
               <Printer className="h-4 w-4" /> Print Job Card
             </Button>
             {!job.workReceipt && (
-              <Button size="sm" className="gap-1" onClick={() => navigate({ to: '/workshop/gold-book' })}>
+              <Button
+                size="sm"
+                className="gap-1"
+                onClick={() => navigate({ to: "/workshop/gold-book" })}
+              >
                 <Hammer className="h-4 w-4" /> Worker Gold Book
               </Button>
             )}
@@ -298,8 +294,7 @@ function JobCardDetail() {
                   {karigar.phone}
                   {karigar.workType ? ` · ${karigar.workType}` : ""}
                 </div>
-                <div className="mt-2 text-[11px]">
-                </div>
+                <div className="mt-2 text-[11px]"></div>
                 <div className="mt-2 flex gap-2">
                   <Link to="/people" className="text-xs text-gold underline">
                     View profile
@@ -330,8 +325,6 @@ function JobCardDetail() {
               </div>
             )}
           </Section>
-
-
 
           {/* Work Receipt summary */}
           {job.workReceipt && (
@@ -415,12 +408,19 @@ function JobCardDetail() {
           <Section title="Next actions">
             <div className="space-y-2 text-sm">
               {!job.workReceipt && (
+                <Link to="/workshop/gold-book">
+                  <Button variant="outline" className="w-full justify-start gap-2">
+                    <BookOpen className="h-4 w-4" /> Worker Gold Book
+                  </Button>
+                </Link>
+              )}
+              {!job.workReceipt && (
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
-                  onClick={() => navigate({ to: '/workshop/gold-book' })}
+                  onClick={() => setIssueOpen(true)}
                 >
-                  <Hammer className="h-4 w-4" /> Issue Gold to Karigar (Worker Gold Book)
+                  <Hammer className="h-4 w-4" /> Issue to Worker
                 </Button>
               )}
               {!job.workReceipt && (
@@ -526,16 +526,38 @@ function JobCardDetail() {
       </Dialog>
 
       <AttachmentsSection
+        title="Workshop Evidence"
+        description="Shop-floor audit photos — kept separate from the printable Reference Images above and never included on the Job Card print by default."
         entityType="jobcard"
         entityId={job.id}
         slots={[
-          { key: "karigar_photo", label: "Karigar photo" },
-          { key: "issued_material", label: "Issued material photo" },
-          { key: "received_work", label: "Received work photo" },
-          { key: "filings_photo", label: "Filings photo" },
+          { key: "karigar_photo", label: "Karigar / Worker Photo" },
+          { key: "issued_material", label: "Material Issue Photo" },
+          { key: "received_work", label: "Work Progress / Received Work Photo" },
+          { key: "filings_photo", label: "Filing / Final Finish Photo" },
         ]}
+        onFiled={(slot) =>
+          appendTimeline(job!.id, {
+            ts: Date.now(),
+            label: `Workshop Evidence filed — ${slot.label}`,
+          })
+        }
       />
 
+      <WorkerIssueDialog
+        open={issueOpen}
+        onClose={() => setIssueOpen(false)}
+        orderId={job.orderId}
+        orderNo={job.orderNo}
+        defaultPurity={job.purity}
+        onSaved={(info) =>
+          appendTimeline(job!.id, {
+            ts: Date.now(),
+            label: "Worker Issue",
+            note: `${(info.grossMg / 1000).toFixed(3)}g ${info.material} → ${info.workerName}`,
+          })
+        }
+      />
 
       <ReceiveWorkDialog open={receiveOpen} onClose={() => setReceiveOpen(false)} job={job} />
     </div>

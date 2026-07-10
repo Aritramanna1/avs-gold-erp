@@ -15,8 +15,9 @@ import { usePeople } from "@/lib/people-store";
 import { useSettings } from "@/lib/settings-store";
 import { buildJobCardData } from "@/lib/job-card-engine";
 import { generateJobCardPdf, jobCardFileName } from "@/lib/pdf/job-card-pdf";
+import { usePrintEngine } from "@/lib/print-engine";
 import { mgToGrams } from "@/lib/gold";
-import { ArrowLeft, Download, Loader2, QrCode } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Printer, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/workshop/job-card/$orderId")({
@@ -38,6 +39,7 @@ function JobCardPage() {
   const jobs = useJobCards((s) => s.jobs);
   const people = usePeople((s) => s.people);
   const { firm } = useSettings();
+  const { triggerPrint } = usePrintEngine();
   const [downloading, setDownloading] = useState(false);
 
   if (!order) {
@@ -65,6 +67,10 @@ function JobCardPage() {
     karigar?.fullName ?? null,
   );
 
+  function handlePrint() {
+    triggerPrint(`/workshop/print/job-card/${orderId}`, `Job Card Preview · ${data.jobCardNo}`);
+  }
+
   async function handleDownload() {
     setDownloading(true);
     try {
@@ -91,14 +97,19 @@ function JobCardPage() {
             <ArrowLeft className="h-4 w-4" /> Back to Order
           </Button>
         </Link>
-        <Button onClick={handleDownload} disabled={downloading} className="gap-2">
-          {downloading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4" />
-          )}
-          Download Job Card PDF
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handlePrint} className="gap-2">
+            <Printer className="h-4 w-4" /> Print
+          </Button>
+          <Button onClick={handleDownload} disabled={downloading} className="gap-2">
+            {downloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Download Job Card PDF
+          </Button>
+        </div>
       </div>
 
       <PageHeader

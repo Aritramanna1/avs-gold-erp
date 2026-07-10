@@ -9,8 +9,15 @@ export default tseslint.config(
   {
     ignores: [
       "dist",
+      "dist-electron",
       ".output",
       ".vinxi",
+      // Packaged release export bundles — each contains a full duplicate
+      // Source Code/ copy of the repo, never meant to be linted in place.
+      "release",
+      "release-build",
+      "build",
+      "AVS Gold ERP v1.1 Test Build",
       // Development-only test/seed files — never imported in production builds
       "src/lib/gold-payment-test-suite.ts",
       "src/lib/test-seed.ts",

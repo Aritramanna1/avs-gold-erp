@@ -14,12 +14,15 @@ export function AttachmentsSection({
   slots,
   title = "Photos & Files",
   description,
+  onFiled,
 }: {
   entityType: AttachmentEntityType;
   entityId: string;
   slots: AttachmentSlot[];
   title?: string;
   description?: string;
+  /** Fired after a slot is saved with filed=true — e.g. to log an audit-trail entry. */
+  onFiled?: (slot: AttachmentSlot) => void;
 }) {
   const items = useAttachments((s) => s.items);
   return (
@@ -55,6 +58,7 @@ export function AttachmentsSection({
                 entityId={entityId}
                 docKey={slot.key}
                 docLabel={slot.label}
+                onSaved={(next) => next.filed && onFiled?.(slot)}
               />
             </div>
           );

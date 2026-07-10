@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { usePeople } from "@/lib/people-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { mgToGrams } from "@/lib/gold";
-import { fmtRs, fmtDate, exportToCSV } from "@/lib/report-engine";
-import { Download } from "lucide-react";
+import { fmtRs, fmtDate, exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/dealer")({
   head: () => ({ meta: [{ title: "Dealer Report · AVS Gold ERP" }] }),
@@ -79,9 +79,14 @@ function DealerReportPage() {
         title="Dealer Report"
         subtitle="Bullion/metal dealers (vendor-type parties): running gold/cash balance and settlement history"
         actions={
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
-            <Download className="h-4 w-4" /> CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => triggerPrint()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
         }
       />
 

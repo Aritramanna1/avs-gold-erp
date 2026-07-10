@@ -10,8 +10,8 @@ import {
   type CommAnalytics,
 } from "@/lib/comm/comm-analytics";
 import { COMM_KIND_LABELS, type CommEvent } from "@/lib/comm-log-store";
-import { exportToCSV } from "@/lib/report-engine";
-import { RefreshCw, Loader2, MessageSquare, Download } from "lucide-react";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { RefreshCw, Loader2, MessageSquare, Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/communication-analytics")({
   head: () => ({ meta: [{ title: "Communication Analytics · AVS Gold ERP" }] }),
@@ -97,6 +97,9 @@ function CommunicationAnalyticsPage() {
             </Button>
             <Button variant="outline" onClick={handleCSV} className="gap-2">
               <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" onClick={() => triggerPrint()} className="gap-2">
+              <Printer className="h-4 w-4" /> Print
             </Button>
           </div>
         }

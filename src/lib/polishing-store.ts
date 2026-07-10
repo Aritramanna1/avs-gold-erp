@@ -4,8 +4,9 @@
  * optional business process (gated by the `enable_polishing_module`
  * business rule), a Production Order link is optional, and there is no
  * step/status state machine here — just two transaction types (Send /
- * Receive) that mirror order-issue-store.ts and worker-return-store.ts's
- * already-established pattern exactly, so the same "one action, every
+ * Receive) that mirror worker-gold-book-store.ts's order-linked issue
+ * entries and worker-return-store.ts's already-established pattern exactly,
+ * so the same "one action, every
  * ledger updates automatically, no duplicates" guarantee applies here too.
  *
  * Gold Ledger integration: reuses the existing `karigar` bucket (gold

@@ -7,9 +7,10 @@
  * and every balance/position shown anywhere is derived from that log, never
  * stored/edited directly (no manual balance editing, per spec).
  *
- * Mirrors order-issue-store.ts / worker-return-store.ts's established
- * pattern: this store only persists the transaction record; the calling
- * dialog orchestrates the Gold Ledger + timeline updates.
+ * Mirrors worker-gold-book-store.ts's order-linked issue entries /
+ * worker-return-store.ts's established pattern: this store only persists
+ * the transaction record; the calling dialog orchestrates the Gold Ledger +
+ * timeline updates.
  */
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
@@ -54,8 +55,8 @@ const outsideWorkRepository = createRepository<OutsideWorkTransaction>("outside_
 
 // Guards a rapid double-click/double-submit from creating two identical
 // transactions for the same jeweller before React's disabled state commits —
-// same class of race fixed in order-issue-store.ts / worker-return-store.ts /
-// polishing-store.ts's add().
+// same class of race fixed in worker-return-store.ts / polishing-store.ts's
+// add().
 const addInFlight = new Set<string>();
 
 function makeId(): string {

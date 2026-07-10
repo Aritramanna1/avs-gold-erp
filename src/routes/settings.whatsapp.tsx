@@ -4,7 +4,7 @@
  * All credentials are stored in branch_settings.wa_config in Supabase — never in frontend code.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -96,11 +96,25 @@ function WhatsAppSettingsPage() {
   const waStore = useWaAutomation();
   const cfg = waStore.getConfig(selectedBranch);
   const automations = waStore.getAutomations(selectedBranch);
+  // Raw (unmerged) per-branch config — stable until an actual store write
+  // (hydration/save/test), unlike getConfig()'s always-fresh merged object.
+  // Used only to detect "the store changed under us", not read directly.
+  const storedBranchCfg = useWaAutomation((s) => s.configsByBranch[selectedBranch]);
 
   const [local, setLocal] = useState<WaConfig>(cfg);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Resync the draft when the branch's real config lands from Supabase
+  // (hydrateWaStore runs after pullBranchSettings, asynchronously, and can
+  // finish after this page has already mounted and snapshotted `cfg` into
+  // `local`) — without this, Save could silently overwrite live WhatsApp
+  // Business API credentials with empty defaults.
+  useEffect(() => {
+    setLocal(waStore.getConfig(selectedBranch));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBranch, storedBranchCfg]);
 
   function set(partial: Partial<WaConfig>) {
     setLocal((p) => ({ ...p, ...partial }));

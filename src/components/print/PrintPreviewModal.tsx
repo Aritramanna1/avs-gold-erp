@@ -8,7 +8,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -17,13 +16,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Printer, X, Laptop, FileText } from "lucide-react";
-import { ThermalPrintLayout } from "./ThermalPrintLayout";
-import { ArchivalPrintLayout } from "./ArchivalPrintLayout";
-import { QRCodeBlock } from "./QRCodeBlock";
-import { SignatureBlock } from "./SignatureBlock";
-import { AttachmentPrintGrid } from "./AttachmentPrintGrid";
+import { Printer, X } from "lucide-react";
+import { PRINT_SIZE_LABELS, type PrintSize } from "@/components/print/PrintLayout";
 import { listAvailablePrinters, type PrinterInfo } from "@/lib/print/print-queue";
+
+// Every triggerPrint(url, ...) call site across the app (~30 of them, in
+// Billing/Orders/Repair/Workshop/People) passes a bare app path like
+// "/workshop/gold-book-print/abc123". Under the packaged Electron build
+// (file:// protocol, hash history — see router.tsx) that bare path is not a
+// valid iframe src: the browser resolves it as an absolute filesystem path,
+// which fails to load anything, leaving the preview permanently blank with
+// no console error. Fixed once here, at the single place these URLs are
+// actually consumed, rather than at every call site.
+function toIframeSrc(printUrl: string): string {
+  const isFileProtocol = typeof window !== "undefined" && window.location.protocol === "file:";
+  if (!isFileProtocol || printUrl.startsWith("#")) return printUrl;
+  return `#${printUrl}`;
+}
 
 function hasElectronPrintBridge(): boolean {
   return (
@@ -33,47 +42,46 @@ function hasElectronPrintBridge(): boolean {
   );
 }
 
+const ARCHIVAL_SIZES: PrintSize[] = ["a4", "a5", "a6"];
+
+// On-screen preview container sizing per format — cosmetic only, never
+// affects what actually gets printed (the loaded document's own PrintLayout
+// already declares its real @page size; see applyPageOverride below, which
+// only ever touches margin/orientation).
+const PREVIEW_CONTAINER_CLASS: Record<PrintSize, string> = {
+  a4: "w-full h-full max-w-4xl",
+  a5: "w-full h-full max-w-2xl",
+  a6: "w-full h-full max-w-xl",
+  thermal: "w-[80mm] h-full",
+  thermal58: "w-[58mm] h-full",
+  tag: "w-[260px] h-[200px]",
+};
+
 interface PrintPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  docNo?: string;
-  relatedTable?: string;
-  relatedRecordId?: string;
-  printUrl?: string;
-  children?: React.ReactNode;
+  printUrl: string;
 }
 
-export function PrintPreviewModal({
-  isOpen,
-  onClose,
-  title,
-  docNo = "",
-  relatedTable = "",
-  relatedRecordId = "",
-  printUrl,
-  children,
-}: PrintPreviewModalProps) {
-  const [printMode, setPrintMode] = useState<"archival" | "thermal" | "tag">("archival");
+export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPreviewModalProps) {
+  // Auto-detected from the loaded document's own data-print-size attribute
+  // (set by PrintLayout) once the iframe finishes loading — never guessed
+  // from the URL. Defaults to "a4" only until detection runs.
+  const [printSize, setPrintSize] = useState<PrintSize>("a4");
   const [iframeLoading, setIframeLoading] = useState(true);
-  const printableAreaRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Desktop-only (Priority 5): real printer selection + silent printing via
-  // Electron's print IPC (see print-queue.ts) — invisible/no-op in the
-  // browser build, where this list is always empty and the toolbar below
-  // simply doesn't render.
+  // Desktop-only: real printer selection + silent printing via Electron's
+  // print IPC (see print-queue.ts) — invisible/no-op in the browser build.
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [selectedPrinter, setSelectedPrinter] = useState<string>("");
   const [silentPrint, setSilentPrint] = useState(false);
   const isDesktop = hasElectronPrintBridge();
 
-  // Orientation + margin (Priority 5) — works in BOTH the browser (via an
-  // injected @page rule, same mechanism as the existing chrome-hiding style
-  // injection below) and the desktop path (passed through to Electron's
-  // print IPC). Defaults follow the selected print mode, since a thermal
-  // roll or a jewellery tag has no meaningful "orientation" concept the way
-  // an A4 document does.
+  // Orientation + margin — genuine physical page-setup overrides, applied
+  // ONLY via a real @media print @page rule (never touches element
+  // visibility, unlike the previous implementation).
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
   const [marginMm, setMarginMm] = useState(12);
 
@@ -87,25 +95,7 @@ export function PrintPreviewModal({
   }, [isOpen, isDesktop]);
 
   useEffect(() => {
-    if (printUrl) {
-      setIframeLoading(true);
-      const urlLower = printUrl.toLowerCase();
-      if (
-        urlLower.includes("/stock/print") ||
-        urlLower.includes("tag") ||
-        urlLower.includes("barcode")
-      ) {
-        setPrintMode("tag");
-      } else if (
-        urlLower.includes("receipt") ||
-        urlLower.includes("slip") ||
-        urlLower.includes("thermal")
-      ) {
-        setPrintMode("thermal");
-      } else {
-        setPrintMode("archival");
-      }
-    }
+    if (isOpen) setIframeLoading(true);
   }, [printUrl, isOpen]);
 
   useEffect(() => {
@@ -120,11 +110,13 @@ export function PrintPreviewModal({
   }, [isOpen]);
 
   const handlePrint = async () => {
+    if (!iframeRef.current) return;
+
     // Desktop path: real printer selection + optional silent printing,
     // reusing the exact same rendered iframe content the preview already
     // shows — nothing about WHAT gets printed changes, only HOW (named
     // printer, no OS dialog if silent is checked).
-    if (isDesktop && printUrl && iframeRef.current?.contentDocument) {
+    if (isDesktop && iframeRef.current.contentDocument) {
       try {
         const html = iframeRef.current.contentDocument.documentElement.outerHTML;
         const desktop = (
@@ -151,156 +143,74 @@ export function PrintPreviewModal({
       }
     }
 
-    if (printUrl && iframeRef.current) {
-      try {
-        iframeRef.current.contentWindow?.focus();
-        iframeRef.current.contentWindow?.print();
-      } catch (err) {
-        console.error("Direct iframe print failed, falling back to window print:", err);
-        window.print();
-      }
-      return;
-    }
-
-    const printContent = printableAreaRef.current?.innerHTML;
-    if (!printContent) return;
-
-    const collectedStyles = Array.from(document.querySelectorAll("style, link[rel='stylesheet']"))
-      .map((tag) => tag.outerHTML)
-      .join("\n");
-
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "absolute";
-    iframe.style.width = "0px";
-    iframe.style.height = "0px";
-    iframe.style.border = "none";
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentWindow?.document;
-    if (doc) {
-      doc.open();
-      doc.write(`
-        <html>
-          <head>
-            <title>${title} - ${docNo}</title>
-            ${collectedStyles}
-            <style>
-              @media print {
-                body {
-                  background: white !important;
-                  color: black !important;
-                  padding: 10px !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-                }
-                .no-print, header, footer, nav { display: none !important; }
-                @page {
-                  size: ${printMode === "thermal" ? "80mm auto" : printMode === "tag" ? "340px 210px" : "A4 portrait"};
-                  margin: ${printMode === "thermal" ? "2mm" : printMode === "tag" ? "1mm" : "12mm 15mm 15mm 15mm"};
-                }
-                /* High-Contrast Table Border Enforcement */
-                table {
-                  border-collapse: collapse !important;
-                  width: 100% !important;
-                }
-                th, td {
-                  border: 1px solid #78716c !important; /* stone-500 deep gray border */
-                  padding: 6px 8px !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-                thead {
-                  display: table-header-group !important;
-                  background-color: #f5f5f4 !important;
-                }
-                tr {
-                  page-break-inside: avoid !important;
-                  break-inside: avoid !important;
-                }
-                h1, h2, h3, h4, p, span, div, td {
-                  word-break: break-word !important;
-                  overflow-wrap: break-word !important;
-                }
-              }
-              body {
-                font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                background: white;
-                color: black;
-                padding: 15px;
-              }
-            </style>
-          </head>
-          <body>
-            <div>${printContent}</div>
-            <script>
-              window.onload = function() {
-                setTimeout(() => {
-                  window.focus();
-                  window.print();
-                  setTimeout(() => {
-                    window.parent.document.body.removeChild(window.frameElement);
-                  }, 500);
-                }, 100);
-              };
-            </script>
-          </body>
-        </html>
-      `);
-      doc.close();
+    try {
+      iframeRef.current.contentWindow?.focus();
+      iframeRef.current.contentWindow?.print();
+    } catch (err) {
+      console.error("Direct iframe print failed, falling back to window print:", err);
+      window.print();
     }
   };
 
-  const PRINT_STYLE_ELEMENT_ID = "mtj-print-preview-injected-style";
+  const PAGE_OVERRIDE_STYLE_ID = "mtj-print-preview-page-override";
 
-  const injectPrintStyle = () => {
+  // Applies ONLY a @page override (margin, and orientation for archival
+  // sizes) scoped inside @media print. Deliberately does not touch element
+  // visibility — the loaded document's own PrintLayout already hides its
+  // toolbar/chrome correctly via .no-print / [data-testid="print-toolbar"].
+  // The previous implementation's unscoped, unconditional
+  // `body > *:not(main) { display: none }` rule (assuming a <main> wrapper
+  // no print route actually has) is what blanked the preview; this replaces
+  // it rather than reintroducing the same class of bug.
+  const applyPageOverride = () => {
     if (!iframeRef.current) return;
     try {
-      const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
+      const doc = iframeRef.current.contentDocument;
       if (!doc) return;
-      const pageSize =
-        printMode === "thermal" ? "80mm auto" : printMode === "tag" ? "40mm 25mm" : "A4";
-      let style = doc.getElementById(PRINT_STYLE_ELEMENT_ID) as HTMLStyleElement | null;
+      let style = doc.getElementById(PAGE_OVERRIDE_STYLE_ID) as HTMLStyleElement | null;
       if (!style) {
         style = doc.createElement("style");
-        style.id = PRINT_STYLE_ELEMENT_ID;
+        style.id = PAGE_OVERRIDE_STYLE_ID;
         doc.head.appendChild(style);
       }
-      style.innerHTML = `
-        html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
-        body > *:not(main):not(script):not(style) { display: none !important; }
-        body > main { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-        body > main > * { display: block !important; }
-        .no-print, header.no-print, div.no-print { display: none !important; }
-        @page {
-          size: ${pageSize}${printMode === "archival" ? ` ${orientation}` : ""};
-          margin: ${printMode === "archival" ? marginMm : Math.min(marginMm, 3)}mm;
+      const isArchival = ARCHIVAL_SIZES.includes(printSize);
+      style.textContent = `
+        @media print {
+          @page {
+            ${isArchival ? `size: auto ${orientation};` : ""}
+            margin: ${marginMm}mm !important;
+          }
         }
       `;
     } catch (err) {
-      console.warn("Could not inject css to iframe (cross-origin or load timing):", err);
+      console.warn(
+        "Could not apply print page override to iframe (cross-origin or load timing):",
+        err,
+      );
     }
   };
 
   const handleIframeLoad = () => {
     setIframeLoading(false);
-    injectPrintStyle();
+    try {
+      const doc = iframeRef.current?.contentDocument;
+      const root = doc?.querySelector<HTMLElement>('[data-testid="print-layout-root"]');
+      const declaredSize = root?.dataset.printSize as PrintSize | undefined;
+      if (declaredSize && declaredSize in PRINT_SIZE_LABELS) {
+        setPrintSize(declaredSize);
+      }
+    } catch (err) {
+      console.warn("Could not read print size from iframe document:", err);
+    }
+    applyPageOverride();
   };
 
-  // Re-apply page size/margin/orientation live if the user changes them
-  // after the iframe has already finished loading, without needing to
-  // reload the whole preview.
+  // Re-apply margin/orientation live if the user changes them after the
+  // iframe has already finished loading, without reloading the preview.
   useEffect(() => {
-    if (!iframeLoading) injectPrintStyle();
-  }, [orientation, marginMm, printMode]);
-
-  const paperClasses = {
-    archival:
-      "bg-white p-8 rounded shadow-md border border-neutral-300 w-full max-w-3xl aspect-[1/1.41] overflow-auto print:shadow-none print:border-none",
-    thermal:
-      "bg-white p-4 rounded shadow-md border border-neutral-300 w-[80mm] min-h-[140mm] overflow-auto print:shadow-none print:border-none",
-    tag: "bg-white p-3 rounded shadow-md border border-neutral-300 w-[340px] h-[210px] overflow-hidden print:shadow-none print:border-none",
-  };
+    if (!iframeLoading) applyPageOverride();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orientation, marginMm, printSize]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
@@ -312,38 +222,25 @@ export function PrintPreviewModal({
               {title} Print Preview
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-              Safe local render context. Preview margins and barcode scaling before physically
-              printing.
+              Safe local render context. Preview margins before physically printing.
             </DialogDescription>
           </div>
 
-          {/*
-            One toolbar, one row of controls that wraps as a unit when
-            space is tight — every control shares the same height (h-9) so
-            nothing looks squeezed or misaligned next to its neighbours,
-            and a narrow window wraps whole controls onto a new line
-            instead of compressing them into overlapping text.
-          */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Tabs value={printMode} onValueChange={(v) => setPrintMode(v as any)}>
-              <TabsList className="h-9">
-                <TabsTrigger value="archival" className="text-xs px-3">
-                  Archival (A4)
-                </TabsTrigger>
-                <TabsTrigger value="thermal" className="text-xs px-3">
-                  Thermal (Roll)
-                </TabsTrigger>
-                <TabsTrigger value="tag" className="text-xs px-3">
-                  Jewellery (Tag)
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {/* Format is auto-detected from the actual document — not a
+                user toggle, since switching it would not change what's
+                inside the iframe, only mislead about what will print. */}
+            <div
+              className="h-9 flex items-center px-3 rounded-md border border-border bg-muted/40 text-xs font-medium"
+              data-testid="print-detected-format"
+            >
+              {PRINT_SIZE_LABELS[printSize]}
+            </div>
 
             <div className="h-6 w-px bg-border shrink-0" aria-hidden="true" />
 
-            {/* Paper controls (Priority 5) — orientation only applies to A4/archival; margin applies to all modes (capped for thermal/tag). Works for both the browser print path (via @page CSS) and the desktop path (same CSS, carried in the HTML sent to Electron). */}
             <div className="flex items-center gap-2">
-              {printMode === "archival" && (
+              {ARCHIVAL_SIZES.includes(printSize) && (
                 <Select
                   value={orientation}
                   onValueChange={(v) => setOrientation(v as "portrait" | "landscape")}
@@ -373,7 +270,6 @@ export function PrintPreviewModal({
               </Select>
             </div>
 
-            {/* Desktop-only: real printer selection + silent printing (Priority 5) */}
             {isDesktop && (
               <>
                 <div className="h-6 w-px bg-border shrink-0" aria-hidden="true" />
@@ -404,120 +300,27 @@ export function PrintPreviewModal({
           </div>
         </DialogHeader>
 
-        {/* Scrollable Printable Display region */}
         <div className="flex-1 overflow-auto bg-muted/30 rounded-lg border border-border p-4 flex justify-center items-start relative">
-          {printUrl ? (
-            <div className="w-full h-full flex justify-center items-center relative">
-              {iframeLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 z-10 rounded-lg">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-gold border-t-transparent" />
-                  <p className="text-xs text-muted-foreground font-mono">
-                    Generating print layout preview...
-                  </p>
-                </div>
-              )}
-              <iframe
-                ref={iframeRef}
-                src={printUrl}
-                onLoad={handleIframeLoad}
-                className={`border-0 bg-white shadow-lg transition-all duration-300 ${
-                  printMode === "thermal"
-                    ? "w-[80mm] h-full"
-                    : printMode === "tag"
-                      ? "w-[360px] h-[240px]"
-                      : "w-full h-full max-w-4xl"
-                }`}
-                title="MTJ ERP Print Frame"
-              />
-            </div>
-          ) : (
-            <div ref={printableAreaRef} className={paperClasses[printMode]}>
-              {printMode === "thermal" ? (
-                <ThermalPrintLayout>
-                  <div className="text-xs space-y-3">
-                    <div className="flex justify-between font-bold border-b border-black pb-1 mb-2">
-                      <span>Doc Code: {docNo}</span>
-                      <span>Date: {new Date().toLocaleDateString("en-IN")}</span>
-                    </div>
-                    {children}
-                    <div className="flex justify-center my-4">
-                      <QRCodeBlock value={docNo} size={85} />
-                    </div>
-                    <div className="border-t border-dashed border-black pt-3">
-                      <SignatureBlock
-                        leftLabel="Operator"
-                        rightLabel="Karigar"
-                        className="pt-2 mt-4"
-                      />
-                    </div>
-                  </div>
-                </ThermalPrintLayout>
-              ) : printMode === "tag" ? (
-                <div className="h-full flex flex-col justify-between text-black text-xs leading-tight">
-                  <div className="flex justify-between border-b pb-1 font-bold">
-                    <span>{docNo}</span>
-                    <span>TAG</span>
-                  </div>
-                  <div className="my-2 space-y-1">{children}</div>
-                  <div className="border-t pt-1 text-[9px] text-center font-mono">
-                    MTJ Jewellery Tag Layout · TSC Compatible
-                  </div>
-                </div>
-              ) : (
-                <ArchivalPrintLayout title={title} subtitle={`Invoice Code: ${docNo}`}>
-                  <div className="space-y-6 pt-4 text-sm text-black">
-                    <div className="grid grid-cols-2 gap-4 border-b pb-4 border-neutral-200">
-                      <div>
-                        <span className="text-xs uppercase tracking-wider font-semibold text-neutral-500">
-                          Document No:
-                        </span>
-                        <p className="font-mono text-base font-bold text-neutral-800">{docNo}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs uppercase tracking-wider font-semibold text-neutral-500">
-                          Timestamp:
-                        </span>
-                        <p className="font-mono text-base font-bold text-neutral-800">
-                          {new Date().toLocaleString("en-IN")}
-                        </p>
-                      </div>
-                    </div>
-
-                    {children}
-
-                    {/* QR validation & interactive features code bar */}
-                    <div className="flex items-center justify-between border-t border-b py-4 my-6 border-neutral-200 shrink-0">
-                      <div className="space-y-1">
-                        <span className="text-xs font-bold text-amber-900 uppercase tracking-widest block">
-                          Digital Audit Trail
-                        </span>
-                        <p className="text-xs text-neutral-600 max-w-sm">
-                          This document carries a cryptographically hashed verification signature in
-                          our database. Scan to verify credentials.
-                        </p>
-                      </div>
-                      <QRCodeBlock value={docNo} size={110} />
-                    </div>
-
-                    {relatedRecordId && (
-                      <AttachmentPrintGrid
-                        relatedTable={relatedTable}
-                        relatedRecordId={relatedRecordId}
-                      />
-                    )}
-
-                    <SignatureBlock />
-                  </div>
-                </ArchivalPrintLayout>
-              )}
-            </div>
-          )}
+          <div className="w-full h-full flex justify-center items-center relative">
+            {iframeLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 z-10 rounded-lg">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+                <p className="text-xs text-muted-foreground font-mono">
+                  Generating print layout preview...
+                </p>
+              </div>
+            )}
+            <iframe
+              ref={iframeRef}
+              src={toIframeSrc(printUrl)}
+              onLoad={handleIframeLoad}
+              className={`border-0 bg-white shadow-lg transition-all duration-300 ${PREVIEW_CONTAINER_CLASS[printSize]}`}
+              title="MTJ ERP Print Frame"
+            />
+          </div>
         </div>
 
         <DialogFooter className="pt-2 border-t flex flex-row items-center justify-end gap-2 shrink-0">
-          <div className="text-[10px] text-muted-foreground/85 font-sans font-medium mr-auto hidden sm:block">
-            Thermal/Tag supports Zebra, TSC &amp; browser resizing. A4 optimized for laser vaults.
-          </div>
           <Button variant="outline" size="sm" onClick={onClose} className="gap-1.5 text-xs">
             <X className="h-4 w-4" /> Close
           </Button>

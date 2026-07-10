@@ -139,7 +139,6 @@ export default function BranchReport() {
       selectedBranch={selectedBranch}
       onBranchChange={setSelectedBranch}
       branches={branches}
-      onPDF={() => {}}
       onXLSX={handleXLSX}
       onCSV={handleCSV}
     >

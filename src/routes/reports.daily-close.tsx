@@ -18,6 +18,7 @@ import { useDailyCloses, type DailyCloseSnapshot } from "@/lib/dailyclose-store"
 import { useFinancialLocks, loadFinancialLocks, isPeriodLocked } from "@/lib/financial-lock-store";
 import { useSettings } from "@/lib/settings-store";
 import { mgToGrams } from "@/lib/gold";
+import { exportToCSV } from "@/lib/report-engine";
 import { migrateAllToCloud } from "@/lib/cloud-migrate";
 import { hasLocalDiverged, getLastMigrationAt } from "@/lib/db-status";
 import {
@@ -25,6 +26,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   CloudOff,
+  Download,
   Loader2,
   Printer,
   RefreshCw,
@@ -243,6 +245,30 @@ function DailyClosePage() {
 
   const todaysCloses = closes.filter((c) => c.date === date);
 
+  function handleCSV() {
+    const header = [
+      "Date",
+      "Saved At",
+      "Balanced",
+      "Discrepancy (g)",
+      "Sales Total",
+      "Invoices",
+      "Closing Vault (g)",
+      "Karigar Outstanding (g)",
+    ];
+    const data = closes.map((c) => [
+      c.date,
+      new Date(c.createdAt).toLocaleString("en-IN"),
+      c.snapshot.balanceSheetBalanced ? "Yes" : "No",
+      mgToGrams(c.snapshot.discrepancyMg),
+      paiseToRupees(c.snapshot.salesTotalPaise),
+      c.snapshot.invoiceCount,
+      mgToGrams(c.snapshot.closingVaultMg),
+      mgToGrams(c.snapshot.karigarOutstandingMg),
+    ]);
+    exportToCSV("daily-close-history.csv", [header, ...data]);
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-2 mb-4">
@@ -252,7 +278,15 @@ function DailyClosePage() {
           </Button>
         </Link>
       </div>
-      <PageHeader title="Daily Close" subtitle="End-of-day reconciliation and shop summary." />
+      <PageHeader
+        title="Daily Close"
+        subtitle="End-of-day reconciliation and shop summary."
+        actions={
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
+            <Download className="h-4 w-4" /> Export History CSV
+          </Button>
+        }
+      />
 
       {!snapshot.balanceSheetBalanced && (
         <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 mb-4 flex items-start gap-3 text-sm">

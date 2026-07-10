@@ -15,6 +15,8 @@ export interface PrintQRProps {
   size?: number; // px, default 96
   label?: string; // small caption under code
   className?: string;
+  /** Set false to omit the label/docNumber caption — for space-constrained contexts like jewellery tags. Default true. */
+  showCaption?: boolean;
 }
 
 export function PrintQR({
@@ -25,6 +27,7 @@ export function PrintQR({
   size = 96,
   label = "Verify",
   className,
+  showCaption = true,
 }: PrintQRProps) {
   const payload = payloadFor({ docType, docNumber, recordId, createdAt });
   const [dataUrl, setDataUrl] = useState<string>("");
@@ -63,10 +66,12 @@ export function PrintQR({
       ) : (
         <div style={{ width: size, height: size }} className="bg-gray-100 border border-gray-300" />
       )}
-      <div className="mt-0.5 leading-tight text-center">
-        {label}
-        <div className="font-mono">{docNumber}</div>
-      </div>
+      {showCaption && (
+        <div className="mt-0.5 leading-tight text-center">
+          {label}
+          <div className="font-mono">{docNumber}</div>
+        </div>
+      )}
     </div>
   );
 }

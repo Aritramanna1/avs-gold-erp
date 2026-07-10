@@ -42,18 +42,16 @@ export function ReportShell(props: ReportShellProps) {
           {props.subtitle && <p className="text-sm text-muted-foreground mt-1">{props.subtitle}</p>}
         </div>
         <div className="flex gap-2 flex-wrap">
-          {props.onPDF && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                props.onPDF!();
-                triggerPrint();
-              }}
-            >
-              <Printer className="h-4 w-4 mr-1" /> PDF
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              props.onPDF?.();
+              triggerPrint();
+            }}
+          >
+            <Printer className="h-4 w-4 mr-1" /> Print / PDF
+          </Button>
           {props.onXLSX && (
             <Button variant="outline" size="sm" onClick={props.onXLSX}>
               <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel

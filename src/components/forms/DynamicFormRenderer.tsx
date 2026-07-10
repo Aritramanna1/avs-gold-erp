@@ -19,7 +19,11 @@ interface DynamicFormRendererProps {
   onSave: (data: Record<string, any>) => void;
 }
 
-export function DynamicFormRenderer({ formMeta, initialData = {}, onSave }: DynamicFormRendererProps) {
+export function DynamicFormRenderer({
+  formMeta,
+  initialData = {},
+  onSave,
+}: DynamicFormRendererProps) {
   const [formData, setFormData] = useState<Record<string, any>>(initialData);
 
   const handleChange = (name: string, value: any) => {
@@ -41,7 +45,7 @@ export function DynamicFormRenderer({ formMeta, initialData = {}, onSave }: Dyna
             <Label>
               {field.label} {field.required && <span className="text-destructive">*</span>}
             </Label>
-            
+
             {field.type === "text" && (
               <Input
                 required={field.required}
@@ -49,7 +53,7 @@ export function DynamicFormRenderer({ formMeta, initialData = {}, onSave }: Dyna
                 onChange={(e) => handleChange(field.name, e.target.value)}
               />
             )}
-            
+
             {field.type === "number" && (
               <Input
                 type="number"
@@ -87,10 +91,7 @@ export function DynamicFormRenderer({ formMeta, initialData = {}, onSave }: Dyna
             )}
 
             {field.type === "select" && field.options && (
-              <Select
-                value={val}
-                onValueChange={(v) => handleChange(field.name, v)}
-              >
+              <Select value={val} onValueChange={(v) => handleChange(field.name, v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select an option" />
                 </SelectTrigger>

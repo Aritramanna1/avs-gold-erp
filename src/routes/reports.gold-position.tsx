@@ -112,7 +112,6 @@ export default function GoldPositionReport() {
       selectedBranch={selectedBranch}
       onBranchChange={setSelectedBranch}
       branches={branches}
-      onPDF={() => {}}
       onXLSX={handleXLSX}
       onCSV={handleCSV}
     >

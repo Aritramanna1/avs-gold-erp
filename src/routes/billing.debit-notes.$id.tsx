@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useDebitNotes } from "@/lib/billing-documents-store";
 import { paiseToRupees } from "@/lib/billing-store";
 import { useSettings } from "@/lib/settings-store";
+import { usePrintEngine } from "@/lib/print-engine";
 import { useCan } from "@/lib/rbac";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ function DebitNoteDetail() {
   const refresh = useDebitNotes((s) => s.refresh);
   const cancel = useDebitNotes((s) => s.cancel);
   const { firm } = useSettings();
+  const { triggerPrint } = usePrintEngine();
   const { can, email } = useCan();
   const note = notes.find((n) => n.id === id);
 
@@ -77,7 +79,15 @@ function DebitNoteDetail() {
             <ArrowLeft className="h-4 w-4" /> All Debit Notes
           </Button>
         </Link>
-        <Button onClick={() => window.print()} className="gap-1.5">
+        <Button
+          onClick={() =>
+            triggerPrint(
+              `/billing/debit-note-print/${note.id}`,
+              `Debit Note Preview · ${note.debitNoteNo}`,
+            )
+          }
+          className="gap-1.5"
+        >
           <Printer className="h-4 w-4" /> Print
         </Button>
         {note.status === "issued" && can("billing.delete") && (

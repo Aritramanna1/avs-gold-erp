@@ -8,8 +8,8 @@ import {
   type ExceptionItem,
   type ExceptionCategory,
 } from "@/lib/exception-report";
-import { exportToCSV } from "@/lib/report-engine";
-import { RefreshCw, AlertTriangle, Loader2, Download } from "lucide-react";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { RefreshCw, AlertTriangle, Loader2, Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/exceptions")({
   head: () => ({ meta: [{ title: "Exception Report · AVS Gold ERP" }] }),
@@ -77,6 +77,9 @@ function ExceptionReportPage() {
             </Button>
             <Button variant="outline" onClick={handleCSV} className="gap-2">
               <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" onClick={() => triggerPrint()} className="gap-2">
+              <Printer className="h-4 w-4" /> Print
             </Button>
           </div>
         }

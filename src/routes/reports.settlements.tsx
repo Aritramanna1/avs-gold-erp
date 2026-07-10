@@ -4,8 +4,8 @@ import { PageHeader } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSettlements, previewSettlementTotals } from "@/lib/settlement-store";
-import { fmtRs, fmtDate, exportToCSV } from "@/lib/report-engine";
-import { Download } from "lucide-react";
+import { fmtRs, fmtDate, exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/settlements")({
   head: () => ({ meta: [{ title: "Settlement Report · AVS Gold ERP" }] }),
@@ -70,9 +70,14 @@ function SettlementReportPage() {
         title="Settlement Report"
         subtitle="Every Customer Settlement, draft through finalised"
         actions={
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
-            <Download className="h-4 w-4" /> CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => triggerPrint()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
         }
       />
 

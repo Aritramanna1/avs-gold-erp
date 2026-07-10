@@ -250,7 +250,20 @@ export async function pullPrintLogs(): Promise<void> {
   const rows = (data ?? [])
     .map((r) => r.data as PrintLogRecord | null)
     .filter((r): r is PrintLogRecord => !!r && !!r.id && !!r.docNumber);
-  usePrintLog.setState({ events: rows });
+  // Merge instead of replace: recordPrint() writes the new/incremented event
+  // to local state immediately and saves to the backend fire-and-forget. If
+  // this pull's request was already in flight when that happened, a blind
+  // replace here would silently erase the just-created print/reprint event —
+  // the exact printed-then-shows-as-never-printed race that made reprint
+  // counts unreliable. Keep whichever side has the more recent activity.
+  const merged = new Map(rows.map((r) => [r.id, r]));
+  for (const local of usePrintLog.getState().events) {
+    const remote = merged.get(local.id);
+    if (!remote || local.lastPrintedAt > remote.lastPrintedAt) {
+      merged.set(local.id, local);
+    }
+  }
+  usePrintLog.setState({ events: Array.from(merged.values()) });
 }
 
 export async function pullWhatsappInbox(): Promise<void> {
@@ -616,6 +629,28 @@ export async function pullBackground(): Promise<{ ok: boolean; errors: string[] 
           const { useCommSettings } = await import("@/lib/comm/comm-settings-store");
           useCommSettings.setState({ configs: payload.configs });
         }
+      },
+      errors,
+    ),
+    // Credit notes, debit notes, estimates, delivery challans — all four
+    // "billing documents" from billing-documents-store.ts were never
+    // hydrated on boot (confirmed: zero references to this file anywhere
+    // in data-loader.ts before this). A store's own list/detail route
+    // populates it via its own useEffect, but a print route reached
+    // directly (a fresh page load, e.g. a shared link) found nothing —
+    // affects all four doc types identically, not just the one being
+    // migrated, so fixed here once rather than per-route.
+    runSafe(
+      "billing_documents",
+      async () => {
+        const { useCreditNotes, useDebitNotes, useEstimates, useDeliveryChallans } =
+          await import("@/lib/billing-documents-store");
+        await Promise.all([
+          useCreditNotes.getState().refresh(),
+          useDebitNotes.getState().refresh(),
+          useEstimates.getState().refresh(),
+          useDeliveryChallans.getState().refresh(),
+        ]);
       },
       errors,
     ),

@@ -517,14 +517,7 @@ function ReportsIndex() {
         <TabsContent value="workshop">
           <Section title={`Job Cards (${filteredJobs.length})`} empty={filteredJobs.length === 0}>
             <Table
-              headers={[
-                "No.",
-                "Order",
-                "Karigar",
-                "Status",
-                "Received (g)",
-                "Overloss (g)",
-              ]}
+              headers={["No.", "Order", "Karigar", "Status", "Received (g)", "Overloss (g)"]}
               rows={filteredJobs.map((j) => [
                 j.jobNo,
                 j.orderNo,

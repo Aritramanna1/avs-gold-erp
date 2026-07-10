@@ -8,6 +8,13 @@ import { paiseToRupees } from "@/lib/billing-store";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
+import { Button } from "@/components/ui/button";
+import { Download, Loader2 } from "lucide-react";
+import {
+  generateGoldSettlementPdf,
+  goldSettlementPdfFileName,
+} from "@/lib/pdf/gold-settlement-pdf";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/billing/gold-settlement-print/$id")({
   head: () => {
@@ -44,6 +51,7 @@ function GoldSettlementPrintComponent() {
   const people = usePeople((s) => s.people);
 
   const [layoutSize, setLayoutSize] = useState<"a4" | "a5" | "thermal" | "thermal58" | "tag">("a4");
+  const [downloading, setDownloading] = useState(false);
 
   const {
     record: settlement,
@@ -107,6 +115,7 @@ function GoldSettlementPrintComponent() {
         settlement.rate_per_gram_paise > 0 ? settlement.rate_per_gram_paise / 100 : undefined,
       amountRupees: settlement.amount_paise > 0 ? settlement.amount_paise / 100 : undefined,
       direction: settlement.settlement_type === "gold_given" ? "Naam" : "Jama",
+      rowType: "item",
     },
   ];
 
@@ -144,6 +153,21 @@ function GoldSettlementPrintComponent() {
   const closingGoldMg = prevGoldMg + Math.round(netTodayGoldGrams * 1000);
   const closingCashPaise = prevCashPaise + Math.round(netTodayCashRupees * 100000);
 
+  // Net Total — previous balance plus only today's ITEM rows (goods/gold
+  // changing hands), the legacy report's checkpoint printed before any
+  // settlement/payment rows are netted in below.
+  const itemNetGoldGrams = itemsList
+    .filter((it) => it.kind === "gold" && it.rowType === "item")
+    .reduce((sum, it) => sum + (it.direction === "Jama" ? 1 : -1) * (it.fineGrams || 0), 0);
+  const itemNetCashRupees = itemsList
+    .filter((it) => it.rowType === "item")
+    .reduce((sum, it) => {
+      const val = it.kind === "cash" ? it.amountRupees || 0 : it.labourRupees || 0;
+      return sum + (it.direction === "Jama" ? 1 : -1) * val;
+    }, 0);
+  const netTotalGoldMg = prevGoldMg + Math.round(itemNetGoldGrams * 1000);
+  const netTotalCashPaise = prevCashPaise + Math.round(itemNetCashRupees * 100000);
+
   // Direction Helper labels
   const getGoldLiabilityLabel = (mg: number) => {
     if (mg > 0) return `We owe ${partyName} gold (Jama / Credit)`;
@@ -159,6 +183,24 @@ function GoldSettlementPrintComponent() {
 
   const isThermalOrTag =
     layoutSize === "thermal" || layoutSize === "thermal58" || layoutSize === "tag";
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      const blob = generateGoldSettlementPdf(settlement!, partyName, firm);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = goldSettlementPdfFileName(settlement!, firm);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+      toast.success("Voucher PDF downloaded.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate voucher PDF");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-muted/15 flex flex-col font-sans">
@@ -178,7 +220,23 @@ function GoldSettlementPrintComponent() {
         }
       />
 
-      <div className="flex-1 p-4 md:p-8 flex justify-center items-start overflow-y-auto">
+      <div className="flex-1 p-4 md:p-8 flex flex-col items-center overflow-y-auto">
+        <div className="w-full max-w-3xl flex justify-end mb-3 print:hidden">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownload}
+            disabled={downloading}
+            className="gap-2"
+          >
+            {downloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Download PDF
+          </Button>
+        </div>
         <PrintLayout
           title="Gold Payment Voucher"
           docNumber={docNumber}
@@ -246,6 +304,7 @@ function GoldSettlementPrintComponent() {
                       <th className="p-2.5 text-center">HUID</th>
                       <th className="p-2.5 text-center">Stamp</th>
                       <th className="p-2.5 text-right">G.Wt (g)</th>
+                      <th className="p-2.5 text-right">Add (g)</th>
                       <th className="p-2.5 text-right">Less (g)</th>
                       <th className="p-2.5 text-right font-medium">Net Wt</th>
                       <th className="p-2.5 text-center">Touch</th>
@@ -273,6 +332,9 @@ function GoldSettlementPrintComponent() {
                         </td>
                         <td className="p-2.5 text-right font-mono text-stone-750">
                           {it.grossGrams ? it.grossGrams.toFixed(3) : "—"}
+                        </td>
+                        <td className="p-2.5 text-right font-mono text-stone-750">
+                          {it.addGrams ? it.addGrams.toFixed(3) : "—"}
                         </td>
                         <td className="p-2.5 text-right font-mono text-stone-750">
                           {it.lessGrams ? it.lessGrams.toFixed(3) : "—"}
@@ -316,6 +378,15 @@ function GoldSettlementPrintComponent() {
                         {mgToGrams(Math.abs(prevGoldMg))}g {prevGoldMg >= 0 ? "Jama" : "Naam"}
                       </span>
                     </div>
+                    {settlement.p_balance_ref_voucher_id && (
+                      <div className="text-[9px] text-stone-400 -mt-1">
+                        LB Bal. [#{settlement.p_balance_ref_voucher_id} ·{" "}
+                        {new Date(settlement.p_balance_ref_voucher_date ?? "").toLocaleDateString(
+                          "en-IN",
+                        )}
+                        ]
+                      </div>
+                    )}
                     <div className="flex justify-between text-emerald-700">
                       <span>Today's Metal Jama (+):</span>
                       <span className="font-bold">+{todayGoldJamaGrams.toFixed(3)}g</span>
@@ -323,6 +394,13 @@ function GoldSettlementPrintComponent() {
                     <div className="flex justify-between text-rose-700">
                       <span>Today's Metal Naam (-):</span>
                       <span className="font-bold">-{todayGoldNaamGrams.toFixed(3)}g</span>
+                    </div>
+                    <div className="flex justify-between pt-1.5 border-t border-dashed border-stone-200 text-stone-800 font-semibold">
+                      <span>Net Total:</span>
+                      <span>
+                        {mgToGrams(Math.abs(netTotalGoldMg))}g{" "}
+                        {netTotalGoldMg >= 0 ? "Jama" : "Naam"}
+                      </span>
                     </div>
                     <div className="flex justify-between pt-1.5 border-t border-dashed border-stone-200 text-stone-900 font-bold">
                       <span>Closing Gold Outstanding:</span>
@@ -356,6 +434,15 @@ function GoldSettlementPrintComponent() {
                         {prevCashPaise >= 0 ? "Jama" : "Naam"}
                       </span>
                     </div>
+                    {settlement.p_balance_ref_voucher_id && (
+                      <div className="text-[9px] text-stone-400 -mt-1">
+                        LB Bal. [#{settlement.p_balance_ref_voucher_id} ·{" "}
+                        {new Date(settlement.p_balance_ref_voucher_date ?? "").toLocaleDateString(
+                          "en-IN",
+                        )}
+                        ]
+                      </div>
+                    )}
                     <div className="flex justify-between text-emerald-700">
                       <span>Today's Cash Jama (+):</span>
                       <span className="font-bold">+₹{todayCashJamaRupees}</span>
@@ -363,6 +450,13 @@ function GoldSettlementPrintComponent() {
                     <div className="flex justify-between text-rose-700">
                       <span>Today's Cash Naam (-):</span>
                       <span className="font-bold">-₹{todayCashNaamRupees}</span>
+                    </div>
+                    <div className="flex justify-between pt-1.5 border-t border-dashed border-stone-200 text-stone-800 font-semibold">
+                      <span>Net Total:</span>
+                      <span>
+                        ₹{paiseToRupees(Math.abs(netTotalCashPaise))}{" "}
+                        {netTotalCashPaise >= 0 ? "Jama" : "Naam"}
+                      </span>
                     </div>
                     <div className="flex justify-between pt-1.5 border-t border-dashed border-stone-200 text-stone-900 font-bold">
                       <span>Closing Cash Outstanding:</span>

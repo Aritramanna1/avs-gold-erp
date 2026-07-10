@@ -1,0 +1,154 @@
+/**
+ * Unified Print Engine — single PDF export entry point.
+ *
+ * Replaces the pattern of one bespoke generateXPdf() per doc type
+ * (document-pdf-generator.ts, gold-settlement-pdf.ts, job-card-pdf.ts,
+ * outside-worker-statement-pdf.ts) with one function that walks a
+ * template's sections and draws each with the shared toolkit — so a
+ * layout change made in one place (the template) is reflected in both
+ * the on-screen preview (sections.tsx) and the exported PDF automatically.
+ */
+import { jsPDF } from "jspdf";
+import type { FirmProfile } from "@/lib/settings-store";
+import { payloadFor } from "@/lib/verify-token";
+import type { PrintDocumentData, PrintTemplate, SectionConfig } from "../types";
+import {
+  addBalanceCard,
+  addBilledToStamp,
+  addDataList,
+  addDocHeader,
+  addFieldGrid,
+  addPageFooter,
+  addPremiumHeader,
+  addQr,
+  addRichText,
+  addSignatureBlock,
+  addTable,
+  addTagCards,
+  addThermalItemList,
+  geometryFor,
+  type Geometry,
+} from "./toolkit";
+
+const PAPER_SIZE_TO_JSPDF: Record<PrintTemplate["paperSize"], string | [number, number]> = {
+  a4: "a4",
+  a5: "a5",
+  a6: "a6",
+  thermal: [80, 200],
+  thermal58: [58, 200],
+  tag: [50, 30],
+};
+
+async function drawSection(
+  doc: jsPDF,
+  geo: Geometry,
+  section: SectionConfig,
+  data: PrintDocumentData,
+  firm: FirmProfile,
+  y: number,
+): Promise<number> {
+  switch (section.type) {
+    case "header":
+      return addDocHeader(doc, geo, firm, data.title, data.docNumber, formatDate(data.createdAt));
+    case "premiumHeader":
+      return addPremiumHeader(doc, geo, section, data, firm, y);
+    case "fieldGrid":
+      return addFieldGrid(doc, geo, section, data, y);
+    case "party":
+      // A party block draws like a titled field grid for PDF purposes —
+      // same label/value shape, just sourced from namePath + subFields.
+      return addFieldGrid(
+        doc,
+        geo,
+        {
+          type: "fieldGrid",
+          id: section.id,
+          title: section.title,
+          fields: [{ label: "Name", valuePath: section.namePath }, ...section.subFields],
+          showIf: section.showIf,
+        },
+        data,
+        y,
+      );
+    case "billedToStamp":
+      return addBilledToStamp(doc, geo, section, data, y);
+    case "table":
+      return addTable(doc, geo, section, data, y);
+    case "balanceCard":
+      return addBalanceCard(doc, geo, section, data, y);
+    case "richText":
+      return addRichText(doc, geo, section, data, y);
+    case "dataList":
+      return addDataList(doc, geo, section, data, y);
+    case "thermalItemList":
+      return addThermalItemList(doc, geo, section, data, y);
+    case "signatureBlock":
+      return addSignatureBlock(doc, geo, section, data, firm, y);
+    case "row": {
+      // PDF has no free-form multi-column layout primitive here — columns
+      // are drawn sequentially (top to bottom) instead of side by side.
+      // Content and totals are unaffected; only the on-screen side-by-side
+      // arrangement doesn't carry over to the exported PDF.
+      let ry = y;
+      for (const col of section.columns) {
+        for (const sub of col) {
+          ry = await drawSection(doc, geo, sub, data, firm, ry);
+        }
+      }
+      return ry;
+    }
+    case "tagCards":
+      addTagCards(doc, geo, section, data, firm);
+      return y;
+    case "pageBreak":
+      doc.addPage();
+      return geo.margin;
+    case "qr": {
+      const payload = payloadFor({
+        docType: data.docType,
+        docNumber: data.docNumber,
+        recordId: data.recordId,
+        createdAt: data.createdAt,
+      });
+      return addQr(doc, geo, payload, y);
+    }
+    case "images":
+      // Reference photos / KYC pages are a concern once a doc type that
+      // actually needs them in its PDF is migrated.
+      return y;
+    default:
+      return y;
+  }
+}
+
+function formatDate(createdAt: number | undefined): string {
+  return createdAt ? new Date(createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "";
+}
+
+export async function generateDocumentPdf(
+  data: PrintDocumentData,
+  template: PrintTemplate,
+  firm: FirmProfile,
+): Promise<{ blob: Blob; fileName: string }> {
+  const doc = new jsPDF({ unit: "mm", format: PAPER_SIZE_TO_JSPDF[template.paperSize] });
+  const geo = geometryFor(doc, template.paperSize);
+  const hasOwnHeader = template.sections.some(
+    (s) => s.type === "header" || s.type === "premiumHeader",
+  );
+
+  let y = hasOwnHeader
+    ? geo.margin
+    : addDocHeader(doc, geo, firm, data.title, data.docNumber, formatDate(data.createdAt));
+
+  for (const section of template.sections) {
+    y = await drawSection(doc, geo, section, data, firm, y);
+  }
+
+  if (template.paperSize !== "tag") {
+    addPageFooter(doc, geo, firm);
+  }
+
+  const safeName = data.docNumber.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const fileName = `${firm.shopName?.replace(/\s+/g, "_") || "ERP"}_${data.docType}_${safeName}.pdf`;
+  return { blob: doc.output("blob"), fileName };
+}

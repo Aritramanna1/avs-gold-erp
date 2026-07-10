@@ -4,6 +4,7 @@ import { useEstimates } from "@/lib/billing-documents-store";
 import { paiseToRupees } from "@/lib/billing-store";
 import { mgToGrams } from "@/lib/gold";
 import { useSettings } from "@/lib/settings-store";
+import { usePrintEngine } from "@/lib/print-engine";
 import { useCan } from "@/lib/rbac";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ function EstimateDetail() {
   const cancel = useEstimates((s) => s.cancel);
   const convertToInvoice = useEstimates((s) => s.convertToInvoice);
   const { firm } = useSettings();
+  const { triggerPrint } = usePrintEngine();
   const { can } = useCan();
   const est = estimates.find((e) => e.id === id);
 
@@ -81,7 +83,15 @@ function EstimateDetail() {
             <ArrowLeft className="h-4 w-4" /> All Estimates
           </Button>
         </Link>
-        <Button onClick={() => window.print()} className="gap-1.5">
+        <Button
+          onClick={() =>
+            triggerPrint(
+              `/billing/estimate-print/${est.id}`,
+              `Estimate Preview · ${est.estimateNo}`,
+            )
+          }
+          className="gap-1.5"
+        >
           <Printer className="h-4 w-4" /> Print
         </Button>
         {est.status === "draft" && (

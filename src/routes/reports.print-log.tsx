@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { usePrintLog, PRINT_DOC_LABELS, REPRINT_REASON_LABELS } from "@/lib/printlog-store";
-import { Printer } from "lucide-react";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { Printer, Download } from "lucide-react";
 
 export const Route = createFileRoute("/reports/print-log")({
   head: () => ({ meta: [{ title: "Print Log · AVS Gold ERP" }] }),
@@ -27,17 +28,52 @@ function PrintLogPage() {
     );
   }, [events, q]);
 
+  function handleCSV() {
+    const header = [
+      "Document",
+      "Number",
+      "Linked",
+      "By",
+      "First Printed",
+      "Last Printed",
+      "Reprints",
+      "Last Reason",
+    ];
+    const data = filtered.map((e) => {
+      const last = e.history[e.history.length - 1];
+      return [
+        PRINT_DOC_LABELS[e.docType],
+        e.docNumber,
+        e.linkedLabel || e.linkedId,
+        e.printedBy,
+        new Date(e.firstPrintedAt).toLocaleString(),
+        new Date(e.lastPrintedAt).toLocaleString(),
+        e.reprintCount,
+        last?.reason ? REPRINT_REASON_LABELS[last.reason] : "",
+      ];
+    });
+    exportToCSV("print-log.csv", [header, ...data]);
+  }
+
   return (
     <div data-testid="print-log-root" className="p-4 md:p-8 max-w-7xl mx-auto">
       <PageHeader
         title="Print Log / Reprint Registry"
         subtitle="Every important document printed by the shop is recorded here for audit and reprint tracking."
         actions={
-          <Link to="/reports">
-            <Button variant="outline" size="sm">
-              Back to Reports
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
+              <Download className="h-4 w-4" /> CSV
             </Button>
-          </Link>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => triggerPrint()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+            <Link to="/reports">
+              <Button variant="outline" size="sm">
+                Back to Reports
+              </Button>
+            </Link>
+          </div>
         }
       />
       <Card className="p-3 mb-4 flex gap-2">

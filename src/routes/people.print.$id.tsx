@@ -17,7 +17,9 @@ export const Route = createFileRoute("/people/print/$id")({
         .filter(Boolean)
         .map((w) => w[0])
         .join("")
-        .toUpperCase() || shopName?.slice(0, 3).toUpperCase() || "ERP";
+        .toUpperCase() ||
+      shopName?.slice(0, 3).toUpperCase() ||
+      "ERP";
     return {
       meta: [{ title: `KYC Sheet · ${shortName}` }],
     };
@@ -118,7 +120,7 @@ function PrintPage() {
   for (const a of otherAttachments) {
     documentRows.push({ label: a.notes || a.original_file_name || "Other Document", file: a });
   }
-  const attachedDocs = documentRows.filter(r => r.file);
+  const attachedDocs = documentRows.filter((r) => r.file);
 
   return (
     <div className="min-h-screen bg-neutral-100 text-foreground">
@@ -157,7 +159,10 @@ function PrintPage() {
                 <div>
                   <div className="text-3xl font-bold text-black">{person.fullName}</div>
                   <div className="text-sm text-stone-600 mt-1">
-                    <span className="uppercase tracking-wider font-semibold">{PERSON_TYPE_LABELS[person.type]}</span> · ID: {person.id.slice(0, 8).toUpperCase()}
+                    <span className="uppercase tracking-wider font-semibold">
+                      {PERSON_TYPE_LABELS[person.type]}
+                    </span>{" "}
+                    · ID: {person.id.slice(0, 8).toUpperCase()}
                   </div>
                 </div>
                 {photoFile ? (
@@ -171,7 +176,9 @@ function PrintPage() {
                   </div>
                 ) : (
                   <div className="h-32 w-28 border-2 border-dashed border-stone-300 bg-stone-50 flex items-center justify-center text-xs text-stone-400 text-center flex-shrink-0">
-                    Affix<br />Photo
+                    Affix
+                    <br />
+                    Photo
                   </div>
                 )}
               </div>
@@ -181,7 +188,10 @@ function PrintPage() {
                 <InfoCell label="Alt Mobile" value={person.altPhone} />
                 <InfoCell label="Email" value={person.email} />
                 <InfoCell label="Current Address" value={person.currentAddress} />
-                <InfoCell label="Aadhaar Number" value={person.aadhaar ? maskAadhaar(person.aadhaar) : null} />
+                <InfoCell
+                  label="Aadhaar Number"
+                  value={person.aadhaar ? maskAadhaar(person.aadhaar) : null}
+                />
                 <InfoCell label="PAN Number" value={person.pan} />
                 <InfoCell label="Work / Trade" value={person.workType} />
                 <InfoCell label="Joining Date" value={person.joiningDate} />
@@ -198,12 +208,16 @@ function PrintPage() {
                 </div>
                 <div className="text-sm mb-8">
                   {isKycComplete ? (
-                    <span className="text-green-700 font-bold tracking-wide">COMPLETE - FULLY VERIFIED</span>
+                    <span className="text-green-700 font-bold tracking-wide">
+                      COMPLETE - FULLY VERIFIED
+                    </span>
                   ) : (
-                    <span className="text-yellow-700 font-bold tracking-wide">INCOMPLETE - PENDING DOCUMENTS</span>
+                    <span className="text-yellow-700 font-bold tracking-wide">
+                      INCOMPLETE - PENDING DOCUMENTS
+                    </span>
                   )}
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-8 mt-12 text-sm text-stone-600">
                   <div className="border-t border-stone-400 pt-2">
                     Verified By (Name & Designation)
@@ -217,7 +231,10 @@ function PrintPage() {
 
             {/* PAGE 2+: ATTACHED DOCUMENTS */}
             {attachedDocs.map((doc) => (
-              <div key={doc.file?.id} className="print:break-before-page w-full flex justify-center">
+              <div
+                key={doc.file?.id}
+                className="print:break-before-page w-full flex justify-center"
+              >
                 <PrintLayout
                   title={doc.label}
                   docNumber={doc.number || "—"}
@@ -230,9 +247,15 @@ function PrintPage() {
                   <div className="flex items-start justify-between gap-4 mb-4 border-b border-stone-200 pb-4">
                     <div>
                       <div className="text-2xl font-bold">{person.fullName}</div>
-                      <div className="text-sm text-stone-600 font-mono mt-1">ID: {person.id.slice(0, 8).toUpperCase()}</div>
-                      <div className="text-sm font-medium mt-3 text-stone-800">Attached Document: <span className="font-bold">{doc.label}</span></div>
-                      <div className="text-xs text-stone-500 mt-1">Status: {isKycComplete ? "Verified Profile" : "Pending Verification"}</div>
+                      <div className="text-sm text-stone-600 font-mono mt-1">
+                        ID: {person.id.slice(0, 8).toUpperCase()}
+                      </div>
+                      <div className="text-sm font-medium mt-3 text-stone-800">
+                        Attached Document: <span className="font-bold">{doc.label}</span>
+                      </div>
+                      <div className="text-xs text-stone-500 mt-1">
+                        Status: {isKycComplete ? "Verified Profile" : "Pending Verification"}
+                      </div>
                     </div>
                     {photoFile ? (
                       <div className="h-24 w-20 border border-stone-300 overflow-hidden bg-stone-50 flex-shrink-0 shadow-sm">
@@ -245,7 +268,9 @@ function PrintPage() {
                       </div>
                     ) : (
                       <div className="h-24 w-20 border border-dashed border-stone-300 bg-stone-50 flex items-center justify-center text-[10px] text-stone-400 text-center flex-shrink-0">
-                        No<br />Photo
+                        No
+                        <br />
+                        Photo
                       </div>
                     )}
                   </div>
@@ -261,8 +286,12 @@ function PrintPage() {
                     ) : (
                       <div className="flex flex-col items-center text-stone-500">
                         <FileText className="h-16 w-16 mb-2 text-stone-300" />
-                        <div className="font-medium text-stone-600">Non-image document attached</div>
-                        <div className="text-xs font-mono mt-1 text-stone-400">{doc.file?.original_file_name}</div>
+                        <div className="font-medium text-stone-600">
+                          Non-image document attached
+                        </div>
+                        <div className="text-xs font-mono mt-1 text-stone-400">
+                          {doc.file?.original_file_name}
+                        </div>
                       </div>
                     )}
                   </div>

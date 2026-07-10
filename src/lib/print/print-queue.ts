@@ -21,24 +21,6 @@
  * be exceptional (client-side PDF rendering itself throwing).
  */
 import { runLocal, getDb, initLocalDb } from "@/lib/local-db";
-import { generateDocumentPdf, type PdfDocumentType } from "@/lib/pdf/document-pdf-generator";
-import { generateTagLabelPdf, type TagLabelData } from "@/lib/hardware/tag-pdf-fallback";
-import { useSettings } from "@/lib/settings-store";
-
-export type PrintDocType = PdfDocumentType | "tag";
-
-export interface PrintJobInput {
-  docType: PrintDocType;
-  title: string;
-  /** The record to render — required for invoice/order/repair/manufacturing_bill (see document-pdf-generator.ts's expected shape per docType). */
-  docData?: any;
-  /** Required when docType is "tag". */
-  tagData?: TagLabelData;
-  /** Pre-rendered HTML to send to the printer (desktop path only). If omitted, only the PDF fallback path is available. */
-  html?: string;
-  silent?: boolean;
-  printerName?: string;
-}
 
 export interface PrintJobResult {
   jobId: string;
@@ -75,40 +57,11 @@ function getDesktopApi(): MtjDesktopPrintApi | null {
     : null;
 }
 
-async function generateFallbackPdf(job: PrintJobInput): Promise<{ blob: Blob; fileName: string }> {
-  if (job.docType === "tag") {
-    if (!job.tagData)
-      throw new Error("tag print job is missing tagData — cannot generate PDF fallback.");
-    return {
-      blob: generateTagLabelPdf(job.tagData),
-      fileName: `label-${job.tagData.itemCode || job.tagData.barcode}.pdf`,
-    };
-  }
-  const firm = useSettings.getState().firm;
-  return generateDocumentPdf(job.docType, job.docData, firm);
-}
-
-function downloadBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
 /**
  * Records one print job's outcome to the same `print_jobs` history the
- * Print Queue report (reports.print-queue.tsx) reads from. Exported so
+ * Print Queue report (reports.print-queue.tsx) reads from. Called by
  * hardware-service.ts's submitPrintJob() — the call site every print
- * button in the app actually goes through — can log into this table too,
- * without having to switch its whole printing mechanism over to this
- * module's own submitPrintJob(). Without this, the Print Queue report was
- * always empty: this file's own submitPrintJob()/recordJob() combo was
- * never actually reached by any live print button, so the "reliable job
- * queue" it documents was built but never wired up.
+ * button in the app actually goes through.
  */
 export async function recordJob(
   id: string,
@@ -137,76 +90,6 @@ export async function recordJob(
     );
   });
 }
-
-/**
- * Submits a print job. Tries the physical printer path first (desktop IPC,
- * or browser print if `html` is provided); on ANY failure, generates and
- * downloads a PDF instead. Always resolves — never throws — so a UI button
- * calling this never needs its own try/catch for "what if printing fails."
- */
-export async function submitPrintJob(job: PrintJobInput): Promise<PrintJobResult> {
-  await initLocalDb();
-  const id = makeId();
-  let attempts = 0;
-
-  if (job.html) {
-    attempts++;
-    const desktop = getDesktopApi();
-    try {
-      if (desktop) {
-        const result = await desktop.print.printHtml(job.html, {
-          silent: job.silent,
-          printerName: job.printerName,
-        });
-        if (result.success) {
-          await recordJob(id, job.docType, job.title, "printed", attempts, undefined, undefined);
-          return { jobId: id, status: "printed" };
-        }
-        // Falls through to PDF fallback below — result.error is logged there implicitly via last_error.
-      } else {
-        // Browser path: window.print() cannot report success/failure back
-        // to JS (the OS print dialog is opaque to the page), so we can't
-        // distinguish "user printed it" from "user cancelled" here. We
-        // still trigger it as a best-effort convenience, but the PDF
-        // fallback ALSO always gets generated for the browser path — a
-        // JS-invisible print outcome is exactly the "might silently fail"
-        // case this queue exists to eliminate.
-        window.print();
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error("[PrintQueue] Physical print attempt failed:", message);
-    }
-  }
-
-  if (!job.html || !getDesktopApi()) {
-    // No HTML to send to a physical printer, or (browser path) no reliable
-    // success signal — generate the PDF fallback so the job is never lost.
-    try {
-      const { blob, fileName } = await generateFallbackPdf(job);
-      downloadBlob(blob, fileName);
-      await recordJob(id, job.docType, job.title, "pdf_fallback", attempts, undefined, fileName);
-      return { jobId: id, status: "pdf_fallback", pdfFileName: fileName };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      await recordJob(id, job.docType, job.title, "failed", attempts, message, undefined);
-      return { jobId: id, status: "failed", error: message };
-    }
-  }
-
-  // Desktop path reached here only via the failure fall-through above.
-  try {
-    const { blob, fileName } = await generateFallbackPdf(job);
-    downloadBlob(blob, fileName);
-    await recordJob(id, job.docType, job.title, "pdf_fallback", attempts, undefined, fileName);
-    return { jobId: id, status: "pdf_fallback", pdfFileName: fileName };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    await recordJob(id, job.docType, job.title, "failed", attempts, message, undefined);
-    return { jobId: id, status: "failed", error: message };
-  }
-}
-
 export async function listAvailablePrinters(): Promise<PrinterInfo[]> {
   const desktop = getDesktopApi();
   if (!desktop) return [];

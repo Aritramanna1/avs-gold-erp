@@ -141,7 +141,6 @@ export default function ManufacturingReport() {
       selectedBranch={selectedBranch}
       onBranchChange={setSelectedBranch}
       branches={branches}
-      onPDF={() => {}}
       onXLSX={handleXLSX}
       onCSV={handleCSV}
     >

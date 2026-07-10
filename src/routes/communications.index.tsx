@@ -268,7 +268,19 @@ export default function CommunicationsDashboardPage() {
   useEffect(() => {
     ensureDefaults(branchId);
     void refresh();
-  }, [branchId, refresh]);
+  }, [branchId, refresh, ensureDefaults]);
+
+  // Resync template drafts when the settings store hydrates (or changes) —
+  // these fields snapshot storedTemplates via useState() below, which would
+  // otherwise keep showing pre-hydration defaults and silently overwrite the
+  // real saved templates on Save, same class of bug fixed for firm profile
+  // fields in settings.index.tsx.
+  useEffect(() => {
+    setTemplateEmailInvoice(storedTemplates.emailInvoice);
+    setTemplateWaInvoice(storedTemplates.waInvoice);
+    setTemplateEmailBirthday(storedTemplates.emailBirthday);
+    setTemplateWaBirthday(storedTemplates.waBirthday);
+  }, [storedTemplates]);
 
   const selectedPerson = useMemo(() => {
     return people.find((p) => p.id === selectedPersonId) || null;

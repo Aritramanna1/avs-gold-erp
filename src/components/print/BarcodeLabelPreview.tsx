@@ -1,5 +1,5 @@
-import { useMemo } from "react";
 import { Barcode } from "@/components/barcode";
+import { PrintQR } from "@/components/print-qr";
 import { mgToGrams } from "@/lib/gold";
 import type { StockItem } from "@/lib/stock-store";
 
@@ -28,56 +28,7 @@ export function BarcodeLabelPreview({
 
   const widthPx = isPortrait ? "240px" : is50x38 ? "380px" : "320px";
   const heightPx = isPortrait ? "385px" : is50x38 ? "240px" : "200px";
-
-  // Crisp offline micro vector QR Code rendering grid mapping
-  const qrGrid = useMemo(() => {
-    const codeStr = `MTJ-VERIFY:${item.itemCode || item.id}`;
-    const gridDim = 21; // 21x21 grid for Version 1 QR code representation
-    const grid: boolean[][] = Array(gridDim)
-      .fill(null)
-      .map(() => Array(gridDim).fill(false));
-
-    // Draw Finder Patterns (Corners: 7x7 squares)
-    const drawFinder = (row: number, col: number) => {
-      for (let r = 0; r < 7; r++) {
-        for (let c = 0; c < 7; c++) {
-          const isBorder = r === 0 || r === 6 || c === 0 || c === 6;
-          const isCenter = r >= 2 && r <= 4 && c >= 2 && c <= 4;
-          grid[row + r][col + c] = isBorder || isCenter;
-        }
-      }
-    };
-
-    drawFinder(0, 0); // Top Left
-    drawFinder(0, gridDim - 7); // Top Right
-    drawFinder(gridDim - 7, 0); // Bottom Left
-
-    // Draw timing patterns (dashed lines bridging corner boxes)
-    for (let i = 8; i < gridDim - 8; i++) {
-      grid[6][i] = i % 2 === 0;
-      grid[i][6] = i % 2 === 0;
-    }
-
-    // Algoritmically fill remaining columns
-    let charIndex = 0;
-    for (let r = 0; r < gridDim; r++) {
-      for (let c = 0; c < gridDim; c++) {
-        const isTopLeft = r < 9 && c < 9;
-        const isTopRight = r < 9 && c >= gridDim - 9;
-        const isBottomLeft = r >= gridDim - 9 && c < 9;
-        if (isTopLeft || isTopRight || isBottomLeft) continue;
-
-        if (r === 6 || c === 6) continue;
-
-        const charCode = codeStr.charCodeAt(charIndex % codeStr.length);
-        const bitIndex = (r * gridDim + c) % 8;
-        grid[r][c] = ((charCode >> bitIndex) & 1) === 1;
-        charIndex++;
-      }
-    }
-
-    return grid;
-  }, [item.itemCode, item.id]);
+  const qrSize = isPortrait ? 40 : is50x38 ? 34 : 26;
 
   return (
     <div
@@ -168,23 +119,13 @@ export function BarcodeLabelPreview({
             />
           </div>
           <div className="shrink-0 flex items-center justify-center p-0.5 border border-neutral-150 bg-white rounded">
-            <svg
-              width={isPortrait ? 40 : is50x38 ? 34 : 26}
-              height={isPortrait ? 40 : is50x38 ? 34 : 26}
-              viewBox="0 0 21 21"
-              shapeRendering="crispEdges"
-              className="text-black"
-              style={{ imageRendering: "pixelated" }}
-            >
-              <rect width="21" height="21" fill="#FFFFFF" />
-              {qrGrid.map((row, r) =>
-                row.map((active, c) =>
-                  active ? (
-                    <rect key={`${r}-${c}`} x={c} y={r} width="1" height="1" fill="#000000" />
-                  ) : null,
-                ),
-              )}
-            </svg>
+            <PrintQR
+              docType="jewellery_tag"
+              docNumber={item.itemCode || item.id}
+              recordId={item.id}
+              size={qrSize}
+              showCaption={false}
+            />
           </div>
         </div>
       </div>

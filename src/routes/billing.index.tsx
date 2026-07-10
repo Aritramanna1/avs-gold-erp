@@ -5,12 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  useBilling,
-  INVOICE_STATUS_LABELS,
-  customerLedger,
-  paiseToRupees,
-} from "@/lib/billing-store";
+import { useBilling, INVOICE_STATUS_LABELS, paiseToRupees } from "@/lib/billing-store";
+import { compileCustomerLedger } from "@/lib/customer-account-ledger";
+import { mgToGrams } from "@/lib/gold";
 import { usePeople } from "@/lib/people-store";
 import { useCan } from "@/lib/rbac";
 import { FileText, Plus, Receipt, Search, Coins, Printer } from "lucide-react";
@@ -21,6 +18,7 @@ import {
   FINANCIAL_STATUS_LABELS,
   DELIVERY_STATUS_LABELS,
 } from "@/lib/settlement-store";
+import { useGoldSettlement } from "@/lib/gold-settlement-store";
 
 export const Route = createFileRoute("/billing/")({
   head: () => ({ meta: [{ title: "Billing · AVS Gold ERP" }] }),
@@ -375,17 +373,31 @@ function CustomerLedgerView({
   invoices: ReturnType<typeof useBilling.getState>["invoices"];
   customers: ReturnType<typeof usePeople.getState>["people"];
 }) {
-  const billing = customers.filter((c) => invoices.some((i) => i.customerId === c.id));
+  // Reactivity note: compileCustomerLedger() reads Orders/Invoices/Gold
+  // Settlements via getState() internally, not a selector — so this
+  // component must explicitly subscribe to the settlements array (invoices
+  // is already a prop/selector), or the ledger would silently go stale the
+  // moment a settlement voucher is recorded elsewhere without a reload.
+  const settlements = useGoldSettlement((s) => s.settlements);
+
+  const billing = customers.filter(
+    (c) =>
+      invoices.some((i) => i.customerId === c.id) ||
+      settlements.some((s) => s.party_type === "customer" && s.party_id === c.id),
+  );
   const [selected, setSelected] = useState<string | null>(billing[0]?.id ?? null);
-  const data = useMemo(
-    () => (selected ? customerLedger(selected, invoices) : null),
-    [selected, invoices],
+  // Unified running ledger — same compiler the People module's customer
+  // profile and ledger print already use, so Billing shows the exact same
+  // combined gold + cash position instead of a cash-only, invoice-only view.
+  const ledger = useMemo(
+    () => (selected ? compileCustomerLedger(selected) : null),
+    [selected, invoices, settlements],
   );
 
   if (billing.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-6 text-center rounded-2xl border border-border bg-card">
-        No customer ledgers yet. They appear after an invoice is created.
+        No customer ledgers yet. They appear after an invoice or gold settlement voucher is created.
       </p>
     );
   }
@@ -405,19 +417,18 @@ function CustomerLedgerView({
         ))}
       </div>
       <div className="rounded-2xl border border-border bg-card p-4">
-        {data && (
+        {ledger && (
           <>
-            <div className="grid sm:grid-cols-3 gap-3 mb-4">
-              <Stat label="Billed" value={`₹ ${paiseToRupees(data.totalDebit)}`} />
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
               <Stat
-                label="Received"
-                value={`₹ ${paiseToRupees(data.totalCredit)}`}
-                tone="text-emerald-300"
+                label="Gold Balance"
+                value={`${mgToGrams(Math.abs(ledger.closingGoldMg))} g ${ledger.closingGoldMg >= 0 ? "we owe" : "owed to us"}`}
+                tone={ledger.closingGoldMg > 0 ? "text-amber-300" : "text-emerald-300"}
               />
               <Stat
-                label="Balance"
-                value={`₹ ${paiseToRupees(data.outstanding)}`}
-                tone={data.outstanding > 0 ? "text-amber-300" : "text-emerald-300"}
+                label="Money Balance"
+                value={`₹ ${paiseToRupees(Math.abs(ledger.closingMoneyPaise))} ${ledger.closingMoneyPaise >= 0 ? "due" : "advance"}`}
+                tone={ledger.closingMoneyPaise > 0 ? "text-amber-300" : "text-emerald-300"}
               />
             </div>
             <div className="overflow-x-auto">
@@ -425,25 +436,43 @@ function CustomerLedgerView({
                 <thead className="text-xs uppercase text-muted-foreground">
                   <tr className="border-b border-border">
                     <th className="text-left py-2">Date</th>
-                    <th className="text-left">Ref</th>
+                    <th className="text-left">Voucher</th>
+                    <th className="text-left">Type</th>
                     <th className="text-left">Description</th>
-                    <th className="text-right">Debit</th>
-                    <th className="text-right">Credit</th>
+                    <th className="text-right">Gold In</th>
+                    <th className="text-right">Gold Out</th>
+                    <th className="text-right">Dr (₹)</th>
+                    <th className="text-right">Cr (₹)</th>
+                    <th className="text-right border-l border-border/40">Gold Bal</th>
+                    <th className="text-right">Money Bal</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.lines.map((l, idx) => (
-                    <tr key={idx} className="border-b border-border/60">
-                      <td className="py-1.5 text-xs text-muted-foreground">
-                        {new Date(l.ts).toLocaleDateString("en-IN")}
+                  {ledger.rows.map((row) => (
+                    <tr key={row.id} className="border-b border-border/60">
+                      <td className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">
+                        {row.date}
                       </td>
-                      <td className="font-mono text-xs">{l.ref}</td>
-                      <td className="text-xs">{l.description}</td>
+                      <td className="font-mono text-xs uppercase">{row.voucherNo}</td>
+                      <td className="text-xs">{row.type}</td>
+                      <td className="text-xs max-w-[200px] break-words">{row.description}</td>
+                      <td className="text-right font-mono text-gold">
+                        {row.goldInMg > 0 ? `${mgToGrams(row.goldInMg)} g` : "—"}
+                      </td>
+                      <td className="text-right font-mono text-muted-foreground">
+                        {row.goldOutMg > 0 ? `${mgToGrams(row.goldOutMg)} g` : "—"}
+                      </td>
                       <td className="text-right">
-                        {l.debitPaise ? `₹ ${paiseToRupees(l.debitPaise)}` : "—"}
+                        {row.moneyDebitPaise ? `₹ ${paiseToRupees(row.moneyDebitPaise)}` : "—"}
                       </td>
                       <td className="text-right text-emerald-300">
-                        {l.creditPaise ? `₹ ${paiseToRupees(l.creditPaise)}` : "—"}
+                        {row.moneyCreditPaise ? `₹ ${paiseToRupees(row.moneyCreditPaise)}` : "—"}
+                      </td>
+                      <td className="text-right font-mono font-semibold border-l border-border/40">
+                        {mgToGrams(row.closingGoldMg)} g
+                      </td>
+                      <td className="text-right font-mono font-semibold">
+                        ₹{paiseToRupees(row.closingMoneyPaise)}
                       </td>
                     </tr>
                   ))}

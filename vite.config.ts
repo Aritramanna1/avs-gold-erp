@@ -4,6 +4,7 @@ import fs from "node:fs";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+import { reticle } from "@reticlehq/core/vite";
 
 // Helper to locate boundaries and split buffers (for zero-dependency multipart parsing)
 function splitBuffer(buf: Buffer, sep: Buffer): Buffer[] {
@@ -34,6 +35,7 @@ export default defineConfig({
     }),
     react(),
     tailwindcss(),
+    reticle(),
     // Hostinger Local Upload Emulator Plugin
     {
       name: "hostinger-upload-emulator",

@@ -56,7 +56,6 @@ export function ReceiveWorkDialog({
   const appendLedger = useLedger((s) => s.append);
   const addStock = useStock((s) => s.add);
 
-
   const [finishedGrossStr, setFinishedGrossStr] = useState("0.000");
   const [finishedPurity, setFinishedPurity] = useState<number>(job?.purity ?? 916);
   const [scrapGrossStr, setScrapGrossStr] = useState("0.000");
@@ -295,7 +294,6 @@ export function ReceiveWorkDialog({
           reference: job.jobNo,
         });
       }
-
     }
 
     setWorkReceipt(job.id, rec);
@@ -304,7 +302,6 @@ export function ReceiveWorkDialog({
   }
 
   if (!job) return null;
-
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -319,7 +316,10 @@ export function ReceiveWorkDialog({
         </DialogHeader>
 
         <div className="grid sm:grid-cols-2 gap-3">
-          <Stat label="Returned fine" value={`${mgToGrams(finishedFineMg + scrapFineMg + filingsFineMg + dustFineMg)} g`} />
+          <Stat
+            label="Returned fine"
+            value={`${mgToGrams(finishedFineMg + scrapFineMg + filingsFineMg + dustFineMg)} g`}
+          />
         </div>
 
         <Section title="Finished">
@@ -388,8 +388,6 @@ export function ReceiveWorkDialog({
           />
         </Section>
 
-
-
         <Section title="QA Checklist">
           <div className="grid sm:grid-cols-2 gap-2 text-sm">
             {(
@@ -430,11 +428,7 @@ export function ReceiveWorkDialog({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            onClick={confirm}
-            disabled={finishedFineMg <= 0}
-            className="gap-2"
-          >
+          <Button onClick={confirm} disabled={finishedFineMg <= 0} className="gap-2">
             <PackageCheck className="h-4 w-4" /> Confirm Receive
           </Button>
         </DialogFooter>

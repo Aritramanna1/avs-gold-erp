@@ -640,21 +640,11 @@ function SelectedPersonCard({
             {t("people.btn_photos_files")}
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setFormsOpen(true)}
-          className="col-span-2"
-        >
+        <Button size="sm" variant="ghost" onClick={() => setFormsOpen(true)} className="col-span-2">
           <FileText className="h-3.5 w-3.5 mr-1" />
           Forms
         </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setNotesOpen(true)}
-          className="col-span-2"
-        >
+        <Button size="sm" variant="ghost" onClick={() => setNotesOpen(true)} className="col-span-2">
           <MessageSquare className="h-3.5 w-3.5 mr-1" />
           Reference Notes
         </Button>
@@ -694,11 +684,7 @@ function SelectedPersonCard({
         }}
       />
 
-      <PersonFormsDialog
-        open={formsOpen}
-        onOpenChange={setFormsOpen}
-        person={person}
-      />
+      <PersonFormsDialog open={formsOpen} onOpenChange={setFormsOpen} person={person} />
 
       <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
         <DialogContent className="sm:max-w-[500px]">
@@ -801,16 +787,22 @@ function PersonFormsDialog({
       <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Dynamic Forms - {person.fullName}</DialogTitle>
-          <DialogDescription>Fill out requested forms and save them to the profile.</DialogDescription>
+          <DialogDescription>
+            Fill out requested forms and save them to the profile.
+          </DialogDescription>
         </DialogHeader>
-        
+
         {kycForms.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-4 text-center">No forms configured in settings.</div>
+          <div className="text-sm text-muted-foreground py-4 text-center">
+            No forms configured in settings.
+          </div>
         ) : (
           <Tabs defaultValue={kycForms[0].id}>
             <TabsList className="mb-4">
               {kycForms.map((f) => (
-                <TabsTrigger key={f.id} value={f.id}>{f.name}</TabsTrigger>
+                <TabsTrigger key={f.id} value={f.id}>
+                  {f.name}
+                </TabsTrigger>
               ))}
             </TabsList>
             {kycForms.map((f) => (
@@ -824,7 +816,7 @@ function PersonFormsDialog({
                       customForms: {
                         ...currentForms,
                         [f.id]: data,
-                      }
+                      },
                     });
                     toast.success(`${f.name} saved!`);
                   }}

@@ -8,7 +8,8 @@ import {
   listAvailablePrinters,
   type PrinterInfo,
 } from "@/lib/print/print-queue";
-import { RefreshCw, Loader2, Printer, FileDown, AlertTriangle } from "lucide-react";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { RefreshCw, Loader2, Printer, FileDown, AlertTriangle, Download } from "lucide-react";
 
 export const Route = createFileRoute("/reports/print-queue")({
   head: () => ({ meta: [{ title: "Print Job Queue & History · AVS Gold ERP" }] }),
@@ -53,20 +54,41 @@ function PrintQueuePage() {
   const pdfFallbackCount = jobs.filter((j) => j.status === "pdf_fallback").length;
   const failedCount = jobs.filter((j) => j.status === "failed").length;
 
+  function handleCSV() {
+    const header = ["Time", "Document", "Type", "Status", "Attempts", "Detail"];
+    const data = jobs.map((j) => [
+      new Date(j.createdAt).toLocaleString(),
+      j.title,
+      j.docType,
+      j.status,
+      j.attempts,
+      j.lastError ?? j.pdfFileName ?? "",
+    ]);
+    exportToCSV("print-job-history.csv", [header, ...data]);
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       <PageHeader
         title="Print Job Queue & History"
         subtitle="Every print attempt, durably recorded. A failure always falls back to a downloaded PDF — 'Failed' here means even that fallback didn't work."
         actions={
-          <Button variant="outline" onClick={refresh} disabled={loading} className="gap-2">
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            Refresh
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={refresh} disabled={loading} className="gap-2">
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Refresh
+            </Button>
+            <Button variant="outline" onClick={handleCSV} className="gap-2">
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" onClick={() => triggerPrint()} className="gap-2">
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
         }
       />
 

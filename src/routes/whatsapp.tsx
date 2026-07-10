@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -284,6 +284,13 @@ function MessageCard(props: {
   onRemove: () => void;
 }) {
   const [edit, setEdit] = useState<ParsedFields>(props.parsed ?? {});
+  // Resync when the store's parsed fields change from outside an edit in
+  // this card — e.g. "Reset Parsed" (onReparse) writes straight to the
+  // store without going through onUpdateParsed, so without this the form
+  // silently kept showing the pre-reparse values.
+  useEffect(() => {
+    setEdit(props.parsed ?? {});
+  }, [props.parsed]);
   function patch<K extends keyof ParsedFields>(k: K, v: ParsedFields[K]) {
     const next = { ...edit, [k]: v };
     setEdit(next);

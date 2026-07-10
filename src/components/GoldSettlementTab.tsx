@@ -55,8 +55,10 @@ export interface SettlementItem {
   huid?: string;
   stamp?: string;
   grossGrams?: number;
+  /** Weight added to the item (e.g. repair solder, added findings) — increases net weight, the opposite of lessGrams. */
+  addGrams?: number;
   lessGrams?: number;
-  netGrams?: number;
+  netGrams?: number; // = grossGrams + addGrams - lessGrams
   purity?: number; // e.g. 91.60
   wastagePct?: number; // e.g. 4.00
   pcs?: number;
@@ -65,6 +67,9 @@ export interface SettlementItem {
   goldRate?: number; // conversion rate
   amountRupees?: number; // conversion amount
   direction: "Jama" | "Naam"; // Jama = Received by us (Credit), Naam = Given by us (Debit)
+  /** "item" = goods/gold physically changing hands (legacy's "P" row) — counted into Net Total.
+   *  "settlement" = a payment/settlement against the balance (legacy's "MP" row) — counted only into Closing Balance, after Net Total. */
+  rowType: "item" | "settlement";
 }
 
 export function GoldSettlementTab() {
@@ -119,12 +124,6 @@ export function GoldSettlementTab() {
     }
   }, [partyInvoices, linkUse]);
 
-  // Previous Balance Fields (Separated)
-  const [prevGoldGrams, setPrevGoldGrams] = useState("0");
-  const [prevGoldSign, setPrevGoldSign] = useState<"Jama" | "Naam">("Naam"); // default Naam (they owe us)
-  const [prevCashRupees, setPrevCashRupees] = useState("0");
-  const [prevCashSign, setPrevCashSign] = useState<"Jama" | "Naam">("Naam");
-
   // Multi-item creation list
   const [items, setItems] = useState<SettlementItem[]>([]);
 
@@ -134,6 +133,7 @@ export function GoldSettlementTab() {
   const [activeHuid, setActiveHuid] = useState("");
   const [activeStamp, setActiveStamp] = useState("");
   const [activeGrossGrams, setActiveGrossGrams] = useState("");
+  const [activeAddGrams, setActiveAddGrams] = useState("");
   const [activeLessGrams, setActiveLessGrams] = useState("");
   const [activePurity, setActivePurity] = useState("91.60"); // Touch
   const [activeWastagePct, setActiveWastagePct] = useState("0.00"); // Wastage
@@ -142,6 +142,7 @@ export function GoldSettlementTab() {
   const [activeGoldRate, setActiveGoldRate] = useState("");
   const [activeAmount, setActiveAmount] = useState("");
   const [activeDirection, setActiveDirection] = useState<"Jama" | "Naam">("Jama");
+  const [activeRowType, setActiveRowType] = useState<"item" | "settlement">("item");
 
   // Pull existing settlements from DB on load
   useEffect(() => {
@@ -186,52 +187,37 @@ export function GoldSettlementTab() {
     }
   }, [partiesToSelect, partyType]);
 
-  // Handle automatic calculation of past outstanding balances on selected person change
-  useEffect(() => {
-    if (!partyId) {
-      setPrevGoldGrams("0");
-      setPrevGoldSign("Naam");
-      setPrevCashRupees("0");
-      setPrevCashSign("Naam");
-      return;
-    }
-
-    const partySettlements = settlements.filter((s) => s.party_id === partyId);
-    let cumulativeGoldMg = 0;
-    let cumulativeCashPaise = 0;
-
-    partySettlements.forEach((s) => {
-      // Signed today entry caches fine gold and cash movements
-      cumulativeGoldMg += s.gold_entry_mg ?? 0;
-      cumulativeCashPaise += s.cash_entry_paise ?? 0;
-    });
-
-    // Translate to visual positive inputs + signs
-    const goldGrams = cumulativeGoldMg / 1000;
-    if (goldGrams >= 0) {
-      setPrevGoldGrams(goldGrams.toFixed(3));
-      setPrevGoldSign("Jama"); // We owe them (Credit)
-    } else {
-      setPrevGoldGrams(Math.abs(goldGrams).toFixed(3));
-      setPrevGoldSign("Naam"); // They owe us (Debit)
-    }
-
-    const cashRupees = cumulativeCashPaise / 100000;
-    if (cashRupees >= 0) {
-      setPrevCashRupees(Math.round(cashRupees).toString());
-      setPrevCashSign("Jama"); // We owe them (Credit)
-    } else {
-      setPrevCashRupees(Math.abs(Math.round(cashRupees)).toString());
-      setPrevCashSign("Naam"); // They owe us (Debit)
-    }
-  }, [partyId, settlements]);
+  // Previous balance — system-computed only, never hand-entered. It is the
+  // exact sum of every prior voucher's signed gold/cash movement for this
+  // party, i.e. the last voucher's closing balance. Locking this (no
+  // editable input) matches the legacy ledger, where LB Bal. is always a
+  // computed carry-forward, never a typed-in figure.
+  const partySettlements = useMemo(
+    () =>
+      settlements
+        .filter((s) => s.party_id === partyId)
+        .sort((a, b) => b.settlement_date.localeCompare(a.settlement_date)),
+    [settlements, partyId],
+  );
+  const previousGoldMgSum = useMemo(
+    () => partySettlements.reduce((sum, s) => sum + (s.gold_entry_mg ?? 0), 0),
+    [partySettlements],
+  );
+  const previousCashPaiseSum = useMemo(
+    () => partySettlements.reduce((sum, s) => sum + (s.cash_entry_paise ?? 0), 0),
+    [partySettlements],
+  );
+  // The single most recent prior voucher — cited on-screen and on print as
+  // "LB Bal. [#<voucher> · <date>]", the same lineage the legacy report shows.
+  const previousVoucher = partySettlements[0] ?? null;
 
   // Active item calculations
   const calculatedActiveNetGrams = useMemo(() => {
     const gross = Number(activeGrossGrams) || 0;
+    const add = Number(activeAddGrams) || 0;
     const less = Number(activeLessGrams) || 0;
-    return Math.max(0, gross - less);
-  }, [activeGrossGrams, activeLessGrams]);
+    return Math.max(0, gross + add - less);
+  }, [activeGrossGrams, activeAddGrams, activeLessGrams]);
 
   const calculatedActiveFineGrams = useMemo(() => {
     const net = calculatedActiveNetGrams;
@@ -268,6 +254,7 @@ export function GoldSettlementTab() {
         huid: activeHuid.trim() || undefined,
         stamp: activeStamp.trim() || undefined,
         grossGrams: gross,
+        addGrams: Number(activeAddGrams) || 0,
         lessGrams: Number(activeLessGrams) || 0,
         netGrams: calculatedActiveNetGrams,
         purity: Number(activePurity) || 91.6,
@@ -278,6 +265,7 @@ export function GoldSettlementTab() {
         goldRate: activeGoldRate.trim() ? Number(activeGoldRate) : undefined,
         amountRupees: activeAmount.trim() ? Number(activeAmount) : undefined,
         direction: activeDirection,
+        rowType: activeRowType,
       };
 
       setItems([...items, newItem]);
@@ -295,6 +283,7 @@ export function GoldSettlementTab() {
         description: activeDesc.trim(),
         amountRupees: amount,
         direction: activeDirection,
+        rowType: activeRowType,
       };
 
       setItems([...items, newItem]);
@@ -306,6 +295,7 @@ export function GoldSettlementTab() {
     setActiveHuid("");
     setActiveStamp("");
     setActiveGrossGrams("");
+    setActiveAddGrams("");
     setActiveLessGrams("");
     setActivePcs("");
     setActiveLabour("");
@@ -339,12 +329,6 @@ export function GoldSettlementTab() {
   };
 
   // Live calculations for the complete voucher summary
-  const previousGoldSignFactor = prevGoldSign === "Jama" ? 1 : -1;
-  const previousCashSignFactor = prevCashSign === "Jama" ? 1 : -1;
-
-  const previousGoldMgSum = (Number(prevGoldGrams) || 0) * 1000 * previousGoldSignFactor;
-  const previousCashPaiseSum = rupeesToPaise(prevCashRupees || "0") * previousCashSignFactor;
-
   const todayGoldJamaGrams = useMemo(() => {
     return items
       .filter((it) => it.kind === "gold" && it.direction === "Jama")
@@ -379,6 +363,27 @@ export function GoldSettlementTab() {
       }, 0);
   }, [items]);
 
+  // Net Total — the legacy report's own checkpoint: Previous Balance plus
+  // only today's ITEM rows (goods/gold changing hands), printed BEFORE any
+  // settlement/payment rows are netted in. Closing Balance (below) folds in
+  // the settlement rows on top of this.
+  const netTotalGoldMg = useMemo(() => {
+    const itemNetGrams = items
+      .filter((it) => it.kind === "gold" && it.rowType === "item")
+      .reduce((sum, it) => sum + (it.direction === "Jama" ? 1 : -1) * (it.fineGrams || 0), 0);
+    return previousGoldMgSum + Math.round(itemNetGrams * 1000);
+  }, [previousGoldMgSum, items]);
+
+  const netTotalCashPaise = useMemo(() => {
+    const itemNetRupees = items
+      .filter((it) => it.rowType === "item")
+      .reduce((sum, it) => {
+        const val = it.kind === "cash" ? it.amountRupees || 0 : it.labourRupees || 0;
+        return sum + (it.direction === "Jama" ? 1 : -1) * val;
+      }, 0);
+    return previousCashPaiseSum + rupeesToPaise(itemNetRupees.toString());
+  }, [previousCashPaiseSum, items]);
+
   const closingGoldMg = useMemo(() => {
     const todayNetMg = Math.round((todayGoldJamaGrams - todayGoldNaamGrams) * 1000);
     return previousGoldMgSum + todayNetMg;
@@ -408,10 +413,10 @@ export function GoldSettlementTab() {
     try {
       setLoading(true);
 
-      // 1. Generate Central Sequential Document Number
-      const voucherNo = await generateNumber("gold_settlement", {
-        prefix: `VOU-${settlementDate.replace(/-/g, "")}-`,
-      });
+      // 1. Generate the voucher number — one continuous counter for the
+      // shop's lifetime (sequence-manager.ts's getNextSequenceNumber), never
+      // reset by date or financial year.
+      const voucherNo = await generateNumber("gold_settlement");
 
       // 2. Prepare aggregated fallback fields for database structure compatibility
       const firstGoldItem = items.find((it) => it.kind === "gold");
@@ -477,6 +482,8 @@ export function GoldSettlementTab() {
         items: items,
         p_balance_gold_mg: previousGoldMgSum,
         p_balance_cash_paise: previousCashPaiseSum,
+        p_balance_ref_voucher_id: previousVoucher?.id,
+        p_balance_ref_voucher_date: previousVoucher?.settlement_date,
         gold_entry_mg: slipNetGoldMg,
         cash_entry_paise: slipNetCashPaise,
         direction: slipNetGoldMg >= 0 ? "Jama" : "Naam",
@@ -867,7 +874,7 @@ export function GoldSettlementTab() {
                   </div>
                 )}
 
-                {/* Previous Balances (Separate Cash & Gold) */}
+                {/* Previous Balances (Separate Cash & Gold) — locked, system-computed */}
                 <div className="bg-amber-500/5 p-4 rounded-2xl border border-yellow-500/20 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <div className="flex justify-between items-center">
@@ -875,27 +882,12 @@ export function GoldSettlementTab() {
                         Previous Gold Balance
                       </Label>
                       <span className="text-[10px] text-muted-foreground">
-                        Auto-Calculated from past entries
+                        Locked · from ledger
                       </span>
                     </div>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        step="0.001"
-                        value={prevGoldGrams}
-                        onChange={(e) => setPrevGoldGrams(e.target.value)}
-                        placeholder="0.000"
-                        className="bg-background flex-1"
-                      />
-                      <Select value={prevGoldSign} onValueChange={(v) => setPrevGoldSign(v as any)}>
-                        <SelectTrigger className="w-[170px] bg-background">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Naam">They owe us (Naam)</SelectItem>
-                          <SelectItem value="Jama">We owe them (Jama)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="bg-background border border-border rounded-lg px-3 py-2 font-mono text-sm font-semibold">
+                      {mgToGrams(Math.abs(previousGoldMgSum))} g{" "}
+                      {previousGoldMgSum >= 0 ? "Jama" : "Naam"}
                     </div>
                   </div>
 
@@ -905,28 +897,22 @@ export function GoldSettlementTab() {
                         Previous Cash Balance
                       </Label>
                       <span className="text-[10px] text-muted-foreground">
-                        Auto-Calculated from past entries
+                        Locked · from ledger
                       </span>
                     </div>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        value={prevCashRupees}
-                        onChange={(e) => setPrevCashRupees(e.target.value)}
-                        placeholder="0"
-                        className="bg-background flex-1"
-                      />
-                      <Select value={prevCashSign} onValueChange={(v) => setPrevCashSign(v as any)}>
-                        <SelectTrigger className="w-[170px] bg-background">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Naam">They owe us (Naam)</SelectItem>
-                          <SelectItem value="Jama">We owe them (Jama)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="bg-background border border-border rounded-lg px-3 py-2 font-mono text-sm font-semibold">
+                      ₹{paiseToRupees(Math.abs(previousCashPaiseSum))}{" "}
+                      {previousCashPaiseSum >= 0 ? "Jama" : "Naam"}
                     </div>
                   </div>
+
+                  {previousVoucher && (
+                    <div className="md:col-span-2 text-[11px] text-muted-foreground font-mono">
+                      LB Bal. carried forward from voucher{" "}
+                      <span className="text-foreground font-semibold">#{previousVoucher.id}</span> ·{" "}
+                      {new Date(previousVoucher.settlement_date).toLocaleDateString("en-IN")}
+                    </div>
+                  )}
                 </div>
 
                 {/* Item Active Row Editor */}
@@ -1023,10 +1009,28 @@ export function GoldSettlementTab() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div>
+                      <Label className="text-xs font-semibold">Row Category *</Label>
+                      <Select
+                        value={activeRowType}
+                        onValueChange={(v) => setActiveRowType(v as any)}
+                      >
+                        <SelectTrigger className="mt-1 bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="item">Item (goods/gold changing hands)</SelectItem>
+                          <SelectItem value="settlement">
+                            Settlement (payment against balance)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   {activeKind === "gold" && (
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 border-t border-border pt-3">
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-3 border-t border-border pt-3">
                       <div>
                         <Label className="text-xs font-semibold">Gross Wt (g) *</Label>
                         <Input
@@ -1034,6 +1038,17 @@ export function GoldSettlementTab() {
                           step="0.001"
                           value={activeGrossGrams}
                           onChange={(e) => setActiveGrossGrams(e.target.value)}
+                          placeholder="0.000"
+                          className="mt-1 bg-background"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-semibold">Add Wt (g)</Label>
+                        <Input
+                          type="number"
+                          step="0.001"
+                          value={activeAddGrams}
+                          onChange={(e) => setActiveAddGrams(e.target.value)}
                           placeholder="0.000"
                           className="mt-1 bg-background"
                         />
@@ -1156,6 +1171,7 @@ export function GoldSettlementTab() {
                             <th className="p-2">Description</th>
                             <th className="p-2">Direction</th>
                             <th className="p-2 text-right">G.Wt</th>
+                            <th className="p-2 text-right">Add</th>
                             <th className="p-2 text-right">Less</th>
                             <th className="p-2 text-right">Net Wt</th>
                             <th className="p-2 text-center">Tunch+Wst</th>
@@ -1189,6 +1205,9 @@ export function GoldSettlementTab() {
                               </td>
                               <td className="p-2 text-right font-mono">
                                 {it.grossGrams ? `${it.grossGrams.toFixed(3)}g` : "—"}
+                              </td>
+                              <td className="p-2 text-right font-mono">
+                                {it.addGrams ? `${it.addGrams.toFixed(3)}g` : "—"}
                               </td>
                               <td className="p-2 text-right font-mono">
                                 {it.lessGrams ? `${it.lessGrams.toFixed(3)}g` : "—"}
@@ -1246,6 +1265,13 @@ export function GoldSettlementTab() {
                         -{todayGoldNaamGrams.toFixed(3)} g
                       </td>
                     </div>
+                    <div className="border-t border-dashed border-yellow-500/10 pt-2 flex justify-between items-center text-[11px]">
+                      <span className="font-semibold uppercase text-yellow-700/80">Net Total:</span>
+                      <span className="font-mono font-semibold">
+                        {mgToGrams(Math.abs(netTotalGoldMg))} g{" "}
+                        {netTotalGoldMg >= 0 ? "Jama" : "Naam"}
+                      </span>
+                    </div>
                     <div className="border-t border-dashed border-yellow-500/10 pt-2 flex justify-between items-center">
                       <span className="text-xs font-bold uppercase text-yellow-700">
                         Closing Fine Gold:
@@ -1280,6 +1306,15 @@ export function GoldSettlementTab() {
                       <td className="font-mono text-right font-semibold text-red-500">
                         -₹{todayCashNaamRupees}
                       </td>
+                    </div>
+                    <div className="border-t border-dashed border-border pt-2 flex justify-between items-center text-[11px]">
+                      <span className="font-semibold uppercase text-emerald-600/80">
+                        Net Total:
+                      </span>
+                      <span className="font-mono font-semibold">
+                        ₹{paiseToRupees(Math.abs(netTotalCashPaise))}{" "}
+                        {netTotalCashPaise >= 0 ? "Jama" : "Naam"}
+                      </span>
                     </div>
                     <div className="border-t border-dashed border-border pt-2 flex justify-between items-center">
                       <span className="text-xs font-bold uppercase text-emerald-600">

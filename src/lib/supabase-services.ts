@@ -61,6 +61,9 @@ export interface GoldSettlementRecord {
   items?: any[];
   p_balance_gold_mg?: number;
   p_balance_cash_paise?: number;
+  /** The specific prior voucher this p_balance_* carry-forward came from — cited on print as "LB Bal. [#<id> · <date>]", same lineage the legacy ledger shows. Absent for a party's first-ever voucher. */
+  p_balance_ref_voucher_id?: string;
+  p_balance_ref_voucher_date?: string;
   cash_entry_paise?: number;
   gold_entry_mg?: number;
   direction?: "Jama" | "Naam";

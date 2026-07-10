@@ -1,11 +1,11 @@
-import { createFileRoute, useParams, Link } from "@tanstack/react-router";
+import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { useSettlements, previewSettlementTotals, type Settlement } from "@/lib/settlement-store";
 import { useSettings } from "@/lib/settings-store";
 import { mgToGrams } from "@/lib/gold";
 import { paiseToRupees } from "@/lib/billing-store";
-import { ArrowLeft, Printer } from "lucide-react";
+import { usePrintRecord } from "@/components/print/usePrintRecord";
+import { PrintToolbar } from "@/components/print/PrintToolbar";
 
 export const Route = createFileRoute("/settlement/draft-print/$id")({
   head: () => ({ meta: [{ title: "Settlement Draft · AVS Gold ERP" }] }),
@@ -35,58 +35,76 @@ function SettlementDraftPrint() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const {
+    docNumber,
+    isReprint,
+    reprintCount,
+    reprintOpen,
+    setReprintOpen,
+    handlePrintTrigger,
+    recordReprint,
+  } = usePrintRecord(
+    s
+      ? {
+          docType: "settlement_draft",
+          docNumber: s.settlementNo,
+          linkedId: s.id,
+          linkedLabel: s.customerName,
+        }
+      : null,
+  );
+
   if (!s) return <div className="p-8">Settlement not found.</div>;
   const preview = previewSettlementTotals(s.items, s.gst, s.payments);
   const item = s.items[0];
 
   return (
-    <div className="p-4 md:p-8 max-w-3xl mx-auto print:p-0">
-      <div className="flex items-center justify-between mb-4 print:hidden">
-        <Link to="/settlement/$id" params={{ id: s.id }}>
-          <Button variant="ghost" className="gap-1.5">
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Button>
-        </Link>
-        <Button
-          onClick={() => window.print()}
-          className="gap-1.5"
-          data-testid="settlement-draft-print-btn"
+    <div className="min-h-screen bg-background text-foreground">
+      <PrintToolbar
+        title="Settlement Draft (Front + Back)"
+        docNumber={docNumber}
+        isReprint={isReprint}
+        reprintCount={reprintCount}
+        reprintOpen={reprintOpen}
+        setReprintOpen={setReprintOpen}
+        onPrint={handlePrintTrigger}
+        onReprintConfirm={recordReprint}
+        backUrl={`/settlement/${s.id}`}
+      />
+
+      <div className="p-4 md:p-8 max-w-3xl mx-auto print:p-0">
+        {/* ── PAGE 1 — FRONT SIDE — two identical copies stacked ────────────── */}
+        <div
+          className="bg-white text-black print:break-after-page"
+          data-testid="settlement-draft-front"
         >
-          <Printer className="h-4 w-4" /> Print (Front + Back)
-        </Button>
-      </div>
-
-      {/* ── PAGE 1 — FRONT SIDE — two identical copies stacked ────────────── */}
-      <div
-        className="bg-white text-black print:break-after-page"
-        data-testid="settlement-draft-front"
-      >
-        <DraftCopy
-          label="CUSTOMER COPY"
-          s={s}
-          item={item}
-          preview={preview}
-          shopName={firm.shopName}
-        />
-        <div className="border-t-2 border-dashed border-black/40 my-2 text-center text-[9px] text-black/40 py-1 print:my-0">
-          ✂ — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — ✂
+          <DraftCopy
+            label="CUSTOMER COPY"
+            s={s}
+            item={item}
+            preview={preview}
+            shopName={firm.shopName}
+          />
+          <div className="border-t-2 border-dashed border-black/40 my-2 text-center text-[9px] text-black/40 py-1 print:my-0">
+            ✂ — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — ✂
+          </div>
+          <DraftCopy
+            label="WORKSHOP COPY"
+            s={s}
+            item={item}
+            preview={preview}
+            shopName={firm.shopName}
+          />
         </div>
-        <DraftCopy
-          label="WORKSHOP COPY"
-          s={s}
-          item={item}
-          preview={preview}
-          shopName={firm.shopName}
-        />
-      </div>
 
-      {/* ── PAGE 2 — BACK SIDE — two blank handwritten forms stacked ──────── */}
-      <div className="bg-white text-black" data-testid="settlement-draft-back">
-        <BackForm label="CUSTOMER COPY" />
-        <div className="border-t-2 border-dashed border-black/40 my-2 text-center text-[9px] text-black/40 py-1 print:my-0">
-          ✂ — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — ✂
+        {/* ── PAGE 2 — BACK SIDE — two blank handwritten forms stacked ──────── */}
+        <div className="bg-white text-black" data-testid="settlement-draft-back">
+          <BackForm label="CUSTOMER COPY" />
+          <div className="border-t-2 border-dashed border-black/40 my-2 text-center text-[9px] text-black/40 py-1 print:my-0">
+            ✂ — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — ✂
+          </div>
+          <BackForm label="WORKSHOP COPY" />
         </div>
-        <BackForm label="WORKSHOP COPY" />
       </div>
     </div>
   );

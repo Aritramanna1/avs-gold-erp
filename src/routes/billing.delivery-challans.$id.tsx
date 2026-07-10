@@ -2,6 +2,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useDeliveryChallans } from "@/lib/billing-documents-store";
 import { useSettings } from "@/lib/settings-store";
+import { usePrintEngine } from "@/lib/print-engine";
 import { useCan } from "@/lib/rbac";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ function DeliveryChallanDetail() {
   const markReturned = useDeliveryChallans((s) => s.markReturned);
   const cancel = useDeliveryChallans((s) => s.cancel);
   const { firm } = useSettings();
+  const { triggerPrint } = usePrintEngine();
   const { can } = useCan();
   const c = challans.find((x) => x.id === id);
 
@@ -72,7 +74,15 @@ function DeliveryChallanDetail() {
             <ArrowLeft className="h-4 w-4" /> All Delivery Challans
           </Button>
         </Link>
-        <Button onClick={() => window.print()} className="gap-1.5">
+        <Button
+          onClick={() =>
+            triggerPrint(
+              `/billing/delivery-challan-print/${c.id}`,
+              `Delivery Challan Preview · ${c.challanNo}`,
+            )
+          }
+          className="gap-1.5"
+        >
           <Printer className="h-4 w-4" /> Print
         </Button>
         {c.status === "issued" && (

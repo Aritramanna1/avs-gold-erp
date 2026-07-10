@@ -49,8 +49,13 @@ export function getFinancialYearPrefix(type: SequenceType): { prefix: string; ye
     prefix = `JC-${yearStr}-`;
   } else if (type === "repair") {
     prefix = `RP-${yearStr}-`;
-  } else if (type === "expense" || type === "gold_settlement") {
+  } else if (type === "expense") {
     prefix = `EXP-${yearStr}-`;
+  } else if (type === "gold_settlement") {
+    // No year token: a Gold Settlement Voucher number is one continuous
+    // count for the shop's lifetime, never reset — matching how jewellers
+    // read a physical voucher book (151, 146, 136…), not a per-FY series.
+    prefix = `VOU-`;
   } else if (type === "design") {
     prefix = `DSG-${year}-`;
   } else if (type === "daily_close") {
@@ -95,7 +100,10 @@ export async function getNextSequenceNumber(type: SequenceType): Promise<string>
   // Key includes the FY/year token so each financial year gets its own
   // counter starting at 0001 — the prefix alone changing every year would
   // otherwise leave the *underlying* counter climbing forever across years.
-  return nextDocumentNumber(`${type}:${yearStr}`, prefix, 4);
+  // Gold Settlement Vouchers are the one exception — a single lifetime
+  // counter, so their key deliberately omits the year token.
+  const key = type === "gold_settlement" ? type : `${type}:${yearStr}`;
+  return nextDocumentNumber(key, prefix, 4);
 }
 
 /**

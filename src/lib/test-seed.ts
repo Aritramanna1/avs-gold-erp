@@ -14,9 +14,10 @@
 // @ts-nocheck
 import { useAttachments } from "./attachments-store";
 import { useBilling, type GstKind } from "./billing-store";
+import { useCreditNotes } from "./billing-documents-store";
 import { useCommLog } from "./comm-log-store";
 import { useDailyCloses } from "./dailyclose-store";
-import { useJobCards, stepsFromTemplate } from "./jobcards-store";
+import { useJobCards } from "./jobcards-store";
 import { useLedger } from "./ledger-store";
 import { usePeople } from "./people-store";
 import { useOrders } from "./orders-store";
@@ -47,6 +48,8 @@ export interface SeedResult {
   stockItemId: string;
   invoiceId: string;
   invoiceNo: string;
+  creditNoteId: string;
+  creditNoteNo: string;
   paymentId: string;
   repairId: string;
   polishingRepairId: string;
@@ -73,6 +76,7 @@ export async function seedPilotDataset(): Promise<SeedResult> {
   // Stock store has no reset; clear via direct set
   useStock.setState({ items: [], movements: [] });
   useBilling.getState().reset();
+  useCreditNotes.getState().reset();
   useRepairs.getState().reset();
   useRateCuts.getState().reset();
   useDailyCloses.getState().reset();
@@ -275,8 +279,6 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     targetNetMg: order.item.netMg,
     targetFineMg: order.item.fineMg,
     expectedWastagePct: 10,
-    templateKey: "handmade_basic",
-    steps: stepsFromTemplate("handmade_basic"),
     status: "work_received",
     priority: "high",
     expectedDelivery: order.expectedDelivery,
@@ -296,20 +298,13 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     notes: `Issued to ${karigar.fullName} for Job ${job.jobNo}`,
     reference: `${job.jobNo}-ISSUE`,
   });
+  // Gold-issue tracking lives entirely in the ledger now (see the `append`
+  // above) — JobCard no longer carries its own issue record (mirrors the
+  // real app's worker-issue-dialog.tsx, which only writes to useLedger).
+  // issueSlipNo/goldIssueId are kept as synthetic ids for the seed result
+  // and the print-log entry below.
   const issueSlipNo = `ISS-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-001`;
   const goldIssueId = makeId();
-  await useJobCards.getState().setGoldIssue(job.id, {
-    id: goldIssueId,
-    slipNo: issueSlipNo,
-    ts: Date.now(),
-    source: "vault",
-    grossMg: 500000,
-    purity: 916,
-    fineMg: issueFineMg,
-    issuedBy: "Owner",
-    notes: "500g 22K bar for handmade bulk order",
-    ledgerEntryId: issueEntry.id,
-  });
 
   // 9. Receive Work — finished + filings + actualLoss reconcile to 458000 fine
   const filingsFineMg = 9160; // 1% as filings (return to vault as scrap-bucket)
@@ -455,6 +450,21 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     notes: "Full payment received",
   });
   const paymentId = paymentRec?.id ?? "";
+  // Credit note against the invoice — exercises the Unified Print Engine's
+  // migrated credit_note document end-to-end in e2e (status, customer,
+  // amount, reason all need a real record to render against).
+  const creditNote = await useCreditNotes.getState().issue(
+    {
+      invoiceId: invoice.id,
+      invoiceNo: invoice.invoiceNo,
+      customerId: customer.id,
+      customerName: customer.fullName,
+      amountPaise: 50000,
+      goldFineMg: 0,
+      reason: "Price adjustment agreed with customer after delivery.",
+    },
+    { id: null, email: "seed@test.local" },
+  );
   // Sale ledger entry — finished goes out of system
   await useLedger.getState().append({
     type: "sale",
@@ -703,6 +713,8 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     stockItemId: stockItem.id,
     invoiceId: invoice.id,
     invoiceNo: invoice.invoiceNo,
+    creditNoteId: creditNote.id,
+    creditNoteNo: creditNote.creditNoteNo,
     paymentId,
     repairId: repair.id,
     polishingRepairId: polishing.id,

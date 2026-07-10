@@ -12,7 +12,12 @@ export interface ReferenceNote {
 
 interface ReferenceNotesState {
   notes: ReferenceNote[];
-  addNote: (entityType: ReferenceNote["entityType"], entityId: string, note: string, author?: string) => void;
+  addNote: (
+    entityType: ReferenceNote["entityType"],
+    entityId: string,
+    note: string,
+    author?: string,
+  ) => void;
   removeNote: (id: string) => void;
   getNotes: (entityType: ReferenceNote["entityType"], entityId: string) => ReferenceNote[];
 }
@@ -47,6 +52,6 @@ export const useReferenceNotes = create<ReferenceNotesState>()(
     }),
     {
       name: "mtj-reference-notes-store",
-    }
-  )
+    },
+  ),
 );

@@ -92,7 +92,8 @@ function InvoiceDetailPage() {
   const [payRef, setPayRef] = useState("");
   const [payNotes, setPayNotes] = useState("");
 
-  const { triggerPrint } = usePrintEngine();  if (!inv) {
+  const { triggerPrint } = usePrintEngine();
+  if (!inv) {
     return (
       <div className="p-8 max-w-3xl mx-auto text-center">
         <h1 className="font-serif text-2xl text-gold">Invoice not found</h1>
@@ -129,7 +130,10 @@ function InvoiceDetailPage() {
   }
 
   function triggerPrintSettlementSlip() {
-    triggerPrint(`/billing/settlement-slip/${inv!.id}`, `Customer Settlement Slip · ${inv!.invoiceNo}`);
+    triggerPrint(
+      `/billing/settlement-slip/${inv!.id}`,
+      `Customer Settlement Slip · ${inv!.invoiceNo}`,
+    );
   }
 
   function triggerPrintEstimate() {
@@ -138,7 +142,6 @@ function InvoiceDetailPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
-
       <PageHeader
         title={inv.invoiceNo}
         subtitle={`${inv.customerName} · ${new Date(inv.createdAt).toLocaleString("en-IN")}`}

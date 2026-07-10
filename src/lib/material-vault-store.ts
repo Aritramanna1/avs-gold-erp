@@ -106,10 +106,10 @@ export interface MaterialMovement {
   actorId?: string | null;
   actorEmail?: string | null;
 
-  // ── Integration points — reserved, NOT wired in this phase ─────────────
-  /** Future: Production Order this movement is issued/returned against. */
+  // ── Integration points ──────────────────────────────────────────────────
+  /** Production Order this movement is issued/returned against — populated by WorkerIssueDialog/WorkerReturnDialog/OutsideWorkIssueDialog. */
   relatedOrderId?: string;
-  /** Future: the Gold Issue (order-issue-store.ts OrderIssue) this movement mirrors. */
+  /** Future: the Worker Gold Book entry (worker-gold-book-store.ts WorkerGoldBookEntry, type "given") this movement mirrors. */
   relatedIssueId?: string;
   /** Future: the Worker Return (worker-return-store.ts WorkerReturn) this movement mirrors. */
   relatedReturnId?: string;

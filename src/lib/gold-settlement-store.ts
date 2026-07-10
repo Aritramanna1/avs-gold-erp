@@ -82,6 +82,8 @@ async function addSettlementInternal(
     items: input.items,
     p_balance_gold_mg: input.p_balance_gold_mg,
     p_balance_cash_paise: input.p_balance_cash_paise,
+    p_balance_ref_voucher_id: input.p_balance_ref_voucher_id,
+    p_balance_ref_voucher_date: input.p_balance_ref_voucher_date,
     cash_entry_paise: input.cash_entry_paise,
     gold_entry_mg: input.gold_entry_mg,
     direction: input.direction,

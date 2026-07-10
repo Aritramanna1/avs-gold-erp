@@ -21,7 +21,6 @@ import {
 import { useLedger } from "@/lib/ledger-store";
 import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
-import { useOrderIssues } from "@/lib/order-issue-store";
 import { useWorkerReturns, COMMON_RETURN_MATERIALS } from "@/lib/worker-return-store";
 import { useMaterialVault } from "@/lib/material-vault-store";
 import {
@@ -37,8 +36,7 @@ import { PackageCheck, AlertTriangle, ImagePlus } from "lucide-react";
  * Simple "Receive From Worker" form — the 7 fields this phase calls for,
  * nothing more. Saving appends to the Gold Ledger, the Worker Gold Book,
  * and a per-order WorkerReturn record so this Production Order can show
- * its full return history and support any number of returns, exactly
- * mirroring how IssueGoldMaterialDialog already handles issues.
+ * its full return history and support any number of returns.
  *
  * Deliberately does NOT calculate or settle wastage, recovery, over/loss,
  * salary deduction, or manufacturing billing — those are reserved,
@@ -65,12 +63,12 @@ export function WorkerReturnDialog({
   // NOTE: calling a store method like `forOrder()` directly inside the
   // selector returns a brand-new array every render, which zustand sees as
   // "state changed" every time — an infinite render loop. Select the raw
-  // `issues` array (stable reference) and derive the per-order filter with
+  // `entries` array (stable reference) and derive the per-order filter with
   // useMemo instead, same fix already applied in orders.$id.tsx.
-  const allOrderIssuesForReturn = useOrderIssues((s) => s.issues);
+  const allGoldBookEntries = useWorkerGoldBook((s) => s.entries);
   const orderIssues = useMemo(
-    () => allOrderIssuesForReturn.filter((i) => i.orderId === orderId),
-    [allOrderIssuesForReturn, orderId],
+    () => allGoldBookEntries.filter((e) => e.orderId === orderId && e.type === "given"),
+    [allGoldBookEntries, orderId],
   );
 
   const workers = useMemo(

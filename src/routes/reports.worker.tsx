@@ -6,9 +6,9 @@ import { usePeople } from "@/lib/people-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { mgToGrams } from "@/lib/gold";
-import { exportToCSV } from "@/lib/report-engine";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/worker")({
   head: () => ({ meta: [{ title: "Worker Report · AVS Gold ERP" }] }),
@@ -76,9 +76,14 @@ function WorkerReportPage() {
         title="Worker Report"
         subtitle="Per-karigar pending gold, materials, and settlement status"
         actions={
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
-            <Download className="h-4 w-4" /> CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => triggerPrint()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
         }
       />
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useCreditNotes } from "@/lib/billing-documents-store";
 import { paiseToRupees } from "@/lib/billing-store";
 import { useSettings } from "@/lib/settings-store";
+import { usePrintEngine } from "@/lib/print-engine";
 import { useCan } from "@/lib/rbac";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ function CreditNoteDetail() {
   const refresh = useCreditNotes((s) => s.refresh);
   const cancel = useCreditNotes((s) => s.cancel);
   const { firm } = useSettings();
+  const { triggerPrint } = usePrintEngine();
   const { can, email } = useCan();
   const note = notes.find((n) => n.id === id);
 
@@ -77,7 +79,15 @@ function CreditNoteDetail() {
             <ArrowLeft className="h-4 w-4" /> All Credit Notes
           </Button>
         </Link>
-        <Button onClick={() => window.print()} className="gap-1.5">
+        <Button
+          onClick={() =>
+            triggerPrint(
+              `/billing/credit-note-print/${note.id}`,
+              `Credit Note Preview · ${note.creditNoteNo}`,
+            )
+          }
+          className="gap-1.5"
+        >
           <Printer className="h-4 w-4" /> Print
         </Button>
         {note.status === "issued" && can("billing.delete") && (
@@ -88,7 +98,7 @@ function CreditNoteDetail() {
       </div>
 
       <div
-        className="bg-white text-neutral-900 shadow-lg rounded-lg mx-auto print:shadow-none print:rounded-none p-10"
+        className="bg-white text-neutral-900 shadow-lg rounded-lg mx-auto p-10"
         style={{ maxWidth: 794, fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
       >
         <div className="flex items-start justify-between border-b-4 border-amber-500 pb-4 mb-4">

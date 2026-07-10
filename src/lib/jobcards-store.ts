@@ -1,6 +1,6 @@
 /**
  * MTJ ERP — Job Cards store (Phase 5)
- * Manufacturing spine: Order → Job Card → (Issue Gold) → (Receive Work) → ...
+ * Manufacturing spine: Order → Job Card → (Worker Issue) → (Receive Work) → ...
  *
  * Weights in mg (integer), purity per-mille.
  */
@@ -48,21 +48,6 @@ export interface JobTimelineEvent {
   ts: number;
   label: string;
   note?: string;
-}
-
-export interface GoldIssueRecord {
-  id: string;
-  slipNo: string;
-  ts: number;
-  source: "vault";
-  grossMg: number;
-  purity: number;
-  fineMg: number;
-  issuedBy?: string;
-  notes?: string;
-  /** Reference photo (thumbnail data URL) of the gold/material issued — same optional-evidence pattern as OutsideWorkTransaction's referencePhotoDataUrl. */
-  referencePhotoDataUrl?: string;
-  ledgerEntryId: string;
 }
 
 export interface QAFlags {
@@ -152,8 +137,6 @@ interface JobCardsState {
   reset: () => void;
 }
 
-
-
 export interface KarigarCustodySummary {
   karigarId: string;
   karigarName: string;
@@ -218,12 +201,11 @@ export function karigarCustodySummaries(jobs: JobCard[]): KarigarCustodySummary[
     });
 
     const activeJobsForWorker = jobs.filter((j) => j.karigarId === workerId);
-    const workerJobsList = activeJobsForWorker
-      .map((j) => ({
-        jobId: j.id,
-        jobNo: j.jobNo,
-        outstandingMg: 0,
-      }));
+    const workerJobsList = activeJobsForWorker.map((j) => ({
+      jobId: j.id,
+      jobNo: j.jobNo,
+      outstandingMg: 0,
+    }));
 
     map.set(workerId, {
       karigarId: workerId,

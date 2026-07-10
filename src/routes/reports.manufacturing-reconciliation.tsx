@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useMfgBills } from "@/lib/manufacturing-bill-store";
 import { mgToGrams } from "@/lib/gold";
-import { exportToCSV } from "@/lib/report-engine";
-import { AlertTriangle, CheckCircle2, Download } from "lucide-react";
+import { exportToCSV, triggerPrint } from "@/lib/report-engine";
+import { AlertTriangle, CheckCircle2, Download, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/reports/manufacturing-reconciliation")({
   head: () => ({ meta: [{ title: "Manufacturing Reconciliation · AVS Gold ERP" }] }),
@@ -59,9 +59,14 @@ function ManufacturingReconciliationPage() {
         title="Manufacturing Reconciliation"
         subtitle="Each Manufacturing Bill's stored wastage vs. re-deriving it from the bill's own issued/returned fields"
         actions={
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
-            <Download className="h-4 w-4" /> CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => triggerPrint()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
         }
       />
 

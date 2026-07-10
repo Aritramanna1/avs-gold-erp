@@ -286,6 +286,16 @@ function ProviderCard({
   onRemove: () => void;
 }) {
   const [local, setLocal] = useState(config);
+  // Resync when the store's copy changes from outside this card's own save
+  // (e.g. the async Supabase pull for `comm_configs` in data-loader.ts
+  // landing after this card already mounted) — otherwise `local` keeps
+  // showing pre-hydration/default settings, `hasChanges` spuriously turns
+  // true once the real config loads, and clicking the resulting "Save
+  // Changes" button would overwrite live provider credentials with stale
+  // ones.
+  useEffect(() => {
+    setLocal(config);
+  }, [config]);
   const [testing, setTesting] = useReactState(false);
   const [testResult, setTestResult] = useReactState<{ ok: boolean; message: string } | null>(null);
   const [testRecipient, setTestRecipient] = useReactState("");
