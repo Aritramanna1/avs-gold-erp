@@ -50,8 +50,15 @@ electron-app/node_modules
 electron-app/dist
 electron-app/release
 release/
-release-build/win-unpacked.tmp/
+release-build/
 build/LICENSE.txt
+
+# Local test-build distributions and source exports (never committed)
+/AVS Gold ERP*Test Build/
+*-Source-Code-Export.zip
+
+# Reticle local browser profile (runtime state, not config)
+.reticle-chrome-profile/
 
 # Build info
 tsconfig.tsbuildinfo
