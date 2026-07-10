@@ -57,6 +57,23 @@ export function fineGoldMg(grossMg: number, purity: Purity): number {
   return Math.round(product / 999);
 }
 
+/**
+ * Net weight (metal only, after removing stone/gemstone weight) can never
+ * exceed gross weight (metal + stones) for the same piece — if it does,
+ * gross and net were entered swapped, or net was mistakenly set to a
+ * wastage-inclusive billable weight instead of the actual metal weight.
+ * Call this wherever a gross/net weight pair is about to be persisted;
+ * every other call site should use this rather than re-deriving the check.
+ */
+export function assertNetNotAboveGross(grossMg: number, netMg: number, context?: string): void {
+  if (netMg > grossMg) {
+    const suffix = context ? ` — ${context}` : "";
+    throw new Error(
+      `Net weight (${mgToGrams(netMg)}g) cannot exceed gross weight (${mgToGrams(grossMg)}g)${suffix}`,
+    );
+  }
+}
+
 export function parsePurity(input: string | number): Purity {
   const n = typeof input === "number" ? input : Number(String(input).trim());
   if (!Number.isFinite(n) || n < 0 || n > 999) {

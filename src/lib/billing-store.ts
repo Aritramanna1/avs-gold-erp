@@ -23,6 +23,7 @@ import { createRepository } from "./repositories/base-repository";
 import { useLedger } from "./ledger-store";
 import { append as appendAudit } from "./security/audit-log";
 import { nextDocumentNumber } from "./document-numbering";
+import { assertNetNotAboveGross } from "./gold";
 
 export type PaymentMode =
   | "cash"
@@ -236,6 +237,20 @@ async function makeInvoiceNo(branchId?: string): Promise<string> {
   return nextDocumentNumber(key, prefix, 3);
 }
 
+/**
+ * Guards a whole invoice's line items right before they're persisted. Not
+ * called on every keystroke while an item is being edited (grossMg/netMg
+ * are typed independently and are legitimately transiently inconsistent
+ * mid-edit) — only at the save/update choke points, so a bad pair blocks
+ * the save with a clear error instead of silently reaching the ledger or a
+ * printed invoice.
+ */
+function assertInvoiceItemsValid(items: InvoiceItem[]): void {
+  for (const it of items) {
+    assertNetNotAboveGross(it.grossMg, it.netMg, `item "${it.itemName || it.id}"`);
+  }
+}
+
 export function computeItemTotals(
   it: Omit<InvoiceItem, "id" | "goldValuePaise" | "lineTotalPaise">,
 ): { goldValuePaise: number; lineTotalPaise: number } {
@@ -444,6 +459,7 @@ export const useBilling = create<BillingState>()((set, get) => ({
     // class of race fixed in manufacturing-barcode-store.ts's generate().
     // Only guarded when there's a stable order/job to key on; a walk-in sale
     // with no such link has no meaningful "duplicate" concept to prevent.
+    assertInvoiceItemsValid(input.items);
     const inFlightKey = input.orderId ?? input.jobId;
     if (inFlightKey) {
       if (invoiceAddInFlight.has(inFlightKey)) {
@@ -498,6 +514,7 @@ export const useBilling = create<BillingState>()((set, get) => ({
     const inv = get().invoices.find((i) => i.id === id);
     if (!inv) return;
     const updated = { ...inv, ...patch, updatedAt: Date.now() };
+    assertInvoiceItemsValid(updated.items);
     await invoiceRepository.save(updated);
     set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? updated : i)) }));
   },

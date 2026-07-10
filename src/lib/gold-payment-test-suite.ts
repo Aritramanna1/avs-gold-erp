@@ -4,6 +4,7 @@ import { usePeople } from "./people-store";
 import { useLedger, computeBalances } from "./ledger-store";
 import { useBilling, rupeesToPaise, paiseToRupees } from "./billing-store";
 import { useWorkers } from "./workers-store";
+import { assertNetNotAboveGross } from "./gold";
 
 export interface TestResult {
   id: string;
@@ -654,6 +655,85 @@ export async function runGoldPaymentTestSuite(): Promise<TestResult[]> {
     results.push({
       id: "case6",
       name: "Gold Balance Sheet Integrity",
+      passed: false,
+      findings: [err.message],
+    });
+  }
+
+  // ----------------------------------------------------
+  // TEST CASE 7: Net Weight Cannot Exceed Gross Weight
+  // ----------------------------------------------------
+  try {
+    const findings: string[] = [];
+
+    // 1. The pure invariant rejects an impossible pair and accepts a valid one.
+    let rejected = false;
+    try {
+      assertNetNotAboveGross(10000, 15000); // gross 10g, net 15g — impossible
+    } catch {
+      rejected = true;
+    }
+    if (!rejected) throw new Error("assertNetNotAboveGross() did not reject net > gross.");
+    findings.push("assertNetNotAboveGross() correctly rejects net > gross.");
+
+    assertNetNotAboveGross(10000, 9500); // gross 10g, net 9.5g — fine
+    findings.push("assertNetNotAboveGross() correctly accepts net <= gross.");
+
+    // 2. The real save path (useBilling.add) refuses to persist a bad item —
+    // this is the actual production guard, not just the pure helper.
+    let invoiceRejected = false;
+    try {
+      await useBilling.getState().add({
+        status: "draft",
+        customerId: "test-customer-case7",
+        customerName: "Net-Weight Guard Test",
+        items: [
+          {
+            id: `item_case7_bad_${Date.now()}`,
+            itemName: "Invalid Test Item",
+            category: "Ring",
+            purity: 916,
+            grossMg: 5000, // 5g gross
+            lessMg: 0,
+            netMg: 6000, // 6g net — impossible, must be rejected
+            fineMg: 5500,
+            goldRatePerGramPaise: 650000,
+            goldValuePaise: 3575000,
+            makingChargesPaise: 0,
+            stoneChargesPaise: 0,
+            otherChargesPaise: 0,
+            discountPaise: 0,
+            lineTotalPaise: 3575000,
+          },
+        ],
+        gst: "none",
+        cgstPaise: 0,
+        sgstPaise: 0,
+        gstPaise: 0,
+        subtotalPaise: 3575000,
+        adjustmentPaise: 0,
+        grandTotalPaise: 3575000,
+        paidPaise: 0,
+        balancePaise: 3575000,
+      });
+    } catch {
+      invoiceRejected = true;
+    }
+    if (!invoiceRejected) {
+      throw new Error("useBilling.add() saved an invoice with net weight > gross weight.");
+    }
+    findings.push("useBilling.add() correctly refuses to save a net > gross line item.");
+
+    results.push({
+      id: "case7",
+      name: "Net Weight Cannot Exceed Gross Weight",
+      passed: true,
+      findings,
+    });
+  } catch (err: any) {
+    results.push({
+      id: "case7",
+      name: "Net Weight Cannot Exceed Gross Weight",
       passed: false,
       findings: [err.message],
     });
