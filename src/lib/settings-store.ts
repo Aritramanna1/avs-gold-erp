@@ -515,7 +515,6 @@ export type DropdownKey =
   | "paymentMode"
   | "workerRole"
   | "stockLocation"
-  | "stockStatus"
   | "priority"
   | "sourceType"
   | "stoneType";
@@ -528,7 +527,6 @@ export const DROPDOWN_LABELS: Record<DropdownKey, string> = {
   paymentMode: "Payment Mode",
   workerRole: "Worker Role",
   stockLocation: "Stock Location",
-  stockStatus: "Stock Status",
   priority: "Priority",
   sourceType: "Source Type",
   stoneType: "Stone Type",
@@ -697,7 +695,6 @@ const DEFAULT_DROPDOWNS: Record<DropdownKey, string[]> = {
   paymentMode: ["Cash", "UPI", "Bank Transfer", "Card", "Gold Exchange"],
   workerRole: ["Master Karigar", "Helper", "Polisher", "Stone Setter", "Finisher"],
   stockLocation: ["Showroom", "Vault", "Display", "Workshop", "Repair Bench"],
-  stockStatus: ["In Stock", "Reserved", "Sold", "On Approval"],
   priority: ["Normal", "High", "Urgent"],
   sourceType: ["Walk-in", "Phone", "WhatsApp", "Referral", "Repeat Customer"],
   stoneType: ["Diamond", "Ruby", "Emerald", "Pearl", "CZ", "Other"],
