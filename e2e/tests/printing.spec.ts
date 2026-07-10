@@ -95,3 +95,80 @@ test.describe("Unified Print Engine — Credit Note (Phase 1 migration)", () => 
     expectNoPageErrors(authedPage);
   });
 });
+
+test.describe("Unified Print Engine — GST/Retail Invoice (Phase 1.2 migration)", () => {
+  test("renders real dynamic data, tax math, and branding through the new engine (A4 default)", async ({
+    authedPage,
+    seedIds,
+  }) => {
+    await authedPage.goto(`/billing/print/${seedIds.invoiceId}`);
+    const root = authedPage.getByTestId("print-layout-root");
+    await expect(root).toBeVisible({ timeout: 15_000 });
+    await expect(root).toHaveAttribute("data-print-size", "a4");
+
+    // premiumHeader + billedToStamp + tax panel — all data-driven via
+    // invoice-data.ts's buildInvoicePrintData, not the legacy inline JSX.
+    await expect(root.getByText(seedIds.invoiceNo)).toBeVisible();
+    await expect(root.getByText(/tax invoice \(3% gst\)/i)).toBeVisible();
+    await expect(root.getByText("CGST:")).toBeVisible();
+    await expect(root.getByText("SGST:")).toBeVisible();
+    await expect(root.getByText("Grand Net Amount:")).toBeVisible();
+
+    // QR — standalone `qr`-less premiumHeader inline QR (showQr: true).
+    await expect(root.getByAltText("Verification QR")).toBeVisible({ timeout: 15_000 });
+    expectNoPageErrors(authedPage);
+  });
+
+  test("size switcher swaps to the thermal receipt layout for the same invoice", async ({
+    authedPage,
+    seedIds,
+  }) => {
+    await authedPage.goto(`/billing/print/${seedIds.invoiceId}`);
+    await expect(authedPage.getByTestId("print-layout-root")).toBeVisible({ timeout: 15_000 });
+
+    await authedPage.getByRole("button", { name: "80mm Thermal" }).click();
+    const root = authedPage.getByTestId("print-layout-root");
+    await expect(root).toHaveAttribute("data-print-size", "thermal", { timeout: 10_000 });
+    await expect(root.getByText("TRANS-ITEMS DETAILS")).toBeVisible();
+    await expect(root.getByText("GRAND TOTAL")).toBeVisible();
+    expectNoPageErrors(authedPage);
+  });
+
+  test("size switcher swaps to per-item jewellery tag cards", async ({ authedPage, seedIds }) => {
+    await authedPage.goto(`/billing/print/${seedIds.invoiceId}`);
+    await expect(authedPage.getByTestId("print-layout-root")).toBeVisible({ timeout: 15_000 });
+
+    await authedPage.getByRole("button", { name: "Jewellery Tag" }).click();
+    const root = authedPage.getByTestId("print-layout-root");
+    await expect(root).toHaveAttribute("data-print-size", "tag", { timeout: 10_000 });
+    await expect(root.getByText(seedIds.invoiceNo)).toBeVisible();
+    expectNoPageErrors(authedPage);
+  });
+
+  test("Download PDF produces a real PDF file with correct page geometry for the active size", async ({
+    authedPage,
+    seedIds,
+  }) => {
+    await authedPage.goto(`/billing/print/${seedIds.invoiceId}`);
+    await expect(authedPage.getByTestId("print-layout-root")).toBeVisible({ timeout: 15_000 });
+    const [download] = await Promise.all([
+      authedPage.waitForEvent("download"),
+      authedPage.getByRole("button", { name: /download pdf/i }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/gst_invoice.*\.pdf$/i);
+    const path = await download.path();
+    expect(path).toBeTruthy();
+    expectNoPageErrors(authedPage);
+  });
+
+  test("reprint is audited — second visit shows the Reprint Required banner", async ({
+    authedPage,
+    seedIds,
+  }) => {
+    await authedPage.goto(`/billing/print/${seedIds.invoiceId}`);
+    await expect(authedPage.getByTestId("print-layout-root")).toBeVisible({ timeout: 15_000 });
+    await authedPage.goto(`/billing/print/${seedIds.invoiceId}`);
+    await expect(authedPage.getByText(/reprint required/i)).toBeVisible({ timeout: 15_000 });
+    expectNoPageErrors(authedPage);
+  });
+});

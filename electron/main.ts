@@ -2,13 +2,19 @@ import { app, BrowserWindow, dialog, ipcMain, Notification, session, shell } fro
 import path from "node:path";
 import { IPC } from "./ipc-channels";
 import { loadWindowState, trackWindowState } from "./window-state";
-import { HardwareRegistry } from "./hardware/registry";
-import { MockDriver } from "./hardware/drivers/mock-driver";
 
 // CommonJS output (see electron/tsconfig.json + dist-electron/package.json's
 // {"type":"commonjs"} override) — __dirname is a real CommonJS global here,
 // not something we need to reconstruct from import.meta.url.
 const isDev = !app.isPackaged;
+// DORMANT (2026-07-10 architecture audit): protocol is registered and
+// `handleDeepLink()` fires a "deep-link" IPC event, but no renderer code
+// listens for it — verified zero references to "deep-link"/"avsgolderp" in
+// src/. Invitation-accept uses a plain HTTPS route + 6-digit code, not this.
+// Kept registered (harmless no-op if a link is ever opened) rather than
+// removed, in case a future feature (e.g. "open record from notification")
+// wants it — reactivate by adding a `mtjDesktop.deepLink.onLink()` listener
+// in the renderer (the preload bridge already exposes it).
 const DEEP_LINK_PROTOCOL = "avsgolderp";
 
 // ---- Single instance lock ----
@@ -21,17 +27,6 @@ if (!gotLock) {
 }
 
 let mainWindow: BrowserWindow | null = null;
-const hardware = new HardwareRegistry();
-
-function registerDevHardware(): void {
-  // Bundled mock devices so the renderer's Hardware Manager UI and IPC
-  // surface can be developed/validated without physical devices attached.
-  // Real installs register real drivers here instead (one per detected
-  // device), never both at once.
-  hardware.register(new MockDriver("mock-scanner-1", "barcode-scanner", "Mock Barcode Scanner"));
-  hardware.register(new MockDriver("mock-scale-1", "weighing-scale", "Mock Weighing Scale"));
-  hardware.register(new MockDriver("mock-thermal-1", "thermal-printer", "Mock Thermal Printer"));
-}
 
 function createWindow(): BrowserWindow {
   const state = loadWindowState(app.getPath("userData"));
@@ -126,19 +121,6 @@ function registerIpcHandlers(): void {
   });
   ipcMain.on(IPC.WINDOW_CLOSE, () => mainWindow?.close());
 
-  ipcMain.handle(IPC.HARDWARE_LIST_DEVICES, () => hardware.list());
-  ipcMain.handle(IPC.HARDWARE_CONNECT, (_event, id: string) => hardware.connect(id));
-  ipcMain.handle(IPC.HARDWARE_DISCONNECT, (_event, id: string) => hardware.disconnect(id));
-  ipcMain.handle(
-    IPC.HARDWARE_SEND_COMMAND,
-    (_event, args: { id: string; command: string; commandArgs?: unknown }) =>
-      hardware.sendCommand(args.id, args.command, args.commandArgs),
-  );
-
-  hardware.onAnyEvent((event) => {
-    mainWindow?.webContents.send(IPC.HARDWARE_EVENT, event);
-  });
-
   ipcMain.handle(IPC.PRINT_LIST_PRINTERS, async () => {
     if (!mainWindow) return [];
     return mainWindow.webContents.getPrintersAsync();
@@ -198,6 +180,8 @@ function registerIpcHandlers(): void {
   );
 }
 
+// DORMANT — see DEEP_LINK_PROTOCOL comment above. Focuses the window on any
+// avsgolderp:// open; the "deep-link" event it sends has no listener today.
 function handleDeepLink(url: string): void {
   if (!mainWindow) return;
   if (mainWindow.isMinimized()) mainWindow.restore();
@@ -239,7 +223,6 @@ if (gotLock) {
       callback(permission === "media");
     });
 
-    registerDevHardware();
     registerIpcHandlers();
     mainWindow = createWindow();
 

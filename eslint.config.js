@@ -8,10 +8,15 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   {
     ignores: [
+      "node_modules",
       "dist",
       "dist-electron",
       ".output",
       ".vinxi",
+      // Local browser-automation profile (Claude in Chrome / Reticle) — tens
+      // of thousands of extension/cache files, not project source. Walking
+      // this directory (unignored) is what made `eslint .` hang for an hour.
+      ".reticle-chrome-profile",
       // Packaged release export bundles — each contains a full duplicate
       // Source Code/ copy of the repo, never meant to be linted in place.
       "release",

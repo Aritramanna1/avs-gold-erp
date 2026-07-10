@@ -55,7 +55,12 @@ export function CustomShell({
         }
       `}</style>
       <div className="flex-1 p-4 md:p-8 flex justify-center items-start overflow-y-auto">
-        <div className={boxClass} style={{ contentVisibility: "auto" }}>
+        <div
+          className={boxClass}
+          style={{ contentVisibility: "auto" }}
+          data-testid="print-layout-root"
+          data-print-size={paperSize}
+        >
           {!isThermalOrTag(paperSize) && (
             <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-purple-900 via-amber-500 to-purple-950" />
           )}
