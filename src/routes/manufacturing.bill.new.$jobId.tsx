@@ -40,7 +40,7 @@ import {
 import { calcNetMfgCost } from "@/lib/mfg-costing";
 import { fineGoldMg } from "@/lib/gold";
 import { useWorkflowEngine } from "@/lib/workflow-engine";
-import { useSettings } from "@/lib/settings-store";
+import { useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useCurrentBranchId } from "@/lib/branch-store";
 import { nextDocumentNumber } from "@/lib/document-numbering";
 import {
@@ -85,7 +85,7 @@ export default function NewMfgBill() {
   const { jobs } = useJobCards();
   const { bills, saveBill, patchBill, finaliseBill } = useMfgBills();
   const { config: wf } = useWorkflowEngine();
-  const { goldRatePerGramPaise } = useSettings();
+  const goldRatePerGramPaise = useCurrentGoldRatePaise();
   const branchId = useCurrentBranchId();
 
   const job = jobs.find((j) => j.id === jobId);

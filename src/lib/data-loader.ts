@@ -332,6 +332,8 @@ export async function pullAppSettings(): Promise<void> {
         payload.goldRate18KPerGramPaise ?? useSettings.getState().goldRate18KPerGramPaise,
       silverRatePerGramPaise:
         payload.silverRatePerGramPaise ?? useSettings.getState().silverRatePerGramPaise,
+      bullionRateProvider:
+        payload.bullionRateProvider ?? useSettings.getState().bullionRateProvider,
       language: payload.language ?? useSettings.getState().language,
       developer: payload.developer ?? useSettings.getState().developer,
       users: updatedUsers,

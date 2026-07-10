@@ -273,6 +273,10 @@ function RootComponent() {
     // Background drain of the offline-write sync outbox (Plan 1 Step 3) —
     // same "runs regardless of DEV/PROD" reasoning as the comm queue above.
     import("@/lib/sync-engine").then((m) => m.startSyncOutboxScheduler());
+    // Bullion rate auto-refresh — a no-op per its own fetchNow() logic on any
+    // branch whose goldRateSource is "manual" (the default), so this is safe
+    // to always start rather than gating it behind a check here.
+    import("@/lib/bullion-rate-service").then((m) => m.startBullionRateScheduler());
     // Registers daily/weekly/monthly report jobs and starts the background
     // scheduler that checks for due jobs every minute.
     Promise.all([

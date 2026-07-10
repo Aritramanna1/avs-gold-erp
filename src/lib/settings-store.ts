@@ -4,6 +4,10 @@
  */
 import { create } from "zustand";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  DEFAULT_BULLION_RATE_PROVIDER_CONFIG,
+  type BullionRateProviderConfig,
+} from "./bullion-rate/types";
 
 // ── Supabase persistence helpers ──────────────────────────────────────────────
 
@@ -120,6 +124,7 @@ function persistSettings(get: () => any): void {
     goldRate24KPerGramPaise: s.goldRate24KPerGramPaise,
     goldRate18KPerGramPaise: s.goldRate18KPerGramPaise,
     silverRatePerGramPaise: s.silverRatePerGramPaise,
+    bullionRateProvider: s.bullionRateProvider,
     language: s.language,
     developer: s.developer,
     users: s.users,
@@ -458,6 +463,12 @@ export interface HardwareSettings {
   scaleMode: "simulation" | "webserial";
   autoPopulateWeight: boolean;
   scaleBaudRate: number;
+  /** Master switch — CashDrawerButton renders nothing and auto-open never fires when false. */
+  cashDrawerEnabled: boolean;
+  /** Only fires after a payment whose mode is exactly "cash" (not mixed/UPI/card/etc). */
+  cashDrawerAutoOpenOnCash: boolean;
+  /** Hex bytes, space-separated (e.g. "1B 70 00 19 FA") — the ESC/POS drawer-kick pulse sent through the connected receipt printer. */
+  cashDrawerEscPosCommand: string;
 }
 
 export interface CatalogSettings {
@@ -538,6 +549,10 @@ export interface SettingsState {
   goldRate24KPerGramPaise: number;
   goldRate18KPerGramPaise: number;
   silverRatePerGramPaise: number;
+  /** Technical config for the live-rate provider used when a branch's
+   *  goldRateSource is "api" (see bullion-rate-service.ts). Global, not
+   *  per-branch — one subscription typically covers the whole business. */
+  bullionRateProvider: BullionRateProviderConfig;
   language: LanguageSettings;
   developer: DeveloperSettings;
   branches: Branch[];
@@ -620,6 +635,7 @@ export interface SettingsState {
   setGoldRate24K: (paise: number) => void;
   setGoldRate18K: (paise: number) => void;
   setSilverRate: (paise: number) => void;
+  setBullionRateProvider: (p: Partial<BullionRateProviderConfig>) => void;
   setLanguage: (l: Partial<LanguageSettings>) => void;
   setDeveloper: (d: Partial<DeveloperSettings>) => void;
   setSelectedBranchId: (id: string) => void;
@@ -1199,6 +1215,9 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
     scaleMode: "simulation",
     autoPopulateWeight: true,
     scaleBaudRate: 9600,
+    cashDrawerEnabled: false,
+    cashDrawerAutoOpenOnCash: false,
+    cashDrawerEscPosCommand: "1B 70 00 19 FA",
   },
   catalog: {
     categories: ["Ring", "Chain", "Earring", "Pendant", "Bangle", "Necklace"],
@@ -1223,6 +1242,7 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
   goldRate24KPerGramPaise: 0,
   goldRate18KPerGramPaise: 0,
   silverRatePerGramPaise: 0,
+  bullionRateProvider: DEFAULT_BULLION_RATE_PROVIDER_CONFIG,
   language: {
     appLanguage: "en",
     printLanguage: "en",
@@ -1379,6 +1399,7 @@ type Functions = Pick<
   | "setPrint"
   | "setGst"
   | "setHardware"
+  | "setBullionRateProvider"
   | "setCatalog"
   | "setGoldRate"
   | "setGoldRate24K"
@@ -1479,6 +1500,16 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   },
   setSilverRate: (paise) => {
     set({ silverRatePerGramPaise: paise });
+    persistSettings(get);
+  },
+  setBullionRateProvider: (p) => {
+    set({
+      bullionRateProvider: {
+        ...get().bullionRateProvider,
+        ...p,
+        httpProvider: { ...get().bullionRateProvider.httpProvider, ...(p.httpProvider ?? {}) },
+      },
+    });
     persistSettings(get);
   },
   setLanguage: (l) => set({ language: { ...get().language, ...l } }),

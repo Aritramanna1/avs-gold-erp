@@ -38,7 +38,7 @@ import {
 } from "@/lib/billing-store";
 import { useCurrentBranchId } from "@/lib/branch-store";
 import { mgToGrams, gramsToMg, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
-import { useSettings } from "@/lib/settings-store";
+import { useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { ArrowLeft, Printer, CheckCircle2, Truck, Coins } from "lucide-react";
 import { toast } from "sonner";
 
@@ -61,7 +61,7 @@ function SettlementView() {
   const removeItem = useSettlements((st) => st.removeItem);
   const completeFinalSettlement = useSettlements((st) => st.completeFinalSettlement);
   const branchId = useCurrentBranchId();
-  const { goldRatePerGramPaise } = useSettings();
+  const goldRatePerGramPaise = useCurrentGoldRatePaise();
 
   const [payMode, setPayMode] = useState<PaymentMode>("cash");
   const [payAmt, setPayAmt] = useState("");

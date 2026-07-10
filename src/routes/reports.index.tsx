@@ -21,6 +21,7 @@ import { useRepairs, REPAIR_STATUS_LABELS } from "@/lib/repair-store";
 import { useWorkers } from "@/lib/workers-store";
 import { usePeople } from "@/lib/people-store";
 import { useSettings } from "@/lib/settings-store";
+import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useModuleStore } from "@/lib/module-store";
 import { useExpensesStore } from "@/lib/expenses-store";
 import { usePrintLog, PRINT_DOC_LABELS } from "@/lib/printlog-store";
@@ -1053,8 +1054,7 @@ function ReportsIndex() {
                 variant="outline"
                 className="justify-start gap-2"
                 onClick={() => {
-                  const goldRatePerGram =
-                    (useSettings.getState().goldRatePerGramPaise || 700000) / 100;
+                  const goldRatePerGram = (getCurrentGoldRatePaise() || 700000) / 100;
                   downloadCSV("stock-valuation.csv", [
                     [
                       "Item Code",

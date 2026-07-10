@@ -47,6 +47,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useModuleStore, ERP_MODULES, type ERPModuleKey } from "@/lib/module-store";
 import { hardwareService } from "@/lib/hardware-service";
+import { CashDrawerButton } from "@/components/hardware/CashDrawerButton";
 import {
   Trash2,
   Plus,
@@ -89,6 +90,7 @@ import {
 } from "@/lib/app-info";
 
 import { FactoryResetDialog } from "@/components/security/FactoryResetDialog";
+import { useBullionRate } from "@/lib/bullion-rate-service";
 
 const SearchSchema = z.object({
   tab: z.string().optional(),
@@ -2758,6 +2760,34 @@ function PurityTab() {
   );
 }
 
+/** Shows next to a manual rate Field when the live provider's last-fetched
+ *  snapshot has a different figure — never auto-applies, "Apply" is always
+ *  an explicit click. Rendered as null (not an empty wrapper) when there's
+ *  nothing to suggest, so it never affects layout when unused. */
+function SuggestedRateHint({
+  suggestedPaise,
+  currentPaise,
+  onApply,
+}: {
+  suggestedPaise: number | undefined;
+  currentPaise: number;
+  onApply: () => void;
+}) {
+  if (!suggestedPaise || suggestedPaise === currentPaise) return null;
+  return (
+    <div className="flex items-center gap-2 text-[11px] text-emerald-600 dark:text-emerald-400">
+      <span>Live: ₹{(suggestedPaise / 100).toLocaleString("en-IN")}</span>
+      <button
+        type="button"
+        onClick={onApply}
+        className="underline underline-offset-2 hover:text-emerald-500"
+      >
+        Apply
+      </button>
+    </div>
+  );
+}
+
 function RatesTab() {
   const {
     goldRatePerGramPaise,
@@ -2768,9 +2798,16 @@ function RatesTab() {
     setGoldRate24K,
     setGoldRate18K,
     setSilverRate,
+    selectedBranchId,
+    getBranchSettings,
+    bullionRateProvider,
+    setBullionRateProvider,
   } = useSettings();
   const { roles, ready } = useRoles();
   const isAuthorized = ready && (roles.includes("owner") || roles.includes("manager"));
+
+  const rateSource = getBranchSettings(selectedBranchId || "MAIN").goldRateSource ?? "manual";
+  const { snapshot, status, lastError, fetchNow, applyFetchedRates } = useBullionRate();
 
   const autoFillFrom24K = (val24: number) => {
     if (!isNaN(val24) && val24 >= 0) {
@@ -2782,81 +2819,219 @@ function RatesTab() {
   };
 
   return (
-    <Card className="p-5 grid md:grid-cols-2 gap-4 mt-4">
-      <Field label="Gold Rate (24K / 999) ₹ / gram">
-        <Input
-          type="number"
-          step="0.01"
-          min="0"
-          value={goldRate24KPerGramPaise > 0 ? (goldRate24KPerGramPaise / 100).toString() : ""}
-          placeholder={
-            goldRatePerGramPaise > 0
-              ? Math.round(goldRatePerGramPaise / 0.916 / 100).toString()
-              : "0"
-          }
-          onChange={(e) => {
-            const val = parseFloat(e.target.value || "0");
-            autoFillFrom24K(val);
-          }}
-          disabled={!isAuthorized}
-        />
-      </Field>
-      <Field label="Gold Rate (22K / 916 Reference) ₹ / gram">
-        <Input
-          type="number"
-          step="0.01"
-          min="0"
-          value={goldRatePerGramPaise > 0 ? (goldRatePerGramPaise / 100).toString() : ""}
-          onChange={(e) => {
-            const val = parseFloat(e.target.value || "0");
-            if (!isNaN(val) && val >= 0) {
-              setGoldRate(Math.round(val * 100));
-            }
-          }}
-          disabled={!isAuthorized}
-        />
-      </Field>
-      <Field label="Gold Rate (18K / 750) ₹ / gram">
-        <Input
-          type="number"
-          step="0.01"
-          min="0"
-          value={goldRate18KPerGramPaise > 0 ? (goldRate18KPerGramPaise / 100).toString() : ""}
-          placeholder={
-            goldRatePerGramPaise > 0
-              ? Math.round(((goldRatePerGramPaise / 0.916) * 0.75) / 100).toString()
-              : "0"
-          }
-          onChange={(e) => {
-            const val = parseFloat(e.target.value || "0");
-            if (!isNaN(val) && val >= 0) {
-              setGoldRate18K(Math.round(val * 100));
-            }
-          }}
-          disabled={!isAuthorized}
-        />
-      </Field>
-      <Field label="Silver Rate ₹ / gram">
-        <Input
-          type="number"
-          step="0.01"
-          min="0"
-          value={silverRatePerGramPaise > 0 ? (silverRatePerGramPaise / 100).toString() : ""}
-          onChange={(e) => {
-            const val = parseFloat(e.target.value || "0");
-            if (!isNaN(val) && val >= 0) {
-              setSilverRate(Math.round(val * 100));
-            }
-          }}
-          disabled={!isAuthorized}
-        />
-      </Field>
-      {!isAuthorized && ready && (
-        <p className="col-span-2 text-xs text-red-500 font-semibold mt-1">
-          Only owners or managers can modify gold and silver rates.
-        </p>
+    <div className="space-y-4 mt-4">
+      <Card className="p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm">
+          <span className="text-muted-foreground">Rate Source: </span>
+          <span className="font-semibold">
+            {rateSource === "api" ? "Live API" : "Manual (set daily)"}
+          </span>
+          <Link
+            to="/settings/branch-settings"
+            className="ml-2 text-xs text-gold underline underline-offset-2"
+          >
+            Change in Branch Settings
+          </Link>
+        </div>
+        {rateSource === "api" && (
+          <div className="flex items-center gap-3 text-xs">
+            {snapshot && (
+              <span className="text-muted-foreground">
+                Last updated {Math.max(0, Math.round((Date.now() - snapshot.fetchedAt) / 60000))}m
+                ago
+              </span>
+            )}
+            {status === "error" && lastError && (
+              <span className="text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5" /> {lastError}
+              </span>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={status === "fetching"}
+              onClick={() => void fetchNow()}
+            >
+              {status === "fetching" ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              )}
+              Fetch Now
+            </Button>
+            {snapshot && (
+              <Button size="sm" className="bg-gold text-black" onClick={applyFetchedRates}>
+                Apply All
+              </Button>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {rateSource === "api" && (
+        <Card className="p-5 grid md:grid-cols-2 gap-4">
+          <div className="col-span-2 text-xs uppercase tracking-wider text-muted-foreground font-semibold -mb-2">
+            Live Rate Provider
+          </div>
+          <Field label="API URL">
+            <Input
+              placeholder="https://your-provider.example.com/v1/rates"
+              value={bullionRateProvider.httpProvider.apiUrl}
+              onChange={(e) =>
+                setBullionRateProvider({
+                  httpProvider: { ...bullionRateProvider.httpProvider, apiUrl: e.target.value },
+                })
+              }
+              disabled={!isAuthorized}
+            />
+          </Field>
+          <Field label="API Key (optional)">
+            <Input
+              type="password"
+              value={bullionRateProvider.httpProvider.apiKey ?? ""}
+              onChange={(e) =>
+                setBullionRateProvider({
+                  httpProvider: { ...bullionRateProvider.httpProvider, apiKey: e.target.value },
+                })
+              }
+              disabled={!isAuthorized}
+            />
+          </Field>
+          <Field label="Response Path — 24K rate (₹/g)">
+            <Input
+              placeholder="e.g. data.gold.xau24kInrPerGram"
+              value={bullionRateProvider.httpProvider.responsePaths.gold24K}
+              onChange={(e) =>
+                setBullionRateProvider({
+                  httpProvider: {
+                    ...bullionRateProvider.httpProvider,
+                    responsePaths: {
+                      ...bullionRateProvider.httpProvider.responsePaths,
+                      gold24K: e.target.value,
+                    },
+                  },
+                })
+              }
+              disabled={!isAuthorized}
+            />
+          </Field>
+          <Field label="Refresh Every (minutes)">
+            <Input
+              type="number"
+              min="5"
+              value={bullionRateProvider.refreshIntervalMinutes}
+              onChange={(e) =>
+                setBullionRateProvider({
+                  refreshIntervalMinutes: Math.max(5, parseInt(e.target.value || "60", 10)),
+                })
+              }
+              disabled={!isAuthorized}
+            />
+          </Field>
+          <p className="col-span-2 text-[11px] text-muted-foreground">
+            22K and 18K are auto-derived (91.6% / 75% of the 24K figure) unless you map their own
+            response paths — most feeds only quote 24K/fine gold. Fetched rates only take effect
+            when you click Apply; they never overwrite a manual entry silently.
+          </p>
+        </Card>
       )}
-    </Card>
+
+      <Card className="p-5 grid md:grid-cols-2 gap-4">
+        <Field label="Gold Rate (24K / 999) ₹ / gram">
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={goldRate24KPerGramPaise > 0 ? (goldRate24KPerGramPaise / 100).toString() : ""}
+            placeholder={
+              goldRatePerGramPaise > 0
+                ? Math.round(goldRatePerGramPaise / 0.916 / 100).toString()
+                : "0"
+            }
+            onChange={(e) => {
+              const val = parseFloat(e.target.value || "0");
+              autoFillFrom24K(val);
+            }}
+            disabled={!isAuthorized}
+          />
+          <SuggestedRateHint
+            suggestedPaise={snapshot?.gold24KPerGramPaise}
+            currentPaise={goldRate24KPerGramPaise}
+            onApply={() => snapshot && setGoldRate24K(snapshot.gold24KPerGramPaise)}
+          />
+        </Field>
+        <Field label="Gold Rate (22K / 916 Reference) ₹ / gram">
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={goldRatePerGramPaise > 0 ? (goldRatePerGramPaise / 100).toString() : ""}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value || "0");
+              if (!isNaN(val) && val >= 0) {
+                setGoldRate(Math.round(val * 100));
+              }
+            }}
+            disabled={!isAuthorized}
+          />
+          <SuggestedRateHint
+            suggestedPaise={snapshot?.gold22KPerGramPaise}
+            currentPaise={goldRatePerGramPaise}
+            onApply={() => snapshot && setGoldRate(snapshot.gold22KPerGramPaise)}
+          />
+        </Field>
+        <Field label="Gold Rate (18K / 750) ₹ / gram">
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={goldRate18KPerGramPaise > 0 ? (goldRate18KPerGramPaise / 100).toString() : ""}
+            placeholder={
+              goldRatePerGramPaise > 0
+                ? Math.round(((goldRatePerGramPaise / 0.916) * 0.75) / 100).toString()
+                : "0"
+            }
+            onChange={(e) => {
+              const val = parseFloat(e.target.value || "0");
+              if (!isNaN(val) && val >= 0) {
+                setGoldRate18K(Math.round(val * 100));
+              }
+            }}
+            disabled={!isAuthorized}
+          />
+          <SuggestedRateHint
+            suggestedPaise={snapshot?.gold18KPerGramPaise}
+            currentPaise={goldRate18KPerGramPaise}
+            onApply={() => snapshot && setGoldRate18K(snapshot.gold18KPerGramPaise)}
+          />
+        </Field>
+        <Field label="Silver Rate ₹ / gram">
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={silverRatePerGramPaise > 0 ? (silverRatePerGramPaise / 100).toString() : ""}
+            onChange={(e) => {
+              const val = parseFloat(e.target.value || "0");
+              if (!isNaN(val) && val >= 0) {
+                setSilverRate(Math.round(val * 100));
+              }
+            }}
+            disabled={!isAuthorized}
+          />
+          <SuggestedRateHint
+            suggestedPaise={snapshot?.silverPerGramPaise}
+            currentPaise={silverRatePerGramPaise}
+            onApply={() => snapshot && setSilverRate(snapshot.silverPerGramPaise)}
+          />
+        </Field>
+        {!isAuthorized && ready && (
+          <p className="col-span-2 text-xs text-red-500 font-semibold mt-1">
+            Only owners or managers can modify gold and silver rates.
+          </p>
+        )}
+      </Card>
+    </div>
   );
 }
 
@@ -3225,6 +3400,45 @@ function HardwareTab() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Cash Drawer Section */}
+      <div className="space-y-4 border-t border-border/40 pt-6">
+        <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+          Cash Drawer
+        </h4>
+
+        <ToggleRow
+          label="Enable cash drawer"
+          value={hardware.cashDrawerEnabled}
+          onChange={(v) => setHardware({ cashDrawerEnabled: v })}
+        />
+
+        {hardware.cashDrawerEnabled && (
+          <>
+            <ToggleRow
+              label="Auto-open after a fully-cash payment"
+              value={hardware.cashDrawerAutoOpenOnCash}
+              onChange={(v) => setHardware({ cashDrawerAutoOpenOnCash: v })}
+            />
+
+            <Field label="ESC/POS Kick Command (hex bytes)">
+              <Input
+                value={hardware.cashDrawerEscPosCommand}
+                onChange={(e) => setHardware({ cashDrawerEscPosCommand: e.target.value })}
+                placeholder="1B 70 00 19 FA"
+                className="font-mono"
+              />
+            </Field>
+
+            <div className="flex items-center gap-3">
+              <CashDrawerButton />
+              <span className="text-xs text-muted-foreground">
+                Test the drawer — same action as the manual button on the Billing screen.
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </Card>
   );

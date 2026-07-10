@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { useSettings } from "@/lib/settings-store";
+import { useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,8 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const { t } = useLanguage();
-  const { goldRatePerGramPaise, firm, settingsHydrated } = useSettings();
+  const { firm, settingsHydrated } = useSettings();
+  const goldRatePerGramPaise = useCurrentGoldRatePaise();
   const navigate = useNavigate();
 
   // First-run gate: once settings have actually finished loading (not the

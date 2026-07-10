@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { usePeople } from "@/lib/people-store";
 import { useOrders } from "@/lib/orders-store";
-import { useSettings } from "@/lib/settings-store";
+import { useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useCurrentBranchId } from "@/lib/branch-store";
 import { useSettlements, previewSettlementTotals } from "@/lib/settlement-store";
 import { computeItemTotals, type InvoiceItem, type GstKind } from "@/lib/billing-store";
@@ -43,7 +43,7 @@ function NewSettlement() {
   const navigate = useNavigate();
   const people = usePeople((s) => s.people);
   const orders = useOrders((s) => s.orders);
-  const { goldRatePerGramPaise } = useSettings();
+  const goldRatePerGramPaise = useCurrentGoldRatePaise();
   const branchId = useCurrentBranchId();
   const createDraft = useSettlements((s) => s.createDraft);
 

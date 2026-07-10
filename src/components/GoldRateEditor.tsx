@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSettings } from "@/lib/settings-store";
+import { useBullionRate } from "@/lib/bullion-rate-service";
 import { useRoles } from "@/lib/rbac";
-import { Shield, Sparkles, AlertCircle, Coins, Percent } from "lucide-react";
+import { Shield, Sparkles, AlertCircle, Coins, Percent, Radio } from "lucide-react";
 
 interface GoldRateEditorProps {
   open: boolean;
@@ -33,6 +34,7 @@ export function GoldRateEditor({ open, onOpenChange }: GoldRateEditorProps) {
     addSecurityLog,
   } = useSettings();
   const { roles, email, ready } = useRoles();
+  const { snapshot: liveSnapshot } = useBullionRate();
 
   // Check roles: user must be either "owner" or "manager" to edit.
   const isAuthorized = ready && (roles.includes("owner") || roles.includes("manager"));
@@ -266,6 +268,42 @@ export function GoldRateEditor({ open, onOpenChange }: GoldRateEditorProps) {
                 editing.
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Live rate suggestion — never applied automatically, only on click */}
+        {isAuthorized && liveSnapshot && (
+          <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg flex gap-3 items-start text-xs text-emerald-700 dark:text-emerald-400">
+            <Radio className="h-4 w-4 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold">
+                Live rate available: ₹
+                {(liveSnapshot.gold24KPerGramPaise / 100).toLocaleString("en-IN")}/g (24K)
+              </p>
+              <p className="opacity-80">
+                Fetched {Math.max(0, Math.round((Date.now() - liveSnapshot.fetchedAt) / 60000))}m
+                ago from your configured provider.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400 h-7"
+              onClick={() => {
+                setGold24Input((liveSnapshot.gold24KPerGramPaise / 100).toString());
+                setGold22Input((liveSnapshot.gold22KPerGramPaise / 100).toString());
+                setGold18Input((liveSnapshot.gold18KPerGramPaise / 100).toString());
+                if (liveSnapshot.silverPerGramPaise > 0) {
+                  setSilverInput((liveSnapshot.silverPerGramPaise / 100).toString());
+                }
+                setGold24Error(null);
+                setGold22Error(null);
+                setGold18Error(null);
+                setSilverError(null);
+              }}
+            >
+              Fill In
+            </Button>
           </div>
         )}
 
