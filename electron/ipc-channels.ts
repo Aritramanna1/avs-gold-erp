@@ -12,11 +12,6 @@ export const IPC = {
   WINDOW_MINIMIZE: "window:minimize",
   WINDOW_MAXIMIZE_TOGGLE: "window:maximize-toggle",
   WINDOW_CLOSE: "window:close",
-  HARDWARE_LIST_DEVICES: "hardware:list-devices",
-  HARDWARE_CONNECT: "hardware:connect",
-  HARDWARE_DISCONNECT: "hardware:disconnect",
-  HARDWARE_SEND_COMMAND: "hardware:send-command",
-  HARDWARE_EVENT: "hardware:event", // main -> renderer push (scan results, weight readings, etc.)
   PRINT_LIST_PRINTERS: "print:list-printers",
   PRINT_HTML: "print:html",
 } as const;
