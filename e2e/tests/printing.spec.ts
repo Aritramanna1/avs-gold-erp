@@ -108,7 +108,8 @@ test.describe("Unified Print Engine — GST/Retail Invoice (Phase 1.2 migration)
 
     // premiumHeader + billedToStamp + tax panel — all data-driven via
     // invoice-data.ts's buildInvoicePrintData, not the legacy inline JSX.
-    await expect(root.getByText(seedIds.invoiceNo)).toBeVisible();
+    // (invoiceNo appears twice — header voucher no. + QR caption — .first() disambiguates.)
+    await expect(root.getByText(seedIds.invoiceNo).first()).toBeVisible();
     await expect(root.getByText(/tax invoice \(3% gst\)/i)).toBeVisible();
     await expect(root.getByText("CGST:")).toBeVisible();
     await expect(root.getByText("SGST:")).toBeVisible();

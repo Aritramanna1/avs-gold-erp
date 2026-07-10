@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useSettings } from "./settings-store";
 import { recordJob, makeId } from "./print/print-queue";
 
@@ -356,3 +357,30 @@ PRINT 1,1
 }
 
 export const hardwareService = new HardwareService();
+
+/**
+ * One shared scale-subscription hook — the single place any component reads
+ * live weighing-scale state from. `WeightInput.tsx` and BillingModule's
+ * item-row table both consume this instead of each subscribing to
+ * `hardwareService.onScaleReading()` independently: device handling,
+ * connection lifecycle, and read-side plumbing stay unified in
+ * `hardwareService`; this hook is just the one React-level wrapper around
+ * it. Presentation (full "Use Reading" UI vs a compact table-row hint) is
+ * left entirely to the caller — this returns data only.
+ */
+export function useScaleReading(): { reading: ScaleReading | null; connected: boolean } {
+  const [reading, setReading] = useState<ScaleReading | null>(null);
+  const [connected, setConnected] = useState(hardwareService.isScaleConnected);
+
+  useEffect(() => {
+    const unsubscribe = hardwareService.onScaleReading((r) => {
+      setReading(r);
+      setConnected(hardwareService.isScaleConnected);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  return { reading, connected };
+}

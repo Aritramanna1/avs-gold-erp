@@ -7,12 +7,18 @@ const electron_1 = require("electron");
 const node_path_1 = __importDefault(require("node:path"));
 const ipc_channels_1 = require("./ipc-channels");
 const window_state_1 = require("./window-state");
-const registry_1 = require("./hardware/registry");
-const mock_driver_1 = require("./hardware/drivers/mock-driver");
 // CommonJS output (see electron/tsconfig.json + dist-electron/package.json's
 // {"type":"commonjs"} override) — __dirname is a real CommonJS global here,
 // not something we need to reconstruct from import.meta.url.
 const isDev = !electron_1.app.isPackaged;
+// DORMANT (2026-07-10 architecture audit): protocol is registered and
+// `handleDeepLink()` fires a "deep-link" IPC event, but no renderer code
+// listens for it — verified zero references to "deep-link"/"avsgolderp" in
+// src/. Invitation-accept uses a plain HTTPS route + 6-digit code, not this.
+// Kept registered (harmless no-op if a link is ever opened) rather than
+// removed, in case a future feature (e.g. "open record from notification")
+// wants it — reactivate by adding a `mtjDesktop.deepLink.onLink()` listener
+// in the renderer (the preload bridge already exposes it).
 const DEEP_LINK_PROTOCOL = "avsgolderp";
 // ---- Single instance lock ----
 // A second launch (e.g. double-clicking a deep link) should focus the
@@ -23,16 +29,6 @@ if (!gotLock) {
     electron_1.app.quit();
 }
 let mainWindow = null;
-const hardware = new registry_1.HardwareRegistry();
-function registerDevHardware() {
-    // Bundled mock devices so the renderer's Hardware Manager UI and IPC
-    // surface can be developed/validated without physical devices attached.
-    // Real installs register real drivers here instead (one per detected
-    // device), never both at once.
-    hardware.register(new mock_driver_1.MockDriver("mock-scanner-1", "barcode-scanner", "Mock Barcode Scanner"));
-    hardware.register(new mock_driver_1.MockDriver("mock-scale-1", "weighing-scale", "Mock Weighing Scale"));
-    hardware.register(new mock_driver_1.MockDriver("mock-thermal-1", "thermal-printer", "Mock Thermal Printer"));
-}
 function createWindow() {
     const state = (0, window_state_1.loadWindowState)(electron_1.app.getPath("userData"));
     const win = new electron_1.BrowserWindow({
@@ -122,13 +118,6 @@ function registerIpcHandlers() {
             mainWindow.maximize();
     });
     electron_1.ipcMain.on(ipc_channels_1.IPC.WINDOW_CLOSE, () => mainWindow?.close());
-    electron_1.ipcMain.handle(ipc_channels_1.IPC.HARDWARE_LIST_DEVICES, () => hardware.list());
-    electron_1.ipcMain.handle(ipc_channels_1.IPC.HARDWARE_CONNECT, (_event, id) => hardware.connect(id));
-    electron_1.ipcMain.handle(ipc_channels_1.IPC.HARDWARE_DISCONNECT, (_event, id) => hardware.disconnect(id));
-    electron_1.ipcMain.handle(ipc_channels_1.IPC.HARDWARE_SEND_COMMAND, (_event, args) => hardware.sendCommand(args.id, args.command, args.commandArgs));
-    hardware.onAnyEvent((event) => {
-        mainWindow?.webContents.send(ipc_channels_1.IPC.HARDWARE_EVENT, event);
-    });
     electron_1.ipcMain.handle(ipc_channels_1.IPC.PRINT_LIST_PRINTERS, async () => {
         if (!mainWindow)
             return [];
@@ -171,6 +160,8 @@ function registerIpcHandlers() {
         printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(args.html)}`);
     }));
 }
+// DORMANT — see DEEP_LINK_PROTOCOL comment above. Focuses the window on any
+// avsgolderp:// open; the "deep-link" event it sends has no listener today.
 function handleDeepLink(url) {
     if (!mainWindow)
         return;
@@ -211,7 +202,6 @@ if (gotLock) {
         electron_1.session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
             callback(permission === "media");
         });
-        registerDevHardware();
         registerIpcHandlers();
         mainWindow = createWindow();
         mainWindow.webContents.on("render-process-gone", (_event, details) => {

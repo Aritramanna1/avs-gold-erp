@@ -23,11 +23,6 @@ const IPC = {
     WINDOW_MINIMIZE: "window:minimize",
     WINDOW_MAXIMIZE_TOGGLE: "window:maximize-toggle",
     WINDOW_CLOSE: "window:close",
-    HARDWARE_LIST_DEVICES: "hardware:list-devices",
-    HARDWARE_CONNECT: "hardware:connect",
-    HARDWARE_DISCONNECT: "hardware:disconnect",
-    HARDWARE_SEND_COMMAND: "hardware:send-command",
-    HARDWARE_EVENT: "hardware:event",
     PRINT_LIST_PRINTERS: "print:list-printers",
     PRINT_HTML: "print:html",
 };
@@ -48,21 +43,12 @@ const api = {
         maximizeToggle: () => electron_1.ipcRenderer.send(IPC.WINDOW_MAXIMIZE_TOGGLE),
         close: () => electron_1.ipcRenderer.send(IPC.WINDOW_CLOSE),
     },
-    hardware: {
-        listDevices: () => electron_1.ipcRenderer.invoke(IPC.HARDWARE_LIST_DEVICES),
-        connect: (id) => electron_1.ipcRenderer.invoke(IPC.HARDWARE_CONNECT, id),
-        disconnect: (id) => electron_1.ipcRenderer.invoke(IPC.HARDWARE_DISCONNECT, id),
-        sendCommand: (id, command, commandArgs) => electron_1.ipcRenderer.invoke(IPC.HARDWARE_SEND_COMMAND, { id, command, commandArgs }),
-        onEvent: (listener) => {
-            const handler = (_event, payload) => listener(payload);
-            electron_1.ipcRenderer.on(IPC.HARDWARE_EVENT, handler);
-            return () => electron_1.ipcRenderer.removeListener(IPC.HARDWARE_EVENT, handler);
-        },
-    },
     print: {
         listPrinters: () => electron_1.ipcRenderer.invoke(IPC.PRINT_LIST_PRINTERS),
         printHtml: (html, options) => electron_1.ipcRenderer.invoke(IPC.PRINT_HTML, { html, ...options }),
     },
+    // DORMANT — no renderer code calls this today (see main.ts). Kept so a
+    // future feature can subscribe without touching the preload bridge.
     deepLink: {
         onLink: (listener) => {
             const handler = (_event, url) => listener(url);

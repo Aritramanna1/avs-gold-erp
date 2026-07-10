@@ -35,6 +35,7 @@ import {
 import { ITEM_CATEGORIES } from "@/lib/orders-store";
 import { COMMON_PURITIES, gramsToMg, mgToGrams } from "@/lib/gold";
 import { Barcode } from "@/components/barcode";
+import { WeightInput } from "@/components/hardware/WeightInput";
 import { uploadToSupabaseStorage, getAttachmentSignedUrl } from "@/lib/supabase-storage";
 import {
   ArrowRight,
@@ -568,14 +569,16 @@ function AddStockDialog({ open, onClose }: { open: boolean; onClose: () => void 
             <Input value={huid} onChange={(e) => setHuid(e.target.value)} placeholder="AZ1234" />
           </Field>
           <Field label="Gross weight (g) *">
-            <Input
-              value={grossG}
-              onChange={(e) => setGrossG(e.target.value)}
-              placeholder="10.000"
+            <WeightInput
+              valueGrams={grossG ? parseFloat(grossG) : null}
+              onChange={(g) => setGrossG(g != null ? String(g) : "")}
             />
           </Field>
           <Field label="Net weight (g)">
-            <Input value={netG} onChange={(e) => setNetG(e.target.value)} placeholder="9.500" />
+            <WeightInput
+              valueGrams={netG ? parseFloat(netG) : null}
+              onChange={(g) => setNetG(g != null ? String(g) : "")}
+            />
           </Field>
           <Field label="Making charge (% of gold value)">
             <Input

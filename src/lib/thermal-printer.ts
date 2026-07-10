@@ -3,6 +3,7 @@
  * Supports WebUSB ESC/POS printing for thermal receipts and jewellery tags.
  * Falls back gracefully to browser window.print() when WebUSB is unavailable.
  */
+import { useSettings } from "./settings-store";
 
 declare global {
   type USBDevice = any;
@@ -153,7 +154,7 @@ class ThermalPrinterService {
       console.warn("[ThermalPrinter] Cannot open cash drawer — no printer connected.");
       return false;
     }
-    return this.sendRaw(new Uint8Array([0x1b, 0x70, 0x00, 0x19, 0xfa]));
+    return this.sendRaw(getCashDrawerCommand());
   }
 
   get info(): PrinterInfo | null {
@@ -167,3 +168,18 @@ class ThermalPrinterService {
 }
 
 export const thermalPrinterService = new ThermalPrinterService();
+
+const DEFAULT_CASH_DRAWER_COMMAND = new Uint8Array([0x1b, 0x70, 0x00, 0x19, 0xfa]);
+
+/** Parses Settings → Hardware → Cash Drawer's configured hex-byte string (e.g. "1B 70 00 19 FA"); falls back to the standard ESC/POS kick pulse if unset or malformed. */
+function getCashDrawerCommand(): Uint8Array {
+  const configured = useSettings.getState().hardware.cashDrawerEscPosCommand?.trim();
+  if (!configured) return DEFAULT_CASH_DRAWER_COMMAND;
+
+  const bytes = configured
+    .split(/\s+/)
+    .map((hex) => parseInt(hex, 16))
+    .filter((n) => Number.isInteger(n) && n >= 0 && n <= 0xff);
+
+  return bytes.length > 0 ? new Uint8Array(bytes) : DEFAULT_CASH_DRAWER_COMMAND;
+}

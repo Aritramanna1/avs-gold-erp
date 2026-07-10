@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { hardwareService, type ScaleReading } from "@/lib/hardware-service";
+import { useState } from "react";
+import { hardwareService, useScaleReading } from "@/lib/hardware-service";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Scale, PencilLine } from "lucide-react";
@@ -22,18 +22,9 @@ export function WeightInput({
   onChange: (grams: number | null) => void;
   autoFocus?: boolean;
 }) {
-  const [liveReading, setLiveReading] = useState<ScaleReading | null>(null);
+  const { reading: liveReading, connected: scaleAvailable } = useScaleReading();
   const [manualMode, setManualMode] = useState(!hardwareService.isScaleConnected);
   const [manualText, setManualText] = useState(valueGrams != null ? String(valueGrams) : "");
-
-  useEffect(() => {
-    const unsubscribe = hardwareService.onScaleReading((reading) => setLiveReading(reading));
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  const scaleAvailable = hardwareService.isScaleConnected;
 
   if (!manualMode && scaleAvailable) {
     return (

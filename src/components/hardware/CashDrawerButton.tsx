@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { thermalPrinterService } from "@/lib/thermal-printer";
+import { useSettings } from "@/lib/settings-store";
 import { Button } from "@/components/ui/button";
 import { Archive } from "lucide-react";
 import { toast } from "sonner";
@@ -12,11 +13,17 @@ import { toast } from "sonner";
  * requirement ("Cash Drawer -> Disable drawer action gracefully"): with no
  * printer connected, this button is disabled with an explanatory label
  * rather than firing a command into nothing or throwing.
+ *
+ * Gated by Settings → Hardware → Cash Drawer's master enable switch —
+ * renders nothing when disabled, so callers can render it unconditionally.
  */
 export function CashDrawerButton() {
+  const enabled = useSettings((s) => s.hardware.cashDrawerEnabled);
   const [connected, setConnected] = useState(thermalPrinterService.isConnected);
 
   useEffect(() => thermalPrinterService.onStatusChange((s) => setConnected(s === "connected")), []);
+
+  if (!enabled) return null;
 
   async function handleOpen() {
     const ok = await thermalPrinterService.openCashDrawer();

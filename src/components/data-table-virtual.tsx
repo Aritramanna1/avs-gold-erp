@@ -2,6 +2,12 @@
  * MTJ ERP — Virtualized Data Table
  * Uses @tanstack/react-virtual for rendering only visible rows.
  * Drop-in replacement for regular HTML tables in large list views.
+ *
+ * ARCHIVED (2026-07-10 architecture audit): built, correct, zero callers.
+ * 73 route files render plain <table> today; adopting this everywhere is a
+ * scoped performance project (pick the lists that are actually large —
+ * stock, ledger, orders are candidates), not a drop-in cleanup. Kept as the
+ * ready-made solution for whoever picks that project up.
  */
 import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";

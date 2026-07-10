@@ -42,11 +42,38 @@ function isToolbarSize(size: PrintSize): size is ToolbarSize {
 }
 
 export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
-  const availableSizes = usePrintTemplates((s) => s.getAvailablePaperSizes(docType));
-  const defaultTemplate = usePrintTemplates((s) => s.getForDocType(docType));
+  // getForDocType/getAvailablePaperSizes both construct a fresh array/object
+  // on some calls (the "Unconfigured" placeholder, Array.from(new Set(...)))
+  // — calling them directly as a zustand selector's return value breaks
+  // useSyncExternalStore's reference-equality check ("getSnapshot should be
+  // cached"), which becomes a real infinite render loop the moment a
+  // template lookup takes that branch. Select the reactive `templates`
+  // array (zustand keeps this reference stable across renders when the
+  // store hasn't actually changed) and memoize the derived lookups against
+  // it instead of calling the derivation functions inside the selector.
+  const templates = usePrintTemplates((s) => s.templates);
   const [layoutSize, setLayoutSize] = useState<PrintSize | null>(null);
+
+  // `templates` is a re-render trigger, not read by name in these bodies —
+  // .getState() re-reads the store fresh each call, so exhaustive-deps
+  // can't see the dependency; the array is still required to invalidate
+  // the memo when the store updates.
+
+  const availableSizes = useMemo(
+    () => usePrintTemplates.getState().getAvailablePaperSizes(docType),
+    [docType, templates],
+  );
+
+  const defaultTemplate = useMemo(
+    () => usePrintTemplates.getState().getForDocType(docType),
+    [docType, templates],
+  );
   const activeSize = layoutSize ?? defaultTemplate.paperSize;
-  const template = usePrintTemplates((s) => s.getForDocType(docType, activeSize));
+
+  const template = useMemo(
+    () => usePrintTemplates.getState().getForDocType(docType, activeSize),
+    [docType, activeSize, templates],
+  );
 
   const rawData = resolvePrintContext(docType, recordId);
   const firm = useSettings((s) => s.firm);

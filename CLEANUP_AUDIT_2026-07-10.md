@@ -1,5 +1,188 @@
 # Architecture Cleanup Audit — 2026-07-10
 
+## Round 4 — component integration per approved decisions
+
+**Verification status: all green.**
+- TypeScript: 0 errors.
+- ESLint: 0 errors, 38 pre-existing warnings (unchanged from before this round).
+- Production build: clean, 7.7s, only pre-existing bundler notices.
+- Electron build: clean.
+- **Runtime smoke test** (Playwright, reused the existing `e2e/.auth/state.json` session against the already-running dev server — script at `.scratch-verify/smoke-cleanup-round4.mjs`):
+  - Stock → Add Stock Item dialog: `WeightInput` renders correctly in both Gross/Net weight fields (screenshot confirmed — shows its actual "Weight in grams" placeholder; no "Enter Manually"/"Use Scale" buttons is *correct*, since those only appear opposite a connected scale, and none is connected in this environment).
+  - Settings → Hardware → Cash Drawer: full section confirmed by screenshot — enable toggle, auto-open toggle, ESC/POS command field (prefilled `1B 70 00 19 FA`), and the test/manual button, all present and the enable toggle is interactive (confirmed by toggling and watching the sub-fields appear).
+  - Billing → New Invoice: page loads cleanly, no console errors, no crashes.
+  - Zero console/page errors traceable to app code in any of the three screens — the only console noise was a benign Vite HMR websocket warning from running headless Playwright against an already-live dev server, unrelated to this round's changes.
+
+(There was a ~15-retry stretch mid-round where a platform-side Bash/PowerShell
+safety-classifier outage blocked all shell tool calls; TypeScript had already
+passed before it went down, and every change was self-reviewed via the
+Read tool while waiting. Once the classifier recovered, ESLint/build/Electron
+build/runtime testing all ran clean on the first try — confirming the outage
+was infrastructure, not a code issue.)
+
+### Shared scale-reading hook (the real architectural fix)
+
+Before wiring `WeightInput` into more places, found that `WeightInput.tsx`
+and `BillingModule.tsx`'s item-table already had **two independent React
+subscriptions** to the same `hardwareService.onScaleReading()` — device
+communication was already unified at the `hardwareService` singleton, but
+each component wrapped it separately. Extracted one shared hook,
+`useScaleReading()`, into `hardware-service.ts`; both now consume it.
+Presentation still differs correctly: `WeightInput` renders its own full
+"Use Reading" UI, while the item table keeps its compact per-cell hint and
+focus-coordinated auto-fill layered on top of the same hook's data. One
+implementation of scale communication, connection lifecycle, and read-side
+plumbing; UI free to differ where the workflow requires it.
+
+### WeightInput — integrated in 3 places
+
+1. **Stock intake** (`stock.index.tsx`) — gross/net weight fields, no
+   existing scale wiring, clean swap.
+2. **Billing → Gold Exchange payment "Gross Wt (g)"** (`BillingModule.tsx`)
+   — same clean swap, no existing wiring, all existing calculation code
+   (fine-gold, gold value, `patchPayment`/`autoFillFromGold`) untouched.
+3. **Billing → item-table rows** — NOT swapped to the `WeightInput`
+   component (would have degraded the dense 8-column table and duplicated
+   the subscription); instead consolidated onto the shared hook above,
+   which is the one-implementation requirement satisfied a different way.
+
+**Correction from my own prior framing**: I'd described a "Manufacturing
+Item Edit dialog weight field" as a second swap target — there is no such
+dialog. What I found is the same dense `MfgItemRow` table cell covered by
+point 3. Did not touch it, per the explicit "don't degrade the compact
+billing row UI" instruction.
+
+### CashDrawerButton — full settings-driven feature
+
+- **Settings schema** (`settings-store.ts`): added `cashDrawerEnabled`,
+  `cashDrawerAutoOpenOnCash`, `cashDrawerEscPosCommand` to `HardwareSettings`
+  (all default off/standard — no behavior change for existing installs
+  until explicitly enabled). Also fixed an unrelated pre-existing type error
+  in the same file (`setBullionRateProvider` was implemented but missing
+  from the `Functions` Pick-list `DEFAULTS` is typed against — one-line fix,
+  unrelated feature, needed to get back to a compiling state).
+- **`thermal-printer.ts`**: `openCashDrawer()` now reads the configured
+  ESC/POS hex-byte string from settings (parsed, validated, falls back to
+  the standard `1B 70 00 19 FA` kick pulse if unset/malformed) instead of a
+  hardcoded command.
+- **`CashDrawerButton.tsx`**: gated on `cashDrawerEnabled` — renders `null`
+  when disabled, so callers render it unconditionally.
+- **Settings → Hardware Connectivity Hub**: new "Cash Drawer" section —
+  enable toggle, auto-open toggle, ESC/POS command field, and the button
+  itself doubling as "Test Drawer" (same action; didn't add a second,
+  identical button for that).
+- **`BillingModule.tsx`**: manual `<CashDrawerButton />` placed beside the
+  "F9 Add Mode" control in the Payment Collection section header. Auto-open
+  wired into `confirmInternal()` right after invoice creation succeeds —
+  fires only when both settings are on AND every real payment on the
+  invoice has `mode === "cash"` (mixed/UPI/card/bank/cheque never
+  auto-triggers it), and is fire-and-forget (`.catch()`-logged, never blocks
+  or fails invoice creation).
+
+## Round 3 — executed per approved decisions
+
+**Verification status: all green.**
+- TypeScript: 0 errors.
+- ESLint: 0 errors, 38 pre-existing warnings (react-hooks/exhaustive-deps,
+  react-refresh/only-export-components) — none in files touched this round.
+  **Root-caused and fixed the hour-long hang from last round**: `eslint .`
+  was walking `.reticle-chrome-profile/` (a Chrome automation profile with
+  50,000+ files, sitting at repo root, not in the ignore list) — every
+  individual source directory linted in seconds, only the unrestricted root
+  walk hung. Added `node_modules` (explicit safety net) and
+  `.reticle-chrome-profile` to `eslint.config.js`'s `ignores`. `eslint .` now
+  completes in ~17s.
+- Production build: clean, 6.9s, only pre-existing bundler chunk-size/dynamic-import notices.
+- Electron build (`tsc -p electron/tsconfig.json`): clean.
+
+### 1. Hardware — verified and removed
+
+Final verification before deletion, as required:
+- **Zero renderer references**: confirmed again post-audit — no `src` file,
+  no `e2e` test references `mtjDesktop.hardware`, `HardwareRegistry`, or any
+  `HARDWARE_*` channel.
+- **Zero future dependency**: `todo.md`'s own Phase 6 Hardware section
+  (weighing scale, barcode scanner, cash drawer, RFID) describes the
+  *browser-native* path — "USB serial integration (RS-232)", "USB HID
+  (keyboard wedge already works)", ESC/POS via the printer connection — the
+  same architecture `hardware-service.ts` already implements. Nothing on the
+  roadmap points at the Electron IPC bridge.
+
+**Removed**: `electron/hardware/` (registry, types, mock-driver) entirely;
+`HARDWARE_LIST_DEVICES/CONNECT/DISCONNECT/SEND_COMMAND/EVENT` from
+`ipc-channels.ts`; the corresponding `ipcMain.handle`/`registerDevHardware()`
+wiring from `main.ts`; the `hardware` namespace from `preload.ts`'s exposed
+API. Verified clean with `tsc --noEmit` and `build:electron` after.
+
+**Not removed, still pending your call** (flagged last round, not part of
+this approval): the `app.*`/`dialog.*`/`notify.*`/`window.*` IPC namespaces
+are also unused (no custom titlebar, nothing calls `app.getVersion` etc.) —
+same "built, never consumed" shape as the hardware bridge, but you only
+approved the hardware one this round.
+
+### 2. Deep Link — marked dormant
+
+Added explicit `DORMANT` comments at all three touch points
+(`DEEP_LINK_PROTOCOL` declaration, `handleDeepLink()` in `main.ts`, and the
+`deepLink` export in `preload.ts`) explaining why it's inert today and
+exactly how to reactivate it (add a `mtjDesktop.deepLink.onLink()` listener
+in the renderer) if a future feature needs it. No behavior changed — the
+protocol is still registered, still a harmless no-op.
+
+### 3. Upload APIs — consolidated to one canonical endpoint
+
+**Canonical: `public/api/hostinger-upload.php`** — chosen because it's the
+only one whose deploy path matches what the app itself tells shop owners to
+use (Settings → Firm Profile placeholder: `https://yourdomain.com/api/hostinger-upload.php`).
+
+Before consolidating, caught a real bug the merge would otherwise have
+shipped: the strongest validation (module allow-list + MIME cross-check)
+came from `/api/upload.php`, but its allow-list didn't include `"invoices"`
+— the exact module string `document-pdf-service.ts` passes for every live
+invoice-PDF upload. Adopting that allow-list unmodified would have made the
+canonical endpoint 400 on the one confirmed-live call site. Added
+`"invoices"` to the list before finalizing.
+
+Rewrote `public/api/hostinger-upload.php` to combine: its own correct
+deploy path, `/api/upload.php`'s module allow-list (+ `invoices`) and MIME
+cross-check (the strongest validation of the three), and a response shape
+with `"success": true/false` — the field `hostinger-client.ts` actually
+checks (the old `/api/hostinger-upload.php` omitted it, which would have
+made the client treat every successful upload as a failure). Updated
+`hostinger-client.ts`'s header comment to point at the canonical file.
+
+**Deleted** (after confirming zero references anywhere in `src`/docs):
+root `/hostinger-upload.php`, `/public/api/upload.php`.
+
+**Caveat**: no PHP interpreter is available in this environment, so this
+was verified by careful code review (matching the client's exact response
+contract, checking every real call site's `module` value against the new
+allow-list), not by executing the script. Recommend a manual test upload
+against your real Hostinger deployment before relying on it in production.
+
+### 4. Components
+
+- **`AttachmentUploader.tsx`**: deleted after reconfirming zero references.
+- **`data-table-virtual.tsx`**: header comment updated to mark it archived
+  for future performance work, with the reasoning (73 routes use plain
+  `<table>`, needs someone to pick the actually-large lists, not a blanket
+  swap).
+- **`WeightInput.tsx` / `CashDrawerButton.tsx`**: not yet integrated — see
+  the open question below. Both touch live billing/checkout or item-intake
+  forms, and I don't want to guess which specific screen(s) in a
+  production financial workflow without your input.
+
+### 5. `example-api`
+
+**Blocked — need your input.** My Supabase MCP connection only has access
+to project `zbfbnwgbqydttsuuhmxn` (currently INACTIVE). This app's `.env`
+points to a different project (`kjfjsfhftytezsjyegmb`), which I have no
+access to from this session. Can't confirm deployment status. Please check
+your Supabase dashboard (Edge Functions tab) for project `kjfjsfhftytezsjyegmb`
+directly, or grant this session access to that project, and I'll finish the
+verification and remove it if confirmed unused.
+
+
 Read-only sweep for duplicated implementations, unfinished modules, legacy
 code, inconsistent workflows, and competing architectures. No architectural
 code deleted — only the pre-approved zero-risk cleanup below has been

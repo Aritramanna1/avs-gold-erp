@@ -1,7 +1,9 @@
 /**
  * Hostinger file upload client.
  * Uploads a file blob to the PHP endpoint at hostingerUploadUrl (configured in firm settings).
- * Returns the public URL of the uploaded file.
+ * Server counterpart: public/api/hostinger-upload.php — the one canonical
+ * upload endpoint (see its header comment; two prior duplicates were
+ * retired 2026-07-10). Returns the public URL of the uploaded file.
  *
  * Falls back gracefully: if no Hostinger URL is configured, throws so callers can use
  * Supabase Storage as the fallback.
