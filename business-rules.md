@@ -13,9 +13,7 @@ $$\text{Line Total} = (\text{Net Weight (g)} \times \text{Gold Rate per Gram}) +
 ### Formula Definitions
 
 - **Gold Rate per Gram**: Selected based on the purity category (e.g., 22K/916 gold uses a percentage of the 24K pure gold reference rate).
-- **Making Charges**: Computed in two modes depending on the ornament style:
-  - **Per Gram**: $\text{Net Weight (g)} \times \text{Making Rate per Gram}$.
-  - **Fixed**: A single flat fee (e.g., ₹500 per ring).
+- **Making Charges**: Computed as a **percentage of gold value** — $\text{Making Charges} = \text{Gold Value} \times \text{Making Charge \%} / 100$ — the sole live model, stored per item as `makingChargePct` (`stock-store.ts`'s `StockItem`, `billing-store.ts`'s `InvoiceItem`). A legacy flat per-gram rate (`makingChargePerGPaise`) exists only to render stock rows created before this field existed; it is one-time converted to an equivalent percentage on load and is not a second live pricing mode — new/edited items always set `makingChargePct`. A flat-fee-per-piece mode (e.g. a fixed ₹500/ring regardless of weight) has never been implemented in code, despite an earlier version of this document describing it.
 - **Tax Calculations (GST)**: In India, retail jewellery transactions are subject to a **3% Goods and Services Tax (GST)** applied on the grand total after applying discounts and subtracting gold exchanges.
   - $\text{CGST} = 1.5\%$
   - $\text{SGST} = 1.5\%$

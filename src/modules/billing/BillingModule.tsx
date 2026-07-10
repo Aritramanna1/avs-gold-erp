@@ -18,6 +18,7 @@ import {
   useBilling,
   computeItemTotals,
   computeInvoiceTotals,
+  invoiceItemValidationError,
   PAYMENT_MODE_LABELS,
   paiseToRupees,
   rupeesToPaise,
@@ -37,7 +38,7 @@ import { useLedger } from "@/lib/ledger-store";
 import { useSettings } from "@/lib/settings-store";
 import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useAttachments } from "@/lib/attachments-store";
-import { useBillingStore } from "./billingStore";
+import { useBillingStore, type BillingType } from "./billingStore";
 import { useModuleStore } from "@/lib/module-store";
 import {
   Dialog,
@@ -112,16 +113,6 @@ interface MfgMpEntry {
   pcs: number; // pieces
   fineMg: number; // computed: grossMg × purity / 100
 }
-
-type BillingType =
-  | "ready_stock"
-  | "custom_order"
-  | "repair"
-  | "polishing"
-  | "wholesale"
-  | "advance_receipt"
-  | "payment_receipt"
-  | "manufacturing";
 
 const BILLING_TYPES = [
   {
@@ -1036,25 +1027,18 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       return;
     }
 
-    const isServiceOrReceipt =
-      billingType === "repair" ||
-      billingType === "polishing" ||
-      billingType === "advance_receipt" ||
-      billingType === "payment_receipt";
-
     if (items.length === 0) {
       toast.error("Please add at least one line item.");
       return;
     }
 
-    if (isServiceOrReceipt) {
-      if (items.some((i) => !i.itemName)) {
-        toast.error("Each line item needs a description / name.");
-        return;
-      }
-    } else {
-      if (items.some((i) => !i.itemName || i.fineMg <= 0 || i.goldRatePerGramPaise <= 0)) {
-        toast.error("Each item needs a name, weights, purity and a gold rate.");
+    // Same rule the store enforces at save time (billing-store.ts's
+    // assertInvoiceItemsValid) — checked here too so the error surfaces
+    // immediately instead of after a round-trip to add()/update().
+    for (const it of items) {
+      const error = invoiceItemValidationError(it, billingType);
+      if (error) {
+        toast.error(`"${it.itemName || "Item"}" ${error}.`);
         return;
       }
     }

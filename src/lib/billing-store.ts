@@ -119,12 +119,31 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
 
 export type GstKind = "none" | "gst3";
 
+// Canonical home for BillingType — previously duplicated verbatim in both
+// modules/billing/billingStore.ts and BillingModule.tsx. Both now import
+// this instead of redefining it (billingStore.ts re-exports it, since it
+// already imports other types from here and other files import BillingType
+// from there).
+export type BillingType =
+  | "ready_stock"
+  | "custom_order"
+  | "repair"
+  | "polishing"
+  | "wholesale"
+  | "advance_receipt"
+  | "payment_receipt"
+  | "manufacturing";
+
 export interface Invoice {
   id: string;
   invoiceNo: string;
   createdAt: number;
   updatedAt: number;
   status: InvoiceStatus;
+  /** Was already sent to add()/persisted at runtime before this field was
+   *  typed (BillingModule.tsx's payload has always included it) — adding it
+   *  here just gives it a real type instead of flowing through untyped. */
+  billingType?: BillingType;
 
   customerId: string;
   customerName: string;
@@ -237,6 +256,42 @@ async function makeInvoiceNo(branchId?: string): Promise<string> {
   return nextDocumentNumber(key, prefix, 3);
 }
 
+// Billing types where a line item legitimately carries no gold weight/rate
+// at all (a repair or a plain cash receipt) — the one place this exemption
+// is decided; see invoiceItemValidationError() below.
+const SERVICE_OR_RECEIPT_BILLING_TYPES: ReadonlySet<BillingType> = new Set([
+  "repair",
+  "polishing",
+  "advance_receipt",
+  "payment_receipt",
+]);
+
+/**
+ * The single rule for "is this line item complete enough to save" —
+ * BillingModule.tsx's pre-save UI check and this store's own save-time
+ * guard (assertInvoiceItemsValid, below) both call this instead of each
+ * keeping their own copy of the condition, so the two can never drift.
+ * Returns a human-readable reason the item is invalid, or null if it's fine.
+ *
+ * Root cause this prevents: a real competitor product accepted a fully
+ * blank line item (no SKU, no weight, ₹0) into a saved bill, which then
+ * surfaced as a phantom product in reporting. A jewellery item with no SKU
+ * and no weight/rate is exactly that same blank-placeholder shape; a
+ * service/receipt item legitimately can be ₹0 (e.g. a free warranty
+ * repair), so that exemption is preserved deliberately, not accidentally.
+ */
+export function invoiceItemValidationError(
+  it: InvoiceItem,
+  billingType?: BillingType,
+): string | null {
+  if (!it.itemName?.trim()) return "needs a name / description";
+  if (billingType && SERVICE_OR_RECEIPT_BILLING_TYPES.has(billingType)) return null;
+  if (it.fineMg <= 0 || it.goldRatePerGramPaise <= 0) {
+    return "needs weights, purity and a gold rate";
+  }
+  return null;
+}
+
 /**
  * Guards a whole invoice's line items right before they're persisted. Not
  * called on every keystroke while an item is being edited (grossMg/netMg
@@ -245,9 +300,11 @@ async function makeInvoiceNo(branchId?: string): Promise<string> {
  * the save with a clear error instead of silently reaching the ledger or a
  * printed invoice.
  */
-function assertInvoiceItemsValid(items: InvoiceItem[]): void {
+function assertInvoiceItemsValid(items: InvoiceItem[], billingType?: BillingType): void {
   for (const it of items) {
     assertNetNotAboveGross(it.grossMg, it.netMg, `item "${it.itemName || it.id}"`);
+    const error = invoiceItemValidationError(it, billingType);
+    if (error) throw new Error(`Item "${it.itemName || it.id}" ${error}.`);
   }
 }
 
@@ -459,7 +516,7 @@ export const useBilling = create<BillingState>()((set, get) => ({
     // class of race fixed in manufacturing-barcode-store.ts's generate().
     // Only guarded when there's a stable order/job to key on; a walk-in sale
     // with no such link has no meaningful "duplicate" concept to prevent.
-    assertInvoiceItemsValid(input.items);
+    assertInvoiceItemsValid(input.items, input.billingType);
     const inFlightKey = input.orderId ?? input.jobId;
     if (inFlightKey) {
       if (invoiceAddInFlight.has(inFlightKey)) {
@@ -514,7 +571,7 @@ export const useBilling = create<BillingState>()((set, get) => ({
     const inv = get().invoices.find((i) => i.id === id);
     if (!inv) return;
     const updated = { ...inv, ...patch, updatedAt: Date.now() };
-    assertInvoiceItemsValid(updated.items);
+    assertInvoiceItemsValid(updated.items, updated.billingType);
     await invoiceRepository.save(updated);
     set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? updated : i)) }));
   },

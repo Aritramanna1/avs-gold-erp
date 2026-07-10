@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { InvoiceItem, PaymentMode, GstKind } from "@/lib/billing-store";
+import type { InvoiceItem, PaymentMode, GstKind, BillingType } from "@/lib/billing-store";
+
+// Re-exported (not redefined) so existing `import { BillingType } from
+// "./billingStore"` call sites keep working — the canonical definition
+// lives in lib/billing-store.ts now.
+export type { BillingType };
 
 export interface DraftPayment {
   id: string;
@@ -12,16 +17,6 @@ export interface DraftPayment {
   goldPurityStr: string;
   goldRateStr: string;
 }
-
-export type BillingType =
-  | "ready_stock"
-  | "custom_order"
-  | "repair"
-  | "polishing"
-  | "wholesale"
-  | "advance_receipt"
-  | "payment_receipt"
-  | "manufacturing";
 
 export interface LedgerSummary {
   outstandingAmountPaise: number | null;

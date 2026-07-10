@@ -2,7 +2,12 @@
 import { useGoldSettlement } from "./gold-settlement-store";
 import { usePeople } from "./people-store";
 import { useLedger, computeBalances } from "./ledger-store";
-import { useBilling, rupeesToPaise, paiseToRupees } from "./billing-store";
+import {
+  useBilling,
+  rupeesToPaise,
+  paiseToRupees,
+  invoiceItemValidationError,
+} from "./billing-store";
 import { useWorkers } from "./workers-store";
 import { assertNetNotAboveGross } from "./gold";
 
@@ -734,6 +739,72 @@ export async function runGoldPaymentTestSuite(): Promise<TestResult[]> {
     results.push({
       id: "case7",
       name: "Net Weight Cannot Exceed Gross Weight",
+      passed: false,
+      findings: [err.message],
+    });
+  }
+
+  // ----------------------------------------------------
+  // TEST CASE 8: Blank Product Item Rejected, Free Service Item Allowed
+  // ----------------------------------------------------
+  try {
+    const findings: string[] = [];
+
+    const blankItem = {
+      id: "item_case8_blank",
+      itemName: "Jewellery Item",
+      category: "Ring",
+      purity: 916,
+      grossMg: 0,
+      netMg: 0,
+      fineMg: 0,
+      goldRatePerGramPaise: 0,
+      goldValuePaise: 0,
+      makingChargesPaise: 0,
+      stoneChargesPaise: 0,
+      otherChargesPaise: 0,
+      discountPaise: 0,
+      lineTotalPaise: 0,
+    };
+
+    // A blank product-style item (no weight, no rate) is rejected for a
+    // real sale billing type...
+    const productError = invoiceItemValidationError(blankItem, "ready_stock");
+    if (!productError) {
+      throw new Error(
+        "invoiceItemValidationError() accepted a blank product item for ready_stock.",
+      );
+    }
+    findings.push(`Blank product item correctly rejected: "${productError}"`);
+
+    // ...but the exact same shape is fine for a repair/service line, where
+    // ₹0 with just a description is a legitimate free-service entry.
+    const serviceError = invoiceItemValidationError(blankItem, "repair");
+    if (serviceError) {
+      throw new Error(
+        `invoiceItemValidationError() incorrectly rejected a ₹0 repair line item: "${serviceError}"`,
+      );
+    }
+    findings.push("Zero-value repair/service item correctly accepted.");
+
+    // A nameless item is rejected regardless of billing type — the one
+    // check that applies unconditionally.
+    const namelessError = invoiceItemValidationError({ ...blankItem, itemName: "" }, "repair");
+    if (!namelessError) {
+      throw new Error("invoiceItemValidationError() accepted an item with no name.");
+    }
+    findings.push(`Nameless item correctly rejected regardless of billing type.`);
+
+    results.push({
+      id: "case8",
+      name: "Blank Line Item Rejection (Service-Type Aware)",
+      passed: true,
+      findings,
+    });
+  } catch (err: any) {
+    results.push({
+      id: "case8",
+      name: "Blank Line Item Rejection (Service-Type Aware)",
       passed: false,
       findings: [err.message],
     });
