@@ -11,7 +11,7 @@ import {
   type StockLocation,
   type StockStatus,
 } from "@/lib/stock-store";
-import { Download, Upload, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Download, Upload, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/stock/import")({
@@ -109,7 +109,11 @@ function StockImportPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
+  const [result, setResult] = useState<{
+    success: number;
+    failed: number;
+    discrepancy: number;
+  } | null>(null);
 
   const validCount = useMemo(() => rows.filter((r) => r.errors.length === 0).length, [rows]);
 
@@ -153,6 +157,12 @@ function StockImportPage() {
     const valid = rows.filter((r) => r.errors.length === 0);
     if (valid.length === 0) return;
     setImporting(true);
+    // Independently re-counted before/after, not just accumulated from each
+    // row's own resolved promise — a bulk import that resolves "success" on
+    // every row but doesn't actually end up persisted (write succeeds,
+    // listing read path stale or misses it) must never be reported as a
+    // clean import. See AVS-201.
+    const beforeCount = useStock.getState().items.length;
     let success = 0;
     let failed = 0;
     for (const row of valid) {
@@ -178,10 +188,23 @@ function StockImportPage() {
         failed++;
       }
     }
-    setResult({ success, failed });
+    const afterCount = useStock.getState().items.length;
+    const discrepancy = success - (afterCount - beforeCount);
+    setResult({ success, failed, discrepancy });
     setRows([]);
     setImporting(false);
-    toast.success(`Imported ${success} items${failed > 0 ? `, ${failed} failed` : ""}.`);
+    if (discrepancy !== 0) {
+      console.error(
+        `Stock import count mismatch: ${success} rows reported success but the ` +
+          `stock list only grew by ${afterCount - beforeCount} (${beforeCount} → ${afterCount}).`,
+      );
+      toast.error(
+        `Import reported ${success} succeeded, but only ${afterCount - beforeCount} ` +
+          `actually appear in Stock. Re-open Inventory and re-check before relying on this import.`,
+      );
+    } else {
+      toast.success(`Imported ${success} items${failed > 0 ? `, ${failed} failed` : ""}.`);
+    }
   }
 
   return (
@@ -208,12 +231,24 @@ function StockImportPage() {
         }
       />
 
-      {result && (
+      {result && result.discrepancy === 0 && (
         <div className="rounded-2xl border border-border bg-card p-4 mb-4 flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <span>
             Import finished: {result.success} succeeded
             {result.failed > 0 ? `, ${result.failed} failed` : ""}.
+          </span>
+        </div>
+      )}
+
+      {result && result.discrepancy !== 0 && (
+        <div className="rounded-2xl border border-destructive bg-destructive/10 p-4 mb-4 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
+          <span className="text-destructive">
+            Import reported {result.success} rows succeeded, but Stock only grew by{" "}
+            {result.success - result.discrepancy}. {result.discrepancy} item
+            {Math.abs(result.discrepancy) === 1 ? "" : "s"} may be missing — reopen Inventory,
+            verify the count, and re-import any missing rows before trusting this batch.
           </span>
         </div>
       )}
