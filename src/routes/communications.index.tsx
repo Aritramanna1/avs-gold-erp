@@ -31,6 +31,10 @@ import {
   type CRMInteraction,
   type OpportunityStage,
   type PriorityLevel,
+  type LeadSource,
+  type BuyerType,
+  LEAD_SOURCE_LABELS,
+  BUYER_TYPE_LABELS,
   type TaskType,
   type TaskStatus,
   type InteractionType,
@@ -222,6 +226,8 @@ export default function CommunicationsDashboardPage() {
   const [oppFormPersonId, setOppFormPersonId] = useState("");
   const [oppFormStage, setOppFormStage] = useState<OpportunityStage>("lead");
   const [oppFormPriority, setOppFormPriority] = useState<PriorityLevel>("medium");
+  const [oppFormSource, setOppFormSource] = useState<LeadSource>("unknown");
+  const [oppFormBuyerType, setOppFormBuyerType] = useState<BuyerType>("individual");
   const [oppFormValue, setOppFormValue] = useState("");
   const [oppFormGold, setOppFormGold] = useState("");
   const [oppFormRemarks, setOppFormRemarks] = useState("");
@@ -306,6 +312,16 @@ export default function CommunicationsDashboardPage() {
       return bday;
     }).length;
 
+    // AVS-102 — lead counts grouped by acquisition channel and buyer
+    // segment, so an owner can see which channel/segment is actually
+    // generating leads without exporting to a spreadsheet.
+    const bySource = {} as Record<LeadSource, number>;
+    const byBuyerType = {} as Record<BuyerType, number>;
+    for (const o of opps) {
+      bySource[o.source] = (bySource[o.source] ?? 0) + 1;
+      byBuyerType[o.buyerType] = (byBuyerType[o.buyerType] ?? 0) + 1;
+    }
+
     return {
       activeOpportunities: active.length,
       wonDealsCount: won.length,
@@ -314,6 +330,8 @@ export default function CommunicationsDashboardPage() {
       overdueTasks: overdue,
       birthdaysToday,
       anniversariesToday: 0,
+      bySource,
+      byBuyerType,
     };
   }, [opportunities, tasks, people, branchId]);
 
@@ -492,6 +510,8 @@ export default function CommunicationsDashboardPage() {
     setOppFormPersonId("");
     setOppFormStage("lead");
     setOppFormPriority("medium");
+    setOppFormSource("unknown");
+    setOppFormBuyerType("individual");
     setOppFormValue("");
     setOppFormGold("");
     setOppFormRemarks("");
@@ -504,12 +524,22 @@ export default function CommunicationsDashboardPage() {
       toast.error("Opportunity name is required.");
       return;
     }
+    if (!oppFormSource) {
+      toast.error("Lead source is required.");
+      return;
+    }
+    if (!oppFormBuyerType) {
+      toast.error("Buyer type is required.");
+      return;
+    }
     const payload: CRMLeadOpportunity = {
       id: selectedOpp?.id || "",
       branchId,
       leadName: oppFormName,
       stage: oppFormStage,
       priority: oppFormPriority,
+      source: oppFormSource,
+      buyerType: oppFormBuyerType,
       personId: oppFormPersonId || undefined,
       estimatedValuePaise: rupeesToPaise(Number(oppFormValue || 0)),
       targetGoldMg: Math.round(Number(oppFormGold || 0) * 1000),
@@ -671,6 +701,44 @@ export default function CommunicationsDashboardPage() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
+            {/* Lead channel/segment breakdown — AVS-102 */}
+            <Card className="p-5 border-border bg-card space-y-4">
+              <h3 className="font-semibold text-sm">Leads by Source &amp; Buyer Type</h3>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                    Source
+                  </div>
+                  {(Object.keys(LEAD_SOURCE_LABELS) as LeadSource[])
+                    .filter((key) => stats.bySource[key])
+                    .map((key) => (
+                      <div key={key} className="flex justify-between">
+                        <span className="text-muted-foreground">{LEAD_SOURCE_LABELS[key]}</span>
+                        <span className="font-mono">{stats.bySource[key]}</span>
+                      </div>
+                    ))}
+                  {Object.keys(stats.bySource).length === 0 && (
+                    <div className="text-muted-foreground">No leads yet</div>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase">
+                    Buyer Type
+                  </div>
+                  {(Object.keys(BUYER_TYPE_LABELS) as BuyerType[])
+                    .filter((key) => stats.byBuyerType[key])
+                    .map((key) => (
+                      <div key={key} className="flex justify-between">
+                        <span className="text-muted-foreground">{BUYER_TYPE_LABELS[key]}</span>
+                        <span className="font-mono">{stats.byBuyerType[key]}</span>
+                      </div>
+                    ))}
+                  {Object.keys(stats.byBuyerType).length === 0 && (
+                    <div className="text-muted-foreground">No leads yet</div>
+                  )}
+                </div>
+              </div>
+            </Card>
             {/* Reminders overview */}
             <Card className="p-5 border-border bg-card space-y-4">
               <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -917,6 +985,8 @@ export default function CommunicationsDashboardPage() {
                               setOppFormPersonId(opp.personId || "");
                               setOppFormStage(opp.stage);
                               setOppFormPriority(opp.priority);
+                              setOppFormSource(opp.source);
+                              setOppFormBuyerType(opp.buyerType);
                               setOppFormValue(String(paiseToRupees(opp.estimatedValuePaise)));
                               setOppFormGold(
                                 opp.targetGoldMg ? String(opp.targetGoldMg / 1000) : "",
@@ -1486,6 +1556,44 @@ export default function CommunicationsDashboardPage() {
                     <SelectItem value="low">Low</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
                     <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Source *</Label>
+                <Select
+                  value={oppFormSource}
+                  onValueChange={(val) => setOppFormSource(val as LeadSource)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(LEAD_SOURCE_LABELS) as LeadSource[]).map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {LEAD_SOURCE_LABELS[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Buyer Type *</Label>
+                <Select
+                  value={oppFormBuyerType}
+                  onValueChange={(val) => setOppFormBuyerType(val as BuyerType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(BUYER_TYPE_LABELS) as BuyerType[]).map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {BUYER_TYPE_LABELS[key]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

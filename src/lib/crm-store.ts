@@ -19,6 +19,26 @@ const crmInteractionRepository = createRepository<{ id: string } & Record<string
 export type OpportunityStage =
   "lead" | "contacted" | "qualified" | "proposal" | "negotiation" | "won" | "lost";
 export type PriorityLevel = "low" | "medium" | "high";
+// AVS-102 — real, structured columns (not the `data` JSONB bag) because
+// reporting filters/groups by both; see the migration's own note for why
+// that's the opposite call from this table's existing `data` column.
+export type LeadSource =
+  "whatsapp" | "instagram" | "facebook" | "walk_in" | "referral" | "phone_call" | "unknown";
+export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  walk_in: "Walk-in",
+  referral: "Referral",
+  phone_call: "Phone Call",
+  unknown: "Unknown",
+};
+export type BuyerType = "individual" | "retailer" | "bulk_buyer";
+export const BUYER_TYPE_LABELS: Record<BuyerType, string> = {
+  individual: "Individual",
+  retailer: "Retailer",
+  bulk_buyer: "Bulk Buyer",
+};
 export type TaskType = "task" | "meeting" | "follow_up";
 export type TaskStatus = "pending" | "completed" | "overdue" | "cancelled";
 export type InteractionType =
@@ -31,6 +51,8 @@ export interface CRMLeadOpportunity {
   leadName: string;
   stage: OpportunityStage;
   priority: PriorityLevel;
+  source: LeadSource;
+  buyerType: BuyerType;
   estimatedValuePaise: number;
   targetGoldMg: number;
   assignedStaffEmail?: string;
@@ -106,6 +128,8 @@ export function dbToOpportunity(row: any): CRMLeadOpportunity {
     leadName: row.lead_name,
     stage: row.stage,
     priority: row.priority || "medium",
+    source: row.source || "unknown",
+    buyerType: row.buyer_type || "individual",
     estimatedValuePaise: Number(row.estimated_value_paise || 0),
     targetGoldMg: Number(row.target_gold_mg || 0),
     assignedStaffEmail: row.assigned_staff_email || undefined,
@@ -126,6 +150,8 @@ export function opportunityToDb(opp: CRMLeadOpportunity): { id: string } & Recor
     lead_name: opp.leadName,
     stage: opp.stage,
     priority: opp.priority,
+    source: opp.source,
+    buyer_type: opp.buyerType,
     estimated_value_paise: opp.estimatedValuePaise,
     target_gold_mg: opp.targetGoldMg,
     assigned_staff_email: opp.assignedStaffEmail || null,
