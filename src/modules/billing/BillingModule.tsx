@@ -419,6 +419,24 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
   const [newCustGstin, setNewCustGstin] = useState("");
   const [addingCustomer, setAddingCustomer] = useState(false);
 
+  // A phone number that already belongs to an existing customer — surfaced
+  // as a non-blocking "use existing?" prompt so staff don't fragment one
+  // customer's purchase/credit history across duplicate records. Walk-in's
+  // shared placeholder number is excluded so it never "matches".
+  const duplicateCustomerMatch = useMemo(() => {
+    const phone = newCustPhone.trim();
+    if (!phone || phone === "0000000000") return undefined;
+    return people.find((p) => p.phone.trim() === phone);
+  }, [newCustPhone, people]);
+
+  function selectExistingCustomer(existingId: string) {
+    setCustomerId(existingId);
+    setShowAddCustomer(false);
+    setNewCustName("");
+    setNewCustPhone("");
+    setNewCustGstin("");
+  }
+
   // Scan state
   const [scanMessage, setScanMessage] = useState<{
     text: string;
@@ -1819,6 +1837,25 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                             />
                           </div>
                         </div>
+
+                        {duplicateCustomerMatch && (
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs">
+                            <span className="text-amber-700 dark:text-amber-400">
+                              Existing customer found:{" "}
+                              <strong>{duplicateCustomerMatch.fullName}</strong> (
+                              {duplicateCustomerMatch.phone})
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 border-amber-500/50 text-amber-700 dark:text-amber-400"
+                              onClick={() => selectExistingCustomer(duplicateCustomerMatch.id)}
+                            >
+                              Use This Customer
+                            </Button>
+                          </div>
+                        )}
+
                         <div className="flex justify-end gap-2 text-xs">
                           <Button
                             variant="ghost"
@@ -1833,7 +1870,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                             className="bg-gold text-white"
                             disabled={addingCustomer || !newCustName.trim()}
                           >
-                            Register & Select
+                            {duplicateCustomerMatch ? "Create New Anyway" : "Register & Select"}
                           </Button>
                         </div>
                       </div>
@@ -3562,8 +3599,18 @@ function StandardItemRow({
               }
             }}
             placeholder="0.000"
-            className="h-8 text-xs font-mono border-border/60 focus-visible:ring-gold"
+            aria-invalid={it.netMg > it.grossMg}
+            className={`h-8 text-xs font-mono focus-visible:ring-gold ${
+              it.netMg > it.grossMg
+                ? "border-destructive text-destructive focus-visible:ring-destructive"
+                : "border-border/60"
+            }`}
           />
+          {it.netMg > it.grossMg && (
+            <div className="mt-0.5 text-[9px] text-destructive font-medium">
+              Net can't exceed gross
+            </div>
+          )}
         </div>
 
         <div className="px-3 py-2.5 bg-gold/5">
