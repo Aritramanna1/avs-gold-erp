@@ -1,3 +1,29 @@
+## [1.1.0-demo-rc1] — 2026-07-11
+
+### Demo Release Candidate 1 — Stabilization build for client presentation
+
+Not Version 1.1 Final. Feature-frozen stabilization build: no new features, no workflow redesigns, no business-rule changes this cycle — scope was verification and crash-safety only, per the standing stabilization-sprint mandate.
+
+#### Included from the prior session (already shipped, carried into this RC)
+
+- Print Engine Phase 0: fixed infinite print-preview loading for doc types outside the legacy `usePrintRecord` switch (`karigar_custody_statement`, `customer_ledger_statement`), missing logo on exported PDFs, and orientation/margin overrides not reaching the Electron native-print bridge.
+
+#### Verified this session
+
+- `npx tsc --noEmit`: 0 errors.
+- `eslint .`: 0 errors, 36 pre-existing warnings (react-hooks/exhaustive-deps, react-refresh/only-export-components — none new).
+- `npm run build` (production Vite build): clean.
+- `npm run build:electron` (Electron main-process compile): clean.
+- Manual smoke test against the packaged dev build: sign-in → Home dashboard → People/Customer create (KYC fields, save, persistence confirmed) → Create Order → automatic Job Card generation → automatic karigar assignment (Raju Das) → Job Card preview/PDF. No crashes, no white screens, no broken dialogs, no broken navigation observed on this path.
+- Root-level React error boundary (`AppErrorBoundary`) confirmed present and wired at the app root — any uncaught render error shows a recovery screen (Reload / Reset Local Database) instead of a blank white screen.
+- Confirmed the in-app "Reticle" testing overlay (visible in `npm run dev`) is a dev-only Vite plugin and does **not** appear in the production build (`dist/index.html` has zero references).
+
+#### Not in scope this cycle
+
+- Full 134-test Playwright e2e suite and Reticle automated verification — explicitly skipped for this build per direction, in favor of the faster manual smoke test above. See `KNOWN_ISSUES.md`.
+
+---
+
 ## [1.1.0] — 2026-07-09
 
 ### Version 1.1 Pilot — Integrated Smoke Test & Critical Print/Communications Fixes
