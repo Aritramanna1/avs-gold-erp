@@ -1,3 +1,136 @@
+# FINAL REPORT — Round 5 (broad dead-code, duplication, architecture, DB, print-engine, hardware audit)
+
+## 1. Executive Summary
+
+Full-repository audit for legacy code, dead code, duplicate implementations,
+and architectural issues, per the standing cleanup mandate. **27 files
+deleted, 22 npm dependencies removed, 1 pre-existing test bug fixed, 0
+regressions.** TypeScript, ESLint, production build, Electron build, and a
+targeted e2e suite (33 tests across billing/hardware/printing/settings) all
+pass clean.
+
+The codebase's core business logic (billing, ledger, workshop, orders,
+stock) was already disciplined going into this audit — most of what looked
+like duplication on the surface (outside-work, worker-gold, sync engines,
+lot tracking) turned out to be deliberately layered, well-documented
+concerns, confirmed in earlier rounds. This round's real yield was in a
+different layer: **the vendor UI kit was over-scaffolded** (25 of 47 shadcn
+primitives never adopted), **one hardware subsystem had genuine duplicate
+plumbing** (scale-reading, fixed in the prior round), and **the database has
+a fully-verified, ready-to-run cleanup migration** already prepared by prior
+work on this repo, sitting unexecuted.
+
+One important, unrelated discovery **remains open per your instruction**: a
+live Supabase service-role secret committed in git history across 4 files.
+Deferred to pre-production hardening as you directed — not touched this
+round.
+
+Also worth knowing: throughout this round, files under `src/lib/print-engine/`,
+`e2e/tests/`, and `settings-store.ts` were being actively modified by a
+parallel process outside this session (visible via git status and two
+system notices). This audit worked around it (one transient TS error
+resolved itself; one real prettier formatting error in a new file was
+fixed). Everything reported below reflects the current, verified state of
+the tree.
+
+## 2. Cleanup Report
+
+### Deleted — zero references, verified before removal
+
+| Item | Evidence | Notes |
+|---|---|---|
+| 25 shadcn UI primitives (`accordion`, `alert`, `aspect-ratio`, `avatar`, `breadcrumb`, `calendar`, `carousel`, `chart`, `collapsible`, `context-menu`, `drawer`, `form`, `hover-card`, `input-otp`, `menubar`, `navigation-menu`, `pagination`, `popover`, `progress`, `radio-group`, `resizable`, `scroll-area`, `sidebar`, `slider`, `toggle-group` — all in `src/components/ui/`) | Batch import-graph diff, zero importers each | Vendor boilerplate, never adopted. `ui/sidebar.tsx` confirmed distinct from the real, used `components/layout/Sidebar.tsx`. |
+| `src/components/print/SignatureBlock.tsx` | Zero importers; old `PrintLayout.tsx` never referenced it | Superseded by the new print-engine's inline `SignatureBlockSection` |
+| 22 npm dependencies (14 `@radix-ui/*` + `react-day-picker`, `embla-carousel-react`, `vaul`, `input-otp`, `react-resizable-panels`, `react-hook-form`, `@hookform/resolvers`, `vite-tsconfig-paths`) | Each verified used *only* by the deleted UI files above, confirmed via cross-check (`recharts`/`date-fns` kept — used directly by real report/reference-notes code; `@radix-ui/react-slot`/`react-label` kept — used by kept `button.tsx`/`label.tsx`) | `npm install` removed 31 packages total (incl. transitive); package-lock.json regenerated |
+
+Already deleted in earlier rounds this session (listed here for the
+complete log): `image-compress.ts`, `image-optimisation.ts`, `query-cache.ts`,
+`hooks/useAuth.ts`, the unused `useAuthCheck()`/`AuthState` in `supabase.ts`,
+`AttachmentUploader.tsx`, root `hostinger-upload.php`, `public/api/upload.php`,
+`electron/hardware/` (registry, types, mock-driver) + its 5 IPC channels.
+
+### Fixed, not deleted
+
+- **`eslint.config.js`** hang root cause: `.reticle-chrome-profile/` (50k+
+  files, a local browser-automation profile) wasn't in the ignore list —
+  `eslint .` was hanging on the directory *walk*, not linting. Added it and
+  `node_modules`/`.scratch-verify` to `ignores`.
+- **`settings-store.ts`**: `setBullionRateProvider` was implemented but
+  missing from the `Functions` Pick-list `DEFAULTS` is typed against — a
+  one-line type-list fix, unrelated feature, needed for a compiling build.
+- **`e2e/tests/hardware.spec.ts`**: a pre-existing test-locator strictness
+  bug (a combined regex matched 2 elements when the app correctly rendered
+  both expected safe-state texts at once) — split into two precise
+  assertions. Not a regression; the app behavior was already correct.
+- **`src/lib/print-engine/ledger-statements-data.ts`**: one prettier
+  formatting violation in a file from the parallel process's work — ran
+  `prettier --write` on just that file.
+
+### Archived / marked, not deleted (per your explicit exceptions)
+
+- `src/components/data-table-virtual.tsx` — correct, complete, zero callers; marked archived for a future scoped performance project (73 routes render plain `<table>` today).
+- Electron `avsgolderp://` deep-link protocol handler — marked `DORMANT` with reactivation instructions; not removed in case of future use.
+
+### Verified NOT duplicates (checked again this round, confirmed clean)
+
+- Barcode scanning: `BarcodeInput.tsx` (USB HID keyboard-wedge) vs `CameraBarcodeScanner.tsx` (browser `BarcodeDetector`) — two legitimate input modalities for one logical device, not duplicated logic. Both live.
+- HUID: not a separate hardware device — it's a data field populated by the same barcode-scanner path as everything else. Correctly unified already.
+- All `src/lib/*` subdirectories (`comm`, `hardware`, `keyboard`, `pdf`, `print`, `reconciliation`, `reports`, `repositories`, `security`, `workflow`) — zero orphans beyond the print-engine Phase 0 files below.
+
+### Found, explicitly NOT deleted — reported per "if uncertain, list separately"
+
+- **`src/lib/print-engine/{audit,native-bridge,printer-profiles,queue}.ts`** — zero importers, but this is the same in-progress, self-documenting "Phase 0" print-engine migration flagged in earlier rounds (each file's own header states it's built ahead of being wired into the live dispatch path). Confirmed the migration has since progressed: **5 of ~15 document types now render through the new engine** (invoice, credit note, debit note, estimate, delivery challan — up from 2 last round), all covered by passing e2e tests. Do not delete; do not begin further consolidation until the remaining ~10 document types migrate, per your own instruction.
+- **`src/routes/settings.print-templates.tsx`** — real, working page, genuinely not linked from any nav yet (same reason: Phase 0/1, not a broken link).
+- **`supabase/migrations_prepared/drop_unused_legacy_tables.sql`** — a fully-verified (per its own header: cross-checked against triggers/views/RLS/functions on the live schema, "across four consecutive stabilization passes") migration dropping 7 confirmed-dead tables (`invitations`, `feature_flags`, `user_profiles`, `gold_issue_register`, `gold_receive_register`, `kyc_documents`, `job_process_steps`). This independently corroborates this session's own earlier finding that the app's real invitation data lives in `app_settings.invitations` (JSON), not a `public.invitations` table. **Not executed** — it's a database schema change requiring your direct DB access and deliberate timing, exactly as its own header says ("deliberately NOT applied by any automated process").
+- **`yarn.lock` + `bunfig.toml`** alongside the actively-used `package-lock.json` — three package-manager artifacts for one project. `npm` is what every script in this session actually used successfully. Flagging, not deleting — don't know if yarn/bun are still used by anyone on the team.
+- **19 root-level markdown docs**, several reading as point-in-time snapshots from earlier phases (`AUDIT_REPORT.md`, `AUDIT_REPORT_PHASE2.md`, `DEPLOYMENT_READINESS_REPORT.md`, `WORKSHOP_TRIAL.md`, `test_result.md`) that may now be superseded by current state. Not code, no runtime/build impact — a content decision for you, not something I'll delete unilaterally.
+- **`release/`** (gitignored, 1,609 files, two full historical export snapshots) and the untracked `AVS Gold ERP v1.1 Test Build/` + source-export `.zip` at repo root — disk-hygiene items, not part of the git-tracked codebase (already excluded from lint via `eslint.config.js`). Not deleted; ask before removing what might be intentional release backups.
+- **`SUPABASE_JWKS_URL` / `SUPABASE_SECRET_KEY`** — documented in `.env.example`, zero usage in application code. Folded into the security finding below rather than treated as ordinary dead code, since the concerning part isn't that they're unused — it's that the secret value is exposed in git history.
+
+## 3. Architecture Report
+
+- **Circular dependencies** (via one-off `npx madge --circular`, not installed permanently): 3 found —
+  - `lib/sequence-manager.ts` ↔ `lib/dailyclose-store.ts`
+  - `lib/sequence-manager.ts` ↔ `lib/people-store.ts`
+  - `lib/comm/comm-queue.ts` ↔ `lib/comm/service.ts`
+  Not fixed this round — untangling document-numbering's shared dependency on daily-close/people state is real design work on financial-numbering code, not a quick edit. Flagging with high confidence in the finding, low confidence that a fast fix wouldn't introduce a regression.
+- **Large files** (candidates for future modularization, not touched): `settings.index.tsx` (5,876 lines), `BillingModule.tsx` (3,819), `attendance.index.tsx` (1,863), `settings-store.ts` (1,844), `local-db.ts` (1,740), `people.index.tsx` (1,735), `communications.index.tsx` (1,687), `GoldSettlementTab.tsx` (1,543).
+- **Bundle size**: production build flags several chunks over 500KB (`vendor-xlsx`, `jspdf`, `vendor-charts`, `index-*`) and a handful of "ineffective dynamic import" warnings (modules both statically and dynamically imported, so code-splitting isn't achieving anything for them) — pre-existing, unrelated to this round's changes, worth a dedicated look later.
+- **Security spot-check**: no `eval`, no unsafe `.innerHTML =`, one `dangerouslySetInnerHTML` (confirmed static CSS string, no user input, safe). `@typescript-eslint/no-explicit-any` and `no-unused-vars` are both intentionally disabled project-wide in `eslint.config.js` — worth knowing if you ever want stricter type-safety enforcement, not something I changed.
+- **Print Engine**: see the "found, not deleted" note above — migration is real and progressing (5/~15 doc types), old and new systems coexist safely, do not begin the modular split yet, per your instruction.
+- **Hardware**: confirmed exactly one abstraction per device type — scale (shared `useScaleReading()` hook, this session), cash drawer (`thermalPrinterService` + new settings, this session), thermal printer (single service), barcode scanner (HID + camera, two legitimate modalities, one already-shared `hardwareService`).
+
+## 4. Risks Found
+
+1. **Critical, deferred per your instruction**: live Supabase service-role secret committed in git history across `AUDIT_REPORT.md`, `docs/BUILD_ELECTRON.md`, `docs/DEPLOY_CLOUDFLARE_PAGES.md`, `memory/test_credentials.md`. Rotation + history handling to be addressed before production, as agreed.
+2. **`xlsx` (SheetJS) — high-severity, no fix available via npm**: prototype pollution + ReDoS advisories, pre-existing, unrelated to this round's changes. The package is genuinely used (5 files, real export features) — a library swap would be a separate, deliberate decision, not cleanup.
+3. **3 circular dependencies** (above) — architectural risk, not an active bug; flagged for planned remediation.
+4. **Bundle size** — several >500KB chunks; not a correctness risk, a load-time one.
+5. Package-manager ambiguity (`yarn.lock` + `bunfig.toml` + `package-lock.json`) — no immediate risk, but worth resolving to one canonical tool before it causes a real "works on my machine" divergence.
+
+## 5. Recommended Next Steps
+
+1. Decide on `yarn.lock`/`bunfig.toml` — keep and document, or remove.
+2. Decide whether to run `supabase/migrations_prepared/drop_unused_legacy_tables.sql` now or hold for the pre-production pass.
+3. Decide what to do with `release/`, the stray `AVS Gold ERP v1.1 Test Build/` folder, and the source-export `.zip` — local disk cleanup, your call.
+4. Root markdown doc sprawl — consolidate/archive the point-in-time reports if they're no longer needed.
+5. When ready: secret rotation + git-history scrubbing (already agreed to defer).
+6. Continue the print-engine migration (10 document types remaining) before any further architectural consolidation there.
+7. Address the 3 circular dependencies and the >500KB bundle chunks as their own scoped follow-ups.
+
+## 6. Final Verification Results
+
+- **TypeScript** (`tsc --noEmit`): 0 errors.
+- **ESLint**: 0 errors, 35 pre-existing warnings (react-hooks/exhaustive-deps, react-refresh/only-export-components — none introduced this round).
+- **Production build**: clean, ~7-8s, only pre-existing bundler notices.
+- **Electron build**: clean.
+- **e2e tests** (targeted subset covering everything touched this session — billing, hardware, printing, settings): **33/33 passing** (31 on first run, 2 more after fixing the one pre-existing test-locator bug).
+- **npm audit**: 1 pre-existing high-severity advisory (`xlsx`, no fix available), unrelated to this round.
+
+**The codebase is clean, stable, and builds successfully.** Legacy/dead code identified this round has been removed (or explicitly flagged where deletion required a call I couldn't make alone); no regressions found or introduced. Ready for the next phase, with the security and dependency-ambiguity items above queued for your decision before production.
+
+---
+
 # Architecture Cleanup Audit — 2026-07-10
 
 ## Round 4 — component integration per approved decisions

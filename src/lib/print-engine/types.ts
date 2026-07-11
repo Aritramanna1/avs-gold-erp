@@ -44,8 +44,14 @@ export interface TableColumnConfig {
   /** Column hidden entirely (not just blank) when this named flag is falsy. */
   showIf?: string;
   footerSum?: boolean;
-  /** "image" reads row[key] as a URL and renders a thumbnail instead of text. */
-  renderAs?: "text" | "image";
+  /**
+   * "image" reads row[key] as a URL and renders a thumbnail instead of
+   * text. "badge" reads row[key] as label text and row[`${key}Variant`]
+   * (a "neutral"|"warning"|"critical"|"success" string, set per-row by the
+   * data builder) as its color — for a status/type pill that varies row
+   * to row, e.g. an "Issued"/"Returned" ledger-entry type column.
+   */
+  renderAs?: "text" | "image" | "badge";
 }
 
 export interface HeaderSectionConfig {

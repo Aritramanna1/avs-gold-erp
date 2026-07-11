@@ -27,7 +27,6 @@ import { usePeople } from "@/lib/people-store";
 import { mgToGrams } from "@/lib/gold";
 
 import { ReceiveWorkDialog } from "@/components/receive-work-dialog";
-import { WorkerIssueDialog } from "@/components/worker-issue-dialog";
 import { EmailSendPanel } from "@/components/email-send-panel";
 import { CommLogCard } from "@/components/comm-log-card";
 import { ReferenceNotesPanel } from "@/components/reference-notes/ReferenceNotesPanel";
@@ -74,7 +73,6 @@ function JobCardDetail() {
 
   const [reworkOpen, setReworkOpen] = useState(false);
   const [reworkNote, setReworkNote] = useState("");
-  const [issueOpen, setIssueOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
 
   // Print Dialog States
@@ -418,15 +416,6 @@ function JobCardDetail() {
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
-                  onClick={() => setIssueOpen(true)}
-                >
-                  <Hammer className="h-4 w-4" /> Issue to Worker
-                </Button>
-              )}
-              {!job.workReceipt && (
-                <Button
-                  variant="outline"
-                  className="w-full justify-start gap-2"
                   onClick={() => setReceiveOpen(true)}
                 >
                   <PackageCheck className="h-4 w-4" /> Receive Work from Karigar
@@ -540,21 +529,6 @@ function JobCardDetail() {
           appendTimeline(job!.id, {
             ts: Date.now(),
             label: `Workshop Evidence filed — ${slot.label}`,
-          })
-        }
-      />
-
-      <WorkerIssueDialog
-        open={issueOpen}
-        onClose={() => setIssueOpen(false)}
-        orderId={job.orderId}
-        orderNo={job.orderNo}
-        defaultPurity={job.purity}
-        onSaved={(info) =>
-          appendTimeline(job!.id, {
-            ts: Date.now(),
-            label: "Worker Issue",
-            note: `${(info.grossMg / 1000).toFixed(3)}g ${info.material} → ${info.workerName}`,
           })
         }
       />

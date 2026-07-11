@@ -11,12 +11,47 @@
  * example doc types used by default-templates.ts, to prove the contract
  * end-to-end without migrating any live route.
  */
-import { useCreditNotes } from "@/lib/billing-documents-store";
+import {
+  useCreditNotes,
+  useDebitNotes,
+  useDeliveryChallans,
+  useEstimates,
+} from "@/lib/billing-documents-store";
+import { mgToGrams } from "@/lib/gold";
 import { paiseToRupees, useBilling } from "@/lib/billing-store";
 import { useOrders } from "@/lib/orders-store";
 import { usePeople } from "@/lib/people-store";
+import { useSettings } from "@/lib/settings-store";
+import { useJobCards } from "@/lib/jobcards-store";
+import { buildJobCardData } from "@/lib/job-card-engine";
 import { buildInvoicePrintData } from "./invoice-data";
+import {
+  buildKarigarCustodyStatementData,
+  buildCustomerLedgerStatementData,
+} from "./ledger-statements-data";
 import type { PrintContextBuilder, PrintDocType, PrintDocumentData } from "./types";
+
+function purityLabel(p: number): string {
+  if (p >= 990) return "999 (24K)";
+  if (p >= 915) return "916 (22K)";
+  if (p >= 749) return "750 (18K)";
+  if (p >= 584) return "585 (14K)";
+  return `${p}`;
+}
+
+const ESTIMATE_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  converted: "Converted",
+  cancelled: "Cancelled",
+  expired: "Expired",
+};
+
+const CHALLAN_STATUS_LABELS: Record<string, string> = {
+  issued: "Issued",
+  returned: "Returned",
+  cancelled: "Cancelled",
+  converted_to_invoice: "Converted",
+};
 
 const invoiceBuilder: PrintContextBuilder = (recordId) => {
   const inv = useBilling.getState().invoices.find((i) => i.id === recordId);
@@ -27,6 +62,8 @@ const invoiceBuilder: PrintContextBuilder = (recordId) => {
 const builders: Partial<Record<PrintDocType, PrintContextBuilder>> = {
   gst_invoice: invoiceBuilder,
   retail_invoice: invoiceBuilder,
+  karigar_custody_statement: buildKarigarCustodyStatementData,
+  customer_ledger_statement: buildCustomerLedgerStatementData,
   credit_note: (recordId) => {
     const note = useCreditNotes.getState().notes.find((n) => n.id === recordId);
     if (!note) return null;
@@ -49,6 +86,152 @@ const builders: Partial<Record<PrintDocType, PrintContextBuilder>> = {
         isCancelled: note.status === "cancelled",
       },
       images: {},
+      balances: {},
+    };
+  },
+
+  debit_note: (recordId) => {
+    const note = useDebitNotes.getState().notes.find((n) => n.id === recordId);
+    if (!note) return null;
+    return {
+      docType: "debit_note",
+      docNumber: note.debitNoteNo,
+      recordId: note.id,
+      createdAt: note.createdAt,
+      title: "Debit Note",
+      fields: {
+        customerName: note.customerName || "Walk-in Customer",
+        invoiceNo: note.invoiceNo,
+        amountLabel: `₹ ${paiseToRupees(note.amountPaise)}`,
+        reasonText: note.reason || "—",
+        statusText: note.status === "issued" ? "Issued" : "Cancelled",
+      },
+      tables: {},
+      flags: {
+        isIssued: note.status === "issued",
+        isCancelled: note.status === "cancelled",
+      },
+      images: {},
+      balances: {},
+    };
+  },
+
+  estimate_doc: (recordId) => {
+    const est = useEstimates.getState().estimates.find((e) => e.id === recordId);
+    if (!est) return null;
+    return {
+      docType: "estimate_doc",
+      docNumber: est.estimateNo,
+      recordId: est.id,
+      createdAt: est.createdAt,
+      title: "Estimate",
+      fields: {
+        customerName: est.customerName || "Walk-in Customer",
+        customerPhone: est.customerPhone || "",
+        statusText: ESTIMATE_STATUS_LABELS[est.status] ?? est.status,
+        subtotalLabel: `₹ ${paiseToRupees(est.subtotalPaise)}`,
+        gstLabel: `₹ ${paiseToRupees(est.gstPaise)}`,
+        grandTotalLabel: `₹ ${paiseToRupees(est.grandTotalPaise)}`,
+        notesText: est.notes || "",
+      },
+      tables: {
+        items: est.items.map((it) => ({
+          itemName: it.itemName,
+          fineWt: `${mgToGrams(it.fineMg)}g`,
+          amountLabel: `₹ ${paiseToRupees(it.lineTotalPaise)}`,
+        })),
+      },
+      flags: {
+        hasCustomerPhone: !!est.customerPhone,
+        hasGst: est.gstPaise > 0,
+        hasNotes: !!est.notes,
+      },
+      images: {},
+      balances: {},
+    };
+  },
+
+  delivery_challan: (recordId) => {
+    const c = useDeliveryChallans.getState().challans.find((x) => x.id === recordId);
+    if (!c) return null;
+    return {
+      docType: "delivery_challan",
+      docNumber: c.challanNo,
+      recordId: c.id,
+      createdAt: c.createdAt,
+      title: "Delivery Challan",
+      fields: {
+        customerName: c.customerName || "Walk-in Customer",
+        statusText: CHALLAN_STATUS_LABELS[c.status] ?? c.status,
+        notesText: c.notes || "",
+        purposeText: `Goods sent for ${c.purpose.replace(/_/g, " ")} — not a tax invoice.`,
+      },
+      tables: {
+        items: c.items.map((it) => ({
+          itemName: it.itemName,
+          qty: it.qty,
+          grossWt: `${mgToGrams(it.grossMg)}g`,
+        })),
+      },
+      flags: {
+        hasNotes: !!c.notes,
+      },
+      images: {},
+      balances: {},
+    };
+  },
+
+  job_card: (recordId) => {
+    // recordId is the Production Order id (workshop.print.job-card.$orderId
+    // .tsx's own param name/semantics — buildJobCardData takes an Order,
+    // enriched by its linked JobCard when one exists).
+    const order = useOrders.getState().orders.find((o) => o.id === recordId);
+    if (!order) return null;
+    const people = usePeople.getState().people;
+    const customer = people.find((p) => p.id === order.customerId);
+    const karigar = order.karigarId ? people.find((p) => p.id === order.karigarId) : null;
+    const linkedJob = useJobCards.getState().jobs.find((j) => j.orderId === order.id) ?? null;
+
+    const jc = buildJobCardData(
+      order,
+      linkedJob,
+      customer?.fullName ?? "—",
+      customer?.phone,
+      karigar?.fullName ?? null,
+    );
+
+    return {
+      docType: "job_card",
+      docNumber: jc.jobCardNo || jc.productionOrderNo,
+      recordId: order.id,
+      createdAt: order.createdAt,
+      title: "JOB CARD",
+      fields: {
+        customerLine: jc.customerName + (jc.customerPhone ? ` (${jc.customerPhone})` : ""),
+        assignedWorkerName: jc.assignedWorkerName || "Unassigned",
+        itemName: jc.itemName,
+        itemDescription: jc.itemDescription,
+        targetNetWt: `${mgToGrams(jc.targetNetMg)} g`,
+        purityLabel: purityLabel(jc.purity),
+        goldReceivedLabel:
+          jc.goldReceivedFineMg > 0 ? `${mgToGrams(jc.goldReceivedFineMg)} g fine` : "None",
+        targetGrossWt: `${mgToGrams(jc.targetGrossMg)} g`,
+        expectedDeliveryLabel: jc.expectedDelivery
+          ? new Date(jc.expectedDelivery).toLocaleDateString("en-IN")
+          : "—",
+        priorityLabel: linkedJob?.priority ?? "—",
+        remarksText: jc.remarks || "—",
+        productionOrderNo: jc.productionOrderNo,
+        footerLine: `Production Order: ${jc.productionOrderNo} · ${useSettings.getState().firm.shopName || "Jewellers ERP"}`,
+      },
+      tables: {},
+      flags: {
+        hasItemDescription: !!jc.itemDescription,
+        hasReferenceImages: jc.referenceImages.length > 0,
+      },
+      images: {
+        reference: jc.referenceImages,
+      },
       balances: {},
     };
   },

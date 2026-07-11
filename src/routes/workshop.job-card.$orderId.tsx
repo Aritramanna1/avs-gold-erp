@@ -14,7 +14,9 @@ import { useJobCards } from "@/lib/jobcards-store";
 import { usePeople } from "@/lib/people-store";
 import { useSettings } from "@/lib/settings-store";
 import { buildJobCardData } from "@/lib/job-card-engine";
-import { generateJobCardPdf, jobCardFileName } from "@/lib/pdf/job-card-pdf";
+import { resolvePrintContext } from "@/lib/print-engine/data-mapper";
+import { usePrintTemplates } from "@/lib/print-engine/template-store";
+import { generateDocumentPdf } from "@/lib/print-engine/pdf/generate";
 import { usePrintEngine } from "@/lib/print-engine";
 import { mgToGrams } from "@/lib/gold";
 import { ArrowLeft, Download, Loader2, Printer, QrCode } from "lucide-react";
@@ -74,11 +76,14 @@ function JobCardPage() {
   async function handleDownload() {
     setDownloading(true);
     try {
-      const blob = await generateJobCardPdf(data, firm);
+      const printData = resolvePrintContext("job_card", orderId);
+      if (!printData) throw new Error("Job Card data not available");
+      const template = usePrintTemplates.getState().getForDocType("job_card");
+      const { blob, fileName } = await generateDocumentPdf(printData, template, firm);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = jobCardFileName(data, firm);
+      a.download = fileName;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 100);
       toast.success("Job Card PDF downloaded.");

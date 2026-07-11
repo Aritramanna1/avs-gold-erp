@@ -18,6 +18,7 @@ import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { useSettings } from "@/lib/settings-store";
 import { usePrintTemplates } from "@/lib/print-engine/template-store";
 import { resolvePrintContext } from "@/lib/print-engine/data-mapper";
+import { usePrintDataSourcesTick } from "@/lib/print-engine/data-source-tick";
 import { generateDocumentPdf } from "@/lib/print-engine/pdf/generate";
 import { PrintSections } from "./sections";
 import { CustomShell } from "./CustomShell";
@@ -75,10 +76,36 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
     [docType, activeSize, templates],
   );
 
-  const rawData = resolvePrintContext(docType, recordId);
+  // Re-derives whenever a source store updates after mount (e.g. a
+  // background pullBackground() finishing) — see data-source-tick.ts for
+  // why resolvePrintContext() alone can't do this on its own.
+  const dataSourcesTick = usePrintDataSourcesTick();
+  const rawData = useMemo(
+    () => resolvePrintContext(docType, recordId),
+    [docType, recordId, dataSourcesTick],
+  );
   const firm = useSettings((s) => s.firm);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
+  // Always call the object-arg overload with OUR data-mapper's own
+  // docNumber. usePrintRecord.ts's internal docType->store switch still
+  // runs unconditionally either way and still supplies its own
+  // linkedLabel/record for the ~20 doc types it recognizes (an explicit
+  // legacyArgs.linkedLabel of undefined falls through to the switch's
+  // value, per usePrintRecord's own `legacyArgs.linkedLabel || linkedLabel`
+  // merge) — so this is a strict superset, not a behavior change, for
+  // every doc type the switch already covers.
+  //
+  // It's required (not just tidier) for every doc type the switch does
+  // NOT cover, e.g. karigar_custody_statement / customer_ledger_statement:
+  // usePrintRecord's recordPrint effect only fires when its OWN resolved
+  // docNumber is truthy (`if (!docType || !id || !docNumber) return;`),
+  // and for docTypes outside its switch that value is permanently "" —
+  // silently skipping the reprint-audit log for the entire document type,
+  // forever, with no error. Supplying our already-correct docNumber here
+  // makes audit logging work uniformly for every doc type this engine
+  // will ever support, not just the ones usePrintRecord's switch happens
+  // to know about.
   const {
     loading,
     error,
@@ -89,7 +116,12 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
     setReprintOpen,
     handlePrintTrigger,
     recordReprint,
-  } = usePrintRecord(docType, recordId);
+  } = usePrintRecord(
+    rawData
+      ? { docType, docNumber: rawData.docNumber, linkedId: recordId, linkedLabel: undefined }
+      : docType,
+    recordId,
+  );
 
   // Reprint state comes from usePrintRecord (the audit log), not the
   // document's own data builder — merged here once so every section
@@ -100,14 +132,26 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
     return {
       ...rawData,
       flags: { ...rawData.flags, isReprint },
-      fields: { ...rawData.fields, reprintCount },
+      fields: { ...rawData.fields, reprintCount } as Record<string, unknown>,
     };
   }, [rawData, isReprint, reprintCount]);
 
-  if (loading) {
+  // usePrintRecord's own loading/error come from ITS internal docType->store
+  // switch (usePrintRecord.ts), which only covers doc types that predate
+  // the print engine (invoices, repairs, orders, ...) — it has no case for
+  // most engine-native doc types (e.g. karigar_custody_statement,
+  // customer_ledger_statement), so for those `loading` would stay true
+  // forever and permanently blank the document. The data-mapper's own
+  // `data` (resolved independently, same underlying stores) is the
+  // authoritative "is this document ready" signal for every doc type;
+  // usePrintRecord's loading is consulted only to avoid a not-found flash
+  // on doc types it DOES resolve, and never blocks past the moment our own
+  // data is ready. Only block if data itself is missing, never on stale
+  // usePrintRecord loading state for engine-native doc types.
+  if (!data) {
     return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
   }
-  if (error || !data) {
+  if (!data) {
     return (
       <div className="p-8 text-center text-sm text-destructive">
         {error || `No print context builder registered yet for "${docType}".`}
@@ -195,6 +239,9 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
           showQR={showQR}
           qrLabel={qrLabel}
           qrPosition={qrPosition}
+          footerLine={
+            typeof data.fields.footerLine === "string" ? data.fields.footerLine : undefined
+          }
         >
           <PrintSections sections={template.sections} data={data} />
         </PrintLayout>

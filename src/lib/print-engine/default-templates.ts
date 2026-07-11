@@ -66,6 +66,130 @@ const creditNoteTemplate = builtin({
   ],
 });
 
+// Debit Note's legacy route (billing.debit-note-print.$id.tsx) is
+// byte-for-byte the same layout as Credit Note's, just a different title
+// and store — same section list, not a copy-paste-and-drift risk since
+// both are declared here rather than duplicated as JSX.
+const debitNoteTemplate = builtin({
+  id: "default_debit_note",
+  docType: "debit_note",
+  name: "Debit Note (Default)",
+  paperSize: "a4",
+  sections: [
+    { type: "header", id: "header" },
+    {
+      type: "fieldGrid",
+      id: "status",
+      fields: [
+        {
+          label: "Status",
+          valuePath: "statusText",
+          showIf: "isIssued",
+          variant: "neutral",
+          fullWidth: true,
+        },
+        {
+          label: "Status",
+          valuePath: "statusText",
+          showIf: "isCancelled",
+          variant: "critical",
+          fullWidth: true,
+        },
+      ],
+    },
+    {
+      type: "fieldGrid",
+      id: "summary",
+      columns: 2,
+      fields: [
+        { label: "Customer", valuePath: "customerName" },
+        { label: "Against Invoice", valuePath: "invoiceNo" },
+        { label: "Amount", valuePath: "amountLabel" },
+      ],
+    },
+    { type: "richText", id: "reason", title: "Reason", textPath: "reasonText" },
+    { type: "signatureBlock", id: "signatures" },
+  ],
+});
+
+const estimateTemplate = builtin({
+  id: "default_estimate_doc",
+  docType: "estimate_doc",
+  name: "Estimate (Default)",
+  paperSize: "a4",
+  sections: [
+    { type: "header", id: "header" },
+    {
+      type: "fieldGrid",
+      id: "status",
+      fields: [{ label: "Status", valuePath: "statusText", fullWidth: true, variant: "neutral" }],
+    },
+    {
+      type: "fieldGrid",
+      id: "customer",
+      columns: 1,
+      fields: [
+        { label: "Customer", valuePath: "customerName", fullWidth: true },
+        { label: "Phone", valuePath: "customerPhone", showIf: "hasCustomerPhone", fullWidth: true },
+      ],
+    },
+    {
+      type: "table",
+      id: "items",
+      rowsPath: "items",
+      columns: [
+        { key: "itemName", header: "Item", align: "left", width: 3 },
+        { key: "fineWt", header: "Fine (g)", align: "center", width: 1 },
+        { key: "amountLabel", header: "Amount", align: "right", width: 1 },
+      ],
+    },
+    {
+      type: "fieldGrid",
+      id: "totals",
+      columns: 1,
+      fields: [
+        { label: "Subtotal", valuePath: "subtotalLabel", fullWidth: true },
+        { label: "GST", valuePath: "gstLabel", showIf: "hasGst", fullWidth: true },
+        { label: "Grand Total", valuePath: "grandTotalLabel", fullWidth: true, emphasis: true },
+      ],
+    },
+    { type: "richText", id: "notes", textPath: "notesText", emphasis: "plain", showIf: "hasNotes" },
+  ],
+});
+
+const deliveryChallanTemplate = builtin({
+  id: "default_delivery_challan",
+  docType: "delivery_challan",
+  name: "Delivery Challan (Default)",
+  paperSize: "a4",
+  sections: [
+    { type: "header", id: "header" },
+    {
+      type: "fieldGrid",
+      id: "status",
+      fields: [{ label: "Status", valuePath: "statusText", fullWidth: true, variant: "neutral" }],
+    },
+    {
+      type: "fieldGrid",
+      id: "customer",
+      columns: 1,
+      fields: [{ label: "Customer", valuePath: "customerName", fullWidth: true }],
+    },
+    {
+      type: "table",
+      id: "items",
+      rowsPath: "items",
+      columns: [
+        { key: "itemName", header: "Item", align: "left", width: 3 },
+        { key: "qty", header: "Qty", align: "center", width: 1 },
+        { key: "grossWt", header: "Gross (g)", align: "center", width: 1 },
+      ],
+    },
+    { type: "richText", id: "notes", textPath: "notesText", showIf: "hasNotes" },
+    { type: "richText", id: "purposeFooter", textPath: "purposeText", emphasis: "plain" },
+  ],
+});
+
 const orderSlipTemplate = builtin({
   id: "default_order_slip",
   docType: "order_slip",
@@ -372,6 +496,262 @@ function invoiceTemplatesFor(
   ];
 }
 
+// ── Karigar Custody Statement (Worker Gold Book) ──────────────────────────
+// Legacy workshop.gold-book-print.$workerId.tsx: 3-col profile+summary card
+// (Worker / Cumulative Fine Gold / Closing Balance), a 9-col running-ledger
+// table, plain worker/supervisor signatures.
+
+const karigarCustodyStatementTemplate = builtin({
+  id: "default_karigar_custody_statement",
+  docType: "karigar_custody_statement",
+  name: "Worker Custody Statement (Default)",
+  paperSize: "a4",
+  sections: [
+    { type: "header", id: "header" },
+    {
+      type: "row",
+      id: "summaryRow",
+      columnWidths: [1, 1, 1],
+      columns: [
+        [
+          {
+            type: "fieldGrid",
+            id: "worker",
+            title: "Worker",
+            columns: 1,
+            fields: [
+              { label: "Name", valuePath: "workerName", fullWidth: true },
+              { label: "Phone", valuePath: "workerPhone", fullWidth: true },
+            ],
+          },
+        ],
+        [
+          {
+            type: "richText",
+            id: "cumulativeFine",
+            title: "Cumulative Fine Gold",
+            emphasis: "plain",
+            textPath: "cumulativeFineText",
+          },
+        ],
+        [
+          {
+            type: "richText",
+            id: "closingBalance",
+            title: "Closing Balance Pending",
+            emphasis: "plain",
+            textPath: "closingBalanceText",
+          },
+        ],
+      ],
+    },
+    {
+      type: "table",
+      id: "entries",
+      rowsPath: "entries",
+      columns: [
+        { key: "dateTime", header: "Date & Time", align: "left", width: 2 },
+        { key: "voucherNo", header: "Voucher No", align: "left", width: 1 },
+        { key: "particulars", header: "Particulars", align: "left", width: 2 },
+        { key: "typeLabel", header: "Type", align: "center", width: 1, renderAs: "badge" },
+        { key: "netWt", header: "Net Wt (g)", align: "right", width: 1 },
+        { key: "fineWt", header: "Fine Gold (g)", align: "right", width: 1 },
+        { key: "qty", header: "Qty", align: "right", width: 1 },
+        { key: "balFine", header: "Bal (Fine)", align: "right", width: 1 },
+        { key: "balQty", header: "Bal (Qty)", align: "right", width: 1 },
+      ],
+    },
+    {
+      type: "signatureBlock",
+      id: "signatures",
+      leftLabel: "Worker Signature",
+      rightLabel: "Authorized Supervisor",
+    },
+  ],
+});
+
+// ── Job Card ────────────────────────────────────────────────────────────
+// Legacy workshop.print.job-card.$orderId.tsx: A5, 2-col customer/worker
+// grid (customer full-width), conditional description, 3-col specs grid,
+// conditional reference-image row, remarks, "Issued By"/"Worker
+// Acknowledgement" signature labels (not the firm-generic ones).
+
+const jobCardTemplate = builtin({
+  id: "default_job_card",
+  docType: "job_card",
+  name: "Job Card (Default)",
+  paperSize: "a5",
+  sections: [
+    { type: "header", id: "header", showQr: true, qrLabel: "Verify Job" },
+    {
+      type: "fieldGrid",
+      id: "customerWorker",
+      columns: 2,
+      fields: [
+        { label: "Customer / Dealer", valuePath: "customerLine", fullWidth: true },
+        { label: "Assigned Worker", valuePath: "assignedWorkerName" },
+        { label: "Product Name", valuePath: "itemName" },
+      ],
+    },
+    {
+      type: "fieldGrid",
+      id: "description",
+      columns: 1,
+      showIf: "hasItemDescription",
+      fields: [{ label: "Product Description", valuePath: "itemDescription", fullWidth: true }],
+    },
+    {
+      type: "fieldGrid",
+      id: "specs",
+      columns: 3,
+      fields: [
+        { label: "Target Weight (Net)", valuePath: "targetNetWt" },
+        { label: "Purity", valuePath: "purityLabel" },
+        { label: "Gold Received", valuePath: "goldReceivedLabel" },
+        { label: "Target Gross Wt", valuePath: "targetGrossWt" },
+        { label: "Expected Delivery", valuePath: "expectedDeliveryLabel" },
+        { label: "Priority", valuePath: "priorityLabel" },
+      ],
+    },
+    {
+      type: "images",
+      id: "referenceImages",
+      title: "Reference Images",
+      imagesKey: "reference",
+      showIf: "hasReferenceImages",
+    },
+    {
+      type: "fieldGrid",
+      id: "remarks",
+      columns: 1,
+      fields: [{ label: "Remarks", valuePath: "remarksText", fullWidth: true }],
+    },
+    {
+      type: "signatureBlock",
+      id: "signatures",
+      leftLabel: "Issued By",
+      rightLabel: "Worker Acknowledgement",
+    },
+  ],
+});
+
+// ── Customer Ledger Statement ──────────────────────────────────────────────
+// Legacy people.ledger-print.$id.tsx: 2-col profile+identifiers card,
+// 2-col gold/money account summary cards, a 10-col running-ledger table.
+
+const customerLedgerStatementTemplate = builtin({
+  id: "default_customer_ledger_statement",
+  docType: "customer_ledger_statement",
+  name: "Customer Ledger Statement (Default)",
+  paperSize: "a4",
+  sections: [
+    { type: "header", id: "header" },
+    {
+      type: "row",
+      id: "profileRow",
+      columnWidths: [1, 1],
+      columns: [
+        [
+          {
+            type: "fieldGrid",
+            id: "profile",
+            title: "Customer Profile",
+            columns: 1,
+            fields: [
+              { label: "Name", valuePath: "customerName", fullWidth: true, emphasis: true },
+              { label: "Phone", valuePath: "customerPhone", fullWidth: true },
+              { label: "Email", valuePath: "customerEmail", fullWidth: true, showIf: "hasEmail" },
+              {
+                label: "Address",
+                valuePath: "customerAddress",
+                fullWidth: true,
+                showIf: "hasAddress",
+              },
+            ],
+          },
+        ],
+        [
+          {
+            type: "fieldGrid",
+            id: "identifiers",
+            title: "Tax / Identifiers",
+            columns: 1,
+            fields: [
+              { label: "GSTIN", valuePath: "customerGstin", fullWidth: true, showIf: "hasGstin" },
+              { label: "PAN", valuePath: "customerPan", fullWidth: true, showIf: "hasPan" },
+              { label: "Status", valuePath: "statusText", fullWidth: true },
+            ],
+          },
+        ],
+      ],
+    },
+    {
+      type: "row",
+      id: "accountsRow",
+      columnWidths: [1, 1],
+      columns: [
+        [
+          {
+            type: "fieldGrid",
+            id: "goldAccount",
+            title: "Gold Credit Account Balance",
+            columns: 1,
+            fields: [
+              { label: "Balance", valuePath: "goldBalanceLabel", fullWidth: true, emphasis: true },
+              { label: "Detail", valuePath: "goldBalanceNarrative", fullWidth: true },
+              { label: "Movement", valuePath: "goldMovementText", fullWidth: true },
+            ],
+          },
+        ],
+        [
+          {
+            type: "fieldGrid",
+            id: "moneyAccount",
+            title: "Monetary Ledger Balance",
+            columns: 1,
+            fields: [
+              { label: "Balance", valuePath: "moneyBalanceLabel", fullWidth: true, emphasis: true },
+              { label: "Detail", valuePath: "moneyBalanceNarrative", fullWidth: true },
+              { label: "Movement", valuePath: "moneyMovementText", fullWidth: true },
+            ],
+          },
+        ],
+      ],
+    },
+    {
+      type: "table",
+      id: "entries",
+      title: "Ledger Entries Log",
+      rowsPath: "entries",
+      columns: [
+        { key: "date", header: "Date", align: "left", width: 1 },
+        { key: "voucherNo", header: "Ref/Voucher", align: "left", width: 1 },
+        { key: "typeLabel", header: "Type", align: "center", width: 1, renderAs: "badge" },
+        { key: "description", header: "Description", align: "left", width: 2 },
+        { key: "goldIn", header: "Gold In", align: "right", width: 1 },
+        { key: "goldOut", header: "Gold Out", align: "right", width: 1 },
+        { key: "debit", header: "Debit (Dr)", align: "right", width: 1 },
+        { key: "credit", header: "Credit (Cr)", align: "right", width: 1 },
+        { key: "goldBal", header: "Gold Bal", align: "right", width: 1 },
+        { key: "moneyBal", header: "Money Bal", align: "right", width: 1 },
+      ],
+    },
+    {
+      type: "signatureBlock",
+      id: "signatures",
+      leftLabel: "Customer's Acknowledgement Signature",
+      rightLabel: "Authorized Signature",
+    },
+    {
+      type: "richText",
+      id: "footerNote",
+      emphasis: "plain",
+      staticText:
+        "This statement is computer-generated and reflects real-time independent running balances of gold and money accounts.",
+    },
+  ],
+});
+
 /**
  * Phase 0 seeded only credit_note/order_slip as illustrative examples;
  * `getForDocType()` falls back to a placeholder "Unconfigured" template
@@ -380,7 +760,13 @@ function invoiceTemplatesFor(
  */
 export const DEFAULT_TEMPLATES: Partial<Record<PrintDocType, PrintTemplate[]>> = {
   credit_note: [creditNoteTemplate],
+  debit_note: [debitNoteTemplate],
+  estimate_doc: [estimateTemplate],
+  delivery_challan: [deliveryChallanTemplate],
   order_slip: [orderSlipTemplate],
+  job_card: [jobCardTemplate],
+  karigar_custody_statement: [karigarCustodyStatementTemplate],
+  customer_ledger_statement: [customerLedgerStatementTemplate],
   gst_invoice: invoiceTemplatesFor("gst_invoice", "Tax Invoice"),
   retail_invoice: invoiceTemplatesFor("retail_invoice", "Retail Invoice"),
 };

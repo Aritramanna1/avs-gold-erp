@@ -123,7 +123,7 @@ interface JobCardsState {
   jobs: JobCard[];
   refresh: () => Promise<void>;
   add: (
-    input: Omit<JobCard, "id" | "createdAt" | "updatedAt" | "timeline"> & {
+    input: Omit<JobCard, "id" | "createdAt" | "updatedAt" | "timeline" | "jobNo"> & {
       jobNo?: string;
       timeline?: JobTimelineEvent[];
     },

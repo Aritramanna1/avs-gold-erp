@@ -115,7 +115,8 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
     // Desktop path: real printer selection + optional silent printing,
     // reusing the exact same rendered iframe content the preview already
     // shows — nothing about WHAT gets printed changes, only HOW (named
-    // printer, no OS dialog if silent is checked).
+    // printer, no OS dialog if silent is checked). Pass orientation and
+    // margin for native page setup.
     if (isDesktop && iframeRef.current.contentDocument) {
       try {
         const html = iframeRef.current.contentDocument.documentElement.outerHTML;
@@ -131,6 +132,8 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
         const result = await desktop.print.printHtml(html, {
           silent: silentPrint,
           printerName: selectedPrinter || undefined,
+          orientation,
+          marginMm,
         });
         if (!result.success) {
           console.warn("[Print] Desktop print failed, falling back to iframe print:", result.error);

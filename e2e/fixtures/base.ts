@@ -78,6 +78,12 @@ type SeedIds = {
   invoiceNo: string;
   creditNoteId: string;
   creditNoteNo: string;
+  debitNoteId: string;
+  debitNoteNo: string;
+  estimateId: string;
+  estimateNo: string;
+  deliveryChallanId: string;
+  deliveryChallanNo: string;
   [key: string]: unknown;
 };
 

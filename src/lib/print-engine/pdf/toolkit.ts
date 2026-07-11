@@ -136,17 +136,26 @@ export function addPremiumHeader(
     return ry + 2;
   }
 
+  // Add logo if present (typically 12x12 mm on left side)
+  if (firm.logoUrl) {
+    try {
+      doc.addImage(firm.logoUrl, "PNG", margin, y + 1, 12, 12);
+    } catch {
+      // Logo rendering failed; continue without it
+    }
+  }
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
-  doc.text(firm.shopName || "Jewellers ERP", margin, y + 6);
+  doc.text(firm.shopName || "Jewellers ERP", margin + 14, y + 6);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   let addrY = y + 12;
   if (firm.address) {
-    doc.text(firm.address, margin, addrY);
+    doc.text(firm.address, margin + 14, addrY);
     addrY += 4;
   }
-  if (firm.gstin) doc.text(`GSTIN: ${firm.gstin}`, margin, addrY);
+  if (firm.gstin) doc.text(`GSTIN: ${firm.gstin}`, margin + 14, addrY);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);

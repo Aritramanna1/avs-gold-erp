@@ -14,7 +14,12 @@
 // @ts-nocheck
 import { useAttachments } from "./attachments-store";
 import { useBilling, type GstKind } from "./billing-store";
-import { useCreditNotes } from "./billing-documents-store";
+import {
+  useCreditNotes,
+  useDebitNotes,
+  useEstimates,
+  useDeliveryChallans,
+} from "./billing-documents-store";
 import { useCommLog } from "./comm-log-store";
 import { useDailyCloses } from "./dailyclose-store";
 import { useJobCards } from "./jobcards-store";
@@ -27,6 +32,7 @@ import { useRepairs } from "./repair-store";
 import { useStock } from "./stock-store";
 import { useWhatsapp } from "./whatsapp-store";
 import { useWorkers } from "./workers-store";
+import { useWorkerGoldBook } from "./worker-gold-book-store";
 
 function makeId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -50,6 +56,12 @@ export interface SeedResult {
   invoiceNo: string;
   creditNoteId: string;
   creditNoteNo: string;
+  debitNoteId: string;
+  debitNoteNo: string;
+  estimateId: string;
+  estimateNo: string;
+  deliveryChallanId: string;
+  deliveryChallanNo: string;
   paymentId: string;
   repairId: string;
   polishingRepairId: string;
@@ -77,6 +89,9 @@ export async function seedPilotDataset(): Promise<SeedResult> {
   useStock.setState({ items: [], movements: [] });
   useBilling.getState().reset();
   useCreditNotes.getState().reset();
+  useDebitNotes.getState().reset();
+  useEstimates.getState().reset();
+  useDeliveryChallans.getState().reset();
   useRepairs.getState().reset();
   useRateCuts.getState().reset();
   useDailyCloses.getState().reset();
@@ -84,6 +99,7 @@ export async function seedPilotDataset(): Promise<SeedResult> {
   useWhatsapp.getState().reset();
   usePrintLog.getState().reset();
   useWorkers.getState().reset();
+  useWorkerGoldBook.getState().reset();
   useCommLog.getState().reset?.();
   useAttachments.setState({ items: {} });
 
@@ -465,6 +481,99 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     },
     { id: null, email: "seed@test.local" },
   );
+  // Debit note against the invoice — mirrors the credit note above, exercises
+  // debit_note's migrated Unified Print Engine document end-to-end.
+  const debitNote = await useDebitNotes.getState().issue(
+    {
+      invoiceId: invoice.id,
+      invoiceNo: invoice.invoiceNo,
+      customerId: customer.id,
+      customerName: customer.fullName,
+      amountPaise: 30000,
+      goldFineMg: 0,
+      reason: "Additional making charge billed after delivery.",
+    },
+    { id: null, email: "seed@test.local" },
+  );
+  // Estimate — draft quote, not yet converted, for estimate_doc's migrated document.
+  const estimate = await useEstimates.getState().create({
+    customerId: customer.id,
+    customerName: customer.fullName,
+    customerPhone: customer.phone,
+    items: [
+      {
+        id: makeId(),
+        stockItemId: stockItem.id,
+        barcode: stockItem.barcode,
+        itemName: stockItem.itemName,
+        category: stockItem.category,
+        purity: stockItem.purity,
+        grossMg: stockItem.grossMg,
+        netMg: stockItem.netMg,
+        fineMg: stockItem.fineMg,
+        goldRatePerGramPaise,
+        goldValuePaise,
+        makingChargesPaise,
+        stoneChargesPaise,
+        otherChargesPaise,
+        discountPaise,
+        lineTotalPaise,
+      },
+    ],
+    gst: "none" as GstKind,
+    subtotalPaise: lineTotalPaise,
+    gstPaise: 0,
+    grandTotalPaise: lineTotalPaise,
+    notes: "Valid for 15 days from date of issue.",
+  });
+  // Delivery challan — job-work dispatch, for delivery_challan's migrated document.
+  const deliveryChallan = await useDeliveryChallans.getState().create({
+    customerId: customer.id,
+    customerName: customer.fullName,
+    items: [
+      {
+        itemName: stockItem.itemName,
+        category: stockItem.category,
+        grossMg: stockItem.grossMg,
+        purity: stockItem.purity,
+        fineMg: stockItem.fineMg,
+        qty: 1,
+      },
+    ],
+    purpose: "job_work",
+    notes: "For polishing and hallmarking.",
+  });
+  // Worker gold book entries (given + returned) — for karigar_custody_statement's
+  // migrated document; distinct from the gold-ledger issue/receive entries
+  // above (a separate "material given/returned" tracking system).
+  await useWorkerGoldBook.getState().addEntry({
+    workerId: karigar.id,
+    workerName: karigar.fullName,
+    particulars: "KDM",
+    grossMg: 20000,
+    lessMg: 0,
+    purity: 916,
+    quantity: 5,
+    notes: "Findings issued for bulk order",
+    givenBy: "Owner",
+    receivedBy: karigar.fullName,
+    type: "given",
+    reference: order.orderNo,
+  });
+  await useWorkerGoldBook.getState().addEntry({
+    workerId: karigar.id,
+    workerName: karigar.fullName,
+    particulars: "Finished Findings",
+    grossMg: 6000,
+    lessMg: 0,
+    purity: 916,
+    quantity: 3,
+    notes: "Partial return after completion",
+    givenBy: karigar.fullName,
+    receivedBy: "Owner",
+    type: "return",
+    reference: order.orderNo,
+  });
   // Sale ledger entry — finished goes out of system
   await useLedger.getState().append({
     type: "sale",
@@ -715,6 +824,12 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     invoiceNo: invoice.invoiceNo,
     creditNoteId: creditNote.id,
     creditNoteNo: creditNote.creditNoteNo,
+    debitNoteId: debitNote.id,
+    debitNoteNo: debitNote.debitNoteNo,
+    estimateId: estimate.id,
+    estimateNo: estimate.estimateNo,
+    deliveryChallanId: deliveryChallan.id,
+    deliveryChallanNo: deliveryChallan.challanNo,
     paymentId,
     repairId: repair.id,
     polishingRepairId: polishing.id,

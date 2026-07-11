@@ -7,7 +7,12 @@ test.describe("Hardware page", () => {
       timeout: 15_000,
     });
     // A disconnected scale must show a safe placeholder reading, not a crash.
-    await expect(authedPage.getByText(/— g|no reading yet/i)).toBeVisible();
+    // Both the weight display ("— g") and the status line ("No reading yet")
+    // render simultaneously — assert each individually rather than one
+    // combined regex, since the combined form matches 2 elements at once
+    // and trips Playwright's strict-mode single-match requirement.
+    await expect(authedPage.getByText("— g", { exact: true })).toBeVisible();
+    await expect(authedPage.getByText("No reading yet", { exact: true })).toBeVisible();
     expectNoPageErrors(authedPage);
   });
 

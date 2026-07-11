@@ -134,7 +134,7 @@ function FieldGridSection({
               </span>
             ) : (
               <span
-                className={`font-medium text-stone-900 ${f.emphasis ? "text-sm font-bold" : ""}`}
+                className={`font-medium text-stone-900 whitespace-pre-line ${f.emphasis ? "text-sm font-bold" : ""}`}
               >
                 {formatFieldValue(getPath(data.fields, f.valuePath))}
               </span>
@@ -150,9 +150,11 @@ function FieldGridSection({
 
 function TableCell({
   column,
+  row,
   value,
 }: {
   column: TableSectionConfig["columns"][number];
+  row: Record<string, unknown>;
   value: unknown;
 }) {
   if (column.renderAs === "image") {
@@ -167,6 +169,20 @@ function TableCell({
       <div className="h-10 w-10 rounded bg-stone-50 flex items-center justify-center text-stone-400 text-[9px] mx-auto border border-stone-200">
         —
       </div>
+    );
+  }
+  if (column.renderAs === "badge") {
+    const variant = row[`${column.key}Variant`];
+    const cls =
+      typeof variant === "string" && variant in BADGE_VARIANT_CLASSES
+        ? BADGE_VARIANT_CLASSES[variant as keyof typeof BADGE_VARIANT_CLASSES]
+        : BADGE_VARIANT_CLASSES.neutral;
+    return (
+      <span
+        className={`inline-block px-1.5 py-0.5 rounded-full border text-[9px] font-bold uppercase ${cls}`}
+      >
+        {formatFieldValue(value)}
+      </span>
     );
   }
   // Multi-line cells: the data mapper joins sub-fields (barcode, HUID, stone
@@ -212,7 +228,7 @@ function TableSection({ config, data }: { config: TableSectionConfig; data: Prin
                   className="border border-stone-300 px-1.5 py-1"
                   style={{ textAlign: c.align ?? "left" }}
                 >
-                  <TableCell column={c} value={row[c.key]} />
+                  <TableCell column={c} row={row} value={row[c.key]} />
                 </td>
               ))}
             </tr>

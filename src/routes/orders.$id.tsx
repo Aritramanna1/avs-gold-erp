@@ -5,9 +5,6 @@ import { PageHeader } from "@/components/app-shell";
 import { AttachmentsSection } from "@/components/attachments-section";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -16,29 +13,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   useOrders,
   ORDER_STATUS_LABELS,
   ORDER_TYPE_LABELS,
   paiseToRupees,
   type OrderStatus,
-  type Priority,
 } from "@/lib/orders-store";
 import { useJobCards, JOB_STATUS_LABELS } from "@/lib/jobcards-store";
-import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
+import { usePeople } from "@/lib/people-store";
 import { useSettings } from "@/lib/settings-store";
 import { mgToGrams } from "@/lib/gold";
 import { useWorkerReturns, computeGoldPosition } from "@/lib/worker-return-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { WorkerReturnDialog } from "@/components/worker-return-dialog";
-import { WorkerIssueDialog } from "@/components/worker-issue-dialog";
 import {
   useOutsideWorkLabour,
   computeOutsideWorkCostForOrder,
@@ -55,7 +42,6 @@ import { DocCommActions } from "@/components/doc-comm-actions";
 import { CommLogCard } from "@/components/comm-log-card";
 import { ReferenceNotesPanel } from "@/components/reference-notes/ReferenceNotesPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getNextSequenceNumber } from "@/lib/sequence-manager";
 import {
   ArrowLeft,
   BookOpen,
@@ -88,12 +74,9 @@ function OrderDetailPage() {
   const append = useOrders((s) => s.appendTimeline);
   const people = usePeople((s) => s.people);
   const jobs = useJobCards((s) => s.jobs);
-  const addJob = useJobCards((s) => s.add);
   const removeJob = useJobCards((s) => s.remove);
-  const [jobOpen, setJobOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [workerReturnOpen, setWorkerReturnOpen] = useState(false);
-  const [workerIssueOpen, setWorkerIssueOpen] = useState(false);
   const [sendPolishingOpen, setSendPolishingOpen] = useState(false);
   const [receivePolishingOpen, setReceivePolishingOpen] = useState(false);
 
@@ -567,33 +550,22 @@ function OrderDetailPage() {
                 </div>
               </div>
             ) : (
-              <div>
-                <p className="text-sm text-muted-foreground">No job card yet for this order.</p>
-                <Button
-                  data-testid="workshop-create-job-card"
-                  className="mt-3 w-full gap-2"
-                  onClick={() => setJobOpen(true)}
-                >
-                  <Hammer className="h-4 w-4" /> Create Job Card
-                </Button>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Job Card is created automatically once the order is confirmed.
+              </p>
             )}
           </Section>
 
           {/* Worker Issues */}
           <Section title="Worker Issues" icon={Hammer}>
             <p className="text-xs text-muted-foreground mb-3">
-              Record gold or material physically handed to a worker against this order — any number
-              of times. This is the structured, order-linked issue that Manufacturing Barcode
-              eligibility and Manufacturing Bill auto-collect read from.
+              Gold or material physically handed to a worker against this order. Issued from the{" "}
+              <Link to="/workshop/gold-book" className="text-gold underline">
+                Worker Gold Book
+              </Link>{" "}
+              — the single approved place to issue gold. This is the structured, order-linked issue
+              that Manufacturing Barcode eligibility and Manufacturing Bill auto-collect read from.
             </p>
-            <Button
-              className="w-full gap-2"
-              onClick={() => setWorkerIssueOpen(true)}
-              data-testid="order-issue-to-worker"
-            >
-              <Hammer className="h-4 w-4" /> Issue to Worker
-            </Button>
             {workerIssueHistory.length === 0 ? (
               <p className="text-sm text-muted-foreground mt-3">No issues recorded yet.</p>
             ) : (
@@ -825,39 +797,10 @@ function OrderDetailPage() {
         />
       </div>
 
-      <CreateJobCardDialog
-        open={jobOpen}
-        onClose={() => setJobOpen(false)}
-        order={order}
-        karigarName={karigar?.fullName ?? null}
-        onCreated={(jobId) => {
-          update(order!.id, { status: "in_production" });
-          append(order!.id, { ts: Date.now(), label: "Job Card created", note: jobId.slice(0, 8) });
-          setJobOpen(false);
-          navigate({ to: "/workshop/$id", params: { id: jobId } });
-        }}
-        addJob={addJob}
-      />
-
       <ReceiveWorkDialog
         open={receiveOpen}
         onClose={() => setReceiveOpen(false)}
         job={linkedJob ?? null}
-      />
-
-      <WorkerIssueDialog
-        open={workerIssueOpen}
-        onClose={() => setWorkerIssueOpen(false)}
-        orderId={order.id}
-        orderNo={order.orderNo}
-        defaultPurity={order.item.purity}
-        onSaved={(info) => {
-          append(order!.id, {
-            ts: Date.now(),
-            label: "Worker Issue",
-            note: `${(info.grossMg / 1000).toFixed(3)}g ${info.material} → ${info.workerName}`,
-          });
-        }}
       />
 
       <WorkerReturnDialog
@@ -946,180 +889,5 @@ function DashboardStat({
         {value}
       </div>
     </div>
-  );
-}
-
-function CreateJobCardDialog({
-  open,
-  onClose,
-  order,
-  karigarName,
-  onCreated,
-  addJob,
-}: {
-  open: boolean;
-  onClose: () => void;
-  order: NonNullable<ReturnType<typeof useOrders.getState>["orders"][number]>;
-  karigarName: string | null;
-  onCreated: (jobId: string) => void;
-  addJob: ReturnType<typeof useJobCards.getState>["add"];
-}) {
-  const people = usePeople((s) => s.people);
-  const karigars = people.filter(
-    (p) => p.type === "karigar" || p.type === "worker" || p.type === "outside_worker",
-  );
-
-  const [karigarId, setKarigarId] = useState<string | null>(order.karigarId ?? null);
-  const [priority, setPriority] = useState<Priority>(order.priority);
-  const [expectedStart, setExpectedStart] = useState("");
-  const [expectedCompletion, setExpectedCompletion] = useState("");
-  const [notes, setNotes] = useState(order.item.remarks ?? "");
-
-  async function save() {
-    const k = karigarId ? people.find((p) => p.id === karigarId) : null;
-    const allocatedJobNo = await getNextSequenceNumber("jobcard");
-
-    const job = await addJob({
-      jobNo: allocatedJobNo,
-      orderId: order.id,
-      orderNo: order.orderNo,
-      customerId: order.customerId,
-      customerName: people.find((p) => p.id === order.customerId)?.fullName ?? "—",
-      karigarId: k?.id,
-      karigarName: k?.fullName,
-      itemName: order.item.itemName,
-      category: order.item.category,
-      purity: order.item.purity,
-      targetGrossMg: order.item.grossMg,
-      targetNetMg: order.item.netMg,
-      targetFineMg: order.item.fineMg,
-      status: "ready_for_gold_issue",
-      priority,
-      expectedDelivery: order.expectedDelivery,
-      expectedStart: expectedStart || undefined,
-      expectedCompletion: expectedCompletion || undefined,
-      notes: notes.trim() || undefined,
-    });
-    onCreated(job.id);
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Create Job Card</DialogTitle>
-          <DialogDescription>
-            Auto-filled from order <span className="font-mono">{order.orderNo}</span>. Confirm
-            karigar, process and dates.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Customer</Label>
-            <Input
-              value={people.find((p) => p.id === order.customerId)?.fullName ?? "—"}
-              readOnly
-              className="bg-muted/30"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Item</Label>
-            <Input
-              value={`${order.item.itemName} (${order.item.category})`}
-              readOnly
-              className="bg-muted/30"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Target gross / net / fine (g)</Label>
-            <Input
-              value={`${mgToGrams(order.item.grossMg)} / ${mgToGrams(order.item.netMg)} / ${mgToGrams(order.item.fineMg)}`}
-              readOnly
-              className="bg-muted/30 font-mono"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Purity</Label>
-            <Input value={String(order.item.purity)} readOnly className="bg-muted/30 font-mono" />
-          </div>
-
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label className="text-xs text-muted-foreground">Assigned karigar</Label>
-            <Select
-              value={karigarId ?? "none"}
-              onValueChange={(v) => setKarigarId(v === "none" ? null : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Skip — assign later" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Skip — assign later</SelectItem>
-                {karigars.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.fullName} · {PERSON_TYPE_LABELS[p.type]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {karigarName && !karigarId && (
-              <p className="text-[11px] text-muted-foreground">
-                Order had {karigarName} — keep or change above.
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Priority</Label>
-            <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Expected start</Label>
-            <Input
-              type="date"
-              value={expectedStart}
-              onChange={(e) => setExpectedStart(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Expected completion</Label>
-            <Input
-              type="date"
-              value={expectedCompletion}
-              onChange={(e) => setExpectedCompletion(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label className="text-xs text-muted-foreground">Notes for karigar</Label>
-            <Textarea
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Anything the karigar should know…"
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={save} className="gap-2">
-            <Hammer className="h-4 w-4" /> Create Job Card
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

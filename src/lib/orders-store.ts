@@ -152,7 +152,7 @@ interface OrdersState {
   orders: Order[];
   refresh: () => Promise<void>;
   add: (
-    o: Omit<Order, "id" | "createdAt" | "updatedAt" | "timeline"> & {
+    o: Omit<Order, "id" | "createdAt" | "updatedAt" | "timeline" | "orderNo"> & {
       orderNo?: string;
       timeline?: OrderTimelineEvent[];
     },
@@ -180,6 +180,51 @@ async function makeOrderNo(): Promise<string> {
 const orderRepository = createRepository<Order>("orders");
 
 /** Fire-and-forget communication automation trigger (Plan 1 Step 9) — never blocks or can fail the order mutation it follows. */
+/** Orders in these statuses are considered production-ready and get a Job Card auto-created — see autoCreateJobCard. */
+const JOB_CARD_ELIGIBLE_STATUSES: OrderStatus[] = ["awaiting_job_card", "confirmed"];
+
+/**
+ * Job Card must be auto-generated from Order — the only approved workflow
+ * (no manual "Create Job Card" step). Fires from add() for orders created
+ * directly into a production-ready status, and from update() for orders
+ * (e.g. WhatsApp-sourced) that start as "draft" and get confirmed later.
+ * Skips if a job card already exists for this order (avoids duplicates on
+ * repeated status updates); karigar/priority/dates are inherited from the
+ * order and remain editable afterward from the Job Card itself.
+ */
+async function autoCreateJobCard(order: Order): Promise<void> {
+  const [{ useJobCards }, { usePeople }] = await Promise.all([
+    import("./jobcards-store"),
+    import("./people-store"),
+  ]);
+  if (useJobCards.getState().jobs.some((j) => j.orderId === order.id)) return;
+  const people = usePeople.getState().people;
+  const karigar = order.karigarId ? people.find((p) => p.id === order.karigarId) : null;
+  await useJobCards.getState().add({
+    orderId: order.id,
+    orderNo: order.orderNo,
+    customerId: order.customerId,
+    customerName: people.find((p) => p.id === order.customerId)?.fullName ?? "—",
+    karigarId: karigar?.id,
+    karigarName: karigar?.fullName,
+    itemName: order.item.itemName,
+    category: order.item.category,
+    purity: order.item.purity,
+    targetGrossMg: order.item.grossMg,
+    targetNetMg: order.item.netMg,
+    targetFineMg: order.item.fineMg,
+    status: "ready_for_gold_issue",
+    priority: order.priority,
+    expectedDelivery: order.expectedDelivery,
+    branchId: order.branchId,
+  });
+  await useOrders.getState().update(order.id, { status: "in_production" });
+  await useOrders.getState().appendTimeline(order.id, {
+    ts: Date.now(),
+    label: "Job Card auto-created",
+  });
+}
+
 function emitOrderEvent(
   eventKey: "order_confirmation" | "order_ready" | "order_delivered",
   order: Order,
@@ -239,6 +284,7 @@ export const useOrders = create<OrdersState>()((set, get) => ({
     // used by bulk/historical import so backfilling past orders doesn't send
     // false notifications to customers.
     if (!opts?.silent) emitOrderEvent("order_confirmation", order);
+    if (JOB_CARD_ELIGIBLE_STATUSES.includes(order.status)) await autoCreateJobCard(order);
     return order;
   },
   update: async (id, patch) => {
@@ -275,6 +321,12 @@ export const useOrders = create<OrdersState>()((set, get) => ({
         });
       } catch (err) {
         console.error("[Orders] Failed to audit-log status change:", err);
+      }
+      if (
+        JOB_CARD_ELIGIBLE_STATUSES.includes(patch.status) &&
+        !JOB_CARD_ELIGIBLE_STATUSES.includes(current.status)
+      ) {
+        await autoCreateJobCard(updated);
       }
     }
   },

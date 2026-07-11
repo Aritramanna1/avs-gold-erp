@@ -174,11 +174,7 @@ function OrdersImportPage() {
         const advanceRupees = Number(row.raw.advanceCashRupees) || 0;
         await useOrders.getState().add(
           {
-            // orderNo omitted — store auto-assigns the next sequential number
-            // for us (see orders-store.ts add()); undefined isn't assignable
-            // to the declared (required-string) shape, so this call is cast
-            // below rather than threading a fake placeholder number through.
-            orderNo: undefined as unknown as string,
+            // orderNo omitted — store auto-assigns the next sequential number for us (see orders-store.ts add()).
             type: (row.raw.type as OrderType) || "custom",
             status: "confirmed",
             customerId: row.customerId!,

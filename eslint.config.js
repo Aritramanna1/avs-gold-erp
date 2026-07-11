@@ -17,6 +17,8 @@ export default tseslint.config(
       // of thousands of extension/cache files, not project source. Walking
       // this directory (unignored) is what made `eslint .` hang for an hour.
       ".reticle-chrome-profile",
+      // Ad-hoc verification scripts from prior sessions — gitignored, not project source.
+      ".scratch-verify",
       // Packaged release export bundles — each contains a full duplicate
       // Source Code/ copy of the repo, never meant to be linted in place.
       "release",
