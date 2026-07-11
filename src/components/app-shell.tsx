@@ -48,6 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [goldRateOpen, setGoldRateOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const currentUser = currentEmail
     ? users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase())
@@ -79,6 +80,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       window.removeEventListener("open-gold-rate-editor", handleOpen);
     };
   }, []);
+
+  // The mobile hamburger Sheet has no close-on-navigate behavior of its
+  // own — its Sidebar's nav <Link>s don't call onOpenChange, so a route
+  // change from a link clicked inside it would otherwise leave the drawer
+  // sitting open over the new page. Reset on every pathname change instead.
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   const formattedGoldRate =
     goldRatePerGramPaise > 0
