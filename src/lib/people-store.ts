@@ -72,6 +72,7 @@ export interface Person {
   skills?: string; // comma-separated or free text
   experience?: string; // e.g. "5 years goldsmithing"
   dateOfBirth?: string; // YYYY-MM-DD
+  anniversary?: string; // YYYY-MM-DD
 
   notes?: string;
   branchId?: string;

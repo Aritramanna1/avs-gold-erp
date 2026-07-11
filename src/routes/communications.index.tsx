@@ -303,14 +303,14 @@ export default function CommunicationsDashboardPage() {
     const todayFollows = pendingTasks.filter((t) => t.dueDate.slice(0, 10) === todayStr).length;
     const overdue = pendingTasks.filter((t) => t.dueDate.slice(0, 10) < todayStr).length;
 
-    // Birthday and anniversaries search (assuming stored inside person data)
+    // Person.dateOfBirth/anniversary are real "YYYY-MM-DD" fields (people
+    // .index.tsx's edit form already writes them) — .slice(5) reads the
+    // "MM-DD" portion for a same-day-every-year comparison.
     const today = new Date();
     const mmdd = `${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-    const birthdaysToday = people.filter((p) => {
-      const bday = p.notes?.includes("Birthday") || (p.notes && p.notes.includes(mmdd)); // fallback placeholder check
-      return bday;
-    }).length;
+    const birthdaysToday = people.filter((p) => p.dateOfBirth?.slice(5) === mmdd).length;
+    const anniversariesTodayCount = people.filter((p) => p.anniversary?.slice(5) === mmdd).length;
 
     // AVS-102 — lead counts grouped by acquisition channel and buyer
     // segment, so an owner can see which channel/segment is actually
@@ -329,7 +329,7 @@ export default function CommunicationsDashboardPage() {
       todayFollowUps: todayFollows,
       overdueTasks: overdue,
       birthdaysToday,
-      anniversariesToday: 0,
+      anniversariesToday: anniversariesTodayCount,
       bySource,
       byBuyerType,
     };
@@ -412,8 +412,10 @@ export default function CommunicationsDashboardPage() {
       return;
     }
 
+    const todayMmdd = `${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`;
     const audience = people.filter((p) => {
       if (campaignFilterType === "all") return true;
+      if (campaignFilterType === "birthday") return p.dateOfBirth?.slice(5) === todayMmdd;
       if (campaignFilterType === "vip") return p.notes?.includes("VIP");
       if (campaignFilterType === "outstanding")
         return invoices.some((i) => i.customerId === p.id && i.balancePaise > 0);

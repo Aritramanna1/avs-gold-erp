@@ -884,6 +884,7 @@ function PersonFormDialog({
     referenceName: initial?.referenceName ?? "",
     referencePhone: initial?.referencePhone ?? "",
     dateOfBirth: initial?.dateOfBirth ?? "",
+    anniversary: initial?.anniversary ?? "",
     skills: initial?.skills ?? "",
     experience: initial?.experience ?? "",
     dailyWagePaise: initial?.dailyWagePaise ?? (undefined as number | undefined),
@@ -1138,6 +1139,13 @@ function PersonFormDialog({
                     type="date"
                     value={form.dateOfBirth}
                     onChange={(e) => set("dateOfBirth", e.target.value)}
+                  />
+                </Field>
+                <Field label="Anniversary">
+                  <Input
+                    type="date"
+                    value={form.anniversary}
+                    onChange={(e) => set("anniversary", e.target.value)}
                   />
                 </Field>
                 <Field label="Daily wage (₹)">
