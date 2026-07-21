@@ -77,7 +77,7 @@ const translations = {
 
   priorityLabel: "Priority",
   orderSlip: "Order Slip",
-  oldGoldReceipt: "Old Gold Receipt",
+  oldGoldReceipt: "Gold Received from Customer Receipt",
   customerGoldReceipt: "Customer Gold Receipt",
   advanceReceipt: "Advance Receipt",
   createOrderSubtitle:

@@ -116,46 +116,62 @@ interface MfgMpEntry {
 
 const BILLING_TYPES = [
   {
-    id: "ready_stock",
-    label: "Ready Stock Sale / रेडी स्टॉक विक्री",
-    desc: "Direct sale of pre-manufactured stock items",
-  },
-  {
     id: "custom_order",
     label: "Custom Order Delivery / ऑर्डर डिलिव्हरी",
-    desc: "Delivery of custom manufactured jewellery order",
+    desc: "Job-work delivery — bill making charges only, gold is customer-owned",
+    group: "primary" as const,
   },
   {
     id: "repair",
     label: "Repair Job / दुरुस्ती आणि रिपेअरिंग",
     desc: "Billing for repairing / soldering work",
+    group: "primary" as const,
   },
   {
     id: "polishing",
     label: "Polishing Job / पॉलिशिंग काम",
     desc: "Billing for colouring, polishing or washing items",
+    group: "primary" as const,
   },
   {
     id: "wholesale",
     label: "Wholesale Bill / घाऊक आणि होलसेल बिल",
     desc: "Wholesale transactions with other firms or goldsmiths",
-  },
-  {
-    id: "advance_receipt",
-    label: "Advance Deposit / ऑर्डर ॲडव्हान्स पावती",
-    desc: "Generate advance receipt for booking a design",
-  },
-  {
-    id: "payment_receipt",
-    label: "Outstanding Receipt / जमा पावती",
-    desc: "Receive payment for previous outstanding ledgers",
+    group: "primary" as const,
   },
   {
     id: "manufacturing",
     label: "Manufacturing Bill / कारीगर खाते",
     desc: "Karigar gold account — gold given, received, balance",
+    group: "primary" as const,
+  },
+  {
+    id: "ready_stock",
+    label: "Ready Stock Sale / रेडी स्टॉक विक्री",
+    desc: "Direct sale of workshop-owned stock (minority flow — most billing is job-work)",
+    group: "primary" as const,
+  },
+  {
+    id: "advance_receipt",
+    label: "Advance Deposit / ऑर्डर ॲडव्हान्स पावती",
+    desc: "Generate advance receipt for booking a design",
+    group: "secondary" as const,
+  },
+  {
+    id: "payment_receipt",
+    label: "Outstanding Receipt / जमा पावती",
+    desc: "Receive payment for previous outstanding ledgers",
+    group: "secondary" as const,
   },
 ];
+
+// Job-work invoices bill making/wastage charges only — gold stays customer-owned.
+// ready_stock is the sole legacy direct-stock-sale flow that bills full gold value.
+function chargeModeForBillingType(
+  billingType: BillingType | null | undefined,
+): "job_work" | "full_value" {
+  return billingType === "ready_stock" ? "full_value" : "job_work";
+}
 
 function newItemId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -814,6 +830,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
               );
             }
           }
+          rawMerged.chargeMode = chargeModeForBillingType(billingType);
           const withTotals = computeItemTotals(rawMerged);
           return { ...rawMerged, ...withTotals };
         }),
@@ -848,6 +865,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       otherChargesPaise: 0,
       discountPaise: 0,
       lineTotalPaise: 0,
+      chargeMode: chargeModeForBillingType(billingType),
     };
     setItems([...items, blank]);
     // Auto-focus the new item's name field after render
@@ -911,6 +929,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       discountPaise: 0,
       lineTotalPaise: 0,
       huid: stock.huid || undefined,
+      chargeMode: chargeModeForBillingType(billingType),
     };
     const tot = computeItemTotals(invoiceItem);
     invoiceItem.goldValuePaise = tot.goldValuePaise;
@@ -1120,16 +1139,29 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
     const totalFineMg = items.reduce((s, it) => s + it.fineMg, 0);
 
-    // Append ledger sale entry — gold leaves business via finished bucket
+    // Append ledger entry — job-work invoices return gold to the jeweller's
+    // outstanding-owed bucket; ready_stock (full_value) invoices sell out of
+    // the workshop's finished-goods bucket, as before.
+    const isJobWorkInvoice = chargeModeForBillingType(billingType) === "job_work";
     let saleEntryId: string | undefined;
     if (totalFineMg > 0) {
-      const entry = await appendLedger({
-        type: "sale",
-        netFineMg: -totalFineMg,
-        deltas: { finished: -totalFineMg },
-        notes: `Sale via invoice for ${customer.fullName}`,
-        reference: linkedStock?.barcode ?? linkedOrder?.orderNo,
-      });
+      const entry = await appendLedger(
+        isJobWorkInvoice
+          ? {
+              type: "job_work_delivery",
+              netFineMg: -totalFineMg,
+              deltas: { customer: -totalFineMg },
+              notes: `Job-work delivery via invoice for ${customer.fullName}`,
+              reference: linkedStock?.barcode ?? linkedOrder?.orderNo,
+            }
+          : {
+              type: "sale",
+              netFineMg: -totalFineMg,
+              deltas: { finished: -totalFineMg },
+              notes: `Sale via invoice for ${customer.fullName}`,
+              reference: linkedStock?.barcode ?? linkedOrder?.orderNo,
+            },
+      );
       saleEntryId = entry.id;
     }
 
@@ -1434,6 +1466,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         otherChargesPaise: 0,
         discountPaise: 0,
         huid: stock.huid || undefined,
+        chargeMode: chargeModeForBillingType(billingType),
       };
       const tot = computeItemTotals(blank);
       return { id: newItemId(), ...blank, ...tot };
@@ -1460,6 +1493,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         hallmarkChargesPaise: 0,
         otherChargesPaise: 0,
         discountPaise: 0,
+        chargeMode: chargeModeForBillingType(billingType),
       };
       const tot = computeItemTotals(blank);
       return { id: newItemId(), ...blank, ...tot };
@@ -1477,6 +1511,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       hallmarkChargesPaise: 0,
       otherChargesPaise: 0,
       discountPaise: 0,
+      chargeMode: chargeModeForBillingType(billingType),
     };
     const tot = computeItemTotals(blank);
     return { id: newItemId(), ...blank, ...tot };
@@ -1662,16 +1697,42 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       </div>
 
       {/* Billing Type — compact pill row */}
-      <div className="flex flex-wrap gap-2">
-        {BILLING_TYPES.map((t) => {
-          const active = billingType === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => {
-                setBillingType(t.id as BillingType);
-                if (t.id === "advance_receipt" || t.id === "payment_receipt") {
+      <div className="space-y-1.5">
+        <div className="flex flex-wrap gap-2">
+          {BILLING_TYPES.filter((t) => t.group === "primary").map((t) => {
+            const active = billingType === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setBillingType(t.id as BillingType);
+                  setGst("gst3");
+                  setItems([buildPrefilledItem(linkedStock, linkedOrder)]);
+                }}
+                className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
+                  active
+                    ? "border-gold bg-gold/15 text-gold shadow-sm font-bold"
+                    : "border-border bg-card hover:bg-muted/20 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t.label.split(" / ")[0]}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
+            Other
+          </span>
+          {BILLING_TYPES.filter((t) => t.group === "secondary").map((t) => {
+            const active = billingType === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setBillingType(t.id as BillingType);
                   setGst("none");
                   setItems([
                     {
@@ -1693,21 +1754,18 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                       lineTotalPaise: 0,
                     },
                   ]);
-                } else {
-                  setGst("gst3");
-                  setItems([buildPrefilledItem(linkedStock, linkedOrder)]);
-                }
-              }}
-              className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
-                active
-                  ? "border-gold bg-gold/15 text-gold shadow-sm font-bold"
-                  : "border-border bg-card hover:bg-muted/20 text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label.split(" / ")[0]}
-            </button>
-          );
-        })}
+                }}
+                className={`px-2.5 py-1 rounded-full border text-[11px] font-medium transition-all opacity-80 ${
+                  active
+                    ? "border-gold bg-gold/15 text-gold shadow-sm font-bold opacity-100"
+                    : "border-border/60 bg-muted/10 text-muted-foreground/70 hover:opacity-100"
+                }`}
+              >
+                {t.label.split(" / ")[0]}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-[1fr_340px] gap-6">
@@ -1768,14 +1826,16 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                           </div>
                         )}
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="border-gold/30 hover:bg-gold/5 text-gold h-10"
-                        onClick={selectOrCreateWalkIn}
-                      >
-                        Walk-In Customer
-                      </Button>
+                      {chargeModeForBillingType(billingType) === "full_value" && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="border-gold/30 hover:bg-gold/5 text-gold h-10"
+                          onClick={selectOrCreateWalkIn}
+                        >
+                          Walk-In Customer
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         className="bg-gold hover:bg-gold/90 text-white h-10 gap-1"
@@ -2916,6 +2976,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                 discountPaise: 0,
                 lineTotalPaise: 0,
                 huid: s.huid || undefined,
+                chargeMode: chargeModeForBillingType(billingType),
               };
 
               const tot = computeItemTotals(previewItem);

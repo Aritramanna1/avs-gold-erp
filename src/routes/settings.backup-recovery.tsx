@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,11 +14,27 @@ import {
 } from "@/components/ui/alert-dialog";
 import { runDisasterRecoveryDrill, type DrillResult } from "@/lib/security/disaster-recovery";
 import {
+  useDeploymentMode,
+  setDeploymentMode,
+  type DeploymentMode,
+} from "@/lib/deployment-mode";
+import { isSupabaseConfigured } from "@/integrations/supabase/client";
+import { pushPendingOutbox, getSyncStatus, type SyncStatus } from "@/lib/sync-engine";
+import {
   createBackupSnapshot,
   restoreFromBackupSnapshot,
   verifyBackupRestorable,
 } from "@/lib/local-db";
-import { ShieldCheck, ShieldAlert, Download, Upload, Loader2 } from "lucide-react";
+import {
+  ShieldCheck,
+  ShieldAlert,
+  Download,
+  Upload,
+  Loader2,
+  Cloud,
+  HardDrive,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings/backup-recovery")({
@@ -27,6 +43,7 @@ export const Route = createFileRoute("/settings/backup-recovery")({
 });
 
 function BackupRecoveryPage() {
+  const deploymentMode = useDeploymentMode((s) => s.mode);
   const [drilling, setDrilling] = useState(false);
   const [lastDrill, setLastDrill] = useState<DrillResult | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -35,6 +52,61 @@ function BackupRecoveryPage() {
   const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(null);
   const [restoring, setRestoring] = useState(false);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
+
+  // Runtime deployment-mode switch (Offline ↔ Hybrid) + manual cloud sync.
+  const [pendingMode, setPendingMode] = useState<DeploymentMode | null>(null);
+  const [switching, setSwitching] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
+
+  function refreshSyncStatus() {
+    try {
+      setSyncStatus(getSyncStatus());
+    } catch {
+      setSyncStatus(null);
+    }
+  }
+
+  async function handleConfirmModeSwitch() {
+    if (!pendingMode) return;
+    setSwitching(true);
+    try {
+      await setDeploymentMode(pendingMode);
+      toast.success(`Switched to ${pendingMode} mode. Reloading…`);
+      setTimeout(() => window.location.reload(), 900);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to switch mode");
+      setSwitching(false);
+      setPendingMode(null);
+    }
+  }
+
+  async function handleCloudSync() {
+    setSyncing(true);
+    try {
+      const result = await pushPendingOutbox();
+      refreshSyncStatus();
+      if (result.conflicts > 0) {
+        toast.warning(
+          `Synced ${result.pushed} change(s) to cloud. ${result.conflicts} conflict(s) need review.`,
+        );
+      } else if (result.pushed === 0 && result.skippedNotDue === 0) {
+        toast.success("Already up to date — nothing pending to sync.");
+      } else {
+        toast.success(`Synced ${result.pushed} change(s) to cloud.`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Cloud sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const canHybrid = isSupabaseConfigured();
+
+  useEffect(() => {
+    if (deploymentMode && deploymentMode !== "offline") refreshSyncStatus();
+  }, [deploymentMode]);
 
   function handleRestoreFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -129,6 +201,85 @@ function BackupRecoveryPage() {
       />
 
       <div className="grid gap-4">
+        {/* ── Deployment mode: Offline (local only) ↔ Hybrid (local + cloud) ─ */}
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="font-semibold flex items-center gap-2">
+                {deploymentMode === "offline" ? (
+                  <HardDrive className="h-4 w-4" />
+                ) : (
+                  <Cloud className="h-4 w-4" />
+                )}
+                Deployment Mode —{" "}
+                <span className="capitalize text-gold">{deploymentMode ?? "…"}</span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Daily operations always run on the local database. Offline uses only local storage.
+                Hybrid additionally authenticates, backs up and syncs to the cloud. Switching
+                reloads the app.
+              </div>
+            </div>
+            {deploymentMode === "offline" ? (
+              <Button
+                onClick={() => setPendingMode("hybrid")}
+                disabled={!canHybrid || switching}
+                variant="outline"
+                className="gap-2 shrink-0"
+                title={canHybrid ? undefined : "Cloud is not configured for this install."}
+              >
+                <Cloud className="h-4 w-4" /> Enable Hybrid / Cloud
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setPendingMode("offline")}
+                disabled={switching}
+                variant="outline"
+                className="gap-2 shrink-0"
+              >
+                <HardDrive className="h-4 w-4" /> Switch to Offline
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* ── Manual cloud backup / sync (Hybrid & Online only) ───────────── */}
+        {deploymentMode && deploymentMode !== "offline" && (
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="font-semibold">Backup / Sync to Cloud</div>
+                <div className="text-sm text-muted-foreground">
+                  Pushes locally-recorded changes up to the cloud (Supabase) for backup and
+                  cross-device sync. Runs automatically in the background; use this to force it now.
+                </div>
+                {syncStatus && (
+                  <div className="text-xs text-muted-foreground mt-2 font-mono">
+                    Pending: {syncStatus.pending} · Synced: {syncStatus.synced}
+                    {syncStatus.conflicts > 0 ? ` · Conflicts: ${syncStatus.conflicts}` : ""}
+                    {syncStatus.lastPushedAt
+                      ? ` · Last push: ${new Date(syncStatus.lastPushedAt).toLocaleString()}`
+                      : ""}
+                  </div>
+                )}
+              </div>
+              <Button
+                onClick={handleCloudSync}
+                disabled={syncing}
+                variant="outline"
+                className="gap-2 shrink-0"
+              >
+                {syncing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Sync to Cloud Now
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between">
             <div>
@@ -250,6 +401,32 @@ function BackupRecoveryPage() {
           there.
         </div>
       </div>
+
+      <AlertDialog
+        open={pendingMode !== null}
+        onOpenChange={(open) => {
+          if (!open && !switching) setPendingMode(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Switch to {pendingMode === "offline" ? "Offline" : "Hybrid / Cloud"} mode?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingMode === "offline"
+                ? "The app will stop authenticating and syncing to the cloud and run entirely on the local database. Your local data is untouched. The app reloads."
+                : "The app will additionally use the cloud for authentication, backup and sync. Daily operations still run on the local database. You will need to sign in with your cloud account after reload."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={switching}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmModeSwitch} disabled={switching}>
+              {switching ? "Switching…" : "Switch & Reload"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={restoreConfirmOpen} onOpenChange={setRestoreConfirmOpen}>
         <AlertDialogContent>

@@ -39,6 +39,35 @@ export function mgToGrams(mg: number, opts: { sign?: boolean } = {}): string {
   return neg ? `-${body}` : body;
 }
 
+/** 1000 g = 1 kg, and weights are stored in mg, so 1 kg = 1,000,000 mg. */
+const MG_PER_KG = 1_000_000;
+
+/**
+ * The ERP-wide standard for DISPLAYING a gold weight.
+ *
+ * Storage never changes — everything stays integer mg — this is purely the
+ * I/O-boundary format. Below 1 kg it reads as grams ("840.500 g"); at or above
+ * 1 kg it leads with kilograms and keeps the exact grams in parentheses
+ * ("1.240 kg (1240.000 g)") so a shop that thinks in kg and one that thinks in
+ * g both read the same figure without converting in their head.
+ *
+ * Use this wherever a weight is shown to a human. `mgToGrams()` remains for the
+ * places that need a bare grams number (form inputs, PDF cells, CSV).
+ */
+export function formatWeight(mg: number, opts: { sign?: boolean } = {}): string {
+  const abs = Math.abs(mg);
+  const grams = mgToGrams(mg, opts);
+  if (abs < MG_PER_KG) return `${grams} g`;
+  // Kilograms to 3 dp, from the same integer mg — no float drift.
+  const neg = mg < 0;
+  const kgWhole = Math.floor(abs / MG_PER_KG);
+  const kgFrac = Math.floor((abs % MG_PER_KG) / 1000)
+    .toString()
+    .padStart(3, "0");
+  const sign = neg ? "-" : opts.sign && mg > 0 ? "+" : "";
+  return `${sign}${kgWhole}.${kgFrac} kg (${mgToGrams(abs)} g)`;
+}
+
 /**
  * Fine gold = gross × purity / 999, rounded to nearest mg — this shop's
  * convention expresses purity as a fraction of practical-maximum (999 touch),

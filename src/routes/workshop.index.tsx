@@ -1,420 +1,269 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  useJobCards,
-  JOB_STATUS_LABELS,
-  karigarCustodySummaries,
-  type JobStatus,
-} from "@/lib/jobcards-store";
-import { mgToGrams } from "@/lib/gold";
-import { ReceiveWorkDialog } from "@/components/receive-work-dialog";
-import {
-  Search,
-  Eye,
-  Calendar,
-  Hammer,
-  AlertTriangle,
-  ClipboardList,
-  Wallet,
-  PackageCheck,
-  BookOpen,
-  Truck,
-  Sparkles,
-  ScanLine,
-} from "lucide-react";
+import { BookCard, type BookCardData } from "@/components/workshop/book-card";
+import { useOrders } from "@/lib/orders-store";
+import { useJobCards } from "@/lib/jobcards-store";
+import { useMfgBills } from "@/lib/manufacturing-bill-store";
+import { useBilling, paiseToRupees } from "@/lib/billing-store";
+import { useGoldSettlement } from "@/lib/gold-settlement-store";
+import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
+import { compileJewellerBooks, jewellerBooksTotals, type JewellerBook } from "@/lib/workshop-books";
+import { BOOK_TYPES } from "@/lib/workshop-book-types";
+import { formatWeight } from "@/lib/gold";
 import { useBusinessRules } from "@/lib/business-rules-store";
+import { Search, BookOpen, Truck, Sparkles, ScanLine, Scale, Library } from "lucide-react";
+
+/** Jeweller book → People-style card metrics. */
+function jewellerCardData(b: JewellerBook): BookCardData {
+  const net = b.ledger.closingGoldMg;
+  return {
+    id: b.jeweller.id,
+    title: b.jeweller.fullName,
+    subtitle: PERSON_TYPE_LABELS[b.jeweller.type],
+    personId: b.jeweller.id,
+    icon: BookOpen,
+    metrics: {
+      receivedMg: b.goldReceivedMg,
+      issuedMg: b.goldIssuedMg,
+      outstandingMg: b.goldOwedMg > 0 ? b.goldOwedMg : b.goldHeldMg,
+      balanceMg: net,
+      lastTs: b.lastActivityTs,
+      statusLabel:
+        b.goldOwedMg > 0
+          ? `${formatWeight(b.goldOwedMg)} owed to us`
+          : b.goldHeldMg > 0
+            ? `${formatWeight(b.goldHeldMg)} with us`
+            : "Settled",
+      statusTone: b.goldOwedMg > 0 ? "owed" : b.goldHeldMg > 0 ? "held" : "settled",
+    },
+  };
+}
 
 export const Route = createFileRoute("/workshop/")({
-  head: () => ({ meta: [{ title: "Workshop · AVS Gold ERP" }] }),
-  component: WorkshopPage,
+  head: () => ({ meta: [{ title: "Manufacturing Books · AVS Gold ERP" }] }),
+  component: WorkshopBooksPage,
 });
 
-const STATUS_TONE: Record<JobStatus, string> = {
-  draft: "bg-muted text-muted-foreground",
-  ready_for_gold_issue: "bg-blue-500/15 text-blue-300 border-blue-500/30",
-  gold_issued: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
-  in_progress: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  work_received: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-  qc_pending: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-  ready_for_billing: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  rework: "bg-red-500/15 text-red-300 border-red-500/30",
-  closed: "bg-green-600/20 text-green-300 border-green-500/30",
-};
-
-function WorkshopPage() {
+/**
+ * Workshop — Jeweller Books.
+ *
+ * The workshop's own set of ledgers, one page per client jeweller: the digital
+ * form of the physical books kept on the bench today. Order management, job
+ * creation and production tracking are NOT here — they live in the Orders and
+ * Job Card workflows. Workshop shows the ledger consequences of that work, and
+ * each book links out to the individual orders / job cards / bills it touched.
+ * The Karigar Gold Book, Outside Work and Polishing remain their own modules,
+ * only linked from here.
+ */
+function WorkshopBooksPage() {
+  // Every store the books are compiled from — subscribed so a new order,
+  // bill, settlement or payment re-renders the books immediately.
+  const people = usePeople((s) => s.people);
+  const orders = useOrders((s) => s.orders);
   const jobs = useJobCards((s) => s.jobs);
+  const bills = useMfgBills((s) => s.bills);
+  const invoices = useBilling((s) => s.invoices);
+  const settlements = useGoldSettlement((s) => s.settlements);
+
   const polishingModuleEnabled = useBusinessRules((s) => s.isEnabled("enable_polishing_module"));
   const barcodeModuleEnabled = useBusinessRules((s) => s.isEnabled("enable_barcode_module"));
 
   const [query, setQuery] = useState("");
-  const [statusF, setStatusF] = useState<"all" | JobStatus>("all");
-  const [receiveJobId, setReceiveJobId] = useState<string | null>(null);
-  const receiveJob = useMemo(
-    () => jobs.find((j) => j.id === receiveJobId) ?? null,
-    [jobs, receiveJobId],
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const books = useMemo(
+    () => compileJewellerBooks(),
+    // Recompiled from the stores above; the deps are the re-render triggers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [people, orders, jobs, bills, invoices, settlements],
   );
-  const custody = useMemo(() => karigarCustodySummaries(jobs), [jobs]);
-  const activeJobs = useMemo(
-    () =>
-      jobs.filter((j) => (j.status === "in_progress" || j.status === "rework") && !j.workReceipt),
-    [jobs],
-  );
+  const totals = useMemo(() => jewellerBooksTotals(books), [books]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return jobs.filter((j) => {
-      if (statusF !== "all" && j.status !== statusF) return false;
-      if (q) {
-        const hay =
-          `${j.jobNo} ${j.orderNo} ${j.customerName} ${j.itemName} ${j.karigarName ?? ""}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [jobs, query, statusF]);
-
-  const reworkJobs = jobs.filter((j) => j.status === "rework");
+    if (!q) return books;
+    return books.filter((b) =>
+      `${b.jeweller.fullName} ${b.jeweller.phone} ${b.jeweller.villageCity ?? ""}`
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [books, query]);
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <PageHeader
-        title="Workshop"
-        subtitle="Manufacturing job cards, process steps and karigar work tracking."
+        title="Manufacturing Books"
+        subtitle="The central ledger for every jeweller, worker and vendor we manufacture for — gold received, gold issued, outstanding balances and the full running book of each."
         actions={
           <div className="flex flex-wrap gap-2 justify-end">
-            <Link
-              to="/workshop/gold-book"
-              className="inline-flex items-center justify-center rounded-xl bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 px-4 py-2.5 text-sm font-semibold gap-2 transition-colors active:scale-95"
-            >
-              <BookOpen className="h-4 w-4" /> Worker Gold Book
-            </Link>
-            <Link
-              to="/workshop/outside-work"
-              className="inline-flex items-center justify-center rounded-xl bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 px-4 py-2.5 text-sm font-semibold gap-2 transition-colors active:scale-95"
-            >
-              <Truck className="h-4 w-4" /> Outside Work
-            </Link>
+            <ModuleLink to="/workshop/gold-book" icon={BookOpen} label="Worker Gold Book" />
+            <ModuleLink to="/workshop/outside-work" icon={Truck} label="Outside Work" />
             {polishingModuleEnabled && (
-              <Link
-                to="/workshop/polishing"
-                className="inline-flex items-center justify-center rounded-xl bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 px-4 py-2.5 text-sm font-semibold gap-2 transition-colors active:scale-95"
-              >
-                <Sparkles className="h-4 w-4" /> Polishing
-              </Link>
+              <ModuleLink to="/workshop/polishing" icon={Sparkles} label="Polishing" />
             )}
             {barcodeModuleEnabled && (
-              <Link
-                to="/workshop/barcode-scanner"
-                className="inline-flex items-center justify-center rounded-xl bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 px-4 py-2.5 text-sm font-semibold gap-2 transition-colors active:scale-95"
-              >
-                <ScanLine className="h-4 w-4" /> Barcode Scanner
-              </Link>
+              <ModuleLink to="/workshop/barcode-scanner" icon={ScanLine} label="Barcode Scanner" />
             )}
           </div>
         }
       />
 
-      <Tabs defaultValue="jobs">
-        <TabsList className="mb-4 flex-wrap">
-          <TabsTrigger value="jobs" className="gap-2">
-            <ClipboardList className="h-4 w-4" /> Job Cards
-          </TabsTrigger>
-
-          <TabsTrigger value="rework" className="gap-2">
-            <AlertTriangle className="h-4 w-4" /> Rework ({reworkJobs.length})
-          </TabsTrigger>
-          <TabsTrigger value="active" className="gap-2">
-            <PackageCheck className="h-4 w-4" /> In Progress ({activeJobs.length})
-          </TabsTrigger>
-          <TabsTrigger value="custody" className="gap-2">
-            <Wallet className="h-4 w-4" /> Gold Custody
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="jobs">
-          <div className="rounded-2xl border border-border bg-card p-4 mb-4 flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by job no, order, customer, item, karigar…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="pl-9"
+      {/* The shelf: every book type Workshop holds. Jeweller Books is the one
+          implemented here today; the rest are separate modules linked out.
+          Adding a book type is a new BOOK_TYPES entry — this renders it. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+        {BOOK_TYPES.map((bt) => {
+          const Icon = bt.icon;
+          const active = bt.status === "implemented";
+          return (
+            <Link
+              key={bt.key}
+              to={bt.indexRoute as never}
+              className={`rounded-2xl border p-4 flex gap-3 transition-colors ${
+                active
+                  ? "border-gold/40 bg-gold/5 hover:bg-gold/10"
+                  : "border-border bg-card hover:bg-muted/20"
+              }`}
+            >
+              <Icon
+                className={`h-5 w-5 mt-0.5 shrink-0 ${active ? "text-gold" : "text-muted-foreground"}`}
               />
-            </div>
-            <Select value={statusF} onValueChange={(v) => setStatusF(v as typeof statusF)}>
-              <SelectTrigger className="sm:w-56">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                {(Object.keys(JOB_STATUS_LABELS) as JobStatus[]).map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {JOB_STATUS_LABELS[s]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {filtered.length === 0 ? (
-            <EmptyState
-              title="No job cards yet"
-              body="Open any confirmed order and click Create Job Card to begin."
-            />
-          ) : (
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/30 text-muted-foreground">
-                    <tr>
-                      <th className="text-left px-4 py-3 font-medium">Job No</th>
-                      <th className="text-left px-4 py-3 font-medium">Order</th>
-                      <th className="text-left px-4 py-3 font-medium">Customer</th>
-                      <th className="text-left px-4 py-3 font-medium">Item</th>
-                      <th className="text-left px-4 py-3 font-medium">Karigar</th>
-                      <th className="text-left px-4 py-3 font-medium">Due</th>
-                      <th className="text-left px-4 py-3 font-medium">Priority</th>
-                      <th className="text-left px-4 py-3 font-medium">Status</th>
-                      <th className="text-right px-4 py-3 font-medium">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((j) => {
-                      return (
-                        <tr key={j.id} className="border-t border-border hover:bg-muted/20">
-                          <td className="px-4 py-3 font-mono text-xs text-gold">{j.jobNo}</td>
-                          <td className="px-4 py-3 font-mono text-xs">{j.orderNo}</td>
-                          <td className="px-4 py-3">{j.customerName}</td>
-                          <td className="px-4 py-3">
-                            {j.itemName}
-                            <div className="text-[11px] text-muted-foreground">
-                              {mgToGrams(j.targetFineMg)} g fine
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-xs">
-                            {j.karigarName ?? <span className="text-muted-foreground">—</span>}
-                          </td>
-                          <td className="px-4 py-3 text-xs">
-                            {j.expectedDelivery ? (
-                              <span className="inline-flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {j.expectedDelivery}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-xs">{j.priority}</td>
-                          <td className="px-4 py-3">
-                            <Badge variant="outline" className={STATUS_TONE[j.status]}>
-                              {JOB_STATUS_LABELS[j.status]}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <Link
-                              to="/workshop/$id"
-                              params={{ id: j.id }}
-                              className="inline-flex items-center gap-1 text-gold hover:underline text-xs"
-                            >
-                              <Eye className="h-3 w-3" /> View
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  {bt.title}
+                  {bt.status === "section" && (
+                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-0.5">
+                      Workshop section
+                    </span>
+                  )}
+                  {bt.status === "planned" && (
+                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-0.5">
+                      Planned
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{bt.description}</div>
               </div>
-            </div>
-          )}
-        </TabsContent>
+            </Link>
+          );
+        })}
+      </div>
 
-        <TabsContent value="rework">
-          {reworkJobs.length === 0 ? (
-            <EmptyState
-              title="Nothing in rework"
-              body="Cards marked as rework will appear here with notes."
-            />
-          ) : (
-            <div className="space-y-2">
-              {reworkJobs.map((j) => {
-                const lastRework = [...(j.timeline ?? [])]
-                  .reverse()
-                  .find((e) => e.label.includes("Rework"));
-                return (
-                  <Link
-                    key={j.id}
-                    to="/workshop/$id"
-                    params={{ id: j.id }}
-                    className="block rounded-2xl border border-red-500/30 bg-red-500/5 p-4 hover:border-red-400/60"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-mono text-xs text-gold">
-                          {j.jobNo} · {j.orderNo}
-                        </div>
-                        <div className="text-sm">
-                          {j.customerName} · {j.itemName}
-                        </div>
-                        {lastRework?.note && (
-                          <div className="text-xs text-red-300/80 mt-1">
-                            Reason: {lastRework.note}
-                          </div>
-                        )}
-                      </div>
-                      <Badge variant="outline" className={STATUS_TONE.rework}>
-                        Rework
-                      </Badge>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
+      {/* Where the workshop stands across every jeweller book. */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+        <Totals
+          k="Jeweller gold with us"
+          v={`${formatWeight(totals.goldHeldMg)}`}
+          hint="Fine gold held on jewellers' account"
+          tone="gold"
+        />
+        <Totals
+          k="Gold owed to us"
+          v={`${formatWeight(totals.goldOwedMg)}`}
+          hint="Issued beyond what was received"
+          tone={totals.goldOwedMg > 0 ? "red" : undefined}
+        />
+        <Totals
+          k="Cash outstanding"
+          v={`₹${paiseToRupees(totals.cashDuePaise)}`}
+          hint="Billed but unpaid"
+        />
+        <Totals k="Open orders" v={String(totals.openOrders)} hint="Not yet delivered" />
+        <Totals k="Open job cards" v={String(totals.openJobCards)} hint="Still on the bench" />
+      </div>
 
-        <TabsContent value="active">
-          {activeJobs.length === 0 ? (
-            <EmptyState
-              title="No jobs in karigar custody"
-              body="Assign orders to the workshop and create job cards. Gold should be issued via the Worker Gold Book."
-            />
-          ) : (
-            <div className="space-y-2">
-              {activeJobs.map((j) => (
-                <div
-                  key={j.id}
-                  className="rounded-2xl border border-border bg-card p-4 flex items-center justify-between gap-3 flex-wrap"
-                >
-                  <div className="min-w-0">
-                    <div className="font-mono text-xs text-gold">
-                      {j.jobNo} · {j.orderNo}
-                    </div>
-                    <div className="text-sm">
-                      {j.customerName} · {j.itemName} · {j.karigarName ?? "—"}
-                    </div>
-                    <div className="text-muted-foreground flex gap-2 truncate">
-                      {/* Issue details moved to Worker Gold Book */}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link to="/workshop/$id" params={{ id: j.id }}>
-                      <Button variant="outline" size="sm" className="gap-1">
-                        <Eye className="h-3 w-3" /> View
-                      </Button>
-                    </Link>
-                    <Button size="sm" className="gap-1" onClick={() => setReceiveJobId(j.id)}>
-                      <PackageCheck className="h-3 w-3" /> Receive Work
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+      <div className="rounded-2xl border border-border bg-card p-4 mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search jeweller by name, phone or city…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-9"
+            data-testid="jeweller-book-search"
+          />
+        </div>
+      </div>
 
-        <TabsContent value="custody">
-          {custody.length === 0 ? (
-            <EmptyState
-              title="No karigar custody yet"
-              body="Custody appears once gold is issued from the vault to a karigar."
+      {filtered.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
+          <Library className="mx-auto h-10 w-10 text-muted-foreground" />
+          <h3 className="mt-4 font-serif text-xl text-gold">No jeweller books yet</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            A book opens itself the moment a jeweller gives gold, places an order, or is billed.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((b) => (
+            <BookCard
+              key={b.jeweller.id}
+              data={jewellerCardData(b)}
+              selected={selectedId === b.jeweller.id}
+              onSelect={() => setSelectedId(b.jeweller.id)}
+              onOpen={() =>
+                navigate({
+                  to: "/workshop/book/$jewellerId",
+                  params: { jewellerId: b.jeweller.id },
+                })
+              }
             />
-          ) : (
-            <div className="space-y-3">
-              {custody.map((c) => (
-                <div key={c.karigarId} className="rounded-2xl border border-border bg-card p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                    <div>
-                      <div className="font-medium">{c.karigarName}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {c.jobs.length} job card{c.jobs.length === 1 ? "" : "s"}
-                      </div>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={
-                        c.outstandingMg > 0
-                          ? "border-gold/40 text-gold"
-                          : "border-emerald-500/40 text-emerald-300"
-                      }
-                    >
-                      Outstanding: {mgToGrams(c.outstandingMg)} g fine
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-xs">
-                    <Stat k="Issued" v={`${mgToGrams(c.issuedMg)} g`} />
-                    <Stat k="Finished" v={`${mgToGrams(c.finishedMg)} g`} />
-                    <Stat k="Scrap" v={`${mgToGrams(c.scrapMg)} g`} />
-                    <Stat k="Filings" v={`${mgToGrams(c.filingsMg)} g`} />
-                    <Stat k="Wastage" v={`${mgToGrams(c.wastageMg)} g`} />
-                    <Stat
-                      k="Overloss"
-                      v={`${mgToGrams(c.overlossMg)} g`}
-                      tone={c.overlossMg > 0 ? "red" : undefined}
-                    />
-                  </div>
-                  <div className="mt-3 space-y-1">
-                    {c.jobs.map((cj) => (
-                      <Link
-                        key={cj.jobId}
-                        to="/workshop/$id"
-                        params={{ id: cj.jobId }}
-                        className="flex items-center justify-between text-xs hover:text-gold"
-                      >
-                        <span className="font-mono">{cj.jobNo}</span>
-                        <span className="font-mono">{mgToGrams(cj.outstandingMg)} g</span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+          ))}
+        </div>
+      )}
 
       <p className="mt-6 text-xs text-muted-foreground">
-        Workflow: Order → Job Card → <span className="text-gold">Worker Gold Book</span> → Receive
-        Work → Stock → Billing → Daily Close.
+        Books are compiled from the same postings the rest of the ERP makes — gold settlements,
+        orders, job cards, manufacturing bills and payments. Nothing is entered twice.
       </p>
-
-      <ReceiveWorkDialog
-        open={!!receiveJob}
-        onClose={() => setReceiveJobId(null)}
-        job={receiveJob}
-      />
     </div>
   );
 }
 
-function EmptyState({ title, body }: { title: string; body: string }) {
+function ModuleLink({
+  to,
+  icon: Icon,
+  label,
+}: {
+  to: string;
+  icon: typeof BookOpen;
+  label: string;
+}) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
-      <Hammer className="mx-auto h-10 w-10 text-muted-foreground" />
-      <h3 className="mt-4 font-serif text-xl text-gold">{title}</h3>
-      <p className="mt-2 text-sm text-muted-foreground">{body}</p>
-    </div>
+    <Link
+      to={to as never}
+      className="inline-flex items-center justify-center rounded-xl bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 px-4 py-2.5 text-sm font-semibold gap-2 transition-colors active:scale-95"
+    >
+      <Icon className="h-4 w-4" /> {label}
+    </Link>
   );
 }
 
-function Stat({ k, v, tone }: { k: string; v: string; tone?: "red" }) {
+function Totals({
+  k,
+  v,
+  hint,
+  tone,
+}: {
+  k: string;
+  v: string;
+  hint?: string;
+  tone?: "gold" | "red";
+}) {
   return (
-    <div className="rounded-md border border-border bg-background/40 px-2 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</div>
-      <div className={`text-sm font-mono ${tone === "red" ? "text-red-300" : ""}`}>{v}</div>
+    <div className="rounded-2xl border border-border bg-card px-4 py-3">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+        <Scale className="h-3 w-3" /> {k}
+      </div>
+      <div
+        className={`mt-1 font-mono text-lg ${tone === "gold" ? "text-gold" : tone === "red" ? "text-red-300" : ""}`}
+      >
+        {v}
+      </div>
+      {hint && <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>}
     </div>
   );
 }

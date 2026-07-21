@@ -21,7 +21,7 @@ import { useLedger, computeBalances } from "@/lib/ledger-store";
 import { mgToGrams } from "@/lib/gold";
 import { useSettings } from "@/lib/settings-store";
 import { useMfgBills } from "@/lib/manufacturing-bill-store";
-import { useJobCards, JOB_STATUS_LABELS } from "@/lib/jobcards-store";
+import { useJobCards, JOB_STATUS_LABELS, JOB_STATUS_FLOW } from "@/lib/jobcards-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { BarChart, Bar } from "recharts";
 import { computeGoldOutstandingRows } from "./reports.gold-outstanding";
@@ -196,17 +196,9 @@ function ManufacturingGoldSummaryCard() {
   );
 }
 
-const JOB_STATUS_ORDER: (keyof typeof JOB_STATUS_LABELS)[] = [
-  "draft",
-  "ready_for_gold_issue",
-  "gold_issued",
-  "in_progress",
-  "work_received",
-  "qc_pending",
-  "ready_for_billing",
-  "rework",
-  "closed",
-];
+// The live manufacturing workflow, in order (see jobcards-store's
+// JOB_STATUS_FLOW). Legacy statuses are folded onto these on read.
+const JOB_STATUS_ORDER: (keyof typeof JOB_STATUS_LABELS)[] = JOB_STATUS_FLOW;
 
 /**
  * Production Status — every Job Card grouped by its own `status` field
@@ -726,7 +718,7 @@ export default function CeoDashboard() {
             { label: "People / KYC", to: "/people", icon: Users },
             { label: "Branch Setup", to: "/branches", icon: Building2 },
             { label: "Manufacturing", to: "/manufacturing", icon: Wrench },
-            { label: "Workshop", to: "/workshop", icon: Package },
+            { label: "Manufacturing Books", to: "/workshop", icon: Package },
             { label: "Settings", to: "/settings", icon: ArrowUpRight },
             { label: "Daily Close", to: "/reports/daily-close", icon: CheckCircle },
             { label: "Exception Report", to: "/reports/exceptions", icon: AlertTriangle },

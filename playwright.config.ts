@@ -94,6 +94,9 @@ export default defineConfig({
         url: BASE_URL,
         reuseExistingServer: !CI,
         timeout: 120_000,
+        // The suite exercises the cloud/Supabase-auth product path. App default
+        // is now Offline (V1 is offline-first), so opt this build back in.
+        env: { VITE_DEFAULT_DEPLOYMENT_MODE: "online" },
       }
     : undefined,
 });

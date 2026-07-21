@@ -52,6 +52,7 @@ export const Route = createFileRoute("/settings/communications")({
 const CHANNEL_PROVIDERS: Record<CommChannel, ProviderType[]> = {
   whatsapp: [
     "whatsapp_deep_link",
+    "whatsapp_wasender",
     "whatsapp_cloud_api",
     "whatsapp_interakt",
     "whatsapp_wati",
@@ -128,6 +129,10 @@ function getSettingFields(
 ): { key: string; label: string; placeholder: string; type?: string }[] {
   if (type === "whatsapp_cloud_api") return [...WA_CLOUD_API_FIELDS, ...WA_TEMPLATE_FIELDS];
   if (type === "whatsapp_deep_link") return [];
+  // WasenderAPI is NOT a BSP — its token lives encrypted in the Electron main
+  // process and is configured on its own Integration page, not with inline
+  // credential fields here.
+  if (type === "whatsapp_wasender") return [];
   if (type.startsWith("whatsapp_")) return [...BSP_FIELDS, ...WA_TEMPLATE_FIELDS];
   if (type === "email_smtp") return EMAIL_SMTP_FIELDS;
   if (type.startsWith("email_")) return EMAIL_API_FIELDS;
@@ -550,6 +555,11 @@ function ProviderCard({
               Free · Manual
             </Badge>
           )}
+          {config.providerType === "whatsapp_wasender" && (
+            <Badge className="text-[9px] bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+              Native API · Encrypted
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -607,7 +617,22 @@ function ProviderCard({
         </div>
       )}
 
-      {fields.length === 0 && (
+      {fields.length === 0 && config.providerType === "whatsapp_wasender" && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-muted-foreground space-y-2">
+          <p>
+            WasenderAPI is a native WhatsApp provider. Its Bearer token is stored{" "}
+            <strong>encrypted in the desktop app</strong> (never here), and sessions/QR are managed
+            on its own page.
+          </p>
+          <Link to="/settings/integrations/whatsapp">
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8">
+              Configure WasenderAPI <ExternalLink className="h-3 w-3" />
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {fields.length === 0 && config.providerType === "whatsapp_deep_link" && (
         <p className="text-xs text-muted-foreground">
           No configuration needed — uses device WhatsApp app.
         </p>

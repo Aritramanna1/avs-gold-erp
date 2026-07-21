@@ -22,7 +22,9 @@
  *  - Pull (download): incremental — fetches only rows changed after
  *    sync_meta.last_pulled_at for a table, not the whole table.
  */
-import { getRawSupabaseClient } from "@/integrations/supabase/client";
+import { getCloudDataClient as getRawSupabaseClient } from "@/lib/providers/data-provider";
+import { isHybridMode, isOfflineMode } from "@/lib/deployment-mode";
+import { LOCAL_ONLY_TABLES } from "@/lib/providers/runtime-providers";
 import { saveDirect, deleteDirect } from "@/lib/supabase-write";
 import {
   runLocal,
@@ -34,10 +36,17 @@ import {
   initLocalDb,
 } from "@/lib/local-db";
 
-const BACKOFF_SCHEDULE_MS = [2_000, 5_000, 15_000, 30_000]; // caps at 30s after 4th failed attempt
+const MIN_BACKOFF_MS = 2_000;
+const MAX_BACKOFF_MS = 15 * 60_000;
+const PULL_PAGE_SIZE = 500;
 
 function backoffDelayMs(attempts: number): number {
-  return BACKOFF_SCHEDULE_MS[Math.min(attempts, BACKOFF_SCHEDULE_MS.length - 1)];
+  const exponential = Math.min(MAX_BACKOFF_MS, MIN_BACKOFF_MS * 2 ** Math.min(attempts, 12));
+  return Math.round(exponential * (0.8 + Math.random() * 0.4));
+}
+
+function assertSafeTableName(table: string): void {
+  if (!/^[a-z][a-z0-9_]{0,62}$/.test(table)) throw new Error("Invalid synchronization table.");
 }
 
 interface OutboxRow {
@@ -55,6 +64,15 @@ interface OutboxRow {
 /** Fetches the current remote row's updatedAt (or null if it doesn't exist remotely). */
 async function fetchRemoteUpdatedAt(table: string, rowId: string): Promise<string | null> {
   const client = getRawSupabaseClient();
+  if (table === "branch_settings") {
+    const { data, error } = await client
+      .from("branch_settings")
+      .select("updated_at")
+      .eq("branch_id", rowId)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as { updated_at?: string } | null)?.updated_at ?? null;
+  }
   const { data, error } = await client
     .from(table as any)
     .select("data")
@@ -102,6 +120,22 @@ export interface PushResult {
  */
 export async function pushPendingOutbox(): Promise<PushResult> {
   await initLocalDb();
+  if (!isHybridMode()) {
+    // Offline/Local First has no remote backend to push to — the write
+    // already landed durably in local SQLite (that's what queued it), so
+    // there is nothing left to reconcile. Acknowledging here (rather than
+    // leaving every queued row "pending" forever) is what makes
+    // getSyncStatus().pending actually reach 0 once a local-first write is
+    // queued, instead of it silently never draining in these modes.
+    const pendingLocal = queryTable<OutboxRow>("outbox", "status = ?", ["pending"]);
+    if (pendingLocal.length === 0) {
+      return { pushed: 0, conflicts: 0, failed: 0, skippedNotDue: 0 };
+    }
+    await runLocal(() => {
+      for (const entry of pendingLocal) markOutboxSynced(entry.id);
+    });
+    return { pushed: pendingLocal.length, conflicts: 0, failed: 0, skippedNotDue: 0 };
+  }
   const now = new Date();
   const nowIso = now.toISOString();
   const pending = queryTable<OutboxRow>("outbox", "status = ? ORDER BY created_at ASC", [
@@ -111,6 +145,12 @@ export async function pushPendingOutbox(): Promise<PushResult> {
   const result: PushResult = { pushed: 0, conflicts: 0, failed: 0, skippedNotDue: 0 };
 
   for (const entry of pending) {
+    if (LOCAL_ONLY_TABLES.has(entry.table_name)) {
+      // Retire legacy file-metadata entries created by older builds. Files and
+      // their metadata are local-only and must never be replayed to Supabase.
+      await runLocal(() => markOutboxSynced(entry.id));
+      continue;
+    }
     if (entry.next_attempt_at && entry.next_attempt_at > nowIso) {
       result.skippedNotDue++;
       continue;
@@ -167,7 +207,7 @@ export async function pushPendingOutbox(): Promise<PushResult> {
         const db = getDb();
         db.run(
           `UPDATE outbox SET attempts = ?, last_error = ?, last_attempt_at = ?, next_attempt_at = ? WHERE id = ?;`,
-          [attempts, message, nowIso, nextAttemptAt, entry.id],
+          [attempts, message.slice(0, 2_000), nowIso, nextAttemptAt, entry.id],
         );
       });
       result.failed++;
@@ -216,6 +256,9 @@ export interface PullResult {
  * re-downloads a whole table because one row changed.
  */
 export async function pullChangesSince(table: string): Promise<PullResult> {
+  if (!isHybridMode()) return { table, fetched: 0, since: null };
+  assertSafeTableName(table);
+  await initLocalDb();
   const db = getDb();
   const metaStmt = db.prepare(`SELECT last_pulled_at FROM sync_meta WHERE table_name = ?;`);
   metaStmt.bind([table]);
@@ -228,36 +271,44 @@ export async function pullChangesSince(table: string): Promise<PullResult> {
   // column on every table — filtered client-side after fetch below, which
   // stays correct across the whole schema rather than assuming a column
   // that may not exist on every table.
-  const { data, error } = await client
-    .from(table as any)
-    .select("id, data")
-    .order("id", { ascending: true })
-    .limit(5000);
-  if (error) throw error;
+  const pullHighWatermark = new Date().toISOString();
+  let offset = 0;
+  let fetched = 0;
 
-  const rows = (data ?? []) as unknown as { id: string; data: Record<string, unknown> }[];
-  const changed = since
-    ? rows.filter((r) => {
-        const updatedAt = extractUpdatedAt(r.data);
-        return !updatedAt || updatedAt > since;
-      })
-    : rows;
+  for (;;) {
+    const { data, error } = await client
+      .from(table as any)
+      .select("id, data")
+      .order("id", { ascending: true })
+      .range(offset, offset + PULL_PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as unknown as { id: string; data: Record<string, unknown> }[];
+    const changed = since
+      ? rows.filter((row) => {
+          const updatedAt = extractUpdatedAt(row.data);
+          return !updatedAt || updatedAt > since;
+        })
+      : rows;
+    await runLocal(() => {
+      for (const row of changed) {
+        upsertRow(table, { id: row.id, data: JSON.stringify(row.data) });
+        recordRowSynced(table, row.id, extractUpdatedAt(row.data));
+      }
+    });
+    fetched += changed.length;
+    if (rows.length < PULL_PAGE_SIZE) break;
+    offset += PULL_PAGE_SIZE;
+  }
 
   await runLocal(() => {
-    for (const row of changed) {
-      const flat = { id: row.id, data: JSON.stringify(row.data) };
-      upsertRow(table, flat);
-      recordRowSynced(table, row.id, extractUpdatedAt(row.data));
-    }
-    const nowIso = new Date().toISOString();
     db.run(
       `INSERT INTO sync_meta (table_name, last_pulled_at) VALUES (?, ?)
        ON CONFLICT(table_name) DO UPDATE SET last_pulled_at = excluded.last_pulled_at;`,
-      [table, nowIso],
+      [table, pullHighWatermark],
     );
   });
 
-  return { table, fetched: changed.length, since };
+  return { table, fetched, since };
 }
 
 export interface SyncStatus {
@@ -279,6 +330,15 @@ export function getSyncStatus(): SyncStatus {
     stmt.free();
     return c;
   }
+  function countPendingFailures(): number {
+    const statement = db.prepare(
+      `SELECT COUNT(*) AS c FROM outbox WHERE status = 'pending' AND attempts > 0;`,
+    );
+    statement.step();
+    const value = Number(statement.getAsObject().c ?? 0);
+    statement.free();
+    return value;
+  }
   const lastPushedStmt = db.prepare(
     `SELECT MAX(last_attempt_at) as t FROM outbox WHERE status = 'synced';`,
   );
@@ -297,7 +357,7 @@ export function getSyncStatus(): SyncStatus {
   return {
     pending: count("pending"),
     conflicts: count("conflict"),
-    failed: 0, // failed entries stay 'pending' with attempts>0 until backoff exhausts — surfaced via attempts, not a separate terminal status
+    failed: countPendingFailures(),
     synced: count("synced"),
     lastPushedAt,
     lastPulledAtByTable: perTable,
@@ -372,12 +432,46 @@ export async function resolveConflict(
 let draining = false;
 let schedulerHandle: ReturnType<typeof setInterval> | null = null;
 let onlineListenerAttached = false;
+let onlineListener: (() => void) | null = null;
+let hybridCacheHydrated = false;
+
+const HYBRID_CORE_TABLES = [
+  "people",
+  "gold_ledger",
+  "orders",
+  "job_cards",
+  "inventory",
+  "stock_movements",
+  "invoices",
+  "payments",
+  "repairs",
+  "attendance",
+  "worker_transactions",
+  "worker_settlements",
+  "catalog_designs",
+  "daily_close",
+  "print_logs",
+  "whatsapp_inbox",
+  "communication_logs",
+] as const;
 
 async function drainOnce(): Promise<void> {
   if (draining) return;
   draining = true;
   try {
     await pushPendingOutbox();
+    if (
+      isHybridMode() &&
+      !hybridCacheHydrated &&
+      (typeof navigator === "undefined" || navigator.onLine !== false)
+    ) {
+      const results = await Promise.allSettled(
+        HYBRID_CORE_TABLES.map((table) => pullChangesSince(table)),
+      );
+      const succeeded = results.filter((result) => result.status === "fulfilled").length;
+      hybridCacheHydrated = succeeded > 0;
+      if (!hybridCacheHydrated) console.warn("[SyncEngine] Hybrid cache hydration is pending.");
+    }
   } catch (err) {
     console.error("[SyncEngine] Outbox drain failed:", err);
   } finally {
@@ -397,13 +491,22 @@ async function drainOnce(): Promise<void> {
  * online listener.
  */
 export function startSyncOutboxScheduler(intervalMs = 15_000): () => void {
+  // Local First/Offline still need this running: pushPendingOutbox() itself
+  // now acknowledges queued rows locally in those modes (no remote to push
+  // to), but something has to actually call it on an interval and on
+  // reconnect — that's this scheduler, for every mode, not just Hybrid.
   if (schedulerHandle) return () => stopSyncOutboxScheduler();
 
   void drainOnce();
   schedulerHandle = setInterval(() => void drainOnce(), intervalMs);
 
   if (typeof window !== "undefined" && !onlineListenerAttached) {
-    window.addEventListener("online", () => void drainOnce());
+    onlineListener = () => {
+      void runLocal(() => {
+        getDb().run(`UPDATE outbox SET next_attempt_at = NULL WHERE status = 'pending';`);
+      }).then(() => drainOnce());
+    };
+    window.addEventListener("online", onlineListener);
     onlineListenerAttached = true;
   }
 
@@ -415,8 +518,9 @@ export function stopSyncOutboxScheduler(): void {
     clearInterval(schedulerHandle);
     schedulerHandle = null;
   }
-  // The "online" listener is deliberately left attached even after stop —
-  // matching comm-queue.ts's own scheduler, which never needs to be
-  // stopped in practice (only exposed for tests); removing it would need
-  // a stored listener reference this module doesn't currently keep.
+  if (typeof window !== "undefined" && onlineListener) {
+    window.removeEventListener("online", onlineListener);
+    onlineListener = null;
+    onlineListenerAttached = false;
+  }
 }

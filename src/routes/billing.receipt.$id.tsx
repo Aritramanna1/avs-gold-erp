@@ -3,20 +3,14 @@ import { useBilling, PAYMENT_MODE_LABELS, paiseToRupees } from "@/lib/billing-st
 import { Button } from "@/components/ui/button";
 import { PrintQR } from "@/components/print-qr";
 import { useSettings } from "@/lib/settings-store";
+import { shortShopName } from "@/lib/app-info";
 import { AvsPrintFooter } from "@/components/AvsPrintFooter";
 import { Logo } from "@/components/ui/Logo";
 import { ArrowLeft, Printer } from "lucide-react";
 
 export const Route = createFileRoute("/billing/receipt/$id")({
   head: () => {
-    const shopName = useSettings.getState().firm?.shopName;
-    const shortName =
-      shopName
-        .split(" ")
-        .filter(Boolean)
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase() || shopName.slice(0, 3).toUpperCase();
+    const shortName = shortShopName(useSettings.getState().firm?.shopName);
     return {
       meta: [{ title: `Payment Receipt · ${shortName} ERP` }],
     };

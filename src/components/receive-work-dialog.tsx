@@ -58,8 +58,10 @@ export function ReceiveWorkDialog({
 
   const [finishedGrossStr, setFinishedGrossStr] = useState("0.000");
   const [finishedPurity, setFinishedPurity] = useState<number>(job?.purity ?? 916);
-  const [scrapGrossStr, setScrapGrossStr] = useState("0.000");
-  const [scrapPurity, setScrapPurity] = useState<number>(job?.purity ?? 916);
+  // Scrap is NOT captured here. Scrap and wastage are settled against the
+  // worker's own account in the Worker Gold Book / worker ledger, where they
+  // belong: this screen records what came back for THIS job. Capturing scrap in
+  // two places is how the same gold gets counted twice.
   const [filingsGrossStr, setFilingsGrossStr] = useState("0.000");
   const [filingsPurity, setFilingsPurity] = useState<number>(job?.purity ?? 916);
   const [dustStr, setDustStr] = useState("0.000");
@@ -72,11 +74,11 @@ export function ReceiveWorkDialog({
   });
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (job) {
       setFinishedPurity(job.purity);
-      setScrapPurity(job.purity);
       setFilingsPurity(job.purity);
       setWastagePct(job.expectedWastagePct ?? 5);
       setError(null);
@@ -104,14 +106,12 @@ export function ReceiveWorkDialog({
 
   const finishedGrossMg = safeMg(finishedGrossStr);
   const finishedFineMg = finishedGrossMg > 0 ? fineGoldMg(finishedGrossMg, finishedPurity) : 0;
-  const scrapGrossMg = safeMg(scrapGrossStr);
-  const scrapFineMg = scrapGrossMg > 0 ? fineGoldMg(scrapGrossMg, scrapPurity) : 0;
   const filingsGrossMg = safeMg(filingsGrossStr);
   const filingsFineMg = filingsGrossMg > 0 ? fineGoldMg(filingsGrossMg, filingsPurity) : 0;
   const dustFineMg = safeMg(dustStr);
 
   async function confirm() {
-    if (!job) return;
+    if (!job || saving) return;
     setError(null);
     const karigar = usePeople.getState().people.find((p) => p.id === job.karigarId);
     if (karigar && !kycComplete(karigar)) {
@@ -121,6 +121,22 @@ export function ReceiveWorkDialog({
     }
     if (finishedFineMg <= 0) return setError("Finished weight is required.");
 
+    setSaving(true);
+    try {
+      await confirmInternal(job);
+      onClose();
+    } catch (err) {
+      // A partial failure here (e.g. a closed financial period, or a network
+      // blip mid-sequence) previously left ledger/stock/gold-book writes in
+      // an inconsistent state with zero feedback — the dialog just silently
+      // did nothing. Surface it instead of swallowing it.
+      setError(err instanceof Error ? err.message : "Failed to record work receipt.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmInternal(job: JobCard) {
     const ledgerIds: string[] = [];
 
     // finished item created: karigar -> finished
@@ -134,19 +150,6 @@ export function ReceiveWorkDialog({
         fineMg: finishedFineMg,
         reference: job.jobNo,
         notes: `Finished ${job.itemName} · ${job.jobNo}`,
-      });
-      ledgerIds.push(e.id);
-    }
-    if (scrapFineMg > 0) {
-      const e = await appendLedger({
-        type: "scrap_returned",
-        netFineMg: 0,
-        deltas: { karigar: -scrapFineMg, scrap: scrapFineMg },
-        grossMg: scrapGrossMg,
-        purity: scrapPurity,
-        fineMg: scrapFineMg,
-        reference: job.jobNo,
-        notes: `Scrap returned · ${job.jobNo}`,
       });
       ledgerIds.push(e.id);
     }
@@ -201,9 +204,11 @@ export function ReceiveWorkDialog({
       finishedGrossMg,
       finishedPurity,
       finishedFineMg,
-      scrapGrossMg,
-      scrapPurity,
-      scrapFineMg,
+      // Retained at zero on the persisted record so receipts written before
+      // scrap moved to the Worker Gold Book still read back unchanged.
+      scrapGrossMg: 0,
+      scrapPurity: finishedPurity,
+      scrapFineMg: 0,
       filingsGrossMg,
       filingsPurity,
       filingsFineMg,
@@ -223,7 +228,7 @@ export function ReceiveWorkDialog({
     const workerName = job.karigarName || "Karigar";
     if (workerId) {
       if (finishedFineMg > 0) {
-        useWorkerGoldBook.getState().addEntry({
+        await useWorkerGoldBook.getState().addEntry({
           workerId,
           workerName,
           particulars: `Finished: ${job.itemName}`,
@@ -240,26 +245,8 @@ export function ReceiveWorkDialog({
           reference: job.jobNo,
         });
       }
-      if (scrapFineMg > 0) {
-        useWorkerGoldBook.getState().addEntry({
-          workerId,
-          workerName,
-          particulars: "Scrap Returned",
-          grossMg: scrapGrossMg,
-          lessMg: 0,
-          netMg: scrapGrossMg,
-          purity: scrapPurity,
-          fineMg: scrapFineMg,
-          quantity: 1,
-          notes: `Scrap return for job ${job.jobNo}`,
-          givenBy: workerName,
-          receivedBy: "Staff",
-          type: "return",
-          reference: job.jobNo,
-        });
-      }
       if (filingsFineMg > 0) {
-        useWorkerGoldBook.getState().addEntry({
+        await useWorkerGoldBook.getState().addEntry({
           workerId,
           workerName,
           particulars: "Filings Returned",
@@ -277,7 +264,7 @@ export function ReceiveWorkDialog({
         });
       }
       if (dustFineMg > 0) {
-        useWorkerGoldBook.getState().addEntry({
+        await useWorkerGoldBook.getState().addEntry({
           workerId,
           workerName,
           particulars: "Dust/Sweepings Returned",
@@ -298,7 +285,6 @@ export function ReceiveWorkDialog({
 
     setWorkReceipt(job.id, rec);
     onReceived?.(rec);
-    onClose();
   }
 
   if (!job) return null;
@@ -318,7 +304,7 @@ export function ReceiveWorkDialog({
         <div className="grid sm:grid-cols-2 gap-3">
           <Stat
             label="Returned fine"
-            value={`${mgToGrams(finishedFineMg + scrapFineMg + filingsFineMg + dustFineMg)} g`}
+            value={`${mgToGrams(finishedFineMg + filingsFineMg + dustFineMg)} g`}
           />
         </div>
 
@@ -336,24 +322,6 @@ export function ReceiveWorkDialog({
             </Field>
             <Field label="Fine (auto)">
               <Mono>{mgToGrams(finishedFineMg)} g</Mono>
-            </Field>
-          </Grid3>
-        </Section>
-
-        <Section title="Scrap Returned">
-          <Grid3>
-            <Field label="Gross (g)">
-              <Input
-                value={scrapGrossStr}
-                onChange={(e) => setScrapGrossStr(e.target.value)}
-                inputMode="decimal"
-              />
-            </Field>
-            <Field label="Purity">
-              <PuritySelect value={scrapPurity} onChange={setScrapPurity} />
-            </Field>
-            <Field label="Fine (auto)">
-              <Mono>{mgToGrams(scrapFineMg)} g</Mono>
             </Field>
           </Grid3>
         </Section>
@@ -428,8 +396,8 @@ export function ReceiveWorkDialog({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={confirm} disabled={finishedFineMg <= 0} className="gap-2">
-            <PackageCheck className="h-4 w-4" /> Confirm Receive
+          <Button onClick={confirm} disabled={finishedFineMg <= 0 || saving} className="gap-2">
+            <PackageCheck className="h-4 w-4" /> {saving ? "Saving…" : "Confirm Receive"}
           </Button>
         </DialogFooter>
       </DialogContent>

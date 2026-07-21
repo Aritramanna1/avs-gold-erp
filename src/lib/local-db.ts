@@ -3,7 +3,7 @@ import sqlWasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import type { Database, SqlJsStatic, SqlValue } from "sql.js";
 
 const SQLITE_DB_KEY = "mtj_erp_local_db";
-const SQLITE_DB_VERSION = 1;
+const SQLITE_DB_VERSION = 2;
 const ATTACHMENT_KEY_STORE = "mtj_erp_crypto_key";
 const DB_CHECKSUM_META_KEY = "db_checksum_sha256";
 
@@ -622,6 +622,44 @@ function createTables(): void {
     `CREATE TABLE IF NOT EXISTS customer_settlements (id TEXT PRIMARY KEY, data TEXT, updated_at TEXT);`,
   );
 
+  // Local Authentication (Deployment Modes — Offline Mode): credentials for
+  // logging in with zero network dependency, entirely separate from Supabase
+  // auth.users. Only populated when deployment mode is "offline"/"hybrid" —
+  // see src/lib/local-auth.ts and src/lib/deployment-mode.ts.
+  db.run(`CREATE TABLE IF NOT EXISTS local_users (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    email TEXT UNIQUE,
+    phone TEXT,
+    role TEXT,
+    branch_id TEXT,
+    password_hash TEXT,
+    password_salt TEXT,
+    last_password_change TEXT,
+    failed_login_count INTEGER DEFAULT 0,
+    active INTEGER DEFAULT 1,
+    is_super_owner INTEGER DEFAULT 0,
+    created_at TEXT,
+    updated_at TEXT
+  );`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_local_users_email ON local_users(email);`);
+
+  // Auth sessions (SAD §5): one row per login, holding the exact fields the
+  // spec requires a session to carry. Ends on logout (ended_at set) — kept,
+  // not deleted, so the audit trail of who was signed in when survives.
+  db.run(`CREATE TABLE IF NOT EXISTS user_sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    role TEXT,
+    branch_id TEXT,
+    login_at TEXT,
+    ended_at TEXT,
+    device_id TEXT,
+    deployment_mode TEXT,
+    FOREIGN KEY(user_id) REFERENCES local_users(id) ON DELETE CASCADE
+  );`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);`);
+
   db.run(`CREATE TABLE IF NOT EXISTS module_states (
     id TEXT PRIMARY KEY,
     branch_id TEXT,
@@ -1031,8 +1069,33 @@ function createTables(): void {
  * for changes CREATE-IF-NOT-EXISTS can't express (column additions, data
  * backfills, etc.) — empty for schema v1 since this is the initial schema.
  */
+/** ALTER TABLE ADD COLUMN is not idempotent — skip when the column already exists. */
+function addColumnIfMissing(
+  database: Database,
+  table: string,
+  column: string,
+  definition: string,
+): void {
+  const stmt = database.prepare(`PRAGMA table_info(${table});`);
+  const existing: string[] = [];
+  while (stmt.step()) existing.push(String(stmt.getAsObject().name));
+  stmt.free();
+  if (existing.includes(column)) return;
+  database.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition};`);
+}
+
 const MIGRATIONS: { version: number; up: (database: Database) => void }[] = [
-  // { version: 2, up: (database) => { database.run("ALTER TABLE people ADD COLUMN loyalty_points INTEGER DEFAULT 0;"); } },
+  // v2 — Auth module conformance (SAD §4/§5): branch assignment, password-age
+  // and failed-login tracking on local_users. New databases already get these
+  // from createTables(); this back-fills databases created at schema v1.
+  {
+    version: 2,
+    up: (database) => {
+      addColumnIfMissing(database, "local_users", "branch_id", "TEXT");
+      addColumnIfMissing(database, "local_users", "last_password_change", "TEXT");
+      addColumnIfMissing(database, "local_users", "failed_login_count", "INTEGER DEFAULT 0");
+    },
+  },
 ];
 
 function getSchemaVersion(database: Database): number {
@@ -1046,6 +1109,22 @@ function setSchemaVersion(database: Database, version: number): void {
   database.run("INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_version', ?);", [
     String(version),
   ]);
+}
+
+/** Generic key/value read from the `meta` table (same table schema_version lives in). */
+export function getMetaValue(key: string): string | null {
+  const database = getDb();
+  const stmt = database.prepare("SELECT value FROM meta WHERE key = ?;");
+  stmt.bind([key]);
+  const value = stmt.step() ? String(stmt.getAsObject().value) : null;
+  stmt.free();
+  return value;
+}
+
+/** Generic key/value write to the `meta` table. */
+export function setMetaValue(key: string, value: string): void {
+  const database = getDb();
+  database.run("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?);", [key, value]);
 }
 
 /** Runs every pending migration in ascending version order. Idempotent. */
@@ -1125,10 +1204,38 @@ async function initializeDatabase(): Promise<void> {
   await persistDatabase(new Uint8Array(db.export()), getSchemaVersion(db));
 }
 
+/** Hard ceiling on DB init. It should take well under a second; this only
+ * exists so a genuinely stuck WASM instantiate / IndexedDB open / crypto step
+ * converts to a rejection the boot path can recover from, instead of an
+ * unbounded hang that wedges the whole app on the loading skeleton. */
+const INIT_TIMEOUT_MS = 20_000;
+
 export async function initLocalDb(): Promise<void> {
   if (dbReady) return dbReady;
-  dbReady = initializeDatabase();
-  await dbReady;
+  const attempt = (async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error("Local database initialization timed out")),
+        INIT_TIMEOUT_MS,
+      );
+    });
+    try {
+      await Promise.race([initializeDatabase(), timeout]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  })();
+  dbReady = attempt;
+  try {
+    await attempt;
+  } catch (err) {
+    // Never cache a rejected/timed-out init: clearing dbReady lets the next
+    // caller retry instead of every future DB op replaying the same failure
+    // for the whole session.
+    dbReady = null;
+    throw err;
+  }
 }
 
 /**
@@ -1186,12 +1293,26 @@ export function getDb(): Database {
 // through this single promise chain (a queue, not a lock the caller can
 // forget to release) makes concurrent runLocal() calls queue instead of race.
 let runLocalQueue: Promise<unknown> = Promise.resolve();
+// True while a runLocal() transaction is open. A runLocal() called from INSIDE
+// another runLocal()'s fn (e.g. a helper that appends an audit row mid-write)
+// must NOT queue behind the outer call — the outer is awaiting the inner while
+// still holding the queue slot, so queueing would deadlock both forever (an
+// unresolvable Promise = the exact startup hang this guards against). Instead
+// the reentrant call joins the transaction already in progress: it runs its fn
+// directly, and the outer BEGIN/COMMIT still bracket the whole thing.
+let inTransaction = false;
 
 export function runLocal<T>(fn: () => T | Promise<T>): Promise<T> {
+  if (inTransaction) {
+    // Reentrant: already inside a transaction — just run the work, no nested
+    // BEGIN (sql.js has no nested transactions) and no second COMMIT/persist.
+    return Promise.resolve().then(fn);
+  }
   const run = runLocalQueue.then(async () => {
     await initLocalDb();
     const database = getDb();
     database.run("BEGIN IMMEDIATE;");
+    inTransaction = true;
     try {
       const result = await fn();
       database.run("COMMIT;");
@@ -1200,6 +1321,8 @@ export function runLocal<T>(fn: () => T | Promise<T>): Promise<T> {
     } catch (err) {
       database.run("ROLLBACK;");
       throw err;
+    } finally {
+      inTransaction = false;
     }
   });
   // Queue advances on both success and failure — one failed caller must

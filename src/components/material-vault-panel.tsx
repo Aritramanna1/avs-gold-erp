@@ -30,12 +30,13 @@ import {
 import {
   useMaterialVault,
   computeMaterialBalances,
+  computeMaterialStockItems,
   MATERIAL_GROUP_LABELS,
   MATERIAL_MOVEMENT_LABELS,
   DEFAULT_MATERIAL_CATEGORIES,
   type MaterialGroup,
 } from "@/lib/material-vault-store";
-import { mgToGrams, gramsToMg } from "@/lib/gold";
+import { mgToGrams, gramsToMg, getCaratLabel, COMMON_PURITIES } from "@/lib/gold";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Coins, Wrench, Recycle, Settings2 } from "lucide-react";
@@ -58,6 +59,7 @@ export function MaterialVaultPanel() {
   const categories = useMaterialVault((s) => s.categories);
   const refresh = useMaterialVault((s) => s.refresh);
   const [adjustmentOpen, setAdjustmentOpen] = useState(false);
+  const [stockOpen, setStockOpen] = useState(false);
 
   useEffect(() => {
     refresh();
@@ -69,10 +71,21 @@ export function MaterialVaultPanel() {
   );
 
   const sortedMovements = useMemo(() => [...movements].sort((a, b) => b.ts - a.ts), [movements]);
+  const stockItems = useMemo(
+    () => computeMaterialStockItems(movements, categories),
+    [movements, categories],
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2 no-print">
+        <Button
+          className="gap-2 bg-primary text-primary-foreground hover:opacity-90"
+          onClick={() => setStockOpen(true)}
+          data-testid="material-stock-open"
+        >
+          <Wrench className="h-4 w-4" /> Add / Manage Stock
+        </Button>
         <Button
           variant="outline"
           className="gap-2"
@@ -125,6 +138,46 @@ export function MaterialVaultPanel() {
             </div>
           );
         })}
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <h3 className="font-serif text-lg text-gold mb-3">
+          Stock Items (by material &amp; purity)
+        </h3>
+        {stockItems.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No material stock yet. Use “Add / Manage Stock” to record material in.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="text-left py-2">Material</th>
+                  <th className="text-left">Purity</th>
+                  <th className="text-right">Current Stock</th>
+                  <th className="text-right">Fine Equivalent</th>
+                  <th className="text-left pl-4">Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stockItems.map((it) => (
+                  <tr key={it.key} className="border-b border-border/60">
+                    <td className="py-2 font-medium">{it.label}</td>
+                    <td className="text-muted-foreground">
+                      {it.purity > 0 ? getCaratLabel(it.purity) : "Non-gold"}
+                    </td>
+                    <td className="text-right font-mono">{mgToGrams(it.weightMg)} g</td>
+                    <td className="text-right font-mono text-gold">
+                      {it.fineMg > 0 ? `${mgToGrams(it.fineMg)} g` : "—"}
+                    </td>
+                    <td className="pl-4 text-muted-foreground">{it.unit}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5">
@@ -181,8 +234,171 @@ export function MaterialVaultPanel() {
         )}
       </div>
 
+      <MaterialStockDialog open={stockOpen} onClose={() => setStockOpen(false)} />
       <MaterialAdjustmentDialog open={adjustmentOpen} onClose={() => setAdjustmentOpen(false)} />
     </div>
+  );
+}
+
+/**
+ * Add / manage material stock — the working entry path for KDM Balls, Chains,
+ * Findings, Components, etc. Purchase/Return add stock; Issue removes it. Each
+ * posts through the same movement log (no direct balance edit).
+ */
+const STOCK_ACTIONS = [
+  { value: "purchase", label: "Purchase / Add Stock", sign: 1 },
+  { value: "worker_return", label: "Return from Worker (In)", sign: 1 },
+  { value: "worker_issue", label: "Issue to Worker (Out)", sign: -1 },
+] as const;
+
+function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const appendMovement = useMaterialVault((s) => s.append);
+  const movements = useMaterialVault((s) => s.movements);
+  const [category, setCategory] = useState("kdm_balls");
+  const [purity, setPurity] = useState("916");
+  const [action, setAction] = useState<(typeof STOCK_ACTIONS)[number]["value"]>("purchase");
+  const [weightG, setWeightG] = useState("");
+  const [reference, setReference] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setCategory("kdm_balls");
+      setPurity("916");
+      setAction("purchase");
+      setWeightG("");
+      setReference("");
+      setError(null);
+    }
+  }, [open]);
+
+  async function submit() {
+    setError(null);
+    const n = Number(weightG);
+    if (!Number.isFinite(n) || n <= 0) {
+      setError("Enter a weight greater than 0 g.");
+      return;
+    }
+    const sign = STOCK_ACTIONS.find((a) => a.value === action)!.sign;
+    const deltaMg = gramsToMg(n) * sign;
+    const purityVal = Number(purity) || 0;
+    if (sign < 0) {
+      // Stock is tracked per (material × purity) — check this exact stock item.
+      const available = movements
+        .filter((m) => m.category === category && (m.purity ?? 0) === purityVal)
+        .reduce((s, m) => s + m.deltaMg, 0);
+      if (Math.abs(deltaMg) > available) {
+        setError(
+          `Issue exceeds stock — available ${(available / 1000).toFixed(3)} g of this material at this purity.`,
+        );
+        return;
+      }
+    }
+    setSaving(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      await appendMovement({
+        category,
+        type: action,
+        deltaMg,
+        grossMg: gramsToMg(n),
+        purity: purityVal || undefined,
+        reference: reference.trim() || undefined,
+        actorId: data.session?.user.id ?? null,
+        actorEmail: data.session?.user.email ?? null,
+      });
+      toast.success("Stock movement recorded.");
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || "Failed to record stock movement.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wrench className="h-4 w-4 text-gold" /> Add / Manage Material Stock
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div>
+            <Label>Material *</Label>
+            <CategorySelect value={category} onChange={setCategory} testId="stock-category" />
+          </div>
+          <div>
+            <Label>Purity / Touch *</Label>
+            <Select value={purity} onValueChange={setPurity}>
+              <SelectTrigger data-testid="stock-purity">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Non-gold / Accessory</SelectItem>
+                {COMMON_PURITIES.map((p) => (
+                  <SelectItem key={p.value} value={String(p.value)}>
+                    {p.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Same material at different purities is tracked as a separate stock item.
+            </p>
+          </div>
+          <div>
+            <Label>Action *</Label>
+            <Select value={action} onValueChange={(v) => setAction(v as typeof action)}>
+              <SelectTrigger data-testid="stock-action">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STOCK_ACTIONS.map((a) => (
+                  <SelectItem key={a.value} value={a.value}>
+                    {a.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Weight (g) *</Label>
+            <Input
+              value={weightG}
+              onChange={(e) => setWeightG(e.target.value)}
+              placeholder="e.g. 5.000"
+              inputMode="decimal"
+            />
+          </div>
+          <div>
+            <Label>Reference (optional)</Label>
+            <Input
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="Supplier, worker, order…"
+            />
+          </div>
+          {error && (
+            <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={saving} className="gap-2" data-testid="stock-submit">
+            <Wrench className="h-4 w-4" /> {saving ? "Saving…" : "Record Stock"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

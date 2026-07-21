@@ -49,7 +49,10 @@ import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
 import { Route as BranchesIndexRouteImport } from './routes/branches.index'
 import { Route as BillingIndexRouteImport } from './routes/billing.index'
 import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
+import { Route as WorkshopWorkerBooksRouteImport } from './routes/workshop.worker-books'
+import { Route as WorkshopPolishingBooksRouteImport } from './routes/workshop.polishing-books'
 import { Route as WorkshopPolishingRouteImport } from './routes/workshop.polishing'
+import { Route as WorkshopOutsideWorkerBooksRouteImport } from './routes/workshop.outside-worker-books'
 import { Route as WorkshopOutsideWorkRouteImport } from './routes/workshop.outside-work'
 import { Route as WorkshopGoldBookRouteImport } from './routes/workshop.gold-book'
 import { Route as WorkshopBarcodeScannerRouteImport } from './routes/workshop.barcode-scanner'
@@ -78,8 +81,6 @@ import { Route as ReportsVaultReconciliationRouteImport } from './routes/reports
 import { Route as ReportsSettlementsRouteImport } from './routes/reports.settlements'
 import { Route as ReportsSettlementReconciliationRouteImport } from './routes/reports.settlement-reconciliation'
 import { Route as ReportsRemindersRouteImport } from './routes/reports.reminders'
-import { Route as ReportsPrintQueueRouteImport } from './routes/reports.print-queue'
-import { Route as ReportsPrintLogRouteImport } from './routes/reports.print-log'
 import { Route as ReportsOutsideWorkRouteImport } from './routes/reports.outside-work'
 import { Route as ReportsMonthEndCloseRouteImport } from './routes/reports.month-end-close'
 import { Route as ReportsManufacturingReconciliationRouteImport } from './routes/reports.manufacturing-reconciliation'
@@ -101,6 +102,7 @@ import { Route as ReportsApprovalsRouteImport } from './routes/reports.approvals
 import { Route as RepairNewRouteImport } from './routes/repair.new'
 import { Route as RepairIdRouteImport } from './routes/repair.$id'
 import { Route as PeopleImportRouteImport } from './routes/people.import'
+import { Route as PeopleIdRouteImport } from './routes/people.$id'
 import { Route as OrdersNewRouteImport } from './routes/orders.new'
 import { Route as OrdersImportRouteImport } from './routes/orders.import'
 import { Route as OrdersIdRouteImport } from './routes/orders.$id'
@@ -115,12 +117,17 @@ import { Route as BillingEstimatesIndexRouteImport } from './routes/billing.esti
 import { Route as BillingDeliveryChallansIndexRouteImport } from './routes/billing.delivery-challans.index'
 import { Route as BillingDebitNotesIndexRouteImport } from './routes/billing.debit-notes.index'
 import { Route as BillingCreditNotesIndexRouteImport } from './routes/billing.credit-notes.index'
+import { Route as WorkshopWorkerBookWorkerIdRouteImport } from './routes/workshop.worker-book.$workerId'
 import { Route as WorkshopReceiveSlipIdRouteImport } from './routes/workshop.receive-slip.$id'
+import { Route as WorkshopPolishingBookPartyIdRouteImport } from './routes/workshop.polishing-book.$partyId'
+import { Route as WorkshopOutsideWorkerBookPartyIdRouteImport } from './routes/workshop.outside-worker-book.$partyId'
 import { Route as WorkshopJobCardOrderIdRouteImport } from './routes/workshop.job-card.$orderId'
 import { Route as WorkshopGoldBookPrintWorkerIdRouteImport } from './routes/workshop.gold-book-print.$workerId'
 import { Route as WorkshopFilingsSlipIdRouteImport } from './routes/workshop.filings-slip.$id'
+import { Route as WorkshopBookJewellerIdRouteImport } from './routes/workshop.book.$jewellerId'
 import { Route as StockPrintIdRouteImport } from './routes/stock.print.$id'
 import { Route as SettlementDraftPrintIdRouteImport } from './routes/settlement.draft-print.$id'
+import { Route as SettingsIntegrationsWhatsappRouteImport } from './routes/settings.integrations.whatsapp'
 import { Route as ReportsDailyclosePrintIdRouteImport } from './routes/reports.dailyclose-print.$id'
 import { Route as RepairPolishingNewRouteImport } from './routes/repair.polishing.new'
 import { Route as PeoplePrintIdRouteImport } from './routes/people.print.$id'
@@ -140,6 +147,7 @@ import { Route as BillingDebitNotePrintIdRouteImport } from './routes/billing.de
 import { Route as BillingCreditNotesIdRouteImport } from './routes/billing.credit-notes.$id'
 import { Route as BillingCreditNotePrintIdRouteImport } from './routes/billing.credit-note-print.$id'
 import { Route as WorkshopPrintJobCardOrderIdRouteImport } from './routes/workshop.print.job-card.$orderId'
+import { Route as WorkshopMaterialSlipWorkerIdDateRouteImport } from './routes/workshop.material-slip.$workerId.$date'
 import { Route as RepairPrintKindIdRouteImport } from './routes/repair.print.$kind.$id'
 import { Route as OrdersPrintKindIdRouteImport } from './routes/orders.print.$kind.$id'
 import { Route as ManufacturingBillNewJobIdRouteImport } from './routes/manufacturing.bill.new.$jobId'
@@ -345,11 +353,27 @@ const AttendanceIndexRoute = AttendanceIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AttendanceRoute,
 } as any)
+const WorkshopWorkerBooksRoute = WorkshopWorkerBooksRouteImport.update({
+  id: '/worker-books',
+  path: '/worker-books',
+  getParentRoute: () => WorkshopRoute,
+} as any)
+const WorkshopPolishingBooksRoute = WorkshopPolishingBooksRouteImport.update({
+  id: '/polishing-books',
+  path: '/polishing-books',
+  getParentRoute: () => WorkshopRoute,
+} as any)
 const WorkshopPolishingRoute = WorkshopPolishingRouteImport.update({
   id: '/polishing',
   path: '/polishing',
   getParentRoute: () => WorkshopRoute,
 } as any)
+const WorkshopOutsideWorkerBooksRoute =
+  WorkshopOutsideWorkerBooksRouteImport.update({
+    id: '/outside-worker-books',
+    path: '/outside-worker-books',
+    getParentRoute: () => WorkshopRoute,
+  } as any)
 const WorkshopOutsideWorkRoute = WorkshopOutsideWorkRouteImport.update({
   id: '/outside-work',
   path: '/outside-work',
@@ -494,16 +518,6 @@ const ReportsRemindersRoute = ReportsRemindersRouteImport.update({
   path: '/reminders',
   getParentRoute: () => ReportsRoute,
 } as any)
-const ReportsPrintQueueRoute = ReportsPrintQueueRouteImport.update({
-  id: '/print-queue',
-  path: '/print-queue',
-  getParentRoute: () => ReportsRoute,
-} as any)
-const ReportsPrintLogRoute = ReportsPrintLogRouteImport.update({
-  id: '/print-log',
-  path: '/print-log',
-  getParentRoute: () => ReportsRoute,
-} as any)
 const ReportsOutsideWorkRoute = ReportsOutsideWorkRouteImport.update({
   id: '/outside-work',
   path: '/outside-work',
@@ -612,6 +626,11 @@ const PeopleImportRoute = PeopleImportRouteImport.update({
   path: '/people/import',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PeopleIdRoute = PeopleIdRouteImport.update({
+  id: '/people/$id',
+  path: '/people/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdersNewRoute = OrdersNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -683,11 +702,29 @@ const BillingCreditNotesIndexRoute = BillingCreditNotesIndexRouteImport.update({
   path: '/credit-notes/',
   getParentRoute: () => BillingRoute,
 } as any)
+const WorkshopWorkerBookWorkerIdRoute =
+  WorkshopWorkerBookWorkerIdRouteImport.update({
+    id: '/worker-book/$workerId',
+    path: '/worker-book/$workerId',
+    getParentRoute: () => WorkshopRoute,
+  } as any)
 const WorkshopReceiveSlipIdRoute = WorkshopReceiveSlipIdRouteImport.update({
   id: '/receive-slip/$id',
   path: '/receive-slip/$id',
   getParentRoute: () => WorkshopRoute,
 } as any)
+const WorkshopPolishingBookPartyIdRoute =
+  WorkshopPolishingBookPartyIdRouteImport.update({
+    id: '/polishing-book/$partyId',
+    path: '/polishing-book/$partyId',
+    getParentRoute: () => WorkshopRoute,
+  } as any)
+const WorkshopOutsideWorkerBookPartyIdRoute =
+  WorkshopOutsideWorkerBookPartyIdRouteImport.update({
+    id: '/outside-worker-book/$partyId',
+    path: '/outside-worker-book/$partyId',
+    getParentRoute: () => WorkshopRoute,
+  } as any)
 const WorkshopJobCardOrderIdRoute = WorkshopJobCardOrderIdRouteImport.update({
   id: '/job-card/$orderId',
   path: '/job-card/$orderId',
@@ -704,6 +741,11 @@ const WorkshopFilingsSlipIdRoute = WorkshopFilingsSlipIdRouteImport.update({
   path: '/filings-slip/$id',
   getParentRoute: () => WorkshopRoute,
 } as any)
+const WorkshopBookJewellerIdRoute = WorkshopBookJewellerIdRouteImport.update({
+  id: '/book/$jewellerId',
+  path: '/book/$jewellerId',
+  getParentRoute: () => WorkshopRoute,
+} as any)
 const StockPrintIdRoute = StockPrintIdRouteImport.update({
   id: '/print/$id',
   path: '/print/$id',
@@ -714,6 +756,12 @@ const SettlementDraftPrintIdRoute = SettlementDraftPrintIdRouteImport.update({
   path: '/settlement/draft-print/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsIntegrationsWhatsappRoute =
+  SettingsIntegrationsWhatsappRouteImport.update({
+    id: '/integrations/whatsapp',
+    path: '/integrations/whatsapp',
+    getParentRoute: () => SettingsRoute,
+  } as any)
 const ReportsDailyclosePrintIdRoute =
   ReportsDailyclosePrintIdRouteImport.update({
     id: '/dailyclose-print/$id',
@@ -815,6 +863,12 @@ const WorkshopPrintJobCardOrderIdRoute =
     path: '/print/job-card/$orderId',
     getParentRoute: () => WorkshopRoute,
   } as any)
+const WorkshopMaterialSlipWorkerIdDateRoute =
+  WorkshopMaterialSlipWorkerIdDateRouteImport.update({
+    id: '/material-slip/$workerId/$date',
+    path: '/material-slip/$workerId/$date',
+    getParentRoute: () => WorkshopRoute,
+  } as any)
 const RepairPrintKindIdRoute = RepairPrintKindIdRouteImport.update({
   id: '/print/$kind/$id',
   path: '/print/$kind/$id',
@@ -872,6 +926,7 @@ export interface FileRoutesByFullPath {
   '/orders/$id': typeof OrdersIdRoute
   '/orders/import': typeof OrdersImportRoute
   '/orders/new': typeof OrdersNewRoute
+  '/people/$id': typeof PeopleIdRoute
   '/people/import': typeof PeopleImportRoute
   '/repair/$id': typeof RepairIdRoute
   '/repair/new': typeof RepairNewRoute
@@ -893,8 +948,6 @@ export interface FileRoutesByFullPath {
   '/reports/manufacturing-reconciliation': typeof ReportsManufacturingReconciliationRoute
   '/reports/month-end-close': typeof ReportsMonthEndCloseRoute
   '/reports/outside-work': typeof ReportsOutsideWorkRoute
-  '/reports/print-log': typeof ReportsPrintLogRoute
-  '/reports/print-queue': typeof ReportsPrintQueueRoute
   '/reports/reminders': typeof ReportsRemindersRoute
   '/reports/settlement-reconciliation': typeof ReportsSettlementReconciliationRoute
   '/reports/settlements': typeof ReportsSettlementsRoute
@@ -923,7 +976,10 @@ export interface FileRoutesByFullPath {
   '/workshop/barcode-scanner': typeof WorkshopBarcodeScannerRoute
   '/workshop/gold-book': typeof WorkshopGoldBookRoute
   '/workshop/outside-work': typeof WorkshopOutsideWorkRoute
+  '/workshop/outside-worker-books': typeof WorkshopOutsideWorkerBooksRoute
   '/workshop/polishing': typeof WorkshopPolishingRoute
+  '/workshop/polishing-books': typeof WorkshopPolishingBooksRoute
+  '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/billing/': typeof BillingIndexRoute
   '/branches/': typeof BranchesIndexRoute
@@ -958,12 +1014,17 @@ export interface FileRoutesByFullPath {
   '/people/print/$id': typeof PeoplePrintIdRoute
   '/repair/polishing/new': typeof RepairPolishingNewRoute
   '/reports/dailyclose-print/$id': typeof ReportsDailyclosePrintIdRoute
+  '/settings/integrations/whatsapp': typeof SettingsIntegrationsWhatsappRoute
   '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
+  '/workshop/book/$jewellerId': typeof WorkshopBookJewellerIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
   '/workshop/gold-book-print/$workerId': typeof WorkshopGoldBookPrintWorkerIdRoute
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
+  '/workshop/outside-worker-book/$partyId': typeof WorkshopOutsideWorkerBookPartyIdRoute
+  '/workshop/polishing-book/$partyId': typeof WorkshopPolishingBookPartyIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
+  '/workshop/worker-book/$workerId': typeof WorkshopWorkerBookWorkerIdRoute
   '/billing/credit-notes/': typeof BillingCreditNotesIndexRoute
   '/billing/debit-notes/': typeof BillingDebitNotesIndexRoute
   '/billing/delivery-challans/': typeof BillingDeliveryChallansIndexRoute
@@ -972,6 +1033,7 @@ export interface FileRoutesByFullPath {
   '/manufacturing/bill/new/$jobId': typeof ManufacturingBillNewJobIdRoute
   '/orders/print/$kind/$id': typeof OrdersPrintKindIdRoute
   '/repair/print/$kind/$id': typeof RepairPrintKindIdRoute
+  '/workshop/material-slip/$workerId/$date': typeof WorkshopMaterialSlipWorkerIdDateRoute
   '/workshop/print/job-card/$orderId': typeof WorkshopPrintJobCardOrderIdRoute
 }
 export interface FileRoutesByTo {
@@ -997,6 +1059,7 @@ export interface FileRoutesByTo {
   '/orders/$id': typeof OrdersIdRoute
   '/orders/import': typeof OrdersImportRoute
   '/orders/new': typeof OrdersNewRoute
+  '/people/$id': typeof PeopleIdRoute
   '/people/import': typeof PeopleImportRoute
   '/repair/$id': typeof RepairIdRoute
   '/repair/new': typeof RepairNewRoute
@@ -1018,8 +1081,6 @@ export interface FileRoutesByTo {
   '/reports/manufacturing-reconciliation': typeof ReportsManufacturingReconciliationRoute
   '/reports/month-end-close': typeof ReportsMonthEndCloseRoute
   '/reports/outside-work': typeof ReportsOutsideWorkRoute
-  '/reports/print-log': typeof ReportsPrintLogRoute
-  '/reports/print-queue': typeof ReportsPrintQueueRoute
   '/reports/reminders': typeof ReportsRemindersRoute
   '/reports/settlement-reconciliation': typeof ReportsSettlementReconciliationRoute
   '/reports/settlements': typeof ReportsSettlementsRoute
@@ -1048,7 +1109,10 @@ export interface FileRoutesByTo {
   '/workshop/barcode-scanner': typeof WorkshopBarcodeScannerRoute
   '/workshop/gold-book': typeof WorkshopGoldBookRoute
   '/workshop/outside-work': typeof WorkshopOutsideWorkRoute
+  '/workshop/outside-worker-books': typeof WorkshopOutsideWorkerBooksRoute
   '/workshop/polishing': typeof WorkshopPolishingRoute
+  '/workshop/polishing-books': typeof WorkshopPolishingBooksRoute
+  '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
   '/attendance': typeof AttendanceIndexRoute
   '/billing': typeof BillingIndexRoute
   '/branches': typeof BranchesIndexRoute
@@ -1083,12 +1147,17 @@ export interface FileRoutesByTo {
   '/people/print/$id': typeof PeoplePrintIdRoute
   '/repair/polishing/new': typeof RepairPolishingNewRoute
   '/reports/dailyclose-print/$id': typeof ReportsDailyclosePrintIdRoute
+  '/settings/integrations/whatsapp': typeof SettingsIntegrationsWhatsappRoute
   '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
+  '/workshop/book/$jewellerId': typeof WorkshopBookJewellerIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
   '/workshop/gold-book-print/$workerId': typeof WorkshopGoldBookPrintWorkerIdRoute
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
+  '/workshop/outside-worker-book/$partyId': typeof WorkshopOutsideWorkerBookPartyIdRoute
+  '/workshop/polishing-book/$partyId': typeof WorkshopPolishingBookPartyIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
+  '/workshop/worker-book/$workerId': typeof WorkshopWorkerBookWorkerIdRoute
   '/billing/credit-notes': typeof BillingCreditNotesIndexRoute
   '/billing/debit-notes': typeof BillingDebitNotesIndexRoute
   '/billing/delivery-challans': typeof BillingDeliveryChallansIndexRoute
@@ -1097,6 +1166,7 @@ export interface FileRoutesByTo {
   '/manufacturing/bill/new/$jobId': typeof ManufacturingBillNewJobIdRoute
   '/orders/print/$kind/$id': typeof OrdersPrintKindIdRoute
   '/repair/print/$kind/$id': typeof RepairPrintKindIdRoute
+  '/workshop/material-slip/$workerId/$date': typeof WorkshopMaterialSlipWorkerIdDateRoute
   '/workshop/print/job-card/$orderId': typeof WorkshopPrintJobCardOrderIdRoute
 }
 export interface FileRoutesById {
@@ -1135,6 +1205,7 @@ export interface FileRoutesById {
   '/orders/$id': typeof OrdersIdRoute
   '/orders/import': typeof OrdersImportRoute
   '/orders/new': typeof OrdersNewRoute
+  '/people/$id': typeof PeopleIdRoute
   '/people/import': typeof PeopleImportRoute
   '/repair/$id': typeof RepairIdRoute
   '/repair/new': typeof RepairNewRoute
@@ -1156,8 +1227,6 @@ export interface FileRoutesById {
   '/reports/manufacturing-reconciliation': typeof ReportsManufacturingReconciliationRoute
   '/reports/month-end-close': typeof ReportsMonthEndCloseRoute
   '/reports/outside-work': typeof ReportsOutsideWorkRoute
-  '/reports/print-log': typeof ReportsPrintLogRoute
-  '/reports/print-queue': typeof ReportsPrintQueueRoute
   '/reports/reminders': typeof ReportsRemindersRoute
   '/reports/settlement-reconciliation': typeof ReportsSettlementReconciliationRoute
   '/reports/settlements': typeof ReportsSettlementsRoute
@@ -1186,7 +1255,10 @@ export interface FileRoutesById {
   '/workshop/barcode-scanner': typeof WorkshopBarcodeScannerRoute
   '/workshop/gold-book': typeof WorkshopGoldBookRoute
   '/workshop/outside-work': typeof WorkshopOutsideWorkRoute
+  '/workshop/outside-worker-books': typeof WorkshopOutsideWorkerBooksRoute
   '/workshop/polishing': typeof WorkshopPolishingRoute
+  '/workshop/polishing-books': typeof WorkshopPolishingBooksRoute
+  '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/billing/': typeof BillingIndexRoute
   '/branches/': typeof BranchesIndexRoute
@@ -1221,12 +1293,17 @@ export interface FileRoutesById {
   '/people/print/$id': typeof PeoplePrintIdRoute
   '/repair/polishing/new': typeof RepairPolishingNewRoute
   '/reports/dailyclose-print/$id': typeof ReportsDailyclosePrintIdRoute
+  '/settings/integrations/whatsapp': typeof SettingsIntegrationsWhatsappRoute
   '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
+  '/workshop/book/$jewellerId': typeof WorkshopBookJewellerIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
   '/workshop/gold-book-print/$workerId': typeof WorkshopGoldBookPrintWorkerIdRoute
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
+  '/workshop/outside-worker-book/$partyId': typeof WorkshopOutsideWorkerBookPartyIdRoute
+  '/workshop/polishing-book/$partyId': typeof WorkshopPolishingBookPartyIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
+  '/workshop/worker-book/$workerId': typeof WorkshopWorkerBookWorkerIdRoute
   '/billing/credit-notes/': typeof BillingCreditNotesIndexRoute
   '/billing/debit-notes/': typeof BillingDebitNotesIndexRoute
   '/billing/delivery-challans/': typeof BillingDeliveryChallansIndexRoute
@@ -1235,6 +1312,7 @@ export interface FileRoutesById {
   '/manufacturing/bill/new/$jobId': typeof ManufacturingBillNewJobIdRoute
   '/orders/print/$kind/$id': typeof OrdersPrintKindIdRoute
   '/repair/print/$kind/$id': typeof RepairPrintKindIdRoute
+  '/workshop/material-slip/$workerId/$date': typeof WorkshopMaterialSlipWorkerIdDateRoute
   '/workshop/print/job-card/$orderId': typeof WorkshopPrintJobCardOrderIdRoute
 }
 export interface FileRouteTypes {
@@ -1274,6 +1352,7 @@ export interface FileRouteTypes {
     | '/orders/$id'
     | '/orders/import'
     | '/orders/new'
+    | '/people/$id'
     | '/people/import'
     | '/repair/$id'
     | '/repair/new'
@@ -1295,8 +1374,6 @@ export interface FileRouteTypes {
     | '/reports/manufacturing-reconciliation'
     | '/reports/month-end-close'
     | '/reports/outside-work'
-    | '/reports/print-log'
-    | '/reports/print-queue'
     | '/reports/reminders'
     | '/reports/settlement-reconciliation'
     | '/reports/settlements'
@@ -1325,7 +1402,10 @@ export interface FileRouteTypes {
     | '/workshop/barcode-scanner'
     | '/workshop/gold-book'
     | '/workshop/outside-work'
+    | '/workshop/outside-worker-books'
     | '/workshop/polishing'
+    | '/workshop/polishing-books'
+    | '/workshop/worker-books'
     | '/attendance/'
     | '/billing/'
     | '/branches/'
@@ -1360,12 +1440,17 @@ export interface FileRouteTypes {
     | '/people/print/$id'
     | '/repair/polishing/new'
     | '/reports/dailyclose-print/$id'
+    | '/settings/integrations/whatsapp'
     | '/settlement/draft-print/$id'
     | '/stock/print/$id'
+    | '/workshop/book/$jewellerId'
     | '/workshop/filings-slip/$id'
     | '/workshop/gold-book-print/$workerId'
     | '/workshop/job-card/$orderId'
+    | '/workshop/outside-worker-book/$partyId'
+    | '/workshop/polishing-book/$partyId'
     | '/workshop/receive-slip/$id'
+    | '/workshop/worker-book/$workerId'
     | '/billing/credit-notes/'
     | '/billing/debit-notes/'
     | '/billing/delivery-challans/'
@@ -1374,6 +1459,7 @@ export interface FileRouteTypes {
     | '/manufacturing/bill/new/$jobId'
     | '/orders/print/$kind/$id'
     | '/repair/print/$kind/$id'
+    | '/workshop/material-slip/$workerId/$date'
     | '/workshop/print/job-card/$orderId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -1399,6 +1485,7 @@ export interface FileRouteTypes {
     | '/orders/$id'
     | '/orders/import'
     | '/orders/new'
+    | '/people/$id'
     | '/people/import'
     | '/repair/$id'
     | '/repair/new'
@@ -1420,8 +1507,6 @@ export interface FileRouteTypes {
     | '/reports/manufacturing-reconciliation'
     | '/reports/month-end-close'
     | '/reports/outside-work'
-    | '/reports/print-log'
-    | '/reports/print-queue'
     | '/reports/reminders'
     | '/reports/settlement-reconciliation'
     | '/reports/settlements'
@@ -1450,7 +1535,10 @@ export interface FileRouteTypes {
     | '/workshop/barcode-scanner'
     | '/workshop/gold-book'
     | '/workshop/outside-work'
+    | '/workshop/outside-worker-books'
     | '/workshop/polishing'
+    | '/workshop/polishing-books'
+    | '/workshop/worker-books'
     | '/attendance'
     | '/billing'
     | '/branches'
@@ -1485,12 +1573,17 @@ export interface FileRouteTypes {
     | '/people/print/$id'
     | '/repair/polishing/new'
     | '/reports/dailyclose-print/$id'
+    | '/settings/integrations/whatsapp'
     | '/settlement/draft-print/$id'
     | '/stock/print/$id'
+    | '/workshop/book/$jewellerId'
     | '/workshop/filings-slip/$id'
     | '/workshop/gold-book-print/$workerId'
     | '/workshop/job-card/$orderId'
+    | '/workshop/outside-worker-book/$partyId'
+    | '/workshop/polishing-book/$partyId'
     | '/workshop/receive-slip/$id'
+    | '/workshop/worker-book/$workerId'
     | '/billing/credit-notes'
     | '/billing/debit-notes'
     | '/billing/delivery-challans'
@@ -1499,6 +1592,7 @@ export interface FileRouteTypes {
     | '/manufacturing/bill/new/$jobId'
     | '/orders/print/$kind/$id'
     | '/repair/print/$kind/$id'
+    | '/workshop/material-slip/$workerId/$date'
     | '/workshop/print/job-card/$orderId'
   id:
     | '__root__'
@@ -1536,6 +1630,7 @@ export interface FileRouteTypes {
     | '/orders/$id'
     | '/orders/import'
     | '/orders/new'
+    | '/people/$id'
     | '/people/import'
     | '/repair/$id'
     | '/repair/new'
@@ -1557,8 +1652,6 @@ export interface FileRouteTypes {
     | '/reports/manufacturing-reconciliation'
     | '/reports/month-end-close'
     | '/reports/outside-work'
-    | '/reports/print-log'
-    | '/reports/print-queue'
     | '/reports/reminders'
     | '/reports/settlement-reconciliation'
     | '/reports/settlements'
@@ -1587,7 +1680,10 @@ export interface FileRouteTypes {
     | '/workshop/barcode-scanner'
     | '/workshop/gold-book'
     | '/workshop/outside-work'
+    | '/workshop/outside-worker-books'
     | '/workshop/polishing'
+    | '/workshop/polishing-books'
+    | '/workshop/worker-books'
     | '/attendance/'
     | '/billing/'
     | '/branches/'
@@ -1622,12 +1718,17 @@ export interface FileRouteTypes {
     | '/people/print/$id'
     | '/repair/polishing/new'
     | '/reports/dailyclose-print/$id'
+    | '/settings/integrations/whatsapp'
     | '/settlement/draft-print/$id'
     | '/stock/print/$id'
+    | '/workshop/book/$jewellerId'
     | '/workshop/filings-slip/$id'
     | '/workshop/gold-book-print/$workerId'
     | '/workshop/job-card/$orderId'
+    | '/workshop/outside-worker-book/$partyId'
+    | '/workshop/polishing-book/$partyId'
     | '/workshop/receive-slip/$id'
+    | '/workshop/worker-book/$workerId'
     | '/billing/credit-notes/'
     | '/billing/debit-notes/'
     | '/billing/delivery-challans/'
@@ -1636,6 +1737,7 @@ export interface FileRouteTypes {
     | '/manufacturing/bill/new/$jobId'
     | '/orders/print/$kind/$id'
     | '/repair/print/$kind/$id'
+    | '/workshop/material-slip/$workerId/$date'
     | '/workshop/print/job-card/$orderId'
   fileRoutesById: FileRoutesById
 }
@@ -1666,6 +1768,7 @@ export interface RootRouteChildren {
   WorkshopRoute: typeof WorkshopRouteWithChildren
   AuthCallbackRoute: typeof AuthCallbackRoute
   DocTokenRoute: typeof DocTokenRoute
+  PeopleIdRoute: typeof PeopleIdRoute
   PeopleImportRoute: typeof PeopleImportRoute
   SettlementIdRoute: typeof SettlementIdRoute
   SettlementNewRoute: typeof SettlementNewRoute
@@ -1960,11 +2063,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AttendanceIndexRouteImport
       parentRoute: typeof AttendanceRoute
     }
+    '/workshop/worker-books': {
+      id: '/workshop/worker-books'
+      path: '/worker-books'
+      fullPath: '/workshop/worker-books'
+      preLoaderRoute: typeof WorkshopWorkerBooksRouteImport
+      parentRoute: typeof WorkshopRoute
+    }
+    '/workshop/polishing-books': {
+      id: '/workshop/polishing-books'
+      path: '/polishing-books'
+      fullPath: '/workshop/polishing-books'
+      preLoaderRoute: typeof WorkshopPolishingBooksRouteImport
+      parentRoute: typeof WorkshopRoute
+    }
     '/workshop/polishing': {
       id: '/workshop/polishing'
       path: '/polishing'
       fullPath: '/workshop/polishing'
       preLoaderRoute: typeof WorkshopPolishingRouteImport
+      parentRoute: typeof WorkshopRoute
+    }
+    '/workshop/outside-worker-books': {
+      id: '/workshop/outside-worker-books'
+      path: '/outside-worker-books'
+      fullPath: '/workshop/outside-worker-books'
+      preLoaderRoute: typeof WorkshopOutsideWorkerBooksRouteImport
       parentRoute: typeof WorkshopRoute
     }
     '/workshop/outside-work': {
@@ -2163,20 +2287,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsRemindersRouteImport
       parentRoute: typeof ReportsRoute
     }
-    '/reports/print-queue': {
-      id: '/reports/print-queue'
-      path: '/print-queue'
-      fullPath: '/reports/print-queue'
-      preLoaderRoute: typeof ReportsPrintQueueRouteImport
-      parentRoute: typeof ReportsRoute
-    }
-    '/reports/print-log': {
-      id: '/reports/print-log'
-      path: '/print-log'
-      fullPath: '/reports/print-log'
-      preLoaderRoute: typeof ReportsPrintLogRouteImport
-      parentRoute: typeof ReportsRoute
-    }
     '/reports/outside-work': {
       id: '/reports/outside-work'
       path: '/outside-work'
@@ -2324,6 +2434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeopleImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/people/$id': {
+      id: '/people/$id'
+      path: '/people/$id'
+      fullPath: '/people/$id'
+      preLoaderRoute: typeof PeopleIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orders/new': {
       id: '/orders/new'
       path: '/new'
@@ -2422,11 +2539,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BillingCreditNotesIndexRouteImport
       parentRoute: typeof BillingRoute
     }
+    '/workshop/worker-book/$workerId': {
+      id: '/workshop/worker-book/$workerId'
+      path: '/worker-book/$workerId'
+      fullPath: '/workshop/worker-book/$workerId'
+      preLoaderRoute: typeof WorkshopWorkerBookWorkerIdRouteImport
+      parentRoute: typeof WorkshopRoute
+    }
     '/workshop/receive-slip/$id': {
       id: '/workshop/receive-slip/$id'
       path: '/receive-slip/$id'
       fullPath: '/workshop/receive-slip/$id'
       preLoaderRoute: typeof WorkshopReceiveSlipIdRouteImport
+      parentRoute: typeof WorkshopRoute
+    }
+    '/workshop/polishing-book/$partyId': {
+      id: '/workshop/polishing-book/$partyId'
+      path: '/polishing-book/$partyId'
+      fullPath: '/workshop/polishing-book/$partyId'
+      preLoaderRoute: typeof WorkshopPolishingBookPartyIdRouteImport
+      parentRoute: typeof WorkshopRoute
+    }
+    '/workshop/outside-worker-book/$partyId': {
+      id: '/workshop/outside-worker-book/$partyId'
+      path: '/outside-worker-book/$partyId'
+      fullPath: '/workshop/outside-worker-book/$partyId'
+      preLoaderRoute: typeof WorkshopOutsideWorkerBookPartyIdRouteImport
       parentRoute: typeof WorkshopRoute
     }
     '/workshop/job-card/$orderId': {
@@ -2450,6 +2588,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkshopFilingsSlipIdRouteImport
       parentRoute: typeof WorkshopRoute
     }
+    '/workshop/book/$jewellerId': {
+      id: '/workshop/book/$jewellerId'
+      path: '/book/$jewellerId'
+      fullPath: '/workshop/book/$jewellerId'
+      preLoaderRoute: typeof WorkshopBookJewellerIdRouteImport
+      parentRoute: typeof WorkshopRoute
+    }
     '/stock/print/$id': {
       id: '/stock/print/$id'
       path: '/print/$id'
@@ -2463,6 +2608,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settlement/draft-print/$id'
       preLoaderRoute: typeof SettlementDraftPrintIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/settings/integrations/whatsapp': {
+      id: '/settings/integrations/whatsapp'
+      path: '/integrations/whatsapp'
+      fullPath: '/settings/integrations/whatsapp'
+      preLoaderRoute: typeof SettingsIntegrationsWhatsappRouteImport
+      parentRoute: typeof SettingsRoute
     }
     '/reports/dailyclose-print/$id': {
       id: '/reports/dailyclose-print/$id'
@@ -2595,6 +2747,13 @@ declare module '@tanstack/react-router' {
       path: '/print/job-card/$orderId'
       fullPath: '/workshop/print/job-card/$orderId'
       preLoaderRoute: typeof WorkshopPrintJobCardOrderIdRouteImport
+      parentRoute: typeof WorkshopRoute
+    }
+    '/workshop/material-slip/$workerId/$date': {
+      id: '/workshop/material-slip/$workerId/$date'
+      path: '/material-slip/$workerId/$date'
+      fullPath: '/workshop/material-slip/$workerId/$date'
+      preLoaderRoute: typeof WorkshopMaterialSlipWorkerIdDateRouteImport
       parentRoute: typeof WorkshopRoute
     }
     '/repair/print/$kind/$id': {
@@ -2822,8 +2981,6 @@ interface ReportsRouteChildren {
   ReportsManufacturingReconciliationRoute: typeof ReportsManufacturingReconciliationRoute
   ReportsMonthEndCloseRoute: typeof ReportsMonthEndCloseRoute
   ReportsOutsideWorkRoute: typeof ReportsOutsideWorkRoute
-  ReportsPrintLogRoute: typeof ReportsPrintLogRoute
-  ReportsPrintQueueRoute: typeof ReportsPrintQueueRoute
   ReportsRemindersRoute: typeof ReportsRemindersRoute
   ReportsSettlementReconciliationRoute: typeof ReportsSettlementReconciliationRoute
   ReportsSettlementsRoute: typeof ReportsSettlementsRoute
@@ -2853,8 +3010,6 @@ const ReportsRouteChildren: ReportsRouteChildren = {
     ReportsManufacturingReconciliationRoute,
   ReportsMonthEndCloseRoute: ReportsMonthEndCloseRoute,
   ReportsOutsideWorkRoute: ReportsOutsideWorkRoute,
-  ReportsPrintLogRoute: ReportsPrintLogRoute,
-  ReportsPrintQueueRoute: ReportsPrintQueueRoute,
   ReportsRemindersRoute: ReportsRemindersRoute,
   ReportsSettlementReconciliationRoute: ReportsSettlementReconciliationRoute,
   ReportsSettlementsRoute: ReportsSettlementsRoute,
@@ -2880,6 +3035,7 @@ interface SettingsRouteChildren {
   SettingsWhatsappTemplatesRoute: typeof SettingsWhatsappTemplatesRoute
   SettingsWorkflowRoute: typeof SettingsWorkflowRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
+  SettingsIntegrationsWhatsappRoute: typeof SettingsIntegrationsWhatsappRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
@@ -2895,6 +3051,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsWhatsappTemplatesRoute: SettingsWhatsappTemplatesRoute,
   SettingsWorkflowRoute: SettingsWorkflowRoute,
   SettingsIndexRoute: SettingsIndexRoute,
+  SettingsIntegrationsWhatsappRoute: SettingsIntegrationsWhatsappRoute,
 }
 
 const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
@@ -2930,12 +3087,20 @@ interface WorkshopRouteChildren {
   WorkshopBarcodeScannerRoute: typeof WorkshopBarcodeScannerRoute
   WorkshopGoldBookRoute: typeof WorkshopGoldBookRoute
   WorkshopOutsideWorkRoute: typeof WorkshopOutsideWorkRoute
+  WorkshopOutsideWorkerBooksRoute: typeof WorkshopOutsideWorkerBooksRoute
   WorkshopPolishingRoute: typeof WorkshopPolishingRoute
+  WorkshopPolishingBooksRoute: typeof WorkshopPolishingBooksRoute
+  WorkshopWorkerBooksRoute: typeof WorkshopWorkerBooksRoute
   WorkshopIndexRoute: typeof WorkshopIndexRoute
+  WorkshopBookJewellerIdRoute: typeof WorkshopBookJewellerIdRoute
   WorkshopFilingsSlipIdRoute: typeof WorkshopFilingsSlipIdRoute
   WorkshopGoldBookPrintWorkerIdRoute: typeof WorkshopGoldBookPrintWorkerIdRoute
   WorkshopJobCardOrderIdRoute: typeof WorkshopJobCardOrderIdRoute
+  WorkshopOutsideWorkerBookPartyIdRoute: typeof WorkshopOutsideWorkerBookPartyIdRoute
+  WorkshopPolishingBookPartyIdRoute: typeof WorkshopPolishingBookPartyIdRoute
   WorkshopReceiveSlipIdRoute: typeof WorkshopReceiveSlipIdRoute
+  WorkshopWorkerBookWorkerIdRoute: typeof WorkshopWorkerBookWorkerIdRoute
+  WorkshopMaterialSlipWorkerIdDateRoute: typeof WorkshopMaterialSlipWorkerIdDateRoute
   WorkshopPrintJobCardOrderIdRoute: typeof WorkshopPrintJobCardOrderIdRoute
 }
 
@@ -2944,12 +3109,20 @@ const WorkshopRouteChildren: WorkshopRouteChildren = {
   WorkshopBarcodeScannerRoute: WorkshopBarcodeScannerRoute,
   WorkshopGoldBookRoute: WorkshopGoldBookRoute,
   WorkshopOutsideWorkRoute: WorkshopOutsideWorkRoute,
+  WorkshopOutsideWorkerBooksRoute: WorkshopOutsideWorkerBooksRoute,
   WorkshopPolishingRoute: WorkshopPolishingRoute,
+  WorkshopPolishingBooksRoute: WorkshopPolishingBooksRoute,
+  WorkshopWorkerBooksRoute: WorkshopWorkerBooksRoute,
   WorkshopIndexRoute: WorkshopIndexRoute,
+  WorkshopBookJewellerIdRoute: WorkshopBookJewellerIdRoute,
   WorkshopFilingsSlipIdRoute: WorkshopFilingsSlipIdRoute,
   WorkshopGoldBookPrintWorkerIdRoute: WorkshopGoldBookPrintWorkerIdRoute,
   WorkshopJobCardOrderIdRoute: WorkshopJobCardOrderIdRoute,
+  WorkshopOutsideWorkerBookPartyIdRoute: WorkshopOutsideWorkerBookPartyIdRoute,
+  WorkshopPolishingBookPartyIdRoute: WorkshopPolishingBookPartyIdRoute,
   WorkshopReceiveSlipIdRoute: WorkshopReceiveSlipIdRoute,
+  WorkshopWorkerBookWorkerIdRoute: WorkshopWorkerBookWorkerIdRoute,
+  WorkshopMaterialSlipWorkerIdDateRoute: WorkshopMaterialSlipWorkerIdDateRoute,
   WorkshopPrintJobCardOrderIdRoute: WorkshopPrintJobCardOrderIdRoute,
 }
 
@@ -2984,6 +3157,7 @@ const rootRouteChildren: RootRouteChildren = {
   WorkshopRoute: WorkshopRouteWithChildren,
   AuthCallbackRoute: AuthCallbackRoute,
   DocTokenRoute: DocTokenRoute,
+  PeopleIdRoute: PeopleIdRoute,
   PeopleImportRoute: PeopleImportRoute,
   SettlementIdRoute: SettlementIdRoute,
   SettlementNewRoute: SettlementNewRoute,

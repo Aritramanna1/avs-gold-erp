@@ -52,8 +52,6 @@ export function ManufacturingTagPrintDialog({
   barcode: ManufacturingBarcode | null;
   printedBy?: string;
 }) {
-  const recordPrint = usePrintLog((s) => s.recordPrint);
-  const events = usePrintLog((s) => s.events);
   const isEnabled = useBusinessRules((s) => s.isEnabled);
   const requireApproval = isEnabled("require_approval_before_printing_barcode");
   const config = useBarcodeConfig((s) => s.config);
@@ -62,49 +60,25 @@ export function ManufacturingTagPrintDialog({
   const [copies, setCopies] = useState("1");
   const [approvedBy, setApprovedBy] = useState("");
 
-  const existingEvent = useMemo(
-    () =>
-      barcode
-        ? events.find((e) => e.docType === "jewellery_tag" && e.linkedId === barcode.id)
-        : undefined,
-    [events, barcode],
-  );
-  const isReprint = !!existingEvent;
-
   if (!barcode) return null;
 
   const canPrint = (!requireApproval || approvedBy.trim().length > 0) && Number(copies) >= 1;
 
+  // V1: unlimited printing, no print log and no reprint counter.
   function doPrint() {
     if (!canPrint || !barcode) return;
-    recordPrint({
-      docType: "jewellery_tag",
-      docNumber: barcode.barcodeNumber,
-      linkedId: barcode.id,
-      linkedLabel: `${barcode.productDescription} · ${VARIANT_LABELS[variant]}`,
-      printedBy: printedBy ?? "Owner",
-      reason: isReprint ? "customer_copy" : undefined,
-      note: `${Number(copies)} ${VARIANT_LABELS[variant]}${Number(copies) > 1 ? "s" : ""}${requireApproval ? ` · Approved by ${approvedBy.trim()}` : ""}`,
-    });
     window.print();
   }
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="no-print">
           <DialogTitle className="flex items-center gap-2">
-            <Printer className="h-4 w-4 text-gold" /> {isReprint ? "Reprint" : "Print"} Tag —{" "}
-            {barcode.barcodeNumber}
+            <Printer className="h-4 w-4 text-gold" /> Print Tag — {barcode.barcodeNumber}
           </DialogTitle>
           <DialogDescription>
             {barcode.productDescription} · {barcode.orderNo}
-            {isReprint && (
-              <span className="ml-2 text-amber-500">
-                (Previously printed {existingEvent!.reprintCount + 1}× — this will be reprint #
-                {existingEvent!.reprintCount + 2})
-              </span>
-            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -202,7 +176,7 @@ export function ManufacturingTagPrintDialog({
             className="gap-2"
             data-testid="tag-print-submit"
           >
-            <Layers className="h-4 w-4" /> {isReprint ? "Reprint" : "Print"}
+            <Layers className="h-4 w-4" /> Print
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useRoles } from "@/lib/rbac";
+import { useAppLoading, markInitialLoadDone } from "@/lib/app-loading-store";
+import { ModuleSkeleton } from "@/components/module-skeleton";
 import { toast } from "sonner";
 
 export function triggerGoldRateEditor() {
@@ -43,12 +45,30 @@ export function AppShell({ children }: { children: ReactNode }) {
   useNetworkStatus();
   const { language, setLanguage: setAppLanguage } = useLanguage();
   const { theme, setTheme, isDark } = useTheme();
-  const { goldRatePerGramPaise, firm, users } = useSettings();
+  // Narrow selectors, not the whole store: the shell must not re-render on
+  // every unrelated setState the startup pull storm fires (orders, ledger,
+  // etc.). It only depends on these three slices.
+  const goldRatePerGramPaise = useSettings((s) => s.goldRatePerGramPaise);
+  const firm = useSettings((s) => s.firm);
+  const users = useSettings((s) => s.users);
   const { roles, email: currentEmail } = useRoles();
   const navigate = useNavigate();
   const [goldRateOpen, setGoldRateOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Gate the boot skeleton on the CRITICAL load (settings/branch), not the full
+  // background pull — so the shell + route appear as soon as the layout's own
+  // data is in, and operational modules fill in progressively underneath.
+  const criticalLoadDone = useAppLoading((s) => s.criticalLoadDone);
+
+  // Safety valve: never let the boot skeleton trap the UI if the critical load
+  // never signals done (e.g. an unexpected boot path). The real signal almost
+  // always wins well before this.
+  useEffect(() => {
+    if (criticalLoadDone) return;
+    const t = setTimeout(() => markInitialLoadDone(), 8_000);
+    return () => clearTimeout(t);
+  }, [criticalLoadDone]);
 
   const currentUser = currentEmail
     ? users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase())
@@ -280,8 +300,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto" id="main-view-scroll-container">
+        <main className="flex-1 overflow-y-auto relative" id="main-view-scroll-container">
           {children}
+          {!criticalLoadDone && (
+            <div className="absolute inset-0 z-20 bg-background overflow-y-auto" aria-hidden="true">
+              <ModuleSkeleton />
+            </div>
+          )}
         </main>
         <GoldRateEditor open={goldRateOpen} onOpenChange={setGoldRateOpen} />
       </div>

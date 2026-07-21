@@ -46,6 +46,21 @@ function StockVerificationPage() {
     return { id: data.session?.user.id ?? null, email: data.session?.user.email ?? null };
   }
 
+  async function handlePostShortage(countId: string) {
+    setBusy(true);
+    try {
+      const who = await actor();
+      await usePhysicalStockCounts.getState().postShortageAdjustment(countId, who);
+      toast.success("Shortage posted as a gold-ledger adjustment.");
+    } catch (err) {
+      // e.g. PeriodLockedError from a closed month-end period — without this,
+      // the button silently did nothing and never told the user why.
+      toast.error(err instanceof Error ? err.message : "Failed to post shortage adjustment.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleStart() {
     setBusy(true);
     try {
@@ -217,14 +232,8 @@ function StockVerificationPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={async () => {
-                            const { data } = await supabase.auth.getSession();
-                            await usePhysicalStockCounts.getState().postShortageAdjustment(c.id, {
-                              id: data.session?.user.id ?? null,
-                              email: data.session?.user.email ?? null,
-                            });
-                            toast.success("Shortage posted as a gold-ledger adjustment.");
-                          }}
+                          disabled={busy}
+                          onClick={() => handlePostShortage(c.id)}
                         >
                           Post Shortage to Ledger
                         </Button>

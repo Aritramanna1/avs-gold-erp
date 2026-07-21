@@ -193,10 +193,17 @@ function TableCell({
 }
 
 function TableSection({ config, data }: { config: TableSectionConfig; data: PrintDocumentData }) {
+  const { firm } = useSettings();
   if (!isVisible(config.showIf, data.flags)) return null;
   const rows = data.tables[config.rowsPath] ?? [];
   const columns = config.columns.filter((c) => isVisible(c.showIf, data.flags));
   const footerRow = config.footerRowPath ? data.tables[config.footerRowPath]?.[0] : undefined;
+  const totalWidth = columns.reduce((s, c) => s + (c.width ?? 1), 0) || 1;
+
+  // Rendered inside <thead>, so the browser repeats it on every printed page.
+  const repeatMeta = (config.repeatHeaderMeta ?? [])
+    .map((m) => ({ label: m.label, value: formatFieldValue(getPath(data.fields, m.valuePath)) }))
+    .filter((m) => m.value && m.value !== "—");
 
   return (
     <div className="mb-4">
@@ -205,13 +212,39 @@ function TableSection({ config, data }: { config: TableSectionConfig; data: Prin
           {config.title}
         </div>
       )}
-      <table className="w-full text-xs">
+      <table className="w-full text-xs table-fixed">
+        {/* Fixed layout + proportional colgroup so a long description can never
+            widen the table past the page — it wraps instead of overflowing. */}
+        <colgroup>
+          {columns.map((c) => (
+            <col key={c.key} style={{ width: `${((c.width ?? 1) / totalWidth) * 100}%` }} />
+          ))}
+        </colgroup>
         <thead>
+          {repeatMeta.length > 0 && (
+            <tr>
+              <th
+                colSpan={columns.length}
+                className="border border-stone-400 px-1.5 py-0.5 bg-stone-50 text-left font-normal"
+              >
+                <span className="font-serif font-bold text-stone-900">
+                  {firm.shopName || "MAA TARA JEWELLERS"}
+                </span>
+                {repeatMeta.map((m) => (
+                  <span key={m.label} className="text-stone-600">
+                    {"  ·  "}
+                    <span className="uppercase text-[9px] text-stone-500">{m.label}: </span>
+                    <span className="font-semibold text-stone-800">{m.value}</span>
+                  </span>
+                ))}
+              </th>
+            </tr>
+          )}
           <tr>
             {columns.map((c) => (
               <th
                 key={c.key}
-                className="border border-stone-400 px-1.5 py-1 bg-stone-100 font-semibold"
+                className="border border-stone-400 px-1.5 py-0.5 bg-stone-100 font-semibold break-words"
                 style={{ textAlign: c.align ?? "left" }}
               >
                 {c.header}
@@ -221,11 +254,11 @@ function TableSection({ config, data }: { config: TableSectionConfig; data: Prin
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i}>
+            <tr key={i} className="print:break-inside-avoid">
               {columns.map((c) => (
                 <td
                   key={c.key}
-                  className="border border-stone-300 px-1.5 py-1"
+                  className="border border-stone-300 px-1.5 py-0.5 break-words align-top"
                   style={{ textAlign: c.align ?? "left" }}
                 >
                   <TableCell column={c} row={row} value={row[c.key]} />
@@ -250,7 +283,7 @@ function TableSection({ config, data }: { config: TableSectionConfig; data: Prin
               {columns.map((c) => (
                 <td
                   key={c.key}
-                  className="border border-stone-400 px-1.5 py-1 font-semibold bg-stone-50"
+                  className="border border-stone-400 px-1.5 py-0.5 font-semibold bg-stone-50"
                 >
                   {c.footerSum
                     ? rows.reduce((sum, r) => sum + (Number(r[c.key]) || 0), 0).toString()

@@ -1,7 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import { saveDirect } from "@/lib/supabase-write";
 import { useRepairs } from "@/lib/repair-store";
-import { useOrders, type Order, type OrderType, type OrderStatus } from "@/lib/orders-store";
+import {
+  useOrders,
+  normalizeOrder,
+  type Order,
+  type OrderType,
+  type OrderStatus,
+} from "@/lib/orders-store";
 import { fineGoldMg } from "@/lib/gold";
 import { toast } from "sonner";
 
@@ -28,7 +34,9 @@ export async function migrateLegacyRepairsToOrders() {
       const grossMg = r.receivedGrossMg ?? 0;
       const fineMg = fineGoldMg(grossMg, purity);
 
-      const order: Order = {
+      // normalizeOrder derives the multi-item `items` array from the single
+      // `item` a migrated repair has — a repair is always one piece.
+      const order: Order = normalizeOrder({
         id: r.id, // preserve the same ID to prevent double insertion and keep attachments/linked tables working
         orderNo: r.repairNo, // preserve original repair number
         createdAt: r.createdAt ?? Date.now(),
@@ -67,7 +75,7 @@ export async function migrateLegacyRepairsToOrders() {
         timeline: r.timeline || [
           { ts: r.createdAt ?? Date.now(), label: "Repair migrated to order" },
         ],
-      };
+      });
 
       // 4. Save to orders table
       await saveDirect("orders", order.id, order);

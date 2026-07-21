@@ -154,6 +154,7 @@ const estimateTemplate = builtin({
       ],
     },
     { type: "richText", id: "notes", textPath: "notesText", emphasis: "plain", showIf: "hasNotes" },
+    { type: "richText", id: "validity", textPath: "validityText", emphasis: "plain" },
   ],
 });
 
@@ -508,6 +509,19 @@ const karigarCustodyStatementTemplate = builtin({
   paperSize: "a4",
   sections: [
     { type: "header", id: "header" },
+    // Report header: who, which book, which period — every field the owner
+    // needs to identify the printed statement at a glance.
+    {
+      type: "fieldGrid",
+      id: "statementMeta",
+      columns: 3,
+      fields: [
+        { label: "Name", valuePath: "partyName" },
+        { label: "Role", valuePath: "partyRole" },
+        { label: "Book", valuePath: "bookLabel" },
+        { label: "Report Period", valuePath: "periodLabel", fullWidth: true },
+      ],
+    },
     {
       type: "row",
       id: "summaryRow",
@@ -515,31 +529,28 @@ const karigarCustodyStatementTemplate = builtin({
       columns: [
         [
           {
-            type: "fieldGrid",
-            id: "worker",
-            title: "Worker",
-            columns: 1,
-            fields: [
-              { label: "Name", valuePath: "workerName", fullWidth: true },
-              { label: "Phone", valuePath: "workerPhone", fullWidth: true },
-            ],
+            type: "richText",
+            id: "openingBalance",
+            title: "Opening Balance",
+            emphasis: "plain",
+            textPath: "openingBalanceText",
           },
         ],
         [
           {
             type: "richText",
-            id: "cumulativeFine",
-            title: "Cumulative Fine Gold",
+            id: "movement",
+            title: "Period Movement",
             emphasis: "plain",
-            textPath: "cumulativeFineText",
+            textPath: "movementText",
           },
         ],
         [
           {
             type: "richText",
             id: "closingBalance",
-            title: "Closing Balance Pending",
-            emphasis: "plain",
+            title: "Closing Balance",
+            emphasis: "box",
             textPath: "closingBalanceText",
           },
         ],
@@ -549,22 +560,26 @@ const karigarCustodyStatementTemplate = builtin({
       type: "table",
       id: "entries",
       rowsPath: "entries",
+      // Repeated on every printed page (drawn in <thead>) so a multi-page
+      // ledger stays identified — shop name is added by the renderer.
+      repeatHeaderMeta: [
+        { label: "Name", valuePath: "partyName" },
+        { label: "Book", valuePath: "bookLabel" },
+        { label: "Period", valuePath: "periodLabel" },
+      ],
       columns: [
-        { key: "dateTime", header: "Date & Time", align: "left", width: 2 },
-        { key: "voucherNo", header: "Voucher No", align: "left", width: 1 },
-        { key: "particulars", header: "Particulars", align: "left", width: 2 },
-        { key: "typeLabel", header: "Type", align: "center", width: 1, renderAs: "badge" },
-        { key: "netWt", header: "Net Wt (g)", align: "right", width: 1 },
-        { key: "fineWt", header: "Fine Gold (g)", align: "right", width: 1 },
-        { key: "qty", header: "Qty", align: "right", width: 1 },
-        { key: "balFine", header: "Bal (Fine)", align: "right", width: 1 },
-        { key: "balQty", header: "Bal (Qty)", align: "right", width: 1 },
+        { key: "date", header: "Date", align: "left", width: 0.8 },
+        { key: "voucherNo", header: "Voucher", align: "left", width: 0.8 },
+        { key: "particulars", header: "Description", align: "left", width: 3 },
+        { key: "received", header: "Gold Received (g)", align: "right", width: 1 },
+        { key: "issued", header: "Gold Issued (g)", align: "right", width: 1 },
+        { key: "balance", header: "Balance (g)", align: "right", width: 1 },
       ],
     },
     {
       type: "signatureBlock",
       id: "signatures",
-      leftLabel: "Worker Signature",
+      leftLabel: "Party Signature",
       rightLabel: "Authorized Supervisor",
     },
   ],
@@ -576,21 +591,28 @@ const karigarCustodyStatementTemplate = builtin({
 // conditional reference-image row, remarks, "Issued By"/"Worker
 // Acknowledgement" signature labels (not the firm-generic ones).
 
+// Half A4 (A5 landscape): two cards per A4 sheet, and the card sits flat on the
+// bench beside the piece. Landscape because the specs a karigar reads at a
+// glance — weight, purity, quantity, delivery — fit one row across, instead of
+// running down a narrow portrait column.
 const jobCardTemplate = builtin({
   id: "default_job_card",
   docType: "job_card",
-  name: "Job Card (Default)",
-  paperSize: "a5",
+  name: "Job Card (Half A4 / A5 Landscape)",
+  paperSize: "a5l",
   sections: [
     { type: "header", id: "header", showQr: true, qrLabel: "Verify Job" },
     {
       type: "fieldGrid",
       id: "customerWorker",
-      columns: 2,
+      columns: 3,
       fields: [
         { label: "Customer / Dealer", valuePath: "customerLine", fullWidth: true },
         { label: "Assigned Worker", valuePath: "assignedWorkerName" },
         { label: "Product Name", valuePath: "itemName" },
+        // Which piece of a multi-item order this card is for. Without it, a
+        // karigar handed two cards from the same order cannot tell them apart.
+        { label: "Item", valuePath: "lineLabel" },
       ],
     },
     {
@@ -605,11 +627,13 @@ const jobCardTemplate = builtin({
       id: "specs",
       columns: 3,
       fields: [
+        { label: "Pieces", valuePath: "quantityLabel" },
         { label: "Target Weight (Net)", valuePath: "targetNetWt" },
         { label: "Purity", valuePath: "purityLabel" },
         { label: "Gold Received", valuePath: "goldReceivedLabel" },
         { label: "Target Gross Wt", valuePath: "targetGrossWt" },
-        { label: "Expected Delivery", valuePath: "expectedDeliveryLabel" },
+        { label: "Work Starts", valuePath: "expectedStartLabel" },
+        { label: "Delivery Deadline", valuePath: "expectedDeliveryLabel" },
         { label: "Priority", valuePath: "priorityLabel" },
       ],
     },
@@ -724,16 +748,33 @@ const customerLedgerStatementTemplate = builtin({
       title: "Ledger Entries Log",
       rowsPath: "entries",
       columns: [
-        { key: "date", header: "Date", align: "left", width: 1 },
-        { key: "voucherNo", header: "Ref/Voucher", align: "left", width: 1 },
+        { key: "date", header: "Date", align: "left", width: 1.1 },
+        { key: "voucherNo", header: "Ref/Voucher", align: "left", width: 1.1 },
         { key: "typeLabel", header: "Type", align: "center", width: 1, renderAs: "badge" },
-        { key: "description", header: "Description", align: "left", width: 2 },
+        { key: "description", header: "Description", align: "left", width: 2.4 },
+        { key: "purity", header: "Purity", align: "center", width: 0.9 },
         { key: "goldIn", header: "Gold In", align: "right", width: 1 },
         { key: "goldOut", header: "Gold Out", align: "right", width: 1 },
         { key: "debit", header: "Debit (Dr)", align: "right", width: 1 },
-        { key: "credit", header: "Credit (Cr)", align: "right", width: 1 },
-        { key: "goldBal", header: "Gold Bal", align: "right", width: 1 },
-        { key: "moneyBal", header: "Money Bal", align: "right", width: 1 },
+        { key: "credit", header: "Credit (Cr)", align: "right", width: 1.3 },
+        { key: "goldBal", header: "Gold Bal", align: "right", width: 1.1 },
+        { key: "moneyBal", header: "Cash Bal", align: "right", width: 1.1 },
+      ],
+    },
+    {
+      type: "fieldGrid",
+      id: "closingBalance",
+      title: "Closing Balance",
+      columns: 3,
+      fields: [
+        { label: "Gold Balance", valuePath: "closingGoldText", fullWidth: true, emphasis: true },
+        { label: "Cash Balance", valuePath: "closingCashText", fullWidth: true, emphasis: true },
+        {
+          label: "Outstanding Balance",
+          valuePath: "closingOutstandingText",
+          fullWidth: true,
+          emphasis: true,
+        },
       ],
     },
     {
@@ -758,7 +799,102 @@ const customerLedgerStatementTemplate = builtin({
  * for any doc type not listed here, so every call site stays total
  * without pretending migration is further along than it is.
  */
+// ── Daily Material Slip ────────────────────────────────────────────────────
+// One consolidated slip per worker per day: all Issues and Returns under one
+// Slip Number, opening/net/closing custody, worker + company signatures.
+const dailyMaterialSlipTemplate = builtin({
+  id: "default_daily_material_slip",
+  docType: "daily_material_slip",
+  name: "Daily Material Slip (A4)",
+  paperSize: "a4",
+  sections: [
+    { type: "header", id: "header" },
+    {
+      type: "fieldGrid",
+      id: "slipMeta",
+      columns: 3,
+      fields: [
+        { label: "Slip Number", valuePath: "slipNumber" },
+        { label: "Date", valuePath: "dateLabel" },
+        { label: "Worker", valuePath: "workerName" },
+        { label: "Total Transactions", valuePath: "transactionCount" },
+        { label: "Total Issued", valuePath: "totalIssued" },
+        { label: "Total Returned", valuePath: "totalReturned" },
+      ],
+    },
+    {
+      type: "table",
+      id: "issues",
+      rowsPath: "issues",
+      columns: [
+        { key: "voucher", header: "Voucher", align: "left", width: 1 },
+        { key: "time", header: "Time", align: "left", width: 0.8 },
+        { key: "particulars", header: "Particulars", align: "left", width: 2 },
+        { key: "net", header: "Net (g)", align: "right", width: 1 },
+        { key: "purity", header: "Purity", align: "right", width: 0.8 },
+        { key: "fine", header: "Fine (g)", align: "right", width: 1 },
+        { key: "qty", header: "Qty", align: "right", width: 0.6 },
+      ],
+    },
+    {
+      type: "table",
+      id: "returns",
+      rowsPath: "returns",
+      columns: [
+        { key: "voucher", header: "Voucher", align: "left", width: 1 },
+        { key: "time", header: "Time", align: "left", width: 0.8 },
+        { key: "particulars", header: "Particulars", align: "left", width: 2 },
+        { key: "net", header: "Net (g)", align: "right", width: 1 },
+        { key: "purity", header: "Purity", align: "right", width: 0.8 },
+        { key: "fine", header: "Fine (g)", align: "right", width: 1 },
+        { key: "qty", header: "Qty", align: "right", width: 0.6 },
+      ],
+    },
+    {
+      type: "row",
+      id: "custodyRow",
+      columnWidths: [1, 1, 1],
+      columns: [
+        [
+          {
+            type: "richText",
+            id: "opening",
+            title: "Opening Custody",
+            emphasis: "plain",
+            textPath: "openingBalance",
+          },
+        ],
+        [
+          {
+            type: "richText",
+            id: "net",
+            title: "Net Movement",
+            emphasis: "plain",
+            textPath: "netMovement",
+          },
+        ],
+        [
+          {
+            type: "richText",
+            id: "closing",
+            title: "Running Custody Balance",
+            emphasis: "box",
+            textPath: "custodyBalance",
+          },
+        ],
+      ],
+    },
+    {
+      type: "signatureBlock",
+      id: "signatures",
+      leftLabel: "Worker Signature",
+      rightLabel: "Company Signature",
+    },
+  ],
+});
+
 export const DEFAULT_TEMPLATES: Partial<Record<PrintDocType, PrintTemplate[]>> = {
+  daily_material_slip: [dailyMaterialSlipTemplate],
   credit_note: [creditNoteTemplate],
   debit_note: [debitNoteTemplate],
   estimate_doc: [estimateTemplate],

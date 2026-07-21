@@ -16,8 +16,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Printer, X } from "lucide-react";
-import { PRINT_SIZE_LABELS, type PrintSize } from "@/components/print/PrintLayout";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Printer, X, RotateCcw } from "lucide-react";
+import {
+  PRINT_SIZE_LABELS,
+  ARCHIVAL_SIZES,
+  DEFAULT_MARGINS,
+  marginCss,
+  pageSizeCss,
+  defaultOrientation,
+  sheetMm,
+  type PrintSize,
+  type PrintOrientation,
+} from "@/components/print/PrintLayout";
+import { usePrintSetup, type PrintMargins } from "@/lib/print-setup-store";
+import { serializeWithInlinedImages } from "@/lib/print-document";
 import { listAvailablePrinters, type PrinterInfo } from "@/lib/print/print-queue";
 
 // Every triggerPrint(url, ...) call site across the app (~30 of them, in
@@ -42,15 +56,13 @@ function hasElectronPrintBridge(): boolean {
   );
 }
 
-const ARCHIVAL_SIZES: PrintSize[] = ["a4", "a5", "a6"];
-
 // On-screen preview container sizing per format — cosmetic only, never
-// affects what actually gets printed (the loaded document's own PrintLayout
-// already declares its real @page size; see applyPageOverride below, which
-// only ever touches margin/orientation).
+// affects what actually gets printed (the @page override in applyPageOverride
+// is what reaches the printer).
 const PREVIEW_CONTAINER_CLASS: Record<PrintSize, string> = {
   a4: "w-full h-full max-w-4xl",
   a5: "w-full h-full max-w-2xl",
+  a5l: "w-full h-full max-w-4xl",
   a6: "w-full h-full max-w-xl",
   thermal: "w-[80mm] h-full",
   thermal58: "w-[58mm] h-full",
@@ -79,11 +91,20 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
   const [silentPrint, setSilentPrint] = useState(false);
   const isDesktop = hasElectronPrintBridge();
 
-  // Orientation + margin — genuine physical page-setup overrides, applied
-  // ONLY via a real @media print @page rule (never touches element
-  // visibility, unlike the previous implementation).
-  const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
-  const [marginMm, setMarginMm] = useState(12);
+  // Page setup lives in ONE store (print-setup-store), shared with PrintLayout
+  // and the toolbar's Page Setup panel — so the modal, the route's own preview
+  // and the printed page can never disagree about size/orientation/margins/
+  // scale. Every value here is emitted into a real `@media print { @page }`
+  // rule inside the previewed document itself (applyPageOverride), and that
+  // same document is what gets printed.
+  const setup = usePrintSetup();
+
+  /** The size actually being printed: the user's choice, else the document's own. */
+  const effectiveSize: PrintSize = setup.sizeOverride ?? printSize;
+  const effectiveOrientation: PrintOrientation = ARCHIVAL_SIZES.includes(effectiveSize)
+    ? (setup.orientation ?? defaultOrientation(effectiveSize))
+    : defaultOrientation(effectiveSize);
+  const effectiveMargins: PrintMargins = setup.margins ?? DEFAULT_MARGINS[effectiveSize];
 
   useEffect(() => {
     if (!isOpen || !isDesktop) return;
@@ -119,7 +140,12 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
     // margin for native page setup.
     if (isDesktop && iframeRef.current.contentDocument) {
       try {
-        const html = iframeRef.current.contentDocument.documentElement.outerHTML;
+        // Serialized through the shared inliner: the preview iframe's images
+        // are blob: URLs from the local file vault, which are dead in the
+        // separate window the main process prints from (see print-document.ts).
+        const html = await serializeWithInlinedImages(
+          iframeRef.current.contentDocument.documentElement,
+        );
         const desktop = (
           window as unknown as {
             mtjDesktop: {
@@ -129,11 +155,22 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
             };
           }
         ).mtjDesktop;
+        // Page setup rides along IN THE HTML: applyPageOverride() injects the
+        // `@page { size; margin }` rule into this very document, and the
+        // serializer above carries its <head> across. So the print window is
+        // governed by exactly the CSS the preview is showing — preview and
+        // paper cannot disagree.
+        //
+        // We therefore do NOT also pass orientation/margins over IPC: doing so
+        // would apply them a second time, at a different layer, and the two
+        // could contradict each other. (The old code passed `orientation` /
+        // `marginMm`, names no handler reads — so both controls were silently
+        // dropped. Hence "dummy controls".) `landscape` is still sent because
+        // Chromium needs the print job itself oriented to match the @page rule.
         const result = await desktop.print.printHtml(html, {
           silent: silentPrint,
           printerName: selectedPrinter || undefined,
-          orientation,
-          marginMm,
+          landscape: effectiveOrientation === "landscape",
         });
         if (!result.success) {
           console.warn("[Print] Desktop print failed, falling back to iframe print:", result.error);
@@ -176,12 +213,41 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
         style.id = PAGE_OVERRIDE_STYLE_ID;
         doc.head.appendChild(style);
       }
-      const isArchival = ARCHIVAL_SIZES.includes(printSize);
+      // The REAL page size, never `auto`. `size: auto <orientation>` discards
+      // the paper size entirely — which is why picking A5 previously changed
+      // nothing on paper and A4 was the only format that ever worked.
+      //
+      // Scale is applied to the document root in BOTH the on-screen preview and
+      // the print rendering (CSS zoom, which Chromium's print renderer honours),
+      // so the preview shows the scale that will actually be printed.
+      // A4 (and A5/A6…) page-break preview: a faint dashed guide at each
+      // page boundary, screen-only (removed for the actual print). The sheet
+      // is mm-sized, so a mm interval lands correctly regardless of on-screen
+      // zoom. Interval = usable height (sheet minus top+bottom margin) — the
+      // height of content that fits one printed page. Roll/label stock has no
+      // fixed page, so it gets no guide.
+      const sheet = sheetMm(effectiveSize, effectiveOrientation);
+      const usableMm = sheet ? sheet.height - effectiveMargins.top - effectiveMargins.bottom : 0;
+      const pageGuide =
+        usableMm > 20
+          ? `[data-testid="print-layout-root"] {
+               background-image: repeating-linear-gradient(
+                 to bottom,
+                 transparent 0,
+                 transparent calc(${usableMm}mm - 1.5px),
+                 rgba(220,38,38,0.45) calc(${usableMm}mm - 1.5px),
+                 rgba(220,38,38,0.45) ${usableMm}mm
+               );
+             }
+             @media print { [data-testid="print-layout-root"] { background-image: none !important; } }`
+          : "";
       style.textContent = `
+        [data-testid="print-layout-root"] { zoom: ${setup.scalePct / 100}; }
+        ${pageGuide}
         @media print {
           @page {
-            ${isArchival ? `size: auto ${orientation};` : ""}
-            margin: ${marginMm}mm !important;
+            size: ${pageSizeCss(effectiveSize, effectiveOrientation)} !important;
+            margin: ${marginCss(effectiveMargins)} !important;
           }
         }
       `;
@@ -213,7 +279,7 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
   useEffect(() => {
     if (!iframeLoading) applyPageOverride();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orientation, marginMm, printSize]);
+  }, [effectiveSize, effectiveOrientation, effectiveMargins, setup.scalePct, iframeLoading]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
@@ -230,23 +296,36 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
           </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {/* Format is auto-detected from the actual document — not a
-                user toggle, since switching it would not change what's
-                inside the iframe, only mislead about what will print. */}
-            <div
-              className="h-9 flex items-center px-3 rounded-md border border-border bg-muted/40 text-xs font-medium"
-              data-testid="print-detected-format"
+            {/* Paper size. Defaults to the document's own declared format, and
+                the user can override it — a job card designed for half-A4 can be
+                run on A4 stock without editing the template. The choice reaches
+                the printer via the @page rule, so it is real, not decorative. */}
+            <Select
+              value={effectiveSize}
+              onValueChange={(v) => setup.setSizeOverride(v as PrintSize)}
             >
-              {PRINT_SIZE_LABELS[printSize]}
-            </div>
+              <SelectTrigger className="h-9 w-64 text-xs" data-testid="print-size-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(PRINT_SIZE_LABELS) as PrintSize[]).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {PRINT_SIZE_LABELS[s]}
+                    {s === printSize ? " · document default" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <div className="h-6 w-px bg-border shrink-0" aria-hidden="true" />
 
             <div className="flex items-center gap-2">
-              {ARCHIVAL_SIZES.includes(printSize) && (
+              {/* Roll and label stock has no meaningful orientation, so the
+                  control is hidden rather than shown doing nothing. */}
+              {ARCHIVAL_SIZES.includes(effectiveSize) && (
                 <Select
-                  value={orientation}
-                  onValueChange={(v) => setOrientation(v as "portrait" | "landscape")}
+                  value={effectiveOrientation}
+                  onValueChange={(v) => setup.setOrientation(v as PrintOrientation)}
                 >
                   <SelectTrigger
                     className="h-9 w-32 text-xs"
@@ -260,17 +339,63 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
                   </SelectContent>
                 </Select>
               )}
-              <Select value={String(marginMm)} onValueChange={(v) => setMarginMm(Number(v))}>
-                <SelectTrigger className="h-9 w-36 text-xs" data-testid="print-margin-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">No margin</SelectItem>
-                  <SelectItem value="6">Narrow (6mm)</SelectItem>
-                  <SelectItem value="12">Normal (12mm)</SelectItem>
-                  <SelectItem value="20">Wide (20mm)</SelectItem>
-                </SelectContent>
-              </Select>
+
+              {/* Per-side margins, in mm — each one lands in the @page rule. */}
+              <div className="flex items-center gap-1" data-testid="print-margin-inputs">
+                {(["top", "bottom", "left", "right"] as (keyof PrintMargins)[]).map((side) => (
+                  <label key={side} className="flex items-center gap-1">
+                    <span className="text-[10px] uppercase text-muted-foreground">{side[0]}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={50}
+                      value={effectiveMargins[side]}
+                      data-testid={`print-margin-${side}`}
+                      onChange={(e) => {
+                        const mm = Math.min(50, Math.max(0, Number(e.target.value)));
+                        setup.setMargins({
+                          ...effectiveMargins,
+                          [side]: Number.isFinite(mm) ? mm : 0,
+                        });
+                      }}
+                      className="h-9 w-14 text-xs"
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <label className="flex items-center gap-1">
+                <span className="text-[10px] uppercase text-muted-foreground">Scale</span>
+                <Input
+                  type="number"
+                  min={25}
+                  max={200}
+                  step={5}
+                  value={setup.scalePct}
+                  data-testid="print-scale-input"
+                  onChange={(e) => setup.setScalePct(Number(e.target.value))}
+                  className="h-9 w-16 text-xs"
+                />
+              </label>
+
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
+                <Switch
+                  checked={setup.fitToPage}
+                  onCheckedChange={setup.setFitToPage}
+                  data-testid="print-fit-switch"
+                />
+                Fit to page
+              </label>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={setup.reset}
+                className="h-9 gap-1 text-xs"
+                data-testid="print-setup-reset"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Reset
+              </Button>
             </div>
 
             {isDesktop && (
@@ -313,11 +438,17 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
                 </p>
               </div>
             )}
+            {/* Fit-to-page is a measurement the previewed document performs on
+                itself (PrintLayout's ResizeObserver), not CSS we can inject —
+                so toggling it re-loads the frame, which re-reads the (already
+                persisted) setup. Size/orientation/margins/scale need no reload:
+                applyPageOverride edits the live document. */}
             <iframe
+              key={String(setup.fitToPage)}
               ref={iframeRef}
               src={toIframeSrc(printUrl)}
               onLoad={handleIframeLoad}
-              className={`border-0 bg-white shadow-lg transition-all duration-300 ${PREVIEW_CONTAINER_CLASS[printSize]}`}
+              className={`border-0 bg-white shadow-lg transition-all duration-300 ${PREVIEW_CONTAINER_CLASS[effectiveSize]}`}
               title="MTJ ERP Print Frame"
             />
           </div>

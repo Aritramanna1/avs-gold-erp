@@ -33,19 +33,24 @@ import {
   Users,
   Recycle,
   Printer,
-  ArrowRightLeft,
   Download,
+  Store,
 } from "lucide-react";
 import { PrintHeader } from "@/components/print-header";
 import { AvsPrintFooter } from "@/components/AvsPrintFooter";
 import { MaterialVaultPanel } from "@/components/material-vault-panel";
-import { exportToCSV } from "@/lib/report-engine";
+import { exportToCSV, exportToXLSX } from "@/lib/report-engine";
+import { compileWorkerBooks } from "@/lib/workshop-worker-books";
+import { useJobCards, JOB_STATUS_ACTIVE, normalizeJobStatus } from "@/lib/jobcards-store";
+import { useOrders, normalizeOrderStatus } from "@/lib/orders-store";
+import { usePeople } from "@/lib/people-store";
+import { getPartyGoldBalance } from "@/lib/customer-account-ledger";
 
 import { guardRoute } from "@/lib/permissions";
 
 export const Route = createFileRoute("/ledger")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  head: () => ({ meta: [{ title: "Gold & Material Vault · AVS Gold ERP" }] }),
+  head: () => ({ meta: [{ title: "Our Gold Stock · AVS Gold ERP" }] }),
   component: LedgerPage,
 });
 
@@ -92,8 +97,8 @@ function LedgerPage() {
       </div>
 
       <PageHeader
-        title="Gold & Material Vault"
-        subtitle="Every gram is traceable. Vault, karigar, finished stock, customer gold, scrap, and every workshop material reconcile to the ledger."
+        title="Our Gold Stock"
+        subtitle="Management overview of all gold and manufacturing materials owned or managed by the company. Click a card to drill down. Movements are recorded in their operational modules — this dashboard reflects them in real time."
         actions={
           <div className="flex gap-2 no-print">
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCSV}>
@@ -140,23 +145,33 @@ function LedgerPage() {
   );
 }
 
-import { type BucketBreakdown } from "@/lib/ledger-store";
+import { type BucketBreakdown, type Bucket } from "@/lib/ledger-store";
 
 function BucketCard({
   label,
   breakdown,
   icon: Icon,
+  onOpen,
 }: {
   label: string;
   breakdown: BucketBreakdown;
   icon: React.ComponentType<{ className?: string }>;
+  onOpen?: () => void;
 }) {
   const puritiesList = Object.values(breakdown?.purities || {}).filter(
     (p) => p.grossMg !== 0 || p.fineMg !== 0,
   );
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-elegant flex flex-col justify-between">
+    <div
+      role={onOpen ? "button" : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onClick={onOpen}
+      onKeyDown={(e) => onOpen && (e.key === "Enter" || e.key === " ") && onOpen()}
+      className={`rounded-2xl border border-border bg-card p-5 shadow-elegant flex flex-col justify-between ${
+        onOpen ? "cursor-pointer hover:border-gold/50 transition-colors no-print" : ""
+      }`}
+    >
       <div>
         <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
@@ -197,11 +212,15 @@ function BucketCard({
           </div>
         )}
       </div>
+      {onOpen && (
+        <div className="mt-3 pt-2 text-[11px] font-semibold text-gold/80">View details →</div>
+      )}
     </div>
   );
 }
 
 function BalanceSheetView({ balance }: { balance: ReturnType<typeof computeBalances> }) {
+  const [drill, setDrill] = useState<Bucket | null>(null);
   const {
     buckets,
     bucketBreakdowns,
@@ -243,14 +262,36 @@ function BalanceSheetView({ balance }: { balance: ReturnType<typeof computeBalan
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <BucketCard label="Vault Gold" breakdown={bucketBreakdowns.vault} icon={Scale} />
-        <BucketCard label="Gold with Karigars" breakdown={bucketBreakdowns.karigar} icon={Hammer} />
         <BucketCard
-          label="Finished Stock Gold"
+          label="Gold Held"
+          breakdown={bucketBreakdowns.vault}
+          icon={Scale}
+          onOpen={() => setDrill("vault")}
+        />
+        <BucketCard
+          label="Gold with Karigars"
+          breakdown={bucketBreakdowns.karigar}
+          icon={Hammer}
+          onOpen={() => setDrill("karigar")}
+        />
+        <BucketCard
+          label="Finished Jewellery Stock"
           breakdown={bucketBreakdowns.finished}
           icon={Package}
+          onOpen={() => setDrill("finished")}
         />
-        <BucketCard label="Customer Gold Held" breakdown={bucketBreakdowns.customer} icon={Users} />
+        <BucketCard
+          label="Advance Gold / Customer Gold Held"
+          breakdown={bucketBreakdowns.customer}
+          icon={Users}
+          onOpen={() => setDrill("customer")}
+        />
+        <BucketCard
+          label="Gold With Jewellers"
+          breakdown={bucketBreakdowns.jeweller}
+          icon={Store}
+          onOpen={() => setDrill("jeweller")}
+        />
         <BucketCard label="Scrap / Dust Gold" breakdown={bucketBreakdowns.scrap} icon={Recycle} />
         <div className="rounded-2xl border border-gold/40 bg-gold/5 p-5 shadow-gold flex flex-col justify-between">
           <div>
@@ -278,6 +319,209 @@ function BalanceSheetView({ balance }: { balance: ReturnType<typeof computeBalan
           record your first entry.
         </div>
       ) : null}
+
+      {drill && <DrillDownPanel bucket={drill} balance={balance} onClose={() => setDrill(null)} />}
+    </div>
+  );
+}
+
+interface DrillTable {
+  title: string;
+  columns: string[];
+  rows: (string | number)[][];
+}
+
+/** Per-purity holdings of a single bucket → inventory rows. */
+function purityRows(breakdown: BucketBreakdown): (string | number)[][] {
+  return Object.values(breakdown?.purities || {})
+    .filter((p) => p.grossMg !== 0 || p.fineMg !== 0)
+    .sort((a, b) => b.purity - a.purity)
+    .map((p) => [getCaratLabel(p.purity), p.purity, mgToGrams(p.grossMg), mgToGrams(p.fineMg)]);
+}
+
+/**
+ * Builds the summary table for a bucket drill-down. Each pulls from the module
+ * that owns the detail — worker books, orders, customer ledgers — so this stays
+ * an overview, never a second source of truth.
+ */
+function buildDrillTable(bucket: Bucket, balance: ReturnType<typeof computeBalances>): DrillTable {
+  switch (bucket) {
+    case "karigar": {
+      const jobs = useJobCards
+        .getState()
+        .jobs.filter((j) => JOB_STATUS_ACTIVE.includes(normalizeJobStatus(j.status)));
+      const activeByWorker = new Map<string, number>();
+      for (const j of jobs)
+        if (j.karigarId)
+          activeByWorker.set(j.karigarId, (activeByWorker.get(j.karigarId) ?? 0) + 1);
+      const rows: (string | number)[][] = [];
+      for (const wb of compileWorkerBooks()) {
+        for (const pb of wb.purityBooks) {
+          if (pb.currentBalanceMg === 0) continue;
+          rows.push([
+            wb.worker.fullName,
+            pb.label,
+            mgToGrams(pb.currentBalanceMg),
+            mgToGrams(pb.currentBalanceMg),
+            activeByWorker.get(wb.worker.id) ?? 0,
+          ]);
+        }
+      }
+      return {
+        title: "Gold With Karigar — Summary",
+        columns: ["Worker", "Purity", "Gold Held (g)", "Fine Equivalent (g)", "Active Jobs"],
+        rows,
+      };
+    }
+    case "customer": {
+      const FINISHED = new Set(["customer", "firm_customer"]);
+      const rows: (string | number)[][] = [];
+      for (const p of usePeople.getState().people) {
+        if (!FINISHED.has(p.type)) continue;
+        const bal = getPartyGoldBalance(p.id);
+        if (bal.receivedFineMg === 0 && bal.outstandingFineMg === 0) continue;
+        rows.push([
+          p.fullName,
+          mgToGrams(bal.receivedFineMg),
+          mgToGrams(bal.returnedFineMg),
+          mgToGrams(bal.outstandingFineMg),
+        ]);
+      }
+      return {
+        title: "Advance Gold / Customer Gold Held — Summary",
+        columns: ["Customer", "Gold Received (g)", "Gold Returned (g)", "Remaining Balance (g)"],
+        rows,
+      };
+    }
+    case "finished": {
+      const FINISHED_STATUSES = new Set([
+        "partially_ready",
+        "ready_for_delivery",
+        "ready",
+        "ready_billing",
+      ]);
+      const rows: (string | number)[][] = [];
+      for (const o of useOrders.getState().orders) {
+        if (!FINISHED_STATUSES.has(normalizeOrderStatus(o.status))) continue;
+        const items = o.items ?? (o.item ? [o.item] : []);
+        const isStock = o.type === "ready_stock" || !o.customerId;
+        const customer =
+          usePeople.getState().people.find((p) => p.id === o.customerId)?.fullName ?? "—";
+        for (const it of items) {
+          rows.push([
+            it.itemName,
+            o.orderNo,
+            isStock ? "—" : customer,
+            isStock ? "Yes" : "No",
+            mgToGrams(it.grossMg || 0),
+            mgToGrams(it.netMg || 0),
+            it.quantity || 1,
+            normalizeOrderStatus(o.status),
+          ]);
+        }
+      }
+      return {
+        title: "Finished Jewellery Stock — Overview",
+        columns: [
+          "Jewellery",
+          "Order No",
+          "Customer",
+          "Stock Item",
+          "Gross (g)",
+          "Net (g)",
+          "Qty",
+          "Status",
+        ],
+        rows,
+      };
+    }
+    default: {
+      // vault (Gold Held), jeweller, scrap — per-purity inventory view.
+      const titles: Partial<Record<Bucket, string>> = {
+        vault: "Gold Held — Raw Gold Inventory",
+        jeweller: "Gold With Jewellers — Summary",
+        scrap: "Scrap / Dust Gold — Summary",
+      };
+      return {
+        title: titles[bucket] ?? "Holdings",
+        columns: ["Purity", "Touch (‰)", "Weight (g)", "Fine Equivalent (g)"],
+        rows: purityRows(balance.bucketBreakdowns[bucket]),
+      };
+    }
+  }
+}
+
+function DrillDownPanel({
+  bucket,
+  balance,
+  onClose,
+}: {
+  bucket: Bucket;
+  balance: ReturnType<typeof computeBalances>;
+  onClose: () => void;
+}) {
+  const table = useMemo(() => buildDrillTable(bucket, balance), [bucket, balance]);
+
+  function exportXlsx() {
+    void exportToXLSX(`${table.title.replace(/[^\w]+/g, "-").toLowerCase()}.xlsx`, {
+      Summary: [table.columns, ...table.rows],
+    });
+  }
+
+  return (
+    <div className="rounded-2xl border border-gold/40 bg-card shadow-elegant overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-4">
+        <h3 className="font-serif text-lg text-gold">{table.title}</h3>
+        <div className="flex gap-2 no-print">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={exportXlsx}>
+            <Download className="h-4 w-4" /> Export
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" /> Print
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClose} className="no-print">
+            Close
+          </Button>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-background/60 text-muted-foreground text-xs uppercase tracking-wider">
+            <tr>
+              {table.columns.map((c, i) => (
+                <th key={c} className={`px-4 py-3 ${i === 0 ? "text-left" : "text-right"}`}>
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={table.columns.length}
+                  className="px-4 py-10 text-center text-muted-foreground italic"
+                >
+                  Nothing currently held in this category.
+                </td>
+              </tr>
+            ) : (
+              table.rows.map((row, ri) => (
+                <tr key={ri} className="border-t border-border">
+                  {row.map((cell, ci) => (
+                    <td
+                      key={ci}
+                      className={`px-4 py-3 tabular-nums ${ci === 0 ? "text-left" : "text-right"}`}
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

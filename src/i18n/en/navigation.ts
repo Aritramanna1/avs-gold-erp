@@ -5,7 +5,7 @@ const translations = {
   whatsappIngestion: "WhatsApp Orders",
   orders: "Orders",
   catalog: "Catalog",
-  workshop: "Workshop",
+  workshop: "Manufacturing Books",
   workerGoldBook: "Worker Gold Book",
   repair: "Repair",
   stock: "Stock",

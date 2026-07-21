@@ -17,4 +17,17 @@ exports.IPC = {
     WINDOW_CLOSE: "window:close",
     PRINT_LIST_PRINTERS: "print:list-printers",
     PRINT_HTML: "print:html",
+    PRINT_PREVIEW_HTML: "print:preview-html",
+    // WasenderAPI (WhatsApp) — token lives ONLY in the main process (encrypted
+    // via safeStorage); the renderer never sees it. Every authenticated call is
+    // proxied through WASENDER_REQUEST.
+    WASENDER_SET_TOKEN: "wasender:set-token",
+    WASENDER_CLEAR_TOKEN: "wasender:clear-token",
+    WASENDER_HAS_TOKEN: "wasender:has-token",
+    // Session API Key — the credential WasenderAPI's messaging endpoints require
+    // (distinct from the account Personal Access Token). Also encrypted, main-only.
+    WASENDER_SET_APIKEY: "wasender:set-apikey",
+    WASENDER_CLEAR_APIKEY: "wasender:clear-apikey",
+    WASENDER_HAS_APIKEY: "wasender:has-apikey",
+    WASENDER_REQUEST: "wasender:request",
 };

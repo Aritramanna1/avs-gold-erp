@@ -1,19 +1,13 @@
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { useBilling } from "@/lib/billing-store";
 import { useSettings } from "@/lib/settings-store";
+import { shortShopName } from "@/lib/app-info";
 import { Button } from "@/components/ui/button";
 import { PrintEngine } from "@/components/print-engine/PrintEngine";
 
 export const Route = createFileRoute("/billing/print/$id")({
   head: () => {
-    const shopName = useSettings.getState().firm?.shopName;
-    const shortName =
-      shopName
-        .split(" ")
-        .filter(Boolean)
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase() || shopName.slice(0, 3).toUpperCase();
+    const shortName = shortShopName(useSettings.getState().firm?.shopName);
     return {
       meta: [{ title: `Invoice Print · ${shortName} ERP` }],
     };

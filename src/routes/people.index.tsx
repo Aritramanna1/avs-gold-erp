@@ -63,16 +63,16 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AttachmentButton } from "@/components/attachment-placeholder-modal";
-import { useAttachments } from "@/lib/attachments-store";
+import { useAttachments, useAttachmentUrl } from "@/lib/attachments-store";
 import { useSettings } from "@/lib/settings-store";
 import { DynamicFormRenderer } from "@/components/forms/DynamicFormRenderer";
+import {
+  DynamicFields,
+  peopleForms,
+  customFormsSearchText,
+} from "@/components/forms/DynamicFields";
 import { ReferenceNotesPanel } from "@/components/reference-notes/ReferenceNotesPanel";
-
-import { compileCustomerLedger } from "@/lib/customer-account-ledger";
-import { useGoldSettlement } from "@/lib/gold-settlement-store";
-import { useLedger } from "@/lib/ledger-store";
-import { fineGoldMg, mgToGrams, gramsToMg, parsePurity, COMMON_PURITIES } from "@/lib/gold";
-import { paiseToRupees, rupeesToPaise } from "@/lib/billing-store";
+import { CustomerPersonalLedgerView } from "@/components/customer-personal-ledger-view";
 
 import { guardRoute } from "@/lib/permissions";
 
@@ -132,7 +132,10 @@ function PeoplePage() {
         (p) =>
           p.fullName.toLowerCase().includes(q) ||
           p.phone.includes(q) ||
-          (p.workType ?? "").toLowerCase().includes(q),
+          (p.workType ?? "").toLowerCase().includes(q) ||
+          // Custom fields are searchable too — a value the workshop chose to
+          // capture is worthless if it can't be found again.
+          customFormsSearchText(p.customForms).includes(q),
       );
     }
     return list;
@@ -279,9 +282,10 @@ function PeoplePage() {
 /* ----------------------------- Avatar ----------------------------- */
 
 function PersonAvatar({ person, className }: { person: Person; className: string }) {
-  const rec = useAttachments((s) => s.items[`person:${person.id}:photo`]);
   const [broken, setBroken] = useState(false);
-  const photoUrl = rec?.fileDataUrl;
+  // Resolves from the local encrypted vault (thumbnail first, full bytes when
+  // decrypted); falls back to legacy inlined base64 for pre-vault records.
+  const photoUrl = useAttachmentUrl("person", person.id, "photo");
   if (photoUrl && !broken) {
     return (
       <div className={`${className} overflow-hidden bg-accent`}>
@@ -291,6 +295,7 @@ function PersonAvatar({ person, className }: { person: Person; className: string
           referrerPolicy="no-referrer"
           onError={() => setBroken(true)}
           className="h-full w-full object-cover"
+          data-testid="person-avatar-img"
         />
       </div>
     );
@@ -591,6 +596,7 @@ function SelectedPersonCard({
         </Button>
         <Button
           size="sm"
+          data-testid="people-print"
           className="gap-1 bg-primary text-primary-foreground hover:opacity-90"
           onClick={() =>
             navigate({ to: "/people/print/$id" as any, params: { id: person.id } as any })
@@ -609,6 +615,18 @@ function SelectedPersonCard({
           <BookOpen className="h-3.5 w-3.5 text-gold" />
           Gold & Money Ledger
         </Button>
+
+        {isCustomerLike ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="col-span-2 border-gold/45 text-gold hover:bg-gold/10 gap-1.5"
+            onClick={() => navigate({ to: "/people/$id", params: { id: person.id } })}
+          >
+            <BookOpen className="h-3.5 w-3.5 text-gold" />
+            Full Account
+          </Button>
+        ) : null}
 
         <Button size="sm" variant="ghost" onClick={() => navigate({ to: "/ledger" })}>
           Shop Gold Ledger
@@ -780,7 +798,11 @@ function PersonFormsDialog({
 }) {
   const settings = useSettings();
   const updatePerson = usePeople((s) => s.update);
-  const kycForms = settings.formsMetadata.filter((f) => f.type === "kyc" || f.type === "custom");
+  // Same definition the People form and print use. Previously this filtered the
+  // raw metadata, so this dialog rendered the built-in-duplicating fields (name,
+  // phone, aadhaar…) and wrote them into customForms — a second, conflicting copy
+  // of facts the person record already owns.
+  const kycForms = peopleForms(settings.formsMetadata);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -894,6 +916,10 @@ function PersonFormDialog({
     bankName: initial?.bankName ?? "",
     notes: initial?.notes ?? "",
     branchId: initial?.branchId ?? useSettings.getState().selectedBranchId ?? "",
+    // Custom fields defined in Settings. Carried in the person patch itself so
+    // they save, edit, and persist through exactly the same path as the built-in
+    // fields — no separate save step, no second source of truth.
+    customForms: (initial?.customForms ?? {}) as Record<string, Record<string, any>>,
   };
   const key = (initial?.id ?? "new") + "-" + (defaultType ?? "");
   const [form, setForm, clearForm] = useDraft("mtj-person-form-" + key, () => empty);
@@ -916,6 +942,24 @@ function PersonFormDialog({
     // Clear error active for this field
     if (errors[k]) {
       setErrors((e) => ({ ...e, [k]: "" }));
+    }
+  };
+
+  // Custom fields defined in Settings → Forms.
+  const formsMetadata = useSettings((s) => s.formsMetadata);
+  const customForms = useMemo(() => peopleForms(formsMetadata), [formsMetadata]);
+  const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
+
+  const setCustomField = (formId: string, name: string, value: any) => {
+    setForm((f) => ({
+      ...f,
+      customForms: {
+        ...(f.customForms ?? {}),
+        [formId]: { ...((f.customForms ?? {})[formId] ?? {}), [name]: value },
+      },
+    }));
+    if (customFieldErrors[formId]) {
+      setCustomFieldErrors((e) => ({ ...e, [formId]: "" }));
     }
   };
 
@@ -975,10 +1019,28 @@ function PersonFormDialog({
       }
     }
 
+    // Required custom fields are enforced with the same weight as built-in ones —
+    // a field the workshop marked mandatory in Settings is mandatory here.
+    const newCustomErrors: Record<string, string> = {};
+    for (const f of customForms) {
+      const values = form.customForms?.[f.id] ?? {};
+      const missing = f.fields
+        .filter((field) => field.required)
+        .filter((field) => {
+          const v = values[field.name] ?? field.defaultValue;
+          return v === undefined || v === null || v === "";
+        })
+        .map((field) => field.label);
+      if (missing.length) {
+        newCustomErrors[f.id] = `Required: ${missing.join(", ")}`;
+      }
+    }
+
     setErrors(newErrors);
     setWarnings(newWarnings);
+    setCustomFieldErrors(newCustomErrors);
 
-    return Object.keys(newErrors).length === 0;
+    return Object.keys(newErrors).length === 0 && Object.keys(newCustomErrors).length === 0;
   };
 
   const save = () => {
@@ -988,11 +1050,12 @@ function PersonFormDialog({
     if (initial) {
       update(initial.id, form)
         .then(() => onSaved({ ...initial, ...form, updatedAt: Date.now() }))
+        .catch(() => toast.error(`Failed to save ${form.fullName || "person"}. Please try again.`))
         .finally(() => setSubmitting(false));
     } else {
       add(form)
         .then((created) => onSaved(created))
-        .catch(() => {})
+        .catch(() => toast.error(`Failed to save ${form.fullName || "person"}. Please try again.`))
         .finally(() => setSubmitting(false));
     }
     clearForm();
@@ -1241,6 +1304,24 @@ function PersonFormDialog({
             </Field>
           </div>
 
+          {/* Custom fields defined in Settings → Forms. They appear here the
+              moment they're created, with no code change and no separate save. */}
+          {customForms.map((f) => (
+            <div key={f.id} className="grid gap-3">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 border-t border-border">
+                {f.name}
+              </div>
+              <DynamicFields
+                fields={f.fields}
+                values={form.customForms?.[f.id] ?? {}}
+                onChange={(name, value) => setCustomField(f.id, name, value)}
+              />
+              {customFieldErrors[f.id] && (
+                <p className="text-xs text-destructive font-medium">{customFieldErrors[f.id]}</p>
+              )}
+            </div>
+          ))}
+
           <Field label="Notes">
             <Textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
           </Field>
@@ -1273,468 +1354,6 @@ function Field({ label, error, warning, children }: FieldProps) {
       {children}
       {error && <p className="text-xs text-destructive font-medium mt-0.5">{error}</p>}
       {warning && <p className="text-xs text-amber-500 font-medium mt-0.5">{warning}</p>}
-    </div>
-  );
-}
-
-/* -------------------- Customer Personal Ledger View -------------------- */
-
-function CustomerPersonalLedgerView({
-  person,
-  onBack,
-  triggerPrint,
-}: {
-  person: Person;
-  onBack: () => void;
-  triggerPrint: (url: string, titleName: string) => void;
-}) {
-  const { t } = useLanguage();
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [txType, setTxType] = useState<
-    "gold_received" | "gold_given" | "cash_received_against_gold" | "cash_paid_against_gold"
-  >("gold_received");
-  const [gross, setGross] = useState("");
-  const [less, setLess] = useState("");
-  const [purity, setPurity] = useState("916");
-  const [rate, setRate] = useState("");
-  const [amount, setAmount] = useState("");
-  const [notes, setNotes] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Re-run compiled ledger on change of settlements list or other store triggers
-  const settlements = useGoldSettlement((s) => s.settlements);
-  const ledger = useMemo(() => compileCustomerLedger(person.id), [person.id, settlements]);
-
-  const calculatedFineMg = useMemo(() => {
-    try {
-      const g = gramsToMg(gross);
-      const l = gramsToMg(less);
-      const n = Math.max(0, g - l);
-      const p = parsePurity(purity);
-      return fineGoldMg(n, p);
-    } catch {
-      return 0;
-    }
-  }, [gross, less, purity]);
-
-  // Auto-fill valued amount if rate and net gold are set
-  useEffect(() => {
-    const r = parseFloat(rate);
-    const g = parseFloat(gross) || 0;
-    const l = parseFloat(less) || 0;
-    const net = Math.max(0, g - l);
-    if (!isNaN(r) && r > 0 && net > 0) {
-      setAmount((r * net).toFixed(2));
-    }
-  }, [rate, gross, less]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-
-    try {
-      const purityVal = parsePurity(purity);
-      const grossMg = gramsToMg(gross);
-      const lessMg = gramsToMg(less);
-      const netMg = Math.max(0, grossMg - lessMg);
-      const fineMg = fineGoldMg(netMg, purityVal);
-      const amountPaise = rupeesToPaise(amount);
-      const ratePaise = rupeesToPaise(rate);
-
-      if (["gold_received", "gold_given"].includes(txType) && grossMg <= 0) {
-        throw new Error("Gross weight is required and must be greater than 0.");
-      }
-
-      if (
-        ["cash_received_against_gold", "cash_paid_against_gold"].includes(txType) &&
-        amountPaise <= 0
-      ) {
-        throw new Error("Amount is required and must be greater than 0.");
-      }
-
-      // 1. Add Settlement in store & sync to DB
-      await useGoldSettlement.getState().addSettlement({
-        party_type: "customer",
-        party_id: person.id,
-        settlement_type: txType,
-        purity: purityVal,
-        gross_mg: grossMg,
-        net_mg: netMg,
-        wastage_mg: lessMg,
-        rate_per_gram_paise: ratePaise,
-        amount_paise: amountPaise,
-        notes: notes.trim() || undefined,
-        direction: ["gold_received", "cash_received_against_gold"].includes(txType)
-          ? "Jama"
-          : "Naam",
-      });
-
-      // 2. Add ledger entry in global gold ledger for physical inventory synchronization
-      if (txType === "gold_received") {
-        await useLedger.getState().append({
-          type: "customer_gold_received",
-          netFineMg: fineMg,
-          deltas: { customer: fineMg },
-          grossMg: grossMg,
-          purity: purityVal,
-          fineMg,
-          notes: `Deposit from Customer ${person.fullName}: ${notes}`,
-        });
-      } else if (txType === "gold_given") {
-        await useLedger.getState().append({
-          type: "customer_gold_credit_applied",
-          netFineMg: -fineMg,
-          deltas: { customer: -fineMg },
-          grossMg: grossMg,
-          purity: purityVal,
-          fineMg,
-          notes: `Return/issue to Customer ${person.fullName}: ${notes}`,
-        });
-      }
-
-      // Clear fields
-      setGross("");
-      setLess("");
-      setRate("");
-      setAmount("");
-      setNotes("");
-      setShowAddForm(false);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={onBack} className="gap-1.5 h-9">
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Button>
-          <div>
-            <h2 className="font-serif text-xl text-gold">{person.fullName}'s Account</h2>
-            <p className="text-xs text-muted-foreground">Running Gold Passbook & Monetary Ledger</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              triggerPrint(
-                `/people/ledger-print/${person.id}`,
-                `Ledger Statement · ${person.fullName}`,
-              )
-            }
-            className="gap-1.5 h-9 text-gold border-gold/30 hover:bg-gold/10"
-          >
-            <Printer className="h-4 w-4" /> Print Statement
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="gap-1.5 h-9 bg-primary text-primary-foreground"
-          >
-            <Plus className="h-4 w-4" /> Record Entry
-          </Button>
-        </div>
-      </div>
-
-      {/* Summaries Side-by-Side */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-gold/30 bg-gold/5 p-4 flex flex-col justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gold">
-              Gold Account Custody
-            </span>
-            <div className="font-serif text-2xl text-gold mt-1 font-mono font-bold">
-              {mgToGrams(ledger.closingGoldMg)}{" "}
-              <span className="text-xs font-sans text-muted-foreground">g fine</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1 font-mono">
-              {ledger.closingGoldMg > 0
-                ? "Advance Gold deposited (We owe them gold)"
-                : ledger.closingGoldMg < 0
-                  ? "Outstanding Gold balance (Customer owes us gold)"
-                  : "Fully balanced"}
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-card p-4 flex flex-col justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Monetary Running Balance
-            </span>
-            <div
-              className={`font-serif text-2xl mt-1 font-mono font-bold ${ledger.closingMoneyPaise > 0 ? "text-destructive" : ledger.closingMoneyPaise < 0 ? "text-emerald-500" : "text-foreground"}`}
-            >
-              ₹ {paiseToRupees(ledger.closingMoneyPaise)}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              {ledger.closingMoneyPaise > 0
-                ? "Outstanding balance (Customer owes us money)"
-                : ledger.closingMoneyPaise < 0
-                  ? "Advance balance (Shop owes customer money)"
-                  : "Fully balanced"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Record Entry form */}
-      {showAddForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-2xl border border-border bg-card p-5 space-y-4 shadow-elegant"
-        >
-          <div className="flex justify-between items-center border-b border-border pb-2">
-            <h3 className="font-serif text-base text-gold">Record Direct Gold/Money Entry</h3>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>
-              Cancel
-            </Button>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5 col-span-2">
-              <Label>Transaction Type</Label>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { v: "gold_received", label: "Gold Deposit" },
-                  { v: "gold_given", label: "Gold Issue" },
-                  { v: "cash_received_against_gold", label: "Receipt Payment" },
-                  { v: "cash_paid_against_gold", label: "Payment Paid" },
-                ].map((typeOption) => (
-                  <Button
-                    key={typeOption.v}
-                    type="button"
-                    variant={txType === typeOption.v ? "default" : "outline"}
-                    className="text-xs h-8 px-2"
-                    onClick={() => setTxType(typeOption.v as any)}
-                  >
-                    {typeOption.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {["gold_received", "gold_given"].includes(txType) && (
-              <>
-                <div className="space-y-1.5">
-                  <Label htmlFor="grossWeight">Gross Weight (g)</Label>
-                  <Input
-                    id="grossWeight"
-                    inputMode="decimal"
-                    placeholder="10.000"
-                    value={gross}
-                    onChange={(e) => setGross(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="lessWeight">Less Weight / Loss (g)</Label>
-                  <Input
-                    id="lessWeight"
-                    inputMode="decimal"
-                    placeholder="0.000"
-                    value={less}
-                    onChange={(e) => setLess(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="txPurity">Purity (Touch)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="txPurity"
-                      inputMode="numeric"
-                      placeholder="916"
-                      value={purity}
-                      onChange={(e) => setPurity(e.target.value)}
-                      required
-                      className="flex-1 font-mono"
-                    />
-                    <Select value={purity} onValueChange={(v) => setPurity(v)}>
-                      <SelectTrigger className="w-[120px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {COMMON_PURITIES.map((p) => (
-                          <SelectItem key={p.value} value={String(p.value)}>
-                            {p.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Calculated Fine Gold</Label>
-                  <div className="h-10 px-3 bg-muted/40 rounded-lg flex items-center text-sm font-mono text-gold font-bold">
-                    {mgToGrams(calculatedFineMg)} g Fine
-                  </div>
-                </div>
-              </>
-            )}
-
-            {["cash_received_against_gold", "cash_paid_against_gold"].includes(txType) && (
-              <>
-                <div className="space-y-1.5 col-span-2">
-                  <Label htmlFor="txAmount">Amount (₹)</Label>
-                  <Input
-                    id="txAmount"
-                    inputMode="decimal"
-                    placeholder="50000.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    required
-                    className="font-mono font-bold text-base"
-                  />
-                </div>
-              </>
-            )}
-
-            {["gold_received", "gold_given"].includes(txType) && (
-              <>
-                <div className="space-y-1.5">
-                  <Label htmlFor="txRate">Optional Rate (₹/g)</Label>
-                  <Input
-                    id="txRate"
-                    inputMode="decimal"
-                    placeholder="7200.00"
-                    value={rate}
-                    onChange={(e) => setRate(e.target.value)}
-                    className="font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="txAmountComputed">Optional Valued Amount (₹)</Label>
-                  <Input
-                    id="txAmountComputed"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="font-mono"
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="space-y-1.5 col-span-2">
-              <Label htmlFor="txNotes">Notes / Description</Label>
-              <Textarea
-                id="txNotes"
-                placeholder="Details of old gold ornament, metal transaction, cash payment, etc."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={() => setShowAddForm(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={submitting}
-              className="bg-primary text-primary-foreground"
-            >
-              {submitting ? "Saving..." : "Save Entry"}
-            </Button>
-          </div>
-        </form>
-      )}
-
-      {/* Ledger Passbook Table */}
-      <div className="rounded-2xl border border-border bg-card shadow-elegant overflow-hidden">
-        <div className="px-4 py-3 border-b border-border bg-muted/20 flex items-center justify-between">
-          <span className="font-serif text-sm text-gold font-bold">Passbook Ledger Logs</span>
-          <span className="text-[10px] font-mono text-muted-foreground">
-            {ledger.rows.length} rows
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="bg-muted/45 text-muted-foreground text-[10px] uppercase font-mono tracking-wider border-b border-border">
-              <tr>
-                <th className="px-4 py-3 text-left">Date</th>
-                <th className="px-3 py-3 text-left">Ref</th>
-                <th className="px-3 py-3 text-left">Type</th>
-                <th className="px-4 py-3 text-left min-w-[150px]">Description</th>
-                <th className="px-3 py-3 text-right">Gold In</th>
-                <th className="px-3 py-3 text-right">Gold Out</th>
-                <th className="px-3 py-3 text-right">Dr (Money)</th>
-                <th className="px-3 py-3 text-right">Cr (Money)</th>
-                <th className="px-4 py-3 text-right font-bold border-l border-border/40">
-                  Gold Bal
-                </th>
-                <th className="px-4 py-3 text-right font-bold font-sans">Money Bal</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {ledger.rows.map((row) => (
-                <tr key={row.id} className="hover:bg-muted/10">
-                  <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
-                    {row.date}
-                  </td>
-                  <td className="px-3 py-2.5 font-mono uppercase text-muted-foreground">
-                    {row.voucherNo}
-                  </td>
-                  <td className="px-3 py-2.5 whitespace-nowrap">
-                    <span className="text-[10px] font-semibold text-foreground bg-muted px-1.5 py-0.5 rounded">
-                      {row.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground max-w-[200px] break-words">
-                    {row.description}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-gold whitespace-nowrap">
-                    {row.goldInMg > 0 ? `${mgToGrams(row.goldInMg)} g` : "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-muted-foreground whitespace-nowrap">
-                    {row.goldOutMg > 0 ? `${mgToGrams(row.goldOutMg)} g` : "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-destructive whitespace-nowrap">
-                    {row.moneyDebitPaise > 0 ? `₹${paiseToRupees(row.moneyDebitPaise)}` : "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-emerald-500 whitespace-nowrap">
-                    {row.moneyCreditPaise > 0 ? `₹${paiseToRupees(row.moneyCreditPaise)}` : "—"}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-bold font-mono text-gold border-l border-border/40 whitespace-nowrap">
-                    {mgToGrams(row.closingGoldMg)} g
-                  </td>
-                  <td
-                    className={`px-4 py-2.5 text-right font-bold font-mono whitespace-nowrap ${row.closingMoneyPaise > 0 ? "text-destructive" : row.closingMoneyPaise < 0 ? "text-emerald-500" : "text-foreground"}`}
-                  >
-                    ₹{paiseToRupees(row.closingMoneyPaise)}
-                  </td>
-                </tr>
-              ))}
-              {ledger.rows.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="text-center py-8 text-muted-foreground">
-                    No ledger records found for this customer.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 }

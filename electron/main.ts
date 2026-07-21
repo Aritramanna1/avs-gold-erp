@@ -1,7 +1,19 @@
 import { app, BrowserWindow, dialog, ipcMain, Notification, session, shell } from "electron";
 import path from "node:path";
+import fs from "node:fs/promises";
+import { pathToFileURL } from "node:url";
 import { IPC } from "./ipc-channels";
 import { loadWindowState, trackWindowState } from "./window-state";
+import {
+  setToken as wasenderSetToken,
+  clearToken as wasenderClearToken,
+  hasToken as wasenderHasToken,
+  setApiKey as wasenderSetApiKey,
+  clearApiKey as wasenderClearApiKey,
+  hasApiKey as wasenderHasApiKey,
+  wasenderRequest,
+  type WasenderRequestArgs,
+} from "./wasender";
 
 // CommonJS output (see electron/tsconfig.json + dist-electron/package.json's
 // {"type":"commonjs"} override) — __dirname is a real CommonJS global here,
@@ -126,6 +138,36 @@ function registerIpcHandlers(): void {
     return mainWindow.webContents.getPrintersAsync();
   });
 
+  // ── WasenderAPI (WhatsApp) — token stays here, encrypted; never in renderer ──
+  ipcMain.handle(IPC.WASENDER_SET_TOKEN, (_e, token: string) => wasenderSetToken(token));
+  ipcMain.handle(IPC.WASENDER_CLEAR_TOKEN, () => wasenderClearToken());
+  ipcMain.handle(IPC.WASENDER_HAS_TOKEN, () => wasenderHasToken());
+  ipcMain.handle(IPC.WASENDER_SET_APIKEY, (_e, key: string) => wasenderSetApiKey(key));
+  ipcMain.handle(IPC.WASENDER_CLEAR_APIKEY, () => wasenderClearApiKey());
+  ipcMain.handle(IPC.WASENDER_HAS_APIKEY, () => wasenderHasApiKey());
+  ipcMain.handle(IPC.WASENDER_REQUEST, (_e, args: WasenderRequestArgs) => wasenderRequest(args));
+
+  /**
+   * Loads print HTML into `win` from a temp file, and deletes the file once the
+   * window is done with it.
+   *
+   * Not a `data:text/html` URL: a printable document embeds its images as
+   * base64 (a KYC scan, a hallmark certificate, a design photo on a job card),
+   * which pushes the HTML into the megabytes — well past what Chromium accepts
+   * for a top-level data: navigation. It would fail as a did-fail-load, i.e. a
+   * document that prints fine with no photo and silently refuses to print with
+   * one. A file:// URL has no such ceiling.
+   */
+  const loadPrintHtml = async (win: BrowserWindow, html: string): Promise<void> => {
+    const htmlPath = path.join(
+      app.getPath("temp"),
+      `mtj-print-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.html`,
+    );
+    await fs.writeFile(htmlPath, html, "utf-8");
+    win.on("closed", () => void fs.unlink(htmlPath).catch(() => {}));
+    await win.loadURL(pathToFileURL(htmlPath).href);
+  };
+
   // Renders arbitrary HTML in a hidden, throwaway window and prints it —
   // this is what makes "silent printing" and "printer selection" real
   // rather than just a browser print dialog: Electron can target a named
@@ -175,7 +217,72 @@ function registerIpcHandlers(): void {
           printWindow.destroy();
           resolve({ success: false, error: description });
         });
-        printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(args.html)}`);
+        void loadPrintHtml(printWindow, args.html).catch((err) => {
+          printWindow.destroy();
+          resolve({ success: false, error: err instanceof Error ? err.message : String(err) });
+        });
+      }),
+  );
+
+  // Print preview. The Windows system print dialog has no preview pane, and
+  // Electron ships without Chromium's print-preview UI, so window.print()
+  // alone gives the user no way to see the page before it hits paper.
+  // Instead: render the document HTML off-screen, printToPDF it, and open
+  // that PDF in Chromium's built-in PDF viewer. The user sees the exact
+  // document, then prints from the viewer — so what is previewed and what is
+  // printed are byte-for-byte the same PDF, not two separate renders.
+  ipcMain.handle(
+    IPC.PRINT_PREVIEW_HTML,
+    (_event, args: { html: string; title?: string; landscape?: boolean }) =>
+      new Promise<{ success: boolean; error?: string }>((resolve) => {
+        const renderWindow = new BrowserWindow({
+          show: false,
+          webPreferences: { sandbox: true },
+        });
+
+        renderWindow.webContents.once("did-finish-load", async () => {
+          try {
+            const pdf = await renderWindow.webContents.printToPDF({
+              printBackground: true,
+              landscape: args.landscape ?? false,
+              // Page size and margins come from the document's own @page rules
+              // (see PrintLayout.tsx), which printToPDF honours — hardcoding
+              // them here would silently override the per-document sizes
+              // (A4/A5/thermal/tag).
+              preferCSSPageSize: true,
+            });
+            renderWindow.destroy();
+
+            const pdfPath = path.join(app.getPath("temp"), `mtj-print-${Date.now()}.pdf`);
+            await fs.writeFile(pdfPath, pdf);
+
+            const previewWindow = new BrowserWindow({
+              width: 900,
+              height: 1000,
+              title: args.title ?? "Print Preview",
+              webPreferences: { plugins: true },
+            });
+            previewWindow.setMenuBarVisibility(false);
+            void previewWindow.loadURL(pathToFileURL(pdfPath).href);
+            previewWindow.on("closed", () => {
+              void fs.unlink(pdfPath).catch(() => {});
+            });
+            resolve({ success: true });
+          } catch (err) {
+            renderWindow.destroy();
+            resolve({ success: false, error: err instanceof Error ? err.message : String(err) });
+          }
+        });
+
+        renderWindow.webContents.once("did-fail-load", (_e, _code, description) => {
+          renderWindow.destroy();
+          resolve({ success: false, error: description });
+        });
+
+        void loadPrintHtml(renderWindow, args.html).catch((err) => {
+          renderWindow.destroy();
+          resolve({ success: false, error: err instanceof Error ? err.message : String(err) });
+        });
       }),
   );
 }

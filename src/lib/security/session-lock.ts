@@ -11,6 +11,8 @@
  */
 import { create } from "zustand";
 import { supabase } from "@/integrations/supabase/client";
+import { isOfflineMode } from "@/lib/deployment-mode";
+import { verifyLocalLogin } from "@/lib/local-auth";
 
 interface SessionLockState {
   locked: boolean;
@@ -42,6 +44,12 @@ export const useSessionLock = create<SessionLockState>()((set, get) => ({
   recordActivity: () => set({ lastActivityAt: Date.now() }),
 
   unlock: async (email, password) => {
+    if (isOfflineMode()) {
+      const result = await verifyLocalLogin(email, password);
+      if (!result.ok) return { ok: false, error: result.error };
+      set({ locked: false, lockedAt: null, lastActivityAt: Date.now() });
+      return { ok: true };
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { ok: false, error: error.message };
     set({ locked: false, lockedAt: null, lastActivityAt: Date.now() });

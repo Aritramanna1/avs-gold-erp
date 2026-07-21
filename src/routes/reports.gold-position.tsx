@@ -30,10 +30,11 @@ export const Route = createFileRoute("/reports/gold-position")({
 });
 
 const BUCKET_LABELS: Record<Bucket, string> = {
-  vault: "Vault",
+  vault: "Gold Held",
   karigar: "Karigar",
   finished: "Finished",
   customer: "Customer",
+  jeweller: "Jewellers",
   scrap: "Scrap",
 };
 

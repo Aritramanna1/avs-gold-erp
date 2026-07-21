@@ -156,6 +156,9 @@ export interface ManufacturingBill {
   labourChargesPaise: number;
   stoneChargesPaise: number;
   otherChargesPaise: number;
+  /** GST on job-work charges (India: job work on jewellery is a taxable service, HSN 9988 — distinct from and not to be confused with retail GST on goods sold). */
+  gstEnabled: boolean;
+  gstRatePct: number;
 
   // ── Manufacturing Costing (Phase 2) ────────────────────────────────────────
   /** Making charges per piece in paise */
@@ -354,6 +357,8 @@ export function buildBillFromJobCard(
     actualWastagePct,
 
     labourChargesPaise: 0,
+    gstEnabled: true,
+    gstRatePct: 5,
     stoneChargesPaise: 0,
     otherChargesPaise: 0,
     makingChargesPaise: 0,
@@ -962,6 +967,8 @@ function billToDbRow(b: ManufacturingBill): { id: string } & Record<string, unkn
       finalBarcodeId: b.finalBarcodeId ?? null,
       referenceDesign: b.referenceDesign ?? null,
       itemDescription: b.itemDescription ?? null,
+      gstEnabled: b.gstEnabled,
+      gstRatePct: b.gstRatePct,
     }),
   };
 }
@@ -1070,6 +1077,8 @@ function dbRowToBill(row: Record<string, unknown>): ManufacturingBill {
         finalBarcodeId: (extra.finalBarcodeId as string | null) ?? undefined,
         referenceDesign: (extra.referenceDesign as string | null) ?? undefined,
         itemDescription: (extra.itemDescription as string | null) ?? undefined,
+        gstEnabled: (extra.gstEnabled as boolean) ?? true,
+        gstRatePct: (extra.gstRatePct as number) ?? 5,
       };
     })(),
   };

@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLedger } from "@/lib/ledger-store";
+import { useOrders } from "@/lib/orders-store";
 import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { useWorkerReturns, COMMON_RETURN_MATERIALS } from "@/lib/worker-return-store";
@@ -29,7 +30,7 @@ import {
 } from "@/lib/material-vault-sync";
 import { generateImageThumbnail } from "@/lib/attachments-store";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { PackageCheck, AlertTriangle, ImagePlus } from "lucide-react";
 
 /**
@@ -214,6 +215,15 @@ export function WorkerReturnDialog({
           actorEmail: data.session?.user.email ?? null,
         });
       }
+
+      // Order Timeline entry — mirrors the pattern send-to-polishing-dialog.tsx
+      // uses (appendTimeline), so a worker return shows up in the order's own
+      // activity history the same way sending to polishing does.
+      await useOrders.getState().appendTimeline(orderId, {
+        ts: Date.now(),
+        label: "Worker Return",
+        note: `${mgToGrams(grossMg)}g ${materialReturned} ← ${worker.fullName}`,
+      });
 
       onSaved?.({ materialReturned, grossMg, workerName: worker.fullName });
       onClose();

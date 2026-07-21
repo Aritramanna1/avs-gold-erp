@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { usePrintEngine } from "@/lib/print-engine";
 import { PageHeader } from "@/components/app-shell";
 import { AttachmentsSection } from "@/components/attachments-section";
 import { Button } from "@/components/ui/button";
@@ -50,16 +49,23 @@ export const Route = createFileRoute("/workshop/$id")({
   component: JobCardDetail,
 });
 
+// Solid, high-contrast fills — a workshop screen is read from across the room,
+// not studied. Grouped so the gold's location is obvious at a glance: blue = in
+// our vault, indigo/amber = out with a karigar, cyan = back with us, red = must
+// go back to the bench, green = finished.
 const STATUS_TONE: Record<JobStatus, string> = {
-  draft: "bg-muted text-muted-foreground",
-  ready_for_gold_issue: "bg-blue-500/15 text-blue-300 border-blue-500/30",
-  gold_issued: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
-  in_progress: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  work_received: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-  qc_pending: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-  ready_for_billing: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  rework: "bg-red-500/15 text-red-300 border-red-500/30",
-  closed: "bg-green-600/20 text-green-300 border-green-500/30",
+  awaiting_gold_issue: "bg-blue-600 text-white border-blue-500",
+  gold_issued: "bg-indigo-600 text-white border-indigo-500",
+  in_progress: "bg-amber-500 text-black border-amber-400",
+  work_received: "bg-cyan-600 text-white border-cyan-500",
+  rework: "bg-red-600 text-white border-red-500",
+  ready_for_billing: "bg-emerald-600 text-white border-emerald-500",
+  closed: "bg-green-700 text-white border-green-600",
+
+  // Legacy statuses, shown as their live equivalent (see normalizeJobStatus).
+  draft: "bg-blue-600 text-white border-blue-500",
+  ready_for_gold_issue: "bg-blue-600 text-white border-blue-500",
+  qc_pending: "bg-cyan-600 text-white border-cyan-500",
 };
 
 function JobCardDetail() {
@@ -76,7 +82,6 @@ function JobCardDetail() {
   const [receiveOpen, setReceiveOpen] = useState(false);
 
   // Print Dialog States
-  const { triggerPrint } = usePrintEngine();
 
   if (!job) {
     return (
@@ -135,10 +140,10 @@ function JobCardDetail() {
               variant="outline"
               className="gap-2"
               onClick={() =>
-                triggerPrint(
-                  `/workshop/print/job-card/${job.orderId}`,
-                  `Job Card Preview · ${job.jobNo}`,
-                )
+                // job.id, NOT job.orderId — an order has one card per item, so
+                // keying the print by the order would print the first item's
+                // card no matter which card you are looking at.
+                navigate({ to: `/workshop/print/job-card/${job.id}` as any })
               }
             >
               <Printer className="h-4 w-4" /> Print Job Card
@@ -366,12 +371,7 @@ function JobCardDetail() {
                     variant="outline"
                     size="sm"
                     className="w-full gap-2 text-xs"
-                    onClick={() =>
-                      triggerPrint(
-                        `/workshop/receive-slip/${job.id}`,
-                        `Receive Slip Preview · ${job.workReceipt?.slipNo}`,
-                      )
-                    }
+                    onClick={() => navigate({ to: `/workshop/receive-slip/${job.id}` as any })}
                   >
                     <Printer className="h-3 w-3" /> Print Gold Receive Slip
                   </Button>
@@ -380,12 +380,7 @@ function JobCardDetail() {
                       variant="outline"
                       size="sm"
                       className="w-full gap-2 text-xs"
-                      onClick={() =>
-                        triggerPrint(
-                          `/workshop/filings-slip/${job.id}`,
-                          `Filings Receipt Preview · ${job.workReceipt?.slipNo}`,
-                        )
-                      }
+                      onClick={() => navigate({ to: `/workshop/filings-slip/${job.id}` as any })}
                     >
                       <Printer className="h-3 w-3" /> Print Filings Receipt
                     </Button>

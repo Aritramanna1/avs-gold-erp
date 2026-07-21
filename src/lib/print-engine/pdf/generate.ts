@@ -9,6 +9,8 @@
  * the on-screen preview (sections.tsx) and the exported PDF automatically.
  */
 import { jsPDF } from "jspdf";
+import { ARCHIVAL_SIZES } from "@/components/print/PrintLayout";
+import { usePrintSetup } from "@/lib/print-setup-store";
 import type { FirmProfile } from "@/lib/settings-store";
 import { payloadFor } from "@/lib/verify-token";
 import type { PrintDocumentData, PrintTemplate, SectionConfig } from "../types";
@@ -33,11 +35,21 @@ import {
 const PAPER_SIZE_TO_JSPDF: Record<PrintTemplate["paperSize"], string | [number, number]> = {
   a4: "a4",
   a5: "a5",
+  // Half A4 = A5 on its side. The SIZE is a5; the rotation is the orientation
+  // flag below. jsPDF normalises a format array to portrait (it puts the
+  // smaller number first), so handing it [210, 148] would silently produce a
+  // portrait A5 — the landscape job card would come out the wrong way round.
+  a5l: "a5",
   a6: "a6",
   thermal: [80, 200],
   thermal58: [58, 200],
   tag: [50, 30],
 };
+
+/** Formats whose page is wider than it is tall. */
+function jsPdfOrientation(paperSize: PrintTemplate["paperSize"]): "portrait" | "landscape" {
+  return paperSize === "a5l" ? "landscape" : "portrait";
+}
 
 async function drawSection(
   doc: jsPDF,
@@ -130,8 +142,25 @@ export async function generateDocumentPdf(
   template: PrintTemplate,
   firm: FirmProfile,
 ): Promise<{ blob: Blob; fileName: string }> {
-  const doc = new jsPDF({ unit: "mm", format: PAPER_SIZE_TO_JSPDF[template.paperSize] });
-  const geo = geometryFor(doc, template.paperSize);
+  // The user's page setup governs the exported PDF too — otherwise "Download
+  // PDF" would silently ignore the paper size / orientation / margins chosen
+  // for the very document on screen, and the file would not match its preview.
+  const setup = usePrintSetup.getState();
+  const paperSize = setup.sizeOverride ?? template.paperSize;
+  const orientation = ARCHIVAL_SIZES.includes(paperSize)
+    ? (setup.orientation ?? jsPdfOrientation(paperSize))
+    : jsPdfOrientation(paperSize);
+
+  const doc = new jsPDF({
+    unit: "mm",
+    format: PAPER_SIZE_TO_JSPDF[paperSize],
+    orientation,
+  });
+  // ponytail: the jsPDF layout engine lays out against ONE symmetric margin,
+  // so the left value is applied on all four sides here (the HTML/print path
+  // honours all four independently). Give Geometry per-side margins if a
+  // workshop ever needs an asymmetric PDF export.
+  const geo = geometryFor(doc, paperSize, setup.margins?.left);
   const hasOwnHeader = template.sections.some(
     (s) => s.type === "header" || s.type === "premiumHeader",
   );
@@ -145,7 +174,13 @@ export async function generateDocumentPdf(
   }
 
   if (template.paperSize !== "tag") {
-    addPageFooter(doc, geo, firm);
+    // Stamp the footer (and page numbers) on every page the content grew to —
+    // addTable may have added pages, so this runs after all sections are drawn.
+    const totalPages = doc.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      addPageFooter(doc, geo, firm, p, totalPages);
+    }
   }
 
   const safeName = data.docNumber.replace(/[^a-zA-Z0-9_-]/g, "_");

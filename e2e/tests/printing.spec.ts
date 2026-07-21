@@ -65,6 +65,38 @@ test.describe("Unified Print Engine — Credit Note (Phase 1 migration)", () => 
     expectNoPageErrors(authedPage);
   });
 
+  test("page setup is real: paper size, orientation and margins reach the @page rule", async ({
+    authedPage,
+    seedIds,
+  }) => {
+    await authedPage.goto(`/billing/credit-note-print/${seedIds.creditNoteId}`);
+    const root = authedPage.getByTestId("print-layout-root");
+    await expect(root).toBeVisible({ timeout: 15_000 });
+
+    await authedPage.getByTestId("print-page-setup-toggle").click();
+
+    // A5, forced to landscape, with a custom top margin.
+    await authedPage.getByTestId("page-setup-size").click();
+    await authedPage.getByRole("option", { name: /^A5 \(148/ }).click();
+    await authedPage.getByTestId("page-setup-orientation").click();
+    await authedPage.getByRole("option", { name: "Landscape" }).click();
+    await authedPage.getByTestId("page-setup-margin-top").fill("7");
+
+    await expect(root).toHaveAttribute("data-print-size", "a5");
+    await expect(root).toHaveAttribute("data-print-orientation", "landscape");
+
+    // The @page rule the printer/printToPDF actually receives — if these
+    // controls were decorative, this text would still say "A5 portrait" and
+    // the default 10mm top margin.
+    const pageRule = await root.locator("style").first().textContent();
+    expect(pageRule).toContain("size: A5 landscape");
+    expect(pageRule).toContain("margin: 7mm");
+
+    await authedPage.getByTestId("page-setup-reset").click();
+    await expect(root).toHaveAttribute("data-print-size", "a4");
+    expectNoPageErrors(authedPage);
+  });
+
   test("Download PDF produces a real PDF file via the consolidated generateDocumentPdf pipeline", async ({
     authedPage,
     seedIds,
@@ -80,7 +112,7 @@ test.describe("Unified Print Engine — Credit Note (Phase 1 migration)", () => 
     expectNoPageErrors(authedPage);
   });
 
-  test("reprint is audited — second visit shows the Reprint Required banner", async ({
+  test.skip("reprint is audited — second visit shows the Reprint Required banner (V1 scope: reprint audit removed — usePrintRecord.ts now returns isReprint:false/recordReprint:no-op; printing is unlimited and unrestricted per that file's V1 comment)", async ({
     authedPage,
     seedIds,
   }) => {
@@ -162,7 +194,7 @@ test.describe("Unified Print Engine — GST/Retail Invoice (Phase 1.2 migration)
     expectNoPageErrors(authedPage);
   });
 
-  test("reprint is audited — second visit shows the Reprint Required banner", async ({
+  test.skip("reprint is audited — second visit shows the Reprint Required banner (V1 scope: reprint audit removed — see usePrintRecord.ts)", async ({
     authedPage,
     seedIds,
   }) => {
@@ -210,7 +242,7 @@ test.describe("Unified Print Engine — Debit Note (Phase 2 migration)", () => {
     expectNoPageErrors(authedPage);
   });
 
-  test("reprint is audited — second visit shows the Reprint Required banner", async ({
+  test.skip("reprint is audited — second visit shows the Reprint Required banner (V1 scope: reprint audit removed — see usePrintRecord.ts)", async ({
     authedPage,
     seedIds,
   }) => {
@@ -258,7 +290,7 @@ test.describe("Unified Print Engine — Estimate (Phase 2 migration)", () => {
     expectNoPageErrors(authedPage);
   });
 
-  test("reprint is audited — second visit shows the Reprint Required banner", async ({
+  test.skip("reprint is audited — second visit shows the Reprint Required banner (V1 scope: reprint audit removed — see usePrintRecord.ts)", async ({
     authedPage,
     seedIds,
   }) => {
@@ -308,7 +340,7 @@ test.describe("Unified Print Engine — Delivery Challan (Phase 2 migration)", (
     expectNoPageErrors(authedPage);
   });
 
-  test("reprint is audited — second visit shows the Reprint Required banner", async ({
+  test.skip("reprint is audited — second visit shows the Reprint Required banner (V1 scope: reprint audit removed — see usePrintRecord.ts)", async ({
     authedPage,
     seedIds,
   }) => {
@@ -348,9 +380,13 @@ test.describe("Unified Print Engine — Worker Custody Statement (Phase 2 Batch 
     // "Returned" can legitimately repeat — .first() is correct, not a
     // workaround; the order reference is what proves THIS run's own entry
     // specifically rendered.
+    // "Issued"/"Received" come from the ledger table's own column headers
+    // ("Gold Issued (g)" / "Gold Received (g)" — default-templates.ts), not
+    // a per-row badge; the order reference is rendered inline in the
+    // particulars cell as "{description} · {orderNo}" (ledger-statements-data.ts).
     await expect(root.getByText("Issued").first()).toBeVisible();
-    await expect(root.getByText("Returned").first()).toBeVisible();
-    await expect(root.getByText(`Ref: ${seedIds.orderNo}`).first()).toBeVisible();
+    await expect(root.getByText("Received").first()).toBeVisible();
+    await expect(root.getByText(seedIds.custodyRefOrderNo as string).first()).toBeVisible();
     expectNoPageErrors(authedPage);
   });
 
@@ -367,7 +403,7 @@ test.describe("Unified Print Engine — Worker Custody Statement (Phase 2 Batch 
     expectNoPageErrors(authedPage);
   });
 
-  test("reprint is audited — second visit shows the Reprint Required banner", async ({
+  test.skip("reprint is audited — second visit shows the Reprint Required banner (V1 scope: reprint audit removed — see usePrintRecord.ts)", async ({
     authedPage,
     seedIds,
   }) => {
@@ -424,7 +460,7 @@ test.describe("Unified Print Engine — Customer Ledger Statement (Phase 2 Batch
     expectNoPageErrors(authedPage);
   });
 
-  test("reprint is audited — second visit shows the Reprint Required banner", async ({
+  test.skip("reprint is audited — second visit shows the Reprint Required banner (V1 scope: reprint audit removed — see usePrintRecord.ts)", async ({
     authedPage,
     seedIds,
   }) => {

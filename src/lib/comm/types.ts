@@ -25,7 +25,14 @@ export type MessageTemplate =
   | "gold_settlement_reminder"
   | "business_report"
   | "settlement_ready"
-  | "pending_settlement";
+  | "pending_settlement"
+  /**
+   * Free text the user typed or that a screen composed — a delivery reminder, an
+   * order confirmation. There is no template to resolve: the message body IS the
+   * content. Used by sendWhatsAppText(), so ad-hoc messages go through the same
+   * provider as everything else instead of hard-coding a wa.me link.
+   */
+  | "custom";
 
 // ── Send request ─────────────────────────────────────────────────────────────
 export interface CommRequest {
@@ -111,6 +118,7 @@ export type ProviderType =
   | "whatsapp_deep_link"
   | "whatsapp_cloud_api" // Meta Cloud API
   | "whatsapp_openwa" // Self-hosted OpenWA (open-wa/wa-automate) server
+  | "whatsapp_wasender" // WasenderAPI (token in main process, encrypted)
   | "whatsapp_interakt"
   | "whatsapp_wati"
   | "whatsapp_aisensy"
@@ -155,4 +163,7 @@ export const WHATSAPP_KEYS = {
   templateRepairReady: "template_repair_ready",
   templatePaymentReminder: "template_payment_reminder",
   templateOtp: "template_otp",
+  // WasenderAPI. The token is NOT stored here — it lives encrypted in the
+  // Electron main process (see wasender.ts). Only non-secret config here.
+  wasenderSession: "wasender_session",
 } as const;

@@ -5,7 +5,10 @@ test.describe("Job Cards (Workshop)", () => {
     authedPage,
   }) => {
     await authedPage.goto("/workshop");
-    await expect(authedPage.getByText("Workshop", { exact: true })).toBeVisible({
+    // getByText("Workshop") is ambiguous — the sidebar nav link is also
+    // literally "Workshop" — getByRole("heading") targets only the page's
+    // own <h1> title, unambiguously.
+    await expect(authedPage.getByRole("heading", { name: "Workshop", exact: true })).toBeVisible({
       timeout: 15_000,
     });
     expectNoPageErrors(authedPage);

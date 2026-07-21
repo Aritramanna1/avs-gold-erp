@@ -34,7 +34,6 @@ const STATUS_COLOR: Record<string, string> = {
   settled: "bg-purple-500/15 text-purple-400 border-purple-500/30",
   ready_for_billing: "bg-amber-500/15 text-amber-400 border-amber-500/30",
   work_received: "bg-sky-500/15 text-sky-400 border-sky-500/30",
-  qc_pending: "bg-orange-500/15 text-orange-400 border-orange-500/30",
 };
 
 export default function ManufacturingDashboard() {
@@ -43,10 +42,8 @@ export default function ManufacturingDashboard() {
   const { config: wf } = useWorkflowEngine();
 
   // Jobs that need a Manufacturing Bill
-  const readyJobs = jobs.filter((j) =>
-    ["work_received", "qc_pending", "ready_for_billing"].includes(j.status),
-  );
-  const allActiveJobs = jobs.filter((j) => !["closed", "draft"].includes(j.status));
+  const readyJobs = jobs.filter((j) => ["work_received", "ready_for_billing"].includes(j.status));
+  const allActiveJobs = jobs.filter((j) => j.status !== "closed");
 
   // Bills by status
   const draftBills = bills.filter((b) => b.status === "draft");

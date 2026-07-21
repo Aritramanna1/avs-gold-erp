@@ -98,6 +98,14 @@ export interface TableSectionConfig {
    * showFooterSums's Number(row[key]) would just read NaN from those.
    */
   footerRowPath?: string;
+  /**
+   * When set, an extra full-width row is drawn INSIDE the table's <thead>.
+   * The browser repeats <thead> on every printed page (display:
+   * table-header-group), so a multi-page ledger carries its report identity —
+   * shop name + these fields — on EVERY page, not just page one. Each entry is
+   * {label, valuePath into PrintDocumentData.fields}.
+   */
+  repeatHeaderMeta?: { label: string; valuePath: string }[];
   showIf?: string;
 }
 

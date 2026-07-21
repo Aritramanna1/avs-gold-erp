@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { AttachmentsSection } from "@/components/attachments-section";
 import { AttachmentButton } from "@/components/attachment-placeholder-modal";
-import { useAttachments } from "@/lib/attachments-store";
+import { useAttachments, useAttachmentUrl } from "@/lib/attachments-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,7 +54,9 @@ function DesignPage() {
     }
   }, [draft?.category]);
 
-  const photoAtt = useAttachments((s) => (d ? s.items[`catalog:${d.id}:design_photo`] : undefined));
+  // Bytes come from the local encrypted vault (thumbnail first, full-size once
+  // decrypted), not from base64 inlined on the row.
+  const photoUrl = useAttachmentUrl("catalog", d?.id ?? "", "design_photo");
 
   if (!d) {
     return (
@@ -122,10 +124,10 @@ function DesignPage() {
       />
 
       <div className="grid md:grid-cols-[260px_1fr] gap-6">
-        {photoAtt?.fileDataUrl ? (
+        {photoUrl ? (
           <div className="aspect-square rounded-2xl border border-border bg-card overflow-hidden flex items-center justify-center relative p-2 shadow-sm">
             <img
-              src={photoAtt.fileDataUrl}
+              src={photoUrl}
               alt={d.designName}
               className="object-contain max-h-full max-w-full rounded-xl"
               referrerPolicy="no-referrer"

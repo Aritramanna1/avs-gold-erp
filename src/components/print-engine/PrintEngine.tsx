@@ -17,7 +17,7 @@ import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { useSettings } from "@/lib/settings-store";
 import { usePrintTemplates } from "@/lib/print-engine/template-store";
-import { resolvePrintContext } from "@/lib/print-engine/data-mapper";
+import { resolvePrintContext, hasPrintContextBuilder } from "@/lib/print-engine/data-mapper";
 import { usePrintDataSourcesTick } from "@/lib/print-engine/data-source-tick";
 import { generateDocumentPdf } from "@/lib/print-engine/pdf/generate";
 import { PrintSections } from "./sections";
@@ -107,8 +107,6 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
   // will ever support, not just the ones usePrintRecord's switch happens
   // to know about.
   const {
-    loading,
-    error,
     docNumber,
     isReprint,
     reprintCount,
@@ -136,25 +134,23 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
     };
   }, [rawData, isReprint, reprintCount]);
 
-  // usePrintRecord's own loading/error come from ITS internal docType->store
-  // switch (usePrintRecord.ts), which only covers doc types that predate
-  // the print engine (invoices, repairs, orders, ...) — it has no case for
-  // most engine-native doc types (e.g. karigar_custody_statement,
-  // customer_ledger_statement), so for those `loading` would stay true
-  // forever and permanently blank the document. The data-mapper's own
-  // `data` (resolved independently, same underlying stores) is the
-  // authoritative "is this document ready" signal for every doc type;
-  // usePrintRecord's loading is consulted only to avoid a not-found flash
-  // on doc types it DOES resolve, and never blocks past the moment our own
-  // data is ready. Only block if data itself is missing, never on stale
-  // usePrintRecord loading state for engine-native doc types.
-  if (!data) {
-    return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
-  }
+  // Every store lookup here is a synchronous local zustand read, not an
+  // async fetch — there is no real "still loading" phase to wait out, only
+  // "found" or "not found" (which flips to "found" on its own once a
+  // background pullBackground() finishes, via dataSourcesTick above). Gating
+  // on usePrintRecord's `loading` was tried before and is actively wrong:
+  // that flag is just `!record`, which — for a doc type outside its
+  // docType->store switch (e.g. karigar_custody_statement,
+  // customer_ledger_statement) or for a genuinely-missing record in ANY doc
+  // type — stays true forever, permanently stranding this on a "Loading…"
+  // spinner instead of ever showing the real not-found message. `data`
+  // itself (this engine's own resolution) is the only signal to block on.
   if (!data) {
     return (
       <div className="p-8 text-center text-sm text-destructive">
-        {error || `No print context builder registered yet for "${docType}".`}
+        {hasPrintContextBuilder(docType)
+          ? "Document not found."
+          : `No print context builder registered yet for "${docType}".`}
       </div>
     );
   }
@@ -192,6 +188,7 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
       backUrl={backUrl}
       onDownloadPdf={handleDownloadPdf}
       downloadingPdf={downloadingPdf}
+      documentSize={template.paperSize}
       layoutSize={availableSizes.length > 1 && isToolbarSize(activeSize) ? activeSize : undefined}
       onLayoutSizeChange={availableSizes.length > 1 ? (sz) => setLayoutSize(sz) : undefined}
     />

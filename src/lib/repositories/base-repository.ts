@@ -82,10 +82,24 @@ async function recordAuditBestEffort(
       // Local DB unavailable — audit entry is still recorded, just without
       // a "before" snapshot.
     }
-    const { data } = await supabase.auth.getSession();
+    // Offline mode has no Supabase session — the actor is the local user
+    // (SAD §11: every audited action must name a user).
+    const { isOfflineMode } = await import("@/lib/deployment-mode");
+    let actorId: string | null = null;
+    let actorEmail: string | null = null;
+    if (isOfflineMode()) {
+      const { getLocalSessionUser } = await import("@/lib/local-auth");
+      const localUser = await getLocalSessionUser();
+      actorId = localUser?.id ?? null;
+      actorEmail = localUser?.email ?? null;
+    } else {
+      const { data } = await supabase.auth.getSession();
+      actorId = data.session?.user.id ?? null;
+      actorEmail = data.session?.user.email ?? null;
+    }
     await append({
-      actorId: data.session?.user.id ?? null,
-      actorEmail: data.session?.user.email ?? null,
+      actorId,
+      actorEmail,
       action: `${table}.${action}`,
       entityType: table,
       entityId,

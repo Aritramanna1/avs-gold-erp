@@ -2,6 +2,7 @@
  * MTJ ERP — Settings / Masters store
  * Pilot-controlled firm profile, branding, GST, purity, dropdown masters.
  */
+import { useMemo } from "react";
 import { create } from "zustand";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -12,9 +13,36 @@ import {
 // ── Supabase persistence helpers ──────────────────────────────────────────────
 
 /** Saves the main firm settings blob to app_settings[id="firm"] */
+/**
+ * When this tab last wrote settings. A pull whose row is older than this is
+ * carrying a snapshot taken BEFORE our write — applying it would roll the local
+ * state back to a stale value, and the next persist would then write that
+ * staleness to the database, permanently losing the edit. See
+ * `isSettingsPullStale()`, which data-loader consults before applying a pull.
+ *
+ * This is what made a newly-created custom form vanish on restart: a pull already
+ * in flight when the form was saved landed just after it, reset formsMetadata to
+ * the pre-save list, and the next persist wrote that list back over the good row.
+ * (The same race is named in settings.index.tsx as the old "logo/settings
+ * disappear after restart" bug — it was only ever half-fixed, on one write path.)
+ */
+let lastLocalSettingsWriteAt = 0;
+
+/** True if `rowUpdatedAt` predates this tab's most recent settings write. */
+export function isSettingsPullStale(rowUpdatedAt: string | null | undefined): boolean {
+  if (!lastLocalSettingsWriteAt) return false;
+  if (!rowUpdatedAt) return false;
+  const rowMs = Date.parse(rowUpdatedAt);
+  if (Number.isNaN(rowMs)) return false;
+  return rowMs < lastLocalSettingsWriteAt;
+}
+
 async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<void> {
+  // Stamped before the await: a pull that raced this write must lose regardless
+  // of when the round trip happens to complete.
+  lastLocalSettingsWriteAt = Date.now();
   try {
-    await supabase.from("app_settings").upsert(
+    const { error } = await supabase.from("app_settings").upsert(
       [
         {
           id: "firm",
@@ -25,6 +53,13 @@ async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<v
       ],
       { onConflict: "id" },
     );
+    // Supabase reports RLS/constraint failures in `error` rather than throwing, so
+    // the old bare `await` treated a rejected write as a successful one. Settings
+    // (custom form definitions among them) silently failed to persist and came
+    // back empty on the next boot with nothing logged anywhere.
+    if (error) {
+      console.warn("[settings] Failed to persist to Supabase:", error.message);
+    }
   } catch (err) {
     console.warn("[settings] Failed to persist to Supabase:", err);
   }
@@ -111,6 +146,19 @@ async function deleteWorkshopFromDb(id: string): Promise<void> {
 /** Collects the current state snapshot and saves it to app_settings */
 function persistSettings(get: () => any): void {
   const s = get();
+
+  // Never write before the stored settings have been read back.
+  //
+  // On every page load the store starts at its compiled-in DEFAULTS. Boot-time
+  // code paths call setters (branch selection, default bootstrapping) which land
+  // here — and if the pull hasn't resolved yet, this persisted the DEFAULT
+  // snapshot straight over the real row. Anything the user had added that isn't
+  // in the defaults (a custom form definition, most visibly) was destroyed on the
+  // next app start, which is exactly the "custom fields don't survive a restart"
+  // report. Until hydration lands, the in-memory state is not a fact about this
+  // workshop and must not be written down.
+  if (!s.settingsHydrated) return;
+
   void saveAppSettingsToDb({
     firm: s.firm,
     branding: s.branding,
@@ -532,6 +580,36 @@ export const DROPDOWN_LABELS: Record<DropdownKey, string> = {
   stoneType: "Stone Type",
 };
 
+/**
+ * The selectable values of a master: everything configured, minus the retired
+ * ones. Every picker in the app must go through this rather than reading
+ * `dropdowns[key]` directly — otherwise a value the workshop disabled in
+ * Settings keeps being offered on the very screens that create new records.
+ *
+ * `include` re-admits a value that is already on the record being edited, so
+ * opening an old order whose category has since been retired doesn't silently
+ * blank that field on save.
+ */
+export function activeDropdownValues(key: DropdownKey, include?: string | null): string[] {
+  const { dropdowns, disabledDropdowns } = useSettings.getState();
+  const disabled = new Set(disabledDropdowns[key] ?? []);
+  const values = (dropdowns[key] ?? []).filter((v) => !disabled.has(v));
+  if (include && !values.includes(include)) return [include, ...values];
+  return values;
+}
+
+/** Reactive form of `activeDropdownValues` — re-renders when Settings changes. */
+export function useActiveDropdownValues(key: DropdownKey, include?: string | null): string[] {
+  const values = useSettings((s) => s.dropdowns[key]);
+  const disabled = useSettings((s) => s.disabledDropdowns[key]);
+  return useMemo(() => {
+    const off = new Set(disabled ?? []);
+    const active = (values ?? []).filter((v) => !off.has(v));
+    if (include && !active.includes(include)) return [include, ...active];
+    return active;
+  }, [values, disabled, include]);
+}
+
 export interface SettingsState {
   firm: FirmProfile;
   branding: Branding;
@@ -543,6 +621,14 @@ export interface SettingsState {
   catalog: CatalogSettings;
   smtp: SmtpSettings;
   dropdowns: Record<DropdownKey, string[]>;
+  /**
+   * Master values that are retired: hidden from every picker, but still a
+   * legal value on records that already carry them. Deleting a value a past
+   * order/job card references would leave that record showing a category or
+   * production type the system no longer admits exists — disabling is the
+   * correct retirement path for a master a workshop has already used.
+   */
+  disabledDropdowns: Partial<Record<DropdownKey, string[]>>;
   goldRatePerGramPaise: number;
   goldRate24KPerGramPaise: number;
   goldRate18KPerGramPaise: number;
@@ -655,6 +741,11 @@ export interface SettingsState {
   setDropdown: (key: DropdownKey, values: string[]) => void;
   addDropdownItem: (key: DropdownKey, value: string) => void;
   removeDropdownItem: (key: DropdownKey, value: string) => void;
+  /** Renames a master value in place, keeping its position in the list. */
+  renameDropdownItem: (key: DropdownKey, from: string, to: string) => void;
+  /** Disables/re-enables a value: it disappears from pickers but stays a valid
+   *  historical value, so records already carrying it still read correctly. */
+  setDropdownItemDisabled: (key: DropdownKey, value: string, disabled: boolean) => void;
 
   setPrinterProfiles: (profiles: PrinterProfile[]) => void;
   addPrinterProfile: (profile: Omit<PrinterProfile, "id">) => void;
@@ -1235,6 +1326,7 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
     apiKey: "",
   },
   dropdowns: DEFAULT_DROPDOWNS,
+  disabledDropdowns: {},
   goldRatePerGramPaise: 0,
   goldRate24KPerGramPaise: 0,
   goldRate18KPerGramPaise: 0,
@@ -1421,6 +1513,8 @@ type Functions = Pick<
   | "setDropdown"
   | "addDropdownItem"
   | "removeDropdownItem"
+  | "renameDropdownItem"
+  | "setDropdownItemDisabled"
   | "resetAll"
   | "setUsers"
   | "addUser"
@@ -1586,7 +1680,34 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   removeDropdownItem: (key, value) => {
     set({
       dropdowns: { ...get().dropdowns, [key]: get().dropdowns[key].filter((v) => v !== value) },
+      disabledDropdowns: {
+        ...get().disabledDropdowns,
+        [key]: (get().disabledDropdowns[key] ?? []).filter((v) => v !== value),
+      },
     });
+    persistSettings(get);
+  },
+  renameDropdownItem: (key, from, to) => {
+    const v = to.trim();
+    const cur = get().dropdowns[key];
+    if (!v || v === from || !cur.includes(from) || cur.includes(v)) return;
+    set({
+      dropdowns: { ...get().dropdowns, [key]: cur.map((x) => (x === from ? v : x)) },
+      disabledDropdowns: {
+        ...get().disabledDropdowns,
+        [key]: (get().disabledDropdowns[key] ?? []).map((x) => (x === from ? v : x)),
+      },
+    });
+    persistSettings(get);
+  },
+  setDropdownItemDisabled: (key, value, disabled) => {
+    const cur = get().disabledDropdowns[key] ?? [];
+    const next = disabled
+      ? cur.includes(value)
+        ? cur
+        : [...cur, value]
+      : cur.filter((v) => v !== value);
+    set({ disabledDropdowns: { ...get().disabledDropdowns, [key]: next } });
     persistSettings(get);
   },
 
@@ -1729,7 +1850,23 @@ export const useSettings = create<SettingsState>()((set, get) => ({
     persistSettings(get);
   },
 
-  resetAll: () => set({ ...DEFAULTS }),
+  // Reset Settings must only touch cosmetic/preference fields — never users,
+  // roles, permissions, branches, firm/company identity, or auth state. This
+  // used to be `set({ ...DEFAULTS })`, which wiped every registered user back
+  // to a single default "Owner" stub, blanked the firm profile, and reset
+  // currentUserRole/branches — locking the administrator out mid-pilot.
+  // Factory Reset (FactoryResetDialog -> clearAllLocalData) is the only
+  // operation allowed to erase that data.
+  resetAll: () => {
+    set({
+      branding: DEFAULTS.branding,
+      print: DEFAULTS.print,
+      hardware: DEFAULTS.hardware,
+      language: DEFAULTS.language,
+      developer: DEFAULTS.developer,
+    });
+    persistSettings(get);
+  },
 }));
 
 /** All Zustand stores in MTJ. Used by Backup/Export. */

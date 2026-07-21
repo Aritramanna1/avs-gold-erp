@@ -493,9 +493,9 @@ export function GoldSettlementTab() {
       // If linked to an invoice, apply payments to reduce the invoice outstanding in useBilling
       if (linkUse === "invoice" && selectedInvoiceId && partyType === "customer") {
         const billingAddPayment = useBilling.getState().addPayment;
-        items.forEach((it) => {
+        for (const it of items) {
           const amtPaise = rupeesToPaise(it.amountRupees || 0);
-          if (amtPaise <= 0) return;
+          if (amtPaise <= 0) continue;
 
           if (it.kind === "cash") {
             let mode: any = "cash";
@@ -507,14 +507,14 @@ export function GoldSettlementTab() {
             } else if (descLower.includes("card")) {
               mode = "card";
             }
-            billingAddPayment(selectedInvoiceId, {
+            await billingAddPayment(selectedInvoiceId, {
               mode,
               amountPaise: amtPaise,
               reference: voucherNo,
               notes: `${it.description} [Voucher No: ${voucherNo}]`,
             });
           } else if (it.kind === "gold") {
-            billingAddPayment(selectedInvoiceId, {
+            await billingAddPayment(selectedInvoiceId, {
               mode: "gold_exchange",
               amountPaise: amtPaise,
               reference: voucherNo,
@@ -525,16 +525,16 @@ export function GoldSettlementTab() {
               goldRatePerGramPaise: rupeesToPaise(it.goldRate || 0),
             });
           }
-        });
+        }
       }
 
       // If worker, log in useWorkers registry / worker passbook
       if (partyType === "worker") {
         const workersState = useWorkers.getState();
-        items.forEach((it) => {
+        for (const it of items) {
           if (it.kind === "gold") {
             if (it.direction === "Jama") {
-              workersState.addWastageReturn({
+              await workersState.addWastageReturn({
                 workerId: finalPartyId,
                 date: settlementDate,
                 grossMg: Math.round((it.grossGrams || 0) * 1000),
@@ -543,7 +543,7 @@ export function GoldSettlementTab() {
                 notes: `${it.description} via gold voucher ${voucherNo}`,
               });
             } else {
-              workersState.addGoldAdvance({
+              await workersState.addGoldAdvance({
                 workerId: finalPartyId,
                 date: settlementDate,
                 grossMg: Math.round((it.grossGrams || 0) * 1000),
@@ -554,7 +554,7 @@ export function GoldSettlementTab() {
             }
           } else {
             if (it.direction === "Naam") {
-              workersState.addWithdrawal({
+              await workersState.addWithdrawal({
                 workerId: finalPartyId,
                 date: settlementDate,
                 amountPaise: rupeesToPaise(it.amountRupees || 0),
@@ -563,7 +563,7 @@ export function GoldSettlementTab() {
               });
             }
           }
-        });
+        }
 
         if (linkUse === "karigar_settlement") {
           const goldNaamSumMg = items
@@ -573,7 +573,7 @@ export function GoldSettlementTab() {
             .filter((it) => it.kind === "gold" && it.direction === "Jama")
             .reduce((sum, it) => sum + Math.round((it.fineGrams || 0) * 1000), 0);
 
-          workersState.addSettlement({
+          await workersState.addSettlement({
             workerId: finalPartyId,
             fromDate: settlementDate,
             toDate: settlementDate,
@@ -601,7 +601,7 @@ export function GoldSettlementTab() {
       const appendLedger = useLedger.getState().append;
       const goldRows = items.filter((it) => it.kind === "gold");
 
-      goldRows.forEach((it) => {
+      for (const it of goldRows) {
         const itemPurityNum = Math.round((it.purity || 91.6) * 10); // e.g. 91.60 => 916
         const itemGrossMg = Math.round((it.grossGrams || 0) * 1000);
         const itemFineMg = Math.round((it.fineGrams || 0) * 1000);
@@ -626,7 +626,7 @@ export function GoldSettlementTab() {
           deltas = { vault: factorSign * itemFineMg };
         }
 
-        appendLedger({
+        await appendLedger({
           type: isJama ? "customer_gold_received" : "issue_to_karigar",
           netFineMg,
           deltas,
@@ -637,7 +637,7 @@ export function GoldSettlementTab() {
           reference: voucherNo,
           notes: `${it.description} [Voucher No: ${voucherNo}] [Party: ${resolvedPartyName}] (${linkUseLabel(linkUse)})`,
         });
-      });
+      }
 
       toast.success(`Government-traceable voucher ${voucherNo} stored successfully.`);
       setOpen(false);

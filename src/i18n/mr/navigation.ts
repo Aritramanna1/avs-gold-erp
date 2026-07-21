@@ -5,7 +5,7 @@ const translations = {
   whatsappIngestion: "व्हॉट्सॲप ऑर्डर्स",
   orders: "ऑर्डर्स",
   catalog: "कॅटलॉग",
-  workshop: "वर्कशॉप (कारखाना)",
+  workshop: "मॅन्युफॅक्चरिंग बुक्स",
   workerGoldBook: "कारीगर गोल्ड बुक",
   repair: "दुरुस्ती (रिपेअर)",
   stock: "स्टॉक",

@@ -24,7 +24,11 @@ import {
 } from "lucide-react";
 import { useSettings } from "@/lib/settings-store";
 import { useModuleStore } from "@/lib/module-store";
-import { isPilotHiddenModule, RETAIL_COMING_SOON_MESSAGE } from "@/lib/pilot-config";
+import {
+  isPilotHiddenModule,
+  RETAIL_COMING_SOON_MESSAGE,
+  ATTENDANCE_COMING_SOON_MESSAGE,
+} from "@/lib/pilot-config";
 import { usePermissions } from "@/lib/use-permissions";
 import { Logo } from "@/components/ui/Logo";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -37,11 +41,11 @@ export const navigationItems = [
   { to: "/", label: "Home", icon: Home },
   { to: "/orders", label: "Orders", icon: ShoppingBag },
   { to: "/catalog", label: "Catalog", icon: Sparkles },
-  { to: "/workshop", label: "Workshop", icon: Hammer },
+  { to: "/workshop", label: "Manufacturing Books", icon: Hammer },
   { to: "/manufacturing", label: "Manufacturing", icon: Wrench },
   { to: "/barcode", label: "Barcode & Tagging", icon: ScanLine },
   { to: "/melt", label: "Melt Account", icon: FlameKindling },
-  { to: "/workshop/gold-book", label: "Worker Gold Book", icon: BookOpen },
+  { to: "/workshop/gold-book", label: "Material Book", icon: BookOpen },
   { to: "/stock", label: "Stock", icon: Package },
   { to: "/billing", label: "Billing", icon: Receipt },
   { to: "/ledger", label: "Ledger", icon: BookOpen },
@@ -50,7 +54,14 @@ export const navigationItems = [
   { to: "/repair", label: RETAIL_COMING_SOON_MESSAGE, icon: ShoppingBag, retailOnly: true },
   { to: "/people", label: "People / KYC", icon: Users },
   { to: "/communications", label: "Communications Hub", icon: MessageSquare },
-  { to: "/attendance", label: "Attendance & Salary", icon: ClipboardCheck },
+  // Workshop V1.1 scope: kept in the repo, shown as a disabled placeholder
+  // rather than removed. See src/lib/pilot-config.ts.
+  {
+    to: "/attendance",
+    label: ATTENDANCE_COMING_SOON_MESSAGE,
+    icon: ClipboardCheck,
+    comingSoon: true,
+  },
   { to: "/expenses", label: "Expenses", icon: TrendingDown },
   { to: "/hardware", label: "Hardware", icon: Cpu },
   { to: "/reports", label: "Reports", icon: BarChart3 },
@@ -68,7 +79,6 @@ const labelKeys: Record<string, string> = {
   "/": "home",
   "/people": "peopleKyc",
   "/communications": "communications",
-  "/attendance": "attendanceSalary",
   "/orders": "orders",
   "/catalog": "catalog",
   "/workshop": "workshop",
@@ -93,7 +103,11 @@ interface SidebarProps {
 export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) {
   const { t } = useLanguage();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { goldRatePerGramPaise, goldRate24KPerGramPaise, firm } = useSettings();
+  // Narrow selectors: the sidebar must not re-render on every unrelated
+  // setState the startup pull storm fires — only these three slices matter.
+  const goldRatePerGramPaise = useSettings((s) => s.goldRatePerGramPaise);
+  const goldRate24KPerGramPaise = useSettings((s) => s.goldRate24KPerGramPaise);
+  const firm = useSettings((s) => s.firm);
   const permissions = usePermissions();
 
   const filteredItems = useMemo(() => {
@@ -221,13 +235,14 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
           const Icon = item.icon;
           const translationKey = labelKeys[item.to];
           const translatedLabel = translationKey ? t(`navigation.${translationKey}`) : item.label;
-          const isRetailPlaceholder = "retailOnly" in item && item.retailOnly;
+          const isComingSoonPlaceholder =
+            ("retailOnly" in item && item.retailOnly) || ("comingSoon" in item && item.comingSoon);
           return (
             <Link
               key={item.to}
               to={item.to}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 ${
-                isRetailPlaceholder
+                isComingSoonPlaceholder
                   ? "text-sidebar-foreground/40 italic cursor-default"
                   : active
                     ? "bg-sidebar-accent text-gold font-medium shadow-[inset_3px_0_0_0_#d4af37]"
@@ -235,7 +250,7 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
               }`}
             >
               <Icon
-                className={`h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110 ${isRetailPlaceholder ? "text-sidebar-foreground/40" : active ? "text-gold" : "text-muted-foreground"}`}
+                className={`h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110 ${isComingSoonPlaceholder ? "text-sidebar-foreground/40" : active ? "text-gold" : "text-muted-foreground"}`}
               />
               <span className="truncate">{translatedLabel}</span>
             </Link>

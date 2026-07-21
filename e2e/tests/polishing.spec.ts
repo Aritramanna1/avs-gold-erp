@@ -6,7 +6,10 @@ async function snapshot(page: import("@playwright/test").Page) {
     const supabaseMod = await import(/* @vite-ignore */ "/src/integrations/supabase/client.ts");
     await ledgerMod.useLedger.getState().refresh();
     const balances = ledgerMod.computeBalances(ledgerMod.useLedger.getState().entries);
-    const { data } = await supabaseMod.supabase.from("polishing_transactions").select("data");
+    const { data } = await supabaseMod
+      .getSupabaseClient()
+      .from("polishing_transactions")
+      .select("data");
     const rows = (data ?? []).map((r: any) => r.data);
     return {
       vault: balances.buckets.vault,
@@ -129,7 +132,8 @@ test.describe("Polishing workflow", () => {
       const supabaseMod = await import(/* @vite-ignore */ "/src/integrations/supabase/client.ts");
       await ordersMod.useOrders.getState().refresh();
       const order = ordersMod.useOrders.getState().orders.find((o: any) => o.id === orderId);
-      const { data } = await supabaseMod.supabase
+      const { data } = await supabaseMod
+        .getSupabaseClient()
         .from("polishing_transactions")
         .select("data")
         .eq("data->>orderId", orderId)

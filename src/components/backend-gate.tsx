@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isOfflineMode } from "@/lib/deployment-mode";
 
 /**
  * BackendGate — passive connectivity check, logged for diagnostics only.
@@ -16,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export function BackendGate({ children }: { children: ReactNode }) {
   useEffect(() => {
+    if (isOfflineMode()) return;
     supabase.auth.getSession().then(({ error }) => {
       if (error) {
         console.warn("[BackendGate] Backend unreachable, continuing offline:", error.message);

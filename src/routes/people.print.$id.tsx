@@ -1,8 +1,16 @@
-import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { usePeople, PERSON_TYPE_LABELS, maskAadhaar, kycComplete } from "@/lib/people-store";
+import { createFileRoute, useParams, Link } from "@tanstack/react-router";
+import {
+  usePeople,
+  PERSON_TYPE_LABELS,
+  maskAadhaar,
+  kycComplete,
+  KYC_DOC_LABELS,
+  type KycDocKey,
+} from "@/lib/people-store";
 import { FileText, CheckCircle2, AlertCircle } from "lucide-react";
-import { listAttachments } from "@/lib/fileUpload";
+import { useAttachments, getAttachmentUrl } from "@/lib/attachments-store";
+import { peopleForms } from "@/components/forms/DynamicFields";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintLayout } from "@/components/print/PrintLayout";
@@ -27,26 +35,57 @@ export const Route = createFileRoute("/people/print/$id")({
   component: PrintPage,
 });
 
+/** One printable document: whatever the KYC slot holds, from the attachments store. */
+interface KycDoc {
+  docKey: string;
+  label: string;
+  number?: string;
+  url?: string;
+  fileName?: string;
+  isImage: boolean;
+  updatedAt?: number;
+}
+
 function PrintPage() {
   const { id } = useParams({ from: "/people/print/$id" });
   const person = usePeople((s) => s.people.find((p) => p.id === id));
-  const [attachments, setAttachments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Source of truth for KYC files in every deployment mode: the attachments
+  // store. The row carries a reference; the bytes come out of the local
+  // encrypted vault, so printing works with no network in any mode.
+  const attachmentItems = useAttachments((s) => s.items);
+  const formsMetadata = useSettings((s) => s.formsMetadata);
+
+  // Full-size bytes, resolved from the vault. Printing off the 240px thumbnail
+  // would be unreadable, and non-image docs (PDF scans) have no thumbnail at
+  // all — they'd silently drop off the printout entirely.
+  const [resolvedUrls, setResolvedUrls] = useState<Record<string, string>>({});
+  const prefixForPerson = person ? `person:${person.id}:` : null;
 
   useEffect(() => {
-    async function fetchAttachments() {
-      if (!person?.id) return;
-      try {
-        const list = await listAttachments("person", person.id);
-        setAttachments(list);
-      } catch (e) {
-        console.error("Error loading KYC attachments:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchAttachments();
-  }, [person?.id]);
+    if (!prefixForPerson) return;
+    let cancelled = false;
+    const keys = Object.keys(attachmentItems).filter((k) => k.startsWith(prefixForPerson));
+
+    void Promise.all(
+      keys.map(async (key) => {
+        const docKey = key.slice(prefixForPerson.length);
+        try {
+          const url = await getAttachmentUrl("person", person!.id, docKey);
+          return url ? ([key, url] as const) : null;
+        } catch (err) {
+          console.warn(`[people.print] could not load ${key}:`, err);
+          return null;
+        }
+      }),
+    ).then((pairs) => {
+      if (cancelled) return;
+      setResolvedUrls(Object.fromEntries(pairs.filter((p): p is [string, string] => !!p)));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [prefixForPerson, attachmentItems]);
 
   const {
     docNumber,
@@ -72,55 +111,54 @@ function PrintPage() {
     );
   }
 
-  const photoFile =
-    attachments.find((a) => {
-      const n = (a.notes || "").toLowerCase();
-      const f = (a.original_file_name || "").toLowerCase();
-      return (
-        n.includes("photo") ||
-        n.includes("face") ||
-        n.includes("avatar") ||
-        f.includes("photo") ||
-        f.includes("face") ||
-        f.includes("avatar")
-      );
-    }) || attachments.find((a) => a.mime_type?.startsWith("image/"));
-
-  const docAttachments = attachments.filter((a) => a !== photoFile);
   const isKycComplete = kycComplete(person);
   const isWorkerType = ["karigar", "worker", "employee", "outside_worker"].includes(person.type);
 
-  function findAttachment(...keywords: string[]) {
-    return docAttachments.find((a) => {
-      const hay = `${a.notes || ""} ${a.original_file_name || ""}`.toLowerCase();
-      return keywords.some((k) => hay.includes(k));
-    });
-  }
+  // Only forms this person actually has values for — printing a heading over six
+  // blank cells is noise on a document someone has to file.
+  const printableCustomForms = peopleForms(formsMetadata).filter((f) =>
+    f.fields.some((field) => {
+      const v = person.customForms?.[f.id]?.[field.name];
+      return v !== undefined && v !== null && v !== "";
+    }),
+  );
 
-  type DocRow = { label: string; number?: string; file?: (typeof attachments)[number] };
-  const documentRows: DocRow[] = [
-    {
-      label: "Aadhaar Front",
-      number: maskAadhaar(person.aadhaar),
-      file: findAttachment("aadhaar front", "aadhaar_front"),
-    },
-    {
-      label: "Aadhaar Back",
-      number: maskAadhaar(person.aadhaar),
-      file: findAttachment("aadhaar back", "aadhaar_back"),
-    },
-    { label: "PAN Card", number: person.pan, file: findAttachment("pan") },
-    { label: "Address Proof", file: findAttachment("address") },
-    { label: "Driving Licence", file: findAttachment("driving", "licence", "license", "dl") },
-    { label: "Passport", file: findAttachment("passport") },
-    { label: "Signature", file: findAttachment("signature", "sign") },
-  ];
-  const matchedFiles = new Set(documentRows.map((r) => r.file).filter(Boolean));
-  const otherAttachments = docAttachments.filter((a) => !matchedFiles.has(a));
-  for (const a of otherAttachments) {
-    documentRows.push({ label: a.notes || a.original_file_name || "Other Document", file: a });
-  }
-  const attachedDocs = documentRows.filter((r) => r.file);
+  const prefix = `person:${person.id}:`;
+  const docNumbers: Partial<Record<KycDocKey, string | undefined>> = {
+    aadhaar_front: maskAadhaar(person.aadhaar),
+    aadhaar_back: maskAadhaar(person.aadhaar),
+    pan: person.pan,
+  };
+
+  const docs: KycDoc[] = Object.entries(attachmentItems)
+    .filter(([key]) => key.startsWith(prefix))
+    .map(([key, rec]) => {
+      const docKey = key.slice(prefix.length);
+      // Vault bytes win; thumbnail/base64 are the fallback while they load and
+      // for legacy pre-vault records.
+      const url = resolvedUrls[key] || rec.fileDataUrl || rec.thumbnailDataUrl;
+      const name = rec.fileName ?? "";
+      return {
+        docKey,
+        label: KYC_DOC_LABELS[docKey as KycDocKey] ?? docKey,
+        number: docNumbers[docKey as KycDocKey],
+        url,
+        fileName: name,
+        isImage:
+          !!url &&
+          // mimeType is authoritative for vaulted files — their object URL is a
+          // `blob:` and carries no type hint the way a data: URL does.
+          ((rec.mimeType?.startsWith("image/") ?? false) ||
+            url.startsWith("data:image/") ||
+            /\.(jpg|jpeg|png|webp|gif)$/i.test(name) ||
+            (!rec.mimeType && !name)),
+        updatedAt: rec.updatedAt,
+      };
+    })
+    .filter((d) => !!d.url);
+
+  const photoDoc = docs.find((d) => d.docKey === "photo");
+  const attachedDocs = docs.filter((d) => d !== photoDoc);
 
   return (
     <div className="min-h-screen bg-neutral-100 text-foreground">
@@ -137,11 +175,7 @@ function PrintPage() {
       />
 
       <div className="p-4 md:p-8 flex flex-col items-center gap-8 overflow-y-auto">
-        {loading && (
-          <div className="text-sm text-muted-foreground animate-pulse">Loading KYC records...</div>
-        )}
-
-        {!loading && (
+        {
           <>
             {/* PAGE 1: COVER SHEET */}
             <PrintLayout
@@ -165,10 +199,10 @@ function PrintPage() {
                     · ID: {person.id.slice(0, 8).toUpperCase()}
                   </div>
                 </div>
-                {photoFile ? (
+                {photoDoc?.url ? (
                   <div className="h-32 w-28 border-2 border-stone-300 overflow-hidden bg-stone-50 flex-shrink-0 shadow-sm">
                     <img
-                      src={photoFile.file_url}
+                      src={photoDoc.url}
                       alt="Passport"
                       className="h-full w-full object-cover"
                       referrerPolicy="no-referrer"
@@ -196,6 +230,30 @@ function PrintPage() {
                 <InfoCell label="Work / Trade" value={person.workType} />
                 <InfoCell label="Joining Date" value={person.joiningDate} />
               </div>
+
+              {/* Custom fields defined in Settings → Forms. Printed alongside the
+                  built-in details so a field the workshop chose to capture
+                  actually reaches the paper record. */}
+              {printableCustomForms.map((f) => (
+                <div key={f.id} className="mb-8">
+                  <div className="font-semibold text-lg mb-3 border-b border-stone-300 pb-1">
+                    {f.name}
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                    {f.fields.map((field) => {
+                      const raw = person.customForms?.[f.id]?.[field.name];
+                      const value = typeof raw === "boolean" ? (raw ? "Yes" : "No") : (raw ?? null);
+                      return (
+                        <InfoCell
+                          key={field.name}
+                          label={field.label}
+                          value={value === "" ? null : (value as string | null)}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
 
               <div className="border border-stone-300 p-6 rounded bg-stone-50/50">
                 <div className="flex items-center gap-2 mb-2">
@@ -231,16 +289,13 @@ function PrintPage() {
 
             {/* PAGE 2+: ATTACHED DOCUMENTS */}
             {attachedDocs.map((doc) => (
-              <div
-                key={doc.file?.id}
-                className="print:break-before-page w-full flex justify-center"
-              >
+              <div key={doc.docKey} className="print:break-before-page w-full flex justify-center">
                 <PrintLayout
                   title={doc.label}
                   docNumber={doc.number || "—"}
                   docType="worker_kyc"
                   recordId={person.id}
-                  createdAt={doc.file?.uploaded_at}
+                  createdAt={doc.updatedAt}
                   size="a4"
                   showQR={false}
                 >
@@ -257,10 +312,10 @@ function PrintPage() {
                         Status: {isKycComplete ? "Verified Profile" : "Pending Verification"}
                       </div>
                     </div>
-                    {photoFile ? (
+                    {photoDoc?.url ? (
                       <div className="h-24 w-20 border border-stone-300 overflow-hidden bg-stone-50 flex-shrink-0 shadow-sm">
                         <img
-                          src={photoFile.file_url}
+                          src={photoDoc.url}
                           alt="Passport Thumb"
                           className="h-full w-full object-cover"
                           referrerPolicy="no-referrer"
@@ -276,9 +331,9 @@ function PrintPage() {
                   </div>
 
                   <div className="mt-2 border border-stone-200 h-[190mm] flex items-center justify-center bg-stone-50/30 p-2 overflow-hidden rounded">
-                    {doc.file?.mime_type?.startsWith("image/") ? (
+                    {doc.isImage ? (
                       <img
-                        src={doc.file.file_url}
+                        src={doc.url}
                         alt={doc.label}
                         className="max-h-full max-w-full object-contain drop-shadow-sm"
                         referrerPolicy="no-referrer"
@@ -289,9 +344,7 @@ function PrintPage() {
                         <div className="font-medium text-stone-600">
                           Non-image document attached
                         </div>
-                        <div className="text-xs font-mono mt-1 text-stone-400">
-                          {doc.file?.original_file_name}
-                        </div>
+                        <div className="text-xs font-mono mt-1 text-stone-400">{doc.fileName}</div>
                       </div>
                     )}
                   </div>
@@ -299,7 +352,7 @@ function PrintPage() {
               </div>
             ))}
           </>
-        )}
+        }
       </div>
     </div>
   );

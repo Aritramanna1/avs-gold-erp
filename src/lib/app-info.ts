@@ -14,3 +14,23 @@ export const APP_VERSION = pkg.version;
 export const COPYRIGHT = `© ${new Date().getFullYear()} ${COMPANY_NAME}`;
 export const SUPPORT_EMAIL = "support@your-domain.com";
 export const WEBSITE = "https://your-domain.com";
+
+/**
+ * Short initials for print-page titles (e.g. "Print · AVS ERP"), derived from
+ * the firm's configured shop name. Falls back to the first 3 letters, then to
+ * "ERP", when the name has no space-separated words (or isn't set yet) —
+ * used identically across every print route's `head()`, so it lives here
+ * once instead of copy-pasted per file.
+ */
+export function shortShopName(shopName: string | undefined | null): string {
+  return (
+    shopName
+      ?.split(" ")
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase() ||
+    shopName?.slice(0, 3).toUpperCase() ||
+    "ERP"
+  );
+}

@@ -12,37 +12,94 @@ import { supabase } from "@/integrations/supabase/client";
 import { createRepository } from "./repositories/base-repository";
 import { nextDocumentNumber } from "./document-numbering";
 
+/**
+ * The Job Card's life, as a workshop actually lives it.
+ *
+ * Each status answers one question — WHERE IS THE GOLD, AND WHOSE HANDS IS THE
+ * PIECE IN? That is the only thing a manufacturer needs a job status to tell
+ * them, and it's what makes each of these worth a distinct state:
+ *
+ *   awaiting_gold_issue → card written, karigar assigned, gold still in the vault
+ *   gold_issued         → gold is out of the vault and in the karigar's custody
+ *   in_progress         → the karigar has started making the piece
+ *   work_received       → piece is back with us and is being checked (weight, finish, stones)
+ *   rework              → checked and sent back to the bench
+ *   ready_for_billing   → passed; the piece is ours and can be invoiced
+ *   closed              → done
+ *
+ * Two statuses were removed as meaningless:
+ *  - `draft`: cards are now created deliberately, with a karigar chosen. A card
+ *    that exists is real work; there is nothing to draft.
+ *  - `qc_pending`: identical in practice to `work_received` — the piece is back
+ *    and being checked. Two names for one state is how two people give you two
+ *    different answers about the same job.
+ *
+ * `ready_for_gold_issue` is renamed to `awaiting_gold_issue` (clearer: it is
+ * WAITING on us, not "ready" in the sense of finished).
+ *
+ * Old values still exist in saved records, so they remain in the type as legacy
+ * and are folded into the live ones by `normalizeJobStatus()` on read. Nothing
+ * writes them any more.
+ */
 export type JobStatus =
-  | "draft"
-  | "ready_for_gold_issue"
+  | "awaiting_gold_issue"
   | "gold_issued"
   | "in_progress"
   | "work_received"
-  | "qc_pending"
-  | "ready_for_billing"
   | "rework"
-  | "closed";
+  | "ready_for_billing"
+  | "closed"
+  // ── Legacy, read-only. Normalized away on read; never written. ──
+  | "draft"
+  | "ready_for_gold_issue"
+  | "qc_pending";
 
-export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
-  draft: "Draft",
-  ready_for_gold_issue: "Ready for Gold Issue",
-  gold_issued: "Gold Issued",
-  in_progress: "Work In Progress",
-  work_received: "Work Received",
-  qc_pending: "QC Pending",
-  ready_for_billing: "Ready for Billing",
-  rework: "Rework",
-  closed: "Closed",
-};
-
-// Phase 5 supports a sub-set actively
-export const JOB_STATUS_ACTIVE: JobStatus[] = [
-  "draft",
-  "ready_for_gold_issue",
+/** The live workflow, in order. Anything not here is legacy. */
+export const JOB_STATUS_FLOW: JobStatus[] = [
+  "awaiting_gold_issue",
+  "gold_issued",
   "in_progress",
+  "work_received",
   "rework",
+  "ready_for_billing",
   "closed",
 ];
+
+export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
+  awaiting_gold_issue: "Awaiting Gold Issue",
+  gold_issued: "Gold Issued",
+  in_progress: "Work In Progress",
+  work_received: "Work Received (Checking)",
+  rework: "Rework",
+  ready_for_billing: "Ready for Billing",
+  closed: "Closed",
+
+  // Legacy — labelled as their live equivalent so an old record never displays
+  // a status the workflow no longer has.
+  draft: "Awaiting Gold Issue",
+  ready_for_gold_issue: "Awaiting Gold Issue",
+  qc_pending: "Work Received (Checking)",
+};
+
+/**
+ * Folds a stored status onto the live workflow. Every read of a Job Card's
+ * status must go through this — a card saved months ago as `qc_pending` should
+ * show up in today's "Work Received" bucket, not vanish from every filter.
+ */
+export function normalizeJobStatus(status: JobStatus): JobStatus {
+  switch (status) {
+    case "draft":
+    case "ready_for_gold_issue":
+      return "awaiting_gold_issue";
+    case "qc_pending":
+      return "work_received";
+    default:
+      return status;
+  }
+}
+
+/** @deprecated Use JOB_STATUS_FLOW. */
+export const JOB_STATUS_ACTIVE: JobStatus[] = JOB_STATUS_FLOW;
 
 export interface JobTimelineEvent {
   ts: number;
@@ -96,8 +153,21 @@ export interface JobCard {
   karigarName?: string;
 
   // item target (snapshot from order)
+  /**
+   * Which line of the order this card is for. An order holds several pieces and
+   * each one is an independent bench job, so the card must know its line — both
+   * to pull that line's reference photos and so re-confirming an order doesn't
+   * duplicate cards for lines that already have one.
+   */
+  lineId?: string;
   itemName: string;
   category: string;
+  /** Category-specific dimensions (ring size, chain length) — snapshot of the order line's. */
+  attributes?: Record<string, string>;
+  /** Pieces to make on THIS card. Target weights below are for all of them. */
+  quantity?: number;
+  /** Expected weight of one piece; targetGrossMg is the total for `quantity` pieces. */
+  perPieceGrossMg?: number;
   purity: number;
   targetGrossMg: number;
   targetNetMg: number;
@@ -256,7 +326,11 @@ export const useJobCards = create<JobCardsState>()((set, get) => ({
     }
     const rows = (data ?? [])
       .map((r) => r.data as JobCard | null)
-      .filter((j): j is JobCard => !!j && !!j.id && !!j.jobNo);
+      .filter((j): j is JobCard => !!j && !!j.id && !!j.jobNo)
+      // Fold legacy statuses (draft / ready_for_gold_issue / qc_pending) onto
+      // the live workflow HERE, so no screen, filter or report has to know the
+      // old names ever existed.
+      .map((j) => ({ ...j, status: normalizeJobStatus(j.status) }));
     set({ jobs: rows });
   },
   add: async (input) => {

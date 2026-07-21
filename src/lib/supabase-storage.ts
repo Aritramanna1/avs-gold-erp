@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { type AttachmentEntityType } from "./attachments-store";
 import { compressImage } from "./image-compression";
+import { isOfflineMode } from "./deployment-mode";
 
 const BUCKETS = [
   "firm-assets",
@@ -124,6 +125,12 @@ export async function getAttachmentSignedUrl(
   path: string,
   forceRefresh = false,
 ): Promise<string> {
+  // Offline mode has no cloud storage: files live in the local DB as data
+  // URLs (see attachment-placeholder-modal.tsx), so there is nothing to sign
+  // and nothing to fetch. Returning "" keeps every caller's existing
+  // "no signed URL available" path working instead of throwing.
+  if (isOfflineMode()) return "";
+
   const cacheKey = `${bucket}:${path}`;
   const now = Date.now();
 

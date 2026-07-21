@@ -1,4 +1,5 @@
 import { useSettings } from "@/lib/settings-store";
+import { useBranch } from "@/lib/branch-store";
 import { redirect } from "@tanstack/react-router";
 
 /**
@@ -39,6 +40,7 @@ const SUPER_ROLES: string[] = [ROLES.SUPER_OWNER, ROLES.ADMINISTRATOR, "Owner"];
  * explicitly — handled in `hasRoutePermission`).
  */
 const ROUTE_ACL: Record<string, Role[]> = {
+  /dashboard/ceo: [ROLES.CEO],
   "/dashboard": [
     ROLES.SUPER_OWNER,
     ROLES.ADMINISTRATOR,
@@ -226,6 +228,22 @@ export function canWrite(role: string | null | undefined): boolean {
 export function canAdmin(role: string | null | undefined): boolean {
   if (!role) return false;
   return SUPER_ROLES.includes(role);
+}
+
+/**
+ * Branch isolation (SAD §7). A user may only reach the branch assigned to
+ * them; super roles (Owner/Administrator/Super Owner) reach every branch.
+ * Call once per session — on login and on session restore — so every
+ * branch-scoped store query is filtered by the branches this user may see.
+ */
+export function applyUserBranchAccess(user: {
+  role: string;
+  branchId: string | null;
+  isSuperOwner?: boolean;
+}): void {
+  const global = !!user.isSuperOwner || SUPER_ROLES.includes(user.role);
+  const ids = global ? [] : user.branchId ? [user.branchId] : [];
+  useBranch.getState().setAccessible(ids, [], global);
 }
 
 /** Returns a human-readable label for a role, with the highest privilege noted. */

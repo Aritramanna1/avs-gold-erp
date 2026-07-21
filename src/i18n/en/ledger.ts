@@ -4,7 +4,7 @@ const translations = {
   // Entry types
   type_opening_vault: "Opening Vault",
   type_customer_gold_received: "Customer Gold Received",
-  type_old_gold_received: "Old Gold Received",
+  type_old_gold_received: "Gold Received from Customer",
   type_issue_to_karigar: "Issue to Karigar",
   type_receive_from_karigar: "Receive from Karigar",
   type_scrap_returned: "Scrap Returned",

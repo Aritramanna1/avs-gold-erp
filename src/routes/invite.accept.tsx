@@ -9,7 +9,7 @@
  * 6. Marks invitation "used" in Supabase on completion.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,7 @@ export const Route = createFileRoute("/invite/accept")({
   component: AcceptInvitationPage,
 });
 
-type InviteStatus = "checking" | "valid" | "expired" | "used" | "invalid" | "not_found";
+type InviteStatus = "idle" | "checking" | "valid" | "expired" | "used" | "invalid" | "not_found";
 
 interface ResolvedInvite {
   id: string;
@@ -64,7 +64,11 @@ function AcceptInvitationPage() {
   const [email, setEmail] = useState("");
 
   // Invitation state
-  const [inviteStatus, setInviteStatus] = useState<InviteStatus>("checking");
+  // "idle": no validation attempted yet (distinct from "checking", the
+  // in-flight state) — otherwise the code-entry form's "Checking" card
+  // would render the instant both fields are typed, before the user ever
+  // clicks "Validate Invitation".
+  const [inviteStatus, setInviteStatus] = useState<InviteStatus>("idle");
   const [resolvedInvite, setResolvedInvite] = useState<ResolvedInvite | null>(null);
 
   // Form
@@ -81,12 +85,14 @@ function AcceptInvitationPage() {
   const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
 
   // Read URL params once
+  const fromUrl = useRef(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const c = params.get("code") || "";
     const e = params.get("email") || "";
     if (c) setInviteCode(c);
     if (e) setEmail(e);
+    if (c && e) fromUrl.current = true;
   }, []);
 
   // Validate invitation when code + email are available. This ALWAYS goes
@@ -135,9 +141,13 @@ function AcceptInvitationPage() {
     }
   }, []);
 
-  // Auto-validate when both code + email are set from URL
+  // Auto-validate when both code + email are set from URL. Manually-typed
+  // entry (the code-entry form below) must NOT auto-fire on every keystroke —
+  // that unmounts the form and its "Validate Invitation" button the instant
+  // both fields fill, before the user can click it — so it stays gated on the
+  // "Validate Invitation" button's onClick instead.
   useEffect(() => {
-    if (inviteCode && email) {
+    if (fromUrl.current && inviteCode && email) {
       void validateInvite(inviteCode, email);
     }
   }, [inviteCode, email, validateInvite]);
@@ -257,21 +267,30 @@ function AcceptInvitationPage() {
         </div>
 
         {/* ── Code entry if not in URL ─────────────────────────────────────── */}
-        {(!inviteCode || !email) && (
+        {/* Gated on "idle" too, not just missing fields — otherwise this card
+            (and its "Validate Invitation" button) unmounts the instant both
+            fields are typed, before the user can click it. */}
+        {(inviteStatus === "idle" || !inviteCode || !email) && (
           <Card className="p-6 space-y-4">
             <h2 className="font-semibold text-sm">Enter your invitation details</h2>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">Invitation Code</Label>
+                <Label className="text-xs" htmlFor="invite-code">
+                  Invitation Code
+                </Label>
                 <Input
+                  id="invite-code"
                   placeholder="INV-XXXXXX"
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Your Email</Label>
+                <Label className="text-xs" htmlFor="invite-email">
+                  Your Email
+                </Label>
                 <Input
+                  id="invite-email"
                   type="email"
                   placeholder="your@email.com"
                   value={email}
@@ -411,10 +430,13 @@ function AcceptInvitationPage() {
               </p>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Your Full Name</Label>
+                <Label className="text-xs" htmlFor="invite-name">
+                  Your Full Name
+                </Label>
                 <div className="relative">
                   <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
+                    id="invite-name"
                     className="pl-9"
                     type="text"
                     required
@@ -426,10 +448,13 @@ function AcceptInvitationPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Mobile Number (optional)</Label>
+                <Label className="text-xs" htmlFor="invite-phone">
+                  Mobile Number (optional)
+                </Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
+                    id="invite-phone"
                     className="pl-9"
                     type="tel"
                     placeholder="+91 XXXXX XXXXX"
@@ -440,10 +465,13 @@ function AcceptInvitationPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Create Password (min. 10 characters)</Label>
+                <Label className="text-xs" htmlFor="invite-password">
+                  Create Password (min. 10 characters)
+                </Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
+                    id="invite-password"
                     className="pl-9 pr-10"
                     type={showPassword ? "text" : "password"}
                     required
@@ -463,10 +491,13 @@ function AcceptInvitationPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Confirm Password</Label>
+                <Label className="text-xs" htmlFor="invite-confirm-password">
+                  Confirm Password
+                </Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
+                    id="invite-confirm-password"
                     className="pl-9"
                     type={showPassword ? "text" : "password"}
                     required

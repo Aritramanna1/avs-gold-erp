@@ -19,7 +19,7 @@ import {
 } from "@/lib/billing-documents-store";
 import { mgToGrams } from "@/lib/gold";
 import { paiseToRupees, useBilling } from "@/lib/billing-store";
-import { useOrders } from "@/lib/orders-store";
+import { useOrders, orderItems } from "@/lib/orders-store";
 import { usePeople } from "@/lib/people-store";
 import { useSettings } from "@/lib/settings-store";
 import { useJobCards } from "@/lib/jobcards-store";
@@ -29,6 +29,8 @@ import {
   buildKarigarCustodyStatementData,
   buildCustomerLedgerStatementData,
 } from "./ledger-statements-data";
+import { findWorkerSlip } from "@/lib/daily-material-slip";
+import { getCaratLabel } from "@/lib/gold";
 import type { PrintContextBuilder, PrintDocType, PrintDocumentData } from "./types";
 
 function purityLabel(p: number): string {
@@ -59,8 +61,51 @@ const invoiceBuilder: PrintContextBuilder = (recordId) => {
   return buildInvoicePrintData(inv);
 };
 
+/** Daily Material Slip — recordId is `${workerId}~${date}` (the slip's identity). */
+const dailyMaterialSlipBuilder: PrintContextBuilder = (recordId) => {
+  const [workerId, date] = recordId.split("~");
+  const slip = workerId && date ? findWorkerSlip(workerId, date) : null;
+  if (!slip) return null;
+  const g = (mg: number) => `${mgToGrams(mg)} g`;
+  const rowFrom = (e: (typeof slip.issues)[number]) => ({
+    voucher: e.entryNo,
+    time: e.time,
+    particulars: e.particulars,
+    net: mgToGrams(e.netMg),
+    purity: e.purity > 0 ? getCaratLabel(e.purity) : "—",
+    fine: e.fineMg > 0 ? mgToGrams(e.fineMg) : "—",
+    qty: e.quantity > 0 ? String(e.quantity) : "—",
+  });
+  return {
+    docType: "daily_material_slip",
+    docNumber: slip.slipNumber,
+    recordId,
+    createdAt: slip.lastActivityTs,
+    title: "Daily Material Slip",
+    fields: {
+      slipNumber: slip.slipNumber,
+      dateLabel: slip.date,
+      workerName: slip.workerName,
+      transactionCount: String(slip.transactionCount),
+      totalIssued: g(slip.totalIssuedFineMg),
+      totalReturned: g(slip.totalReturnedFineMg),
+      openingBalance: g(slip.custodyBalanceBeforeMg),
+      netMovement: g(slip.totalIssuedFineMg - slip.totalReturnedFineMg),
+      custodyBalance: g(slip.custodyBalanceAfterMg),
+    },
+    tables: {
+      issues: slip.issues.map(rowFrom),
+      returns: slip.returns.map(rowFrom),
+    },
+    flags: {},
+    images: {},
+    balances: {},
+  };
+};
+
 const builders: Partial<Record<PrintDocType, PrintContextBuilder>> = {
   gst_invoice: invoiceBuilder,
+  daily_material_slip: dailyMaterialSlipBuilder,
   retail_invoice: invoiceBuilder,
   karigar_custody_statement: buildKarigarCustodyStatementData,
   customer_ledger_statement: buildCustomerLedgerStatementData,
@@ -133,6 +178,7 @@ const builders: Partial<Record<PrintDocType, PrintContextBuilder>> = {
         gstLabel: `₹ ${paiseToRupees(est.gstPaise)}`,
         grandTotalLabel: `₹ ${paiseToRupees(est.grandTotalPaise)}`,
         notesText: est.notes || "",
+        validityText: "Valid for 15 days from the date of issue. Prices subject to gold rate at time of order confirmation.",
       },
       tables: {
         items: est.items.map((it) => ({
@@ -182,28 +228,43 @@ const builders: Partial<Record<PrintDocType, PrintContextBuilder>> = {
   },
 
   job_card: (recordId) => {
-    // recordId is the Production Order id (workshop.print.job-card.$orderId
-    // .tsx's own param name/semantics — buildJobCardData takes an Order,
-    // enriched by its linked JobCard when one exists).
-    const order = useOrders.getState().orders.find((o) => o.id === recordId);
+    // recordId is a JOB CARD id — one card per order line, so an order with
+    // three pieces has three distinct cards and printing must be able to name
+    // WHICH one. An Order id is still accepted (older links, and orders whose
+    // cards aren't created yet), and resolves to that order's first card.
+    const jobs = useJobCards.getState().jobs;
+    const linkedJob = jobs.find((j) => j.id === recordId) ?? null;
+
+    const orderId = linkedJob?.orderId ?? recordId;
+    const order = useOrders.getState().orders.find((o) => o.id === orderId);
     if (!order) return null;
+
+    const job = linkedJob ?? jobs.find((j) => j.orderId === order.id) ?? null;
+
     const people = usePeople.getState().people;
     const customer = people.find((p) => p.id === order.customerId);
     const karigar = order.karigarId ? people.find((p) => p.id === order.karigarId) : null;
-    const linkedJob = useJobCards.getState().jobs.find((j) => j.orderId === order.id) ?? null;
 
     const jc = buildJobCardData(
       order,
-      linkedJob,
+      job,
       customer?.fullName ?? "—",
       customer?.phone,
       karigar?.fullName ?? null,
     );
 
+    // Which of the order's pieces this card is for — printed on the card so a
+    // karigar holding one of three knows it, and so two cards from the same
+    // order are never mistaken for duplicates of each other.
+    const items = orderItems(order);
+    const lineIndex = job?.lineId ? items.findIndex((it) => it.lineId === job.lineId) : 0;
+    const lineLabel =
+      items.length > 1 && lineIndex >= 0 ? `Item ${lineIndex + 1} of ${items.length}` : "";
+
     return {
       docType: "job_card",
       docNumber: jc.jobCardNo || jc.productionOrderNo,
-      recordId: order.id,
+      recordId: job?.id ?? order.id,
       createdAt: order.createdAt,
       title: "JOB CARD",
       fields: {
@@ -211,15 +272,20 @@ const builders: Partial<Record<PrintDocType, PrintContextBuilder>> = {
         assignedWorkerName: jc.assignedWorkerName || "Unassigned",
         itemName: jc.itemName,
         itemDescription: jc.itemDescription,
+        lineLabel,
+        quantityLabel: String(job?.quantity ?? items[Math.max(0, lineIndex)]?.quantity ?? 1),
         targetNetWt: `${mgToGrams(jc.targetNetMg)} g`,
         purityLabel: purityLabel(jc.purity),
         goldReceivedLabel:
           jc.goldReceivedFineMg > 0 ? `${mgToGrams(jc.goldReceivedFineMg)} g fine` : "None",
         targetGrossWt: `${mgToGrams(jc.targetGrossMg)} g`,
+        expectedStartLabel: jc.expectedStart
+          ? new Date(jc.expectedStart).toLocaleDateString("en-IN")
+          : "—",
         expectedDeliveryLabel: jc.expectedDelivery
           ? new Date(jc.expectedDelivery).toLocaleDateString("en-IN")
           : "—",
-        priorityLabel: linkedJob?.priority ?? "—",
+        priorityLabel: job?.priority ?? "—",
         remarksText: jc.remarks || "—",
         productionOrderNo: jc.productionOrderNo,
         footerLine: `Production Order: ${jc.productionOrderNo} · ${useSettings.getState().firm.shopName || "Jewellers ERP"}`,

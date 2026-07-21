@@ -12,6 +12,7 @@ import {
   todayISO,
 } from "@/lib/workers-store";
 import { mgToGrams } from "@/lib/gold";
+import { shortShopName } from "@/lib/app-info";
 import { PassbookContent } from "./attendance.index";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
@@ -20,14 +21,7 @@ import type { PrintDocType } from "@/lib/printlog-store";
 
 export const Route = createFileRoute("/attendance/print/$kind/$id")({
   head: () => {
-    const shopName = useSettings.getState().firm?.shopName;
-    const shortName =
-      shopName
-        .split(" ")
-        .filter(Boolean)
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase() || shopName.slice(0, 3).toUpperCase();
+    const shortName = shortShopName(useSettings.getState().firm?.shopName);
     return {
       meta: [{ title: `Print · ${shortName} ERP` }],
     };

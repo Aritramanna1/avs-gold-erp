@@ -14,18 +14,14 @@
 // @ts-nocheck
 import { useAttachments } from "./attachments-store";
 import { useBilling, type GstKind } from "./billing-store";
-import {
-  useCreditNotes,
-  useDebitNotes,
-  useEstimates,
-  useDeliveryChallans,
-} from "./billing-documents-store";
+import { useCreditNotes, useDebitNotes, useEstimates, useDeliveryChallans } from "./billing-documents-store";
 import { useCommLog } from "./comm-log-store";
 import { useDailyCloses } from "./dailyclose-store";
 import { useJobCards } from "./jobcards-store";
 import { useLedger } from "./ledger-store";
 import { usePeople } from "./people-store";
 import { useOrders } from "./orders-store";
+import { useSettings } from "./settings-store";
 import { usePrintLog } from "./printlog-store";
 import { useRateCuts } from "./ratecut-store";
 import { useRepairs } from "./repair-store";
@@ -62,6 +58,7 @@ export interface SeedResult {
   estimateNo: string;
   deliveryChallanId: string;
   deliveryChallanNo: string;
+  custodyRefOrderNo: string;
   paymentId: string;
   repairId: string;
   polishingRepairId: string;
@@ -99,8 +96,8 @@ export async function seedPilotDataset(): Promise<SeedResult> {
   useWhatsapp.getState().reset();
   usePrintLog.getState().reset();
   useWorkers.getState().reset();
-  useWorkerGoldBook.getState().reset();
   useCommLog.getState().reset?.();
+  useWorkerGoldBook.getState().reset();
   useAttachments.setState({ items: {} });
 
   // 2. People
@@ -322,6 +319,51 @@ export async function seedPilotDataset(): Promise<SeedResult> {
   const issueSlipNo = `ISS-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-001`;
   const goldIssueId = makeId();
 
+  // Worker Gold Book — the Workshop ledger's own custody record (distinct
+  // from the vault ledger above): backs karigar_custody_statement print and
+  // the Worker Gold Book UI. Linked to a SYNTHETIC order reference — not
+  // `order.id`/`order.orderNo` — because order-gold-material-issue.spec.ts
+  // and manufacturing-barcode.spec.ts assert an exact, order-scoped
+  // issue-history count/return-completeness starting from zero for that
+  // same seeded order; a real "given"+"return" pair backing the custody
+  // statement's own printed ledger rows still needs an order-like reference
+  // to show, just not one that collides with that other order's own count.
+  const custodyRefOrderNo = "DEMO-CUSTODY-01";
+  await useWorkerGoldBook.getState().addEntry({
+    workerId: karigar.id,
+    workerName: karigar.fullName,
+    particulars: "Gold Given",
+    grossMg: 500000,
+    lessMg: 0,
+    netMg: 500000,
+    purity: 916,
+    fineMg: issueFineMg,
+    quantity: 1,
+    notes: "Workshop opening custody balance",
+    givenBy: "Staff",
+    receivedBy: karigar.fullName,
+    type: "given",
+    orderId: "demo-custody-order",
+    orderNo: custodyRefOrderNo,
+  });
+  await useWorkerGoldBook.getState().addEntry({
+    workerId: karigar.id,
+    workerName: karigar.fullName,
+    particulars: "Gold Received",
+    grossMg: 500000,
+    lessMg: 0,
+    netMg: 500000,
+    purity: 916,
+    fineMg: issueFineMg,
+    quantity: 1,
+    notes: "Workshop opening custody balance settled",
+    givenBy: karigar.fullName,
+    receivedBy: "Staff",
+    type: "return",
+    orderId: "demo-custody-order",
+    orderNo: custodyRefOrderNo,
+  });
+
   // 9. Receive Work — finished + filings + actualLoss reconcile to 458000 fine
   const filingsFineMg = 9160; // 1% as filings (return to vault as scrap-bucket)
   const scrapFineMg = 0;
@@ -405,6 +447,11 @@ export async function seedPilotDataset(): Promise<SeedResult> {
 
   // 11. Invoice — sale to customer
   const goldRatePerGramPaise = 700000; // ₹7,000/g (test rate)
+  // Also set the LIVE settings gold rate — routes that price a NEW record
+  // created interactively during a test (e.g. settlement.new.tsx) read
+  // useSettings' own goldRatePerGramPaise, not this seed's local constant.
+  // Left at its default 0 ("NOT SET"), any such record prices as ₹0.
+  useSettings.getState().setGoldRate(goldRatePerGramPaise);
   const goldValuePaise = Math.round((finishedFineMg * goldRatePerGramPaise) / 1000);
   const makingChargesPaise = Math.round((finishedFineMg * 80000) / 1000); // ₹80/g
   const stoneChargesPaise = 0;
@@ -481,21 +528,21 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     },
     { id: null, email: "seed@test.local" },
   );
-  // Debit note against the invoice — mirrors the credit note above, exercises
-  // debit_note's migrated Unified Print Engine document end-to-end.
+  // Debit note against the invoice — Unified Print Engine's migrated
+  // debit_note document needs a real record to render against.
   const debitNote = await useDebitNotes.getState().issue(
     {
       invoiceId: invoice.id,
       invoiceNo: invoice.invoiceNo,
       customerId: customer.id,
       customerName: customer.fullName,
-      amountPaise: 30000,
+      amountPaise: 25000,
       goldFineMg: 0,
       reason: "Additional making charge billed after delivery.",
     },
     { id: null, email: "seed@test.local" },
   );
-  // Estimate — draft quote, not yet converted, for estimate_doc's migrated document.
+  // Estimate (draft) — Unified Print Engine's migrated estimate_doc document.
   const estimate = await useEstimates.getState().create({
     customerId: customer.id,
     customerName: customer.fullName,
@@ -520,13 +567,13 @@ export async function seedPilotDataset(): Promise<SeedResult> {
         lineTotalPaise,
       },
     ],
-    gst: "none" as GstKind,
-    subtotalPaise: lineTotalPaise,
-    gstPaise: 0,
-    grandTotalPaise: lineTotalPaise,
-    notes: "Valid for 15 days from date of issue.",
+    gst: "gst3" as GstKind,
+    subtotalPaise,
+    gstPaise,
+    grandTotalPaise,
+    validUntilIso: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
   });
-  // Delivery challan — job-work dispatch, for delivery_challan's migrated document.
+  // Delivery challan — Unified Print Engine's migrated delivery_challan document.
   const deliveryChallan = await useDeliveryChallans.getState().create({
     customerId: customer.id,
     customerName: customer.fullName,
@@ -541,38 +588,7 @@ export async function seedPilotDataset(): Promise<SeedResult> {
       },
     ],
     purpose: "job_work",
-    notes: "For polishing and hallmarking.",
-  });
-  // Worker gold book entries (given + returned) — for karigar_custody_statement's
-  // migrated document; distinct from the gold-ledger issue/receive entries
-  // above (a separate "material given/returned" tracking system).
-  await useWorkerGoldBook.getState().addEntry({
-    workerId: karigar.id,
-    workerName: karigar.fullName,
-    particulars: "KDM",
-    grossMg: 20000,
-    lessMg: 0,
-    purity: 916,
-    quantity: 5,
-    notes: "Findings issued for bulk order",
-    givenBy: "Owner",
-    receivedBy: karigar.fullName,
-    type: "given",
-    reference: order.orderNo,
-  });
-  await useWorkerGoldBook.getState().addEntry({
-    workerId: karigar.id,
-    workerName: karigar.fullName,
-    particulars: "Finished Findings",
-    grossMg: 6000,
-    lessMg: 0,
-    purity: 916,
-    quantity: 3,
-    notes: "Partial return after completion",
-    givenBy: karigar.fullName,
-    receivedBy: "Owner",
-    type: "return",
-    reference: order.orderNo,
+    notes: "Sent for polishing and hallmarking.",
   });
   // Sale ledger entry — finished goes out of system
   await useLedger.getState().append({
@@ -830,6 +846,7 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     estimateNo: estimate.estimateNo,
     deliveryChallanId: deliveryChallan.id,
     deliveryChallanNo: deliveryChallan.challanNo,
+    custodyRefOrderNo,
     paymentId,
     repairId: repair.id,
     polishingRepairId: polishing.id,

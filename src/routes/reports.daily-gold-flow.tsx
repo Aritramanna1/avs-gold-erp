@@ -15,10 +15,11 @@ export const Route = createFileRoute("/reports/daily-gold-flow")({
 
 const BUCKETS: Bucket[] = ["vault", "karigar", "finished", "customer", "scrap"];
 const BUCKET_LABELS: Record<Bucket, string> = {
-  vault: "Vault",
+  vault: "Gold Held",
   karigar: "Karigar",
   finished: "Finished",
   customer: "Customer",
+  jeweller: "Jewellers",
   scrap: "Scrap",
 };
 
@@ -44,7 +45,7 @@ function DailyGoldFlowPage() {
         in: 0,
         out: 0,
         net: 0,
-        buckets: { vault: 0, karigar: 0, finished: 0, customer: 0, scrap: 0 },
+        buckets: { vault: 0, karigar: 0, finished: 0, customer: 0, jeweller: 0, scrap: 0 },
         count: 0,
       };
       row.net += e.netFineMg;

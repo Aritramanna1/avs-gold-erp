@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSessionLock } from "@/lib/security/session-lock";
 import { supabase } from "@/integrations/supabase/client";
+import { isOfflineMode } from "@/lib/deployment-mode";
+import { getLocalSessionUser } from "@/lib/local-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Lock } from "lucide-react";
@@ -17,27 +19,66 @@ export function SessionLockOverlay() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** The signed-in identity: null = still resolving, "" = none stored. */
   const [email, setEmail] = useState<string | null>(null);
+  /** Typed by the user, only when no identity could be resolved. */
+  const [typedEmail, setTypedEmail] = useState("");
 
-  // Fetched once when the overlay actually mounts (i.e. right when it locks),
-  // not on every render — the previous inline call in the render body fired
-  // repeatedly on every re-render while email was still null.
+  /**
+   * Whose session is locked.
+   *
+   * MUST come from the same place that will verify the password. In Offline
+   * mode there is no Supabase session at all: `supabase.auth.getSession()`
+   * resolves to none (or, with no network, doesn't resolve promptly), so `email`
+   * stayed null — the overlay sat on "Loading session…" forever AND
+   * `handleUnlock` returned early at `if (!email)`, making the Unlock button
+   * permanently dead. The user was locked out of their own offline install.
+   *
+   * Offline reads the local session (the same store `verifyLocalLogin` checks);
+   * cloud/hybrid reads Supabase. Neither path can hang the overlay now: on any
+   * failure `email` resolves to "" and the form falls back to asking for it,
+   * rather than silently disabling itself.
+   */
   useEffect(() => {
     if (!locked) return;
-    supabase.auth.getSession().then(({ data }) => setEmail(data.session?.user.email ?? ""));
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        if (isOfflineMode()) {
+          const user = await getLocalSessionUser();
+          if (!cancelled) setEmail(user?.email ?? "");
+          return;
+        }
+        const { data } = await supabase.auth.getSession();
+        if (!cancelled) setEmail(data.session?.user.email ?? "");
+      } catch (err) {
+        console.error("[SessionLock] Could not resolve the locked session's user:", err);
+        if (!cancelled) setEmail("");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [locked]);
+
+  // `email` null = still resolving who is locked. "" = resolved, nobody stored,
+  // so the user supplies it themselves rather than being stranded.
+  const needsEmail = email === "";
+  const effectiveEmail = (email || typedEmail).trim();
 
   if (!locked) return null;
 
   async function handleUnlock(e: React.FormEvent) {
     e.preventDefault();
-    if (!email) return;
+    if (email === null || !effectiveEmail) return;
     setBusy(true);
     setError(null);
     // Trim both fields — trailing/leading whitespace from autofill or an
     // accidental space is invisible to the operator but makes Supabase
     // reject an otherwise-correct password as "Invalid login credentials".
-    const result = await unlock(email.trim(), password.trim());
+    const result = await unlock(effectiveEmail, password.trim());
     setBusy(false);
     if (!result.ok) {
       const isRateLimited = /rate limit|too many requests/i.test(result.error ?? "");
@@ -61,18 +102,39 @@ export function SessionLockOverlay() {
           <Lock className="h-8 w-8 text-muted-foreground" />
           <h2 className="text-lg font-semibold">Session Locked</h2>
           <p className="text-sm text-muted-foreground">
-            {email ? `Signed in as ${email}` : "Loading session..."}
+            {email === null
+              ? "Restoring session…"
+              : email
+                ? `Signed in as ${email}`
+                : "Enter your email and password to resume"}
           </p>
         </div>
+
+        {/* Only when no identity is stored. A locked screen must never become
+            un-unlockable just because we couldn't work out who is signed in. */}
+        {needsEmail && (
+          <Input
+            type="email"
+            autoFocus
+            placeholder="Email"
+            value={typedEmail}
+            onChange={(e) => setTypedEmail(e.target.value)}
+          />
+        )}
+
         <Input
           type="password"
-          autoFocus
+          autoFocus={!needsEmail}
           placeholder="Enter your password to resume"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" className="w-full" disabled={busy || !password}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={busy || !password || email === null || !effectiveEmail}
+        >
           {busy ? "Unlocking..." : "Unlock"}
         </Button>
       </form>

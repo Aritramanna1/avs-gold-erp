@@ -22,9 +22,9 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report e2e/report",
     "build:electron": "tsc -p electron/tsconfig.json && node -e \"require('fs').writeFileSync('dist-electron/package.json', JSON.stringify({type:'commonjs'}))\"",
-    "electron:dev": "concurrently -k -n VITE,ELECTRON \"vite\" \"npm:electron:wait-and-launch\"",
-    "electron:wait-and-launch": "wait-on tcp:5173 && npm run build:electron && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron dist-electron/main.js",
-    "electron:build": "npm run build && npm run build:electron && electron-builder"
+    "electron:dev": "concurrently -k -n VITE,ELECTRON \"cross-env VITE_DEPLOYMENT_MODES_ENABLED=true vite\" \"npm:electron:wait-and-launch\"",
+    "electron:wait-and-launch": "wait-on tcp:3000 && npm run build:electron && cross-env VITE_DEV_SERVER_URL=http://localhost:3000 electron dist-electron/main.js",
+    "electron:build": "cross-env VITE_DEPLOYMENT_MODES_ENABLED=true npm run build && npm run build:electron && electron-builder"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",

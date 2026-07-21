@@ -104,21 +104,25 @@ function InvoiceDetailPage() {
     );
   }
 
-  function record() {
+  async function record() {
     const amt = rupeesToPaise(payAmt);
     if (amt <= 0) {
       alert("Enter payment amount.");
       return;
     }
-    addPayment(inv!.id, {
-      mode: payMode,
-      amountPaise: amt,
-      reference: payRef || undefined,
-      notes: payNotes || undefined,
-    });
-    setPayAmt("");
-    setPayRef("");
-    setPayNotes("");
+    try {
+      await addPayment(inv!.id, {
+        mode: payMode,
+        amountPaise: amt,
+        reference: payRef || undefined,
+        notes: payNotes || undefined,
+      });
+      setPayAmt("");
+      setPayRef("");
+      setPayNotes("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to record payment.");
+    }
   }
 
   function triggerPrintInvoice() {

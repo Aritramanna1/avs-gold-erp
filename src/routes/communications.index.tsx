@@ -79,11 +79,25 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { paiseToRupees, rupeesToPaise } from "@/lib/billing-store";
+import { ModuleComingSoon } from "@/components/ModuleComingSoon";
+import {
+  CRM_PIPELINE_COMING_SOON_MESSAGE,
+  CRM_PIPELINE_COMING_SOON_DETAIL,
+  MARKETING_CAMPAIGNS_COMING_SOON_MESSAGE,
+  MARKETING_CAMPAIGNS_COMING_SOON_DETAIL,
+} from "@/lib/pilot-config";
+import { waMobileUrl, isValidWaPhone } from "@/lib/wa-link";
 
 export const Route = createFileRoute("/communications/")({
   head: () => ({ meta: [{ title: "Communications Hub · AVS Gold ERP" }] }),
   component: CommunicationsDashboardPage,
 });
+
+// Workshop V1.1 scope: CRM pipeline and bulk marketing campaigns aren't part
+// of the first production release — see src/lib/pilot-config.ts. The real
+// implementations below stay in the file untouched; flip these to re-enable.
+const CRM_PIPELINE_ENABLED = false;
+const MARKETING_CAMPAIGNS_ENABLED = false;
 
 const PIPELINE_STAGES: { key: OpportunityStage; label: string; color: string }[] = [
   { key: "lead", label: "New Lead", color: "bg-muted text-muted-foreground" },
@@ -456,13 +470,23 @@ export default function CommunicationsDashboardPage() {
           failed++;
           continue;
         }
-        const cleaned = phone.replace(/\D/g, "");
-        if (!cleaned) {
+        // Built through waMobileUrl, not by hand: a bare 10-digit number has no
+        // country code, and wa.me silently opens an empty chat rather than
+        // erroring — a whole broadcast would report "sent" and reach nobody.
+        //
+        // OPENWA MIGRATION POINT — the last deep-link-specific surface left.
+        // This screen's whole UX is "here is a list of links, open them one by
+        // one", which only makes sense for a deep link. Under OpenWA a broadcast
+        // should actually SEND (via sendWhatsAppText per recipient, through
+        // comm-queue's retry), and this queue UI should collapse into a progress
+        // list. Deliberately not rewritten now: it would be a redesign of the
+        // screen, not a transport swap. Every other WhatsApp action in the app
+        // already goes through sendWhatsAppText and needs no change.
+        if (!isValidWaPhone(phone)) {
           failed++;
           continue;
         }
-        const msg = encodeURIComponent(campaignText);
-        queue.push({ name: person.fullName, url: `https://wa.me/${cleaned}?text=${msg}` });
+        queue.push({ name: person.fullName, url: waMobileUrl(phone, campaignText) });
         sent++;
       }
       if (queue.length > 0) {
@@ -595,13 +619,22 @@ export default function CommunicationsDashboardPage() {
   };
 
   const addProviderSetting = (channel: CommChannel, type: ProviderType) => {
+    const channelConfigs = configs.filter((c) => c.branchId === branchId && c.channel === channel);
+    // API-delivery providers (OpenWA, Cloud API, BSPs) are tried before the
+    // free WhatsApp Deep Link fallback that's always active by default — so
+    // "OpenWA unavailable → fall back to Deep Link" works via the existing
+    // priority-ordered failover loop in service.ts, not a special case.
+    const priority =
+      type === "whatsapp_deep_link"
+        ? channelConfigs.length
+        : Math.min(0, ...channelConfigs.map((c) => c.priority)) - 1;
     const config: ProviderConfig = {
       id: crypto.randomUUID(),
       branchId,
       channel,
       providerType: type,
       isActive: true,
-      priority: configs.filter((c) => c.branchId === branchId && c.channel === channel).length,
+      priority,
       settings: {},
     };
     upsertConfig(config);
@@ -644,12 +677,18 @@ export default function CommunicationsDashboardPage() {
           </TabsTrigger>
           <TabsTrigger value="pipeline" className="gap-2 text-xs">
             Sales Pipeline
+            <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1">
+              Soon
+            </Badge>
           </TabsTrigger>
           <TabsTrigger value="followups" className="gap-2 text-xs">
             Follow-ups
           </TabsTrigger>
           <TabsTrigger value="campaigns" className="gap-2 text-xs">
             Campaigns
+            <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1">
+              Soon
+            </Badge>
           </TabsTrigger>
           <TabsTrigger value="automation" className="gap-2 text-xs">
             Automation
@@ -950,102 +989,109 @@ export default function CommunicationsDashboardPage() {
 
         {/* 3. PIPELINE */}
         <TabsContent value="pipeline" className="mt-4">
-          <div className="overflow-x-auto pb-4">
-            <div className="flex gap-4 min-w-[1200px]">
-              {PIPELINE_STAGES.map((col) => {
-                const stageOpps = opportunities.filter(
-                  (o) => o.branchId === branchId && o.stage === col.key,
-                );
-                const stageTotalVal = stageOpps.reduce((s, o) => s + o.estimatedValuePaise, 0);
+          {CRM_PIPELINE_ENABLED ? (
+            <div className="overflow-x-auto pb-4">
+              <div className="flex gap-4 min-w-[1200px]">
+                {PIPELINE_STAGES.map((col) => {
+                  const stageOpps = opportunities.filter(
+                    (o) => o.branchId === branchId && o.stage === col.key,
+                  );
+                  const stageTotalVal = stageOpps.reduce((s, o) => s + o.estimatedValuePaise, 0);
 
-                return (
-                  <div
-                    key={col.key}
-                    className="flex-1 min-w-[220px] bg-card/40 rounded-xl border border-border p-3 flex flex-col gap-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                        {col.label}
-                      </h3>
-                      <Badge variant="outline" className="text-[10px]">
-                        {stageOpps.length}
-                      </Badge>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      Value: ₹{paiseToRupees(stageTotalVal)}
-                    </div>
-                    <div className="space-y-2 flex-1 min-h-[400px] max-h-[600px] overflow-y-auto p-0.5">
-                      {stageOpps.map((opp) => {
-                        const cust = people.find((p) => p.id === opp.personId);
-                        return (
-                          <div
-                            key={opp.id}
-                            className="bg-card hover:bg-muted/30 border border-border p-3 rounded-lg shadow-sm space-y-2 relative group cursor-pointer"
-                            onClick={() => {
-                              setSelectedOpp(opp);
-                              setOppFormName(opp.leadName);
-                              setOppFormPersonId(opp.personId || "");
-                              setOppFormStage(opp.stage);
-                              setOppFormPriority(opp.priority);
-                              setOppFormSource(opp.source);
-                              setOppFormBuyerType(opp.buyerType);
-                              setOppFormValue(String(paiseToRupees(opp.estimatedValuePaise)));
-                              setOppFormGold(
-                                opp.targetGoldMg ? String(opp.targetGoldMg / 1000) : "",
-                              );
-                              setOppFormRemarks(opp.remarks || "");
-                              setOppFormFollowUp(opp.followUpDate || "");
-                              setOppModalOpen(true);
-                            }}
-                          >
-                            <div className="font-medium text-sm leading-tight pr-5">
-                              {opp.leadName}
-                            </div>
-                            {cust && (
-                              <div className="text-xs text-gold truncate">{cust.fullName}</div>
-                            )}
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                              <span>₹{paiseToRupees(opp.estimatedValuePaise)}</span>
-                              {opp.priority === "high" && (
-                                <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[9px] py-0">
-                                  High
-                                </Badge>
+                  return (
+                    <div
+                      key={col.key}
+                      className="flex-1 min-w-[220px] bg-card/40 rounded-xl border border-border p-3 flex flex-col gap-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">
+                          {col.label}
+                        </h3>
+                        <Badge variant="outline" className="text-[10px]">
+                          {stageOpps.length}
+                        </Badge>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        Value: ₹{paiseToRupees(stageTotalVal)}
+                      </div>
+                      <div className="space-y-2 flex-1 min-h-[400px] max-h-[600px] overflow-y-auto p-0.5">
+                        {stageOpps.map((opp) => {
+                          const cust = people.find((p) => p.id === opp.personId);
+                          return (
+                            <div
+                              key={opp.id}
+                              className="bg-card hover:bg-muted/30 border border-border p-3 rounded-lg shadow-sm space-y-2 relative group cursor-pointer"
+                              onClick={() => {
+                                setSelectedOpp(opp);
+                                setOppFormName(opp.leadName);
+                                setOppFormPersonId(opp.personId || "");
+                                setOppFormStage(opp.stage);
+                                setOppFormPriority(opp.priority);
+                                setOppFormSource(opp.source);
+                                setOppFormBuyerType(opp.buyerType);
+                                setOppFormValue(String(paiseToRupees(opp.estimatedValuePaise)));
+                                setOppFormGold(
+                                  opp.targetGoldMg ? String(opp.targetGoldMg / 1000) : "",
+                                );
+                                setOppFormRemarks(opp.remarks || "");
+                                setOppFormFollowUp(opp.followUpDate || "");
+                                setOppModalOpen(true);
+                              }}
+                            >
+                              <div className="font-medium text-sm leading-tight pr-5">
+                                {opp.leadName}
+                              </div>
+                              {cust && (
+                                <div className="text-xs text-gold truncate">{cust.fullName}</div>
                               )}
+                              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                <span>₹{paiseToRupees(opp.estimatedValuePaise)}</span>
+                                {opp.priority === "high" && (
+                                  <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[9px] py-0">
+                                    High
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="absolute top-2 right-2 flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Select
+                                  value={opp.stage}
+                                  onValueChange={(val) => {
+                                    void moveStage(opp.id, val as OpportunityStage);
+                                    toast.success(`Lead moved to ${val.toUpperCase()}`);
+                                  }}
+                                >
+                                  <SelectTrigger className="w-6 h-6 p-0 border-0 bg-transparent text-muted-foreground hover:text-gold">
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {PIPELINE_STAGES.map((s) => (
+                                      <SelectItem key={s.key} value={s.key}>
+                                        {s.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
-                            <div className="absolute top-2 right-2 flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Select
-                                value={opp.stage}
-                                onValueChange={(val) => {
-                                  void moveStage(opp.id, val as OpportunityStage);
-                                  toast.success(`Lead moved to ${val.toUpperCase()}`);
-                                }}
-                              >
-                                <SelectTrigger className="w-6 h-6 p-0 border-0 bg-transparent text-muted-foreground hover:text-gold">
-                                  <ChevronRight className="h-3.5 w-3.5" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {PIPELINE_STAGES.map((s) => (
-                                    <SelectItem key={s.key} value={s.key}>
-                                      {s.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                          );
+                        })}
+                        {stageOpps.length === 0 && (
+                          <div className="text-center text-xs text-muted-foreground/35 py-10">
+                            No items
                           </div>
-                        );
-                      })}
-                      {stageOpps.length === 0 && (
-                        <div className="text-center text-xs text-muted-foreground/35 py-10">
-                          No items
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          ) : (
+            <ModuleComingSoon
+              title={CRM_PIPELINE_COMING_SOON_MESSAGE}
+              message={CRM_PIPELINE_COMING_SOON_DETAIL}
+            />
+          )}
         </TabsContent>
 
         {/* 4. FOLLOW-UPS */}
@@ -1128,123 +1174,130 @@ export default function CommunicationsDashboardPage() {
 
         {/* 5. CAMPAIGNS */}
         <TabsContent value="campaigns" className="mt-4">
-          <Card className="p-5 border-border bg-card space-y-4 max-w-2xl mx-auto">
-            <h3 className="font-semibold text-sm flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-gold" /> Bulk Campaign Creator
-            </h3>
-            <div className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label>Channel</Label>
-                  <Select
-                    value={campaignChannel}
-                    onValueChange={(val) => setCampaignChannel(val as any)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="whatsapp">WhatsApp Business API</SelectItem>
-                      <SelectItem value="email">SMTP Email Campaign</SelectItem>
-                      <SelectItem value="sms">SMS Gateway Gateway</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label>Target Customer Filter Segment</Label>
-                  <Select value={campaignFilterType} onValueChange={setCampaignFilterType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="birthday">Today's Birthdays</SelectItem>
-                      <SelectItem value="vip">VIP Customers</SelectItem>
-                      <SelectItem value="outstanding">Outstanding Payments Due</SelectItem>
-                      <SelectItem value="all">
-                        Entire Database ({people.length} contacts)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label>Campaign Title / Internal Name</Label>
-                <Input
-                  value={campaignTitle}
-                  onChange={(e) => setCampaignTitle(e.target.value)}
-                  placeholder="e.g. Diwali Festival Wishes 2026"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label>
-                  Message Template Body (Supports variables like{" "}
-                  {"{{customer_name}}, {{invoice_number}}"})
-                </Label>
-                <Textarea
-                  value={campaignText}
-                  onChange={(e) => setCampaignText(e.target.value)}
-                  placeholder="Write message template here..."
-                  rows={4}
-                />
-              </div>
-
-              <div className="rounded-xl border border-border bg-muted/20 p-3">
-                <span className="font-bold">Total Target Receivers:</span> {campaignTargetsCount}{" "}
-                people
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <Button
-                  className="bg-gold text-primary-foreground font-semibold"
-                  onClick={handleTriggerCampaign}
-                >
-                  <Play className="h-4 w-4 mr-1.5" /> Launch Campaign
-                </Button>
-              </div>
-
-              {/* WA queue: popup-blocker-safe sequential sending */}
-              {waQueue.length > 0 && (
-                <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-gold">
-                      WhatsApp Queue ({waQueueIdx}/{waQueue.length} sent)
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 text-[11px]"
-                      onClick={() => {
-                        setWaQueue([]);
-                        setWaQueueIdx(0);
-                      }}
+          {MARKETING_CAMPAIGNS_ENABLED ? (
+            <Card className="p-5 border-border bg-card space-y-4 max-w-2xl mx-auto">
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-gold" /> Bulk Campaign Creator
+              </h3>
+              <div className="space-y-4 text-xs">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label>Channel</Label>
+                    <Select
+                      value={campaignChannel}
+                      onValueChange={(val) => setCampaignChannel(val as any)}
                     >
-                      Clear
-                    </Button>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="whatsapp">WhatsApp Business API</SelectItem>
+                        <SelectItem value="email">SMTP Email Campaign</SelectItem>
+                        <SelectItem value="sms">SMS Gateway Gateway</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  {waQueueIdx < waQueue.length ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground truncate flex-1">
-                        {waQueue[waQueueIdx].name}
-                      </span>
-                      <a href={waQueue[waQueueIdx].url} target="_blank" rel="noreferrer">
-                        <Button
-                          size="sm"
-                          className="h-7 text-[11px]"
-                          onClick={() => setWaQueueIdx((i) => i + 1)}
-                        >
-                          Open WhatsApp
-                        </Button>
-                      </a>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-emerald-400">All messages opened.</p>
-                  )}
+                  <div className="space-y-1">
+                    <Label>Target Customer Filter Segment</Label>
+                    <Select value={campaignFilterType} onValueChange={setCampaignFilterType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="birthday">Today's Birthdays</SelectItem>
+                        <SelectItem value="vip">VIP Customers</SelectItem>
+                        <SelectItem value="outstanding">Outstanding Payments Due</SelectItem>
+                        <SelectItem value="all">
+                          Entire Database ({people.length} contacts)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              )}
-            </div>
-          </Card>
+
+                <div className="space-y-1">
+                  <Label>Campaign Title / Internal Name</Label>
+                  <Input
+                    value={campaignTitle}
+                    onChange={(e) => setCampaignTitle(e.target.value)}
+                    placeholder="e.g. Diwali Festival Wishes 2026"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>
+                    Message Template Body (Supports variables like{" "}
+                    {"{{customer_name}}, {{invoice_number}}"})
+                  </Label>
+                  <Textarea
+                    value={campaignText}
+                    onChange={(e) => setCampaignText(e.target.value)}
+                    placeholder="Write message template here..."
+                    rows={4}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-border bg-muted/20 p-3">
+                  <span className="font-bold">Total Target Receivers:</span> {campaignTargetsCount}{" "}
+                  people
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button
+                    className="bg-gold text-primary-foreground font-semibold"
+                    onClick={handleTriggerCampaign}
+                  >
+                    <Play className="h-4 w-4 mr-1.5" /> Launch Campaign
+                  </Button>
+                </div>
+
+                {/* WA queue: popup-blocker-safe sequential sending */}
+                {waQueue.length > 0 && (
+                  <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-gold">
+                        WhatsApp Queue ({waQueueIdx}/{waQueue.length} sent)
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-[11px]"
+                        onClick={() => {
+                          setWaQueue([]);
+                          setWaQueueIdx(0);
+                        }}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                    {waQueueIdx < waQueue.length ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground truncate flex-1">
+                          {waQueue[waQueueIdx].name}
+                        </span>
+                        <a href={waQueue[waQueueIdx].url} target="_blank" rel="noreferrer">
+                          <Button
+                            size="sm"
+                            className="h-7 text-[11px]"
+                            onClick={() => setWaQueueIdx((i) => i + 1)}
+                          >
+                            Open WhatsApp
+                          </Button>
+                        </a>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-emerald-400">All messages opened.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+          ) : (
+            <ModuleComingSoon
+              title={MARKETING_CAMPAIGNS_COMING_SOON_MESSAGE}
+              message={MARKETING_CAMPAIGNS_COMING_SOON_DETAIL}
+            />
+          )}
         </TabsContent>
 
         {/* 6. AUTOMATION */}
@@ -1411,19 +1464,31 @@ export default function CommunicationsDashboardPage() {
                   <SelectValue placeholder="+ Add Provider Connection" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="whatsapp:whatsapp_openwa">
+                    OpenWA (Self-hosted WhatsApp)
+                  </SelectItem>
                   <SelectItem value="whatsapp:whatsapp_cloud_api">
                     Meta Cloud API (WhatsApp)
                   </SelectItem>
-                  <SelectItem value="email:email_smtp">SMTP Hostinger Server</SelectItem>
-                  <SelectItem value="email:email_resend">Resend API (Email)</SelectItem>
+                  <SelectItem value="email:email_smtp" disabled>
+                    Email — Coming Soon
+                  </SelectItem>
                   <SelectItem value="sms:sms_twilio">Twilio (SMS)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
+            <div className="rounded-xl border border-dashed border-border bg-muted/10 px-3 py-2 text-[11px] text-muted-foreground flex items-center gap-2">
+              <Badge variant="outline" className="text-[9px] px-1 py-0">
+                Soon
+              </Badge>
+              Email Automation is Coming Soon — WhatsApp (Deep Link + OpenWA) is fully available
+              below.
+            </div>
+
             <div className="space-y-4">
               {configs
-                .filter((c) => c.branchId === branchId)
+                .filter((c) => c.branchId === branchId && c.channel !== "email")
                 .map((cfg, i) => {
                   const fields = getSettingFields(cfg.providerType);
                   return (

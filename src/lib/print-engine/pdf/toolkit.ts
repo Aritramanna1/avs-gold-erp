@@ -47,14 +47,16 @@ export interface Geometry {
 const MARGIN_BY_SIZE: Record<PrintSize, number> = {
   a4: 15,
   a5: 12,
+  a5l: 10,
   a6: 10,
   thermal: 3,
   thermal58: 2,
   tag: 2,
 };
 
-export function geometryFor(doc: jsPDF, paperSize: PrintSize): Geometry {
-  const margin = MARGIN_BY_SIZE[paperSize];
+/** `marginOverrideMm` — the user's page-setup margin (see print-setup-store); the size's default when absent. */
+export function geometryFor(doc: jsPDF, paperSize: PrintSize, marginOverrideMm?: number): Geometry {
+  const margin = marginOverrideMm ?? MARGIN_BY_SIZE[paperSize];
   const pageW = doc.internal.pageSize.getWidth();
   const contentW = pageW - margin * 2;
   return { margin, pageW, contentW, colR: pageW - margin };
@@ -217,6 +219,10 @@ export function addTable(
 ): number {
   if (!isVisible(config.showIf, data.flags)) return y;
   const { margin, colR, contentW } = geo;
+  const pageH = doc.internal.pageSize.getHeight();
+  // Reserve space at the bottom for the page footer so rows never collide
+  // with it — a new page is started before a row would cross this line.
+  const bottomLimit = pageH - Math.min(18, pageH / 4);
   const rows = data.tables[config.rowsPath] ?? [];
   const columns = config.columns.filter(
     (c) => isVisible(c.showIf, data.flags) && c.renderAs !== "image",
@@ -228,32 +234,75 @@ export function addTable(
   const totalWeight = columns.reduce((s, c) => s + (c.width ?? 1), 0);
   const colWidths = columns.map((c) => (contentW * (c.width ?? 1)) / totalWeight);
 
-  const headerH = 7;
-  doc.setFillColor(245, 245, 244);
-  doc.rect(margin, ry, contentW, headerH, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  let colX = margin + 1;
-  columns.forEach((c, i) => {
-    const align = c.align === "right" ? "right" : "left";
-    const textX = align === "right" ? colX + colWidths[i] - 2 : colX + 1;
-    doc.text(c.header, textX, ry + 5, { align });
-    colX += colWidths[i];
-  });
-  doc.setDrawColor(120, 113, 108);
-  doc.setLineWidth(0.3);
-  doc.rect(margin, ry, contentW, headerH);
+  const headerH = 6;
+  const rowHeight = 6;
+  const metaH = 5;
 
-  let rowY = ry + headerH;
-  const rowHeight = 7;
+  // Report-identity band (Name / Book / Period …) repeated on every page,
+  // matching the on-screen renderer's repeating <thead> band.
+  const meta = (config.repeatHeaderMeta ?? [])
+    .map((m) => ({ label: m.label, value: formatFieldValue(getPath(data.fields, m.valuePath)) }))
+    .filter((m) => m.value && m.value !== "—");
+
+  /** Draws the (optional) meta band + column header at `hy`; returns the y below it. */
+  const drawHead = (hy: number): number => {
+    let yy = hy;
+    if (meta.length > 0) {
+      doc.setFillColor(250, 250, 249);
+      doc.rect(margin, yy, contentW, metaH, "F");
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.setTextColor(90, 90, 90);
+      doc.text(meta.map((m) => `${m.label}: ${m.value}`).join("    |    "), margin + 1, yy + 3.4);
+      doc.setTextColor(0, 0, 0);
+      doc.setDrawColor(120, 113, 108);
+      doc.setLineWidth(0.3);
+      doc.rect(margin, yy, contentW, metaH);
+      yy += metaH;
+    }
+    doc.setFillColor(245, 245, 244);
+    doc.rect(margin, yy, contentW, headerH, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    let cx = margin + 1;
+    columns.forEach((c, i) => {
+      const align = c.align === "right" ? "right" : "left";
+      const textX = align === "right" ? cx + colWidths[i] - 2 : cx + 1;
+      doc.text(c.header, textX, yy + 4.2, { align });
+      cx += colWidths[i];
+    });
+    doc.setDrawColor(120, 113, 108);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, yy, contentW, headerH);
+    return yy + headerH;
+  };
+
+  let segTop = ry; // top of the current page's table segment (for its outer border)
+  let rowY = drawHead(ry);
+  const closeSegmentBorder = () => {
+    doc.setDrawColor(120, 113, 108);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, segTop, contentW, rowY - segTop);
+  };
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   rows.forEach((row, i) => {
+    // Page-break BEFORE a row that would cross the footer reserve — the row is
+    // never split, and the header repeats at the top of the new page.
+    if (rowY + rowHeight > bottomLimit) {
+      closeSegmentBorder();
+      doc.addPage();
+      segTop = margin;
+      rowY = drawHead(margin);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+    }
     if (i % 2 === 1) {
       doc.setFillColor(252, 252, 251);
       doc.rect(margin, rowY, contentW, rowHeight, "F");
     }
-    colX = margin + 1;
+    let colX = margin + 1;
     columns.forEach((c, ci) => {
       const align = c.align === "right" ? "right" : "left";
       const textX = align === "right" ? colX + colWidths[ci] - 2 : colX + 1;
@@ -261,13 +310,26 @@ export function addTable(
       // the PDF's fixed row height, matching the compact table format.
       const val = formatFieldValue(row[c.key]).split("\n")[0];
       const lines = doc.splitTextToSize(val, colWidths[ci] - 3);
-      doc.text(lines[0] ?? "", textX, rowY + 5, { align });
+      doc.text(lines[0] ?? "", textX, rowY + 4.2, { align });
       colX += colWidths[ci];
     });
     doc.setDrawColor(210, 200, 190);
     doc.line(margin, rowY + rowHeight, colR, rowY + rowHeight);
     rowY += rowHeight;
   });
+  let colX = margin + 1;
+  const footerRow = config.footerRowPath ? data.tables[config.footerRowPath]?.[0] : undefined;
+
+  // Keep the total rows with the header on a fresh page if they'd cross the
+  // footer reserve, so a statement never ends with a dangling total line.
+  const totalRowsH =
+    ((config.showFooterSums && rows.length > 0 ? 1 : 0) + (footerRow ? 1 : 0)) * rowHeight;
+  if (totalRowsH > 0 && rowY + totalRowsH > bottomLimit) {
+    closeSegmentBorder();
+    doc.addPage();
+    segTop = margin;
+    rowY = drawHead(margin);
+  }
 
   if (config.showFooterSums && rows.length > 0) {
     doc.setFillColor(248, 246, 240);
@@ -277,14 +339,13 @@ export function addTable(
     columns.forEach((c, ci) => {
       if (c.footerSum) {
         const sum = rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0);
-        doc.text(String(sum), colX + colWidths[ci] - 2, rowY + 5, { align: "right" });
+        doc.text(String(sum), colX + colWidths[ci] - 2, rowY + 4.2, { align: "right" });
       }
       colX += colWidths[ci];
     });
     rowY += rowHeight;
   }
 
-  const footerRow = config.footerRowPath ? data.tables[config.footerRowPath]?.[0] : undefined;
   if (footerRow) {
     doc.setFillColor(248, 246, 240);
     doc.rect(margin, rowY, contentW, rowHeight, "F");
@@ -293,15 +354,13 @@ export function addTable(
     columns.forEach((c, ci) => {
       const align = c.align === "right" ? "right" : "left";
       const textX = align === "right" ? colX + colWidths[ci] - 2 : colX + 1;
-      doc.text(formatFieldValue(footerRow[c.key]).split("\n")[0], textX, rowY + 5, { align });
+      doc.text(formatFieldValue(footerRow[c.key]).split("\n")[0], textX, rowY + 4.2, { align });
       colX += colWidths[ci];
     });
     rowY += rowHeight;
   }
 
-  doc.setDrawColor(120, 113, 108);
-  doc.setLineWidth(0.3);
-  doc.rect(margin, ry, contentW, rowY - ry);
+  closeSegmentBorder();
   return rowY + 5;
 }
 
@@ -521,7 +580,13 @@ export async function addQr(
   return y + size + 4;
 }
 
-export function addPageFooter(doc: jsPDF, geo: Geometry, firm: FirmProfile) {
+export function addPageFooter(
+  doc: jsPDF,
+  geo: Geometry,
+  firm: FirmProfile,
+  pageNum?: number,
+  totalPages?: number,
+) {
   const pageH = doc.internal.pageSize.getHeight();
   const footerY = pageH - Math.min(15, pageH / 4);
   doc.setDrawColor(180, 170, 160);
@@ -538,5 +603,9 @@ export function addPageFooter(doc: jsPDF, geo: Geometry, firm: FirmProfile) {
     footerY + 5,
     { align: "center" },
   );
+  if (pageNum && totalPages && totalPages > 1) {
+    doc.setFont("helvetica", "normal");
+    doc.text(`Page ${pageNum} of ${totalPages}`, geo.colR, footerY + 5, { align: "right" });
+  }
   doc.setTextColor(0, 0, 0);
 }

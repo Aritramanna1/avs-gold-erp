@@ -132,7 +132,8 @@ interface BranchState {
   isGlobalAccess: boolean;
 
   setCurrent(branchId: string): void;
-  setAccessible(ids: string[], permissions: BranchPermission[]): void;
+  /** `globalAccess` (SAD §7): Owner/Admin see every branch; omit to leave the flag unchanged. */
+  setAccessible(ids: string[], permissions: BranchPermission[], globalAccess?: boolean): void;
   getCurrentBranch(): Branch | undefined;
   getAccessibleBranches(): Branch[];
   hasAccess(branchId: string): boolean;
@@ -158,10 +159,11 @@ export const useBranch = create<BranchState>()(
         }
       },
 
-      setAccessible(ids, permissions) {
+      setAccessible(ids, permissions, globalAccess) {
         set({ accessibleBranchIds: ids, userPermissions: permissions });
+        if (globalAccess !== undefined) set({ isGlobalAccess: globalAccess });
         // If current branch is no longer accessible, switch to first accessible
-        if (!ids.includes(get().currentBranchId)) {
+        if (!get().isGlobalAccess && !ids.includes(get().currentBranchId)) {
           set({ currentBranchId: ids[0] ?? FALLBACK_BRANCH_ID });
         }
       },

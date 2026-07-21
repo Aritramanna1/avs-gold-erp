@@ -64,6 +64,8 @@ import {
   Moon,
   Monitor,
   Check,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme, type Theme } from "@/contexts/ThemeContext";
@@ -133,6 +135,20 @@ function SettingsPage() {
       </Card>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <Link
+          to="/settings/integrations/whatsapp"
+          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+        >
+          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
+            🔌
+          </span>
+          <div className="flex-1">
+            <div className="font-medium text-sm">WhatsApp Integration (WasenderAPI)</div>
+            <div className="text-xs text-muted-foreground">
+              Connect a session, auto-send PDFs; encrypted token, deep-link fallback.
+            </div>
+          </div>
+        </Link>
         <Link
           to="/settings/whatsapp-templates"
           className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
@@ -377,7 +393,12 @@ function SettingsPage() {
             size="sm"
             variant="ghost"
             onClick={() => {
-              if (confirm("Reset all settings to defaults?")) s.resetAll();
+              if (
+                confirm(
+                  "Reset appearance, print and hardware preferences to default? Users, roles, branches, and company info are not affected.",
+                )
+              )
+                s.resetAll();
             }}
             className="text-red-500 hover:text-red-600 hover:bg-red-50"
           >
@@ -3501,16 +3522,32 @@ function CatalogTab() {
 }
 
 function DropdownsTab() {
-  const { dropdowns, setDropdown, addDropdownItem, removeDropdownItem } = useSettings();
+  const {
+    dropdowns,
+    disabledDropdowns,
+    setDropdown,
+    addDropdownItem,
+    removeDropdownItem,
+    renameDropdownItem,
+    setDropdownItemDisabled,
+  } = useSettings();
   return (
     <Card className="p-5 mt-4 space-y-5">
+      <p className="text-xs text-muted-foreground">
+        Disable retires a value: it stops being offered on new records, but orders and job cards
+        that already use it keep reading correctly. Delete removes it outright — only safe for a
+        value nothing has used yet.
+      </p>
       {(Object.keys(dropdowns) as DropdownKey[]).map((k) => (
         <DropdownEditor
           key={k}
           label={DROPDOWN_LABELS[k]}
           values={dropdowns[k]}
+          disabled={disabledDropdowns[k] ?? []}
           onAdd={(v) => addDropdownItem(k, v)}
           onRemove={(v) => removeDropdownItem(k, v)}
+          onRename={(from, to) => renameDropdownItem(k, from, to)}
+          onToggleDisabled={(v, off) => setDropdownItemDisabled(k, v, off)}
           onReorder={(vals) => setDropdown(k, vals)}
         />
       ))}
@@ -3521,38 +3558,105 @@ function DropdownsTab() {
 function DropdownEditor({
   label,
   values,
+  disabled,
   onAdd,
   onRemove,
+  onRename,
+  onToggleDisabled,
 }: {
   label: string;
   values: string[];
+  disabled: string[];
   onAdd: (v: string) => void;
   onRemove: (v: string) => void;
+  onRename: (from: string, to: string) => void;
+  onToggleDisabled: (v: string, disabled: boolean) => void;
   onReorder: (v: string[]) => void;
 }) {
   const [v, setV] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+
+  function commitRename() {
+    if (editing) onRename(editing, draft);
+    setEditing(null);
+    setDraft("");
+  }
+
   return (
     <div>
       <div className="font-medium text-sm mb-2">{label}</div>
       <div className="flex flex-wrap gap-2 mb-2">
-        {values.map((x) => (
-          <Badge key={x} variant="secondary" className="gap-1.5">
-            {x}
-            <button
-              onClick={() => onRemove(x)}
-              className="hover:text-destructive"
-              aria-label="Remove"
+        {values.map((x) => {
+          const isOff = disabled.includes(x);
+          if (editing === x) {
+            return (
+              <span key={x} className="flex items-center gap-1">
+                <Input
+                  autoFocus
+                  className="h-7 w-40 text-xs"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onBlur={commitRename}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename();
+                    if (e.key === "Escape") setEditing(null);
+                  }}
+                />
+              </span>
+            );
+          }
+          return (
+            <Badge
+              key={x}
+              variant={isOff ? "outline" : "secondary"}
+              className={`gap-1.5 ${isOff ? "opacity-50 line-through" : ""}`}
             >
-              <Trash2 className="h-3 w-3" />
-            </button>
-          </Badge>
-        ))}
+              <button
+                onClick={() => {
+                  setEditing(x);
+                  setDraft(x);
+                }}
+                title="Rename"
+              >
+                {x}
+              </button>
+              <button
+                onClick={() => onToggleDisabled(x, !isOff)}
+                className="hover:text-gold"
+                title={isOff ? "Enable" : "Disable"}
+                aria-label={isOff ? "Enable" : "Disable"}
+              >
+                {isOff ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+              </button>
+              <button
+                onClick={() => onRemove(x)}
+                className="hover:text-destructive"
+                aria-label="Delete"
+                title="Delete"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </Badge>
+          );
+        })}
         {values.length === 0 && (
           <span className="text-xs text-muted-foreground">No values yet.</span>
         )}
       </div>
       <div className="flex gap-2 max-w-md">
-        <Input value={v} onChange={(e) => setV(e.target.value)} placeholder="Add value…" />
+        <Input
+          value={v}
+          onChange={(e) => setV(e.target.value)}
+          placeholder="Add value…"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onAdd(v);
+              setV("");
+            }
+          }}
+        />
         <Button
           size="sm"
           onClick={() => {

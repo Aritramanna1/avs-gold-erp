@@ -25,6 +25,14 @@ const IPC = {
   WINDOW_CLOSE: "window:close",
   PRINT_LIST_PRINTERS: "print:list-printers",
   PRINT_HTML: "print:html",
+  PRINT_PREVIEW_HTML: "print:preview-html",
+  WASENDER_SET_TOKEN: "wasender:set-token",
+  WASENDER_CLEAR_TOKEN: "wasender:clear-token",
+  WASENDER_HAS_TOKEN: "wasender:has-token",
+  WASENDER_SET_APIKEY: "wasender:set-apikey",
+  WASENDER_CLEAR_APIKEY: "wasender:clear-apikey",
+  WASENDER_HAS_APIKEY: "wasender:has-apikey",
+  WASENDER_REQUEST: "wasender:request",
 } as const satisfies Record<string, IpcChannel>;
 const api = {
   app: {
@@ -59,6 +67,38 @@ const api = {
       },
     ): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke(IPC.PRINT_HTML, { html, ...options }),
+    /**
+     * Renders the document HTML to a PDF and opens it in Chromium's PDF
+     * viewer — the preview the user sees IS the bytes that get printed.
+     */
+    previewHtml: (
+      html: string,
+      options?: { title?: string; landscape?: boolean },
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke(IPC.PRINT_PREVIEW_HTML, { html, ...options }),
+  },
+  // WasenderAPI (WhatsApp). The renderer can store/forget a token and make
+  // authenticated requests, but can NEVER read the token back — it lives
+  // encrypted in the main process (see wasender.ts).
+  wasender: {
+    setToken: (token: string): Promise<{ ok: boolean; encrypted: boolean }> =>
+      ipcRenderer.invoke(IPC.WASENDER_SET_TOKEN, token),
+    clearToken: (): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.WASENDER_CLEAR_TOKEN),
+    hasToken: (): Promise<boolean> => ipcRenderer.invoke(IPC.WASENDER_HAS_TOKEN),
+    setApiKey: (key: string): Promise<{ ok: boolean; encrypted: boolean }> =>
+      ipcRenderer.invoke(IPC.WASENDER_SET_APIKEY, key),
+    clearApiKey: (): Promise<{ ok: boolean }> => ipcRenderer.invoke(IPC.WASENDER_CLEAR_APIKEY),
+    hasApiKey: (): Promise<boolean> => ipcRenderer.invoke(IPC.WASENDER_HAS_APIKEY),
+    request: (args: {
+      baseUrl: string;
+      method?: string;
+      path: string;
+      body?: unknown;
+      headers?: Record<string, string>;
+      timeoutMs?: number;
+      useApiKey?: boolean;
+    }): Promise<{ ok: boolean; status: number; data: unknown; error?: string }> =>
+      ipcRenderer.invoke(IPC.WASENDER_REQUEST, args),
   },
   // DORMANT — no renderer code calls this today (see main.ts). Kept so a
   // future feature can subscribe without touching the preload bridge.

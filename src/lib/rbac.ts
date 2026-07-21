@@ -8,6 +8,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSettings } from "@/lib/settings-store";
+import { isOfflineMode } from "@/lib/deployment-mode";
+import { getLocalSessionUser } from "@/lib/local-auth";
+import { ROLES } from "@/lib/permissions";
 
 export type AppRole =
   | "super_owner" // Platform administrator — unrestricted access to all companies, branches, system settings
@@ -78,6 +81,33 @@ const MATRIX: Record<Action, AppRole[]> = {
   "userManagement.edit": ["owner"],
 };
 
+/**
+ * Maps a local_users role label (the "Super Owner"/"Branch Manager"/... strings
+ * used by permissions.ts) onto this module's fine-grained AppRole set. Offline
+ * mode has no user_roles table to read, so the mapping lives here.
+ */
+function mapLocalRole(role: string, isSuperOwner: boolean): AppRole[] {
+  if (isSuperOwner || role === ROLES.SUPER_OWNER || role === ROLES.ADMINISTRATOR) {
+    return ["super_owner"];
+  }
+  switch (role) {
+    case ROLES.CEO:
+      return ["viewer"];
+    case ROLES.BRANCH_MANAGER:
+      return ["manager", "billing", "vault", "workshop", "accountant"];
+    case ROLES.WORKSHOP_MANAGER:
+    case ROLES.MANUFACTURING_STAFF:
+      return ["workshop", "vault"];
+    case ROLES.ACCOUNTANT:
+      return ["accountant"];
+    case ROLES.RETAIL_STAFF:
+    case ROLES.SALES_EXECUTIVE:
+      return ["billing"];
+    default:
+      return ["viewer"];
+  }
+}
+
 export function can(roles: AppRole[] | readonly string[], action: Action): boolean {
   // Super Owner bypasses all permission checks
   if (roles.includes("super_owner")) return true;
@@ -94,6 +124,16 @@ export function useRoles(): { roles: AppRole[]; email: string | null; ready: boo
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      // Offline mode (SAD §17): local_users is the sole source of roles —
+      // never query Supabase's user_roles table or its auth session.
+      if (isOfflineMode()) {
+        const localUser = await getLocalSessionUser();
+        if (cancelled) return;
+        setEmail(localUser?.email ?? null);
+        setRoles(localUser ? mapLocalRole(localUser.role, localUser.isSuperOwner) : []);
+        setReady(true);
+        return;
+      }
       const { data: sessionData } = await supabase.auth.getSession();
       const user = sessionData.session?.user;
       const userId = user?.id;

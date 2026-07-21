@@ -1,10 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  usePrintLog,
-  type PrintDocType,
-  type ReprintReason,
-  type PrintEvent,
-} from "@/lib/printlog-store";
+import { useCallback } from "react";
+import { type PrintDocType } from "@/lib/printlog-store";
+import { printDocument } from "@/lib/print-document";
 import { useOrders } from "@/lib/orders-store";
 import { useJobCards } from "@/lib/jobcards-store";
 import { useBilling } from "@/lib/billing-store";
@@ -289,98 +285,17 @@ export function usePrintRecord(
     linkedLabel = legacyArgs.linkedLabel || linkedLabel;
   }
 
-  const recordLogger = usePrintLog((s) => s.recordPrint);
-  const events = usePrintLog((s) => s.events);
-  const [reprintOpen, setReprintOpen] = useState(false);
-  const fired = useRef<string | null>(null);
-
   // Derive loading & error status synchronously based on data presence
   const loading = !record && !!id;
   const error =
     id && !record && !loading ? `Document metadata not found for reference "${id}".` : null;
 
-  // Find if this document has been printed before
-  const existingEvent =
-    docType && id ? events.find((e) => e.docType === docType && e.linkedId === id) : undefined;
-
-  const isReprint = !!existingEvent;
-
-  // Automatically record first viewing if no event exists
-  useEffect(() => {
-    if (!docType || !id || !docNumber) return;
-
-    const key = `${docType}_${id}`;
-    if (fired.current === key) return;
-    fired.current = key;
-
-    if (!existingEvent) {
-      recordLogger({
-        docType,
-        docNumber,
-        linkedId: id,
-        linkedLabel: linkedLabel || undefined,
-        printedBy: "Owner",
-      });
-    }
-  }, [docType, id, docNumber, linkedLabel, existingEvent, recordLogger]);
-
+  // V1: printing is unlimited and unrestricted. There is no print log, no
+  // reprint counter, no duplicate-print confirmation — a document may be
+  // printed as many times as the workshop needs, with one click.
   const handlePrintTrigger = useCallback(() => {
-    if (isReprint) {
-      setReprintOpen(true);
-    } else {
-      let pType: PrinterType = "a4";
-      if (docType === "jewellery_tag") pType = "tag";
-      else if (
-        docType?.includes("receipt") ||
-        docType?.includes("slip") ||
-        docType?.includes("invoice")
-      ) {
-        pType = "thermal_80";
-      }
-
-      hardwareService.submitPrintJob({
-        type: pType,
-        title: `${docType?.replace("_", " ").toUpperCase() || "Document"} - ${docNumber}`,
-        data: record,
-      });
-
-      setTimeout(() => window.print(), 50);
-    }
-  }, [isReprint, docType, docNumber, record]);
-
-  const recordReprint = useCallback(
-    (reason: ReprintReason, note?: string) => {
-      if (!docType || !id || !docNumber) return;
-      recordLogger({
-        docType,
-        docNumber,
-        linkedId: id,
-        linkedLabel: linkedLabel || undefined,
-        reason,
-        note,
-      });
-
-      let pType: PrinterType = "a4";
-      if (docType === "jewellery_tag") pType = "tag";
-      else if (
-        docType?.includes("receipt") ||
-        docType?.includes("slip") ||
-        docType?.includes("invoice")
-      ) {
-        pType = "thermal_80";
-      }
-
-      hardwareService.submitPrintJob({
-        type: pType,
-        title: `REPRINT: ${docType?.replace("_", " ").toUpperCase() || "Document"} - ${docNumber}`,
-        data: { ...record, reprintReason: reason, reprintNote: note },
-      });
-
-      setReprintOpen(false);
-      setTimeout(() => window.print(), 100);
-    },
-    [docType, id, docNumber, linkedLabel, recordLogger, record],
-  );
+    void printDocument(`${docType?.replace(/_/g, " ").toUpperCase() || "Document"} - ${docNumber}`);
+  }, [docType, docNumber]);
 
   return {
     record,
@@ -389,12 +304,14 @@ export function usePrintRecord(
     docNumber,
     linkedLabel,
     customerName,
-    isReprint,
-    reprintCount: existingEvent ? existingEvent.reprintCount : 0,
-    reprintOpen,
-    setReprintOpen,
     handlePrintTrigger,
-    recordReprint,
-    existingEvent,
+    // Retained as inert no-ops so the print routes that still destructure
+    // them keep compiling; nothing reads them any more.
+    isReprint: false,
+    reprintCount: 0,
+    reprintOpen: false,
+    setReprintOpen: () => {},
+    recordReprint: () => {},
+    existingEvent: undefined,
   };
 }

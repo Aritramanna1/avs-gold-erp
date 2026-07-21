@@ -1,16 +1,18 @@
-import { ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { ReactNode, useId, useLayoutEffect, useRef, useState } from "react";
 import { useSettings } from "@/lib/settings-store";
+import { usePrintSetup, type PrintMargins } from "@/lib/print-setup-store";
 import { PrintQR } from "@/components/print-qr";
 import { AvsPrintFooter } from "@/components/AvsPrintFooter";
 import { Logo } from "@/components/ui/Logo";
 import type { PrintDocType } from "@/lib/printlog-store";
 
-export type PrintSize = "a4" | "a5" | "a6" | "thermal" | "thermal58" | "tag";
+export type PrintSize = "a4" | "a5" | "a5l" | "a6" | "thermal" | "thermal58" | "tag";
 
 /** Physical dimensions per size, for anything (e.g. the print preview modal) that needs to display them without duplicating this table. */
 export const PRINT_SIZE_LABELS: Record<PrintSize, string> = {
   a4: "A4 (210 × 297mm)",
   a5: "A5 (148 × 210mm)",
+  a5l: "Half A4 / A5 Landscape (210 × 148mm)",
   a6: "A6 (105 × 148mm)",
   thermal: "Thermal 80mm",
   thermal58: "Thermal 58mm",
@@ -43,9 +45,87 @@ interface PrintLayoutProps {
   branchId?: string;
 }
 
-// A4 usable height in mm after PrintLayout's own margin (297mm page - 27mm
-// margin from the @page rule below), converted to px at 96dpi/25.4mm-per-inch.
-const A4_USABLE_HEIGHT_PX = ((297 - 27) / 25.4) * 96;
+export type PrintOrientation = "portrait" | "landscape";
+
+/**
+ * The CSS `@page size` for each format — its REAL physical page, not "auto".
+ *
+ * Every non-thermal size used to fall through to "A4 portrait", so an A5
+ * document was told to print on A4 stock. And the preview's override emitted
+ * `size: auto <orientation>`, which throws the paper size away entirely — which
+ * is why choosing a size changed nothing on paper. Both go through this table
+ * now, so what the user picks is what the printer is told.
+ */
+export const PAGE_SIZE_CSS: Record<PrintSize, string> = {
+  a4: "A4 portrait",
+  a5: "A5 portrait",
+  a5l: "A5 landscape",
+  a6: "A6 portrait",
+  thermal: "80mm auto",
+  thermal58: "58mm auto",
+  tag: "50mm 30mm",
+};
+
+/** Sizes with a fixed sheet, whose orientation the user may legitimately flip. */
+export const ARCHIVAL_SIZES: PrintSize[] = ["a4", "a5", "a5l", "a6"];
+
+/** Whether a format is portrait or landscape by nature. */
+export function defaultOrientation(size: PrintSize): PrintOrientation {
+  return size === "a5l" ? "landscape" : "portrait";
+}
+
+/**
+ * The `@page size` value for a format, optionally re-oriented by the user.
+ * Roll/label stock (thermal, tag) has no meaningful orientation — its size is
+ * returned untouched rather than being silently rotated.
+ */
+export function pageSizeCss(size: PrintSize, orientation?: PrintOrientation): string {
+  const base = PAGE_SIZE_CSS[size];
+  if (!orientation || !ARCHIVAL_SIZES.includes(size)) return base;
+  // "A4 portrait" → "A4 <orientation>"
+  const paper = base.split(" ")[0];
+  return `${paper} ${orientation}`;
+}
+
+const MM_TO_PX = 96 / 25.4; // 96dpi
+
+/**
+ * Physical sheet, in mm, for the sizes that have one. Roll/label stock
+ * (thermal, tag) has no fixed height and is absent on purpose — it is excluded
+ * from auto-fit and from orientation.
+ */
+export const SHEET_MM: Partial<Record<PrintSize, { width: number; height: number }>> = {
+  a4: { width: 210, height: 297 },
+  a5: { width: 148, height: 210 },
+  a5l: { width: 210, height: 148 },
+  a6: { width: 105, height: 148 },
+};
+
+/** The sheet as oriented — flipping orientation flips the sheet, on screen and on paper alike. */
+export function sheetMm(size: PrintSize, orientation: PrintOrientation) {
+  const sheet = SHEET_MM[size];
+  if (!sheet) return undefined;
+  const isLandscape = orientation === "landscape";
+  const long = Math.max(sheet.width, sheet.height);
+  const short = Math.min(sheet.width, sheet.height);
+  return isLandscape ? { width: long, height: short } : { width: short, height: long };
+}
+
+/** Default @page margins per size, in mm. The user may override all four (see print-setup-store). */
+export const DEFAULT_MARGINS: Record<PrintSize, PrintMargins> = {
+  a4: { top: 12, right: 15, bottom: 15, left: 15 },
+  a5: { top: 10, right: 12, bottom: 12, left: 12 },
+  a5l: { top: 8, right: 10, bottom: 12, left: 10 },
+  a6: { top: 8, right: 10, bottom: 10, left: 10 },
+  thermal: { top: 2, right: 2, bottom: 2, left: 2 },
+  thermal58: { top: 1, right: 1, bottom: 1, left: 1 },
+  tag: { top: 1, right: 1, bottom: 1, left: 1 },
+};
+
+export function marginCss(m: PrintMargins): string {
+  return `${m.top}mm ${m.right}mm ${m.bottom}mm ${m.left}mm`;
+}
+
 const MIN_FIT_SCALE = 0.75; // never shrink text past 75% — the legibility floor
 
 export function PrintLayout({
@@ -55,7 +135,7 @@ export function PrintLayout({
   docType,
   recordId,
   createdAt,
-  size = "a4",
+  size: declaredSize = "a4",
   showQR = true,
   qrLabel = "Verify",
   qrPosition = "header",
@@ -64,6 +144,23 @@ export function PrintLayout({
   branchId,
 }: PrintLayoutProps) {
   const { firm: profile, branches, selectedBranchId } = useSettings();
+  // Page setup (paper size, orientation, margins, scale, fit-to-page). The
+  // document declares its own default; the user's override wins. These same
+  // values produce BOTH the on-screen sheet below AND the @page rule the
+  // printer/printToPDF is given — so preview and paper always match.
+  const sizeOverride = usePrintSetup((s) => s.sizeOverride);
+  const orientationOverride = usePrintSetup((s) => s.orientation);
+  const marginOverride = usePrintSetup((s) => s.margins);
+  const scalePct = usePrintSetup((s) => s.scalePct);
+  const fitToPage = usePrintSetup((s) => s.fitToPage);
+
+  const size = sizeOverride ?? declaredSize;
+  const orientation: PrintOrientation = ARCHIVAL_SIZES.includes(size)
+    ? (orientationOverride ?? defaultOrientation(size))
+    : defaultOrientation(size);
+  const margins: PrintMargins = marginOverride ?? DEFAULT_MARGINS[size];
+  const sheet = sheetMm(size, orientation);
+  const scale = scalePct / 100;
   // Same branch-aware resolution print-header.tsx already uses — without
   // this, every document printed through PrintLayout showed the firm's
   // global address/phone/GSTIN only, never a branch's own override, even
@@ -75,33 +172,57 @@ export function PrintLayout({
   const displayGstin = branch?.gstin || profile.gstin;
   const bodyRef = useRef<HTMLDivElement>(null);
   const [fitScale, setFitScale] = useState(1);
-  const shouldAutoFit = autoFit && (size === "a4" || size === "a5" || size === "a6");
+  // Measured against THIS sheet at THIS orientation, minus THESE margins —
+  // not a hardcoded A4 — so fit-to-page fits the page actually being printed.
+  const usableHeightPx = sheet
+    ? (sheet.height - margins.top - margins.bottom) * MM_TO_PX
+    : undefined;
+  // Usable printable WIDTH, same basis. A wide ledger (many columns) overflows
+  // the sheet horizontally and gets clipped at the page edge — height-only
+  // auto-fit never caught that. Scaling by the worse of the two ratios keeps
+  // the whole document inside the chosen paper, so no column is ever cut.
+  const usableWidthPx = sheet ? (sheet.width - margins.left - margins.right) * MM_TO_PX : undefined;
+  const shouldAutoFit =
+    autoFit && fitToPage && usableHeightPx !== undefined && usableWidthPx !== undefined;
 
   useLayoutEffect(() => {
-    if (!shouldAutoFit || !bodyRef.current) return;
+    if (!shouldAutoFit || !usableHeightPx || !usableWidthPx || !bodyRef.current) return;
     const measure = () => {
       const el = bodyRef.current;
       if (!el) return;
-      el.style.transform = "";
+      el.style.zoom = "";
       const contentHeight = el.scrollHeight;
-      if (contentHeight <= A4_USABLE_HEIGHT_PX) {
-        setFitScale(1);
-        return;
-      }
-      const scale = Math.max(MIN_FIT_SCALE, A4_USABLE_HEIGHT_PX / contentHeight);
-      setFitScale(scale);
+      // scrollWidth catches horizontal overflow (a table wider than the sheet);
+      // clientWidth is the current laid-out width. Use the larger so an
+      // over-wide table shrinks even before it forces a scrollbar.
+      const contentWidth = Math.max(el.scrollWidth, el.clientWidth);
+      const heightScale = contentHeight > usableHeightPx ? usableHeightPx / contentHeight : 1;
+      const widthScale = contentWidth > usableWidthPx ? usableWidthPx / contentWidth : 1;
+      const next = Math.min(heightScale, widthScale);
+      // Width overflow is a hard cut (a lost column) — allow shrinking below the
+      // vertical legibility floor when it's width that overflows, so nothing is
+      // clipped; otherwise keep the floor. Below the floor, height overflow just
+      // paginates (zoom reflows and breaks across pages), so we don't shrink text
+      // into illegibility — we let it flow onto however many pages it needs.
+      const floor = widthScale < heightScale ? 0.4 : MIN_FIT_SCALE;
+      setFitScale(next < 1 ? Math.max(floor, next) : 1);
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(bodyRef.current);
     return () => ro.disconnect();
-  }, [shouldAutoFit, children]);
+  }, [shouldAutoFit, usableHeightPx, usableWidthPx, children]);
 
-  // Width and height mapping for physical paper sizes
-  const sizeClasses = {
-    a4: "w-[210mm] min-h-[297mm] p-8 mx-auto bg-white text-black border border-stone-200 shadow-md print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
-    a5: "w-[148mm] min-h-[210mm] p-6 mx-auto bg-white text-black border border-stone-200 shadow-sm print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
-    a6: "w-[105mm] min-h-[148mm] p-4 mx-auto bg-white text-black border border-stone-200 shadow-sm print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
+  // Padding/chrome only — the sheet's own width/height comes from `sheet`
+  // above (so an orientation flip actually re-shapes it on screen), and roll
+  // stock keeps its fixed roll width.
+  const sizeClasses: Record<PrintSize, string> = {
+    a4: "w-[210mm] p-8 mx-auto bg-white text-black border border-stone-200 shadow-md print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
+    a5: "w-[148mm] p-6 mx-auto bg-white text-black border border-stone-200 shadow-sm print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
+    // Half A4 — an A4 sheet cut across. The workshop's standard job-card stock:
+    // two per sheet, sits flat on the bench next to the piece.
+    a5l: "w-[210mm] p-5 mx-auto bg-white text-black border border-stone-200 shadow-sm print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
+    a6: "w-[105mm] p-4 mx-auto bg-white text-black border border-stone-200 shadow-sm print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
     thermal:
       "w-[80mm] p-4 mx-auto bg-white text-black border border-stone-200 print:border-none print:p-0 print:shadow-none print:w-full print:min-h-0",
     thermal58:
@@ -110,30 +231,25 @@ export function PrintLayout({
   };
 
   const isThermalOrTag = size === "thermal" || size === "thermal58" || size === "tag";
-
-  // Physical @page size/margin per format. Previously every non-thermal/tag
-  // size (including a5) fell through to "A4 portrait" here — meaning A5
-  // documents were told to print on A4 stock. Each size now maps to its own
-  // real page size.
-  const PAGE_SIZE: Record<PrintSize, string> = {
-    a4: "A4 portrait",
-    a5: "A5 portrait",
-    a6: "A6 portrait",
-    thermal: "80mm auto",
-    thermal58: "58mm auto",
-    tag: "50mm 30mm",
-  };
-  const PAGE_MARGIN: Record<PrintSize, string> = {
-    a4: "12mm 15mm 15mm 15mm",
-    a5: "10mm 12mm 12mm 12mm",
-    a6: "8mm 10mm 10mm 10mm",
-    thermal: "2mm",
-    thermal58: "1mm",
-    tag: "1mm",
-  };
+  // Scopes this instance's print reset, so a page holding several PrintLayouts
+  // (report shells) can't have one sheet's rule hit another's.
+  const rootId = `print-root-${useId().replace(/:/g, "")}`;
 
   return (
-    <div className={sizeClasses[size]} data-testid="print-layout-root" data-print-size={size}>
+    <div
+      id={rootId}
+      className={sizeClasses[size]}
+      data-testid="print-layout-root"
+      data-print-size={size}
+      data-print-orientation={orientation}
+      style={{
+        // CSS zoom (not transform) — it reflows and is honoured by Chromium's
+        // print/printToPDF renderer, so the scale the user sees is the scale
+        // that reaches the paper.
+        ...(scale !== 1 ? { zoom: scale } : {}),
+        ...(sheet ? { width: `${sheet.width}mm`, minHeight: `${sheet.height}mm` } : {}),
+      }}
+    >
       {/* Universal Print System Overrides */}
       <style>{`
         @media print {
@@ -149,9 +265,20 @@ export function PrintLayout({
           .no-print, [data-testid="print-toolbar"], header, footer, nav, aside {
             display: none !important;
           }
+          /* The on-screen sheet is sized in mm so the preview is physically
+             true; on paper the page box already IS that sheet, so the root
+             fills it instead of overflowing it by its own margins. */
+          #${rootId} {
+            width: 100% !important;
+            min-height: 0 !important;
+          }
+          /* The real page: the size and margins the user actually chose.
+             printToPDF runs with preferCSSPageSize, and printDocument()
+             carries this very rule into the print window — so this is what
+             the printer is told, not a decorative default. */
           @page {
-            size: ${PAGE_SIZE[size]};
-            margin: ${PAGE_MARGIN[size]};
+            size: ${pageSizeCss(size, orientation)};
+            margin: ${marginCss(margins)};
           }
           /* High-Contrast Table Border Enforcement */
           table {
@@ -269,19 +396,16 @@ export function PrintLayout({
 
       {/* Primary Payload Body — auto-fit shrinks content just enough to
           avoid a near-empty second page; never grows it, never shrinks past
-          the legibility floor, so genuinely long content still paginates. */}
+          the legibility floor. Uses `zoom` (not `transform: scale`): zoom
+          REFLOWS and paginates in Chromium's print/printToPDF renderer, so a
+          long ledger shrinks to the floor and then breaks cleanly across as
+          many pages as it needs. A transform would render one continuous
+          scaled block that overflows page one and gets cut off — the exact
+          overflow bug this replaces. */}
       <div
         ref={bodyRef}
         className="flex-1 min-h-[1.5in]"
-        style={
-          shouldAutoFit && fitScale < 1
-            ? {
-                transform: `scale(${fitScale})`,
-                transformOrigin: "top left",
-                width: `${100 / fitScale}%`,
-              }
-            : undefined
-        }
+        style={shouldAutoFit && fitScale < 1 ? { zoom: fitScale } : undefined}
       >
         {children}
       </div>

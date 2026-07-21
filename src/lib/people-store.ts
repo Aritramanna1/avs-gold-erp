@@ -147,6 +147,16 @@ export const usePeople = create<PeopleState>()((set, get) => ({
         updatedAt: now,
         docs: input.docs ?? {},
         ...input,
+        // AFTER the spread, so an explicit `branchId: undefined` or "" on the
+        // input can't clobber the default back to nothing.
+        //
+        // Defaulted HERE rather than in each form, because refresh() filters
+        // people by branch for non-global roles: a person saved without a
+        // branchId is invisible to the very user who just created them. The
+        // People form set this itself; Quick Add (Orders) did not — so a
+        // quick-added customer vanished from People on the next refresh while
+        // the order kept pointing at them.
+        branchId: input.branchId || useSettings.getState().selectedBranchId || undefined,
       };
       await peopleRepository.save(person);
       // Optimistic local update — realtime will confirm from DB
@@ -200,7 +210,12 @@ export function kycComplete(p: Person): boolean {
     const isDocMarked = !!p.docs[k];
     const attKey = `person:${p.id}:${k}`;
     const att = useAttachments.getState().items[attKey];
-    const isAttFileUploaded = !!(att?.fileDataUrl || att?.storagePath || att?.fileName);
+    const isAttFileUploaded = !!(
+      att?.checksum ||
+      att?.fileDataUrl ||
+      att?.storagePath ||
+      att?.fileName
+    );
     return isDocMarked || isAttFileUploaded;
   });
 }

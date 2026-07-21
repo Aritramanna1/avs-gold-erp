@@ -38,6 +38,7 @@ export type PrintDocType =
   | "karigar_custody_statement"
   | "worker_material_given"
   | "worker_material_return"
+  | "daily_material_slip"
   | "credit_note"
   | "debit_note"
   | "estimate_doc"
@@ -47,7 +48,7 @@ export type PrintDocType =
 export const PRINT_DOC_LABELS: Record<PrintDocType, string> = {
   order_slip: "Order Slip",
   gold_receipt: "Customer Gold Receipt",
-  old_gold_receipt: "Old Gold Receipt",
+  old_gold_receipt: "Gold Received from Customer Receipt",
   advance_receipt: "Advance Receipt",
   job_card: "Job Card",
   gold_issue_slip: "Gold Issue Slip",
@@ -78,6 +79,7 @@ export const PRINT_DOC_LABELS: Record<PrintDocType, string> = {
   karigar_custody_statement: "Karigar Custody Statement",
   worker_material_given: "Worker Material Given",
   worker_material_return: "Worker Material Return",
+  daily_material_slip: "Daily Material Slip",
   credit_note: "Credit Note",
   debit_note: "Debit Note",
   estimate_doc: "Estimate",

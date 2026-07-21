@@ -1,14 +1,29 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Outlet, Link, createRootRouteWithContext, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { PrintPreviewModal } from "@/components/print/PrintPreviewModal";
+import { Outlet, Link, CatchBoundary, createRootRouteWithContext } from "@tanstack/react-router";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { AuthGate } from "@/components/auth-gate";
+import { LicenseGate } from "@/components/license-gate";
 import { BackendGate } from "@/components/backend-gate";
 import { Toaster } from "@/components/ui/sonner";
-import { SessionLockOverlay } from "@/components/security/SessionLockOverlay";
-import { GlobalCommandPalette } from "@/components/GlobalCommandPalette";
+import { RouteErrorFallback } from "@/components/app-error-boundary";
+
+const PrintPreviewModal = lazy(() =>
+  import("@/components/print/PrintPreviewModal").then((module) => ({
+    default: module.PrintPreviewModal,
+  })),
+);
+const SessionLockOverlay = lazy(() =>
+  import("@/components/security/SessionLockOverlay").then((module) => ({
+    default: module.SessionLockOverlay,
+  })),
+);
+const GlobalCommandPalette = lazy(() =>
+  import("@/components/GlobalCommandPalette").then((module) => ({
+    default: module.GlobalCommandPalette,
+  })),
+);
 
 function NotFoundComponent() {
   return (
@@ -33,36 +48,7 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
-  const router = useRouter();
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight">This page didn't load</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong. Try again or head back home.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
-          >
-            Try again
-          </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
-        </div>
-      </div>
-    </div>
-  );
+  return <RouteErrorFallback error={error} reset={reset} />;
 }
 
 import { useSettings } from "@/lib/settings-store";
@@ -94,11 +80,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useRouterState } from "@tanstack/react-router";
-import { useSupabaseSync } from "@/lib/supabase-sync";
 import { usePrintEngine } from "@/lib/print-engine";
+import { reportUnexpectedError, showErrorToast } from "@/lib/error-handling";
 
 function RootComponent() {
-  useSupabaseSync();
   const { queryClient } = Route.useRouteContext();
   const location = useRouterState({ select: (s) => s.location });
   const currentPath = location.pathname;
@@ -118,189 +103,180 @@ function RootComponent() {
     currentPath.startsWith("/invite/") ||
     currentPath.startsWith("/doc/");
 
+  /**
+   * A print route renders the DOCUMENT ONLY — no sidebar, no header, no app
+   * chrome (see the `isPrintRoute` branch below, which skips AppShell entirely).
+   *
+   * The substring tests alone were not enough: `/workshop/receive-slip/:id` and
+   * `/workshop/filings-slip/:id` are print documents that contain neither
+   * "print" nor "-print", so they were rendering INSIDE the app shell — which is
+   * how the sidebar could end up on a printed slip. Printable routes that don't
+   * happen to have "print" in their name are listed explicitly instead of being
+   * guessed at.
+   */
+  const PRINT_ROUTE_PREFIXES = ["/workshop/receive-slip/", "/workshop/filings-slip/"];
+
   const isPrintRoute =
     currentPath.includes("/print") ||
     currentPath.includes("-print") ||
-    currentPath.includes("print-log");
+    currentPath.includes("print-log") ||
+    PRINT_ROUTE_PREFIXES.some((p) => currentPath.startsWith(p));
 
-  // Test-only seed helper — DEV builds only, for Playwright E2E harness.
+  // Start non-essential services in stages after the shell has painted. This
+  // avoids SQLite, network, and scheduler work competing with authentication
+  // and the first useful render.
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      import("@/lib/test-seed").then((m) => m.installTestSeedOnWindow());
-      // Exposes LocalDatabaseManager for Plan 1 Step 2 validation scripts.
-      // Dormant otherwise — nothing in the app calls into local-db.ts unless
-      // VITE_ENABLE_LOCAL_DB is set (see src/integrations/supabase/client.ts).
-      import("@/lib/local-db").then((m) => {
-        (window as unknown as { __localDb?: typeof m }).__localDb = m;
-      });
-      // Exposes createRepository for Plan 1 Step 3 (Local Write Engine)
-      // validation scripts — lets a test drive saveLocal/updateLocal/
-      // deleteLocal/bulkSaveLocal through the exact same code path stores use.
-      import("@/lib/repositories/base-repository").then((m) => {
-        (
-          window as unknown as { __createRepository?: typeof m.createRepository }
-        ).__createRepository = m.createRepository;
-      });
-      // Exposes the sync engine for Plan 1 Step 4 validation scripts. Not
-      // invoked automatically anywhere — no background sync loop is wired up.
-      import("@/lib/sync-engine").then((m) => {
-        (window as unknown as { __syncEngine?: typeof m }).__syncEngine = m;
-      });
-      // Exposes saveDirect for Step 4 conflict-detection validation scripts
-      // (simulating a remote-side edit made outside our own outbox).
-      import("@/lib/supabase-write").then((m) => {
-        (window as unknown as { __saveDirect?: typeof m.saveDirect }).__saveDirect = m.saveDirect;
-      });
-      // Exposes the local file store for Plan 1 Step 6 validation scripts.
-      import("@/lib/local-file-store").then((m) => {
-        (window as unknown as { __fileStore?: typeof m }).__fileStore = m;
-      });
-      // Exposes the communication retry queue for validation scripts.
-      import("@/lib/comm/comm-queue").then((m) => {
-        (window as unknown as { __commQueue?: typeof m }).__commQueue = m;
-      });
-      // Exposes commService for validation scripts (e.g. monkey-patching
-      // .send() to simulate a transient provider failure/recovery).
-      import("@/lib/comm/service").then((m) => {
-        (window as unknown as { __commService?: typeof m.commService }).__commService =
-          m.commService;
-      });
-      // Exposes the audit log + device registry for Plan 1 Step 8 validation scripts.
-      import("@/lib/security/audit-log").then((m) => {
-        (window as unknown as { __auditLog?: typeof m }).__auditLog = m;
-      });
-      import("@/lib/security/device-registry").then((m) => {
-        (window as unknown as { __deviceRegistry?: typeof m }).__deviceRegistry = m;
-      });
-      import("@/lib/security/session-lock").then((m) => {
-        (window as unknown as { __sessionLock?: typeof m }).__sessionLock = m;
-      });
-      import("@/lib/comm/scheduler").then((m) => {
-        (window as unknown as { __scheduler?: typeof m }).__scheduler = m;
-      });
-      import("@/lib/comm/automation-settings-store").then((m) => {
-        (window as unknown as { __automationSettings?: typeof m }).__automationSettings = m;
-      });
-      import("@/lib/reconciliation/gold-reconciliation").then((m) => {
-        (window as unknown as { __goldRecon?: typeof m }).__goldRecon = m;
-      });
-      import("@/lib/hardware-service").then((m) => {
-        (window as unknown as { __hardwareService?: typeof m.hardwareService }).__hardwareService =
-          m.hardwareService;
-      });
-      import("@/lib/thermal-printer").then((m) => {
-        (
-          window as unknown as { __thermalPrinter?: typeof m.thermalPrinterService }
-        ).__thermalPrinter = m.thermalPrinterService;
-      });
-      import("@/lib/hardware/tag-pdf-fallback").then((m) => {
-        (window as unknown as { __tagPdfFallback?: typeof m }).__tagPdfFallback = m;
-      });
-      import("@/lib/print/print-queue").then((m) => {
-        (window as unknown as { __printQueue?: typeof m }).__printQueue = m;
-      });
-      import("@/lib/comm/escalation").then((m) => {
-        (window as unknown as { __escalation?: typeof m }).__escalation = m;
-      });
-      import("@/lib/comm/comm-analytics").then((m) => {
-        (window as unknown as { __commAnalytics?: typeof m }).__commAnalytics = m;
-      });
-      import("@/lib/security/disaster-recovery").then((m) => {
-        (window as unknown as { __disasterRecovery?: typeof m }).__disasterRecovery = m;
-      });
-      import("@/lib/security/key-management").then((m) => {
-        (window as unknown as { __keyManagement?: typeof m }).__keyManagement = m;
-      });
-      import("@/lib/reports/inventory-lifecycle").then((m) => {
-        (window as unknown as { __inventoryLifecycle?: typeof m }).__inventoryLifecycle = m;
-      });
-      import("@/lib/workflow/approval-workflow").then((m) => {
-        (window as unknown as { __approvalWorkflow?: typeof m }).__approvalWorkflow = m;
-      });
-      import("@/lib/stone-tracking-store").then((m) => {
-        (window as unknown as { __stoneTracking?: typeof m }).__stoneTracking = m;
-      });
-      import("@/lib/lot-batch-store").then((m) => {
-        (window as unknown as { __lotBatches?: typeof m }).__lotBatches = m;
-      });
-      import("@/lib/reports/recent-activity").then((m) => {
-        (window as unknown as { __recentActivity?: typeof m }).__recentActivity = m;
-      });
-      import("@/lib/saved-filters-store").then((m) => {
-        (window as unknown as { __savedFilters?: typeof m }).__savedFilters = m;
-      });
-      import("@/lib/comm/reminder-sweeps").then((m) => {
-        (window as unknown as { __reminderSweeps?: typeof m }).__reminderSweeps = m;
-      });
-      import("@/lib/business-rules-store").then((m) => {
-        (window as unknown as { __businessRules?: typeof m }).__businessRules = m;
-      });
-      import("@/lib/billing-documents-store").then((m) => {
-        (window as unknown as { __billingDocs?: typeof m }).__billingDocs = m;
-      });
-      // Exposes the app's real settings-store and billing-store singletons for
-      // Playwright tests that need to mutate GST/tax config and call
-      // computeInvoiceTotals directly. Tests must use these, NOT a separate
-      // `/* @vite-ignore */ import("/src/lib/...")` of the same file by raw
-      // path — that pattern created a second, independent module instance in
-      // Vite dev mode (its own Zustand store), so a test's setState() never
-      // reached the instance computeInvoiceTotals actually reads from,
-      // silently testing stale default config instead of what was just set.
+    if (
+      import.meta.env.DEV ||
+      (typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1" ||
+          window.location.hostname === "::1"))
+    ) {
+      console.log(`[startup] renderer mounted +${Math.round(performance.now())}ms`);
+      import("@/lib/test-seed")
+        .then((m) => {
+          m.installTestSeedOnWindow();
+        })
+        .catch((e) => {
+          console.error("Failed to load test seed:", e);
+        });
       import("@/lib/settings-store").then((m) => {
-        (window as unknown as { __settingsStore?: typeof m }).__settingsStore = m;
+        (window as any).__settingsStore = m;
       });
       import("@/lib/billing-store").then((m) => {
-        (window as unknown as { __billingStore?: typeof m }).__billingStore = m;
+        (window as any).__billingStore = m;
       });
-      // Same reasoning: the Gold Reconciliation Engine test needs to seed a
-      // manufacturing bill into the exact store instance window.__goldRecon
-      // itself reads from — a separate raw-path dynamic import of this file
-      // would silently create a second, disconnected store instance.
       import("@/lib/manufacturing-bill-store").then((m) => {
-        (window as unknown as { __mfgBillStore?: typeof m }).__mfgBillStore = m;
+        (window as any).__mfgBillStore = m;
       });
-      // Same reasoning: the offline-sync e2e test needs getSyncStatus() to
-      // read from the exact local-db.ts module instance the app's own
-      // startSyncOutboxScheduler() writes through, not a second disconnected
-      // instance with its own (uninitialized) `db` variable.
       import("@/lib/sync-engine").then((m) => {
-        (window as unknown as { __syncEngine?: typeof m }).__syncEngine = m;
+        (window as any).__syncEngine = m;
+      });
+      import("@/lib/ledger-store").then((m) => {
+        (window as any).__ledgerEntries = () => m.useLedger.getState().entries;
+      });
+      // Permanent regression coverage (e2e/tests/plan1-stabilization.spec.ts)
+      // for the offline-first migration's later phases — exposes the same
+      // module surface used during each feature's original validation.
+      import("@/lib/security/audit-log").then((m) => {
+        (window as any).__auditLog = m;
+      });
+      import("@/lib/local-db").then((m) => {
+        (window as any).__localDb = m;
+      });
+      import("@/lib/security/device-registry").then((m) => {
+        (window as any).__deviceRegistry = m;
+      });
+      import("@/lib/security/session-lock").then((m) => {
+        (window as any).__sessionLock = m;
+      });
+      import("@/lib/comm/comm-queue").then((m) => {
+        (window as any).__commQueue = m;
+      });
+      import("@/lib/comm/service").then((m) => {
+        (window as any).__commService = m.commService;
+      });
+      import("@/lib/comm/automation-settings-store").then((m) => {
+        (window as any).__automationSettings = m;
+      });
+      import("@/lib/reconciliation/gold-reconciliation").then((m) => {
+        (window as any).__goldRecon = m;
+      });
+      import("@/lib/hardware-service").then((m) => {
+        (window as any).__hardwareService = m.hardwareService;
+      });
+      import("@/lib/print/print-queue").then((printQueueMod) => {
+        import("@/lib/hardware-service").then((hw) => {
+          // submitPrintJob's real signature is job.type/{success,message,jobId,status}
+          // (hardware-service.ts) — this thin adapter is the one place that
+          // maps the test's docType/tagData vocabulary onto it, so the
+          // regression suite exercises the actual production call path
+          // rather than a second, parallel print entry point.
+          (window as any).__printQueue = {
+            submitPrintJob: (job: { docType: string; title: string; tagData?: unknown }) =>
+              hw.hardwareService.submitPrintJob({
+                type: job.docType as any,
+                title: job.title,
+                data: null,
+                tagData: job.tagData as any,
+              }),
+            getPrintJobHistory: printQueueMod.getPrintJobHistory,
+          };
+        });
       });
     }
-    // Background drain of any queued (previously failed) communications —
-    // runs regardless of DEV/PROD, since a real install needs this too.
-    import("@/lib/comm/comm-queue").then((m) => m.startCommQueueScheduler());
-    // Background drain of the offline-write sync outbox (Plan 1 Step 3) —
-    // same "runs regardless of DEV/PROD" reasoning as the comm queue above.
-    import("@/lib/sync-engine").then((m) => m.startSyncOutboxScheduler());
-    // Bullion rate auto-refresh — a no-op per its own fetchNow() logic on any
-    // branch whose goldRateSource is "manual" (the default), so this is safe
-    // to always start rather than gating it behind a check here.
-    import("@/lib/bullion-rate-service").then((m) => m.startBullionRateScheduler());
-    // Registers daily/weekly/monthly report jobs and starts the background
-    // scheduler that checks for due jobs every minute.
-    Promise.all([
-      import("@/lib/comm/scheduler"),
-      import("@/lib/comm/scheduled-reports"),
-      import("@/lib/comm/reminder-sweeps"),
-      import("@/lib/reconciliation/scheduled-reconciliation"),
-      import("@/lib/security/disaster-recovery"),
-    ]).then(([scheduler, reports, reminders, reconciliation, disasterRecovery]) => {
-      reports.registerScheduledReportJobs();
-      reminders.registerReminderSweeps();
-      reconciliation.registerGoldReconciliationJob();
-      disasterRecovery.registerDisasterRecoveryDrillJob();
-      scheduler.startScheduler();
+    const stops: Array<() => void> = [];
+    let cancelled = false;
+    const protect = (promise: Promise<unknown>, context: string) => {
+      void promise.catch((error) => {
+        const normalized = reportUnexpectedError(error, context);
+        showErrorToast(normalized);
+      });
+    };
+    const schedule = (delay: number, task: () => void) =>
+      window.setTimeout(() => {
+        if (cancelled) return;
+        const idle = window.requestIdleCallback;
+        if (idle) idle(task, { timeout: 3000 });
+        else task();
+      }, delay);
+
+    const securityTimer = schedule(1_500, () => {
+      protect(
+        import("@/lib/security/device-registry").then((m) => m.registerThisDevice()),
+        "startup.device-registry",
+      );
+      protect(
+        import("@/lib/security/session-lock").then((m) => {
+          if (!cancelled) stops.push(m.startSessionLockMonitor());
+        }),
+        "startup.session-lock",
+      );
     });
-    // Registers this machine in the device registry (Plan 1 Step 8) and
-    // starts idle-timeout session locking — both run in every build, not
-    // just DEV, since real installs need them too.
-    import("@/lib/security/device-registry").then((m) => m.registerThisDevice());
-    let stopSessionLock: (() => void) | undefined;
-    import("@/lib/security/session-lock").then((m) => {
-      stopSessionLock = m.startSessionLockMonitor();
+    const operationalTimer = schedule(6_000, () => {
+      protect(
+        import("@/lib/comm/comm-queue").then((m) => stops.push(m.startCommQueueScheduler())),
+        "startup.comm-queue",
+      );
+      protect(
+        import("@/lib/sync-engine").then((m) => stops.push(m.startSyncOutboxScheduler())),
+        "startup.sync-engine",
+      );
+      protect(
+        import("@/lib/bullion-rate-service").then((m) => stops.push(m.startBullionRateScheduler())),
+        "startup.bullion-rate",
+      );
+      protect(
+        import("@/lib/security/backup-scheduler").then((m) => stops.push(m.startBackupScheduler())),
+        "startup.backup-scheduler",
+      );
     });
-    return () => stopSessionLock?.();
+    const automationTimer = schedule(12_000, () => {
+      protect(
+        Promise.all([
+          import("@/lib/comm/scheduler"),
+          import("@/lib/comm/scheduled-reports"),
+          import("@/lib/comm/reminder-sweeps"),
+          import("@/lib/reconciliation/scheduled-reconciliation"),
+          import("@/lib/security/disaster-recovery"),
+          import("@/lib/comm/scheduled-statements"),
+        ]).then(([scheduler, reports, reminders, reconciliation, disasterRecovery, statements]) => {
+          reports.registerScheduledReportJobs();
+          reminders.registerReminderSweeps();
+          reconciliation.registerGoldReconciliationJob();
+          disasterRecovery.registerDisasterRecoveryDrillJob();
+          statements.registerWeeklyStatementJobs();
+          if (!cancelled) stops.push(scheduler.startScheduler());
+        }),
+        "startup.automation-scheduler",
+      );
+    });
+    return () => {
+      cancelled = true;
+      [securityTimer, operationalTimer, automationTimer].forEach(window.clearTimeout);
+      stops.forEach((stop) => stop());
+    };
   }, []);
 
   if (isPublic) {
@@ -309,7 +285,9 @@ function RootComponent() {
         <ThemeProvider>
           <LanguageProvider>
             <div className="min-h-screen bg-background">
-              <Outlet />
+              <CatchBoundary getResetKey={() => currentPath} errorComponent={RouteErrorFallback}>
+                <Outlet />
+              </CatchBoundary>
             </div>
             <Toaster richColors position="top-right" />
           </LanguageProvider>
@@ -326,7 +304,12 @@ function RootComponent() {
             <AuthGate>
               <BackendGate>
                 <div className="min-h-screen bg-white text-black">
-                  <Outlet />
+                  <CatchBoundary
+                    getResetKey={() => currentPath}
+                    errorComponent={RouteErrorFallback}
+                  >
+                    <Outlet />
+                  </CatchBoundary>
                 </div>
               </BackendGate>
             </AuthGate>
@@ -342,21 +325,32 @@ function RootComponent() {
       <ThemeProvider>
         <LanguageProvider>
           <AuthGate>
-            <BackendGate>
-              <AppShell>
-                <Outlet />
-              </AppShell>
-            </BackendGate>
+            <LicenseGate>
+              <BackendGate>
+                <AppShell>
+                  <CatchBoundary
+                    getResetKey={() => currentPath}
+                    errorComponent={RouteErrorFallback}
+                  >
+                    <Outlet />
+                  </CatchBoundary>
+                </AppShell>
+              </BackendGate>
+            </LicenseGate>
           </AuthGate>
           <Toaster richColors position="top-right" />
-          <SessionLockOverlay />
-          <GlobalCommandPalette />
-          <PrintPreviewModal
-            isOpen={isOpen}
-            onClose={closePrint}
-            title={printTitle}
-            printUrl={printUrl}
-          />
+          <Suspense fallback={null}>
+            <SessionLockOverlay />
+            <GlobalCommandPalette />
+            {isOpen ? (
+              <PrintPreviewModal
+                isOpen={isOpen}
+                onClose={closePrint}
+                title={printTitle}
+                printUrl={printUrl}
+              />
+            ) : null}
+          </Suspense>
         </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>

@@ -19,11 +19,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLedger, computeBalances } from "@/lib/ledger-store";
+import { useOrders } from "@/lib/orders-store";
 import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
 import { useWorkerGoldBook, WORKER_ISSUE_MATERIALS } from "@/lib/worker-gold-book-store";
 import { useMaterialVault } from "@/lib/material-vault-store";
 import { issueMaterialToVaultCategory, ISSUE_VAULT_MOVEMENT_TYPE } from "@/lib/material-vault-sync";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
 import { Hammer, AlertTriangle } from "lucide-react";
 
@@ -162,6 +163,15 @@ export function WorkerIssueDialog({
           actorEmail: data.session?.user.email ?? null,
         });
       }
+
+      // Order Timeline entry — mirrors the pattern send-to-polishing-dialog.tsx
+      // uses (appendTimeline), so a gold/material issue shows up in the
+      // order's own activity history the same way sending to polishing does.
+      await useOrders.getState().appendTimeline(orderId, {
+        ts: Date.now(),
+        label: "Gold / Material Issue",
+        note: `${mgToGrams(grossMg)}g ${material} → ${worker.fullName}`,
+      });
 
       onSaved?.({ material, grossMg, workerName: worker.fullName });
       onClose();

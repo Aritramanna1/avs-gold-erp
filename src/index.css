@@ -18,7 +18,17 @@
   .tabs-list,
   input,
   select,
-  [data-testid="print-toolbar"] {
+  [data-testid="print-toolbar"],
+  /* Overlays that live in portals outside the printed document: toasts,
+     dialogs, popovers, tooltips, bug-report widgets. Without these, a toast
+     or an open dialog lands on the paper on top of the document. */
+  [data-sonner-toaster],
+  [data-radix-popper-content-wrapper],
+  [role="dialog"],
+  [role="alertdialog"],
+  [role="tooltip"],
+  [role="status"],
+  [role="alert"] {
     display: none !important;
   }
 

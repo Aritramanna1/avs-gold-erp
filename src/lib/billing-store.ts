@@ -79,6 +79,14 @@ export interface InvoiceItem {
    * round(goldValuePaise * makingChargePct / 100) at entry time.
    */
   makingChargePct?: number;
+  /**
+   * "job_work" (default): the customer (jeweller) already owns the gold —
+   * bill only making/stone/hallmark/other charges, goldValuePaise is still
+   * computed for reference/print but excluded from lineTotalPaise.
+   * "full_value": legacy retail-style sale of workshop-owned stock (e.g.
+   * ready_stock billing type) — goldValuePaise is included in the total.
+   */
+  chargeMode?: "job_work" | "full_value";
 }
 
 export interface PaymentRecord {
@@ -313,9 +321,12 @@ export function computeItemTotals(
 ): { goldValuePaise: number; lineTotalPaise: number } {
   // Gold value uses NET weight (gross - less) × purity / 1000 = fine × rate / 1000
   // We use fineMg × rate(₹/g in paise) / 1000 to get paise.
+  // Always computed (used for reference/print and by full_value charging),
+  // even in job_work mode where it's excluded from the billed total below.
   const goldValuePaise = Math.round((it.fineMg * it.goldRatePerGramPaise) / 1000);
+  const chargeMode = it.chargeMode ?? "job_work";
   const lineTotalPaise =
-    goldValuePaise +
+    (chargeMode === "full_value" ? goldValuePaise : 0) +
     it.makingChargesPaise +
     it.stoneChargesPaise +
     (it.hallmarkChargesPaise ?? 0) +

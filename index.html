@@ -13,13 +13,154 @@
     <link rel="manifest" href="/site.webmanifest?v=20260705" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fonts load non-render-blocking: first paint never waits on the network
+         (critical for LCP, and for Offline/Electron where this host is
+         unreachable). System-font fallbacks render immediately; the branded
+         faces swap in when/if they arrive.
+         ponytail: remote fonts; bundle @fontsource for true-offline typography. -->
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      />
+    </noscript>
+    <!-- Instant boot skeleton: paints before any JS/CSS bundle so the user
+         never sees a blank white screen — and never a spinning circle. It is
+         shaped like the app shell (sidebar rail + header + module body) so it
+         reads as "the app is arriving", matching the React <AppBootSkeleton>
+         that takes over. React's createRoot replaces #root's children on
+         mount, so this clears itself with zero extra JS. -->
+    <!-- Set the theme class on <html> BEFORE any paint, from the same
+         localStorage key ThemeProvider uses (default light). This makes the
+         splash below AND the React skeleton match the user's theme from the
+         first frame — no black screen in Light Mode, no flash. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("mtj-app-theme") || "light";
+          var dark =
+            t === "dark" ||
+            (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.add(dark ? "dark" : "light");
+        } catch (e) {
+          document.documentElement.classList.add("light");
+        }
+      })();
+    </script>
+    <style>
+      /* Theme-aware splash: light by default, dark only when <html> carries the
+         .dark class the script above (and later ThemeProvider) sets. */
+      #boot-splash {
+        --bs-bg: #faf9f5;
+        --bs-border: #e7e5e0;
+        --bs-bar-a: #e7e5e0;
+        --bs-bar-b: #f2f0ec;
+        position: fixed;
+        inset: 0;
+        display: flex;
+        background: var(--bs-bg);
+        z-index: 2147483647;
+      }
+      html.dark #boot-splash {
+        --bs-bg: #141318;
+        --bs-border: #26262f;
+        --bs-bar-a: #14141b;
+        --bs-bar-b: #1e1e28;
+      }
+      #boot-splash .bs-rail {
+        width: 256px;
+        flex-shrink: 0;
+        border-right: 1px solid var(--bs-border);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      #boot-splash .bs-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      #boot-splash .bs-header {
+        height: 64px;
+        border-bottom: 1px solid var(--bs-border);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 32px;
+      }
+      #boot-splash .bs-body {
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      #boot-splash .bs-cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+      #boot-splash .bs-bar {
+        border-radius: 8px;
+        background: linear-gradient(
+          90deg,
+          var(--bs-bar-a) 25%,
+          var(--bs-bar-b) 37%,
+          var(--bs-bar-a) 63%
+        );
+        background-size: 400% 100%;
+        animation: bs-shimmer 1.4s ease infinite;
+      }
+      @keyframes bs-shimmer {
+        0% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0 50%;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-splash" aria-label="Loading AVS Gold ERP">
+        <div class="bs-rail">
+          <div class="bs-bar" style="height: 36px"></div>
+          <div class="bs-bar" style="height: 32px; margin-top: 12px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+        </div>
+        <div class="bs-main">
+          <div class="bs-header">
+            <div class="bs-bar" style="height: 32px; width: 160px"></div>
+            <div class="bs-bar" style="height: 32px; width: 96px; margin-left: auto"></div>
+            <div class="bs-bar" style="height: 36px; width: 36px; border-radius: 50%"></div>
+            <div class="bs-bar" style="height: 36px; width: 120px; border-radius: 999px"></div>
+          </div>
+          <div class="bs-body">
+            <div class="bs-bar" style="height: 32px; width: 240px"></div>
+            <div class="bs-cards">
+              <div class="bs-bar" style="height: 92px"></div>
+              <div class="bs-bar" style="height: 92px"></div>
+              <div class="bs-bar" style="height: 92px"></div>
+              <div class="bs-bar" style="height: 92px"></div>
+            </div>
+            <div class="bs-bar" style="height: 320px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

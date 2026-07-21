@@ -2,6 +2,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { initLocalDb, queryTable, upsertRow, deleteRow, runLocal } from "@/lib/local-db";
+import { isOfflineMode } from "@/lib/deployment-mode";
 
 function sanitizeEnvValue(val: string | undefined | null): string {
   if (!val) return "";
@@ -359,14 +360,59 @@ export function getRawSupabaseClient(): ReturnType<typeof createSupabaseClient> 
 // development/testing via VITE_ENABLE_LOCAL_DB=true.
 const LOCAL_DB_READS_ENABLED = import.meta.env.VITE_ENABLE_LOCAL_DB === "true";
 
+/**
+ * Offline-mode auth stub (TAD §14, SAD §17: "Offline mode must never require
+ * internet"). In Offline deployment mode the local `local_users` table is the
+ * only credential store — see src/lib/local-auth.ts. Every supabase.auth call
+ * therefore has to resolve locally, with no session and no network: callers
+ * see "signed out" and fall through to the local auth path instead of firing
+ * a request at the Supabase project.
+ */
+const OFFLINE_AUTH_ERROR = { message: "Offline mode: cloud authentication is disabled." };
+
+const offlineAuth = {
+  getSession: async () => ({ data: { session: null }, error: null }),
+  getUser: async () => ({ data: { user: null }, error: null }),
+  onAuthStateChange: () => ({
+    data: { subscription: { unsubscribe: () => {} } },
+  }),
+  signOut: async () => ({ error: null }),
+  signInWithPassword: async () => ({
+    data: { session: null, user: null },
+    error: OFFLINE_AUTH_ERROR,
+  }),
+  signInWithOtp: async () => ({ data: { session: null, user: null }, error: OFFLINE_AUTH_ERROR }),
+  signUp: async () => ({ data: { session: null, user: null }, error: OFFLINE_AUTH_ERROR }),
+  resetPasswordForEmail: async () => ({ data: null, error: OFFLINE_AUTH_ERROR }),
+  updateUser: async () => ({ data: { user: null }, error: OFFLINE_AUTH_ERROR }),
+  setSession: async () => ({ data: { session: null, user: null }, error: OFFLINE_AUTH_ERROR }),
+  refreshSession: async () => ({ data: { session: null, user: null }, error: OFFLINE_AUTH_ERROR }),
+};
+
 export function getSupabaseClient(): ReturnType<typeof createSupabaseClient> {
   if (_supabaseClient) return _supabaseClient;
   _supabaseClient = createSupabaseClient();
-  if (!LOCAL_DB_READS_ENABLED) return _supabaseClient;
   const proxy = new Proxy(_supabaseClient, {
     get(target, prop, receiver) {
-      if (prop === "from") {
+      // Decided per call, not at module load: the deployment mode is only
+      // known after local-db hydrates, which happens after this module is
+      // first imported.
+      const offline = isOfflineMode();
+      if (prop === "from" && (offline || LOCAL_DB_READS_ENABLED)) {
         return (table: string) => new LocalQuery(table);
+      }
+      if (offline && prop === "auth") return offlineAuth;
+      // Every remaining network surface is refused rather than silently
+      // reaching the network. `rpc`/`channel` callers already degrade
+      // gracefully (see document-numbering.ts's offline fallback); storage and
+      // functions are cloud-only features with no offline equivalent.
+      if (offline && (prop === "rpc" || prop === "channel")) {
+        return () => {
+          throw new Error(`Offline mode: supabase.${String(prop)} is unavailable.`);
+        };
+      }
+      if (offline && (prop === "functions" || prop === "storage" || prop === "realtime")) {
+        throw new Error(`Offline mode: supabase.${String(prop)} is unavailable.`);
       }
       return Reflect.get(target, prop, receiver);
     },

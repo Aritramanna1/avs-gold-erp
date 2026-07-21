@@ -14,48 +14,98 @@ import {
 import {
   useOrders,
   ORDER_STATUS_LABELS,
+  ORDER_STATUS_FLOW,
   ORDER_TYPE_LABELS,
+  orderItems,
+  orderTotals,
+  productionTypeLabel,
   type OrderStatus,
   type OrderType,
 } from "@/lib/orders-store";
+import { renderOrderTemplate } from "@/lib/order-messages";
 import { usePeople } from "@/lib/people-store";
+import { useJobCards } from "@/lib/jobcards-store";
 import { mgToGrams } from "@/lib/gold";
-import {
-  deliveryBucket,
-  customerReminderMessage,
-  karigarReminderMessage,
-} from "@/lib/orders-tracking";
+import { deliveryBucket } from "@/lib/orders-tracking";
 import { ReminderDialog } from "@/components/reminder-dialog";
 import { Plus, Search, ShoppingBag, Eye, Calendar, Send } from "lucide-react";
 import { useBranchFilter } from "@/lib/branch-filter";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useSettings } from "@/lib/settings-store";
 
 export const Route = createFileRoute("/orders/")({
   head: () => ({ meta: [{ title: "Orders · AVS Gold ERP" }] }),
   component: OrdersListPage,
 });
 
+/**
+ * Status colours.
+ *
+ * The old tones were 15%-opacity fills with 300-weight text — on the dark
+ * theme they read as five shades of grey, and a shop-floor screen is scanned
+ * from a metre away, not studied. These are solid fills with high-contrast
+ * text, and they group by MEANING, so a glance down the column separates
+ * "needs someone to act" from "moving on its own" from "finished":
+ *   grey   = not started / dead      (draft, cancelled)
+ *   blue   = waiting on us to act    (confirmed, awaiting job card)
+ *   amber  = work in progress        (in production, gold issued…)
+ *   violet = partially done
+ *   green  = done / ready            (ready for billing, ready, delivered)
+ * Anything unmapped falls back to a neutral, always-legible tone rather than
+ * an invisible badge.
+ */
 const STATUS_TONE: Partial<Record<OrderStatus, string>> = {
-  draft: "bg-muted text-muted-foreground",
-  confirmed: "bg-gold/15 text-gold border-gold/30",
-  awaiting_job_card: "bg-blue-500/15 text-blue-300 border-blue-500/30",
-  in_production: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  ready_billing: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  delivered: "bg-green-600/20 text-green-300 border-green-500/30",
-  cancelled: "bg-red-500/15 text-red-300 border-red-500/30",
+  draft: "bg-slate-500/25 text-slate-100 border-slate-400/40",
+  cancelled: "bg-red-600 text-white border-red-500",
+
+  confirmed: "bg-blue-600 text-white border-blue-500",
+  awaiting_job_card: "bg-blue-500/90 text-white border-blue-400",
+
+  in_production: "bg-amber-500 text-black border-amber-400",
+  in_manufacturing: "bg-amber-500 text-black border-amber-400",
+  gold_issued: "bg-amber-600 text-white border-amber-500",
+  gold_received: "bg-amber-600 text-white border-amber-500",
+  sent_to_worker: "bg-amber-600 text-white border-amber-500",
+  repair_in_progress: "bg-amber-600 text-white border-amber-500",
+  polishing_in_progress: "bg-amber-600 text-white border-amber-500",
+  sent_for_polishing: "bg-amber-600 text-white border-amber-500",
+  under_inspection: "bg-orange-500 text-black border-orange-400",
+  received: "bg-orange-500 text-black border-orange-400",
+
+  partially_ready: "bg-violet-600 text-white border-violet-500",
+  partially_delivered: "bg-violet-600 text-white border-violet-500",
+
+  ready: "bg-emerald-600 text-white border-emerald-500",
+  ready_billing: "bg-emerald-600 text-white border-emerald-500",
+  ready_for_delivery: "bg-emerald-600 text-white border-emerald-500",
+  billed: "bg-teal-600 text-white border-teal-500",
+  delivered: "bg-green-700 text-white border-green-600",
+};
+
+const STATUS_TONE_FALLBACK = "bg-slate-600 text-white border-slate-500";
+
+/** Delivery urgency — the one thing on this screen that should shout. */
+const BUCKET_TONE: Record<string, string> = {
+  delayed: "bg-red-600 text-white border-red-500 font-semibold",
+  today: "bg-emerald-600 text-white border-emerald-500 font-semibold",
+  tomorrow: "bg-amber-500 text-black border-amber-400 font-semibold",
 };
 
 function OrdersListPage() {
   const { t } = useLanguage();
   const orders = useOrders((s) => s.orders);
   const people = usePeople((s) => s.people);
-  const { filter: branchFilter, branches, selectedBranchId } = useBranchFilter();
+  const jobs = useJobCards((s) => s.jobs);
+  const { filter: branchFilter } = useBranchFilter();
 
   const [query, setQuery] = useState("");
   const [statusF, setStatusF] = useState<"all" | OrderStatus>("all");
   const [typeF, setTypeF] = useState<"all" | OrderType>("all");
-  const [reminder, setReminder] = useState<{ cust: string; kari?: string } | null>(null);
+  const [reminder, setReminder] = useState<{
+    cust: string;
+    kari?: string;
+    custPhone?: string;
+    kariPhone?: string;
+  } | null>(null);
 
   const customerName = (id: string) => people.find((p) => p.id === id)?.fullName ?? "—";
 
@@ -65,30 +115,23 @@ function OrdersListPage() {
     const o = filteredOrders.find((x) => x.id === orderId);
     if (!o) return;
     const cust = people.find((p) => p.id === o.customerId);
-    const kari = o.karigarId ? people.find((p) => p.id === o.karigarId) : null;
+    // Who to chase for this order: whoever has one of its pieces on their bench.
+    // That's on the JOB CARDS now, not the order — an order carries no karigar
+    // until its work is assigned. Falls back to `order.karigarId` for legacy /
+    // imported orders that still carry one.
+    const jobKarigarId =
+      jobs.find((j) => j.orderId === o.id && j.karigarId)?.karigarId ?? o.karigarId;
+    const kari = jobKarigarId ? people.find((p) => p.id === jobKarigarId) : null;
 
-    const bid = o.branchId || selectedBranchId || "MAIN";
-    const branch = branches.find((b) => b.id === bid) || branches[0];
-    const bName =
-      branch && branch.id !== "MAIN"
-        ? `${useSettings.getState().firm.shopName} (${branch.name})`
-        : undefined;
-
+    // Both messages are rendered from the templates the workshop edits in
+    // Settings → WhatsApp Templates, not from strings in the code. Placeholders
+    // (customer, order number, every item, delivery date) are filled from the
+    // live order by buildContext.
     setReminder({
-      cust: customerReminderMessage({
-        customerName: cust?.fullName ?? "Customer",
-        orderNo: o.orderNo,
-        itemName: o.item.itemName,
-        shopName: bName,
-      }),
-      kari: kari
-        ? karigarReminderMessage({
-            karigarName: kari.fullName,
-            orderNo: o.orderNo,
-            itemName: o.item.itemName,
-            deliveryDate: o.expectedDelivery,
-          })
-        : undefined,
+      cust: renderOrderTemplate("delay_update", o),
+      custPhone: cust?.phone,
+      kari: kari ? renderOrderTemplate("work_reminder", o) : undefined,
+      kariPhone: kari?.phone,
     });
   }
 
@@ -99,7 +142,12 @@ function OrdersListPage() {
       if (typeF !== "all" && o.type !== typeF) return false;
       if (q) {
         const cust = customerName(o.customerId).toLowerCase();
-        const hay = `${o.orderNo} ${cust} ${o.item.itemName}`.toLowerCase();
+        // Search EVERY line — an order found only by its first item is invisible
+        // to anyone looking for the bangles that were the third line on it.
+        const items = orderItems(o)
+          .map((it) => `${it.itemName} ${it.category}`)
+          .join(" ");
+        const hay = `${o.orderNo} ${cust} ${items}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -137,7 +185,7 @@ function OrdersListPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("orders.allStatuses")}</SelectItem>
-            {(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[]).map((s) => (
+            {ORDER_STATUS_FLOW.map((s) => (
               <SelectItem key={s} value={s}>
                 {t("orders.status_" + s)}
               </SelectItem>
@@ -198,38 +246,32 @@ function OrdersListPage() {
                       </td>
                       <td className="px-4 py-3">{customerName(o.customerId)}</td>
                       <td className="px-4 py-3">
-                        {o.item.itemName}
-                        <div className="text-[11px] text-muted-foreground">{o.item.category}</div>
+                        {orderItems(o)[0]?.itemName ?? "—"}
+                        <div className="text-[11px] text-muted-foreground">
+                          {orderItems(o).length > 1
+                            ? `${orderItems(o)[0]?.category} · +${orderItems(o).length - 1} more item${orderItems(o).length > 2 ? "s" : ""}`
+                            : orderItems(o)[0]?.category}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-xs">{t("orders.type_" + o.type)}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{mgToGrams(o.item.fineMg)} g</td>
+                      <td className="px-4 py-3 text-xs">{productionTypeLabel(o)}</td>
+                      {/* Fine gold across ALL lines — a multi-item order's first
+                          line is not what the workshop owes against it. */}
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {mgToGrams(orderTotals(o).fineMg)} g
+                      </td>
                       <td className="px-4 py-3 text-xs">
                         {o.expectedDelivery ? (
-                          <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex items-center gap-1.5">
                             <Calendar className="h-3 w-3" />
                             {o.expectedDelivery}
-                            {bucket === "delayed" && (
+                            {(bucket === "delayed" ||
+                              bucket === "today" ||
+                              bucket === "tomorrow") && (
                               <Badge
                                 variant="outline"
-                                className="ml-1 bg-red-500/15 text-red-300 border-red-500/30 text-[10px]"
+                                className={`ml-1 text-[10px] uppercase tracking-wide ${BUCKET_TONE[bucket]}`}
                               >
-                                {t("orders.delayed")}
-                              </Badge>
-                            )}
-                            {bucket === "tomorrow" && (
-                              <Badge
-                                variant="outline"
-                                className="ml-1 bg-amber-500/15 text-amber-300 border-amber-500/30 text-[10px]"
-                              >
-                                {t("orders.tomorrow")}
-                              </Badge>
-                            )}
-                            {bucket === "today" && (
-                              <Badge
-                                variant="outline"
-                                className="ml-1 bg-emerald-500/15 text-emerald-300 border-emerald-500/30 text-[10px]"
-                              >
-                                {t("orders.today")}
+                                {t("orders." + bucket)}
                               </Badge>
                             )}
                           </span>
@@ -238,7 +280,10 @@ function OrdersListPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline" className={STATUS_TONE[o.status]}>
+                        <Badge
+                          variant="outline"
+                          className={`whitespace-nowrap font-medium ${STATUS_TONE[o.status] ?? STATUS_TONE_FALLBACK}`}
+                        >
                           {t("orders.status_" + o.status)}
                         </Badge>
                       </td>
@@ -283,6 +328,8 @@ function OrdersListPage() {
         onClose={() => setReminder(null)}
         customerMessage={reminder?.cust ?? ""}
         karigarMessage={reminder?.kari}
+        customerPhone={reminder?.custPhone}
+        karigarPhone={reminder?.kariPhone}
       />
     </div>
   );

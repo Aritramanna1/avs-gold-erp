@@ -24,7 +24,8 @@ import {
   Loader2,
   CheckCircle,
 } from "lucide-react";
-import { waMobileUrl } from "@/lib/wa-link";
+import { isValidWaPhone } from "@/lib/wa-link";
+import { sendWhatsAppText } from "@/lib/comm/send-whatsapp-text";
 import { sendGenericEmail } from "@/lib/email-service";
 import { toast } from "sonner";
 import { useCommLog } from "@/lib/comm-log-store";
@@ -114,13 +115,31 @@ export function DocCommActions({
     }
   }
 
-  function handleWhatsApp() {
+  async function handleWhatsApp() {
     if (!whatsapp?.phone) {
       toast.warning("No phone number on record.");
       return;
     }
-    const url = waMobileUrl(whatsapp.phone, whatsapp.message);
-    window.open(url, "_blank");
+    // A phone that exists but isn't dialable (landline, typo, missing digits)
+    // would still produce a wa.me link — one that opens WhatsApp on an unknown
+    // contact and looks like it worked. Refuse it instead.
+    if (!isValidWaPhone(whatsapp.phone)) {
+      toast.warning(`"${whatsapp.phone}" is not a valid WhatsApp number.`);
+      return;
+    }
+    // Through the configured provider, not a hard-coded wa.me link — this is
+    // the seam OpenWA will slot into without touching this screen.
+    const result = await sendWhatsAppText({
+      phone: whatsapp.phone,
+      message: whatsapp.message,
+      recipientName: recipientLabel,
+      linkedType: linkedType as any,
+      linkedId,
+    });
+    if (!result.ok) {
+      toast.error(result.error ?? "Could not send the WhatsApp message.");
+      return;
+    }
     if (linkedType && linkedId) {
       recordComm({
         kind: "opened_app",
@@ -193,9 +212,15 @@ export function DocCommActions({
         <Button
           size="sm"
           className={`${btnClass} bg-[#25D366] hover:bg-[#20bf5a] text-white border-[#25D366]`}
-          onClick={handleWhatsApp}
-          disabled={!whatsapp.phone}
-          title={whatsapp.phone ? `WhatsApp ${whatsapp.phone}` : "No phone on record"}
+          onClick={() => void handleWhatsApp()}
+          disabled={!isValidWaPhone(whatsapp.phone)}
+          title={
+            !whatsapp.phone
+              ? "No phone on record"
+              : isValidWaPhone(whatsapp.phone)
+                ? `WhatsApp ${whatsapp.phone}`
+                : `Not a valid WhatsApp number: ${whatsapp.phone}`
+          }
         >
           <MessageCircle className="h-3 w-3" />
           {variant !== "compact" && "WhatsApp"}

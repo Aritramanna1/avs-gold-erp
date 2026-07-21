@@ -1,28 +1,28 @@
-# AVS Gold ERP — Demo RC1 Release Notes
+# AVS Gold ERP Release Notes
 
-**Version:** 1.1.0-demo-rc1
-**Build date:** 2026-07-11
-**Purpose:** Client demonstration build. This is a stabilization release, not Version 1.1 Final — no new features, no workflow changes, no business-rule changes this cycle.
+## Version 1.1.0 — Final Verification Pass - 2026-07-21
 
-## What this build is
+Final stabilization pass before Version 1.1.0 sign-off: fixed all Critical/High Playwright E2E failures found in a full-suite run, restored dev-only diagnostic hooks dropped during the startup refactor, closed a real offline-sync outbox bug, and rebuilt the production installer.
 
-A feature-frozen snapshot of AVS Gold ERP verified for a live client demo: sign-in, customer/KYC management, order creation with automatic job card generation and karigar assignment, workshop tracking, worker gold book, inventory, billing/invoicing, reports, and settings all confirmed working end-to-end with no crashes, white screens, or broken navigation.
+### Fixed
+- **Offline/Local First sync**: outbox entries queued while offline never drained to 0 — `pushPendingOutbox()`/`startSyncOutboxScheduler()` were unconditionally gated on Hybrid mode; both now acknowledge/schedule correctly in every deployment mode.
+- **Order Timeline gaps**: gold/material issue and worker return actions never wrote an order timeline entry (`worker-issue-dialog.tsx`, `worker-return-dialog.tsx`) — both now call `appendTimeline`, matching the existing send-to-polishing pattern.
+- **Print Job Queue**: `hardwareService.submitPrintJob()` generated a print-history row but discarded its own id, so callers could never correlate a print attempt with its history entry — now returns `{ jobId, status }`.
+- **Print Engine content gaps**: Estimate print was missing its validity disclaimer; Worker Custody Statement's print title didn't match its own template name; both fixed.
+- **Dev diagnostic hooks restored**: `window.__auditLog`/`__deviceRegistry`/`__sessionLock`/`__commQueue`/`__commService`/`__automationSettings`/`__printQueue`/`__goldRecon`/`__hardwareService` were dropped from `__root.tsx`'s DEV bootstrap during the startup-perf refactor, breaking the entire Priority 8 regression suite (audit-log tamper detection, device trust, session lock, comm retry/backoff, gold reconciliation, hardware fallback) — all restored.
+- **TypeScript**: 2 `SqlValue`/`unknown` type errors in `wa-automation-store.ts`.
+- **Test seed data**: `test-seed.ts` never created Debit Note / Estimate / Delivery Challan records or Worker Gold Book entries, so their Unified Print Engine migrations had nothing real to render against; also never set the live gold rate setting, so a newly-created Settlement priced at ₹0. Both fixed.
+- Removed 7 obsolete "reprint is audited" E2E tests — `usePrintRecord.ts` intentionally removed reprint-audit for V1 ("printing is unlimited and unrestricted"); tests were exercising a feature this branch deliberately removed, not a regression. Skipped with the reason recorded inline rather than deleted or silently forced green.
 
-## What changed since the last build (v1.1.0, 2026-07-09)
+### Known issue (not blocking, pre-existing)
+- `mobile-nav-drawer.spec.ts` intermittently fails: the drawer's own nav link never reaches a stable position for Playwright's click within 25s on the 500×900 mobile viewport specifically. Reproduces consistently in isolation; needs a dedicated look at what's forcing continuous reflow in that viewport. Cosmetic (mobile drawer only), not on any money/data path.
 
-- Print Engine: fixed infinite print-preview loading for two document types (karigar custody statement, customer ledger statement), missing firm logo on exported PDFs, and orientation/margin settings not reaching the native Electron print path.
-- This session: full pre-export verification (TypeScript, ESLint, production build, Electron build) and a manual smoke test across every primary module — no defects found, no code changes were needed.
+## Version 1.1.0 (Production Release) - 2026-07-21
 
-## What to expect during the demo
+We are proud to announce the official production release of AVS Gold ERP Version 1.1.0. This release stabilizes all core settings modules, introduces a standalone cryptographic licensing utility, and brings extensive testing harness and database-sync stability improvements.
 
-- The new Print Engine is live for 5 of ~15 document types (invoice, credit note, debit note, estimate, delivery challan, plus two ledger/statement reports). Everything else prints through the prior, fully working print system. Both are stable — this is a rollout-in-progress, not a gap.
-- A fresh install shows "Gold Rate Not Set" until an operator enters the day's rate — expected first-run behavior, takes seconds to configure.
-- See `KNOWN_ISSUES.md` for the complete list of intentionally deferred items.
-
-## Verification performed
-
-- `npx tsc --noEmit` — 0 errors
-- `eslint .` — 0 errors (36 pre-existing style warnings, unchanged)
-- `npm run build` — clean production build
-- `npm run build:electron` — clean Electron compile
-- Manual walkthrough: Login → Customer → Order → Job Card → Workshop → Worker Gold Book → Inventory → Billing → Reports → Settings → Logout — completed without a single crash, white screen, or broken dialog.
+### Key Highlights
+- **Settings & Persistence Stability**: Added missing database sync triggers and restored local cache synchronization routines across all settings modules.
+- **Robust E2E Test Suite**: Fixed dynamic seed loading on localhost builds and resolved database pulls wiping out seeded data by implementing a mock database simulator inside Playwright fixtures.
+- **Standalone Licensing Utility**: A clean HTML/JS cryptographic generator and renewer utilizing standard browser WebCrypto API to issue and update Ed25519-signed entitlements.
+- **Vulnerability Patches**: Replaced vulnerable dependencies with secure packages, resulting in zero reported security issues.

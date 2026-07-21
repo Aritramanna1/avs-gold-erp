@@ -7,18 +7,13 @@ import { Logo } from "@/components/ui/Logo";
 import { ArrowLeft, Printer } from "lucide-react";
 import { PrintQR } from "@/components/print-qr";
 import { useSettings } from "@/lib/settings-store";
+import { shortShopName } from "@/lib/app-info";
 import { AvsPrintFooter } from "@/components/AvsPrintFooter";
+import { printDocument } from "@/lib/print-document";
 
 export const Route = createFileRoute("/workshop/filings-slip/$id")({
   head: () => {
-    const shopName = useSettings.getState().firm?.shopName;
-    const shortName =
-      shopName
-        .split(" ")
-        .filter(Boolean)
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase() || shopName.slice(0, 3).toUpperCase();
+    const shortName = shortShopName(useSettings.getState().firm?.shopName);
     return {
       meta: [{ title: `Filings Receipt · ${shortName} ERP` }],
     };
@@ -60,7 +55,7 @@ function FilingsReceiptPage() {
         >
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to job card
         </Link>
-        <Button onClick={() => window.print()} className="gap-2">
+        <Button onClick={() => void printDocument()} className="gap-2">
           <Printer className="h-4 w-4" /> Print
         </Button>
       </div>

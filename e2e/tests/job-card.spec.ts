@@ -30,7 +30,9 @@ test.describe("Digital Job Card", () => {
       authedPage.waitForEvent("download"),
       authedPage.getByRole("button", { name: /download job card pdf/i }).click(),
     ]);
-    expect(download.suggestedFilename()).toMatch(/JobCard.*\.pdf$/i);
+    // Filenames come from the shared generateDocumentPdf pipeline (branded
+    // "<shop>_job_card_<no>.pdf"), not a "JobCard*.pdf" convention.
+    expect(download.suggestedFilename()).toMatch(/job_card.*\.pdf$/i);
     const path = await download.path();
     expect(path).toBeTruthy();
     expectNoPageErrors(authedPage);

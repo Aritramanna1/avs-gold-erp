@@ -2,10 +2,123 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
-import { startCloudSync, stopCloudSync, pullAll } from "@/lib/data-loader";
+import { startCloudSync, stopCloudSync, pullAll, startLocalLoad } from "@/lib/data-loader";
 import { resetAllBusinessStores } from "@/lib/session-cleanup";
 import { useSettings } from "@/lib/settings-store";
 import { AuthLayout } from "@/components/layout/AuthLayout";
+import { LocalAuthLayout } from "@/components/layout/LocalAuthLayout";
+import { useDeploymentMode, hydrateDeploymentMode } from "@/lib/deployment-mode";
+import { getLocalSessionUser } from "@/lib/local-auth";
+import { applyUserBranchAccess } from "@/lib/permissions";
+import { SetupWizard } from "@/components/setup-wizard";
+import { AppBootSkeleton } from "@/components/app-boot-skeleton";
+
+/**
+ * Deployment-mode switch: hydrates the persisted mode once at boot, shows the
+ * first-run setup wizard if none has ever been chosen (fresh install), then
+ * dispatches to OfflineAuthGate (no Supabase, ever) or OnlineAuthGate
+ * (unchanged, today's exact Supabase-only flow — also what every pre-existing
+ * install without a chosen mode falls back to).
+ */
+export function AuthGate({ children }: { children: ReactNode }) {
+  const mode = useDeploymentMode((s) => s.mode);
+  const hydrated = useDeploymentMode((s) => s.hydrated);
+
+  useEffect(() => {
+    // Never let a slow/failed local-DB init (deployment mode lives in local
+    // SQLite) hang the whole app on the boot skeleton. If it rejects, or takes
+    // too long, mark hydrated anyway so the app opens — a null mode falls
+    // through to the setup wizard rather than an infinite loader.
+    let settled = false;
+    const settle = () => {
+      settled = true;
+    };
+    void hydrateDeploymentMode()
+      .then(settle)
+      .catch((err) => {
+        console.error("[AuthGate] deployment mode hydrate failed:", err);
+        settle();
+        if (!useDeploymentMode.getState().hydrated) {
+          useDeploymentMode.setState({ hydrated: true });
+        }
+      });
+    const valve = setTimeout(() => {
+      if (!settled && !useDeploymentMode.getState().hydrated) {
+        console.error("[AuthGate] deployment mode hydrate timed out — opening anyway");
+        useDeploymentMode.setState({ hydrated: true });
+      }
+    }, 12_000);
+    return () => clearTimeout(valve);
+  }, []);
+
+  if (!hydrated) {
+    return <AppBootSkeleton />;
+  }
+
+  if (!mode) {
+    return <SetupWizard onComplete={() => void hydrateDeploymentMode()} />;
+  }
+
+  if (mode === "offline") return <OfflineAuthGate>{children}</OfflineAuthGate>;
+  return <OnlineAuthGate>{children}</OnlineAuthGate>;
+}
+
+function OfflineAuthGate({ children }: { children: ReactNode }) {
+  const [checking, setChecking] = useState(true);
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    // getLocalSessionUser() awaits initLocalDb(); if that rejects or is slow,
+    // this MUST still clear `checking` (via catch + valve) — otherwise the app
+    // hangs on the boot skeleton forever. On failure we fall through to the
+    // local login screen rather than blocking.
+    void getLocalSessionUser()
+      .then((user) => {
+        if (!mounted) return;
+        if (user) {
+          useSettings.getState().setCurrentUserRole(user.role);
+          applyUserBranchAccess(user);
+          void startLocalLoad();
+          setRole(user.role);
+        }
+      })
+      .catch((err) => {
+        console.error("[OfflineAuthGate] session restore failed:", err);
+      })
+      .finally(() => {
+        if (mounted) setChecking(false);
+      });
+    const valve = setTimeout(() => {
+      if (mounted) setChecking(false);
+    }, 12_000);
+    return () => {
+      mounted = false;
+      clearTimeout(valve);
+    };
+  }, []);
+
+  if (checking) {
+    return <AppBootSkeleton />;
+  }
+
+  if (!role) {
+    return (
+      <LocalAuthLayout
+        onSuccess={(_userId, loggedInRole) => {
+          useSettings.getState().setCurrentUserRole(loggedInRole);
+          // Branch isolation (SAD §7) — re-read the session user for its
+          // branch assignment, which onSuccess does not carry.
+          void getLocalSessionUser().then((u) => u && applyUserBranchAccess(u));
+          void startLocalLoad();
+          setRole(loggedInRole);
+        }}
+      />
+    );
+  }
+
+  return <>{children}</>;
+}
 
 // Module-level flag: persists across HMR remounts within the same browser session.
 let _initialSyncDone = false;
@@ -16,7 +129,7 @@ let _initialSyncDone = false;
 // isn't fired 2-3x in parallel on every page load/reload.
 let _checkInFlight: Promise<{ allowed: boolean; error?: string }> | null = null;
 
-export function AuthGate({ children }: { children: ReactNode }) {
+function OnlineAuthGate({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
   // Restoring a session from localStorage (as opposed to a fresh sign-in)
@@ -164,11 +277,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
         // Generous enough to cover two 10s per-request fetch timeouts (see
         // the Supabase client's global fetch wrapper) plus overhead, so this
         // outer guard doesn't cut off the retry loop's second attempt.
+        //
+        // Resolves `allowed: true` on timeout, not false: `s` is already a
+        // Supabase-verified session by this point — this check only adds the
+        // secondary "is this email an active MTJ user" business lookup. A
+        // slow/unreachable app_settings fetch is a transient blip, not proof
+        // the account is invalid, and must not forcibly sign out an already-
+        // legitimate user (see checkUserAllowed's own retry-once comment
+        // above, which this timeout was previously undermining by still
+        // failing closed). A genuinely deactivated/removed user is still
+        // caught on the next revalidation once the network recovers.
         const timeoutCheck = new Promise<{ allowed: boolean; error?: string }>((resolve) =>
-          setTimeout(
-            () => resolve({ allowed: false, error: "Auth check timed out. Please sign in again." }),
-            24000,
-          ),
+          setTimeout(() => resolve({ allowed: true }), 24000),
         );
         _checkInFlight = Promise.race([checkUserAllowed(s.user.email, s), timeoutCheck]).finally(
           () => {
@@ -209,7 +329,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
     });
 
     const unsubBranch = useSettings.subscribe((state, prev) => {
-      if (state.selectedBranchId !== prev.selectedBranchId) void pullAll();
+      // Only refetch on a REAL branch switch by the user. Skip the initial
+      // "" → default assignment that pullBranches makes during the first load —
+      // otherwise it fires a second full pullAll() on top of the boot pull,
+      // loading every table twice on every startup.
+      if (prev.selectedBranchId && state.selectedBranchId !== prev.selectedBranchId) {
+        void pullAll();
+      }
     });
 
     return () => {
@@ -221,12 +347,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }, []);
 
   if (checking) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center bg-background text-foreground">
-        <span className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
-        <p className="mt-2 text-xs font-mono text-muted-foreground">Restoring session...</p>
-      </div>
-    );
+    return <AppBootSkeleton />;
   }
 
   if (!session) {

@@ -181,16 +181,6 @@ function ReportsIndex() {
                 🛡️ Verify Receipt
               </Button>
             </Link>
-            <Link to="/reports/print-log">
-              <Button variant="outline" className="gap-2">
-                <Printer className="h-4 w-4" /> Print Log
-              </Button>
-            </Link>
-            <Link to="/reports/print-queue">
-              <Button variant="outline" className="gap-2">
-                <Printer className="h-4 w-4" /> Print Queue &amp; History
-              </Button>
-            </Link>
             <Link to="/reports/daily-close">
               <Button className="gap-2">
                 <Calendar className="h-4 w-4" /> Daily Close
@@ -382,7 +372,6 @@ function ReportsIndex() {
           <TabsTrigger value="custody">Karigar Custody</TabsTrigger>
           <TabsTrigger value="repair">Repair</TabsTrigger>
           <TabsTrigger value="worker">Worker / Attendance</TabsTrigger>
-          <TabsTrigger value="log">Print Log</TabsTrigger>
           <TabsTrigger value="accounting">Accounting Export</TabsTrigger>
         </TabsList>
 
@@ -493,7 +482,7 @@ function ReportsIndex() {
               rows={filteredOrders.map((o) => [
                 o.orderNo,
                 new Date(o.createdAt).toLocaleDateString("en-IN"),
-                o.item.itemName ?? "—",
+                people.find((p) => p.id === o.customerId)?.fullName ?? "—",
                 ORDER_STATUS_LABELS[o.status],
                 o.item.itemName,
               ])}
@@ -505,7 +494,7 @@ function ReportsIndex() {
                   ...filteredOrders.map((o) => [
                     o.orderNo,
                     new Date(o.createdAt).toLocaleDateString("en-IN"),
-                    o.item.itemName,
+                    people.find((p) => p.id === o.customerId)?.fullName ?? "",
                     ORDER_STATUS_LABELS[o.status],
                     o.item.itemName,
                   ]),
@@ -909,19 +898,6 @@ function ReportsIndex() {
                 ])
               }
             />
-          </Section>
-        </TabsContent>
-
-        <TabsContent value="log">
-          <Section title="Print Log / Reprint Registry">
-            <p className="text-sm text-muted-foreground mb-3">
-              Every printed document is recorded. Open the full audit log for details.
-            </p>
-            <Link to="/reports/print-log">
-              <Button size="sm" variant="outline">
-                Open Print Log
-              </Button>
-            </Link>
           </Section>
         </TabsContent>
 

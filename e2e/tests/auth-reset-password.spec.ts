@@ -13,7 +13,12 @@ test.describe("Reset Password", () => {
     // never establishes a session, so the page must show a graceful
     // "expired/invalid" state rather than a blank screen or crash.
     await page.goto("/reset-password");
-    await expect(page.getByText(/recovery expired|invalid|request a fresh/i)).toBeVisible({
+    // getByText with this broad a regex matches both the <h1> heading and
+    // the explanatory paragraph below it — getByRole("heading") targets
+    // only the former, unambiguously.
+    await expect(
+      page.getByRole("heading", { name: /recovery expired|invalid|request a fresh/i }),
+    ).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByRole("button", { name: /request new reset link/i })).toBeVisible();

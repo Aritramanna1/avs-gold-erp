@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -341,7 +342,19 @@ export default function NewMfgBill() {
   const totalMpFine = bill.mpEntries.reduce((s, e) => s + e.fineMg, 0);
   const totalLabour =
     bill.pEntries.reduce((s, e) => s + e.labourPaise, 0) + bill.labourChargesPaise;
-  const totalCharges = totalLabour + bill.stoneChargesPaise + bill.otherChargesPaise;
+  // Must mirror manufacturing.bill.$id.tsx's totalCharges exactly — this is
+  // what the printed bill actually totals, and this screen's GST preview
+  // needs to match what will print, not a narrower subset of charge fields.
+  const totalCharges =
+    totalLabour +
+    bill.makingChargesPaise +
+    bill.stoneChargesPaise +
+    bill.stoneSettingPaise +
+    bill.hallmarkChargesPaise +
+    bill.huidChargesPaise +
+    bill.outsideWorkChargesPaise +
+    bill.polishingChargesPaise +
+    bill.otherChargesPaise;
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
@@ -779,6 +792,33 @@ export default function NewMfgBill() {
             mono
           />
         </div>
+
+        <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="mb-0">GST on Job Work Charges</Label>
+            <Switch
+              checked={bill.gstEnabled}
+              onCheckedChange={(v) => patch({ gstEnabled: v })}
+              data-testid="mfg-bill-gst-switch"
+            />
+          </div>
+          {bill.gstEnabled && (
+            <div className="flex items-center gap-2">
+              <Input
+                value={bill.gstRatePct.toString()}
+                onChange={(e) =>
+                  patch({ gstRatePct: Math.max(0, parseFloat(e.target.value || "0")) })
+                }
+                className="w-24"
+                inputMode="decimal"
+              />
+              <span className="text-xs text-muted-foreground">
+                % → ₹{((totalCharges * bill.gstRatePct) / 100 / 100).toLocaleString("en-IN")}
+              </span>
+            </div>
+          )}
+        </div>
+
         <div className="mt-3 flex justify-end gap-4 text-sm font-semibold border-t border-border pt-3">
           <span className="text-muted-foreground">Total Manufacturing Cost:</span>
           <span className="font-mono text-gold">

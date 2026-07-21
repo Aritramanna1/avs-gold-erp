@@ -5,7 +5,7 @@
  * nothing here writes to Billing, Gold Ledger, Inventory, Reports, or
  * Communication.
  */
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,6 @@ import { buildJobCardData } from "@/lib/job-card-engine";
 import { resolvePrintContext } from "@/lib/print-engine/data-mapper";
 import { usePrintTemplates } from "@/lib/print-engine/template-store";
 import { generateDocumentPdf } from "@/lib/print-engine/pdf/generate";
-import { usePrintEngine } from "@/lib/print-engine";
 import { mgToGrams } from "@/lib/gold";
 import { ArrowLeft, Download, Loader2, Printer, QrCode } from "lucide-react";
 import { toast } from "sonner";
@@ -36,12 +35,18 @@ function purityLabel(p: number): string {
 }
 
 function JobCardPage() {
-  const { orderId } = useParams({ from: "/workshop/job-card/$orderId" });
-  const order = useOrders((s) => s.orders.find((o) => o.id === orderId));
+  // The param is a JOB CARD id (one per order line — an order with three pieces
+  // has three cards, and this screen must show the right one). An Order id is
+  // still accepted for older links and resolves to that order's first card.
+  const { orderId: recordId } = useParams({ from: "/workshop/job-card/$orderId" });
   const jobs = useJobCards((s) => s.jobs);
+  const jobById = jobs.find((j) => j.id === recordId) ?? null;
+  const order = useOrders((s) =>
+    s.orders.find((o) => o.id === (jobById ? jobById.orderId : recordId)),
+  );
   const people = usePeople((s) => s.people);
   const { firm } = useSettings();
-  const { triggerPrint } = usePrintEngine();
+  const navigate = useNavigate();
   const [downloading, setDownloading] = useState(false);
 
   if (!order) {
@@ -59,7 +64,7 @@ function JobCardPage() {
 
   const customer = people.find((p) => p.id === order.customerId);
   const karigar = order.karigarId ? people.find((p) => p.id === order.karigarId) : null;
-  const linkedJob = jobs.find((j) => j.orderId === order.id) ?? null;
+  const linkedJob = jobById ?? jobs.find((j) => j.orderId === order.id) ?? null;
 
   const data = buildJobCardData(
     order,
@@ -70,13 +75,18 @@ function JobCardPage() {
   );
 
   function handlePrint() {
-    triggerPrint(`/workshop/print/job-card/${orderId}`, `Job Card Preview · ${data.jobCardNo}`);
+    // Navigate to the print ROUTE — the same stabilized pipeline People/KYC
+    // uses (PrintLayout + PrintToolbar → printDocument). The old preview-modal
+    // path rendered the document inside the app shell, which is how app chrome
+    // could reach the paper; printDocument serializes ONLY the PrintLayout
+    // roots, so nothing but the document can ever be printed.
+    navigate({ to: `/workshop/print/job-card/${recordId}` as any });
   }
 
   async function handleDownload() {
     setDownloading(true);
     try {
-      const printData = resolvePrintContext("job_card", orderId);
+      const printData = resolvePrintContext("job_card", recordId);
       if (!printData) throw new Error("Job Card data not available");
       const template = usePrintTemplates.getState().getForDocType("job_card");
       const { blob, fileName } = await generateDocumentPdf(printData, template, firm);

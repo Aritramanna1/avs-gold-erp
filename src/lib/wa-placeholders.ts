@@ -3,8 +3,14 @@
  * Pulls live values out of the existing Zustand stores so the user
  * never types raw numbers when sending a message.
  */
-import { useOrders, paiseToRupees } from "@/lib/orders-store";
-import { useJobCards } from "@/lib/jobcards-store";
+import {
+  useOrders,
+  paiseToRupees,
+  orderItems,
+  orderTotals,
+  ORDER_STATUS_LABELS,
+} from "@/lib/orders-store";
+import { useJobCards, JOB_STATUS_LABELS } from "@/lib/jobcards-store";
 import { useBilling } from "@/lib/billing-store";
 import { useRepairs, REPAIR_STATUS_LABELS } from "@/lib/repair-store";
 import { usePeople } from "@/lib/people-store";
@@ -75,12 +81,24 @@ export function buildContext(args: BuildCtxArgs): PlaceholderCtx {
 
   ctx.order_number = order?.orderNo ?? BLANK;
   ctx.job_card_number = job?.jobNo ?? BLANK;
-  ctx.item_name = order?.item.itemName ?? job?.itemName ?? BLANK;
-  ctx.category = order?.item.category ?? job?.category ?? BLANK;
-  ctx.purity = String(order?.item.purity ?? job?.purity ?? BLANK);
-  ctx.gross_weight = g(order?.item.grossMg ?? job?.targetGrossMg);
-  ctx.net_weight = g(order?.item.netMg ?? job?.targetNetMg);
-  ctx.fine_weight = g(order?.item.fineMg ?? job?.targetFineMg);
+  // An order can hold several pieces. `item_name` names ALL of them and the
+  // weights are order TOTALS — a customer with a necklace and two bangles on one
+  // order was previously told only about the necklace, and quoted only its
+  // weight. A job card is always one piece, so it still reads its own.
+  const orderLines = order ? orderItems(order) : [];
+  const orderSums = order ? orderTotals(order) : null;
+
+  ctx.item_name = order
+    ? orderLines
+        .map((it) => (it.quantity > 1 ? `${it.quantity} × ${it.itemName}` : it.itemName))
+        .join(", ") || BLANK
+    : (job?.itemName ?? BLANK);
+  ctx.category = order ? (orderLines[0]?.category ?? BLANK) : (job?.category ?? BLANK);
+  ctx.purity = String(order ? (orderLines[0]?.purity ?? BLANK) : (job?.purity ?? BLANK));
+  ctx.gross_weight = g(orderSums ? orderSums.grossMg : job?.targetGrossMg);
+  ctx.net_weight = g(orderSums ? orderSums.netMg : job?.targetNetMg);
+  ctx.fine_weight = g(orderSums ? orderSums.fineMg : job?.targetFineMg);
+  ctx.item_count = String(order ? orderLines.length : 1);
   ctx.delivery_date = order?.expectedDelivery ?? job?.expectedDelivery ?? BLANK;
   ctx.due_date = ctx.delivery_date;
 
@@ -97,10 +115,12 @@ export function buildContext(args: BuildCtxArgs): PlaceholderCtx {
 
   ctx.gold_issued = BLANK;
   ctx.gold_received = g(job?.workReceipt?.finishedFineMg);
+  // The LABEL, not the raw key — a customer should read "In Production", not
+  // "in_production".
   ctx.current_status = order
-    ? order.status
+    ? ORDER_STATUS_LABELS[order.status]
     : job
-      ? job.status
+      ? JOB_STATUS_LABELS[job.status]
       : repair
         ? REPAIR_STATUS_LABELS[repair.status]
         : new Date().toLocaleDateString("en-IN");

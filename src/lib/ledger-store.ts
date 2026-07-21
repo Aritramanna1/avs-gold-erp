@@ -22,6 +22,9 @@ import { useWorkflowEngine } from "./workflow-engine";
 
 export type MovementType =
   | "opening_vault"
+  | "closing_stock"
+  | "purchase"
+  | "transfer_between_departments"
   | "customer_gold_received"
   | "old_gold_received"
   | "issue_to_karigar"
@@ -32,6 +35,10 @@ export type MovementType =
   | "overloss"
   | "finished_item_created"
   | "sale"
+  /** Job-work delivery to a jeweller: bills making charges only, gold stays
+   *  customer-owned. Reduces the jeweller's outstanding gold owed back to
+   *  them (deltas.customer), not a vault/finished-goods sale like "sale". */
+  | "job_work_delivery"
   | "customer_gold_credit_applied"
   | "worker_gold_advance"
   | "worker_wastage_gold_return"
@@ -45,13 +52,15 @@ export type MovementType =
   | "sent_to_polisher"
   | "received_from_polisher";
 
-export type Bucket = "vault" | "karigar" | "finished" | "customer" | "scrap";
+export type Bucket = "vault" | "karigar" | "finished" | "customer" | "jeweller" | "scrap";
 
 export interface BucketDeltas {
   vault?: number; // signed mg
   karigar?: number;
   finished?: number;
   customer?: number;
+  /** Gold supplied to jewellers, not yet settled or returned. */
+  jeweller?: number;
   scrap?: number;
 }
 
@@ -79,6 +88,7 @@ export interface BucketBalances {
   karigar: number;
   finished: number;
   customer: number;
+  jeweller: number;
   scrap: number;
 }
 
@@ -160,6 +170,7 @@ export const useLedger = create<LedgerState>()((set, get) => ({
       (entry.deltas.karigar ?? 0) +
       (entry.deltas.finished ?? 0) +
       (entry.deltas.customer ?? 0) +
+      (entry.deltas.jeweller ?? 0) +
       (entry.deltas.scrap ?? 0);
     if (sum !== entry.netFineMg) {
       throw new Error(
@@ -219,6 +230,7 @@ export const useLedger = create<LedgerState>()((set, get) => ({
         karigar: negate(original.deltas.karigar),
         finished: negate(original.deltas.finished),
         customer: negate(original.deltas.customer),
+        jeweller: negate(original.deltas.jeweller),
         scrap: negate(original.deltas.scrap),
       },
       notes: `Reversal of ${original.type} (${original.id}): ${reason}`,
@@ -254,13 +266,21 @@ export const useLedger = create<LedgerState>()((set, get) => ({
 }));
 
 export function computeBalances(entries: LedgerEntry[]): BalanceSheet {
-  const buckets: BucketBalances = { vault: 0, karigar: 0, finished: 0, customer: 0, scrap: 0 };
+  const buckets: BucketBalances = {
+    vault: 0,
+    karigar: 0,
+    finished: 0,
+    customer: 0,
+    jeweller: 0,
+    scrap: 0,
+  };
 
   const bucketBreakdowns: Record<Bucket, BucketBreakdown> = {
     vault: { fineMg: 0, grossMg: 0, purities: {} },
     karigar: { fineMg: 0, grossMg: 0, purities: {} },
     finished: { fineMg: 0, grossMg: 0, purities: {} },
     customer: { fineMg: 0, grossMg: 0, purities: {} },
+    jeweller: { fineMg: 0, grossMg: 0, purities: {} },
     scrap: { fineMg: 0, grossMg: 0, purities: {} },
   };
 
@@ -270,7 +290,7 @@ export function computeBalances(entries: LedgerEntry[]): BalanceSheet {
     ledgerTotal += e.netFineMg;
     const purity = e.purity ?? 999;
 
-    const bucketKeys: Bucket[] = ["vault", "karigar", "finished", "customer", "scrap"];
+    const bucketKeys: Bucket[] = ["vault", "karigar", "finished", "customer", "jeweller", "scrap"];
     for (const b of bucketKeys) {
       const deltaFine = e.deltas[b] ?? 0;
       if (deltaFine !== 0) {
@@ -298,7 +318,12 @@ export function computeBalances(entries: LedgerEntry[]): BalanceSheet {
   }
 
   const totalUnderManagement =
-    buckets.vault + buckets.karigar + buckets.finished + buckets.customer + buckets.scrap;
+    buckets.vault +
+    buckets.karigar +
+    buckets.finished +
+    buckets.customer +
+    buckets.jeweller +
+    buckets.scrap;
 
   let totalPhysicalUnderManagement = 0;
   for (const b of Object.values(bucketBreakdowns)) {
@@ -320,9 +345,12 @@ export function computeBalances(entries: LedgerEntry[]): BalanceSheet {
 }
 
 export const MOVEMENT_LABELS: Record<MovementType, string> = {
-  opening_vault: "Opening Vault",
+  opening_vault: "Opening Stock",
+  closing_stock: "Closing Stock",
+  purchase: "Purchase",
+  transfer_between_departments: "Transfer Between Departments",
   customer_gold_received: "Customer Gold Received",
-  old_gold_received: "Old Gold Received",
+  old_gold_received: "Gold Received from Customer",
   issue_to_karigar: "Issue to Karigar",
   receive_from_karigar: "Receive from Karigar",
   scrap_returned: "Scrap Returned",
@@ -331,6 +359,7 @@ export const MOVEMENT_LABELS: Record<MovementType, string> = {
   overloss: "Overloss",
   finished_item_created: "Finished Item Created",
   sale: "Sale",
+  job_work_delivery: "Job-Work Delivery",
   customer_gold_credit_applied: "Customer Gold Credit Applied",
   worker_gold_advance: "Worker Gold Advance",
   worker_wastage_gold_return: "Worker Wastage Gold Return",

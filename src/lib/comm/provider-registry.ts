@@ -7,6 +7,7 @@ import type { CommProvider, ProviderType } from "./types";
 import { WhatsAppDeepLinkProvider } from "./providers/whatsapp-deep-link";
 import { WhatsAppCloudApiProvider } from "./providers/whatsapp-cloud-api";
 import { WhatsAppOpenWaProvider } from "./providers/whatsapp-openwa";
+import { WhatsAppWasenderProvider } from "./providers/whatsapp-wasender";
 import { WhatsAppBspProvider } from "./providers/whatsapp-bsp";
 import { EmailProvider } from "./providers/email-provider";
 
@@ -17,6 +18,7 @@ const REGISTRY: Record<ProviderType, ProviderFactory> = {
   whatsapp_deep_link: () => new WhatsAppDeepLinkProvider(),
   whatsapp_cloud_api: () => new WhatsAppCloudApiProvider(),
   whatsapp_openwa: () => new WhatsAppOpenWaProvider(),
+  whatsapp_wasender: () => new WhatsAppWasenderProvider(),
   whatsapp_interakt: () => new WhatsAppBspProvider("whatsapp_interakt"),
   whatsapp_wati: () => new WhatsAppBspProvider("whatsapp_wati"),
   whatsapp_aisensy: () => new WhatsAppBspProvider("whatsapp_aisensy"),
@@ -49,6 +51,7 @@ export const PROVIDER_LABELS: Record<ProviderType, string> = {
   whatsapp_deep_link: "WhatsApp Deep Link (Free — manual send)",
   whatsapp_cloud_api: "WhatsApp Cloud API (Meta — official)",
   whatsapp_openwa: "WhatsApp (Self-hosted OpenWA)",
+  whatsapp_wasender: "WhatsApp (WasenderAPI)",
   whatsapp_interakt: "Interakt BSP",
   whatsapp_wati: "WATI BSP",
   whatsapp_aisensy: "AiSensy BSP",

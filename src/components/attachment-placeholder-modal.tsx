@@ -15,6 +15,7 @@ import {
   useAttachments,
   type AttachmentEntityType,
   generateImageThumbnail,
+  getAttachmentUrl,
 } from "@/lib/attachments-store";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +25,7 @@ import {
   type HostingerModule,
 } from "@/lib/hostinger-storage";
 import { uploadFileToSupabase, getBucketForEntityType } from "@/lib/supabase-storage";
+import { isOfflineMode } from "@/lib/deployment-mode";
 
 export type AttachmentPlaceholderModalProps = {
   open: boolean;
@@ -103,6 +105,7 @@ export function AttachmentPlaceholderModal({
 }: AttachmentPlaceholderModalProps) {
   const existing = useAttachments((s) => s.items[`${entityType}:${entityId}:${docKey}`]);
   const save = useAttachments((s) => s.save);
+  const saveWithFile = useAttachments((s) => s.saveWithFile);
   const clear = useAttachments((s) => s.clear);
 
   const [filed, setFiled] = useState(false);
@@ -117,21 +120,41 @@ export function AttachmentPlaceholderModal({
 
   // Reset local state whenever the modal opens for a (possibly different) record.
   useEffect(() => {
-    if (open) {
-      setFiled(!!existing?.filed);
-      setNote(existing?.note ?? "");
-      setFileName(existing?.fileName ?? "");
-      setFileDataUrl(existing?.fileDataUrl ?? "");
-      setThumbnailDataUrl(existing?.thumbnailDataUrl ?? "");
-      setSelectedFile(null);
-      setFileMissing(false);
-    }
+    if (!open) return;
+    let cancelled = false;
+
+    setFiled(!!existing?.filed);
+    setNote(existing?.note ?? "");
+    setFileName(existing?.fileName ?? "");
+    setThumbnailDataUrl(existing?.thumbnailDataUrl ?? "");
+    setSelectedFile(null);
+    setFileMissing(false);
+
+    // Bytes live in the local vault, not in the row, so the preview has to be
+    // read back asynchronously. getAttachmentUrl() falls back to the legacy
+    // inlined base64 for records created before the vault existed.
+    setFileDataUrl("");
+    void getAttachmentUrl(entityType, entityId, docKey)
+      .then((url) => {
+        if (!cancelled) setFileDataUrl(url ?? "");
+      })
+      .catch((err) => {
+        console.warn("[AttachmentModal] Failed to load stored file:", err);
+        if (!cancelled) setFileMissing(!!existing?.filed);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     open,
+    entityType,
+    entityId,
+    docKey,
     existing?.filed,
     existing?.note,
     existing?.fileName,
-    existing?.fileDataUrl,
+    existing?.checksum,
     existing?.thumbnailDataUrl,
   ]);
 
@@ -170,79 +193,96 @@ export function AttachmentPlaceholderModal({
 
   const handleSave = async () => {
     setIsUploading(true);
-    let finalUrl = fileDataUrl;
-    const finalThumb = thumbnailDataUrl;
-    let finalPath = "";
 
     try {
+      // 1. LOCAL FIRST, ALWAYS. The bytes go into the encrypted local vault and
+      //    the attachment row records a reference to them. This is the durable
+      //    write — it needs no network, in any deployment mode, and once it
+      //    returns the document survives restart/logout/restore. Everything
+      //    below is replication, not storage.
       if (selectedFile) {
-        const bucket = getBucketForEntityType(entityType);
-        const module = mapToHostingerModule(entityType, docKey);
-        const previousPath = existing?.storagePath;
-
-        // 1. Compress & Upload to Supabase Storage bucket
-        const { filePath, signedUrl } = await uploadFileToSupabase(
-          bucket,
-          selectedFile,
-          entityId,
-          docKey,
-        );
-        finalUrl = signedUrl;
-        finalPath = filePath;
-
-        // Replacing an existing file — remove the old storage object so it
-        // doesn't linger as an orphaned blob in the bucket.
-        if (previousPath && previousPath !== filePath) {
-          const { error: removeError } = await supabase.storage.from(bucket).remove([previousPath]);
-          if (removeError) {
-            console.warn(
-              "[AttachmentModal] Failed to remove previous storage object:",
-              removeError,
-            );
-          }
-        }
-
-        // 2. Commit transaction log into Supabase db metadata
-        await saveAttachmentMetadata({
-          filePath: filePath,
-          fileUrl: signedUrl,
-          fileName: selectedFile.name,
-          originalFileName: selectedFile.name,
-          mimeType: selectedFile.type || "application/octet-stream",
-          fileSize: selectedFile.size,
-          relatedModule: module,
-          relatedTable: entityType,
-          relatedRecordId: entityId,
-          notes: note.trim(),
-          docKey: docKey,
-          thumbnailDataUrl: finalThumb || undefined,
-          storageProvider: "supabase",
+        await saveWithFile(entityType, entityId, docKey, selectedFile, {
+          filed: true,
+          note: note.trim(),
         });
+      } else {
+        // Metadata-only edit (note / filed toggle) on an existing record.
+        save(entityType, entityId, docKey, { filed, note: note.trim(), fileName });
       }
 
-      // 3. Update the local Zustand cash/persistent state
-      save(entityType, entityId, docKey, {
-        filed: filed || !!finalUrl,
-        note: note.trim(),
-        fileName,
-        fileDataUrl: finalUrl,
-        thumbnailDataUrl: finalThumb || undefined,
-        storagePath: finalPath || existing?.storagePath,
-      });
+      // 2. Cloud replication — best-effort, and deliberately non-fatal. A failed
+      //    upload must never fail the save or discard the file: the bytes are
+      //    already durable on disk. Offline mode skips it entirely.
+      let cloudFailed = false;
+      if (selectedFile && !isOfflineMode()) {
+        try {
+          const bucket = getBucketForEntityType(entityType);
+          const module = mapToHostingerModule(entityType, docKey);
+          const previousPath = existing?.storagePath;
 
+          const { filePath, signedUrl } = await uploadFileToSupabase(
+            bucket,
+            selectedFile,
+            entityId,
+            docKey,
+          );
+
+          // Replacing an existing file — remove the old storage object so it
+          // doesn't linger as an orphaned blob in the bucket.
+          if (previousPath && previousPath !== filePath) {
+            const { error: removeError } = await supabase.storage
+              .from(bucket)
+              .remove([previousPath]);
+            if (removeError) {
+              console.warn(
+                "[AttachmentModal] Failed to remove previous storage object:",
+                removeError,
+              );
+            }
+          }
+
+          await saveAttachmentMetadata({
+            filePath,
+            fileUrl: signedUrl,
+            fileName: selectedFile.name,
+            originalFileName: selectedFile.name,
+            mimeType: selectedFile.type || "application/octet-stream",
+            fileSize: selectedFile.size,
+            relatedModule: module,
+            relatedTable: entityType,
+            relatedRecordId: entityId,
+            notes: note.trim(),
+            docKey,
+            thumbnailDataUrl: thumbnailDataUrl || undefined,
+            storageProvider: "supabase",
+          });
+
+          save(entityType, entityId, docKey, { storagePath: filePath, bucket });
+        } catch (err) {
+          cloudFailed = true;
+          console.warn("[AttachmentModal] Cloud replication failed; file is safe locally:", err);
+        }
+      }
+
+      const rec = useAttachments.getState().items[`${entityType}:${entityId}:${docKey}`];
       onSaved?.({
-        filed: filed || !!finalUrl,
+        filed: rec?.filed ?? filed,
         note: note.trim(),
-        fileName,
-        fileDataUrl: finalUrl,
-        thumbnailDataUrl: finalThumb || undefined,
+        fileName: rec?.fileName ?? fileName,
+        thumbnailDataUrl: rec?.thumbnailDataUrl,
       });
 
-      toast.success("Attachment registered and uploaded securely to Supabase Storage.");
+      if (cloudFailed) {
+        toast.warning("Saved locally. Cloud upload failed — it will sync when back online.");
+      } else {
+        toast.success(
+          isOfflineMode() ? "Attachment saved locally." : "Attachment saved and uploaded securely.",
+        );
+      }
       onOpenChange(false);
     } catch (err: any) {
       console.error("[AttachmentModal Save Error]:", err);
-      toast.error(err.message || "Failed to finalize attachment upload.");
+      toast.error(err.message || "Failed to save attachment.");
     } finally {
       setIsUploading(false);
     }
@@ -255,8 +295,9 @@ export function AttachmentPlaceholderModal({
       const key = `${entityType}:${entityId}:${docKey}`;
       await supabase.from("attachments").delete().eq("id", key);
 
-      // Remove the underlying storage object so nothing is left orphaned in the bucket.
-      if (existing?.storagePath) {
+      // Remove the underlying storage object so nothing is left orphaned in the
+      // bucket. Offline attachments have no bucket object — only the local row.
+      if (existing?.storagePath && !isOfflineMode()) {
         const bucket = getBucketForEntityType(entityType);
         const { error: removeError } = await supabase.storage
           .from(bucket)
@@ -283,10 +324,14 @@ export function AttachmentPlaceholderModal({
     }
   };
 
-  const isImage =
+  const isImage = !!(
+    // Vaulted files resolve to a `blob:` URL that carries no type hint, so the
+    // record's stored mimeType is what decides — checked first for that reason.
+    existing?.mimeType?.startsWith("image/") ||
     fileDataUrl.startsWith("data:image/") ||
     fileDataUrl.toLowerCase().match(/\.(jpg|jpeg|png|webp)/) ||
-    (selectedFile && selectedFile.type.startsWith("image/"));
+    (selectedFile && selectedFile.type.startsWith("image/"))
+  );
 
   return (
     <Dialog open={open} onOpenChange={(val) => !isUploading && onOpenChange(val)}>
@@ -334,6 +379,7 @@ export function AttachmentPlaceholderModal({
               accept="image/*,application/pdf,.doc,.docx"
               className="hidden"
               id={`file-picker-${docKey}`}
+              data-testid="attachment-file-input"
             />
 
             {fileDataUrl ? (
@@ -351,6 +397,7 @@ export function AttachmentPlaceholderModal({
                         referrerPolicy="no-referrer"
                         onError={() => setFileMissing(true)}
                         className="object-contain max-h-40 w-auto"
+                        data-testid="attachment-preview"
                       />
                     )}
                   </div>
@@ -458,6 +505,7 @@ export function AttachmentPlaceholderModal({
             type="button"
             disabled={isUploading}
             onClick={handleSave}
+            data-testid="attachment-save"
             className="bg-gold text-stone-950 font-semibold hover:bg-gold-light"
           >
             {isUploading ? (
@@ -514,6 +562,7 @@ export function AttachmentButton({
         variant={filed ? "secondary" : variant}
         onClick={() => setOpen(true)}
         className={className}
+        data-testid={`attachment-btn-${docKey}`}
       >
         {filed ? (
           <>

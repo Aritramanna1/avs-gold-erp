@@ -1,0 +1,129 @@
+import { useState } from "react";
+import { AlertTriangle, ChevronDown, Copy, Headphones, Home, RotateCcw, Undo2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { formatErrorDetails, type NormalizedAppError } from "@/lib/error-handling";
+import { clearLocalDatabase } from "@/lib/local-db";
+
+interface UniversalErrorScreenProps {
+  error: NormalizedAppError;
+  fullScreen?: boolean;
+  retryLabel?: string;
+  onRetry?: () => void;
+  onBack?: () => void;
+}
+
+function copyText(text: string): void {
+  void navigator.clipboard?.writeText(text).catch(() => {});
+}
+
+export function UniversalErrorScreen({
+  error,
+  fullScreen = true,
+  retryLabel = "Retry",
+  onRetry,
+  onBack,
+}: UniversalErrorScreenProps) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const isDatabaseCritical = error.category === "database" && error.severity === "critical";
+  const details = formatErrorDetails(error);
+
+  return (
+    <div
+      className={
+        fullScreen
+          ? "min-h-screen bg-background px-4 py-8"
+          : "min-h-[420px] bg-background/40 px-4 py-8"
+      }
+    >
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+            <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-semibold tracking-tight">{error.title}</h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{error.message}</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{error.guidance}</p>
+          </div>
+        </div>
+
+        <div className="rounded-md border border-border bg-muted/30 px-4 py-3">
+          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Error Reference ID
+          </div>
+          <div className="mt-1 break-all font-mono text-sm text-foreground">{error.id}</div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={onRetry ?? (() => window.location.reload())}>
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            {retryLabel}
+          </Button>
+          <Button variant="outline" onClick={onBack ?? (() => history.back())}>
+            <Undo2 className="h-4 w-4" aria-hidden="true" />
+            Go Back
+          </Button>
+          <Button variant="outline" onClick={() => (window.location.href = "/")}>
+            <Home className="h-4 w-4" aria-hidden="true" />
+            Return to Dashboard
+          </Button>
+          <Button variant="outline" onClick={() => copyText(details)}>
+            <Copy className="h-4 w-4" aria-hidden="true" />
+            Copy Error Details
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const subject = encodeURIComponent(`AVS Gold ERP Support - ${error.id}`);
+              const body = encodeURIComponent(
+                `Please help with this AVS Gold ERP error.\n\n${details}`,
+              );
+              window.location.href = `mailto:support@arivahly.in?subject=${subject}&body=${body}`;
+            }}
+          >
+            <Headphones className="h-4 w-4" aria-hidden="true" />
+            Contact Support
+          </Button>
+        </div>
+
+        {isDatabaseCritical ? (
+          <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
+            <p className="text-sm text-muted-foreground">
+              Use this only after confirming synced data or a verified backup is available.
+            </p>
+            <Button
+              className="mt-3"
+              variant="destructive"
+              onClick={async () => {
+                await clearLocalDatabase();
+                window.location.reload();
+              }}
+            >
+              Reset Local Database and Reload
+            </Button>
+          </div>
+        ) : null}
+
+        <div className="rounded-md border border-border">
+          <button
+            type="button"
+            onClick={() => setDetailsOpen((open) => !open)}
+            className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium"
+          >
+            Technical details
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+          {detailsOpen ? (
+            <pre className="max-h-64 overflow-auto border-t border-border bg-muted/30 p-4 text-xs leading-5 text-muted-foreground">
+              {details}
+            </pre>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}

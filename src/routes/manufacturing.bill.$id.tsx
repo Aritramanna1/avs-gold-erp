@@ -60,15 +60,7 @@ export default function MfgBillView() {
 
   const bill = bills.find((b) => b.id === id)!;
 
-  const {
-    docNumber,
-    isReprint,
-    reprintCount,
-    reprintOpen,
-    setReprintOpen,
-    handlePrintTrigger,
-    recordReprint,
-  } = usePrintRecord(bill ? "manufacturing_bill" : null, id);
+  const { docNumber, handlePrintTrigger } = usePrintRecord(bill ? "manufacturing_bill" : null, id);
 
   if (!bill) {
     return (
@@ -97,6 +89,8 @@ export default function MfgBillView() {
     bill.polishingChargesPaise +
     bill.otherChargesPaise +
     bill.pEntries.reduce((s, e) => s + e.labourPaise, 0);
+  const gstAmount = bill.gstEnabled ? Math.round((totalCharges * bill.gstRatePct) / 100) : 0;
+  const grandTotalCharges = totalCharges + gstAmount;
 
   const dateStr = new Date(bill.finalisedAt ?? bill.createdAt).toLocaleDateString("en-IN", {
     day: "2-digit",
@@ -167,7 +161,7 @@ export default function MfgBillView() {
             data-testid="mfg-bill-print"
           >
             <Printer className="h-4 w-4" />
-            {isReprint ? `Reprint (${reprintCount})` : "Print Bill"}
+            Print Bill
           </Button>
           {bill.status === "finalised" && (
             <>
@@ -547,77 +541,87 @@ export default function MfgBillView() {
           </tbody>
         </table>
 
-        {/* Section 3 — Charges */}
-        {totalCharges > 0 && (
-          <>
-            <SectionTitle>3. Charges</SectionTitle>
-            <table style={tStyle}>
-              <tbody>
-                {bill.pEntries.some((e) => e.labourPaise > 0) &&
-                  bill.pEntries
-                    .filter((e) => e.labourPaise > 0)
-                    .map((e) => (
-                      <tr key={e.id} style={trStyle}>
-                        <Td>{e.ref} Labour</Td>
-                        <Td right>₹ {(e.labourPaise / 100).toFixed(0)}</Td>
-                      </tr>
-                    ))}
-                {bill.labourChargesPaise > 0 && (
-                  <tr style={trStyle}>
-                    <Td>Additional Labour</Td>
-                    <Td right>₹ {(bill.labourChargesPaise / 100).toFixed(0)}</Td>
-                  </tr>
-                )}
-                {bill.makingChargesPaise > 0 && (
-                  <tr style={trStyle}>
-                    <Td>Making Charges</Td>
-                    <Td right>₹ {(bill.makingChargesPaise / 100).toFixed(0)}</Td>
-                  </tr>
-                )}
-                {bill.stoneChargesPaise > 0 && (
-                  <tr style={trStyle}>
-                    <Td>Stone Setting</Td>
-                    <Td right>₹ {(bill.stoneChargesPaise / 100).toFixed(0)}</Td>
-                  </tr>
-                )}
-                {bill.hallmarkChargesPaise > 0 && (
-                  <tr style={trStyle}>
-                    <Td>Hallmark / BIS Charges</Td>
-                    <Td right>₹ {(bill.hallmarkChargesPaise / 100).toFixed(0)}</Td>
-                  </tr>
-                )}
-                {bill.huidChargesPaise > 0 && (
-                  <tr style={trStyle}>
-                    <Td>HUID Charges</Td>
-                    <Td right>₹ {(bill.huidChargesPaise / 100).toFixed(0)}</Td>
-                  </tr>
-                )}
-                {bill.outsideWorkChargesPaise > 0 && (
-                  <tr style={trStyle}>
-                    <Td>Outside Work Charges</Td>
-                    <Td right>₹ {(bill.outsideWorkChargesPaise / 100).toFixed(0)}</Td>
-                  </tr>
-                )}
-                {bill.polishingChargesPaise > 0 && (
-                  <tr style={trStyle}>
-                    <Td>Polishing Charges</Td>
-                    <Td right>₹ {(bill.polishingChargesPaise / 100).toFixed(0)}</Td>
-                  </tr>
-                )}
-                {bill.otherChargesPaise > 0 && (
-                  <tr style={trStyle}>
-                    <Td>Other Charges</Td>
-                    <Td right>₹ {(bill.otherChargesPaise / 100).toFixed(0)}</Td>
-                  </tr>
-                )}
-                <tr style={{ ...trStyle, fontWeight: 900, borderTop: "1.5px solid #000" }}>
-                  <Td>Total Charges</Td>
-                  <Td right>₹ {(totalCharges / 100).toLocaleString("en-IN")}</Td>
+        {/* Section 3 — Charges. Always rendered (even at ₹0) so a printed
+            document never silently drops a whole section — that reads as a
+            missing/incomplete bill rather than a genuinely zero-charge one. */}
+        <>
+          <SectionTitle>3. Charges</SectionTitle>
+          <table style={tStyle}>
+            <tbody>
+              {bill.pEntries.some((e) => e.labourPaise > 0) &&
+                bill.pEntries
+                  .filter((e) => e.labourPaise > 0)
+                  .map((e) => (
+                    <tr key={e.id} style={trStyle}>
+                      <Td>{e.ref} Labour</Td>
+                      <Td right>₹ {(e.labourPaise / 100).toFixed(0)}</Td>
+                    </tr>
+                  ))}
+              {bill.labourChargesPaise > 0 && (
+                <tr style={trStyle}>
+                  <Td>Additional Labour</Td>
+                  <Td right>₹ {(bill.labourChargesPaise / 100).toFixed(0)}</Td>
                 </tr>
-              </tbody>
-            </table>
-          </>
-        )}
+              )}
+              {bill.makingChargesPaise > 0 && (
+                <tr style={trStyle}>
+                  <Td>Making Charges</Td>
+                  <Td right>₹ {(bill.makingChargesPaise / 100).toFixed(0)}</Td>
+                </tr>
+              )}
+              {bill.stoneChargesPaise > 0 && (
+                <tr style={trStyle}>
+                  <Td>Stone Setting</Td>
+                  <Td right>₹ {(bill.stoneChargesPaise / 100).toFixed(0)}</Td>
+                </tr>
+              )}
+              {bill.hallmarkChargesPaise > 0 && (
+                <tr style={trStyle}>
+                  <Td>Hallmark / BIS Charges</Td>
+                  <Td right>₹ {(bill.hallmarkChargesPaise / 100).toFixed(0)}</Td>
+                </tr>
+              )}
+              {bill.huidChargesPaise > 0 && (
+                <tr style={trStyle}>
+                  <Td>HUID Charges</Td>
+                  <Td right>₹ {(bill.huidChargesPaise / 100).toFixed(0)}</Td>
+                </tr>
+              )}
+              {bill.outsideWorkChargesPaise > 0 && (
+                <tr style={trStyle}>
+                  <Td>Outside Work Charges</Td>
+                  <Td right>₹ {(bill.outsideWorkChargesPaise / 100).toFixed(0)}</Td>
+                </tr>
+              )}
+              {bill.polishingChargesPaise > 0 && (
+                <tr style={trStyle}>
+                  <Td>Polishing Charges</Td>
+                  <Td right>₹ {(bill.polishingChargesPaise / 100).toFixed(0)}</Td>
+                </tr>
+              )}
+              {bill.otherChargesPaise > 0 && (
+                <tr style={trStyle}>
+                  <Td>Other Charges</Td>
+                  <Td right>₹ {(bill.otherChargesPaise / 100).toFixed(0)}</Td>
+                </tr>
+              )}
+              <tr style={{ ...trStyle, borderTop: "1.5px solid #000" }}>
+                <Td>Total Charges</Td>
+                <Td right>₹ {(totalCharges / 100).toLocaleString("en-IN")}</Td>
+              </tr>
+              {bill.gstEnabled && (
+                <tr style={trStyle}>
+                  <Td>GST on Job Work ({bill.gstRatePct.toFixed(2)}%)</Td>
+                  <Td right>₹ {(gstAmount / 100).toLocaleString("en-IN")}</Td>
+                </tr>
+              )}
+              <tr style={{ ...trStyle, fontWeight: 900, borderTop: "1.5px solid #000" }}>
+                <Td>Grand Total (Charges{bill.gstEnabled ? " + GST" : ""})</Td>
+                <Td right>₹ {(grandTotalCharges / 100).toLocaleString("en-IN")}</Td>
+              </tr>
+            </tbody>
+          </table>
+        </>
 
         {/* Section 4 — Karigar Account */}
         <SectionTitle>4. Karigar Account Settlement</SectionTitle>
@@ -754,8 +758,8 @@ export default function MfgBillView() {
           }}
         >
           <p>
-            Manufacturing Bill | Gold weights in grams (3 decimal places) | Fine = Gross × Tunch% /
-            100
+            Manufacturing Bill | Gold weights in grams (3 decimal places) | Gold Given: Fine = Net ×
+            (Tunch% + Wastage%) / 100 | Gold Received: Fine = Gross × Tunch% / 100
           </p>
           <p>
             {firm?.shopName} | {dateStr} | {bill.billNo}
@@ -806,25 +810,6 @@ export default function MfgBillView() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-emerald-600 text-white" onClick={handleMarkDelivered}>
               Confirm Delivery
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Reprint confirmation — this bill was already printed once before */}
-      <AlertDialog open={reprintOpen} onOpenChange={setReprintOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reprint Manufacturing Bill?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {docNumber} has been printed before ({reprintCount} time
-              {reprintCount === 1 ? "" : "s"}). This reprint will be recorded in the audit log.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => recordReprint("other")}>
-              Confirm &amp; Print
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -51,6 +51,7 @@ electron-app/dist
 electron-app/release
 release/
 release-build/
+out/
 build/LICENSE.txt
 
 # Local test-build distributions and source exports (never committed)
@@ -62,3 +63,22 @@ build/LICENSE.txt
 
 # Build info
 tsconfig.tsbuildinfo
+
+# Serena generated index
+.serena/cache/
+.serena/logs/
+
+# AI tooling scaffolding (agent/skill packs, not app code)
+.agents/
+.claude/agents/
+.claude/commands/
+.claude/helpers/
+.claude/skills/
+.claude/proven-config.json
+.claude/.proven-config-version
+.claude-flow/
+.codex/
+.swarm/
+claude-obsidian/
+central-licensing/
+licensing-tool/

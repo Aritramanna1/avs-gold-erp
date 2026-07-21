@@ -1,7 +1,15 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { useOrders, ORDER_TYPE_LABELS, paiseToRupees } from "@/lib/orders-store";
+import { useEffect, useMemo, useState } from "react";
+import {
+  useOrders,
+  orderItems,
+  orderTotals,
+  productionTypeLabel,
+  paiseToRupees,
+} from "@/lib/orders-store";
 import { usePeople } from "@/lib/people-store";
+import { useAttachments, getAttachmentUrl } from "@/lib/attachments-store";
+import { referenceImageDocKeys, LINE_REFERENCE_PREFIX } from "@/lib/job-card-engine";
 import { mgToGrams } from "@/lib/gold";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
@@ -9,17 +17,11 @@ import { PrintLayout } from "@/components/print/PrintLayout";
 import { PrintQR } from "@/components/print-qr";
 import type { PrintDocType } from "@/lib/printlog-store";
 import { useSettings } from "@/lib/settings-store";
+import { shortShopName } from "@/lib/app-info";
 
 export const Route = createFileRoute("/orders/print/$kind/$id")({
   head: () => {
-    const shopName = useSettings.getState().firm?.shopName;
-    const shortName =
-      shopName
-        .split(" ")
-        .filter(Boolean)
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase() || shopName.slice(0, 3).toUpperCase();
+    const shortName = shortShopName(useSettings.getState().firm?.shopName);
     return {
       meta: [{ title: `Print · ${shortName} ERP` }],
     };
@@ -59,6 +61,45 @@ function PrintPage() {
     recordReprint,
   } = usePrintRecord(order ? (docTypeMap[kind as Kind] ?? "order_slip") : null, id);
 
+  // Reference images, read back out of the local encrypted vault. Full-size
+  // bytes, not the row's inlined thumbnail — a printed reference photo is what
+  // the karigar works from. Depends on no UI state and no network, so a
+  // reprint after a restart is identical.
+  const attachmentItems = useAttachments((s) => s.items);
+  const [referenceImages, setReferenceImages] = useState<
+    Array<{ docKey: string; label: string; url: string }>
+  >([]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const docKeys = referenceImageDocKeys(id);
+
+    void Promise.all(
+      docKeys.map(async (docKey) => {
+        try {
+          const url = await getAttachmentUrl("order", id, docKey);
+          if (!url) return null;
+          const rec = attachmentItems[`order:${id}:${docKey}`];
+          if (rec?.mimeType && !rec.mimeType.startsWith("image/")) return null;
+          const label = docKey.startsWith(LINE_REFERENCE_PREFIX)
+            ? (rec?.fileName ?? "Reference")
+            : docKey.replace(/_/g, " ");
+          return { docKey, label, url };
+        } catch (err) {
+          console.warn(`[orders.print] could not load ${docKey}:`, err);
+          return null;
+        }
+      }),
+    ).then((rows) => {
+      if (!cancelled) setReferenceImages(rows.filter((r): r is NonNullable<typeof r> => !!r));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, attachmentItems]);
+
   // Get all orders for this customer to calculate running ledger balances
   const allOrders = useOrders((s) => s.orders);
   const customerOrders = useMemo(() => {
@@ -84,38 +125,38 @@ function PrintPage() {
     let prevGoldMg = 0;
     let prevCashPaise = 0;
 
+    // An order can hold several pieces, so every gold/cash figure below sums
+    // ALL of its line items — billing one line of a five-line order would
+    // understate what the customer owes and what the vault is short.
+    const itemCostPaise = (o: typeof order) =>
+      orderItems(o).reduce((sum, it) => {
+        const rupees =
+          it.amountRupees !== undefined
+            ? Number(it.amountRupees)
+            : it.labourRupees !== undefined
+              ? Number(it.labourRupees)
+              : 0;
+        return sum + rupees * 100;
+      }, 0);
+
     for (const o of customerOrders) {
       if (o.createdAt < order.createdAt) {
-        // Prev Gold: what they gave us (advance) - what we made (item)
+        // Prev Gold: what they gave us (advance) - what we made (all items)
         const goldInMg = o.advance.goldFineMg || 0;
-        const goldOutMg = o.item.fineMg || 0;
+        const goldOutMg = orderTotals(o).fineMg;
         prevGoldMg += goldInMg - goldOutMg;
 
-        // Prev Cash: what they paid us (advance) - what the item cost (amount or labour)
-        const cashInPaise = o.advance.cashPaise || 0;
-        const itemCostRupees =
-          o.item.amountRupees !== undefined
-            ? Number(o.item.amountRupees)
-            : o.item.labourRupees !== undefined
-              ? Number(o.item.labourRupees)
-              : 0;
-        const cashOutPaise = itemCostRupees * 100;
-        prevCashPaise += cashInPaise - cashOutPaise;
+        // Prev Cash: what they paid us (advance) - what the items cost
+        prevCashPaise += (o.advance.cashPaise || 0) - itemCostPaise(o);
       }
     }
 
     // Today's Entries
     const todayGoldInMg = order.advance.goldFineMg || 0;
-    const todayGoldOutMg = order.item.fineMg || 0;
+    const todayGoldOutMg = orderTotals(order).fineMg;
 
     const todayCashInPaise = order.advance.cashPaise || 0;
-    const todayItemCostRupees =
-      order.item.amountRupees !== undefined
-        ? Number(order.item.amountRupees)
-        : order.item.labourRupees !== undefined
-          ? Number(order.item.labourRupees)
-          : 0;
-    const todayCashOutPaise = todayItemCostRupees * 100;
+    const todayCashOutPaise = itemCostPaise(order);
 
     // Totals
     const closingGoldMg = prevGoldMg + todayGoldInMg - todayGoldOutMg;
@@ -148,12 +189,14 @@ function PrintPage() {
 
   const customer = people.find((p) => p.id === order.customerId);
   const karigar = order.karigarId ? people.find((p) => p.id === order.karigarId) : null;
+  const items = orderItems(order);
+  const totals = orderTotals(order);
 
   const titles: Record<Kind, string> = {
     slip: "Order Slip",
     "gold-receipt": "Customer Gold Receipt",
     "advance-receipt": "Cash Advance Receipt",
-    "old-gold-receipt": "Old Gold Received Receipt",
+    "old-gold-receipt": "Gold Received from Customer",
   };
 
   const title = titles[kind as Kind] ?? "Print";
@@ -200,8 +243,8 @@ function PrintPage() {
               {customer?.gstin && <div className="text-xs">GSTIN: {customer.gstin}</div>}
             </div>
             <div>
-              <div className="text-xs uppercase text-gray-500">Order type</div>
-              <div>{ORDER_TYPE_LABELS[order.type]}</div>
+              <div className="text-xs uppercase text-gray-500">Production type</div>
+              <div>{productionTypeLabel(order)}</div>
               <div className="text-xs uppercase text-gray-500 mt-2">Expected delivery</div>
               <div>{order.expectedDelivery || "—"}</div>
             </div>
@@ -230,36 +273,47 @@ function PrintPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-t border-gray-200">
-                      <td className="p-2 font-medium">{order.item.itemName}</td>
-                      <td className="p-2 font-mono text-gray-600">{order.item.stamp || "—"}</td>
-                      <td className="p-2 text-right font-mono">{mgToGrams(order.item.grossMg)}</td>
-                      <td className="p-2 text-right font-mono">
-                        {mgToGrams(order.item.addMg || 0)}
-                      </td>
-                      <td className="p-2 text-right font-mono">{mgToGrams(order.item.lessMg)}</td>
-                      <td className="p-2 text-right font-mono font-semibold">
-                        {mgToGrams(order.item.netMg)}
-                      </td>
-                      <td className="p-2 text-right font-mono">{order.item.purity / 10}%</td>
-                      <td className="p-2 text-right font-mono">
-                        {order.item.expectedWastagePct || 0}%
-                      </td>
-                      <td className="p-2 text-right font-mono">{order.item.quantity}</td>
-                      <td className="p-2 text-right font-mono">
-                        {order.item.labourRupees !== undefined
-                          ? `₹${order.item.labourRupees}`
-                          : "—"}
-                      </td>
-                      <td className="p-2 text-right font-mono font-semibold text-yellow-800">
-                        {mgToGrams(order.item.fineMg)}
-                      </td>
-                      <td className="p-2 text-right font-mono font-semibold">
-                        {order.item.amountRupees !== undefined
-                          ? `₹${order.item.amountRupees}`
-                          : "—"}
-                      </td>
-                    </tr>
+                    {items.map((it, i) => (
+                      <tr key={it.lineId ?? i} className="border-t border-gray-200">
+                        <td className="p-2 font-medium">{it.itemName}</td>
+                        <td className="p-2 font-mono text-gray-600">{it.stamp || "—"}</td>
+                        <td className="p-2 text-right font-mono">{mgToGrams(it.grossMg)}</td>
+                        <td className="p-2 text-right font-mono">{mgToGrams(it.addMg || 0)}</td>
+                        <td className="p-2 text-right font-mono">{mgToGrams(it.lessMg)}</td>
+                        <td className="p-2 text-right font-mono font-semibold">
+                          {mgToGrams(it.netMg)}
+                        </td>
+                        <td className="p-2 text-right font-mono">{it.purity / 10}%</td>
+                        <td className="p-2 text-right font-mono">{it.expectedWastagePct || 0}%</td>
+                        <td className="p-2 text-right font-mono">{it.quantity}</td>
+                        <td className="p-2 text-right font-mono">
+                          {it.labourRupees !== undefined ? `₹${it.labourRupees}` : "—"}
+                        </td>
+                        <td className="p-2 text-right font-mono font-semibold text-yellow-800">
+                          {mgToGrams(it.fineMg)}
+                        </td>
+                        <td className="p-2 text-right font-mono font-semibold">
+                          {it.amountRupees !== undefined ? `₹${it.amountRupees}` : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                    {items.length > 1 && (
+                      <tr className="border-t-2 border-gray-400 bg-gray-50 font-semibold">
+                        <td className="p-2" colSpan={2}>
+                          Total ({items.length} items)
+                        </td>
+                        <td className="p-2 text-right font-mono">{mgToGrams(totals.grossMg)}</td>
+                        <td className="p-2" colSpan={2} />
+                        <td className="p-2 text-right font-mono">{mgToGrams(totals.netMg)}</td>
+                        <td className="p-2" colSpan={2} />
+                        <td className="p-2 text-right font-mono">{totals.quantity}</td>
+                        <td className="p-2" />
+                        <td className="p-2 text-right font-mono text-yellow-800">
+                          {mgToGrams(totals.fineMg)}
+                        </td>
+                        <td className="p-2" />
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </section>
@@ -358,6 +412,31 @@ function PrintPage() {
                 </section>
               )}
 
+              {/* Reference images — the piece the karigar is actually making.
+                  Resolved full-size from the local vault (not the 240px
+                  thumbnail), and embedded as data: URLs by the print engine, so
+                  they survive the Electron print window and work offline. */}
+              {referenceImages.length > 0 && (
+                <section className="mb-4">
+                  <div className="font-medium text-sm mb-2">Reference Images</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {referenceImages.map((ref) => (
+                      <figure key={ref.docKey} className="border border-gray-300 rounded p-1">
+                        <img
+                          src={ref.url}
+                          alt={ref.label}
+                          className="w-full h-32 object-contain"
+                          referrerPolicy="no-referrer"
+                        />
+                        <figcaption className="text-[10px] text-gray-500 text-center mt-1">
+                          {ref.label}
+                        </figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                </section>
+              )}
+
               {(order.design.designNumber || order.design.pattern || order.design.notes) && (
                 <section className="text-sm mb-4">
                   <div className="font-medium">Design &amp; Custom Comments</div>
@@ -391,7 +470,11 @@ function PrintPage() {
                   <tr className="border-t border-gray-200">
                     <td className="p-2">
                       {order.advance.goldKind === "old_gold"
-                        ? "Old gold / jewellery"
+                        ? // A jeweller supplying a manufacturer often hands over
+                          // fresh bullion or scrap, not worn jewellery — calling
+                          // it all "old gold" is retail language and misdescribes
+                          // what is actually on the receipt.
+                          "Gold received from customer"
                         : "Pure gold advance"}
                     </td>
                     <td className="p-2 text-right font-mono">

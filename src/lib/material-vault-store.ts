@@ -40,21 +40,25 @@ export interface MaterialCategoryDef {
  * correctly; the registry only drives labels/grouping in the UI.
  */
 export const DEFAULT_MATERIAL_CATEGORIES: MaterialCategoryDef[] = [
+  // Gold group — raw material form (the "Gold Held" bucket on the balance sheet).
   { key: "raw_gold", label: "Raw Gold", group: "gold" },
   { key: "fine_gold", label: "Fine Gold", group: "gold" },
   { key: "old_gold", label: "Old Gold", group: "gold" },
-  { key: "kdm", label: "KDM", group: "manufacturing_materials" },
-  { key: "ball", label: "Ball", group: "manufacturing_materials" },
+  // Manufacturing Materials — each individually stock-managed.
+  { key: "kdm_balls", label: "KDM Balls", group: "manufacturing_materials" },
+  { key: "chains", label: "Chains", group: "manufacturing_materials" },
+  { key: "findings", label: "Findings", group: "manufacturing_materials" },
+  { key: "locks", label: "Locks", group: "manufacturing_materials" },
+  { key: "jump_rings", label: "Jump Rings", group: "manufacturing_materials" },
+  { key: "components", label: "Components", group: "manufacturing_materials" },
   { key: "wire", label: "Wire", group: "manufacturing_materials" },
   { key: "tube", label: "Tube", group: "manufacturing_materials" },
-  { key: "findings", label: "Findings", group: "manufacturing_materials" },
   {
     key: "other_material",
     label: "Other Manufacturing Materials",
     group: "manufacturing_materials",
   },
   { key: "recovery_gold", label: "Recovery Gold", group: "recovery" },
-  { key: "scrap", label: "Scrap", group: "recovery" },
 ];
 
 export const MATERIAL_GROUP_LABELS: Record<MaterialGroup, string> = {
@@ -213,6 +217,51 @@ export function computeMaterialBalances(
   const grandTotalMg = categoryBalances.reduce((s, c) => s + c.balanceMg, 0);
 
   return { categories: categoryBalances, byGroup, groupTotals, grandTotalMg };
+}
+
+/**
+ * A material stock item is (category × purity): "22K Chain" and "18K Chain" are
+ * DISTINCT stock items even though both are Chains. Manufacturing materials are
+ * not always fine gold, so each carries its own purity and fine-gold equivalent.
+ */
+export interface MaterialStockItem {
+  key: string; // `${category}::${purity}`
+  category: string;
+  label: string;
+  group: MaterialGroup;
+  purity: number; // per-mille; 0 = non-gold / accessory
+  weightMg: number; // net stock weight
+  fineMg: number; // fine-gold equivalent = weight × purity ÷ 1000 (0 for non-gold)
+  unit: string; // "g" for weighed, "pcs" reserved for future piece-counted items
+}
+
+/** Per-(category × purity) stock items — the individually managed material list. */
+export function computeMaterialStockItems(
+  movements: MaterialMovement[],
+  categories: MaterialCategoryDef[] = DEFAULT_MATERIAL_CATEGORIES,
+): MaterialStockItem[] {
+  const map = new Map<string, MaterialStockItem>();
+  for (const m of movements) {
+    const purity = m.purity ?? 0;
+    const key = `${m.category}::${purity}`;
+    const def = labelFor(categories, m.category);
+    const item = map.get(key) ?? {
+      key,
+      category: m.category,
+      label: def.label,
+      group: def.group,
+      purity,
+      weightMg: 0,
+      fineMg: 0,
+      unit: "g",
+    };
+    item.weightMg += m.deltaMg;
+    item.fineMg += purity > 0 ? Math.round((m.deltaMg * purity) / 1000) : 0;
+    map.set(key, item);
+  }
+  return Array.from(map.values())
+    .filter((i) => i.weightMg !== 0 || i.fineMg !== 0)
+    .sort((a, b) => a.label.localeCompare(b.label) || b.purity - a.purity);
 }
 
 interface MaterialVaultState {

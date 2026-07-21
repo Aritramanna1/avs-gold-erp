@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { usePrintEngine } from "@/lib/print-engine";
 import { PageHeader } from "@/components/app-shell";
 import { AttachmentsSection } from "@/components/attachments-section";
 import { Button } from "@/components/ui/button";
@@ -13,14 +12,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import {
   useOrders,
   ORDER_STATUS_LABELS,
-  ORDER_TYPE_LABELS,
+  ORDER_STATUS_FLOW,
+  orderItems,
+  orderTotals,
+  productionTypeLabel,
+  createJobCardForLine,
   paiseToRupees,
+  type Order,
   type OrderStatus,
 } from "@/lib/orders-store";
 import { useJobCards, JOB_STATUS_LABELS } from "@/lib/jobcards-store";
-import { usePeople } from "@/lib/people-store";
+import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
 import { useSettings } from "@/lib/settings-store";
 import { mgToGrams } from "@/lib/gold";
 import { useWorkerReturns, computeGoldPosition } from "@/lib/worker-return-store";
@@ -39,6 +54,8 @@ import { ManufacturingBarcodePanel } from "@/components/manufacturing-barcode-pa
 import { ReceiveWorkDialog } from "@/components/receive-work-dialog";
 import { EmailSendPanel } from "@/components/email-send-panel";
 import { DocCommActions } from "@/components/doc-comm-actions";
+import { WhatsAppDocMenu } from "@/components/whatsapp-doc-menu";
+import { orderConfirmationMessage } from "@/lib/order-messages";
 import { CommLogCard } from "@/components/comm-log-card";
 import { ReferenceNotesPanel } from "@/components/reference-notes/ReferenceNotesPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -75,7 +92,15 @@ function OrderDetailPage() {
   const people = usePeople((s) => s.people);
   const jobs = useJobCards((s) => s.jobs);
   const removeJob = useJobCards((s) => s.remove);
-  const [receiveOpen, setReceiveOpen] = useState(false);
+  // WHICH job card we're receiving work for — an order has one per item, so a
+  // bare open/closed flag can't say which piece came back from the bench.
+  const [receiveJobId, setReceiveJobId] = useState<string | null>(null);
+  // The item we're creating a Job Card for — i.e. the piece we're about to
+  // assign to a karigar.
+  const [assignLine, setAssignLine] = useState<{
+    lineId?: string;
+    itemName: string;
+  } | null>(null);
   const [workerReturnOpen, setWorkerReturnOpen] = useState(false);
   const [sendPolishingOpen, setSendPolishingOpen] = useState(false);
   const [receivePolishingOpen, setReceivePolishingOpen] = useState(false);
@@ -136,8 +161,6 @@ function OrderDetailPage() {
     refreshManufacturingBarcodes,
   ]);
 
-  const { triggerPrint } = usePrintEngine();
-
   if (!order) {
     return (
       <div className="p-8 max-w-3xl mx-auto text-center">
@@ -152,13 +175,33 @@ function OrderDetailPage() {
 
   const customer = people.find((p) => p.id === order.customerId);
   const karigar = order.karigarId ? people.find((p) => p.id === order.karigarId) : null;
-  const linkedJob = jobs.find((j) => j.orderId === order.id);
+  // Every job card on this order — one per item, never merged.
+  const orderJobs = jobs.filter((j) => j.orderId === order.id);
+  const linkedJob = orderJobs[0];
+  const receiveJob = orderJobs.find((j) => j.id === receiveJobId) ?? null;
+  const items = orderItems(order);
+  const totals = orderTotals(order);
+
+  /** The Job Card for a given line, if one has been created. Cards written
+   *  before line ids exist carry none, and cover the first line. */
+  const jobForLine = (it: (typeof items)[number], index: number) =>
+    it.lineId
+      ? orderJobs.find((j) => j.lineId === it.lineId)
+      : orderJobs.find((j) => !j.lineId && index === 0);
 
   // Dashboard Summary — display-only aggregation across every module this
   // order already touches. Never writes anything; purely reads issueHistory/
   // workerReturnHistory/goldPosition/timeline, which are each themselves
   // kept in sync by the dialogs that create issues/returns/status changes.
-  const currentWorkerName = karigar?.fullName ?? "Not assigned";
+  // The karigars actually working this order come from its JOB CARDS — that is
+  // where work is assigned now. `order.karigarId` is only ever set by legacy /
+  // imported orders, so it's a fallback, not the source of truth. Several items
+  // can be on several benches at once, so this can legitimately name more than one.
+  const assignedNames = Array.from(
+    new Set(orderJobs.map((j) => j.karigarName).filter((n): n is string => !!n)),
+  );
+  const currentWorkerName =
+    assignedNames.length > 0 ? assignedNames.join(", ") : (karigar?.fullName ?? "Not assigned");
   const lastActivity = [...order.timeline].sort((a, b) => b.ts - a.ts)[0];
 
   const breadcrumb = ["Order", "Job Card", "Receive Work", "Stock", "Billing", "Daily Close"];
@@ -174,7 +217,9 @@ function OrderDetailPage() {
         "Delete this order? This does not reverse the gold ledger entry — handle that from Ledger if needed.",
       )
     ) {
-      if (linkedJob) removeJob(linkedJob.id);
+      // Every card, not just the first — otherwise deleting a 3-item order
+      // leaves two orphaned job cards pointing at an order that no longer exists.
+      orderJobs.forEach((j) => removeJob(j.id));
       remove(order!.id);
       navigate({ to: "/orders" });
     }
@@ -196,16 +241,18 @@ function OrderDetailPage() {
               data-testid="order-print-slip"
               variant="outline"
               className="gap-2"
-              onClick={() =>
-                triggerPrint(
-                  `/orders/print/slip/${order.id}`,
-                  `Order Slip Preview · ${order.orderNo}`,
-                )
-              }
+              onClick={() => navigate({ to: `/orders/print/slip/${order.id}` as any })}
             >
               <Printer className="h-4 w-4" /> {t("orders.orderSlip")}
             </Button>
-            <Link to="/workshop/job-card/$orderId" params={{ orderId: order.id }}>
+            {/* Only for a single-item order. With several pieces there is no
+                "the" job card — they're listed individually below, each with its
+                own view/print, so a header button here would silently open one. */}
+            <Link
+              to="/workshop/job-card/$orderId"
+              params={{ orderId: orderJobs[0]?.id ?? order.id }}
+              className={orderJobs.length > 1 ? "hidden" : undefined}
+            >
               <Button variant="outline" className="gap-2">
                 <ClipboardList className="h-4 w-4" /> Job Card
               </Button>
@@ -217,10 +264,7 @@ function OrderDetailPage() {
                 onClick={() => {
                   const kind =
                     order.advance.goldKind === "old_gold" ? "old-gold-receipt" : "gold-receipt";
-                  triggerPrint(
-                    `/orders/print/${kind}/${order.id}`,
-                    `Gold Receipt Preview · ${order.orderNo}`,
-                  );
+                  navigate({ to: `/orders/print/${kind}/${order.id}` as any });
                 }}
               >
                 <Printer className="h-4 w-4" />
@@ -233,12 +277,7 @@ function OrderDetailPage() {
               <Button
                 variant="outline"
                 className="gap-2"
-                onClick={() =>
-                  triggerPrint(
-                    `/orders/print/advance-receipt/${order.id}`,
-                    `Cash Advance Receipt · ${order.orderNo}`,
-                  )
-                }
+                onClick={() => navigate({ to: `/orders/print/advance-receipt/${order.id}` as any })}
               >
                 <Printer className="h-4 w-4" /> {t("orders.advanceReceipt")}
               </Button>
@@ -253,12 +292,59 @@ function OrderDetailPage() {
           printA4Href={`/orders/print/slip/${order.id}` as any}
           whatsapp={{
             phone: customer?.phone,
-            message: `Hello ${customer?.fullName ?? order.customerId},\nYour order ${order.orderNo} (${order.item}) is confirmed at ${useSettings.getState().firm.shopName}.\n\nExpected delivery: ${order.expectedDelivery ? new Date(order.expectedDelivery).toLocaleDateString("en-IN") : "TBD"}.\n\nThank you!`,
+            // Same builder the post-create confirmation uses, so the customer
+            // never gets two differently-worded versions of the same message.
+            message: orderConfirmationMessage(order),
           }}
           linkedType="order"
           linkedId={order.id}
           recipientLabel={customer?.fullName ?? order.customerId}
         />
+        {/* Send-with-PDF actions (Universal Print Engine → WasenderAPI). */}
+        <div className="mt-2 flex flex-wrap gap-2">
+          <WhatsAppDocMenu
+            buttonLabel="Customer Docs"
+            phone={customer?.phone}
+            recipientName={customer?.fullName ?? "Customer"}
+            linkedType="order"
+            linkedId={order.id}
+            items={[
+              { label: "Order Slip", docType: "order_slip", recordId: order.id },
+              ...(order.customerId
+                ? [
+                    {
+                      label: "Ledger Statement",
+                      docType: "customer_ledger_statement" as const,
+                      recordId: order.customerId,
+                    },
+                  ]
+                : []),
+            ]}
+          />
+          {(() => {
+            const jobKarigarId = jobs.find((j) => j.orderId === order.id && j.karigarId)?.karigarId;
+            const kg = karigar ?? people.find((p) => p.id === jobKarigarId) ?? null;
+            const firstJob = jobs.find((j) => j.orderId === order.id);
+            if (!kg) return null;
+            return (
+              <WhatsAppDocMenu
+                buttonLabel="Karigar Docs"
+                phone={kg.phone}
+                recipientName={kg.fullName}
+                linkedType="job"
+                linkedId={firstJob?.id ?? order.id}
+                items={[
+                  { label: "Job Card", docType: "job_card", recordId: firstJob?.id ?? order.id },
+                  {
+                    label: "Worker Statement",
+                    docType: "karigar_custody_statement",
+                    recordId: kg.id,
+                  },
+                ]}
+              />
+            );
+          })()}
+        </div>
       </div>
 
       {/* Breadcrumb / next-action */}
@@ -282,7 +368,7 @@ function OrderDetailPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[]).map((s) => (
+              {ORDER_STATUS_FLOW.map((s) => (
                 <SelectItem key={s} value={s}>
                   {t("orders.status_" + s)}
                 </SelectItem>
@@ -341,29 +427,49 @@ function OrderDetailPage() {
             )}
           </Section>
 
-          {/* Item */}
-          <Section title="Item & Gold" icon={ShoppingBag}>
-            <div className="grid sm:grid-cols-2 gap-2 text-sm">
-              <Kv k="Item" v={order.item.itemName} />
-              <Kv k="Category" v={order.item.category} />
-              <Kv k="Quantity" v={String(order.item.quantity)} />
-              <Kv k="Size" v={order.item.size || "—"} />
-              <Kv k="Metal" v={`${order.item.metal} · ${order.item.metalColor}`} />
-              <Kv k="Purity" v={String(order.item.purity)} />
-              <Kv k="Gross" v={`${mgToGrams(order.item.grossMg)} g`} />
-              <Kv k="Less" v={`${mgToGrams(order.item.lessMg)} g`} />
-              <Kv k="Net" v={`${mgToGrams(order.item.netMg)} g`} />
-              <Kv k="Fine gold" v={`${mgToGrams(order.item.fineMg)} g`} accent />
-              <Kv
-                k="Expected wastage"
-                v={`${order.item.expectedWastagePct}% (${mgToGrams(order.item.expectedWastageMg)} g)`}
-              />
-              {order.item.stoneDetails && <Kv k="Stone" v={order.item.stoneDetails} />}
+          {/* Items — one block per line, each of which is its own Job Card */}
+          <Section
+            title={items.length > 1 ? `Items & Gold (${items.length})` : "Item & Gold"}
+            icon={ShoppingBag}
+          >
+            <div className="space-y-4">
+              {items.map((it, i) => (
+                <div
+                  key={it.lineId ?? i}
+                  className={i > 0 ? "border-t border-border pt-4" : undefined}
+                >
+                  {items.length > 1 && (
+                    <div className="text-xs font-medium text-gold mb-2">Item {i + 1}</div>
+                  )}
+                  <div className="grid sm:grid-cols-2 gap-2 text-sm">
+                    <Kv k="Item" v={it.itemName} />
+                    <Kv k="Category" v={it.category} />
+                    <Kv k="Quantity" v={String(it.quantity)} />
+                    <Kv k="Size" v={it.size || "—"} />
+                    <Kv k="Metal" v={`${it.metal} · ${it.metalColor}`} />
+                    <Kv k="Purity" v={String(it.purity)} />
+                    <Kv k="Gross" v={`${mgToGrams(it.grossMg)} g`} />
+                    <Kv k="Less" v={`${mgToGrams(it.lessMg)} g`} />
+                    <Kv k="Net" v={`${mgToGrams(it.netMg)} g`} />
+                    <Kv k="Fine gold" v={`${mgToGrams(it.fineMg)} g`} accent />
+                    <Kv
+                      k="Expected wastage"
+                      v={`${it.expectedWastagePct}% (${mgToGrams(it.expectedWastageMg)} g)`}
+                    />
+                    {it.stoneDetails && <Kv k="Stone" v={it.stoneDetails} />}
+                  </div>
+                  {it.remarks && <p className="text-xs text-muted-foreground mt-2">{it.remarks}</p>}
+                </div>
+              ))}
             </div>
-            {order.item.remarks && (
-              <p className="text-xs text-muted-foreground mt-3 border-t border-border pt-3">
-                {order.item.remarks}
-              </p>
+
+            {items.length > 1 && (
+              <div className="mt-4 border-t border-border pt-3 grid sm:grid-cols-2 gap-2 text-sm">
+                <Kv k="Total pieces" v={String(totals.quantity)} />
+                <Kv k="Total gross" v={`${mgToGrams(totals.grossMg)} g`} />
+                <Kv k="Total net" v={`${mgToGrams(totals.netMg)} g`} />
+                <Kv k="Total fine gold" v={`${mgToGrams(totals.fineMg)} g`} accent />
+              </div>
             )}
           </Section>
 
@@ -502,58 +608,102 @@ function OrderDetailPage() {
             customerName={customer?.fullName ?? order.customerId}
           />
 
-          {/* Linked Job Card */}
-          <Section title="Job Card" icon={Hammer}>
-            {linkedJob ? (
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <div className="font-mono text-xs text-gold">{linkedJob.jobNo}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Status: {JOB_STATUS_LABELS[linkedJob.status]}
+          {/* Linked Job Cards — ONE PER ITEM. Each is an independent bench job
+              and can go to a different karigar, so each is listed, viewed and
+              printed on its own. */}
+          <Section
+            title={
+              items.length > 1 ? `Job Cards (${orderJobs.length}/${items.length})` : "Job Card"
+            }
+            icon={Hammer}
+          >
+            <p className="text-xs text-muted-foreground mb-3">
+              Work is assigned per item. Create a Job Card when you decide which karigar makes that
+              piece — an order on its own assigns nothing.
+            </p>
+
+            <div className="space-y-3">
+              {/* Every ITEM, not every card: an item without a card is the thing
+                  the workshop still has to act on, and it must be visible. */}
+              {items.map((it, i) => {
+                const job = jobForLine(it, i);
+                return (
+                  <div
+                    key={it.lineId ?? i}
+                    className="rounded-lg border border-border bg-background/40 p-3 space-y-2 text-sm"
+                  >
+                    <div>
+                      {job ? (
+                        <div className="font-mono text-xs text-gold">{job.jobNo}</div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">Not yet assigned</div>
+                      )}
+                      <div className="text-sm font-medium">{it.itemName}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {it.category} · {it.quantity > 1 ? `${it.quantity} pcs · ` : ""}
+                        {mgToGrams(it.grossMg)} g
+                        {job ? ` · ${JOB_STATUS_LABELS[job.status]} · ${job.karigarName}` : ""}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {job ? (
+                        <>
+                          <Link to="/workshop/$id" params={{ id: job.id }}>
+                            <Button size="sm" variant="outline" className="gap-1">
+                              <Eye className="h-3 w-3" /> View
+                            </Button>
+                          </Link>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={() =>
+                              // Keyed by JOB CARD id, not order id — otherwise every
+                              // card on a multi-item order prints the first item.
+                              navigate({ to: `/workshop/print/job-card/${job.id}` as any })
+                            }
+                          >
+                            <Printer className="h-3 w-3" /> Print
+                          </Button>
+                          {!job.workReceipt && (
+                            <Button
+                              size="sm"
+                              className="gap-1"
+                              onClick={() => setReceiveJobId(job.id)}
+                            >
+                              <PackageCheck className="h-3 w-3" /> Receive Work
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="gap-1"
+                          data-testid="order-create-job-card"
+                          onClick={() =>
+                            setAssignLine({ lineId: it.lineId, itemName: it.itemName })
+                          }
+                        >
+                          <ClipboardList className="h-3 w-3" /> Create Job Card
+                        </Button>
+                      )}
                     </div>
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <Link to="/workshop/$id" params={{ id: linkedJob.id }}>
-                    <Button size="sm" variant="outline" className="gap-1">
-                      <Eye className="h-3 w-3" /> View Job Card
-                    </Button>
-                  </Link>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                    onClick={() =>
-                      triggerPrint(
-                        `/workshop/print/job-card/${order.id}`,
-                        `Job Card Preview · ${linkedJob.jobNo}`,
-                      )
-                    }
-                  >
-                    <Printer className="h-3 w-3" /> Print Job Card
-                  </Button>
-                  {!linkedJob.workReceipt && (
-                    <Button
-                      size="sm"
-                      className="gap-1"
-                      onClick={() => navigate({ to: "/workshop/gold-book" })}
-                    >
-                      <Hammer className="h-3 w-3" /> Worker Gold Book
-                    </Button>
-                  )}
-                  {!linkedJob.workReceipt && (
-                    <Button size="sm" className="gap-1" onClick={() => setReceiveOpen(true)}>
-                      <PackageCheck className="h-3 w-3" /> Receive Work
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Job Card is created automatically once the order is confirmed.
-              </p>
-            )}
+                );
+              })}
+
+              {orderJobs.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1"
+                  onClick={() => navigate({ to: "/workshop/gold-book" })}
+                >
+                  <Hammer className="h-3 w-3" /> Worker Gold Book
+                </Button>
+              )}
+            </div>
           </Section>
 
           {/* Worker Issues */}
@@ -714,11 +864,14 @@ function OrderDetailPage() {
                   </Button>
                 </Link>
               )}
-              {linkedJob && !linkedJob.workReceipt && (
+              {/* Shortcut for the common single-item order. Multi-item orders
+                  receive per card, from the Job Cards section — you cannot
+                  receive "the order", only a finished piece. */}
+              {orderJobs.length === 1 && !orderJobs[0].workReceipt && (
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
-                  onClick={() => setReceiveOpen(true)}
+                  onClick={() => setReceiveJobId(orderJobs[0].id)}
                 >
                   <PackageCheck className="h-4 w-4" /> Receive Work from Karigar
                 </Button>
@@ -798,9 +951,17 @@ function OrderDetailPage() {
       </div>
 
       <ReceiveWorkDialog
-        open={receiveOpen}
-        onClose={() => setReceiveOpen(false)}
-        job={linkedJob ?? null}
+        open={!!receiveJob}
+        onClose={() => setReceiveJobId(null)}
+        job={receiveJob}
+      />
+
+      <CreateJobCardDialog
+        open={!!assignLine}
+        onClose={() => setAssignLine(null)}
+        order={order}
+        lineId={assignLine?.lineId}
+        itemName={assignLine?.itemName ?? ""}
       />
 
       <WorkerReturnDialog
@@ -889,5 +1050,149 @@ function DashboardStat({
         {value}
       </div>
     </div>
+  );
+}
+
+/**
+ * Create Job Card — the moment work is actually assigned.
+ *
+ * Deliberately a separate, explicit step from taking the order: the workshop
+ * reviews the order, sees who is free and who suits the piece, and only then
+ * puts it on a bench. One card, one item, one karigar.
+ */
+function CreateJobCardDialog({
+  open,
+  onClose,
+  order,
+  lineId,
+  itemName,
+}: {
+  open: boolean;
+  onClose: () => void;
+  order: Order;
+  lineId?: string;
+  itemName: string;
+}) {
+  const people = usePeople((s) => s.people);
+  const [karigarId, setKarigarId] = useState<string>("");
+  const [expectedStart, setExpectedStart] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Reset per open — the dialog stays mounted, so without this the previous
+  // item's karigar would still be selected for the next one.
+  useEffect(() => {
+    if (open) {
+      setKarigarId("");
+      setExpectedStart("");
+      setError(null);
+    }
+  }, [open]);
+
+  // A start date after the delivery date is not a scheduling preference, it's a
+  // typo — the piece cannot begin after it is due.
+  const startsAfterDelivery =
+    !!expectedStart && !!order.expectedDelivery && expectedStart > order.expectedDelivery;
+
+  const karigars = people.filter(
+    (p) =>
+      (p.type === "karigar" || p.type === "worker" || p.type === "outside_worker") &&
+      p.active !== false,
+  );
+
+  async function save() {
+    if (!karigarId || saving || startsAfterDelivery) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await createJobCardForLine(order, lineId, karigarId, {
+        expectedStart: expectedStart || undefined,
+      });
+      toast.success(`Job Card created for ${itemName}.`);
+      onClose();
+    } catch (err) {
+      // Surfaced, not swallowed: "already has a Job Card" and "no such karigar"
+      // are both states the user needs to see rather than a dialog that does
+      // nothing when clicked.
+      setError(err instanceof Error ? err.message : "Could not create the Job Card.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create Job Card</DialogTitle>
+          <DialogDescription>
+            Assign <span className="font-medium text-foreground">{itemName}</span> to a karigar.
+            This piece gets its own card, its own gold issue and its own wastage.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Karigar *</Label>
+            <Select value={karigarId} onValueChange={setKarigarId}>
+              <SelectTrigger data-testid="job-card-karigar-select">
+                <SelectValue placeholder="Select the karigar who will make this…" />
+              </SelectTrigger>
+              <SelectContent>
+                {karigars.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.fullName} · {PERSON_TYPE_LABELS[p.type]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {karigars.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No karigars on record yet — add one in People first.
+              </p>
+            )}
+          </div>
+
+          {/* Work does not start the day the order is taken. The bench may be
+              busy, gold may not be issued yet, or the piece may be deliberately
+              queued — so when it is EXPECTED TO START is its own date. */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Expected Work Start Date</Label>
+            <Input
+              type="date"
+              value={expectedStart}
+              onChange={(e) => setExpectedStart(e.target.value)}
+              className={startsAfterDelivery ? "border-red-500 focus-visible:ring-red-500" : ""}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {order.expectedDelivery
+                ? `Delivery deadline: ${order.expectedDelivery}`
+                : "No delivery deadline set on this order."}
+            </p>
+            {startsAfterDelivery && (
+              <p className="text-xs text-red-500 font-medium">
+                Work cannot start after the delivery deadline.
+              </p>
+            )}
+          </div>
+
+          {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={save}
+            disabled={!karigarId || saving || startsAfterDelivery}
+            className="gap-2"
+          >
+            <ClipboardList className="h-4 w-4" />
+            {saving ? "Creating…" : "Create Job Card"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
