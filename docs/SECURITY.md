@@ -1,39 +1,22 @@
 # Security
 
-## Secret handling — renderer never sees secrets
+The desktop uses Electron context isolation, renderer sandboxing, disabled Node integration and DevTools, no application menu, blocked inspection shortcuts, CSP, blocked top-level remote navigation, scheme-restricted external links, camera-only permission scoping, trusted-renderer IPC checks, bounded IPC payloads, and sandboxed print windows.
 
-The WasenderAPI **Personal Access Token** (account/management) and **session API Key** (messaging) are stored **encrypted at rest** with Electron `safeStorage` (OS keychain / Windows DPAPI) in the main process (`electron/wasender.ts`). They are:
+## Secrets and local protection
 
-- decrypted only in the main process, only for the moment of an outbound HTTPS call;
-- never returned to the renderer, never stored in the DB, never synced to the cloud;
-- proxied through IPC (`wasender:set-token`, `wasender:set-apikey`, `wasender:request`) — the renderer can store/forget/use a secret but never read it back.
+- Local database/file encryption keys, audit signing keys, sessions, and signed license entitlements use Electron `safeStorage`; production has no plaintext fallback.
+- WasenderAPI credentials remain in the main process, require OS-backed encryption, and are never readable through the preload bridge. The outbound proxy restricts HTTPS hosts/methods, request sizes, response sizes, and caller headers.
+- SQLite snapshots and local file blobs use AES-256-GCM with integrity checks. Files stay local in every Version 1 deployment mode.
+- The Hybrid service-role key is setup-only and discarded. Project URL and anon key are runtime configuration.
+- The licensing client knows only the Arivahly Licensing API and an Ed25519 public key. It never knows Central Licensing Database credentials.
 
-If the OS keychain is unavailable, a clearly-marked `plain:` blob is used so the feature still works, flagged as un-keyed to the user.
+The first local account is the permanent Super Owner. Passwords use PBKDF2-HMAC-SHA256 with 600,000 iterations; legacy hashes upgrade after successful sign-in. Sessions have absolute expiry and device binding. Repeated failures trigger a timed account lockout.
 
-## Debug logging
+## Remaining release risks
 
-WasenderAPI requests log `[wasender] METHOD url {payload,status,response}` to the main-process console for debugging — **never** including the token/API key.
+- The Windows installer remains unsigned until an Arivahly code-signing certificate is configured.
+- The current Hybrid master migration grants the project anon role broad single-tenant table access because runtime sync has no dedicated authenticated cloud identity. Treat the anon key as customer-sensitive and do not approve Hybrid for production until this is replaced with an authenticated sync principal and restrictive RLS.
+- A service-role key cannot execute arbitrary PostgreSQL DDL through the Supabase Data API. Fresh-project automatic master-schema installation needs a separate authenticated provisioning/SQL mechanism; the current safe workflow is owner-applied master SQL followed by ERP validation.
+- No independent penetration test or live clean-project Hybrid acceptance test has been completed.
 
-## Cloud authorization
-
-Supabase Row-Level Security governs every table. New tables require RLS policies in their migration. Branch scoping is applied on read (`useLedger.refresh` filters by `branchId` for non-global roles) and on write (`supabase-write.ts`).
-
-## Audit trail
-
-Financial postings (gold ledger, material vault, worker gold book) append to `security/audit-log.ts` with actor id/email, action, before/after. Best-effort — never blocks the operation, but every posting attempts it.
-
-## Financial locks
-
-Month-end-closed periods reject new postings (`assertPeriodOpen`). Disabling enforcement (`financialLockEnforcementEnabled`) is a deliberate, audited admin action.
-
-## Roles
-
-Route access is gated by `guardRoute` (`permissions.ts`) / `rbac.ts`. Global roles (Super Owner, Administrator, CEO View-Only) see all branches; others are branch-scoped.
-
-## Data in project memory
-
-Durable architecture decisions only. Never store credentials, tokens, or customer PII in project memory or docs.
-
-## Artifacts / distribution
-
-Do not publish or distribute anything imitating a real record, receipt, or organization. Generated PDFs sent over WhatsApp use short-TTL signed Storage URLs.
+Never place customer PII, access tokens, service-role keys, passwords, licensing private keys, or Central Licensing Database credentials in source, documentation, logs, or support messages.

@@ -623,8 +623,8 @@ export default function MfgBillView() {
           </table>
         </>
 
-        {/* Section 4 — Karigar Account */}
-        <SectionTitle>4. Karigar Account Settlement</SectionTitle>
+        {/* Section 4 — Jeweller Account */}
+        <SectionTitle>4. Jeweller Account Settlement</SectionTitle>
         {bill.openingBalanceMg !== 0 && (
           <table style={{ ...tStyle, marginBottom: "2mm" }}>
             <tbody>

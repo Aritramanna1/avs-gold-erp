@@ -27,7 +27,7 @@ import {
   outsideWorkIssueMaterialToVaultCategory,
   OUTSIDE_WORK_ISSUE_VAULT_MOVEMENT_TYPE,
 } from "@/lib/material-vault-sync";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
 import { Truck, AlertTriangle } from "lucide-react";
 

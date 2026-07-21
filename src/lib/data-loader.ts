@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { isOfflineMode } from "@/lib/deployment-mode";
 import { getAttachmentSignedUrl } from "@/lib/supabase-storage";
 import { usePeople, type Person } from "@/lib/people-store";
@@ -31,6 +31,7 @@ import { useCommLog, type CommEvent } from "@/lib/comm-log-store";
 import { startRealtimeSync, stopRealtimeSync } from "@/lib/realtime-sync";
 import { resolveAllSignedUrls, initializeStorage } from "@/lib/storage";
 import { markCriticalLoadDone, markInitialLoadDone } from "@/lib/app-loading-store";
+import { reportUnexpectedError } from "@/lib/error-handling";
 
 /**
  * Returns the branch ID to filter queries by, or null if the current user
@@ -314,10 +315,9 @@ export async function pullAppSettings(): Promise<void> {
     const payload = data.data as any;
     const firm = payload.firm ?? useSettings.getState().firm;
 
-    // Dynamically sign stored private logo storage path on load to ensure it remains active.
-    // Offline mode has no cloud storage (the supabase.storage proxy throws) and no network to
-    // sign against — skip it rather than throw-and-catch on every boot.
-    if (firm && firm.logoStoragePath && !isOfflineMode()) {
+    // Resolve through the mode-aware provider: local vault in Offline, local
+    // fallback in Hybrid, signed cloud URL in Online.
+    if (firm && firm.logoStoragePath) {
       try {
         const freshUrl = await getAttachmentSignedUrl("firm-assets", firm.logoStoragePath);
         if (freshUrl) {
@@ -331,7 +331,10 @@ export async function pullAppSettings(): Promise<void> {
     const updatedUsers = payload.users ?? useSettings.getState().users;
     useSettings.setState({
       firm,
-      branding: payload.branding ?? useSettings.getState().branding,
+      branding: {
+        ...useSettings.getState().branding,
+        ...(payload.branding ?? {}),
+      },
       print: payload.print ?? useSettings.getState().print,
       gst: payload.gst ?? useSettings.getState().gst,
       purities: payload.purities ?? useSettings.getState().purities,
@@ -363,6 +366,11 @@ export async function pullAppSettings(): Promise<void> {
       commAutomation: payload.commAutomation
         ? { ...useSettings.getState().commAutomation, ...payload.commAutomation }
         : useSettings.getState().commAutomation,
+      smtp: payload.smtp ?? useSettings.getState().smtp,
+      dropdowns: payload.dropdowns ?? useSettings.getState().dropdowns,
+      disabledDropdowns: payload.disabledDropdowns ?? useSettings.getState().disabledDropdowns,
+      branchSettings: payload.branchSettings ?? useSettings.getState().branchSettings,
+      emailTemplates: payload.emailTemplates ?? useSettings.getState().emailTemplates,
     });
 
     // Also refresh currentUserRole if the users list changed (e.g. after an
@@ -566,9 +574,8 @@ async function runSafe(key: string, fn: () => Promise<void>, errors: string[]): 
   try {
     await fn();
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    errors.push(`${key}: ${msg}`);
-    console.error(`DataLoader error while fetching ${key}:`, msg);
+    const normalized = reportUnexpectedError(e, `data-loader.${key}`);
+    errors.push(`${key}: ${normalized.message} Reference: ${normalized.id}`);
   }
 }
 
@@ -730,20 +737,33 @@ export async function startCloudSync(): Promise<void> {
     // its own per-store skeleton until then, instead of one global gate.
     markCriticalLoadDone();
     // Background load starts after critical — don't await so UI unblocks immediately
-    void pullBackground().then((bg) => {
-      markInitialLoadDone();
-      if (!bg.ok) {
-        toast.error("Some data failed to load in background", {
-          description: bg.errors.slice(0, 2).join("; "),
-          duration: 4000,
+    void pullBackground()
+      .then((bg) => {
+        markInitialLoadDone();
+        if (!bg.ok) {
+          toast.error("Some data failed to load in background", {
+            description: bg.errors.slice(0, 2).join("; "),
+            duration: 4000,
+          });
+        }
+      })
+      .catch((error) => {
+        const normalized = reportUnexpectedError(error, "data-loader.background");
+        markInitialLoadDone();
+        toast.error(normalized.title, {
+          description: `${normalized.message} Reference: ${normalized.id}`,
+          duration: 7000,
         });
-      }
-    });
+      });
     isLoaded = true;
     startRealtimeSync();
-    void initializeStorage().then(() => {
-      void migrateLegacyRepairsToOrders().catch(() => {});
-    });
+    void initializeStorage()
+      .then(() => {
+        void migrateLegacyRepairsToOrders().catch((error) =>
+          reportUnexpectedError(error, "data-loader.repair-migration"),
+        );
+      })
+      .catch((error) => reportUnexpectedError(error, "data-loader.storage-init"));
   } finally {
     starting = false;
   }
@@ -779,7 +799,9 @@ export async function startLocalLoad(): Promise<void> {
     // same way Cloud mode already does it. Previously this was awaited, so an
     // Offline boot sat on the loading skeleton until every table + heavy store
     // refresh finished — the exact "startup should not wait" regression.
-    void pullBackground().finally(() => markInitialLoadDone());
+    void pullBackground()
+      .catch((error) => reportUnexpectedError(error, "data-loader.local-background"))
+      .finally(() => markInitialLoadDone());
   } finally {
     starting = false;
   }

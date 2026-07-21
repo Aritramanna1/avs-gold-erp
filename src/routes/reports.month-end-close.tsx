@@ -11,7 +11,7 @@ import {
   loadFinancialLocks,
   type FinancialLockPeriod,
 } from "@/lib/financial-lock-store";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { exportToCSV, triggerPrint } from "@/lib/report-engine";
 import { Lock, LockOpen, Loader2, Download, Printer } from "lucide-react";
 import { toast } from "sonner";

@@ -1,5 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
-import { saveDirect } from "@/lib/supabase-write";
+import { createRepository } from "@/lib/repositories/base-repository";
 import { useRepairs } from "@/lib/repair-store";
 import {
   useOrders,
@@ -78,10 +77,10 @@ export async function migrateLegacyRepairsToOrders() {
       });
 
       // 4. Save to orders table
-      await saveDirect("orders", order.id, order);
+      await migratedOrderRepository.save(order);
 
       // 5. Delete from repairs table in Supabase
-      await supabase.from("repairs").delete().eq("id", r.id);
+      await migratedRepairRepository.delete(r.id);
 
       migratedCount++;
     } catch (err) {
@@ -99,3 +98,5 @@ export async function migrateLegacyRepairsToOrders() {
     await useOrders.getState().refresh();
   }
 }
+const migratedOrderRepository = createRepository<any>("orders");
+const migratedRepairRepository = createRepository<any>("repairs");

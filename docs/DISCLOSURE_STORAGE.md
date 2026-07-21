@@ -1,5 +1,7 @@
 # Technical Disclosure: Local Attachment Preview & Physical File Register System
 
+> Historical design record. The Version 1 rule is local-only files in every mode; any Supabase Storage proposal below is superseded by [Database Guide](DATABASE.md) and [Hybrid Mode Guide](HYBRID_SETUP.md).
+
 This formal technical disclosure details the architecture, storage mechanisms, current operational constraints, and cloud migration blueprint for the **Local Attachment Preview** and **Physical File Register** frameworks in the **Areva Venture Studios ERP System**.
 
 ---

@@ -85,6 +85,22 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
     [docType, recordId, dataSourcesTick],
   );
   const firm = useSettings((s) => s.firm);
+  const branding = useSettings((s) => s.branding);
+  const brandedFirm = useMemo(
+    () => ({
+      ...firm,
+      shopName: branding.printHeader || firm.shopName || branding.applicationName,
+      tagline: firm.tagline || branding.tagline,
+      email: firm.email || branding.supportEmail,
+      phone: firm.phone || branding.supportPhone,
+      website: firm.website || branding.website,
+      themeColors: {
+        primaryColor: branding.primaryColor,
+        goldAccent: branding.goldAccent,
+      },
+    }),
+    [firm, branding],
+  );
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Always call the object-arg overload with OUR data-mapper's own
@@ -158,7 +174,7 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
   const handleDownloadPdf = async () => {
     setDownloadingPdf(true);
     try {
-      const { blob, fileName } = await generateDocumentPdf(data, template, firm);
+      const { blob, fileName } = await generateDocumentPdf(data, template, brandedFirm);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

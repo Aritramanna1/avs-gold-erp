@@ -9,7 +9,7 @@ import {
   type DeviceInfo,
 } from "@/lib/security/device-registry";
 import { rotateEncryptionKey } from "@/lib/security/key-management";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { ShieldCheck, ShieldOff, KeyRound, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 

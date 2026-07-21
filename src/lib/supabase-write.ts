@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { getCloudDataClient as getRawSupabaseClient } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
 import { runLocal, upsertRow, softDeleteRow } from "@/lib/local-db";
 
@@ -164,6 +164,7 @@ export function paymentRow(invoiceId: string, p: any) {
 }
 
 export async function saveDirect(table: string, id: string, rawPayload: any): Promise<void> {
+  const supabase = getRawSupabaseClient();
   // Map to database schema
   let dbRow: any = null;
 
@@ -261,6 +262,7 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
       last_printed_at: new Date(rawPayload.lastPrintedAt ?? Date.now()).toISOString(),
       reprint_count: rawPayload.reprintCount ?? 0,
       history: rawPayload.history ?? [],
+      data: rawPayload,
     };
   } else if (table === "whatsapp_inbox") {
     dbRow = {
@@ -273,12 +275,42 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
       converted_order_id: rawPayload.convertedOrderId ?? null,
       linked_person_id: rawPayload.linkedPersonId ?? null,
       notes: rawPayload.notes ?? null,
+      data: rawPayload,
     };
   } else if (table === "app_settings") {
     dbRow = {
       id: id,
       scope: "firm",
       data: rawPayload,
+      updated_at: new Date().toISOString(),
+    };
+  } else if (table === "branch_settings") {
+    dbRow = {
+      branch_id: id,
+      address: rawPayload.address ?? null,
+      phone: rawPayload.phone ?? null,
+      email: rawPayload.email ?? null,
+      gstin: rawPayload.gstin ?? null,
+      invoice_series: rawPayload.invoiceSeries ?? null,
+      receipt_series: rawPayload.receiptSeries ?? null,
+      barcode_series: rawPayload.barcodeSeries ?? null,
+      smtp_host: rawPayload.smtpHost ?? null,
+      smtp_port: rawPayload.smtpPort ?? null,
+      smtp_user: rawPayload.smtpUser ?? null,
+      smtp_password: rawPayload.smtpPassword ?? null,
+      smtp_from_name: rawPayload.smtpFromName ?? null,
+      smtp_from_email: rawPayload.smtpFromEmail ?? null,
+      wa_phone_number: rawPayload.waPhoneNumber ?? null,
+      thermal_printer_ip: rawPayload.thermalPrinterIp ?? null,
+      thermal_printer_port: rawPayload.thermalPrinterPort ?? null,
+      default_karat: rawPayload.defaultKarat ?? null,
+      gold_rate_source: rawPayload.goldRateSource ?? null,
+      invoice_template_id: rawPayload.invoiceTemplateId ?? null,
+      receipt_template_id: rawPayload.receiptTemplateId ?? null,
+      logo_url: rawPayload.logoUrl ?? null,
+      logo_storage_path: rawPayload.logoStoragePath ?? null,
+      wa_config: rawPayload.wa_config ?? rawPayload.waConfig ?? null,
+      wa_automations: rawPayload.wa_automations ?? rawPayload.waAutomations ?? null,
       updated_at: new Date().toISOString(),
     };
   } else if (table === "manufacturing_bills") {
@@ -435,7 +467,8 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
   }
 
   // Strict Database-First Action: Save directly to Supabase, throw error on failure
-  const { error } = await supabase.from(table as any).upsert([dbRow], { onConflict: "id" });
+  const conflictKey = table === "branch_settings" ? "branch_id" : "id";
+  const { error } = await supabase.from(table as any).upsert([dbRow], { onConflict: conflictKey });
   if (error) {
     // Surface a more actionable message for the two well-known schema gaps that ship
     // with the current production database (manufacturing_bills missing, melt_jobs missing columns).
@@ -467,16 +500,15 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
   // saved. Best-effort: the remote save already succeeded and must not be
   // undone by a local-cache hiccup, so a failure here is only logged.
   try {
-    await runLocal(() => upsertRow(table, { id: rawPayload.id, data: JSON.stringify(rawPayload) }));
+    if (table === "branch_settings") return;
+    await runLocal(() => upsertRow(table, { id, data: JSON.stringify(rawPayload) }));
   } catch (err) {
-    console.error(
-      `[supabase-write] Failed to mirror ${table}/${rawPayload.id} to local cache:`,
-      err,
-    );
+    console.error(`[supabase-write] Failed to mirror ${table}/${id} to local cache:`, err);
   }
 }
 
 export async function deleteDirect(table: string, id: string): Promise<void> {
+  const supabase = getRawSupabaseClient();
   // Strict Database-First Action: Delete directly from Supabase, throw error on failure
   const { error } = await supabase
     .from(table as any)

@@ -35,6 +35,12 @@ Postings dated in a month-end-closed period are rejected (`assertPeriodOpen`). R
 
 Outbound WhatsApp routes through the configured provider (WasenderAPI when configured, deep-link fallback otherwise) via `send-whatsapp-text.ts` / `send-whatsapp-document.ts`. Never hard-code `wa.me` links in a screen. Document sends attach the Print Engine PDF.
 
-## 8. Audit
+Provider choice, endpoints, country code, templates, retry/timeout policy, and automation are owned by Settings → WhatsApp. Screens consume the provider seam; they do not introduce module-local communication settings.
+
+## 8. Configuration
+
+Runtime identity and operator policy are settings, not screen constants. Reuse `settings-store.ts`, communication stores, print setup, and branch settings. A new setting is incomplete until it is persisted, hydrated, consumed, and documented.
+
+## 9. Audit
 
 Ledger and vault postings are audited best-effort (`security/audit-log.ts`) — a logging failure never blocks the posting.

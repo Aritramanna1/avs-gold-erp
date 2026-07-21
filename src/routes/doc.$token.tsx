@@ -12,6 +12,7 @@ import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getDocumentShare, type DocumentShare } from "@/lib/document-shares";
 import { generateDocumentPdf } from "@/lib/pdf/document-pdf-generator";
+import { printDocument } from "@/lib/print-document";
 
 export const Route = createFileRoute("/doc/$token")({
   component: DocumentPortal,
@@ -397,7 +398,7 @@ function DocumentPortal() {
   }
 
   function handlePrint() {
-    window.print();
+    void printDocument(`${label} - ${docNo}`);
   }
 
   return (
@@ -422,7 +423,10 @@ function DocumentPortal() {
       </div>
 
       {/* Document card */}
-      <div className="mx-auto max-w-2xl px-4 py-6 space-y-4 print:px-0 print:py-0 print:max-w-none">
+      <div
+        data-testid="print-layout-root"
+        className="mx-auto max-w-2xl px-4 py-6 space-y-4 print:px-0 print:py-0 print:max-w-none"
+      >
         {/* Firm header */}
         <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 print:shadow-none print:border-none">
           {/* Top accent */}

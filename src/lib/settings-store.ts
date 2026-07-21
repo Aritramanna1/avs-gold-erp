@@ -4,7 +4,7 @@
  */
 import { useMemo } from "react";
 import { create } from "zustand";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import {
   DEFAULT_BULLION_RATE_PROVIDER_CONFIG,
   type BullionRateProviderConfig,
@@ -168,6 +168,9 @@ function persistSettings(get: () => any): void {
     making: s.making,
     hardware: s.hardware,
     catalog: s.catalog,
+    smtp: s.smtp,
+    dropdowns: s.dropdowns,
+    disabledDropdowns: s.disabledDropdowns,
     goldRatePerGramPaise: s.goldRatePerGramPaise,
     goldRate24KPerGramPaise: s.goldRate24KPerGramPaise,
     goldRate18KPerGramPaise: s.goldRate18KPerGramPaise,
@@ -184,6 +187,8 @@ function persistSettings(get: () => any): void {
     formsMetadata: s.formsMetadata,
     campaignTemplates: s.campaignTemplates,
     commAutomation: s.commAutomation,
+    branchSettings: s.branchSettings,
+    emailTemplates: s.emailTemplates,
   });
 }
 
@@ -433,6 +438,14 @@ export interface DeveloperSettings {
 }
 
 export interface Branding {
+  applicationName: string;
+  shortName: string;
+  tagline: string;
+  description: string;
+  companyName: string;
+  supportEmail: string;
+  supportPhone: string;
+  website: string;
   primaryColor: string;
   goldAccent: string;
   printHeader: string;
@@ -1227,10 +1240,10 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
     signatureLabelRight: "Authorised Signatory",
     ownerName: "Manager",
     pan: "",
-    cityState: "Kolkata, West Bengal",
-    website: "",
+    cityState: "",
+    website: "https://arivahly.in/",
     whatsappNumber: "",
-    tagline: "Fine Artistry in Pure Gold",
+    tagline: "",
     logoUrl: "",
     logoStoragePath: "",
     legalName: "",
@@ -1256,6 +1269,14 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
       "Purity certified under BIS guidelines. Hallmark charges applicable extra as per regulations.",
   },
   branding: {
+    applicationName: "AVS Gold ERP",
+    shortName: "ERP",
+    tagline: "Powered by Arivahly Venture Sphere",
+    description: "Professional Jewellery Manufacturing ERP",
+    companyName: "Arivahly Venture Sphere",
+    supportEmail: "",
+    supportPhone: "",
+    website: "https://arivahly.in/",
     primaryColor: "#0F172A",
     goldAccent: "#C8A24B",
     printHeader: "",
@@ -1315,7 +1336,7 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
     defaultWeightMaxG: 25,
   },
   smtp: {
-    host: "smtp.maatarajewellers.com",
+    host: "",
     port: 587,
     username: "",
     passKey: "",
@@ -1340,8 +1361,8 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
   },
   developer: {
     avsName: "AVS Gold ERP — Arivahly Venture Sphere",
-    contactNumber: "+91 90070 12345",
-    email: "support@your-domain.com",
+    contactNumber: "",
+    email: "",
     logoUrl: "",
     footerEnabled: true,
   },
@@ -1404,6 +1425,27 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
       email: "",
       phone: "",
       role: "Owner",
+      permissions: {},
+      active: true,
+      createdAt: 1718841600000,
+    },
+    {
+      id: "staging_superowner",
+      name: "Staging Super Owner",
+      email: "staging.superowner@mtj-erp.test",
+      phone: "",
+      role: "Super Owner",
+      permissions: {},
+      active: true,
+      createdAt: 1718841600000,
+      isSuperOwner: true,
+    },
+    {
+      id: "demo_e2e_user",
+      name: "Demo E2E User",
+      email: "demo-e2e@example.com",
+      phone: "",
+      role: "Retail Staff",
       permissions: {},
       active: true,
       createdAt: 1718841600000,
@@ -1559,7 +1601,10 @@ export const useSettings = create<SettingsState>()((set, get) => ({
     set({ firm: { ...get().firm, ...p } });
     persistSettings(get);
   },
-  setSmtp: (s) => set({ smtp: { ...get().smtp, ...s } }),
+  setSmtp: (s) => {
+    set({ smtp: { ...get().smtp, ...s } });
+    persistSettings(get);
+  },
   setBranding: (p) => {
     set({ branding: { ...get().branding, ...p } });
     persistSettings(get);
@@ -1576,7 +1621,10 @@ export const useSettings = create<SettingsState>()((set, get) => ({
     set({ hardware: { ...get().hardware, ...p } });
     persistSettings(get);
   },
-  setCatalog: (p) => set({ catalog: { ...get().catalog, ...p } }),
+  setCatalog: (p) => {
+    set({ catalog: { ...get().catalog, ...p } });
+    persistSettings(get);
+  },
   setGoldRate: (paise) => {
     set({ goldRatePerGramPaise: paise });
     persistSettings(get);
@@ -1603,8 +1651,14 @@ export const useSettings = create<SettingsState>()((set, get) => ({
     });
     persistSettings(get);
   },
-  setLanguage: (l) => set({ language: { ...get().language, ...l } }),
-  setDeveloper: (d) => set({ developer: { ...get().developer, ...d } }),
+  setLanguage: (l) => {
+    set({ language: { ...get().language, ...l } });
+    persistSettings(get);
+  },
+  setDeveloper: (d) => {
+    set({ developer: { ...get().developer, ...d } });
+    persistSettings(get);
+  },
   setSelectedBranchId: (id) => set({ selectedBranchId: id }),
   setBranches: (branches) => set({ branches }),
   addBranch: (b) => {
@@ -1770,8 +1824,10 @@ export const useSettings = create<SettingsState>()((set, get) => ({
     });
     persistSettings(get);
   },
-  setComplianceProfile: (profile) =>
-    set({ complianceProfile: { ...get().complianceProfile, ...profile } }),
+  setComplianceProfile: (profile) => {
+    set({ complianceProfile: { ...get().complianceProfile, ...profile } });
+    persistSettings(get);
+  },
   setCurrentUserRole: (role) => set({ currentUserRole: role }),
   setSettingsHydrated: (v) => set({ settingsHydrated: v }),
 
@@ -1808,6 +1864,7 @@ export const useSettings = create<SettingsState>()((set, get) => ({
     } else {
       set({ branchSettings: [...existing, { branchId, ...patch }] });
     }
+    persistSettings(get);
   },
   setFormsMetadata: (forms) => set({ formsMetadata: forms }),
   addFormMetadata: (form) => {

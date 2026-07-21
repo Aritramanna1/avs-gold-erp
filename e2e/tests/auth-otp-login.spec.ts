@@ -5,6 +5,39 @@ test.describe("OTP Login", () => {
   // from global-setup.ts — this page must be tested signed-out.
   test.use({ storageState: { cookies: [], origins: [] } });
 
+  test.beforeEach(async ({ page }) => {
+    // Intercept Supabase OTP trigger request and return mock success with delay
+    await page.route("**/auth/v1/otp", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({}),
+      });
+    });
+
+    // Intercept Supabase OTP verification request and return mock session with delay
+    await page.route("**/auth/v1/verify", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          access_token: "mock-otp-access-token",
+          token_type: "bearer",
+          expires_in: 3600,
+          refresh_token: "mock-otp-refresh-token",
+          user: {
+            id: "demo_e2e_user",
+            email: "demo-e2e@example.com",
+            role: "authenticated",
+          },
+          expires_at: Math.floor(Date.now() / 1000) + 3600 * 24,
+        }),
+      });
+    });
+  });
+
   test("sending a code shows the 6-digit verification form", async ({ page }) => {
     await page.goto("/otp-login");
     const email = page.locator('input[type="email"]');

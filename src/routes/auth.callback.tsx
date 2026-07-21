@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Card } from "@/components/ui/card";
 import { Loader2, ShieldAlert, CheckCircle2 } from "lucide-react";
 

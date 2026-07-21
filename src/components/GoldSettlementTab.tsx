@@ -41,9 +41,6 @@ import {
   Briefcase,
   Layers,
   Sparkles,
-  CheckCircle2,
-  ShieldCheck,
-  PlayCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
@@ -80,19 +77,6 @@ export function GoldSettlementTab() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [filterParty, setFilterParty] = useState("");
-
-  // Test suite audit state
-  const [auditOpen, setAuditOpen] = useState(false);
-  const [auditResults, setAuditResults] = useState<any[]>([]);
-
-  const handleRunAudit = () => {
-    import("@/lib/gold-payment-test-suite").then(async ({ runGoldPaymentTestSuite }) => {
-      const results = await runGoldPaymentTestSuite();
-      setAuditResults(results);
-      setAuditOpen(true);
-      toast.success("compliance audit test run completed!");
-    });
-  };
 
   // Voucher Master Form Fields
   const [settlementDate, setSettlementDate] = useState(new Date().toISOString().split("T")[0]);
@@ -684,15 +668,6 @@ export function GoldSettlementTab() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Button
-            type="button"
-            variant="outline"
-            className="gap-2 border-emerald-500/30 bg-emerald-500/5 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 font-medium rounded-xl transition-all cursor-pointer shadow-sm"
-            onClick={handleRunAudit}
-          >
-            <ShieldCheck className="h-4 w-4 text-emerald-500" /> Run Gold Payment Audit
-          </Button>
-
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2 w-full sm:w-auto bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white font-medium shadow-md transition-all rounded-xl cursor-pointer">
@@ -1366,63 +1341,6 @@ export function GoldSettlementTab() {
             </DialogContent>
           </Dialog>
         </div>
-
-        {/* Compliance Audit Results Dialog */}
-        <Dialog open={auditOpen} onOpenChange={setAuditOpen}>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl border border-border bg-card p-6 shadow-2xl">
-            <DialogHeader>
-              <DialogTitle className="font-serif text-lg text-emerald-600 flex items-center gap-2">
-                <ShieldCheck className="h-6 w-6 text-emerald-500 animate-pulse" /> MTJ Gold Ledger
-                Compliance Report
-              </DialogTitle>
-              <div className="text-xs text-muted-foreground">
-                Live compliance test runner asserting core gold rules and formula correctness.
-              </div>
-            </DialogHeader>
-
-            <div className="space-y-4 py-3">
-              {auditResults.map((r) => (
-                <div
-                  key={r.id}
-                  className="border border-border/80 p-4 rounded-2xl bg-muted/20 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                      {r.passed ? (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500 fill-emerald-50/20" />
-                      ) : (
-                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block animate-ping" />
-                      )}
-                      {r.name}
-                    </h4>
-                    <Badge
-                      variant={r.passed ? "secondary" : "destructive"}
-                      className={
-                        r.passed ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : ""
-                      }
-                    >
-                      {r.passed ? "PASSED" : "FAILED"}
-                    </Badge>
-                  </div>
-                  <ul className="text-xs space-y-1 text-muted-foreground list-disc list-inside bg-background/50 p-3 rounded-xl border border-border/40 font-mono">
-                    {(r.findings as string[]).map((f: string, i: number) => (
-                      <li key={i}>{f}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-
-            <DialogFooter>
-              <Button
-                onClick={() => setAuditOpen(false)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl w-full sm:w-auto"
-              >
-                Close Audit Report
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* Voucher Records List */}

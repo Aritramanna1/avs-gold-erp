@@ -168,8 +168,103 @@ export const test = base.extend<Fixtures>({
     // manually resolves immediately with a valid session, but AuthGate's
     // own internal check still takes ~25s wall-clock to reflect it. This
     // timeout is widened to match observed reality rather than masking it.
+    // In-memory mock database for Supabase simulation
+    const mockDb: Record<string, any[]> = {};
+
+    // Intercept Supabase REST API requests to simulate database operations in-memory
+    await page.route("**/rest/v1/**", async (route) => {
+      const url = route.request().url();
+      const method = route.request().method();
+      const match = url.match(/\/rest\/v1\/([^?#]+)/);
+      const table = match ? match[1] : null;
+
+      if (!table) {
+        await route.continue();
+        return;
+      }
+
+      if (table.startsWith("rpc/")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ valid: true, status: "lifetime" }),
+        });
+        return;
+      }
+
+      if (method === "GET") {
+        const data = mockDb[table] || [];
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(data),
+        });
+      } else if (method === "POST" || method === "PUT" || method === "PATCH") {
+        const bodyStr = route.request().postData();
+        let payload: any = [];
+        try {
+          payload = bodyStr ? JSON.parse(bodyStr) : [];
+        } catch {
+          payload = [];
+        }
+
+        if (!Array.isArray(payload)) {
+          payload = [payload];
+        }
+
+        if (!mockDb[table]) {
+          mockDb[table] = [];
+        }
+
+        // Upsert items into mockDb
+        for (const item of payload) {
+          const index = mockDb[table].findIndex((x) => x.id === item.id);
+          if (index !== -1) {
+            mockDb[table][index] = { ...mockDb[table][index], ...item };
+          } else {
+            mockDb[table].push(item);
+          }
+        }
+
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(payload),
+        });
+      } else if (method === "DELETE") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({}),
+        });
+      }
+    });
+
     await page.goto("/");
     await expect(page.getByTestId("auth-form")).toBeHidden({ timeout: 30_000 });
+
+    // Ensure database is seeded dynamically
+    await page
+      .waitForFunction(() => typeof (window as any).__mtjSeed === "function", { timeout: 15_000 })
+      .catch(() => {});
+    const seedResult = await page.evaluate(async () => {
+      const w = window as unknown as { __mtjSeed?: () => Promise<Record<string, any>> };
+      if (typeof w.__mtjSeed === "function") {
+        try {
+          return await w.__mtjSeed();
+        } catch (e: any) {
+          console.error("DYNAMIC SEED FAILED IN BROWSER:", e);
+          throw e;
+        }
+      }
+      return null;
+    });
+
+    if (seedResult) {
+      const seedPath = path.resolve(import.meta.dirname, "../.auth/seed.json");
+      fs.mkdirSync(path.dirname(seedPath), { recursive: true });
+      fs.writeFileSync(seedPath, JSON.stringify(seedResult, null, 2));
+    }
 
     await use(page);
     testInfo.attach("console-errors", {

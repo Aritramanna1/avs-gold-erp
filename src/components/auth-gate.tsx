@@ -1,8 +1,7 @@
 // auth-gate v2 — module-level flag prevents repeated sync on HMR/multi-client auth events
 import { useEffect, useState, type ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import type { Session } from "@supabase/supabase-js";
-import { startCloudSync, stopCloudSync, pullAll, startLocalLoad } from "@/lib/data-loader";
 import { resetAllBusinessStores } from "@/lib/session-cleanup";
 import { useSettings } from "@/lib/settings-store";
 import { AuthLayout } from "@/components/layout/AuthLayout";
@@ -12,6 +11,15 @@ import { getLocalSessionUser } from "@/lib/local-auth";
 import { applyUserBranchAccess } from "@/lib/permissions";
 import { SetupWizard } from "@/components/setup-wizard";
 import { AppBootSkeleton } from "@/components/app-boot-skeleton";
+
+// The data loader imports every operational store. Keep it out of the initial
+// authentication bundle and load it only after a session has been established.
+const startCloudSync = async () => (await import("@/lib/data-loader")).startCloudSync();
+const startLocalLoad = async () => (await import("@/lib/data-loader")).startLocalLoad();
+const pullAll = async () => (await import("@/lib/data-loader")).pullAll();
+const stopCloudSync = () => {
+  void import("@/lib/data-loader").then((loader) => loader.stopCloudSync());
+};
 
 /**
  * Deployment-mode switch: hydrates the persisted mode once at boot, shows the
@@ -59,7 +67,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return <SetupWizard onComplete={() => void hydrateDeploymentMode()} />;
   }
 
-  if (mode === "offline") return <OfflineAuthGate>{children}</OfflineAuthGate>;
+  if (mode !== "online") return <OfflineAuthGate>{children}</OfflineAuthGate>;
   return <OnlineAuthGate>{children}</OnlineAuthGate>;
 }
 

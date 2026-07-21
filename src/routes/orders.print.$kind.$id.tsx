@@ -69,11 +69,20 @@ function PrintPage() {
   const [referenceImages, setReferenceImages] = useState<
     Array<{ docKey: string; label: string; url: string }>
   >([]);
+  const [loadingUrls, setLoadingUrls] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setLoadingUrls(false);
+      return;
+    }
     let cancelled = false;
     const docKeys = referenceImageDocKeys(id);
+
+    if (docKeys.length === 0) {
+      setLoadingUrls(false);
+      return;
+    }
 
     void Promise.all(
       docKeys.map(async (docKey) => {
@@ -92,13 +101,24 @@ function PrintPage() {
         }
       }),
     ).then((rows) => {
-      if (!cancelled) setReferenceImages(rows.filter((r): r is NonNullable<typeof r> => !!r));
+      if (!cancelled) {
+        setReferenceImages(rows.filter((r): r is NonNullable<typeof r> => !!r));
+        setLoadingUrls(false);
+      }
     });
 
     return () => {
       cancelled = true;
     };
   }, [id, attachmentItems]);
+
+  useEffect(() => {
+    if (!loadingUrls) {
+      document.documentElement.setAttribute("data-print-ready", "true");
+    } else {
+      document.documentElement.removeAttribute("data-print-ready");
+    }
+  }, [loadingUrls]);
 
   // Get all orders for this customer to calculate running ledger balances
   const allOrders = useOrders((s) => s.orders);

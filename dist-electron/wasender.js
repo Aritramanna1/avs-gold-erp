@@ -26,20 +26,23 @@ const node_fs_1 = __importDefault(require("node:fs"));
 const secretFile = (name) => node_path_1.default.join(electron_1.app.getPath("userData"), `wasender-${name}.enc`);
 const TOKEN_FILE = () => secretFile("token"); // account Personal Access Token
 const APIKEY_FILE = () => secretFile("apikey"); // per-session API Key (messaging)
+const MAX_SECRET_LENGTH = 16_384;
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
+const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 /** Persist a secret encrypted at rest. Falls back to a marked base64 blob only if the OS keychain is unavailable. */
 function writeSecret(file, value) {
-    const trimmed = (value || "").trim();
-    if (!trimmed)
+    if (typeof value !== "string")
         return { ok: false, encrypted: false };
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.length > MAX_SECRET_LENGTH || !electron_1.safeStorage.isEncryptionAvailable()) {
+        return { ok: false, encrypted: false };
+    }
     try {
-        if (electron_1.safeStorage.isEncryptionAvailable()) {
-            node_fs_1.default.writeFileSync(file, electron_1.safeStorage.encryptString(trimmed));
-            return { ok: true, encrypted: true };
-        }
-        // Keychain unavailable (rare on Linux without a secret service) — store a
-        // reversible blob so the feature still works, clearly marked as un-keyed.
-        node_fs_1.default.writeFileSync(file, Buffer.from(`plain:${trimmed}`, "utf8"));
-        return { ok: true, encrypted: false };
+        const temporary = `${file}.${process.pid}.tmp`;
+        node_fs_1.default.writeFileSync(temporary, electron_1.safeStorage.encryptString(trimmed), { mode: 0o600 });
+        node_fs_1.default.renameSync(temporary, file);
+        return { ok: true, encrypted: true };
     }
     catch {
         return { ok: false, encrypted: false };
@@ -60,9 +63,8 @@ function readSecret(file) {
         if (!node_fs_1.default.existsSync(file))
             return null;
         const buf = node_fs_1.default.readFileSync(file);
-        const head = buf.subarray(0, 6).toString("utf8");
-        if (head.startsWith("plain:"))
-            return buf.toString("utf8").slice(6);
+        if (!electron_1.safeStorage.isEncryptionAvailable())
+            return null;
         return electron_1.safeStorage.decryptString(buf);
     }
     catch {
@@ -74,7 +76,7 @@ const setToken = (token) => writeSecret(TOKEN_FILE(), token);
 exports.setToken = setToken;
 const clearToken = () => removeSecret(TOKEN_FILE());
 exports.clearToken = clearToken;
-const hasToken = () => node_fs_1.default.existsSync(TOKEN_FILE());
+const hasToken = () => readSecret(TOKEN_FILE()) !== null;
 exports.hasToken = hasToken;
 const readToken = () => readSecret(TOKEN_FILE());
 // ── Session API Key (messaging endpoints: /send-message) ──
@@ -82,7 +84,7 @@ const setApiKey = (key) => writeSecret(APIKEY_FILE(), key);
 exports.setApiKey = setApiKey;
 const clearApiKey = () => removeSecret(APIKEY_FILE());
 exports.clearApiKey = clearApiKey;
-const hasApiKey = () => node_fs_1.default.existsSync(APIKEY_FILE());
+const hasApiKey = () => readSecret(APIKEY_FILE()) !== null;
 exports.hasApiKey = hasApiKey;
 const readApiKey = () => readSecret(APIKEY_FILE());
 /** One raw authenticated fetch. Resolves (never throws) into a WasenderResponse. */
@@ -90,18 +92,31 @@ async function doFetch(url, method, bearer, body, headers, timeoutMs) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
+        const encodedBody = body !== undefined ? JSON.stringify(body) : undefined;
+        if (encodedBody && Buffer.byteLength(encodedBody, "utf8") > MAX_BODY_BYTES) {
+            return { ok: false, status: 0, data: null, error: "Request payload is too large." };
+        }
+        const safeHeaders = Object.fromEntries(Object.entries(headers ?? {}).filter(([name]) => ["accept", "content-type"].includes(name.toLowerCase())));
         const res = await fetch(url, {
             method,
             headers: {
-                Authorization: `Bearer ${bearer}`,
                 Accept: "application/json",
                 ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-                ...(headers ?? {}),
+                ...safeHeaders,
+                Authorization: `Bearer ${bearer}`,
             },
-            body: body !== undefined ? JSON.stringify(body) : undefined,
+            body: encodedBody,
             signal: controller.signal,
         });
+        const declaredLength = Number(res.headers.get("content-length") ?? 0);
+        if (declaredLength > MAX_RESPONSE_BYTES) {
+            await res.body?.cancel();
+            return { ok: false, status: res.status, data: null, error: "API response is too large." };
+        }
         const text = await res.text();
+        if (Buffer.byteLength(text, "utf8") > MAX_RESPONSE_BYTES) {
+            return { ok: false, status: res.status, data: null, error: "API response is too large." };
+        }
         let data = text;
         try {
             data = text ? JSON.parse(text) : null;
@@ -157,17 +172,34 @@ async function wasenderRequest(args) {
                 : "No Personal Access Token configured",
         };
     }
-    const base = (args.baseUrl || "").replace(/\/+$/, "");
-    const rel = args.path.startsWith("/") ? args.path : `/${args.path}`;
-    const url = `${base}${rel}`;
-    const method = args.method ?? "GET";
-    const result = await doFetch(url, method, bearer, args.body, args.headers, args.timeoutMs ?? 20000);
+    let url;
+    try {
+        const base = new URL(args.baseUrl);
+        const trustedHost = base.hostname === "wasenderapi.com" || base.hostname.endsWith(".wasenderapi.com");
+        if (base.protocol !== "https:" || !trustedHost || base.username || base.password) {
+            throw new Error("Untrusted WasenderAPI endpoint.");
+        }
+        if (!args.path || args.path.startsWith("//") || args.path.includes("\\")) {
+            throw new Error("Invalid WasenderAPI path.");
+        }
+        const relativePath = args.path.startsWith("/") ? args.path.slice(1) : args.path;
+        url = new URL(relativePath, `${base.toString().replace(/\/+$/, "")}/`).toString();
+    }
+    catch (error) {
+        return {
+            ok: false,
+            status: 0,
+            data: null,
+            error: error instanceof Error ? error.message : "Invalid WasenderAPI endpoint.",
+        };
+    }
+    const method = (args.method ?? "GET").toUpperCase();
+    if (!ALLOWED_METHODS.has(method)) {
+        return { ok: false, status: 0, data: null, error: "Unsupported HTTP method." };
+    }
+    const result = await doFetch(url, method, bearer, args.body, args.headers, Math.min(60_000, Math.max(1_000, args.timeoutMs ?? 20_000)));
     // Communication Log for debugging: full URL + payload + response, never a secret.
-    console.log(`[wasender] ${method} ${url}`, JSON.stringify({
-        auth: args.useApiKey ? "session-api-key" : "personal-access-token",
-        payload: args.body ?? null,
-        status: result.status,
-        response: result.data,
-    }));
+    if (!electron_1.app.isPackaged)
+        console.log(`[wasender] ${method} ${url} -> ${result.status}`);
     return result;
 }

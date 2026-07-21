@@ -32,7 +32,7 @@ export async function resolveAllSignedUrls(items: Record<string, AttachmentRecor
 }
 
 /**
- * Refreshes the firm logo signed URL from Supabase Storage.
+ * Refreshes the firm logo object URL from the local application vault.
  * Saves the link directly in the store / local cache.
  */
 export async function refreshFirmLogoSignedUrl(): Promise<void> {

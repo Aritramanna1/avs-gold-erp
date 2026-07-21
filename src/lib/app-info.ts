@@ -12,8 +12,8 @@ export const APP_DESCRIPTION = "Professional Jewellery Manufacturing ERP";
 export const COMPANY_NAME = "Arivahly Venture Sphere";
 export const APP_VERSION = pkg.version;
 export const COPYRIGHT = `© ${new Date().getFullYear()} ${COMPANY_NAME}`;
-export const SUPPORT_EMAIL = "support@your-domain.com";
-export const WEBSITE = "https://your-domain.com";
+export const SUPPORT_EMAIL = "";
+export const WEBSITE = "https://arivahly.in/";
 
 /**
  * Short initials for print-page titles (e.g. "Print · AVS ERP"), derived from

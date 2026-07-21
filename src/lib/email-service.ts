@@ -9,15 +9,23 @@ import { useBilling, paiseToRupees } from "@/lib/billing-store";
 import { useOrders } from "@/lib/orders-store";
 import { useCommLog } from "@/lib/comm-log-store";
 import { mgToGrams } from "@/lib/gold";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { extractEdgeFunctionError } from "@/lib/edge-function-error";
 import { toast } from "sonner";
+
+export interface EmailAttachment {
+  filename: string;
+  /** Raw base64 (no data: prefix). */
+  contentBase64: string;
+  contentType?: string;
+}
 
 export interface EmailPayload {
   to: string;
   subject: string;
   htmlBody: string;
   textBody?: string;
+  attachments?: EmailAttachment[];
 }
 
 export interface EmailDispatchResult {
@@ -40,13 +48,20 @@ function wrapBrandHtml(title: string, innerHtml: string): string {
   const settings = useSettings.getState();
   const primaryColor = settings.branding.primaryColor || "#0F172A";
   const goldAccent = settings.branding.goldAccent || "#C8A24B";
-  const shopName = settings.firm.shopName;
-  const phone = settings.firm.phone || "Not specified";
-  const email = settings.firm.email || "";
-  const address = settings.firm.address || "Kolkata, West Bengal";
-  const tagline = settings.firm.tagline || "Fine Artistry in Pure Gold";
-  const website = settings.firm.website || "";
-  const logoUrl = settings.firm.logoUrl || "https://img.icons8.com/color/96/jewelry.png";
+  const shopName =
+    settings.firm.shopName ||
+    settings.branding.printHeader ||
+    settings.branding.companyName ||
+    settings.branding.applicationName;
+  const phone = settings.firm.phone || settings.branding.supportPhone || "";
+  const email = settings.firm.email || settings.branding.supportEmail || "";
+  const address = settings.firm.address || "";
+  const tagline = settings.firm.tagline || settings.branding.tagline || "";
+  const website = settings.firm.website || settings.branding.website || "";
+  const logoUrl = settings.firm.logoUrl || settings.developer.logoUrl || "";
+  const developerCredit = settings.developer.footerEnabled
+    ? settings.developer.avsName || settings.branding.applicationName
+    : "";
 
   return `
     <!DOCTYPE html>
@@ -217,7 +232,7 @@ function wrapBrandHtml(title: string, innerHtml: string): string {
       <body>
         <div class="container">
           <div class="header">
-            <img class="logo" src="${logoUrl}" alt="${shopName}">
+            ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="${shopName}">` : ""}
             <h1 class="brand-name">${shopName}</h1>
             <p class="brand-tagline">${tagline}</p>
           </div>
@@ -226,14 +241,14 @@ function wrapBrandHtml(title: string, innerHtml: string): string {
           </div>
           <div class="footer">
             <p class="footer-text"><strong>${shopName}</strong></p>
-            <p class="footer-text">${address}</p>
-            <p class="footer-text">Phone: ${phone}${email ? ` | Email: ${email}` : ""}</p>
+            ${address ? `<p class="footer-text">${address}</p>` : ""}
+            ${phone || email ? `<p class="footer-text">${phone ? `Phone: ${phone}` : ""}${phone && email ? " | " : ""}${email ? `Email: ${email}` : ""}</p>` : ""}
             ${website ? `<p class="footer-text"><a href="${website}" style="color:#64748B;">${website}</a></p>` : ""}
             <div class="footer-divider"></div>
             <p class="footer-text" style="font-style: italic;">
               This is an automated delivery communication. All metals and stones are weighed and registered under rigorous ${shopName} security audits.
             </p>
-            <p class="socials">Powered by AVS Gold ERP — Arivahly Venture Sphere</p>
+            ${developerCredit ? `<p class="socials">Powered by ${developerCredit}</p>` : ""}
           </div>
         </div>
       </body>
@@ -297,6 +312,14 @@ export async function sendGenericEmail(payload: EmailPayload): Promise<EmailDisp
           to: [payload.to],
           subject: payload.subject,
           html: payload.htmlBody,
+          ...(payload.attachments?.length
+            ? {
+                attachments: payload.attachments.map((a) => ({
+                  filename: a.filename,
+                  content: a.contentBase64,
+                })),
+              }
+            : {}),
         }),
       });
       if (!res.ok) {
@@ -312,6 +335,16 @@ export async function sendGenericEmail(payload: EmailPayload): Promise<EmailDisp
           personalizations: [{ to: [{ email: payload.to }], subject: payload.subject }],
           from: { email: fromEmail, name: fromName },
           content: [{ type: "text/html", value: payload.htmlBody }],
+          ...(payload.attachments?.length
+            ? {
+                attachments: payload.attachments.map((a) => ({
+                  content: a.contentBase64,
+                  filename: a.filename,
+                  type: a.contentType ?? "application/pdf",
+                  disposition: "attachment",
+                })),
+              }
+            : {}),
         }),
       });
       if (!res.ok && res.status !== 202) {

@@ -4,12 +4,9 @@
  * Full pipeline:
  *   1. Resolve document data from stores
  *   2. Generate PDF blob (jsPDF)
- *   3. Upload to Hostinger → get public URL
- *   4. Save URL in Supabase attachments table
- *   5. Return public URL
- *
- * Falls back gracefully: if Hostinger is not configured, returns null so callers
- * can degrade to sending the ERP print URL or plain text.
+ *   3. Store the PDF in the local file vault
+ *   4. Save local attachment metadata
+ *   5. Return null because private desktop files have no public URL
  */
 import { useSettings } from "@/lib/settings-store";
 import { useBilling } from "@/lib/billing-store";
@@ -50,14 +47,10 @@ function resolveDocumentData(req: CommRequest): any {
   return null;
 }
 
-/** Returns the Hostinger PDF URL, or null if unavailable / Hostinger not configured. */
+/** Generates and stores a local PDF; no public/cloud file URL is returned. */
 export async function getOrCreateDocumentPdfUrl(req: CommRequest): Promise<string | null> {
   try {
     const firm = useSettings.getState().firm;
-
-    if (!firm.hostingerUploadUrl?.trim()) {
-      return null;
-    }
 
     const docData = resolveDocumentData(req);
     if (!docData) return null;
@@ -80,12 +73,12 @@ export async function getOrCreateDocumentPdfUrl(req: CommRequest): Promise<strin
       branchId: req.branchId,
       notes: `Auto-generated PDF for WhatsApp sharing`,
       docKey: `pdf_share_${req.template}`,
-      storageProvider: "hostinger",
+      storageProvider: "local",
     });
 
-    return result.fileUrl;
+    return null;
   } catch (err) {
-    console.warn("[DocumentPdfService] PDF generation/upload failed:", err);
+    console.warn("[DocumentPdfService] Local PDF generation/save failed:", err);
     return null;
   }
 }

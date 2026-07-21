@@ -11,7 +11,7 @@
  * only fan out a small set of indexable columns. This keeps schema
  * coupling loose while ensuring no field is lost in the migration.
  */
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useLedger } from "@/lib/ledger-store";
 import { usePeople } from "@/lib/people-store";
 import { useOrders } from "@/lib/orders-store";
@@ -26,7 +26,6 @@ import { useWhatsapp } from "@/lib/whatsapp-store";
 import { usePrintLog } from "@/lib/printlog-store";
 import { useSettings } from "@/lib/settings-store";
 import { useWorkers } from "@/lib/workers-store";
-import { useAttachments } from "@/lib/attachments-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { useCommLog } from "@/lib/comm-log-store";
 
@@ -359,6 +358,7 @@ export async function migrateAllToCloud(
       last_printed_at: iso(e.lastPrintedAt),
       reprint_count: e.reprintCount,
       history: e.history,
+      data: e,
     })),
     trap,
   );
@@ -376,31 +376,10 @@ export async function migrateAllToCloud(
       converted_order_id: m.convertedOrderId ?? null,
       linked_person_id: m.linkedPersonId ?? null,
       notes: m.notes ?? null,
+      data: m,
     })),
     trap,
   );
-
-  // ---------- Attachments ----------
-  const atts = Object.entries(useAttachments.getState().items).map(([key, a]) => {
-    const parts = key.split(":");
-    const entityType = parts[0] || "outside";
-    const entityId = parts[1] || "unknown";
-    const docKey = parts.slice(2).join(":") || "doc";
-    return {
-      id: key,
-      kind: docKey,
-      linked_id: entityId,
-      linked_table: entityType,
-      storage_path: a.storagePath ?? null,
-      size_bytes: null,
-      file_name: a.fileName ?? null,
-      mime_type: null,
-      created_at: iso(a.filedAt ?? a.updatedAt),
-      updated_at: iso(a.updatedAt),
-      data: a,
-    };
-  });
-  await upsertBatch("attachments", atts, trap);
 
   // ---------- Worker Gold Book ----------
   const wgbEntries = useWorkerGoldBook.getState().entries.map((e) => ({
@@ -458,7 +437,6 @@ export async function wipeAllTestData(): Promise<{
     "daily_close",
     "print_logs",
     "whatsapp_inbox",
-    "attachments",
     "communication_logs",
     "inventory",
     "stock_movements",
@@ -518,7 +496,6 @@ export async function wipeAllTestData(): Promise<{
     useDailyCloses.setState({ closes: [] });
     usePrintLog.setState({ events: [] });
     useWhatsapp.setState({ messages: [] });
-    useAttachments.setState({ items: {} });
     useCommLog.setState({ events: [] });
   } catch (err: any) {
     console.error("Error resetting local stores during wipe:", err);

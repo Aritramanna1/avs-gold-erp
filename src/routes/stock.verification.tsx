@@ -10,7 +10,7 @@ import {
   loadPhysicalStockCounts,
 } from "@/lib/physical-stock-verification-store";
 import { mgToGrams } from "@/lib/gold";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { ClipboardCheck, ScanLine, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 

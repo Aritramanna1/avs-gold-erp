@@ -103,6 +103,7 @@ const translations = {
   branchAddress: "Branch Address",
   branchPhone: "Branch Phone",
   saveBranchSettings: "Save Branch Settings",
+  localizedCoverage: "localized",
 };
 
 export default translations;

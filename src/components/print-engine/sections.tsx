@@ -193,7 +193,7 @@ function TableCell({
 }
 
 function TableSection({ config, data }: { config: TableSectionConfig; data: PrintDocumentData }) {
-  const { firm } = useSettings();
+  const { firm, branding } = useSettings();
   if (!isVisible(config.showIf, data.flags)) return null;
   const rows = data.tables[config.rowsPath] ?? [];
   const columns = config.columns.filter((c) => isVisible(c.showIf, data.flags));
@@ -228,7 +228,7 @@ function TableSection({ config, data }: { config: TableSectionConfig; data: Prin
                 className="border border-stone-400 px-1.5 py-0.5 bg-stone-50 text-left font-normal"
               >
                 <span className="font-serif font-bold text-stone-900">
-                  {firm.shopName || "MAA TARA JEWELLERS"}
+                  {branding.printHeader || firm.shopName || branding.applicationName}
                 </span>
                 {repeatMeta.map((m) => (
                   <span key={m.label} className="text-stone-600">
@@ -468,7 +468,7 @@ function SignatureBlockSection({
   config: SignatureBlockSectionConfig;
   data: PrintDocumentData;
 }) {
-  const { firm } = useSettings();
+  const { firm, branding } = useSettings();
   if (!isVisible(config.showIf, data.flags)) return null;
   const left = config.leftLabel || firm.signatureLabelLeft || "Customer Signature";
   const right = config.rightLabel || firm.signatureLabelRight || "Authorised Signatory";
@@ -489,7 +489,7 @@ function SignatureBlockSection({
       <div className="flex flex-col justify-end min-h-[60px]">
         {config.showStamp && (
           <div className="mx-auto mb-2 font-serif text-[11px] text-purple-950 font-black tracking-widest border border-purple-950/30 px-2.5 py-0.5 rounded opacity-60 -rotate-2">
-            {firm.shopName}
+            {branding.printHeader || firm.shopName || branding.applicationName}
           </div>
         )}
         <div className="border-t border-stone-400 pt-1.5 font-semibold text-stone-800 uppercase tracking-wide">
@@ -533,7 +533,7 @@ function PremiumHeaderSection({
   config: PremiumHeaderSectionConfig;
   data: PrintDocumentData;
 }) {
-  const { firm } = useSettings();
+  const { firm, branding } = useSettings();
   const badgeTitle = formatFieldValue(getPath(data.fields, config.badgeTitlePath));
   const dateLabel = data.createdAt
     ? new Date(data.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })
@@ -543,13 +543,13 @@ function PremiumHeaderSection({
     return (
       <div className="text-center pb-2 border-b border-dashed border-slate-300 mb-3">
         <h2 className="font-serif text-sm font-black tracking-tight uppercase text-purple-950">
-          {firm.shopName}
+          {branding.printHeader || firm.shopName || branding.applicationName}
         </h2>
         <p className="text-[8px] font-serif uppercase tracking-widest text-slate-600">
-          {firm.tagline || "HANDCRAFTED PURE GOLD"}
+          {firm.tagline || branding.tagline}
         </p>
         <p className="text-[8px] text-slate-500 mt-0.5 leading-tight">
-          {firm.address ? `${firm.address.slice(0, 48)}...` : "West Bengal, India"}
+          {firm.address ? `${firm.address.slice(0, 48)}...` : ""}
         </p>
         <p className="text-[8px] font-semibold text-slate-600 mt-0.5">Mob: {firm.phone || ""}</p>
         {firm.gstin && (
@@ -570,17 +570,15 @@ function PremiumHeaderSection({
           )}
           <div>
             <h1 className="font-serif text-2xl font-black text-purple-950 tracking-tight leading-none">
-              {firm.shopName}
+              {branding.printHeader || firm.shopName || branding.applicationName}
             </h1>
             <p className="text-[10px] text-amber-600 font-bold tracking-widest uppercase mt-0.5 font-mono">
-              {firm.tagline || "HANDCRAFTED LUXURY & PURE GOLD TRADITION"}
+              {firm.tagline || branding.tagline}
             </p>
           </div>
         </div>
         <div className="text-xs text-slate-650 space-y-1 mt-2 max-w-md">
-          <p className="leading-relaxed">
-            {firm.address || "Main Bazar Road, Near Post Office, West Bengal - 700001"}
-          </p>
+          <p className="leading-relaxed">{firm.address}</p>
           <p className="font-mono">
             Mob: <span className="font-semibold text-slate-850">{firm.phone || ""}</span>{" "}
             {firm.email && `| Email: ${firm.email}`}
@@ -702,7 +700,7 @@ function TagCardsSection({
   config: TagCardsSectionConfig;
   data: PrintDocumentData;
 }) {
-  const { firm } = useSettings();
+  const { firm, branding } = useSettings();
   if (!isVisible(config.showIf, data.flags)) return null;
   const rows = data.tables[config.rowsPath] ?? [];
   return (
@@ -713,7 +711,7 @@ function TagCardsSection({
           className="w-[50mm] min-h-[30mm] bg-white border border-neutral-300 rounded shadow-md p-1.5 print:border print:shadow-none font-mono text-[7px] leading-tight relative overflow-hidden print:break-inside-avoid"
         >
           <div className="text-center font-serif text-[8px] font-black text-purple-950 uppercase tracking-tight mt-0.5">
-            {firm.shopName || "MTJ"}
+            {branding.shortName || firm.brandName || firm.shopName || "ERP"}
           </div>
           <div className="border-t border-dashed border-slate-300 my-0.5" />
           <div className="font-bold text-[8px] text-slate-900 leading-tight truncate">

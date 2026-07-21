@@ -248,7 +248,7 @@ export const useManufacturingBarcodes = create<ManufacturingBarcodeState>()((set
   // directly here — the same freshness-over-cache tradeoff ledger-store.ts's
   // refresh() already makes for the same reason.
   refresh: async () => {
-    const { supabase } = await import("@/integrations/supabase/client");
+    const { supabase } = await import("@/lib/providers/data-provider");
     const { data, error } = await supabase.from("manufacturing_barcodes" as any).select("data");
     if (error) {
       console.error("Error fetching manufacturing barcodes:", error);

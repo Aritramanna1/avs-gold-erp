@@ -132,17 +132,21 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
 
   const handlePrint = async () => {
     if (!iframeRef.current) return;
+    const doc = iframeRef.current.contentDocument;
+    if (doc) {
+      let attempts = 0;
+      while (
+        doc.documentElement.getAttribute("data-print-ready") !== "true" &&
+        doc.querySelector('[data-testid="print-layout-root"]') &&
+        attempts < 20
+      ) {
+        await new Promise((r) => setTimeout(r, 100));
+        attempts++;
+      }
+    }
 
-    // Desktop path: real printer selection + optional silent printing,
-    // reusing the exact same rendered iframe content the preview already
-    // shows — nothing about WHAT gets printed changes, only HOW (named
-    // printer, no OS dialog if silent is checked). Pass orientation and
-    // margin for native page setup.
     if (isDesktop && iframeRef.current.contentDocument) {
       try {
-        // Serialized through the shared inliner: the preview iframe's images
-        // are blob: URLs from the local file vault, which are dead in the
-        // separate window the main process prints from (see print-document.ts).
         const html = await serializeWithInlinedImages(
           iframeRef.current.contentDocument.documentElement,
         );

@@ -52,17 +52,34 @@ export interface WhatsAppTextResult {
   via: ProviderType;
 }
 
-/** The WhatsApp provider configured for this branch, falling back to deep link. */
-function activeWhatsAppProvider(branchId?: string): ProviderType {
-  const configs = useCommSettings.getState().configs;
-  const match = configs.find(
+import { useWaAutomation } from "@/lib/wa-automation-store";
+import { WHATSAPP_KEYS } from "./types";
+
+/** The WhatsApp provider configured for this branch, falling back to deep link. Returns null if disabled. */
+export function activeWhatsAppProvider(branchId?: string): ProviderType | null {
+  const bId = branchId || "MAIN";
+
+  // 1. Check if WhatsApp is enabled in wa-automation-store
+  const waConfig = useWaAutomation.getState().getConfig(bId);
+  if (!waConfig.enabled) {
+    return null; // WhatsApp is disabled!
+  }
+
+  // 2. Check if Wasender API is active in comm-settings
+  const commConfigs = useCommSettings.getState().configs;
+  const wasenderConfig = commConfigs.find(
     (c) =>
+      c.branchId === bId &&
       c.channel === "whatsapp" &&
-      c.isActive &&
-      (branchId ? c.branchId === branchId : true) &&
-      c.providerType,
+      c.providerType === "whatsapp_wasender" &&
+      c.isActive,
   );
-  return (match?.providerType as ProviderType) ?? "whatsapp_deep_link";
+  if (wasenderConfig) {
+    return "whatsapp_wasender";
+  }
+
+  // 3. Otherwise, return the configured provider type (which defaults to whatsapp_deep_link)
+  return waConfig.providerType || "whatsapp_deep_link";
 }
 
 /** Can we reach this number with the active transport at all? */
@@ -77,14 +94,60 @@ export function canSendWhatsApp(phone: string | undefined | null): boolean {
  */
 export function resolveWhatsAppProvider(branchId?: string) {
   const providerType = activeWhatsAppProvider(branchId);
+  if (!providerType) {
+    throw new Error("WhatsApp is disabled in settings.");
+  }
   const provider = createProvider(providerType);
-  const config = useCommSettings
-    .getState()
-    .configs.find((c) => c.channel === "whatsapp" && c.providerType === providerType && c.isActive);
+
+  const bId = branchId || "MAIN";
+  const waConfig = useWaAutomation.getState().getConfig(bId);
+  const settings: Record<string, string> = {
+    [WHATSAPP_KEYS.phoneNumberId]: waConfig.phoneNumberId || "",
+    [WHATSAPP_KEYS.accessToken]: waConfig.accessToken || "",
+    [WHATSAPP_KEYS.businessAccountId]: waConfig.businessAccountId || "",
+    [WHATSAPP_KEYS.webhookVerifyToken]: waConfig.webhookVerifyToken || "",
+    [WHATSAPP_KEYS.apiBaseUrl]: waConfig.apiBaseUrl || "",
+    [WHATSAPP_KEYS.apiVersion]: waConfig.apiVersion || "",
+
+    // BSP fields
+    [WHATSAPP_KEYS.apiKey]: waConfig.accessToken || "",
+    [WHATSAPP_KEYS.apiUrl]: waConfig.apiBaseUrl || "",
+    [WHATSAPP_KEYS.senderPhone]: waConfig.phoneNumberId || "",
+
+    // Template mappings
+    template_invoice: waConfig.templateInvoice || "",
+    template_receipt: waConfig.templateReceipt || "",
+    template_order_ready: waConfig.templateOrderReady || "",
+    template_repair_ready: waConfig.templateRepairReady || "",
+    template_payment_reminder: waConfig.templatePaymentReminder || "",
+    template_mfg_bill: waConfig.templateMfgBill || "",
+    template_gold_issue: waConfig.templateGoldIssue || "",
+    template_birthday: waConfig.templateBirthday || "",
+    template_festival: waConfig.templateFestival || "",
+    template_order_confirm: waConfig.templateOrderConfirm || "",
+  };
+
+  const config =
+    providerType === "whatsapp_wasender"
+      ? useCommSettings
+          .getState()
+          .configs.find(
+            (c) => c.channel === "whatsapp" && c.providerType === providerType && c.isActive,
+          )
+      : {
+          id: "wa_automation",
+          branchId: bId,
+          channel: "whatsapp" as const,
+          providerType,
+          isActive: true,
+          priority: 0,
+          settings,
+        };
+
   provider.configure(
     config ?? {
       id: "adhoc",
-      branchId: branchId ?? "MAIN",
+      branchId: bId,
       channel: "whatsapp",
       providerType,
       isActive: true,
@@ -97,6 +160,14 @@ export function resolveWhatsAppProvider(branchId?: string) {
 
 export async function sendWhatsAppText(req: WhatsAppTextRequest): Promise<WhatsAppTextResult> {
   const providerType = activeWhatsAppProvider(req.branchId);
+
+  if (!providerType) {
+    return {
+      ok: false,
+      error: "WhatsApp is disabled in settings.",
+      via: "whatsapp_deep_link",
+    };
+  }
 
   if (!isValidWaPhone(req.phone)) {
     return {

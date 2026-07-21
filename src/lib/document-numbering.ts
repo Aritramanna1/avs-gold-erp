@@ -22,7 +22,7 @@
  * matches this app's established offline-degradation pattern elsewhere
  * (see repositories/base-repository.ts's read()/readAll()).
  */
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
 export async function nextDocumentNumber(
   key: string,

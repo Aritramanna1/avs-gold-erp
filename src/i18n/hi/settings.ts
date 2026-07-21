@@ -92,6 +92,7 @@ const translations = {
   branchAddress: "शाखा पता",
   branchPhone: "शाखा फ़ोन",
   saveBranchSettings: "शाखा सेटिंग्स सहेजें",
+  localizedCoverage: "स्थानीयकृत",
 };
 
 export default translations;

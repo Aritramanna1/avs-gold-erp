@@ -2,7 +2,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { initLocalDb, queryTable, upsertRow, deleteRow, runLocal } from "@/lib/local-db";
-import { isOfflineMode } from "@/lib/deployment-mode";
+import { isOfflineMode, isLocalFirstMode } from "@/lib/deployment-mode";
 
 function sanitizeEnvValue(val: string | undefined | null): string {
   if (!val) return "";
@@ -16,15 +16,36 @@ function sanitizeEnvValue(val: string | undefined | null): string {
   return s.trim();
 }
 
-function getResolvedConfig() {
-  const fallbackUrl = "https://kjfjsfhftytezsjyegmb.supabase.co";
-  const fallbackKey = "sb_publishable_fThRlMsK8N5t_wU9_fzd7g_XBvvr-zW";
-  const fallbackProjectId = "kjfjsfhftytezsjyegmb";
+/** Runtime Supabase config keys — set by the Setup Wizard (Hybrid mode) so a
+ *  customer points the app at their OWN Supabase project without a rebuild.
+ *  localStorage override wins over the build-time env/fallbacks. */
+export const SUPABASE_RUNTIME_KEYS = {
+  url: "supabase_runtime_url",
+  key: "supabase_runtime_key",
+  projectId: "supabase_runtime_project_id",
+} as const;
 
-  const rawUrl = sanitizeEnvValue(import.meta.env.VITE_SUPABASE_URL) || fallbackUrl;
-  const rawKey = sanitizeEnvValue(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) || fallbackKey;
+function runtimeOverride(key: string): string {
+  try {
+    return typeof localStorage !== "undefined" ? sanitizeEnvValue(localStorage.getItem(key)) : "";
+  } catch {
+    return "";
+  }
+}
+
+function getResolvedConfig() {
+  // Runtime (Hybrid wizard) override first, then build-time configuration.
+  // There is deliberately no embedded customer project: an Offline install
+  // must not silently bind itself to Arivahly's or another customer's cloud.
+  const rawUrl =
+    runtimeOverride(SUPABASE_RUNTIME_KEYS.url) ||
+    sanitizeEnvValue(import.meta.env.VITE_SUPABASE_URL);
+  const rawKey =
+    runtimeOverride(SUPABASE_RUNTIME_KEYS.key) ||
+    sanitizeEnvValue(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
   const rawProjectId =
-    sanitizeEnvValue(import.meta.env.VITE_SUPABASE_PROJECT_ID) || fallbackProjectId;
+    runtimeOverride(SUPABASE_RUNTIME_KEYS.projectId) ||
+    sanitizeEnvValue(import.meta.env.VITE_SUPABASE_PROJECT_ID);
 
   const values = [rawUrl, rawKey, rawProjectId].filter(Boolean);
 
@@ -391,34 +412,31 @@ const offlineAuth = {
 
 export function getSupabaseClient(): ReturnType<typeof createSupabaseClient> {
   if (_supabaseClient) return _supabaseClient;
-  _supabaseClient = createSupabaseClient();
-  const proxy = new Proxy(_supabaseClient, {
-    get(target, prop, receiver) {
+  const proxy = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
+    get(_target, prop) {
       // Decided per call, not at module load: the deployment mode is only
       // known after local-db hydrates, which happens after this module is
       // first imported.
-      const offline = isOfflineMode();
-      if (prop === "from" && (offline || LOCAL_DB_READS_ENABLED)) {
+      const localFirst = isLocalFirstMode();
+      if (prop === "from" && (isLocalFirstMode() || LOCAL_DB_READS_ENABLED)) {
         return (table: string) => new LocalQuery(table);
       }
-      if (offline && prop === "auth") return offlineAuth;
+      if (localFirst && prop === "auth") return offlineAuth;
       // Every remaining network surface is refused rather than silently
-      // reaching the network. `rpc`/`channel` callers already degrade
-      // gracefully (see document-numbering.ts's offline fallback); storage and
-      // functions are cloud-only features with no offline equivalent.
-      if (offline && (prop === "rpc" || prop === "channel")) {
+      // reaching the network. Hybrid cloud traffic is owned exclusively by
+      // the synchronization provider via getRawSupabaseClient().
+      if (localFirst && (prop === "rpc" || prop === "channel")) {
         return () => {
-          throw new Error(`Offline mode: supabase.${String(prop)} is unavailable.`);
+          throw new Error(`Local-first mode: cloud ${String(prop)} is unavailable here.`);
         };
       }
-      if (offline && (prop === "functions" || prop === "storage" || prop === "realtime")) {
-        throw new Error(`Offline mode: supabase.${String(prop)} is unavailable.`);
+      if (localFirst && (prop === "functions" || prop === "storage" || prop === "realtime")) {
+        throw new Error(`Local-first mode: cloud ${String(prop)} is unavailable here.`);
       }
-      return Reflect.get(target, prop, receiver);
+      const cloudClient = getRawSupabaseClient();
+      return Reflect.get(cloudClient, prop, cloudClient);
     },
   });
-  return proxy as typeof _supabaseClient;
+  _supabaseClient = proxy;
+  return proxy;
 }
-
-export const supabase = getSupabaseClient();
-export const rawSupabase = getRawSupabaseClient();

@@ -24,7 +24,7 @@ import { usePolishing } from "@/lib/polishing-store";
 import { useOrders } from "@/lib/orders-store";
 import { useBusinessRules } from "@/lib/business-rules-store";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Sparkles, AlertTriangle } from "lucide-react";
 
 /**

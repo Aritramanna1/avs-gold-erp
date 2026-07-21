@@ -24,7 +24,7 @@ import type {
   CommRequest,
   ResolvedContent,
 } from "@/lib/comm/types";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { extractEdgeFunctionError } from "@/lib/edge-function-error";
 import {
   Plus,
@@ -262,7 +262,7 @@ export default function CommunicationSettings() {
                   <strong>Advanced WA settings</strong> (automations, template mapping, rate limits,
                   webhook):
                 </span>
-                <Link to="/settings/whatsapp">
+                <Link to="/settings" search={{ tab: "whatsapp", waSection: "business" }}>
                   <button
                     type="button"
                     className="flex items-center gap-1 text-gold underline text-xs font-medium"
@@ -624,7 +624,7 @@ function ProviderCard({
             <strong>encrypted in the desktop app</strong> (never here), and sessions/QR are managed
             on its own page.
           </p>
-          <Link to="/settings/integrations/whatsapp">
+          <Link to="/settings" search={{ tab: "whatsapp", waSection: "wasender" }}>
             <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8">
               Configure WasenderAPI <ExternalLink className="h-3 w-3" />
             </Button>

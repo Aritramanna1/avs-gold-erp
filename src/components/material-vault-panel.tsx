@@ -34,10 +34,11 @@ import {
   MATERIAL_GROUP_LABELS,
   MATERIAL_MOVEMENT_LABELS,
   DEFAULT_MATERIAL_CATEGORIES,
+  materialKeyFromName,
   type MaterialGroup,
 } from "@/lib/material-vault-store";
 import { mgToGrams, gramsToMg, getCaratLabel, COMMON_PURITIES } from "@/lib/gold";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { toast } from "sonner";
 import { Coins, Wrench, Recycle, Settings2 } from "lucide-react";
 
@@ -60,6 +61,7 @@ export function MaterialVaultPanel() {
   const refresh = useMaterialVault((s) => s.refresh);
   const [adjustmentOpen, setAdjustmentOpen] = useState(false);
   const [stockOpen, setStockOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
 
   useEffect(() => {
     refresh();
@@ -85,6 +87,14 @@ export function MaterialVaultPanel() {
           data-testid="material-stock-open"
         >
           <Wrench className="h-4 w-4" /> Add / Manage Stock
+        </Button>
+        <Button
+          variant="outline"
+          className="gap-2"
+          onClick={() => setManageOpen(true)}
+          data-testid="material-manage-open"
+        >
+          <Settings2 className="h-4 w-4" /> Manage Materials
         </Button>
         <Button
           variant="outline"
@@ -235,6 +245,7 @@ export function MaterialVaultPanel() {
       </div>
 
       <MaterialStockDialog open={stockOpen} onClose={() => setStockOpen(false)} />
+      <MaterialManageDialog open={manageOpen} onClose={() => setManageOpen(false)} />
       <MaterialAdjustmentDialog open={adjustmentOpen} onClose={() => setAdjustmentOpen(false)} />
     </div>
   );
@@ -411,13 +422,15 @@ function CategorySelect({
   onChange: (v: string) => void;
   testId?: string;
 }) {
+  // Store categories = built-ins + admin-defined materials (nothing hard-coded).
+  const categories = useMaterialVault((s) => s.categories);
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger data-testid={testId}>
-        <SelectValue placeholder="Select category…" />
+        <SelectValue placeholder="Select material…" />
       </SelectTrigger>
       <SelectContent>
-        {DEFAULT_MATERIAL_CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <SelectItem key={c.key} value={c.key}>
             {c.label}
           </SelectItem>
@@ -427,8 +440,124 @@ function CategorySelect({
   );
 }
 
+/**
+ * Manage Materials — admin-configurable material list. New materials persist and
+ * appear in every material dropdown. Built-ins can't be removed; admin-defined
+ * ones can. Nothing about the material list is hard-coded.
+ */
+function MaterialManageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const categories = useMaterialVault((s) => s.categories);
+  const registerCategory = useMaterialVault((s) => s.registerCategory);
+  const removeCategory = useMaterialVault((s) => s.removeCategory);
+  const [name, setName] = useState("");
+  const [group, setGroup] = useState<MaterialGroup>("manufacturing_materials");
+
+  const defaultKeys = new Set(DEFAULT_MATERIAL_CATEGORIES.map((c) => c.key));
+  const custom = categories.filter((c) => !defaultKeys.has(c.key));
+
+  function add() {
+    const label = name.trim();
+    if (!label) return;
+    const key = materialKeyFromName(label);
+    if (!key) return;
+    if (categories.some((c) => c.key === key)) {
+      toast.error("A material with this name already exists.");
+      return;
+    }
+    registerCategory({ key, label, group });
+    setName("");
+    toast.success(`Material "${label}" added.`);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4 text-gold" /> Manage Materials
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex-1 min-w-[160px]">
+              <Label className="text-xs">New material name</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. 20K Chain, Solder, Bezel Wire"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Group</Label>
+              <Select value={group} onValueChange={(v) => setGroup(v as MaterialGroup)}>
+                <SelectTrigger className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(MATERIAL_GROUP_LABELS) as MaterialGroup[]).map((g) => (
+                    <SelectItem key={g} value={g}>
+                      {MATERIAL_GROUP_LABELS[g]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={add} data-testid="material-add">
+              Add
+            </Button>
+          </div>
+
+          <div>
+            <Label className="text-xs">Admin-defined materials</Label>
+            {custom.length === 0 ? (
+              <p className="text-xs text-muted-foreground mt-1">
+                None yet. Built-in materials are always available and can't be removed.
+              </p>
+            ) : (
+              <div className="mt-1 space-y-1 max-h-56 overflow-y-auto">
+                {custom.map((c) => (
+                  <div
+                    key={c.key}
+                    className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-3 py-1.5 text-sm"
+                  >
+                    <span>
+                      {c.label}{" "}
+                      <span className="text-[11px] text-muted-foreground">
+                        · {MATERIAL_GROUP_LABELS[c.group]}
+                      </span>
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        removeCategory(c.key);
+                        toast.success(`Removed "${c.label}".`);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function MaterialAdjustmentDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const recordAdjustment = useMaterialVault((s) => s.recordAdjustment);
+  const categories = useMaterialVault((s) => s.categories);
   const [category, setCategory] = useState("raw_gold");
   const [deltaG, setDeltaG] = useState("");
   const [reason, setReason] = useState("");
@@ -538,9 +667,9 @@ function MaterialAdjustmentDialog({ open, onClose }: { open: boolean; onClose: (
             <AlertDialogTitle>Confirm manual adjustment</AlertDialogTitle>
             <AlertDialogDescription>
               This will {Number(deltaG) < 0 ? "reduce" : "increase"} the{" "}
-              {DEFAULT_MATERIAL_CATEGORIES.find((c) => c.key === category)?.label ?? category}{" "}
-              balance by {Math.abs(Number(deltaG) || 0).toFixed(3)} g. This action is audited and
-              cannot be silently undone. Continue?
+              {categories.find((c) => c.key === category)?.label ?? category} balance by{" "}
+              {Math.abs(Number(deltaG) || 0).toFixed(3)} g. This action is audited and cannot be
+              silently undone. Continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

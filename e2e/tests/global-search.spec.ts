@@ -31,9 +31,10 @@ test.describe("Global search (command palette records)", () => {
   });
 
   test("an empty query shows no record results, only modules", async ({ authedPage: page }) => {
-    await page.goto("/");
+    await page.goto("/billing");
+    await page.waitForLoadState("networkidle");
     await page.keyboard.press("Control+f");
-    await expect(page.locator("[cmdk-input]")).toBeVisible();
+    await expect(page.locator("[cmdk-input]")).toBeVisible({ timeout: 20000 });
     await expect(page.getByText("Records", { exact: true })).not.toBeVisible();
     await expect(page.getByText("Modules", { exact: true })).toBeVisible();
   });

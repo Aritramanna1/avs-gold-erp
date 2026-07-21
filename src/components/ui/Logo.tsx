@@ -15,7 +15,7 @@ interface LogoProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "a
 // Re-signed slightly inside getAttachmentSignedUrl's own 45-minute cache
 // window, so a Logo instance that stays mounted for a whole session (e.g.
 // the sidebar) keeps picking up a fresh signed URL before the cached one's
-// 1-hour Supabase Storage expiry — otherwise the logo silently 403s after an
+// Refresh the local object URL if the component remains mounted for a long
 // hour on every screen and every printed document that renders it.
 const REFRESH_INTERVAL_MS = 40 * 60 * 1000;
 

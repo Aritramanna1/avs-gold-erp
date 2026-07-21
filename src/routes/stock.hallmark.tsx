@@ -15,7 +15,7 @@ import {
 import { useSettings } from "@/lib/settings-store";
 import { useStock } from "@/lib/stock-store";
 import { useHallmarkBatches, loadHallmarkBatches, type HallmarkBatch } from "@/lib/hallmark-store";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Stamp, Plus, CheckCircle2, XCircle, Lock } from "lucide-react";
 import { toast } from "sonner";
 

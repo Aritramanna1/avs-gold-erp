@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { createRepository } from "./repositories/base-repository";
 import { assertPeriodOpen, ensureFinancialLocksLoaded } from "./financial-lock-store";
 import { useWorkflowEngine } from "./workflow-engine";

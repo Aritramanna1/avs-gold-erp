@@ -8,15 +8,15 @@
  *   - Coverage / availability metadata lives in LANGUAGE_INFO and gates the language picker UI.
  *   - English fallback is applied for any missing key (see LanguageContext.tsx).
  *
- * Coverage re-counted directly from source files on 2026-07-07 (the
+ * Coverage re-counted directly from source files on 2026-07-18 (the
  * previous 2025-06-30 figures below LANGUAGE_INFO had drifted well out of
  * date — hi/mr/bn have all gained translations since, but LANGUAGE_INFO's
  * coveragePct numbers had NOT been updated to match, overstating actual
  * coverage to the user-facing language picker):
- *   - en: 100% (1230 keys, 20 modules) — baseline
- *   - hi:  72% (885 keys)
- *   - mr:  31% (387 keys)
- *   - bn:  31% (386 keys)
+ *   - en: 100% — baseline
+ *   - hi:  74% localized; missing keys fall back to English
+ *   - mr:  36% localized; missing keys fall back to English
+ *   - bn:  36% localized; missing keys fall back to English
  *
  * Per the production mandate ("hide incomplete languages until fully translated"), only
  * languages flagged `enabled: true` here are exposed in the user-facing switcher. A
@@ -40,6 +40,7 @@ import enLedger from "./en/ledger";
 import enManufacturing from "./en/manufacturing";
 import enMelt from "./en/melt";
 import enNavigation from "./en/navigation";
+import enNotifications from "./en/notifications";
 import enOrders from "./en/orders";
 import enPeople from "./en/people";
 import enRepair from "./en/repair";
@@ -65,6 +66,7 @@ const enDict: TranslationDictionary = {
   manufacturing: enManufacturing,
   melt: enMelt,
   navigation: enNavigation,
+  notifications: enNotifications,
   orders: enOrders,
   people: enPeople,
   repair: enRepair,
@@ -104,6 +106,7 @@ async function loadHi(): Promise<TranslationDictionary> {
     manufacturing,
     melt,
     navigation,
+    notifications,
     orders,
     people,
     repair,
@@ -125,6 +128,7 @@ async function loadHi(): Promise<TranslationDictionary> {
     safeImport(() => import("./hi/manufacturing"), enManufacturing),
     safeImport(() => import("./hi/melt"), enMelt),
     safeImport(() => import("./hi/navigation"), enNavigation),
+    safeImport(() => import("./hi/notifications"), enNotifications),
     safeImport(() => import("./hi/orders"), enOrders),
     safeImport(() => import("./hi/people"), enPeople),
     safeImport(() => import("./hi/repair"), enRepair),
@@ -147,6 +151,7 @@ async function loadHi(): Promise<TranslationDictionary> {
     manufacturing,
     melt,
     navigation,
+    notifications,
     orders,
     people,
     repair,
@@ -172,6 +177,7 @@ async function loadMr(): Promise<TranslationDictionary> {
     manufacturing,
     melt,
     navigation,
+    notifications,
     orders,
     people,
     repair,
@@ -193,6 +199,7 @@ async function loadMr(): Promise<TranslationDictionary> {
     safeImport(() => import("./mr/manufacturing"), enManufacturing),
     safeImport(() => import("./mr/melt"), enMelt),
     safeImport(() => import("./mr/navigation"), enNavigation),
+    safeImport(() => import("./mr/notifications"), enNotifications),
     safeImport(() => import("./mr/orders"), enOrders),
     safeImport(() => import("./mr/people"), enPeople),
     safeImport(() => import("./mr/repair"), enRepair),
@@ -215,6 +222,7 @@ async function loadMr(): Promise<TranslationDictionary> {
     manufacturing,
     melt,
     navigation,
+    notifications,
     orders,
     people,
     repair,
@@ -240,6 +248,7 @@ async function loadBn(): Promise<TranslationDictionary> {
     manufacturing,
     melt,
     navigation,
+    notifications,
     orders,
     people,
     repair,
@@ -261,6 +270,7 @@ async function loadBn(): Promise<TranslationDictionary> {
     safeImport(() => import("./bn/manufacturing"), enManufacturing),
     safeImport(() => import("./bn/melt"), enMelt),
     safeImport(() => import("./bn/navigation"), enNavigation),
+    safeImport(() => import("./bn/notifications"), enNotifications),
     safeImport(() => import("./bn/orders"), enOrders),
     safeImport(() => import("./bn/people"), enPeople),
     safeImport(() => import("./bn/repair"), enRepair),
@@ -283,6 +293,7 @@ async function loadBn(): Promise<TranslationDictionary> {
     manufacturing,
     melt,
     navigation,
+    notifications,
     orders,
     people,
     repair,
@@ -337,9 +348,9 @@ export interface LanguageInfo {
 
 export const LANGUAGE_INFO: Record<LanguageCode, LanguageInfo> = {
   en: { code: "en", label: "EN", native: "English", coveragePct: 100, enabled: true },
-  hi: { code: "hi", label: "हिं", native: "हिन्दी", coveragePct: 72, enabled: true },
-  mr: { code: "mr", label: "मरा", native: "मराठी", coveragePct: 31, enabled: true },
-  bn: { code: "bn", label: "বাং", native: "বাংলা", coveragePct: 31, enabled: true },
+  hi: { code: "hi", label: "हिं", native: "हिन्दी", coveragePct: 74, enabled: true },
+  mr: { code: "mr", label: "मरा", native: "मराठी", coveragePct: 36, enabled: true },
+  bn: { code: "bn", label: "বাং", native: "বাংলা", coveragePct: 36, enabled: true },
 };
 
 export const ALL_LANGUAGES: LanguageCode[] = ["en", "hi", "mr", "bn"];

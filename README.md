@@ -1,19 +1,53 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# ERP Gold
 
-# Run and deploy your AI Studio app
+Offline-first jewellery manufacturing ERP for Electron, React, TypeScript, SQLite, and optional Supabase hybrid/SaaS operation.
 
-This contains everything you need to run your app locally.
+Current distributable identity: **AVS Gold ERP Version 1.1.0 Production Release** (`1.1.0`) by [Arivahly Venture Sphere](https://arivahly.in/). This is a controlled jewellery-manufacturing workshop build, not a retail POS.
 
-View your app in AI Studio: https://ai.studio/apps/dcb1a8c1-f1b0-4964-b292-3d18358b3c0d
+## Development
 
-## Run Locally
+Requirements: Node.js 20+ and npm.
 
-**Prerequisites:** Node.js
+```sh
+npm install
+npm run dev
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Run the Electron development application with:
+
+```sh
+npm run electron:dev
+```
+
+Production checks and builds:
+
+```sh
+npm run lint
+npx tsc --noEmit
+npm run build
+npm run build:electron
+```
+
+## Documentation
+
+To help you get started, we have compiled the following guides:
+- [Installation Guide](INSTALLATION.md)
+- [User Guide](USER_GUIDE.md)
+- [Contributing Guidelines](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
+- [Support Channels](SUPPORT.md)
+- [Release Notes](RELEASE_NOTES.md)
+- [Changelog](CHANGELOG.md)
+
+Start with the canonical [documentation index](docs/README.md). Installation, setup, Offline/Hybrid operation, administration, user workflows, backup/restore, troubleshooting, security, licensing, and release notes are linked there. Developers should also read [CLAUDE.md](CLAUDE.md).
+
+## Configuration
+
+Settings is the single configuration hub. Brand identity, print branding, support and reseller details, WhatsApp providers, WasenderAPI sessions, automation, templates, output behavior, authentication, licensing, and operational defaults are configured there. WasenderAPI secrets are stored through Electron's encrypted credential storage rather than application settings.
+
+Licensing is isolated from customer data: the replaceable client provider calls only the embedded Arivahly Licensing API, validates a signed device entitlement, and never receives Central Licensing Database credentials. A production build must provide the licensing endpoint and Ed25519 public key described in [the Licensing Guide](docs/LICENSING.md).
+
+## Repository safety
+
+This repository is connected to Lovable. Do not rewrite published history with force pushes, rebases, amended pushed commits, or squashed pushed commits.
+

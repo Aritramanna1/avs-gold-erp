@@ -60,11 +60,20 @@ function PrintPage() {
   // all — they'd silently drop off the printout entirely.
   const [resolvedUrls, setResolvedUrls] = useState<Record<string, string>>({});
   const prefixForPerson = person ? `person:${person.id}:` : null;
+  const [loadingUrls, setLoadingUrls] = useState(true);
 
   useEffect(() => {
-    if (!prefixForPerson) return;
+    if (!prefixForPerson) {
+      setLoadingUrls(false);
+      return;
+    }
     let cancelled = false;
     const keys = Object.keys(attachmentItems).filter((k) => k.startsWith(prefixForPerson));
+
+    if (keys.length === 0) {
+      setLoadingUrls(false);
+      return;
+    }
 
     void Promise.all(
       keys.map(async (key) => {
@@ -80,12 +89,21 @@ function PrintPage() {
     ).then((pairs) => {
       if (cancelled) return;
       setResolvedUrls(Object.fromEntries(pairs.filter((p): p is [string, string] => !!p)));
+      setLoadingUrls(false);
     });
 
     return () => {
       cancelled = true;
     };
   }, [prefixForPerson, attachmentItems]);
+
+  useEffect(() => {
+    if (!loadingUrls) {
+      document.documentElement.setAttribute("data-print-ready", "true");
+    } else {
+      document.documentElement.removeAttribute("data-print-ready");
+    }
+  }, [loadingUrls]);
 
   const {
     docNumber,

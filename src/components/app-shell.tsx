@@ -1,6 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
-  Bell,
   Menu,
   Sun,
   Moon,
@@ -29,11 +28,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useRoles } from "@/lib/rbac";
 import { useAppLoading, markInitialLoadDone } from "@/lib/app-loading-store";
 import { ModuleSkeleton } from "@/components/module-skeleton";
 import { toast } from "sonner";
+import { NotificationBell } from "@/components/notification-bell";
 
 export function triggerGoldRateEditor() {
   if (typeof window !== "undefined") {
@@ -50,6 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // etc.). It only depends on these three slices.
   const goldRatePerGramPaise = useSettings((s) => s.goldRatePerGramPaise);
   const firm = useSettings((s) => s.firm);
+  const branding = useSettings((s) => s.branding);
   const users = useSettings((s) => s.users);
   const { roles, email: currentEmail } = useRoles();
   const navigate = useNavigate();
@@ -116,14 +117,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const goldRateStatus = goldRatePerGramPaise > 0 ? "22K · Active" : "22K · awaiting setup";
 
-  const shortName = firm?.shopName
-    ? firm.shopName
-        .split(" ")
-        .filter(Boolean)
-        .map((w: string) => w[0])
-        .join("")
-        .toUpperCase() || firm.shopName.slice(0, 3).toUpperCase()
-    : "ERP";
+  const shortName =
+    branding.shortName ||
+    (firm?.shopName
+      ? firm.shopName
+          .split(" ")
+          .filter(Boolean)
+          .map((w: string) => w[0])
+          .join("")
+          .toUpperCase() || firm.shopName.slice(0, 3).toUpperCase()
+      : "ERP");
 
   return (
     <div className="min-h-screen flex w-full bg-background text-foreground" id="app-shell-root">
@@ -250,13 +253,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Moon className="h-4 w-4 text-muted-foreground" />
               )}
             </button>
-            <button
-              type="button"
-              aria-label="Notifications"
-              className="relative h-9 w-9 grid place-items-center rounded-full border border-border hover:border-gold/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
-            >
-              <Bell className="h-4 w-4 text-muted-foreground" />
-            </button>
+            <NotificationBell />
             {/* User menu with Sign Out */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

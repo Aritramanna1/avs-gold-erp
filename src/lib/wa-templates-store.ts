@@ -5,7 +5,7 @@
  * can edit body, toggle active, and reset to default per template.
  */
 import { create } from "zustand";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { createRepository } from "./repositories/base-repository";
 
 const appSettingsRepository = createRepository<{ id: string } & Record<string, unknown>>(

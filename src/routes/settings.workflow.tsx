@@ -89,7 +89,7 @@ export default function WorkflowSettings() {
     const before = config.financialLockEnforcementEnabled;
     patch({ financialLockEnforcementEnabled: enabled });
     const [{ supabase }, { append }] = await Promise.all([
-      import("@/integrations/supabase/client"),
+      import("@/lib/providers/data-provider"),
       import("@/lib/security/audit-log"),
     ]);
     const { data } = await supabase.auth.getSession();

@@ -7,6 +7,7 @@ import { shortShopName } from "@/lib/app-info";
 import { AvsPrintFooter } from "@/components/AvsPrintFooter";
 import { Logo } from "@/components/ui/Logo";
 import { ArrowLeft, Printer } from "lucide-react";
+import { printDocument } from "@/lib/print-document";
 
 export const Route = createFileRoute("/billing/receipt/$id")({
   head: () => {
@@ -34,11 +35,17 @@ function ReceiptPrint() {
             <ArrowLeft className="h-4 w-4" /> Back
           </Button>
         </Link>
-        <Button onClick={() => window.print()} className="gap-1.5">
+        <Button
+          onClick={() => void printDocument(`Payment Receipt - ${inv.invoiceNo}`, "Receipt")}
+          className="gap-1.5"
+        >
           <Printer className="h-4 w-4" /> Print
         </Button>
       </div>
-      <div className="bg-white text-black p-8 rounded-md shadow print:shadow-none">
+      <div
+        data-testid="print-layout-root"
+        className="bg-white text-black p-8 rounded-md shadow print:shadow-none"
+      >
         <div className="text-center border-b border-black/30 pb-3 mb-4">
           <div className="flex justify-center mb-1">
             <Logo variant="png" className="h-10 w-10 object-contain" />

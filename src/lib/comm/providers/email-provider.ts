@@ -12,7 +12,7 @@ import type {
   ProviderType,
 } from "../types";
 import { EMAIL_KEYS } from "../types";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { extractEdgeFunctionError } from "@/lib/edge-function-error";
 import { fetchWithTimeout } from "../fetch-with-timeout";
 

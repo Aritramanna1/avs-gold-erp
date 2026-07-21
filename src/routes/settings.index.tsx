@@ -74,28 +74,26 @@ import {
   getAttachmentSignedUrl,
   uploadFileToSupabase,
 } from "@/lib/supabase-storage";
-import { uploadToHostinger, saveAttachmentMetadata } from "@/lib/hostinger-storage";
 import { updateFirmProfile } from "@/lib/supabase-services";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { extractEdgeFunctionError } from "@/lib/edge-function-error";
 import { useDbStatus, getDbStatusLabel } from "@/lib/db-status";
 import { migrateAllToCloud, type MigrationProgress } from "@/lib/cloud-migrate";
 import { useRoles } from "@/lib/rbac";
 import { Logo } from "@/components/ui/Logo";
-import {
-  APP_NAME,
-  APP_DESCRIPTION,
-  APP_VERSION,
-  COMPANY_NAME,
-  COPYRIGHT,
-  APP_TAGLINE,
-} from "@/lib/app-info";
+import { APP_NAME, APP_DESCRIPTION, APP_VERSION, COMPANY_NAME, APP_TAGLINE } from "@/lib/app-info";
+import { ALL_LANGUAGES, LANGUAGE_INFO, type LanguageCode } from "@/i18n";
+import { useDeploymentMode } from "@/lib/deployment-mode";
 
 import { FactoryResetDialog } from "@/components/security/FactoryResetDialog";
 import { useBullionRate } from "@/lib/bullion-rate-service";
+import { WhatsAppIntegrationPage } from "@/routes/settings.integrations.whatsapp";
+import { WhatsAppSettingsPage } from "@/routes/settings.whatsapp";
+import { WaTemplatesPage } from "@/routes/settings.whatsapp-templates";
 
 const SearchSchema = z.object({
   tab: z.string().optional(),
+  waSection: z.enum(["business", "wasender", "templates"]).optional(),
 });
 
 export const Route = createFileRoute("/settings/")({
@@ -107,7 +105,8 @@ export const Route = createFileRoute("/settings/")({
 
 function SettingsPage() {
   const s = useSettings();
-  const { tab } = useSearch({ from: "/settings/" });
+  const deploymentMode = useDeploymentMode((state) => state.mode);
+  const { tab, waSection } = useSearch({ from: "/settings/" });
   const [activeTab, setActiveTab] = useState(tab || "firm");
   const [isFactoryResetOpen, setIsFactoryResetOpen] = useState(false);
 
@@ -121,7 +120,7 @@ function SettingsPage() {
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <PageHeader
         title="Settings"
-        subtitle="Firm profile, masters, GST, hardware, backup and pilot controls."
+        subtitle="Brand, WhatsApp, firm, masters, compliance, hardware, backup, and pilot controls."
       />
 
       <Card className="p-4 mb-5 border-gold/40 bg-gold/5 text-sm">
@@ -136,30 +135,46 @@ function SettingsPage() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <Link
-          to="/settings/integrations/whatsapp"
+          to="/settings"
+          search={{ tab: "branding" }}
           className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
           <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
             🔌
           </span>
           <div className="flex-1">
-            <div className="font-medium text-sm">WhatsApp Integration (WasenderAPI)</div>
+            <div className="font-medium text-sm">Brand Settings</div>
             <div className="text-xs text-muted-foreground">
-              Connect a session, auto-send PDFs; encrypted token, deep-link fallback.
+              Product identity, logo, colors, support details, and print branding.
             </div>
           </div>
         </Link>
         <Link
-          to="/settings/whatsapp-templates"
+          to="/settings/license"
+          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+        >
+          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
+            🔑
+          </span>
+          <div className="flex-1">
+            <div className="font-medium text-sm">License &amp; Activation</div>
+            <div className="text-xs text-muted-foreground">
+              Online activation server, license key, offline grace window.
+            </div>
+          </div>
+        </Link>
+        <Link
+          to="/settings"
+          search={{ tab: "whatsapp", waSection: "business" }}
           className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
           <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
             💬
           </span>
           <div className="flex-1">
-            <div className="font-medium text-sm">WhatsApp Templates</div>
+            <div className="font-medium text-sm">WhatsApp Settings</div>
             <div className="text-xs text-muted-foreground">
-              Edit message bodies, preview placeholder auto-fill.
+              Providers, WasenderAPI, templates, automation, retries, and fallback behavior.
             </div>
           </div>
         </Link>
@@ -187,7 +202,9 @@ function SettingsPage() {
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Storage &amp; File Diagnostics</div>
             <div className="text-xs text-muted-foreground">
-              Verify Hostinger FTP upload endpoint and Supabase table rows.
+              {deploymentMode === "offline"
+                ? "Verify the encrypted local vault and SQLite attachment records."
+                : "Verify configured storage connectivity and synchronized attachment records."}
             </div>
           </div>
         </Link>
@@ -269,6 +286,7 @@ function SettingsPage() {
           <TabsTrigger value="firm">Firm</TabsTrigger>
           <TabsTrigger value="branches">Branches</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
+          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="print">Print</TabsTrigger>
           <TabsTrigger value="printers">Printer Profiles</TabsTrigger>
@@ -288,7 +306,6 @@ function SettingsPage() {
           <TabsTrigger value="dropdowns">Dropdowns</TabsTrigger>
           <TabsTrigger value="language">Language</TabsTrigger>
           <TabsTrigger value="modules">Modules Manager</TabsTrigger>
-          <TabsTrigger value="developer">Developer Settings</TabsTrigger>
           <TabsTrigger value="email">Email &amp; SMTP</TabsTrigger>
           <TabsTrigger value="backup">Backup</TabsTrigger>
           <TabsTrigger value="db">Database</TabsTrigger>
@@ -303,6 +320,9 @@ function SettingsPage() {
         </TabsContent>
         <TabsContent value="branding">
           <BrandingTab />
+        </TabsContent>
+        <TabsContent value="whatsapp">
+          <WhatsAppTab initialSection={waSection} />
         </TabsContent>
         <TabsContent value="appearance">
           <AppearanceTab />
@@ -356,9 +376,6 @@ function SettingsPage() {
         </TabsContent>
         <TabsContent value="modules">
           <ModulesManagerTab />
-        </TabsContent>
-        <TabsContent value="developer">
-          <DeveloperTab />
         </TabsContent>
         <TabsContent value="email">
           <EmailTab />
@@ -426,6 +443,7 @@ interface LogoUploaderProps {
 function LogoUploader({ logoUrl, logoStoragePath, onLogoChange, onClearLogo }: LogoUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const deploymentMode = useDeploymentMode((state) => state.mode);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -433,7 +451,7 @@ function LogoUploader({ logoUrl, logoStoragePath, onLogoChange, onClearLogo }: L
 
     setUploading(true);
     try {
-      // 1. Compress & upload the firm logo to Supabase Storage "firm-assets" bucket
+      // Files remain in the encrypted local vault in every deployment mode.
       const { filePath, signedUrl } = await uploadFileToSupabase(
         "firm-assets",
         file,
@@ -441,28 +459,13 @@ function LogoUploader({ logoUrl, logoStoragePath, onLogoChange, onClearLogo }: L
         "logo",
       );
 
-      // 2. Commit metadata indexing record inside Supabase attachments
-      await saveAttachmentMetadata({
-        filePath: filePath,
-        fileUrl: signedUrl,
-        fileName: file.name,
-        originalFileName: file.name,
-        mimeType: file.type || "image/png",
-        fileSize: file.size,
-        relatedModule: "firm-logos",
-        relatedTable: "app_settings",
-        relatedRecordId: "firm_profile",
-        docKey: "logo",
-        storageProvider: "supabase",
-      });
-
       onLogoChange(signedUrl, filePath);
       toast.success(
-        "Firm logo uploaded to Supabase Storage with auto-compression. Click 'Save Changes' to apply.",
+        "Firm logo saved to the local application vault. Click 'Save Changes' to apply.",
       );
     } catch (err: any) {
       console.error("Logo upload error:", err);
-      toast.error(err.message || "Failed to upload logo onto Supabase Storage");
+      toast.error(err.message || "Failed to save the firm logo");
     } finally {
       setUploading(false);
     }
@@ -506,7 +509,11 @@ function LogoUploader({ logoUrl, logoStoragePath, onLogoChange, onClearLogo }: L
           ) : (
             <Upload className="h-3.5 w-3.5" />
           )}
-          {uploading ? "Uploading..." : "Upload Logo"}
+          {uploading
+            ? deploymentMode === "offline"
+              ? "Saving..."
+              : "Uploading..."
+            : "Upload Logo"}
         </Button>
         <input
           ref={fileInputRef}
@@ -544,6 +551,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function FirmTab() {
   const { firm, setFirm } = useSettings();
+  const deploymentMode = useDeploymentMode((state) => state.mode);
 
   // Local state drafts
   const [shopName, setShopName, clearShopName] = useDraft(
@@ -714,15 +722,23 @@ function FirmTab() {
         hostingerUploadUrl,
       };
 
-      // 1. Commit to Supabase DB (Part G)
-      const success = await updateFirmProfile(updatedProfile);
-      if (!success) {
-        throw new Error("Supabase storage or database RLS prevented saving.");
+      // Offline profiles are persisted by the settings store and must never
+      // depend on a cloud session. Connected modes retain the existing cloud
+      // persistence path.
+      if (deploymentMode !== "offline") {
+        const success = await updateFirmProfile(updatedProfile);
+        if (!success) {
+          throw new Error("The connected profile service could not save these changes.");
+        }
       }
 
-      // 2. Commit to local store configuration (causes immediate general layout recalculation / sidebar logo sync)
+      // Commit to local store configuration (causes immediate layout/sidebar sync).
       setFirm(updatedProfile);
-      toast.success("Firm profile and settings saved successfully to the cloud!");
+      toast.success(
+        deploymentMode === "offline"
+          ? "Firm profile and settings saved locally."
+          : "Firm profile and settings saved successfully.",
+      );
 
       // Clear draft states
       clearShopName();
@@ -1084,7 +1100,7 @@ function AppearanceTab() {
 }
 
 function BrandingTab() {
-  const { branding, setBranding, firm, setFirm } = useSettings();
+  const { branding, setBranding, developer, setDeveloper, firm, setFirm } = useSettings();
 
   // setFirm() alone persists (see settings-store.ts's persistSettings()) —
   // same double-write race fix as the Firm tab's logo uploader above.
@@ -1101,34 +1117,204 @@ function BrandingTab() {
   };
 
   return (
-    <Card className="p-5 grid md:grid-cols-2 gap-4 mt-4">
-      <Field label="Print Header Text">
-        <Input
-          value={branding.printHeader}
-          onChange={(e) => setBranding({ printHeader: e.target.value })}
-        />
-      </Field>
-      <Field label="Primary Color (hex)">
-        <Input
-          value={branding.primaryColor}
-          onChange={(e) => setBranding({ primaryColor: e.target.value })}
-        />
-      </Field>
-      <Field label="Gold Accent (hex)">
-        <Input
-          value={branding.goldAccent}
-          onChange={(e) => setBranding({ goldAccent: e.target.value })}
-        />
-      </Field>
-      <div className="md:col-span-2">
+    <div className="space-y-5 mt-4">
+      <Card className="p-5 space-y-4">
+        <div>
+          <h3 className="font-serif text-lg text-gold">Application identity</h3>
+          <p className="text-xs text-muted-foreground">
+            These values drive the login screens, setup wizard, app chrome, About panel, support
+            details, and document branding at runtime.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Application Name">
+            <Input
+              value={branding.applicationName}
+              onChange={(e) => setBranding({ applicationName: e.target.value })}
+              placeholder="AVS Gold ERP"
+            />
+          </Field>
+          <Field label="Short Name">
+            <Input
+              value={branding.shortName}
+              onChange={(e) => setBranding({ shortName: e.target.value })}
+              placeholder="ERP"
+              maxLength={20}
+            />
+          </Field>
+          <Field label="Tagline">
+            <Input
+              value={branding.tagline}
+              onChange={(e) => setBranding({ tagline: e.target.value })}
+            />
+          </Field>
+          <Field label="Product Description">
+            <Input
+              value={branding.description}
+              onChange={(e) => setBranding({ description: e.target.value })}
+            />
+          </Field>
+          <Field label="Company / Publisher">
+            <Input
+              value={branding.companyName}
+              onChange={(e) => setBranding({ companyName: e.target.value })}
+            />
+          </Field>
+          <Field label="Print Header Text">
+            <Input
+              value={branding.printHeader}
+              onChange={(e) => setBranding({ printHeader: e.target.value })}
+              placeholder="Leave blank to use the firm name"
+            />
+          </Field>
+        </div>
+      </Card>
+
+      <Card className="p-5 space-y-4">
+        <div>
+          <h3 className="font-serif text-lg text-gold">Palette and logo</h3>
+          <p className="text-xs text-muted-foreground">
+            Brand colors are applied immediately across the application. Print layouts continue to
+            enforce their high-contrast print-safe overrides.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Primary Color">
+            <div className="flex gap-2">
+              <Input
+                type="color"
+                value={branding.primaryColor}
+                onChange={(e) => setBranding({ primaryColor: e.target.value })}
+                className="w-14 p-1"
+              />
+              <Input
+                value={branding.primaryColor}
+                onChange={(e) => setBranding({ primaryColor: e.target.value })}
+                placeholder="#0F172A"
+              />
+            </div>
+          </Field>
+          <Field label="Gold Accent">
+            <div className="flex gap-2">
+              <Input
+                type="color"
+                value={branding.goldAccent}
+                onChange={(e) => setBranding({ goldAccent: e.target.value })}
+                className="w-14 p-1"
+              />
+              <Input
+                value={branding.goldAccent}
+                onChange={(e) => setBranding({ goldAccent: e.target.value })}
+                placeholder="#C8A24B"
+              />
+            </div>
+          </Field>
+        </div>
         <LogoUploader
           logoUrl={firm?.logoUrl || ""}
           logoStoragePath={firm?.logoStoragePath || ""}
           onLogoChange={handleLogoChange}
           onClearLogo={handleClearLogo}
         />
-      </div>
-    </Card>
+      </Card>
+
+      <Card className="p-5 space-y-4">
+        <div>
+          <h3 className="font-serif text-lg text-gold">Support and reseller credit</h3>
+          <p className="text-xs text-muted-foreground">
+            Customer-facing support details and optional implementation-partner attribution.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Support Email">
+            <Input
+              type="email"
+              value={branding.supportEmail}
+              onChange={(e) => setBranding({ supportEmail: e.target.value })}
+            />
+          </Field>
+          <Field label="Support Phone">
+            <Input
+              value={branding.supportPhone}
+              onChange={(e) => setBranding({ supportPhone: e.target.value })}
+            />
+          </Field>
+          <Field label="Website">
+            <Input
+              type="url"
+              value={branding.website}
+              onChange={(e) => setBranding({ website: e.target.value })}
+            />
+          </Field>
+          <Field label="Developer / Studio Name">
+            <Input
+              value={developer.avsName}
+              onChange={(e) => setDeveloper({ avsName: e.target.value })}
+            />
+          </Field>
+          <Field label="Developer Support Number">
+            <Input
+              value={developer.contactNumber}
+              onChange={(e) => setDeveloper({ contactNumber: e.target.value })}
+            />
+          </Field>
+          <Field label="Developer Support Email">
+            <Input
+              type="email"
+              value={developer.email}
+              onChange={(e) => setDeveloper({ email: e.target.value })}
+            />
+          </Field>
+          <Field label="Developer Logo URL">
+            <Input
+              type="url"
+              value={developer.logoUrl || ""}
+              onChange={(e) => setDeveloper({ logoUrl: e.target.value })}
+            />
+          </Field>
+          <ToggleRow
+            label="Show developer credit on printed materials"
+            value={developer.footerEnabled}
+            onChange={(value) => setDeveloper({ footerEnabled: value })}
+          />
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function WhatsAppTab({
+  initialSection = "business",
+}: {
+  initialSection?: "business" | "wasender" | "templates";
+}) {
+  return (
+    <div className="space-y-4 mt-4">
+      <Card className="p-4 border-gold/30 bg-gold/5">
+        <h3 className="font-serif text-lg text-gold">WhatsApp Settings</h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Configure branch providers, secured WasenderAPI credentials, approved template mappings,
+          editable message bodies, rate limits, retries, fallback behavior, and automation from one
+          place. Operational messaging remains in Communications Hub.
+        </p>
+      </Card>
+      <Tabs defaultValue={initialSection}>
+        <TabsList className="flex flex-wrap h-auto">
+          <TabsTrigger value="business">Providers &amp; Automation</TabsTrigger>
+          <TabsTrigger value="wasender">WasenderAPI</TabsTrigger>
+          <TabsTrigger value="templates">Message Templates</TabsTrigger>
+        </TabsList>
+        <TabsContent value="business" className="pt-4">
+          <WhatsAppSettingsPage embedded />
+        </TabsContent>
+        <TabsContent value="wasender" className="pt-4">
+          <WhatsAppIntegrationPage embedded />
+        </TabsContent>
+        <TabsContent value="templates" className="pt-4">
+          <WaTemplatesPage embedded />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
 
@@ -3245,6 +3431,36 @@ function HardwareTab() {
         </p>
       </div>
 
+      {/* Device status — which hardware is active vs still in development. */}
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {(
+          [
+            { name: "Printer", active: true },
+            { name: "Thermal Printer", active: true },
+            { name: "Camera QR Scanner", active: true },
+            { name: "Scale", active: false },
+            { name: "Barcode Scanner", active: false },
+            { name: "Label Printer", active: false },
+          ] as const
+        ).map((d) => (
+          <div
+            key={d.name}
+            className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2"
+          >
+            <span className="text-sm font-medium">{d.name}</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                d.active
+                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                  : "bg-muted text-muted-foreground border border-border"
+              }`}
+            >
+              {d.active ? "Active" : "Coming Soon"}
+            </span>
+          </div>
+        ))}
+      </div>
+
       <div className="grid gap-6 md:grid-cols-2">
         {/* Printers and Scanners Section */}
         <div className="space-y-4 border-r border-border/40 pr-0 md:pr-6">
@@ -3679,6 +3895,16 @@ function LanguageTab() {
       <div className="md:col-span-2 text-sm text-muted-foreground">
         {t("settings.languageTabDesc")}
       </div>
+      <div className="md:col-span-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {ALL_LANGUAGES.map((code) => (
+          <div key={code} className="rounded-xl border border-border bg-muted/20 p-3">
+            <div className="font-medium">{LANGUAGE_INFO[code].native}</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {LANGUAGE_INFO[code].coveragePct}% {t("settings.localizedCoverage")}
+            </div>
+          </div>
+        ))}
+      </div>
       <Field label={t("settings.appPanelLanguage")}>
         <select
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none"
@@ -3688,10 +3914,7 @@ function LanguageTab() {
             setAppLanguage(val);
           }}
         >
-          <option value="en">English</option>
-          <option value="hi">हिन्दी (Hindi)</option>
-          <option value="bn">বাংলা (Bengali)</option>
-          <option value="mr">मराठी (Marathi)</option>
+          <LanguageOptions />
         </select>
       </Field>
       <Field label={t("settings.receiptPrintLanguage")}>
@@ -3702,10 +3925,7 @@ function LanguageTab() {
             setLanguage({ printLanguage: e.target.value as "en" | "mr" | "hi" | "bn" })
           }
         >
-          <option value="en">English</option>
-          <option value="hi">हिन्दी (Hindi)</option>
-          <option value="bn">বাংলা (Bengali)</option>
-          <option value="mr">मराठी (Marathi)</option>
+          <LanguageOptions />
         </select>
       </Field>
       <Field label={t("settings.whatsAppDispatchLanguage")}>
@@ -3716,10 +3936,7 @@ function LanguageTab() {
             setLanguage({ whatsappLanguage: e.target.value as "en" | "mr" | "hi" | "bn" })
           }
         >
-          <option value="en">English</option>
-          <option value="hi">हिन्दी (Hindi)</option>
-          <option value="bn">বাংলা (Bengali)</option>
-          <option value="mr">मराठी (Marathi)</option>
+          <LanguageOptions />
         </select>
       </Field>
       <Field label={t("settings.staffMemberLanguage")}>
@@ -3730,14 +3947,19 @@ function LanguageTab() {
             setLanguage({ staffLanguage: e.target.value as "en" | "mr" | "hi" | "bn" })
           }
         >
-          <option value="en">English</option>
-          <option value="hi">हिन्दी (Hindi)</option>
-          <option value="bn">বাংলা (Bengali)</option>
-          <option value="mr">मराठी (Marathi)</option>
+          <LanguageOptions />
         </select>
       </Field>
     </Card>
   );
+}
+
+function LanguageOptions() {
+  return ALL_LANGUAGES.map((code: LanguageCode) => (
+    <option key={code} value={code}>
+      {LANGUAGE_INFO[code].native}
+    </option>
+  ));
 }
 
 function EmailTab() {
@@ -3943,52 +4165,9 @@ function EmailTab() {
   );
 }
 
-function DeveloperTab() {
-  const { developer, setDeveloper } = useSettings();
-  return (
-    <Card className="p-5 grid md:grid-cols-2 gap-4 mt-4">
-      <div className="md:col-span-2 text-sm text-muted-foreground mb-2">
-        White-label branding and reseller parameters. Configure AVS (Arivahly Venture Sphere)
-        credentials below. These populate dynamic footer strings across all 28 transactional
-        documents.
-      </div>
-      <Field label="Developer / Studio Name">
-        <Input
-          value={developer?.avsName || "AVS Gold ERP — Arivahly Venture Sphere"}
-          onChange={(e) => setDeveloper({ avsName: e.target.value })}
-        />
-      </Field>
-      <Field label="Support Contact Number">
-        <Input
-          value={developer?.contactNumber || ""}
-          onChange={(e) => setDeveloper({ contactNumber: e.target.value })}
-        />
-      </Field>
-      <Field label="Support Email">
-        <Input
-          value={developer?.email || ""}
-          onChange={(e) => setDeveloper({ email: e.target.value })}
-        />
-      </Field>
-      <Field label="Logo URL for Developer Credit">
-        <Input
-          value={developer?.logoUrl || ""}
-          onChange={(e) => setDeveloper({ logoUrl: e.target.value })}
-          placeholder="https://example.com/developer-logo.png"
-        />
-      </Field>
-      <div className="md:col-span-2 pt-2 border-t border-border mt-2">
-        <ToggleRow
-          label="Include AVS Gold ERP credit line on all printed materials"
-          value={developer?.footerEnabled !== false}
-          onChange={(v) => setDeveloper({ footerEnabled: v })}
-        />
-      </div>
-    </Card>
-  );
-}
-
 function BackupTab() {
+  const deploymentMode = useDeploymentMode((state) => state.mode);
+  const offline = deploymentMode === "offline";
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<string>("");
   const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(null);
@@ -4047,10 +4226,12 @@ function BackupTab() {
   return (
     <Card className="p-5 mt-4 space-y-4">
       <div className="text-sm">
-        This browser's local cache is a convenience layer only — Supabase is the live source of
-        truth for all business data. Take a local backup at least once a day as an extra safety net
-        in case this device is lost or damaged. For verified, drill-tested backup/restore
-        (recommended for anything beyond a quick local safety copy), use{" "}
+        {offline
+          ? "This device's local SQLite database is the source of truth for business data. "
+          : "Local data supports offline-first operation and is synchronized by the configured provider. "}
+        Take a local backup at least once a day in case this device is lost or damaged. For
+        verified, drill-tested backup/restore (recommended for anything beyond a quick local safety
+        copy), use{" "}
         <Link to="/settings/backup-recovery" className="underline text-gold">
           Backup &amp; Disaster Recovery
         </Link>
@@ -4081,6 +4262,10 @@ function BackupTab() {
           <Button
             variant="destructive"
             onClick={() => {
+              if (offline) {
+                setClearConfirmOpen(true);
+                return;
+              }
               setClearPassword("");
               setClearPasswordError("");
               setPasswordGateOpen(true);
@@ -4102,8 +4287,8 @@ function BackupTab() {
             <AlertDialogDescription>
               This will overwrite every local store on this device with the contents of{" "}
               <strong>{pendingRestoreFile?.name}</strong>. Any local changes made since that backup
-              was taken will be lost. This does not affect data already synced to Supabase.
-              Continue?
+              was taken will be lost.
+              {offline ? " Continue?" : " Synchronized cloud data is not affected. Continue?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -4181,8 +4366,10 @@ function BackupTab() {
             <AlertDialogDescription>
               This will permanently delete all local data on this device — cached settings AND the
               local encrypted database (orders, ledger, stock, invoices, etc. cached for offline
-              use). Data already synced to Supabase is not affected. This cannot be undone.
-              Continue?
+              use).
+              {offline
+                ? " This is the only business-data copy on this installation and cannot be undone. Continue?"
+                : " Synchronized cloud data is not affected. This cannot be undone. Continue?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -4207,7 +4394,8 @@ function BackupTab() {
 }
 
 function AboutTab() {
-  const { status, sourceOfTruth } = useDbStatus();
+  const deploymentMode = useDeploymentMode((state) => state.mode);
+  const branding = useSettings((s) => s.branding);
   const branches = useSettings((s) => s.branches);
   const selectedBranchId = useSettings((s) => s.selectedBranchId);
   const currentBranch = branches.find((b) => b.id === selectedBranchId);
@@ -4228,8 +4416,10 @@ function AboutTab() {
       <div className="flex items-center gap-3">
         <Logo variant="svg" className="h-14 w-14 object-contain" />
         <div>
-          <div className="font-serif text-xl text-gold">{APP_NAME}</div>
-          <div className="text-xs text-muted-foreground">{APP_DESCRIPTION}</div>
+          <div className="font-serif text-xl text-gold">{branding.applicationName || APP_NAME}</div>
+          <div className="text-xs text-muted-foreground">
+            {branding.description || APP_DESCRIPTION}
+          </div>
         </div>
       </div>
 
@@ -4245,16 +4435,30 @@ function AboutTab() {
         )}
 
         <div className="text-muted-foreground">Company</div>
-        <div className="text-right">{COMPANY_NAME}</div>
+        <div className="text-right">{branding.companyName || COMPANY_NAME}</div>
 
         <div className="text-muted-foreground">Copyright</div>
-        <div className="text-right">{COPYRIGHT}</div>
+        <div className="text-right">
+          © {new Date().getFullYear()} {branding.companyName || COMPANY_NAME}
+        </div>
 
-        <div className="text-muted-foreground">Database Status</div>
-        <div className="text-right">{getDbStatusLabel(status)}</div>
+        <div className="text-muted-foreground">Support</div>
+        <div className="text-right">{branding.supportEmail || branding.supportPhone || "—"}</div>
 
-        <div className="text-muted-foreground">Data Source</div>
-        <div className="text-right capitalize">{sourceOfTruth}</div>
+        <div className="text-muted-foreground">Website</div>
+        <div className="text-right">{branding.website || "—"}</div>
+
+        {deploymentMode === "offline" ? (
+          <>
+            <div className="text-muted-foreground">Database Status</div>
+            <div className="text-right">Local SQLite · Connected</div>
+
+            <div className="text-muted-foreground">Data Source</div>
+            <div className="text-right">Gold Vault / Local Database</div>
+          </>
+        ) : (
+          <ConnectedDatabaseSummary />
+        )}
 
         <div className="text-muted-foreground">Current Branch</div>
         <div className="text-right">{currentBranch?.name ?? selectedBranchId ?? "—"}</div>
@@ -4266,18 +4470,65 @@ function AboutTab() {
       </div>
 
       <p className="text-[10px] text-muted-foreground text-center pt-2 border-t border-border">
-        {APP_TAGLINE}
+        {branding.tagline || APP_TAGLINE}
       </p>
     </Card>
   );
 }
 
+function ConnectedDatabaseSummary() {
+  const { status, sourceOfTruth } = useDbStatus();
+  return (
+    <>
+      <div className="text-muted-foreground">Database Status</div>
+      <div className="text-right">{getDbStatusLabel(status)}</div>
+
+      <div className="text-muted-foreground">Data Source</div>
+      <div className="text-right capitalize">{sourceOfTruth}</div>
+    </>
+  );
+}
+
 function DbTab() {
-  return <DbStatusPanel />;
+  const deploymentMode = useDeploymentMode((state) => state.mode);
+  return deploymentMode === "offline" ? <OfflineDbStatusPanel /> : <DbStatusPanel />;
+}
+
+function OfflineDbStatusPanel() {
+  return (
+    <div data-testid="database-status-root" className="space-y-4 mt-4">
+      <Card className="p-5 space-y-3 text-sm">
+        <div className="flex items-center gap-2 font-medium">
+          <Database className="h-4 w-4" /> Database Status
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 text-xs">
+          <div className="rounded-lg border border-border bg-muted/20 p-3">
+            <div className="text-muted-foreground mb-1">Local SQLite</div>
+            <Badge
+              variant="outline"
+              className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+            >
+              Connected
+            </Badge>
+          </div>
+          <div className="rounded-lg border border-border bg-muted/20 p-3">
+            <div className="text-muted-foreground mb-1">Data Source</div>
+            <div className="font-medium">Gold Vault / Local Database</div>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Offline Mode is fully local. No cloud account or connection is required for normal ERP
+          operation.
+        </p>
+      </Card>
+    </div>
+  );
 }
 
 function DbStatusPanel() {
   const { status, email, userId, lastMigrationAt, sourceOfTruth } = useDbStatus();
+  const deploymentMode = useDeploymentMode((state) => state.mode);
+  const offline = deploymentMode === "offline";
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authEmail, setAuthEmail] = useState("");
   const [authPass, setAuthPass] = useState("");
@@ -4288,6 +4539,10 @@ function DbStatusPanel() {
 
   // Load this user's roles when signed in
   useEffect(() => {
+    if (offline) {
+      setRoles([]);
+      return;
+    }
     if (!userId) {
       setRoles([]);
       return;
@@ -4303,7 +4558,7 @@ function DbStatusPanel() {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [offline, userId]);
 
   async function handleAuth() {
     setBusy(true);
@@ -4342,6 +4597,37 @@ function DbStatusPanel() {
       res.ok
         ? "Migration complete. Cloud is now the live source of truth."
         : `Completed with errors:\n${res.errors.join("\n")}`,
+    );
+  }
+
+  if (offline) {
+    return (
+      <div data-testid="database-status-root" className="space-y-4 mt-4">
+        <Card className="p-5 space-y-3 text-sm">
+          <div className="flex items-center gap-2 font-medium">
+            <Database className="h-4 w-4" /> Database Status
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 text-xs">
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <div className="text-muted-foreground mb-1">Local SQLite</div>
+              <Badge
+                variant="outline"
+                className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+              >
+                Connected
+              </Badge>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <div className="text-muted-foreground mb-1">Data Source</div>
+              <div className="font-medium">Gold Vault / Local Database</div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Offline Mode is fully local. No cloud account or connection is required for normal ERP
+            operation.
+          </p>
+        </Card>
+      </div>
     );
   }
 
@@ -5518,7 +5804,7 @@ function ComplianceTab() {
               <Input
                 id="comp-hallmark"
                 value={hallmark}
-                onChange={(e) => setHsn(e.target.value)}
+                onChange={(e) => setHallmark(e.target.value)}
                 placeholder="e.g. HM-W-916053"
               />
             </div>

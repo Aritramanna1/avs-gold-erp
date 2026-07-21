@@ -25,43 +25,50 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  useCatalog,
-  DESIGN_SOURCE_LABELS,
-  DIFFICULTY_LABELS,
-  type DesignSource,
-  type Difficulty,
-  type Design,
-} from "@/lib/catalog-store";
+import { useCatalog, type DesignSource, type Difficulty, type Design } from "@/lib/catalog-store";
 import { ITEM_CATEGORIES } from "@/lib/orders-store";
 import { COMMON_PURITIES, gramsToMg, mgToGrams } from "@/lib/gold";
 import { usePeople } from "@/lib/people-store";
 import { useAttachments, generateImageThumbnail } from "@/lib/attachments-store";
-import { Image as ImageIcon, Plus, Search, Sparkles, Tag } from "lucide-react";
+import { Download, Image as ImageIcon, Plus, Search, Sparkles } from "lucide-react";
 import { AttachmentButton } from "@/components/attachment-placeholder-modal";
+import { useSettings } from "@/lib/settings-store";
+import { exportToCSV } from "@/lib/report-engine";
 
 export const Route = createFileRoute("/catalog/")({
   head: () => ({ meta: [{ title: "Catalog · AVS Gold ERP" }] }),
   component: CatalogIndex,
 });
 
-const TABS: { value: DesignSource | "all"; label: string }[] = [
-  { value: "all", label: "All Designs" },
-  { value: "internal", label: "Internal" },
-  { value: "customer_reference", label: "Customer Reference" },
-  { value: "external", label: "External" },
-  { value: "saved_from_order", label: "Saved From Orders" },
+const TABS: { value: DesignSource | "all" }[] = [
+  { value: "all" },
+  { value: "internal" },
+  { value: "customer_reference" },
+  { value: "external" },
+  { value: "saved_from_order" },
 ];
 
 function CatalogIndex() {
   const { t } = useLanguage();
   const designs = useCatalog((s) => s.designs);
   const customers = usePeople((s) => s.people);
+  const catalogSettings = useSettings((s) => s.catalog);
   const [tab, setTab] = useState<DesignSource | "all">("all");
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string>("all");
   const [adding, setAdding] = useState(false);
-  const [storageNotice, setStorageNotice] = useState(false);
+
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...catalogSettings.categories,
+          ...ITEM_CATEGORIES,
+          ...designs.map((d) => d.category),
+        ]),
+      ).filter(Boolean),
+    [catalogSettings.categories, designs],
+  );
 
   const list = useMemo(() => {
     return designs.filter((d) => {
@@ -78,17 +85,76 @@ function CatalogIndex() {
     });
   }, [designs, tab, q, cat]);
 
+  function exportCatalog() {
+    exportToCSV("catalog-designs.csv", [
+      [
+        t("catalog.design_number"),
+        t("catalog.design_name"),
+        t("catalog.category"),
+        t("catalog.purity"),
+        t("catalog.approx_gross"),
+        t("catalog.approx_net"),
+        t("catalog.source"),
+        t("catalog.tags"),
+      ],
+      ...list.map((design) => [
+        design.designNumber,
+        design.designName,
+        design.category,
+        design.purity,
+        mgToGrams(design.approxGrossMg),
+        mgToGrams(design.approxNetMg),
+        t(`catalog.source_${design.source}`),
+        design.tags.join(", "),
+      ]),
+    ]);
+    toast.success(t("catalog.export_success"));
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <PageHeader
         title={t("catalog.title")}
         subtitle={t("catalog.subtitle")}
         actions={
-          <Button onClick={() => setAdding(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> {t("catalog.add_design")}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={exportCatalog}
+              disabled={!list.length}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" /> {t("catalog.export_csv")}
+            </Button>
+            <Button onClick={() => setAdding(true)} className="gap-2">
+              <Plus className="h-4 w-4" /> {t("catalog.add_design")}
+            </Button>
+          </div>
         }
       />
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 mb-4">
+        {[
+          [t("catalog.total_designs"), designs.length],
+          [t("catalog.internal_designs"), designs.filter((d) => d.source === "internal").length],
+          [
+            t("catalog.customer_refs"),
+            designs.filter((d) => d.source === "customer_reference").length,
+          ],
+          [
+            t("catalog.saved_orders"),
+            designs.filter((d) => d.source === "saved_from_order").length,
+          ],
+        ].map(([label, value]) => (
+          <div
+            key={String(label)}
+            className="rounded-2xl border border-border bg-card p-4 shadow-elegant"
+          >
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+            <div className="mt-1 font-serif text-2xl text-gold">{value}</div>
+          </div>
+        ))}
+      </div>
 
       <div className="rounded-2xl border border-border bg-card p-4 mb-4">
         <div className="flex flex-col md:flex-row gap-3 md:items-center">
@@ -107,7 +173,7 @@ function CatalogIndex() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("catalog.all_categories")}</SelectItem>
-              {ITEM_CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <SelectItem key={c} value={c}>
                   {c}
                 </SelectItem>
@@ -160,27 +226,13 @@ function CatalogIndex() {
         </TabsContent>
       </Tabs>
 
-      <AddDesignDialog
-        open={adding}
-        onClose={() => setAdding(false)}
-        onStorageNotice={() => setStorageNotice(true)}
-      />
-      <Dialog open={storageNotice} onOpenChange={setStorageNotice}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("catalog.under_construction_title")}</DialogTitle>
-            <DialogDescription>{t("catalog.under_construction_desc")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setStorageNotice(false)}>{t("catalog.understood")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AddDesignDialog open={adding} onClose={() => setAdding(false)} />
     </div>
   );
 }
 
 function DesignCard({ d, customerName }: { d: Design; customerName?: string }) {
+  const { t } = useLanguage();
   const photoAtt = useAttachments((s) => s.items[`catalog:${d.id}:design_photo`]);
   const save = useAttachments((s) => s.save);
 
@@ -234,10 +286,10 @@ function DesignCard({ d, customerName }: { d: Design; customerName?: string }) {
         </div>
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           <Badge variant="secondary" className="text-[10px]">
-            {DESIGN_SOURCE_LABELS[d.source]}
+            {t(`catalog.source_${d.source}`)}
           </Badge>
           <Badge variant="outline" className="text-[10px]">
-            {DIFFICULTY_LABELS[d.difficulty]}
+            {t(`catalog.difficulty_${d.difficulty}`)}
           </Badge>
           {customerName && (
             <span className="text-[10px] text-muted-foreground truncate">· {customerName}</span>
@@ -248,17 +300,18 @@ function DesignCard({ d, customerName }: { d: Design; customerName?: string }) {
   );
 }
 
-function AddDesignDialog({
-  open,
-  onClose,
-  onStorageNotice,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onStorageNotice: () => void;
-}) {
+function AddDesignDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useLanguage();
   const add = useCatalog((s) => s.add);
   const nextNum = useCatalog((s) => s.nextDesignNumber);
+  const customers = usePeople((s) => s.people);
+  const catalogSettings = useSettings((s) => s.catalog);
+  const configuredCategories = Array.from(
+    new Set([...catalogSettings.categories, ...ITEM_CATEGORIES]),
+  ).filter(Boolean);
+  const configuredPurity =
+    catalogSettings.defaultPurity.match(/\b\d{3}\b/)?.[0] ??
+    String(COMMON_PURITIES[0]?.value ?? 916);
   const [draftId, setDraftId, clearDraftId] = useDraft(
     "mtj-catalog-draftId-v1",
     () => `d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -268,13 +321,16 @@ function AddDesignDialog({
     "",
   );
   const [designName, setDesignName, clearDesignName] = useDraft("mtj-catalog-designName-v1", "");
-  const [category, setCategory, clearCategory] = useDraft("mtj-catalog-category-v1", "Ring");
+  const [category, setCategory, clearCategory] = useDraft(
+    "mtj-catalog-category-v1",
+    configuredCategories[0] ?? "Ring",
+  );
   const [subcategory, setSubcategory, clearSubcategory] = useDraft(
     "mtj-catalog-subcategory-v1",
     "",
   );
   const [itemType, setItemType, clearItemType] = useDraft("mtj-catalog-itemType-v1", "");
-  const [purity, setPurity, clearPurity] = useDraft("mtj-catalog-purity-v1", "916");
+  const [purity, setPurity, clearPurity] = useDraft("mtj-catalog-purity-v1", configuredPurity);
   const [grossG, setGrossG, clearGrossG] = useDraft("mtj-catalog-grossG-v1", "");
   const [netG, setNetG, clearNetG] = useDraft("mtj-catalog-netG-v1", "");
   const [difficulty, setDifficulty, clearDifficulty] = useDraft<Difficulty>(
@@ -287,13 +343,14 @@ function AddDesignDialog({
     "internal",
   );
   const [notes, setNotes, clearNotes] = useDraft("mtj-catalog-notes-v1", "");
+  const [customerId, setCustomerId, clearCustomerId] = useDraft("mtj-catalog-customerId-v1", "");
 
   const [isCustomCategory, setIsCustomCategory] = useState(
-    !ITEM_CATEGORIES.includes(category) && category !== "",
+    !configuredCategories.includes(category) && category !== "",
   );
 
   useEffect(() => {
-    if (category && ITEM_CATEGORIES.includes(category)) {
+    if (category && configuredCategories.includes(category)) {
       setIsCustomCategory(false);
     }
   }, [category]);
@@ -308,11 +365,11 @@ function AddDesignDialog({
   function save() {
     const cleanName = designName.trim();
     if (!cleanName) {
-      alert("Design Name is required.");
+      toast.error(t("catalog.design_name_required"));
       return;
     }
     if (!category) {
-      alert("Category is required.");
+      toast.error(t("catalog.category_required"));
       return;
     }
 
@@ -324,9 +381,14 @@ function AddDesignDialog({
       (d) => d.designNumber.toLowerCase() === num.toLowerCase(),
     );
     if (isDuplicate) {
-      alert(
-        `Design number "${num}" already exists in the catalog. Please use a unique design number.`,
-      );
+      toast.error(t("catalog.duplicate_design").replace("{number}", num));
+      return;
+    }
+
+    const grossMg = grossG ? gramsToMg(grossG) : 0;
+    const netMg = netG ? gramsToMg(netG) : grossMg;
+    if (grossMg < 0 || netMg < 0 || (grossMg > 0 && netMg > grossMg)) {
+      toast.error(t("catalog.invalid_weight"));
       return;
     }
 
@@ -339,14 +401,15 @@ function AddDesignDialog({
         subcategory: subcategory || undefined,
         itemType: itemType || undefined,
         purity: Number(purity) || 916,
-        approxGrossMg: grossG ? gramsToMg(grossG) : 0,
-        approxNetMg: netG ? gramsToMg(netG) : grossG ? gramsToMg(grossG) : 0,
+        approxGrossMg: grossMg,
+        approxNetMg: netMg,
         difficulty,
         tags: tags
           .split(",")
           .map((t) => t.trim())
           .filter(Boolean),
         source,
+        customerId: source === "customer_reference" && customerId ? customerId : undefined,
         notes: notes || undefined,
       });
       // reset
@@ -363,8 +426,9 @@ function AddDesignDialog({
       clearTags();
       clearSource();
       clearNotes();
+      clearCustomerId();
       onClose();
-      void d;
+      toast.success(t("catalog.design_saved").replace("{number}", d.designNumber));
     } catch (e: any) {
       toast.error(`Failed to save design: ${e?.message ?? "Unknown error"}`);
     }
@@ -374,27 +438,25 @@ function AddDesignDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="font-serif text-gold">Add Design</DialogTitle>
-          <DialogDescription>
-            Create a reusable design entry. Required: name, category, purity.
-          </DialogDescription>
+          <DialogTitle className="font-serif text-gold">{t("catalog.add_design")}</DialogTitle>
+          <DialogDescription>{t("catalog.add_design_desc")}</DialogDescription>
         </DialogHeader>
         <div className="grid sm:grid-cols-2 gap-3">
-          <Field label="Design number">
+          <Field label={t("catalog.design_number")}>
             <Input
               value={designNumber}
               onChange={(e) => setDesignNumber(e.target.value)}
               placeholder={`auto: ${nextNum(category)}`}
             />
           </Field>
-          <Field label="Design name *">
+          <Field label={`${t("catalog.design_name")} *`}>
             <Input
               value={designName}
               onChange={(e) => setDesignName(e.target.value)}
-              placeholder="Kolkata Filigree Ring"
+              placeholder={t("catalog.design_name_placeholder")}
             />
           </Field>
-          <Field label="Category *">
+          <Field label={`${t("catalog.category")} *`}>
             <Select
               value={isCustomCategory ? "Custom" : category}
               onValueChange={(v) => {
@@ -411,38 +473,38 @@ function AddDesignDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ITEM_CATEGORIES.map((c) => (
+                {configuredCategories.map((c) => (
                   <SelectItem key={c} value={c}>
                     {c}
                   </SelectItem>
                 ))}
-                <SelectItem value="Custom">Custom</SelectItem>
+                <SelectItem value="Custom">{t("catalog.custom")}</SelectItem>
               </SelectContent>
             </Select>
             {isCustomCategory && (
               <Input
                 className="mt-2"
-                placeholder="Enter custom category"
+                placeholder={t("catalog.custom_category_placeholder")}
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               />
             )}
           </Field>
-          <Field label="Subcategory">
+          <Field label={t("catalog.subcategory")}>
             <Input
               value={subcategory}
               onChange={(e) => setSubcategory(e.target.value)}
-              placeholder="e.g. Antique"
+              placeholder={t("catalog.subcategory_placeholder")}
             />
           </Field>
-          <Field label="Item type">
+          <Field label={t("catalog.item_type")}>
             <Input
               value={itemType}
               onChange={(e) => setItemType(e.target.value)}
-              placeholder="Ladies / Gents / Kid"
+              placeholder={t("catalog.item_type_placeholder")}
             />
           </Field>
-          <Field label="Usual purity / touch *">
+          <Field label={`${t("catalog.purity")} *`}>
             <Select value={purity} onValueChange={setPurity}>
               <SelectTrigger>
                 <SelectValue />
@@ -456,47 +518,69 @@ function AddDesignDialog({
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Approx gross (g)">
+          <Field label={`${t("catalog.approx_gross")} (g)`}>
             <Input value={grossG} onChange={(e) => setGrossG(e.target.value)} placeholder="8.500" />
           </Field>
-          <Field label="Approx net (g)">
+          <Field label={`${t("catalog.approx_net")} (g)`}>
             <Input value={netG} onChange={(e) => setNetG(e.target.value)} placeholder="8.500" />
           </Field>
-          <Field label="Making difficulty">
+          <Field label={t("catalog.making_difficulty")}>
             <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="easy">Easy</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="hard">Hard</SelectItem>
+                <SelectItem value="easy">{t("catalog.difficulty_easy")}</SelectItem>
+                <SelectItem value="medium">{t("catalog.difficulty_medium")}</SelectItem>
+                <SelectItem value="hard">{t("catalog.difficulty_hard")}</SelectItem>
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Source">
+          <Field label={t("catalog.source")}>
             <Select value={source} onValueChange={(v) => setSource(v as DesignSource)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="internal">Internal</SelectItem>
-                <SelectItem value="customer_reference">Customer Reference</SelectItem>
-                <SelectItem value="external">External / Supplier</SelectItem>
+                <SelectItem value="internal">{t("catalog.source_internal")}</SelectItem>
+                <SelectItem value="customer_reference">
+                  {t("catalog.source_customer_reference")}
+                </SelectItem>
+                <SelectItem value="external">{t("catalog.source_external")}</SelectItem>
               </SelectContent>
             </Select>
           </Field>
+          {source === "customer_reference" && (
+            <Field label={t("catalog.customer")}>
+              <Select
+                value={customerId || "none"}
+                onValueChange={(value) => setCustomerId(value === "none" ? "" : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("catalog.no_customer")}</SelectItem>
+                  {customers.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.fullName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
           <div className="sm:col-span-2">
-            <Field label="Tags (comma separated)">
+            <Field label={t("catalog.tags")}>
               <Input
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                placeholder="filigree, antique, bridal"
+                placeholder={catalogSettings.tags.join(", ") || t("catalog.tags_placeholder")}
               />
             </Field>
           </div>
           <div className="sm:col-span-2">
-            <Field label="Notes">
+            <Field label={t("catalog.notes")}>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </Field>
           </div>
@@ -505,8 +589,8 @@ function AddDesignDialog({
               entityType="catalog"
               entityId={draftId}
               docKey="design_photo"
-              docLabel="Design photo"
-              title="Add Design Photo"
+              docLabel={t("catalog.design_photo")}
+              title={t("catalog.add_design_photo")}
               variant="outline"
               className="gap-2"
             />
@@ -514,22 +598,27 @@ function AddDesignDialog({
               entityType="catalog"
               entityId={draftId}
               docKey="customer_reference"
-              docLabel="Customer reference"
-              title="Attach Customer Reference"
+              docLabel={t("catalog.customer_reference_attachment")}
+              title={t("catalog.attach_customer_reference")}
               variant="outline"
               className="gap-2"
             />
-            <Button variant="ghost" type="button" disabled className="gap-2" title="Future">
-              <Tag className="h-4 w-4" /> Technical drawing (future)
-            </Button>
+            <AttachmentButton
+              entityType="catalog"
+              entityId={draftId}
+              docKey="tech_drawing"
+              docLabel={t("catalog.technical_drawing")}
+              title={t("catalog.attach_technical_drawing")}
+              variant="outline"
+            />
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t("catalog.cancel")}
           </Button>
           <Button onClick={save} disabled={!designName.trim() || !category}>
-            <Sparkles className="h-4 w-4 mr-2" /> Save Design
+            <Sparkles className="h-4 w-4 mr-2" /> {t("catalog.save_design")}
           </Button>
         </DialogFooter>
       </DialogContent>

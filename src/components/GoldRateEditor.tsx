@@ -37,7 +37,9 @@ export function GoldRateEditor({ open, onOpenChange }: GoldRateEditorProps) {
   const { snapshot: liveSnapshot } = useBullionRate();
 
   // Check roles: user must be either "owner" or "manager" to edit.
-  const isAuthorized = ready && (roles.includes("owner") || roles.includes("manager"));
+  const isAuthorized =
+    ready &&
+    (roles.includes("super_owner") || roles.includes("owner") || roles.includes("manager"));
 
   const [gold24Input, setGold24Input] = useState("");
   const [gold22Input, setGold22Input] = useState("");

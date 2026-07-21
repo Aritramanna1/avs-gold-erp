@@ -1,5 +1,7 @@
 # Deployment Readiness & Verification Report (Pilot-Stable Release v1.0)
 
+> Archived point-in-time report. It does not authorize production deployment; use [Version 1 Testing Build](TESTING_BUILD.md), [Security](SECURITY.md), and [V1 Release Notes](V1_RELEASE_NOTES.md).
+
 This master document serves as the formal validation sign-off and deployment checklist for the **Areva Venture Studios ERP System (custom tailored for Maa Tara Jewellers)**. It presents verified live test logs, architectural clarifications, mathematical ledger auditing, and security profiles.
 
 ---

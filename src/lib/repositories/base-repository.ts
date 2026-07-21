@@ -1,5 +1,5 @@
 import { saveDirect, deleteDirect } from "@/lib/supabase-write";
-import { getRawSupabaseClient } from "@/integrations/supabase/client";
+import { getCloudDataClient as getRawSupabaseClient } from "@/lib/providers/data-provider";
 import {
   runLocal,
   upsertRow,
@@ -13,6 +13,12 @@ import {
 } from "@/lib/local-db";
 import { pullChangesSince } from "@/lib/sync-engine";
 import { getOrCreateDeviceId } from "@/lib/security/device-registry";
+import { getRuntimeProviders, LOCAL_ONLY_TABLES } from "@/lib/providers/runtime-providers";
+import { reportUnexpectedError } from "@/lib/error-handling";
+
+async function activeMode() {
+  return (await getRuntimeProviders()).mode;
+}
 
 /**
  * Tables whose writes represent a financial or gold-accounting action and
@@ -70,7 +76,7 @@ async function recordAuditBestEffort(
   try {
     const [{ append }, { supabase }, deviceId] = await Promise.all([
       import("@/lib/security/audit-log"),
-      import("@/integrations/supabase/client"),
+      import("@/lib/providers/data-provider"),
       getOrCreateDeviceId(),
     ]);
     let before: unknown = null;
@@ -84,10 +90,10 @@ async function recordAuditBestEffort(
     }
     // Offline mode has no Supabase session — the actor is the local user
     // (SAD §11: every audited action must name a user).
-    const { isOfflineMode } = await import("@/lib/deployment-mode");
+    const mode = await activeMode();
     let actorId: string | null = null;
     let actorEmail: string | null = null;
-    if (isOfflineMode()) {
+    if (mode !== "online") {
       const { getLocalSessionUser } = await import("@/lib/local-auth");
       const localUser = await getLocalSessionUser();
       actorId = localUser?.id ?? null;
@@ -245,19 +251,72 @@ function fromLocalRow<T>(row: Record<string, unknown> | null): T | null {
   return row as unknown as T;
 }
 
+function userSafeThrow(error: unknown, context: string): never {
+  const normalized = reportUnexpectedError(error, context);
+  throw new Error(`${normalized.message} Reference: ${normalized.id}`);
+}
+
+function wrapRepository<T extends { id: string }>(
+  table: string,
+  repository: Repository<T>,
+): Repository<T> {
+  return new Proxy(repository, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver);
+      if (typeof value !== "function") return value;
+      return (...args: unknown[]) => {
+        try {
+          const result = value.apply(target, args);
+          if (result && typeof result.then === "function") {
+            return result.catch((error: unknown) =>
+              userSafeThrow(error, `repository.${table}.${String(prop)}`),
+            );
+          }
+          return result;
+        } catch (error) {
+          userSafeThrow(error, `repository.${table}.${String(prop)}`);
+        }
+      };
+    },
+  }) as Repository<T>;
+}
+
 export function createRepository<T extends { id: string }>(table: string): Repository<T> {
-  return {
+  const shouldSynchronize = !LOCAL_ONLY_TABLES.has(table);
+  const repository: Repository<T> = {
     async save(payload: T): Promise<T> {
-      await saveDirect(table, payload.id, payload);
+      const mode = await activeMode();
+      if (mode === "online") await saveDirect(table, payload.id, payload);
+      else await this.saveLocal(payload);
       void recordAuditBestEffort(table, "save", payload.id, payload);
       return payload;
     },
     async delete(id: string): Promise<void> {
-      await deleteDirect(table, id);
+      const mode = await activeMode();
+      if (mode === "online") await deleteDirect(table, id);
+      else await this.deleteLocal(id);
       void recordAuditBestEffort(table, "delete", id, null);
     },
     async saveAs(id: string, payload: unknown): Promise<void> {
-      await saveDirect(table, id, payload);
+      const mode = await activeMode();
+      if (mode === "online") {
+        await saveDirect(table, id, payload);
+      } else {
+        await runLocal(() => {
+          const before = fromLocalRow<Record<string, unknown>>(selectById(table, id));
+          undeleteRow(table, id);
+          upsertRow(table, { id, data: JSON.stringify(payload) });
+          if (shouldSynchronize)
+            enqueueOutbox(
+              `${table}:${id}:${Date.now()}`,
+              table,
+              id,
+              "insert",
+              payload,
+              extractUpdatedAt(before),
+            );
+        });
+      }
       void recordAuditBestEffort(table, "save", id, payload);
     },
 
@@ -266,14 +325,15 @@ export function createRepository<T extends { id: string }>(table: string): Repos
         const before = fromLocalRow<T>(selectById(table, payload.id));
         undeleteRow(table, payload.id); // saving over a pending-delete row cancels the delete
         upsertRow(table, toLocalRow(payload));
-        enqueueOutbox(
-          `${table}:${payload.id}:${Date.now()}`,
-          table,
-          payload.id,
-          "insert",
-          payload,
-          extractUpdatedAt(before as Record<string, unknown> | null),
-        );
+        if (shouldSynchronize)
+          enqueueOutbox(
+            `${table}:${payload.id}:${Date.now()}`,
+            table,
+            payload.id,
+            "insert",
+            payload,
+            extractUpdatedAt(before as Record<string, unknown> | null),
+          );
       });
       return payload;
     },
@@ -284,14 +344,15 @@ export function createRepository<T extends { id: string }>(table: string): Repos
         if (!current) return null;
         const updated = { ...current, ...patch, id } as T;
         upsertRow(table, toLocalRow(updated));
-        enqueueOutbox(
-          `${table}:${id}:${Date.now()}`,
-          table,
-          id,
-          "update",
-          updated,
-          extractUpdatedAt(current as unknown as Record<string, unknown>),
-        );
+        if (shouldSynchronize)
+          enqueueOutbox(
+            `${table}:${id}:${Date.now()}`,
+            table,
+            id,
+            "update",
+            updated,
+            extractUpdatedAt(current as unknown as Record<string, unknown>),
+          );
         return updated;
       });
     },
@@ -300,14 +361,15 @@ export function createRepository<T extends { id: string }>(table: string): Repos
       await runLocal(() => {
         const before = fromLocalRow<T>(selectById(table, id));
         softDeleteRow(table, id);
-        enqueueOutbox(
-          `${table}:${id}:${Date.now()}`,
-          table,
-          id,
-          "delete",
-          null,
-          extractUpdatedAt(before as Record<string, unknown> | null),
-        );
+        if (shouldSynchronize)
+          enqueueOutbox(
+            `${table}:${id}:${Date.now()}`,
+            table,
+            id,
+            "delete",
+            null,
+            extractUpdatedAt(before as Record<string, unknown> | null),
+          );
       });
     },
 
@@ -328,14 +390,15 @@ export function createRepository<T extends { id: string }>(table: string): Repos
         );
         for (const p of payloads) {
           undeleteRow(table, p.id);
-          enqueueOutbox(
-            `${table}:${p.id}:${Date.now()}`,
-            table,
-            p.id,
-            "insert",
-            p,
-            extractUpdatedAt(beforeById.get(p.id) as unknown as Record<string, unknown> | null),
-          );
+          if (shouldSynchronize)
+            enqueueOutbox(
+              `${table}:${p.id}:${Date.now()}`,
+              table,
+              p.id,
+              "insert",
+              p,
+              extractUpdatedAt(beforeById.get(p.id) as unknown as Record<string, unknown> | null),
+            );
         }
       });
       return payloads;
@@ -354,6 +417,7 @@ export function createRepository<T extends { id: string }>(table: string): Repos
     async read(id: string): Promise<T | null> {
       const local = fromLocalRow<T>(selectById(table, id));
       if (local) return local;
+      if ((await activeMode()) === "offline") return null;
       if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
       try {
         const client = getRawSupabaseClient();
@@ -377,6 +441,7 @@ export function createRepository<T extends { id: string }>(table: string): Repos
     async readAll(): Promise<T[]> {
       const local = await this.getAllLocal();
       if (local.length > 0) return local;
+      if ((await activeMode()) === "offline") return [];
       if (typeof navigator !== "undefined" && navigator.onLine === false) return [];
       try {
         await pullChangesSince(table);
@@ -402,4 +467,5 @@ export function createRepository<T extends { id: string }>(table: string): Repos
       return rows;
     },
   };
+  return wrapRepository(table, repository);
 }

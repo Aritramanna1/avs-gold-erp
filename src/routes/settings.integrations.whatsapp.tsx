@@ -11,7 +11,7 @@
  * existing deep-link provider is retained as an automatic fallback, so no
  * message path breaks if the API is disabled or unreachable.
  */
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import {
+  isWeeklyStatementsEnabled,
+  setWeeklyStatementsEnabled,
+} from "@/lib/comm/scheduled-statements";
 import { useCurrentBranchId } from "@/lib/branch-store";
 import { useCommSettings } from "@/lib/comm/comm-settings-store";
 import { WHATSAPP_KEYS } from "@/lib/comm/types";
@@ -45,6 +49,12 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings/integrations/whatsapp")({
+  beforeLoad: () => {
+    throw redirect({
+      to: "/settings",
+      search: { tab: "whatsapp", waSection: "wasender" },
+    });
+  },
   head: () => ({ meta: [{ title: "WhatsApp (WasenderAPI) · AVS Gold ERP" }] }),
   component: WhatsAppIntegrationPage,
 });
@@ -59,7 +69,7 @@ const STATUS_BADGE: Record<WasenderSessionStatus, { label: string; cls: string }
   unknown: { label: "Unknown", cls: "border-border text-muted-foreground" },
 };
 
-function WhatsAppIntegrationPage() {
+export function WhatsAppIntegrationPage({ embedded = false }: { embedded?: boolean } = {}) {
   const branchId = useCurrentBranchId();
   const existing = useCommSettings((s) => s.getWasenderConfig(branchId));
   const setWasender = useCommSettings((s) => s.setWasender);
@@ -67,6 +77,7 @@ function WhatsAppIntegrationPage() {
   const bridgeAvailable = isWasenderBridgeAvailable();
 
   const [enabled, setEnabled] = useState(existing?.isActive ?? false);
+  const [weeklyStatements, setWeeklyStatements] = useState(isWeeklyStatementsEnabled());
   const [baseUrl, setBaseUrl] = useState(
     existing?.settings[WHATSAPP_KEYS.apiBaseUrl] || WASENDER_DEFAULT_BASE_URL,
   );
@@ -207,11 +218,13 @@ function WhatsAppIntegrationPage() {
     });
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
-      <PageHeader
-        title="WhatsApp Integration (WasenderAPI)"
-        subtitle="Send order slips, job cards, bills and ledgers over WhatsApp automatically."
-      />
+    <div className={embedded ? "space-y-6" : "p-4 md:p-8 max-w-4xl mx-auto space-y-6"}>
+      {!embedded && (
+        <PageHeader
+          title="WhatsApp Integration (WasenderAPI)"
+          subtitle="Send order slips, job cards, bills and ledgers over WhatsApp automatically."
+        />
+      )}
 
       {!bridgeAvailable && (
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm text-amber-200">
@@ -230,6 +243,24 @@ function WhatsAppIntegrationPage() {
             </div>
           </div>
           <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!bridgeAvailable} />
+        </div>
+
+        <div className="flex items-center justify-between border-t border-border/60 pt-3">
+          <div>
+            <div className="font-medium text-sm">Automatic Weekly Statements</div>
+            <div className="text-xs text-muted-foreground">
+              Once a week, send jewellers their ledger statement (PDF) and ask workers to verify
+              their records. Requires an active sending provider.
+            </div>
+          </div>
+          <Switch
+            checked={weeklyStatements}
+            onCheckedChange={(v) => {
+              setWeeklyStatements(v);
+              setWeeklyStatementsEnabled(v);
+              toast.success(v ? "Weekly statements enabled" : "Weekly statements disabled");
+            }}
+          />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

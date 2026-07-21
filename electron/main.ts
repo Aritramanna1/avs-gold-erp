@@ -1,8 +1,9 @@
-import { app, BrowserWindow, dialog, ipcMain, Notification, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, session, shell } from "electron";
 import path from "node:path";
 import fs from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { IPC } from "./ipc-channels";
+import type { IpcChannel } from "./ipc-channels";
 import { loadWindowState, trackWindowState } from "./window-state";
 import {
   setToken as wasenderSetToken,
@@ -14,6 +15,14 @@ import {
   wasenderRequest,
   type WasenderRequestArgs,
 } from "./wasender";
+import { secureStoreDelete, secureStoreGet, secureStoreSet } from "./secure-store";
+import {
+  installMainProcessErrorHandlers,
+  logMainError,
+  type MainProcessErrorReport,
+} from "./error-handling";
+
+installMainProcessErrorHandlers();
 
 // CommonJS output (see electron/tsconfig.json + dist-electron/package.json's
 // {"type":"commonjs"} override) — __dirname is a real CommonJS global here,
@@ -39,6 +48,50 @@ if (!gotLock) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+const MAX_PRINT_HTML_BYTES = 25 * 1024 * 1024;
+
+function validatePrintHtml(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) throw new Error("Printable HTML is required.");
+  if (Buffer.byteLength(value, "utf8") > MAX_PRINT_HTML_BYTES) {
+    throw new Error("Printable document exceeds the 25 MB safety limit.");
+  }
+  const policy =
+    "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src data: blob: file: https: http:; style-src 'unsafe-inline'; font-src data:;\">";
+  return /<head(?:\s[^>]*)?>/i.test(value)
+    ? value.replace(/<head(?:\s[^>]*)?>/i, (head) => `${head}${policy}`)
+    : `${policy}${value}`;
+}
+
+function hardenAuxiliaryWindow(win: BrowserWindow): void {
+  win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  win.webContents.on("will-navigate", (event, url) => {
+    const current = win.webContents.getURL();
+    if (current && current !== url) event.preventDefault();
+  });
+}
+
+function validateRendererErrorReport(payload: unknown): MainProcessErrorReport {
+  if (!payload || typeof payload !== "object") throw new Error("Invalid diagnostics report.");
+  const value = payload as Record<string, unknown>;
+  const text = (key: string, max: number): string =>
+    typeof value[key] === "string" ? String(value[key]).slice(0, max) : "";
+  const id = text("id", 80);
+  const technicalMessage = text("technicalMessage", 4_000);
+  if (!id || !technicalMessage) throw new Error("Incomplete diagnostics report.");
+  return {
+    id,
+    title: text("title", 200) || "Application error",
+    message: text("message", 1_000),
+    guidance: text("guidance", 1_000),
+    category: text("category", 80),
+    severity: text("severity", 40),
+    technicalMessage,
+    stack: text("stack", 12_000) || undefined,
+    context: text("context", 200) || undefined,
+    timestamp: text("timestamp", 80) || new Date().toISOString(),
+    recoverable: value.recoverable !== false,
+  };
+}
 
 function createWindow(): BrowserWindow {
   const state = loadWindowState(app.getPath("userData"));
@@ -60,92 +113,393 @@ function createWindow(): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      devTools: false,
       preload: path.join(__dirname, "preload.js"),
     },
   });
 
   if (state.isMaximized) win.maximize();
 
-  win.once("ready-to-show", () => win.show());
+  win.once("ready-to-show", () => {
+    win.show();
+    // Dev-only startup timing — process start → window visible.
+    if (!app.isPackaged) {
+      console.log(`[startup] window shown +${Math.round(process.uptime() * 1000)}ms`);
+    }
+  });
+
+  win.webContents.on("did-fail-load", (_event, code, description, validatedUrl) => {
+    logMainError(
+      new Error(`Window failed to load ${validatedUrl}: ${code} ${description}`),
+      "browser-window.did-fail-load",
+    );
+  });
+
+  win.webContents.on("unresponsive", () => {
+    logMainError(new Error("Main window became unresponsive."), "browser-window.unresponsive");
+  });
+
+  win.webContents.on("responsive", () => {
+    if (!app.isPackaged) console.log("[desktop] main window responsive");
+  });
 
   // Any window.open()/target=_blank from renderer content opens in the OS
-  // browser instead of a new uncontrolled Electron window.
+  // browser instead of a new uncontrolled Electron window. Only explicit
+  // public web/contact schemes may reach the operating-system shell.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    try {
+      const protocol = new URL(url).protocol;
+      if (protocol === "https:" || protocol === "mailto:" || protocol === "tel:") {
+        void shell.openExternal(url);
+      }
+    } catch {
+      // Invalid and relative URLs stay inside the application boundary.
+    }
     return { action: "deny" };
+  });
+
+  // Do not let renderer content replace the trusted app document with a
+  // remote page that would inherit this window's preload bridge.
+  win.webContents.on("will-navigate", (event, url) => {
+    const currentUrl = win.webContents.getURL();
+    if (currentUrl && url !== currentUrl) event.preventDefault();
   });
 
   trackWindowState(win, app.getPath("userData"));
 
   if (isDev && process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL);
-    win.webContents.openDevTools({ mode: "detach" });
   } else {
     win.loadFile(path.join(__dirname, "../dist/index.html"));
-    // Production build handles financial/gold-inventory data — DevTools
-    // gives console access to the renderer's in-memory state (Zustand
-    // stores, Supabase session) and the ability to run arbitrary JS against
-    // it, so it's blocked outright rather than just left off the default
-    // menu (which a user could still reach via the Ctrl+Shift+I/F12 shortcut
-    // Electron wires up automatically regardless of the menu).
-    win.webContents.on("devtools-opened", () => win.webContents.closeDevTools());
-    win.webContents.on("before-input-event", (event, input) => {
-      const key = input.key.toLowerCase();
-      if (input.type !== "keyDown") return;
-      if (key === "f12" || (input.control && input.shift && key === "i")) {
-        event.preventDefault();
-      }
-    });
   }
+
+  // Version 1 testing builds expose no Chromium developer surface in any
+  // environment. devTools:false is the primary control; this also suppresses
+  // the familiar shortcuts before Electron can route them.
+  win.webContents.on("before-input-event", (event, input) => {
+    const key = input.key.toLowerCase();
+    if (
+      input.type === "keyDown" &&
+      (key === "f12" || (input.control && input.shift && key === "i"))
+    ) {
+      event.preventDefault();
+    }
+  });
 
   return win;
 }
 
 function registerIpcHandlers(): void {
-  ipcMain.handle(IPC.APP_GET_VERSION, () => app.getVersion());
+  const assertTrustedSender = (
+    event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent,
+  ): void => {
+    if (!mainWindow || event.sender !== mainWindow.webContents) {
+      throw new Error("Rejected IPC request from an untrusted renderer.");
+    }
+  };
+  const handle = (
+    channel: IpcChannel,
+    listener: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => unknown,
+  ): void => {
+    ipcMain["handle"](channel, async (event, ...args) => {
+      try {
+        assertTrustedSender(event);
+        return await listener(event, ...args);
+      } catch (error) {
+        const report = logMainError(error, `ipc.${channel}`);
+        throw new Error(`${report.message} Error Reference ID: ${report.id}`);
+      }
+    });
+  };
+  const on = (
+    channel: IpcChannel,
+    listener: (event: Electron.IpcMainEvent, ...args: any[]) => void,
+  ): void => {
+    ipcMain["on"](channel, (event, ...args) => {
+      try {
+        assertTrustedSender(event);
+        listener(event, ...args);
+      } catch (error) {
+        logMainError(error, `ipc.${channel}`);
+      }
+    });
+  };
 
-  ipcMain.handle(IPC.APP_RELAUNCH, () => {
+  handle(IPC.APP_GET_VERSION, () => app.getVersion());
+
+  handle(IPC.DIAGNOSTICS_REPORT_ERROR, (_event, payload: MainProcessErrorReport) => {
+    const validated = validateRendererErrorReport(payload);
+    logMainError(validated, validated.context ?? "renderer.diagnostics");
+  });
+
+  handle(IPC.APP_RELAUNCH, () => {
     app.relaunch();
     app.exit(0);
   });
 
-  ipcMain.handle(IPC.DIALOG_OPEN_FILE, async (_event, options: Electron.OpenDialogOptions = {}) => {
+  handle(
+    IPC.HYBRID_VALIDATE_SETUP,
+    async (
+      _event,
+      args: { projectUrl: string; anonKey: string; serviceRoleKey: string },
+    ): Promise<{ ok: boolean; schemaVersion?: number; error?: string }> => {
+      if (
+        !args ||
+        typeof args.projectUrl !== "string" ||
+        typeof args.anonKey !== "string" ||
+        typeof args.serviceRoleKey !== "string"
+      ) {
+        return { ok: false, error: "Invalid Hybrid setup request." };
+      }
+      const projectUrl = args.projectUrl.trim().replace(/\/$/, "");
+      const anonKey = args.anonKey.trim();
+      const serviceRoleKey = args.serviceRoleKey.trim();
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(projectUrl);
+      } catch {
+        return { ok: false, error: "Enter a valid Supabase project URL." };
+      }
+      const trustedHost = parsedUrl.hostname.endsWith(".supabase.co");
+      if (
+        parsedUrl.protocol !== "https:" ||
+        !trustedHost ||
+        parsedUrl.username ||
+        parsedUrl.password ||
+        parsedUrl.port
+      ) {
+        return { ok: false, error: "Enter the HTTPS URL for a Supabase-hosted project." };
+      }
+      if (
+        anonKey.length < 20 ||
+        serviceRoleKey.length < 20 ||
+        anonKey.length > 4_096 ||
+        serviceRoleKey.length > 4_096
+      ) {
+        return { ok: false, error: "Both Supabase keys are required." };
+      }
+
+      const request = async (key: string, resource: string) => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12_000);
+        const headers: Record<string, string> = { apikey: key };
+        if (key.split(".").length === 3) headers.Authorization = `Bearer ${key}`;
+        try {
+          return await fetch(`${parsedUrl.origin}/rest/v1/${resource}`, {
+            headers,
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+      };
+
+      try {
+        const serviceResponse = await request(serviceRoleKey, "erp_setup_guard?select=id&limit=1");
+        if (!serviceResponse.ok) {
+          return {
+            ok: false,
+            error:
+              serviceResponse.status === 404
+                ? "Master SQL migration is not installed on this project."
+                : "Service Role Key validation failed.",
+          };
+        }
+        const anonResponse = await request(
+          anonKey,
+          "erp_schema_meta?select=id,schema_version&limit=1",
+        );
+        if (!anonResponse.ok) {
+          return { ok: false, error: "Anon Key cannot access the installed ERP schema." };
+        }
+        const rows = (await anonResponse.json()) as Array<{ schema_version?: number }>;
+        if (!rows[0]?.schema_version) {
+          return { ok: false, error: "ERP schema metadata is missing. Run the master migration." };
+        }
+        // The setup-only service key is deliberately discarded here. It is
+        // never returned, logged, written to disk, or exposed after this call.
+        return { ok: true, schemaVersion: rows[0].schema_version };
+      } catch (error) {
+        return {
+          ok: false,
+          error:
+            error instanceof Error && error.name === "AbortError"
+              ? "Supabase validation timed out."
+              : "Could not connect to the Supabase project.",
+        };
+      }
+    },
+  );
+
+  handle(
+    IPC.HYBRID_INITIALIZE_SCHEMA,
+    async (
+      _event,
+      args: { projectUrl: string; anonKey: string; pgConnectionString: string },
+    ): Promise<{ ok: boolean; schemaVersion?: number; error?: string }> => {
+      if (
+        !args ||
+        typeof args.projectUrl !== "string" ||
+        typeof args.anonKey !== "string" ||
+        typeof args.pgConnectionString !== "string"
+      ) {
+        return { ok: false, error: "Invalid schema initialization request." };
+      }
+      const projectUrl = args.projectUrl.trim().replace(/\/$/, "");
+      const anonKey = args.anonKey.trim();
+      const connectionString = args.pgConnectionString.trim();
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(projectUrl);
+      } catch {
+        return { ok: false, error: "Enter a valid Supabase project URL." };
+      }
+      if (parsedUrl.protocol !== "https:" || !parsedUrl.hostname.endsWith(".supabase.co")) {
+        return { ok: false, error: "Enter the HTTPS URL for a Supabase-hosted project." };
+      }
+      if (connectionString.length < 20) {
+        return { ok: false, error: "Enter the Postgres connection string for this project." };
+      }
+
+      const masterSqlPath = app.isPackaged
+        ? path.join(process.resourcesPath, "AVS_GOLD_ERP_HYBRID_MASTER.sql")
+        : path.join(__dirname, "..", "supabase", "AVS_GOLD_ERP_HYBRID_MASTER.sql");
+
+      let masterSql: string;
+      try {
+        masterSql = await fs.readFile(masterSqlPath, "utf8");
+      } catch {
+        return { ok: false, error: "Bundled master SQL migration file is missing." };
+      }
+
+      // Local require keeps `pg` out of the renderer bundle; connection
+      // string never leaves this handler — not logged, stored, or returned.
+      const { Client } = await import("pg");
+
+      let targetDb = "postgres";
+      try {
+        const parsedPgUrl = new URL(connectionString);
+        targetDb = parsedPgUrl.pathname.slice(1) || "postgres";
+      } catch {
+        // Fallback if not a valid URL (e.g. key=value style connection string)
+      }
+
+      if (targetDb !== "postgres") {
+        // Connect to the default 'postgres' database first to create the target database if it doesn't exist
+        try {
+          const defaultPgUrl = new URL(connectionString);
+          defaultPgUrl.pathname = "/postgres";
+          const adminClient = new Client({
+            connectionString: defaultPgUrl.toString(),
+            ssl: { rejectUnauthorized: false },
+          });
+          await adminClient.connect();
+          const checkRes = await adminClient.query("SELECT 1 FROM pg_database WHERE datname = $1", [
+            targetDb,
+          ]);
+          if (checkRes.rowCount === 0) {
+            // CREATE DATABASE cannot run inside a transaction or parameterized query
+            await adminClient.query(`CREATE DATABASE "${targetDb.replace(/"/g, '""')}"`);
+          }
+          await adminClient.end().catch(() => {});
+        } catch (error) {
+          // If we fail to create the database (e.g., lack of privileges, or connection string not a URL),
+          // we still attempt to connect to the target database directly below in case it already exists.
+        }
+      }
+
+      const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
+      try {
+        await client.connect();
+        // Master SQL is authored with IF NOT EXISTS / OR REPLACE / ON
+        // CONFLICT guards throughout, so re-running it is idempotent both
+        // for a brand-new database and for a schema needing an upgrade.
+        await client.query(masterSql);
+      } catch (error) {
+        return {
+          ok: false,
+          error:
+            error instanceof Error
+              ? `Master SQL migration failed: ${error.message}`
+              : "Master SQL migration failed.",
+        };
+      } finally {
+        await client.end().catch(() => {});
+      }
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12_000);
+        const headers: Record<string, string> = { apikey: anonKey };
+        if (anonKey.split(".").length === 3) headers.Authorization = `Bearer ${anonKey}`;
+        let verifyResponse: Response;
+        try {
+          verifyResponse = await fetch(
+            `${parsedUrl.origin}/rest/v1/erp_schema_meta?select=id,schema_version&limit=1`,
+            { headers, signal: controller.signal },
+          );
+        } finally {
+          clearTimeout(timeout);
+        }
+        if (!verifyResponse.ok) {
+          return { ok: false, error: "Migration ran, but post-migration verification failed." };
+        }
+        const rows = (await verifyResponse.json()) as Array<{ schema_version?: number }>;
+        if (!rows[0]?.schema_version) {
+          return { ok: false, error: "Migration ran, but schema_version was not recorded." };
+        }
+        return { ok: true, schemaVersion: rows[0].schema_version };
+      } catch {
+        return { ok: false, error: "Migration ran, but post-migration verification failed." };
+      }
+    },
+  );
+
+  handle(IPC.DIALOG_OPEN_FILE, async (_event, options: Electron.OpenDialogOptions = {}) => {
     if (!mainWindow) return { canceled: true, filePaths: [] };
     return dialog.showOpenDialog(mainWindow, options);
   });
 
-  ipcMain.handle(IPC.DIALOG_SAVE_FILE, async (_event, options: Electron.SaveDialogOptions = {}) => {
+  handle(IPC.DIALOG_SAVE_FILE, async (_event, options: Electron.SaveDialogOptions = {}) => {
     if (!mainWindow) return { canceled: true, filePath: undefined };
     return dialog.showSaveDialog(mainWindow, options);
   });
 
-  ipcMain.handle(IPC.NOTIFY_SHOW, (_event, args: { title: string; body?: string }) => {
+  handle(IPC.NOTIFY_SHOW, (_event, args: { title: string; body?: string }) => {
+    if (!args || typeof args.title !== "string" || !args.title.trim()) return { shown: false };
     if (!Notification.isSupported()) return { shown: false };
-    new Notification({ title: args.title, body: args.body }).show();
+    new Notification({
+      title: args.title.trim().slice(0, 160),
+      body: typeof args.body === "string" ? args.body.slice(0, 2_000) : undefined,
+    }).show();
     return { shown: true };
   });
 
-  ipcMain.on(IPC.WINDOW_MINIMIZE, () => mainWindow?.minimize());
-  ipcMain.on(IPC.WINDOW_MAXIMIZE_TOGGLE, () => {
+  on(IPC.WINDOW_MINIMIZE, () => mainWindow?.minimize());
+  on(IPC.WINDOW_MAXIMIZE_TOGGLE, () => {
     if (!mainWindow) return;
     if (mainWindow.isMaximized()) mainWindow.unmaximize();
     else mainWindow.maximize();
   });
-  ipcMain.on(IPC.WINDOW_CLOSE, () => mainWindow?.close());
+  on(IPC.WINDOW_CLOSE, () => mainWindow?.close());
 
-  ipcMain.handle(IPC.PRINT_LIST_PRINTERS, async () => {
+  handle(IPC.PRINT_LIST_PRINTERS, async () => {
     if (!mainWindow) return [];
     return mainWindow.webContents.getPrintersAsync();
   });
 
   // ── WasenderAPI (WhatsApp) — token stays here, encrypted; never in renderer ──
-  ipcMain.handle(IPC.WASENDER_SET_TOKEN, (_e, token: string) => wasenderSetToken(token));
-  ipcMain.handle(IPC.WASENDER_CLEAR_TOKEN, () => wasenderClearToken());
-  ipcMain.handle(IPC.WASENDER_HAS_TOKEN, () => wasenderHasToken());
-  ipcMain.handle(IPC.WASENDER_SET_APIKEY, (_e, key: string) => wasenderSetApiKey(key));
-  ipcMain.handle(IPC.WASENDER_CLEAR_APIKEY, () => wasenderClearApiKey());
-  ipcMain.handle(IPC.WASENDER_HAS_APIKEY, () => wasenderHasApiKey());
-  ipcMain.handle(IPC.WASENDER_REQUEST, (_e, args: WasenderRequestArgs) => wasenderRequest(args));
+  handle(IPC.WASENDER_SET_TOKEN, (_e, token: string) => wasenderSetToken(token));
+  handle(IPC.WASENDER_CLEAR_TOKEN, () => wasenderClearToken());
+  handle(IPC.WASENDER_HAS_TOKEN, () => wasenderHasToken());
+  handle(IPC.WASENDER_SET_APIKEY, (_e, key: string) => wasenderSetApiKey(key));
+  handle(IPC.WASENDER_CLEAR_APIKEY, () => wasenderClearApiKey());
+  handle(IPC.WASENDER_HAS_APIKEY, () => wasenderHasApiKey());
+  handle(IPC.WASENDER_REQUEST, (_e, args: WasenderRequestArgs) => wasenderRequest(args));
+
+  handle(IPC.SECURE_STORE_GET, (_event, key: string) => secureStoreGet(key));
+  handle(IPC.SECURE_STORE_SET, (_event, key: string, value: string) => secureStoreSet(key, value));
+  handle(IPC.SECURE_STORE_DELETE, (_event, key: string) => secureStoreDelete(key));
 
   /**
    * Loads print HTML into `win` from a temp file, and deletes the file once the
@@ -163,7 +517,7 @@ function registerIpcHandlers(): void {
       app.getPath("temp"),
       `mtj-print-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.html`,
     );
-    await fs.writeFile(htmlPath, html, "utf-8");
+    await fs.writeFile(htmlPath, validatePrintHtml(html), { encoding: "utf-8", mode: 0o600 });
     win.on("closed", () => void fs.unlink(htmlPath).catch(() => {}));
     await win.loadURL(pathToFileURL(htmlPath).href);
   };
@@ -176,7 +530,7 @@ function registerIpcHandlers(): void {
   // with a { success, error? } shape so the renderer's print queue can
   // reliably fall back to a PDF on any failure rather than needing to
   // catch a thrown IPC error.
-  ipcMain.handle(
+  handle(
     IPC.PRINT_HTML,
     (
       _event,
@@ -187,9 +541,21 @@ function registerIpcHandlers(): void {
         landscape?: boolean;
         marginsMm?: { top: number; bottom: number; left: number; right: number };
       },
-    ) =>
-      new Promise<{ success: boolean; error?: string }>((resolve) => {
-        const printWindow = new BrowserWindow({ show: false, webPreferences: { sandbox: true } });
+    ) => {
+      if (!args || typeof args.html !== "string") {
+        return Promise.resolve({ success: false, error: "Invalid print request." });
+      }
+      return new Promise<{ success: boolean; error?: string }>((resolve) => {
+        const printWindow = new BrowserWindow({
+          show: false,
+          webPreferences: {
+            sandbox: true,
+            contextIsolation: true,
+            nodeIntegration: false,
+            devTools: false,
+          },
+        });
+        hardenAuxiliaryWindow(printWindow);
         printWindow.webContents.once("did-finish-load", () => {
           printWindow.webContents.print(
             {
@@ -221,7 +587,8 @@ function registerIpcHandlers(): void {
           printWindow.destroy();
           resolve({ success: false, error: err instanceof Error ? err.message : String(err) });
         });
-      }),
+      });
+    },
   );
 
   // Print preview. The Windows system print dialog has no preview pane, and
@@ -231,14 +598,23 @@ function registerIpcHandlers(): void {
   // that PDF in Chromium's built-in PDF viewer. The user sees the exact
   // document, then prints from the viewer — so what is previewed and what is
   // printed are byte-for-byte the same PDF, not two separate renders.
-  ipcMain.handle(
+  handle(
     IPC.PRINT_PREVIEW_HTML,
-    (_event, args: { html: string; title?: string; landscape?: boolean }) =>
-      new Promise<{ success: boolean; error?: string }>((resolve) => {
+    (_event, args: { html: string; title?: string; landscape?: boolean }) => {
+      if (!args || typeof args.html !== "string") {
+        return Promise.resolve({ success: false, error: "Invalid print preview request." });
+      }
+      return new Promise<{ success: boolean; error?: string }>((resolve) => {
         const renderWindow = new BrowserWindow({
           show: false,
-          webPreferences: { sandbox: true },
+          webPreferences: {
+            sandbox: true,
+            contextIsolation: true,
+            nodeIntegration: false,
+            devTools: false,
+          },
         });
+        hardenAuxiliaryWindow(renderWindow);
 
         renderWindow.webContents.once("did-finish-load", async () => {
           try {
@@ -260,8 +636,15 @@ function registerIpcHandlers(): void {
               width: 900,
               height: 1000,
               title: args.title ?? "Print Preview",
-              webPreferences: { plugins: true },
+              webPreferences: {
+                plugins: true,
+                sandbox: true,
+                contextIsolation: true,
+                nodeIntegration: false,
+                devTools: false,
+              },
             });
+            hardenAuxiliaryWindow(previewWindow);
             previewWindow.setMenuBarVisibility(false);
             void previewWindow.loadURL(pathToFileURL(pdfPath).href);
             previewWindow.on("closed", () => {
@@ -283,7 +666,8 @@ function registerIpcHandlers(): void {
           renderWindow.destroy();
           resolve({ success: false, error: err instanceof Error ? err.message : String(err) });
         });
-      }),
+      });
+    },
   );
 }
 
@@ -315,10 +699,18 @@ if (gotLock) {
     handleDeepLink(url);
   });
 
+  app.on("child-process-gone", (_event, details) => {
+    logMainError(
+      new Error(`Electron child process exited: ${details.type} ${details.reason}`),
+      "app.child-process-gone",
+    );
+  });
+
   // Crash recovery: an unexpected renderer crash reloads the same window
   // rather than leaving the user staring at a blank/frozen app. A clean exit
   // (navigation, user-initiated close) never reaches this path.
   app.whenReady().then(() => {
+    Menu.setApplicationMenu(null);
     // Electron denies every permission request by default unless a handler
     // explicitly grants it — this was the actual reason the barcode camera
     // scanner silently never showed a video feed or a real "denied"
@@ -326,15 +718,28 @@ if (gotLock) {
     // never let the request reach the OS/user permission prompt at all.
     // Only "media" (camera/mic) is granted here; every other permission
     // type keeps Electron's default deny.
-    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-      callback(permission === "media");
-    });
+    session.defaultSession.setPermissionRequestHandler(
+      (webContents, permission, callback, details) => {
+        const fromMainWindow = webContents === mainWindow?.webContents;
+        const mediaTypes = "mediaTypes" in details ? details.mediaTypes : [];
+        const videoOnly =
+          permission === "media" &&
+          Array.isArray(mediaTypes) &&
+          mediaTypes.includes("video") &&
+          !mediaTypes.includes("audio");
+        callback(fromMainWindow && videoOnly);
+      },
+    );
 
     registerIpcHandlers();
     mainWindow = createWindow();
 
     mainWindow.webContents.on("render-process-gone", (_event, details) => {
       if (details.reason === "clean-exit") return;
+      logMainError(
+        new Error(`Renderer process exited unexpectedly: ${details.reason}`),
+        "browser-window.render-process-gone",
+      );
       mainWindow?.destroy();
       mainWindow = createWindow();
     });

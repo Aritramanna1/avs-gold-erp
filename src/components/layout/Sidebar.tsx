@@ -39,21 +39,20 @@ import { useMemo } from "react";
 // supporting/admin) rather than the prior alphabetical-ish grouping.
 export const navigationItems = [
   { to: "/", label: "Home", icon: Home },
+  { to: "/people", label: "People / KYC", icon: Users },
   { to: "/orders", label: "Orders", icon: ShoppingBag },
   { to: "/catalog", label: "Catalog", icon: Sparkles },
+  { to: "/workshop/gold-book", label: "Worker Gold Book", icon: BookOpen },
   { to: "/workshop", label: "Manufacturing Books", icon: Hammer },
-  { to: "/manufacturing", label: "Manufacturing", icon: Wrench },
-  { to: "/barcode", label: "Barcode & Tagging", icon: ScanLine },
+  { to: "/barcode", label: "Barcode & Tagging", icon: ScanLine, comingSoon: true },
   { to: "/melt", label: "Melt Account", icon: FlameKindling },
-  { to: "/workshop/gold-book", label: "Material Book", icon: BookOpen },
-  { to: "/stock", label: "Stock", icon: Package },
+  { to: "/stock", label: "Ready Stock", icon: Package, comingSoon: true },
   { to: "/billing", label: "Billing", icon: Receipt },
   { to: "/ledger", label: "Ledger", icon: BookOpen },
+  { to: "/communications", label: "Communications Hub", icon: MessageSquare },
   // Retail-only, hidden for the Manufacturing Mode pilot — kept in the repo,
   // shown as a disabled placeholder rather than removed. See pilot-config.ts.
   { to: "/repair", label: RETAIL_COMING_SOON_MESSAGE, icon: ShoppingBag, retailOnly: true },
-  { to: "/people", label: "People / KYC", icon: Users },
-  { to: "/communications", label: "Communications Hub", icon: MessageSquare },
   // Workshop V1.1 scope: kept in the repo, shown as a disabled placeholder
   // rather than removed. See src/lib/pilot-config.ts.
   {
@@ -62,16 +61,13 @@ export const navigationItems = [
     icon: ClipboardCheck,
     comingSoon: true,
   },
-  { to: "/expenses", label: "Expenses", icon: TrendingDown },
-  { to: "/hardware", label: "Hardware", icon: Cpu },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
+  { to: "/expenses", label: "Expenses", icon: TrendingDown, comingSoon: true },
   { to: "/dashboard/ceo", label: "CEO Dashboard", icon: Building2 },
+  { to: "/reports", label: "Reports", icon: BarChart3, comingSoon: true },
   { to: "/branches", label: "Branches", icon: Building2 },
+  { to: "/manufacturing", label: "Manufacturing", icon: Wrench, comingSoon: true },
+  { to: "/hardware", label: "Hardware", icon: Cpu },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
-  { to: "/settings/branch-settings", label: "Branch Settings", icon: Building2 },
-  { to: "/settings/workflow", label: "Workflow Engine", icon: Wrench },
-  { to: "/settings/whatsapp", label: "WhatsApp Settings", icon: MessageSquare },
-  { to: "/settings/communications", label: "Communications", icon: Mail },
   { to: "/help", label: "Help & Guide", icon: LifeBuoy },
 ] as const;
 
@@ -108,6 +104,8 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
   const goldRatePerGramPaise = useSettings((s) => s.goldRatePerGramPaise);
   const goldRate24KPerGramPaise = useSettings((s) => s.goldRate24KPerGramPaise);
   const firm = useSettings((s) => s.firm);
+  const branding = useSettings((s) => s.branding);
+  const moduleStates = useModuleStore((s) => s.moduleStates);
   const permissions = usePermissions();
 
   const filteredItems = useMemo(() => {
@@ -141,7 +139,7 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
     };
 
     return navigationItems.filter((item) => isAllowed(item.to) && permissions.can(item.to));
-  }, [permissions.role, useModuleStore.getState().moduleStates]);
+  }, [moduleStates, permissions]);
 
   const shopInitials = firm?.shopName
     ? firm.shopName
@@ -175,7 +173,7 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
         <Logo variant="svg" className="h-11 w-11 object-contain animate-fade-in" />
         <div className="min-w-0">
           <div className="font-serif text-lg leading-tight text-gold truncate">
-            {shopInitials} ERP
+            {branding.shortName || `${shopInitials} ERP`}
           </div>
           <div
             className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold truncate"
@@ -231,7 +229,16 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
       {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5" id="sidebar-navigation">
         {filteredItems.map((item) => {
-          const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+          const active =
+            item.to === "/"
+              ? pathname === "/"
+              : (pathname === item.to || pathname.startsWith(`${item.to}/`)) &&
+                !filteredItems.some(
+                  (candidate) =>
+                    candidate.to !== item.to &&
+                    candidate.to.length > item.to.length &&
+                    (pathname === candidate.to || pathname.startsWith(`${candidate.to}/`)),
+                );
           const Icon = item.icon;
           const translationKey = labelKeys[item.to];
           const translatedLabel = translationKey ? t(`navigation.${translationKey}`) : item.label;
@@ -241,9 +248,10 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
             <Link
               key={item.to}
               to={item.to}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 ${
+              aria-current={active ? "page" : undefined}
+              className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 ${
                 isComingSoonPlaceholder
-                  ? "text-sidebar-foreground/40 italic cursor-default"
+                  ? "text-sidebar-foreground/60 italic hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
                   : active
                     ? "bg-sidebar-accent text-gold font-medium shadow-[inset_3px_0_0_0_#d4af37]"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
@@ -252,7 +260,12 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
               <Icon
                 className={`h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110 ${isComingSoonPlaceholder ? "text-sidebar-foreground/40" : active ? "text-gold" : "text-muted-foreground"}`}
               />
-              <span className="truncate">{translatedLabel}</span>
+              <span className="min-w-0 flex-1 truncate">{translatedLabel}</span>
+              {isComingSoonPlaceholder && (
+                <span className="shrink-0 rounded-full border border-gold/25 bg-gold/10 px-1.5 py-0.5 text-[8px] font-bold not-italic uppercase tracking-wider text-gold">
+                  Soon
+                </span>
+              )}
             </Link>
           );
         })}

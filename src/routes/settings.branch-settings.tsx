@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSettings } from "@/lib/settings-store";
-import { supabase } from "@/integrations/supabase/client";
+import { saveBranchSettings } from "@/lib/services/branch-settings-service";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings/branch-settings")({
@@ -213,38 +213,11 @@ function BranchSettingsPage() {
         className="bg-gold hover:bg-gold/90 text-background"
         onClick={async () => {
           const bs2 = s.getBranchSettings(activeBranchId);
-          const { error } = await supabase.from("branch_settings").upsert(
-            {
-              branch_id: activeBranchId,
-              address: bs2.address ?? null,
-              phone: bs2.phone ?? null,
-              email: bs2.email ?? null,
-              gstin: bs2.gstin ?? null,
-              invoice_series: bs2.invoiceSeries ?? null,
-              receipt_series: bs2.receiptSeries ?? null,
-              barcode_series: bs2.barcodeSeries ?? null,
-              smtp_host: bs2.smtpHost ?? null,
-              smtp_port: bs2.smtpPort ?? null,
-              smtp_user: bs2.smtpUser ?? null,
-              smtp_password: bs2.smtpPassword ?? null,
-              smtp_from_name: bs2.smtpFromName ?? null,
-              smtp_from_email: bs2.smtpFromEmail ?? null,
-              wa_phone_number: bs2.waPhoneNumber ?? null,
-              thermal_printer_ip: bs2.thermalPrinterIp ?? null,
-              thermal_printer_port: bs2.thermalPrinterPort ?? null,
-              default_karat: bs2.defaultKarat ?? null,
-              gold_rate_source: bs2.goldRateSource ?? null,
-              invoice_template_id: bs2.invoiceTemplateId ?? null,
-              receipt_template_id: bs2.receiptTemplateId ?? null,
-              logo_url: bs2.logoUrl ?? null,
-              logo_storage_path: bs2.logoStoragePath ?? null,
-            },
-            { onConflict: "branch_id" },
-          );
-          if (error) {
-            toast.error("Save failed: " + error.message);
-          } else {
+          try {
+            await saveBranchSettings(bs2);
             toast.success(`Branch settings saved for ${branch?.name ?? activeBranchId}`);
+          } catch (error) {
+            toast.error("Save failed: " + (error instanceof Error ? error.message : String(error)));
           }
         }}
       >

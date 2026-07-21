@@ -22,7 +22,11 @@ import { useDailyCloses } from "@/lib/dailyclose-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { useWorkers } from "@/lib/workers-store";
 import { useRateCuts } from "@/lib/ratecut-store";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  findReceiptRecordById,
+  findReceiptRecordByNumber,
+  type ReceiptRecord,
+} from "@/lib/services/receipt-record-service";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -41,7 +45,79 @@ export const Route = createFileRoute("/verify")({
   component: VerifyPage,
 });
 
+function registerReceiptRecord(record: ReceiptRecord): boolean {
+  const item = record.data as any;
+  const id = item.id;
+  if (!id) return false;
+  switch (record.table) {
+    case "orders":
+      if (!useOrders.getState().orders.some((row) => row.id === id))
+        useOrders.setState({ orders: [...useOrders.getState().orders, item] });
+      return true;
+    case "job_cards":
+      if (!useJobCards.getState().jobs.some((row) => row.id === id))
+        useJobCards.setState({ jobs: [...useJobCards.getState().jobs, item] });
+      return true;
+    case "invoices":
+      if (!useBilling.getState().invoices.some((row) => row.id === id))
+        useBilling.setState({ invoices: [...useBilling.getState().invoices, item] });
+      return true;
+    case "repairs":
+      if (!useRepairs.getState().repairs.some((row) => row.id === id))
+        useRepairs.setState({ repairs: [...useRepairs.getState().repairs, item] });
+      return true;
+    case "daily_close":
+      if (!useDailyCloses.getState().closes.some((row) => row.id === id))
+        useDailyCloses.setState({ closes: [...useDailyCloses.getState().closes, item] });
+      return true;
+    case "inventory":
+      if (!useStock.getState().items.some((row) => row.id === id))
+        useStock.setState({ items: [...useStock.getState().items, item] });
+      return true;
+    case "people":
+      if (!usePeople.getState().people.some((row) => row.id === id))
+        usePeople.setState({ people: [...usePeople.getState().people, item] });
+      return true;
+    case "gold_settlements":
+      if (!useGoldSettlement.getState().settlements.some((row: any) => row.id === id))
+        useGoldSettlement.setState({
+          settlements: [...useGoldSettlement.getState().settlements, item],
+        });
+      return true;
+    case "worker_settlements":
+      if (!useWorkers.getState().settlements.some((row) => row.id === id))
+        useWorkers.setState({ settlements: [...useWorkers.getState().settlements, item] });
+      return true;
+    case "worker_transactions": {
+      const state = useWorkers.getState();
+      const kind = record.kind ?? item.kind;
+      if (kind === "withdrawal" && !state.withdrawals.some((row) => row.id === id))
+        useWorkers.setState({ withdrawals: [...state.withdrawals, item] });
+      else if (kind === "loan" && !state.loans.some((row) => row.id === id))
+        useWorkers.setState({ loans: [...state.loans, item] });
+      else if (kind === "salary_advance" && !state.advances.some((row) => row.id === id))
+        useWorkers.setState({ advances: [...state.advances, item] });
+      else if (kind === "gold_advance" && !state.goldAdvances.some((row) => row.id === id))
+        useWorkers.setState({ goldAdvances: [...state.goldAdvances, item] });
+      else if (kind === "wastage_return" && !state.wastageReturns.some((row) => row.id === id))
+        useWorkers.setState({ wastageReturns: [...state.wastageReturns, item] });
+      return true;
+    }
+    case "rate_cut_records":
+      if (!useRateCuts.getState().records.some((row) => row.id === id))
+        useRateCuts.setState({ records: [...useRateCuts.getState().records, item] });
+      return true;
+    default:
+      return false;
+  }
+}
+
 async function fetchAndRegisterLiveRecord(docType: PrintDocType, id: string): Promise<boolean> {
+  const record = await findReceiptRecordById(docType, id);
+  if (!record) return false;
+  return registerReceiptRecord(record);
+  /* Historical direct-cloud fallback removed from execution; retained in this
+     comment during the Version 1 audit for traceability.
   try {
     switch (docType) {
       case "order_slip":
@@ -208,11 +284,15 @@ async function fetchAndRegisterLiveRecord(docType: PrintDocType, id: string): Pr
   } catch (err) {
     console.error("[verify] Error doing live database backup fetch:", err);
   }
-  return false;
+  return false; */
 }
 
 async function findAndRegisterLiveRecordByDocNo(code: string): Promise<boolean> {
   const cleanCode = code.trim();
+  const record = await findReceiptRecordByNumber(cleanCode);
+  if (!record) return false;
+  return registerReceiptRecord(record);
+  /* Historical direct-cloud fallback removed from execution.
   try {
     // 1. Check job_cards by jobNo
     {
@@ -297,7 +377,7 @@ async function findAndRegisterLiveRecordByDocNo(code: string): Promise<boolean> 
   } catch (err) {
     console.error("[verify] Error finding live doc by number:", err);
   }
-  return false;
+  return false; */
 }
 
 function lookupByDocNo(
@@ -590,7 +670,7 @@ function VerifyPage() {
       {loading && (
         <div className="mt-8 flex flex-col items-center justify-center p-8 bg-card border border-border rounded-2xl gap-3 animate-pulse">
           <Loader2 className="h-8 w-8 animate-spin text-gold" />
-          <p className="text-sm font-medium text-gold">Fetching records live from Supabase...</p>
+          <p className="text-sm font-medium text-gold">Checking the secure ERP records...</p>
           <p className="text-xs text-muted-foreground">
             This guarantees real-time cryptographic integrity protection.
           </p>

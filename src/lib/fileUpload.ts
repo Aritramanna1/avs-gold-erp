@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { uploadFileToSupabase, getBucketForEntityType } from "./supabase-storage";
 
 export type UploadModule =
@@ -40,7 +40,7 @@ function mapUploadModuleToEntityType(module: UploadModule): any {
 }
 
 /**
- * Uploads a file directly to the Supabase Storage private buckets with auto-compression,
+ * Stores a file in the local application vault with auto-compression,
  * and records its metadata entry in the Supabase 'attachments' table securely.
  */
 export async function uploadFileToHostinger(args: UploadArgs) {
@@ -65,7 +65,7 @@ export async function uploadFileToHostinger(args: UploadArgs) {
   const entityType = mapUploadModuleToEntityType(module);
   const bucket = getBucketForEntityType(entityType);
 
-  // 1. Compress & upload the file to Supabase Storage
+  // 1. Compress and store the file locally
   const { filePath, signedUrl } = await uploadFileToSupabase(bucket, file, entityId, docKey);
 
   // Pre-sanitize and cast UUID targets

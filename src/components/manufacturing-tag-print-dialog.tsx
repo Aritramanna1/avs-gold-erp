@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PrintLayout } from "@/components/print/PrintLayout";
+import { printDocument } from "@/lib/print-document";
 import { usePrintLog } from "@/lib/printlog-store";
 import { useBusinessRules } from "@/lib/business-rules-store";
 import { useBarcodeConfig } from "@/lib/barcode-config-store";
@@ -67,7 +68,7 @@ export function ManufacturingTagPrintDialog({
   // V1: unlimited printing, no print log and no reprint counter.
   function doPrint() {
     if (!canPrint || !barcode) return;
-    window.print();
+    void printDocument(`${VARIANT_LABELS[variant]} - ${barcode.barcodeNumber}`);
   }
 
   return (

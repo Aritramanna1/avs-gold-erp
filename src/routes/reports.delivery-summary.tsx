@@ -9,6 +9,7 @@ import { useSettlements, previewSettlementTotals, type Settlement } from "@/lib/
 import { useBilling, paiseToRupees, type Invoice } from "@/lib/billing-store";
 import { mgToGrams } from "@/lib/gold";
 import { exportToCSV } from "@/lib/report-engine";
+import { printDocument } from "@/lib/print-document";
 import { Printer, Truck, Download } from "lucide-react";
 
 export const Route = createFileRoute("/reports/delivery-summary")({
@@ -276,7 +277,7 @@ function DeliverySummaryPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
+    <div data-testid="print-layout-root" className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
       <PageHeader
         title="Daily Delivery Summary"
         subtitle="Internal reconciliation only — never send this to a customer. It does not replace the GST Invoice or Settlement Receipt."
@@ -292,7 +293,11 @@ function DeliverySummaryPage() {
             data-testid="delivery-summary-date"
           />
         </div>
-        <Button variant="outline" className="gap-1.5" onClick={() => window.print()}>
+        <Button
+          variant="outline"
+          className="gap-1.5"
+          onClick={() => void printDocument(`Delivery Summary - ${date}`)}
+        >
           <Printer className="h-3.5 w-3.5" /> Print
         </Button>
         <Button variant="outline" className="gap-1.5" onClick={handleCSV}>

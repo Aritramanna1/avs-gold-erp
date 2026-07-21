@@ -15,8 +15,7 @@
  */
 
 import { create } from "zustand";
-import { saveDirect } from "./supabase-write";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "./settings-store";
 import { useModuleStore } from "./module-store";
 import { createRepository } from "./repositories/base-repository";
@@ -488,6 +487,9 @@ export function computeInvoicePaymentSummary(
 
 const invoiceRepository = createRepository<Invoice>("invoices");
 const paymentRepository = createRepository<PaymentRecord>("payments");
+const billingPreferencesRepository = createRepository<{ id: string; gstDefault: GstKind }>(
+  "app_settings",
+);
 const invoiceAddInFlight = new Set<string>();
 
 export const useBilling = create<BillingState>()((set, get) => ({
@@ -495,7 +497,7 @@ export const useBilling = create<BillingState>()((set, get) => ({
   gstDefault: "gst3",
   setGstDefault: (g) => {
     set({ gstDefault: g });
-    void saveDirect("app_settings", "billing_prefs", { id: "billing_prefs", gstDefault: g });
+    void billingPreferencesRepository.save({ id: "billing_prefs", gstDefault: g });
   },
   refresh: async () => {
     const { currentUserRole, selectedBranchId } = useSettings.getState();
@@ -666,7 +668,7 @@ export const useBilling = create<BillingState>()((set, get) => ({
     const updatedInv = { ...inv, payments, ...totals, status, updatedAt: Date.now() };
 
     // Save the payment item itself for audit trailing
-    await saveDirect("payments", pay.id, { ...pay, invoiceId });
+    await paymentRepository.save({ ...pay, invoiceId } as PaymentRecord);
     // Update the invoice (which contains nested payments array)
     await invoiceRepository.save(updatedInv);
     set((s) => ({ invoices: s.invoices.map((i) => (i.id === invoiceId ? updatedInv : i)) }));

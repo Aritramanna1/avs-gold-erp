@@ -1,37 +1,16 @@
 # Universal Print Engine
 
-**The only printing framework.** Every printable document routes through it. Do not call `window.print()` for documents, build a bespoke PDF generator, or hand-roll print markup.
+This is the only document printing framework. Do not call `window.print()` for business documents, create bespoke PDFs, or hand-roll print markup.
 
-## Shape
+A printable route supplies a registered document type and record id to `PrintEngine`. The data mapper returns a renderer-neutral `PrintDocumentData`; the selected template defines sections; the same template drives screen preview and `generateDocumentPdf`. User print setup controls page size, margins, orientation, printer, and copies.
 
-A route becomes a thin wrapper:
+To add a future document:
 
-```tsx
-<PrintEngine docType="daily_material_slip" recordId={`${workerId}~${date}`} backUrl="/workshop/gold-book" />
-```
+1. Register its `PrintDocType` and label.
+2. Add a pure data-mapper builder in `src/lib/print-engine/data-mapper.ts`.
+3. Add/register the section template in `default-templates.ts`.
+4. Use the existing Print Engine route/control and audit logging.
 
-The engine handles preview, printer selection, paper-size switch, PDF download, and reprint-audit uniformly.
+Billing documents, orders, job cards, statements, and Version 1 manufacturing/ledger print flows use the shared integration. Barcode labels and thermal receipts use specialized adapters within the Universal Print workflow because their device/page protocols differ from A4 output.
 
-## The three parts of migrating a document
-
-1. **docType** — add to `PrintDocType` union + `PRINT_DOC_LABELS` (`src/lib/printlog-store.ts`).
-2. **Data-mapper builder** — a pure function `(recordId) → PrintDocumentData | null` registered in `src/lib/print-engine/data-mapper.ts`. It reads the owning store and returns the flat, renderer-agnostic shape: `{ docType, docNumber, recordId, createdAt, title, fields, tables, flags, images, balances }`. Return `null` for not-found.
-3. **Template** — a section list in `src/lib/print-engine/default-templates.ts`, registered in `DEFAULT_TEMPLATES`. Sections: `header`, `fieldGrid`, `party`, `table`, `row`, `richText`, `balanceCard`, `signatureBlock`, `qr`, `images`, `pageBreak`, `tagCards`, `thermalItemList`.
-
-One template drives **both** the on-screen preview (`src/components/print-engine/sections.tsx`) and the exported PDF (`src/lib/print-engine/pdf/generate.ts`) — layout changes in one place reflect everywhere.
-
-## PDF generation
-
-`generateDocumentPdf(data, template, firm): Promise<{ blob, fileName }>` walks the template with the shared jsPDF toolkit (`pdf/toolkit.ts`). Honors the user's page setup (`print-setup-store.ts`). This is the **single** PDF entry point — the WhatsApp document sender (`send-whatsapp-document.ts`) reuses it so a document is never generated twice.
-
-## Registered docTypes (have builders)
-
-`gst_invoice`, `retail_invoice`, `credit_note`, `debit_note`, `estimate_doc`, `delivery_challan`, `order_slip`, `job_card`, `karigar_custody_statement`, `customer_ledger_statement`, `daily_material_slip`.
-
-## Not on the document engine (intentional)
-
-Barcode/label printing and thermal receipts use dedicated hardware paths (`thermal-printer.ts`, `BarcodeLabelPreview.tsx`). Forcing them through the A4/PDF document engine would break physical printing — they stay separate.
-
-## Migration status
-
-Phased. Billing docs, orders, job cards, statements, and the Daily Material Slip are on the engine. Remaining self-contained document prints (receive/filings slips, Material Issue Slip, some reports) migrate document-by-document following the three-step pattern above.
+The PDF generator is also reused by email and WhatsApp preparation. Files remain local. Every output must use configured firm/brand data and must never invent a company name, address, tax id, or printer.

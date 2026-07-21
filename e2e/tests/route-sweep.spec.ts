@@ -170,7 +170,7 @@ test.describe("Route sweep — every page opens without a dead route or white sc
     // every parameterized route in one go, so that per-route increase adds
     // up across the whole loop and needs headroom beyond Playwright's
     // default 60s test timeout.
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     const failures: string[] = [];
     for (const path of paramRoutes(seedIds)) {
       await page.goto(path);

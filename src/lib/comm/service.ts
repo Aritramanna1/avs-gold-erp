@@ -59,7 +59,62 @@ class CommunicationService {
       };
     }
 
-    const configs = useCommSettings.getState().getActiveProviders(req.branchId, req.channel);
+    let configs: any[] = [];
+    if (req.channel === "whatsapp") {
+      const { activeWhatsAppProvider } = await import("./send-whatsapp-text");
+      const providerType = activeWhatsAppProvider(req.branchId);
+      if (!providerType) {
+        return {
+          success: false,
+          provider: "none",
+          channel: req.channel,
+          error: "WhatsApp is disabled (Settings)",
+          status: "failed",
+        };
+      }
+      if (providerType === "whatsapp_wasender") {
+        const wasenderConfig = useCommSettings.getState().getWasenderConfig(req.branchId || "MAIN");
+        configs = wasenderConfig && wasenderConfig.isActive ? [wasenderConfig] : [];
+      } else {
+        const { useWaAutomation } = await import("@/lib/wa-automation-store");
+        const { WHATSAPP_KEYS } = await import("./types");
+        const waConfig = useWaAutomation.getState().getConfig(req.branchId || "MAIN");
+        const settings: Record<string, string> = {
+          [WHATSAPP_KEYS.phoneNumberId]: waConfig.phoneNumberId || "",
+          [WHATSAPP_KEYS.accessToken]: waConfig.accessToken || "",
+          [WHATSAPP_KEYS.businessAccountId]: waConfig.businessAccountId || "",
+          [WHATSAPP_KEYS.webhookVerifyToken]: waConfig.webhookVerifyToken || "",
+          [WHATSAPP_KEYS.apiBaseUrl]: waConfig.apiBaseUrl || "",
+          [WHATSAPP_KEYS.apiVersion]: waConfig.apiVersion || "",
+          [WHATSAPP_KEYS.apiKey]: waConfig.accessToken || "",
+          [WHATSAPP_KEYS.apiUrl]: waConfig.apiBaseUrl || "",
+          [WHATSAPP_KEYS.senderPhone]: waConfig.phoneNumberId || "",
+          template_invoice: waConfig.templateInvoice || "",
+          template_receipt: waConfig.templateReceipt || "",
+          template_order_ready: waConfig.templateOrderReady || "",
+          template_repair_ready: waConfig.templateRepairReady || "",
+          template_payment_reminder: waConfig.templatePaymentReminder || "",
+          template_mfg_bill: waConfig.templateMfgBill || "",
+          template_gold_issue: waConfig.templateGoldIssue || "",
+          template_birthday: waConfig.templateBirthday || "",
+          template_festival: waConfig.templateFestival || "",
+          template_order_confirm: waConfig.templateOrderConfirm || "",
+        };
+        configs = [
+          {
+            id: "wa_automation",
+            branchId: req.branchId || "MAIN",
+            channel: "whatsapp",
+            providerType,
+            isActive: true,
+            priority: 0,
+            settings,
+          },
+        ];
+      }
+    } else {
+      configs = useCommSettings.getState().getActiveProviders(req.branchId, req.channel);
+    }
 
     if (configs.length === 0) {
       // Graceful fallback: if no provider configured for this channel, warn
@@ -219,7 +274,7 @@ class CommunicationService {
       // barcode generation all use. Best-effort so a logging failure can
       // never block or fail an otherwise-successful send.
       import("@/lib/security/audit-log").then(({ append }) => {
-        import("@/integrations/supabase/client").then(({ supabase: sb }) => {
+        import("@/lib/providers/data-provider").then(({ supabase: sb }) => {
           sb.auth.getSession().then(({ data }) => {
             append({
               actorId: data.session?.user.id ?? null,

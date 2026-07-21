@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,12 @@ import { ArrowLeft, MessageCircle, Plus, RotateCcw, Trash2 } from "lucide-react"
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings/whatsapp-templates")({
+  beforeLoad: () => {
+    throw redirect({
+      to: "/settings",
+      search: { tab: "whatsapp", waSection: "templates" },
+    });
+  },
   head: () => ({ meta: [{ title: "WhatsApp Templates · AVS Gold ERP" }] }),
   component: WaTemplatesPage,
 });
@@ -42,7 +48,7 @@ const TARGETS: { value: TemplateTarget; label: string }[] = [
   { value: "vendor", label: "Vendor" },
 ];
 
-function WaTemplatesPage() {
+export function WaTemplatesPage({ embedded = false }: { embedded?: boolean } = {}) {
   const templates = useWaTemplates((s) => s.templates);
   const update = useWaTemplates((s) => s.update);
   const reset = useWaTemplates((s) => s.resetToDefault);
@@ -69,18 +75,22 @@ function WaTemplatesPage() {
   }, [orders, jobs, invoices, repairs]);
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto">
-      <div className="flex items-center gap-2 mb-4">
-        <Link to="/settings">
-          <Button variant="ghost" size="sm" className="gap-1">
-            <ArrowLeft className="h-4 w-4" /> Settings
-          </Button>
-        </Link>
-      </div>
-      <PageHeader
-        title="WhatsApp Templates"
-        subtitle="Edit message bodies. Placeholders like {{customer_name}} auto-fill from ERP data when sending."
-      />
+    <div className={embedded ? "" : "p-4 md:p-8 max-w-6xl mx-auto"}>
+      {!embedded && (
+        <>
+          <div className="flex items-center gap-2 mb-4">
+            <Link to="/settings">
+              <Button variant="ghost" size="sm" className="gap-1">
+                <ArrowLeft className="h-4 w-4" /> Settings
+              </Button>
+            </Link>
+          </div>
+          <PageHeader
+            title="WhatsApp Templates"
+            subtitle="Edit message bodies. Placeholders like {{customer_name}} auto-fill from ERP data when sending."
+          />
+        </>
+      )}
 
       <div className="rounded-2xl border border-gold/30 bg-gold/5 p-4 mb-4 text-sm">
         <b className="text-gold">Placeholders</b> available:

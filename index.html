@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https: wss:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    />
     <title>AVS Gold ERP — Powered by Arivahly Venture Sphere</title>
     <meta name="description" content="AVS Gold ERP — Professional Jewellery Manufacturing ERP by Arivahly Venture Sphere." />
     <link rel="icon" type="image/png" href="/favicon-96x96.png?v=20260705" sizes="96x96" />
@@ -11,25 +15,6 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260705" />
     <meta name="apple-mobile-web-app-title" content="AVS Gold ERP" />
     <link rel="manifest" href="/site.webmanifest?v=20260705" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Fonts load non-render-blocking: first paint never waits on the network
-         (critical for LCP, and for Offline/Electron where this host is
-         unreachable). System-font fallbacks render immediately; the branded
-         faces swap in when/if they arrive.
-         ponytail: remote fonts; bundle @fontsource for true-offline typography. -->
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
-      media="print"
-      onload="this.media='all'"
-    />
-    <noscript>
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
-      />
-    </noscript>
     <!-- Instant boot skeleton: paints before any JS/CSS bundle so the user
          never sees a blank white screen — and never a spinning circle. It is
          shaped like the app shell (sidebar rail + header + module body) so it

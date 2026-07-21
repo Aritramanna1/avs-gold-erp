@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { useExpensesStore } from "@/lib/expenses-store";

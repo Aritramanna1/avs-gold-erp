@@ -6,7 +6,7 @@
  * Local pilot storage remains as offline cache / fallback.
  */
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
 export type DbStatus = "connected_authed" | "connected_anon" | "not_connected";
 

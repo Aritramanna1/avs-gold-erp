@@ -20,20 +20,23 @@ import fs from "node:fs";
 const secretFile = (name: string) => path.join(app.getPath("userData"), `wasender-${name}.enc`);
 const TOKEN_FILE = () => secretFile("token"); // account Personal Access Token
 const APIKEY_FILE = () => secretFile("apikey"); // per-session API Key (messaging)
+const MAX_SECRET_LENGTH = 16_384;
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
+const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 
 /** Persist a secret encrypted at rest. Falls back to a marked base64 blob only if the OS keychain is unavailable. */
 function writeSecret(file: string, value: string): { ok: boolean; encrypted: boolean } {
-  const trimmed = (value || "").trim();
-  if (!trimmed) return { ok: false, encrypted: false };
+  if (typeof value !== "string") return { ok: false, encrypted: false };
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > MAX_SECRET_LENGTH || !safeStorage.isEncryptionAvailable()) {
+    return { ok: false, encrypted: false };
+  }
   try {
-    if (safeStorage.isEncryptionAvailable()) {
-      fs.writeFileSync(file, safeStorage.encryptString(trimmed));
-      return { ok: true, encrypted: true };
-    }
-    // Keychain unavailable (rare on Linux without a secret service) — store a
-    // reversible blob so the feature still works, clearly marked as un-keyed.
-    fs.writeFileSync(file, Buffer.from(`plain:${trimmed}`, "utf8"));
-    return { ok: true, encrypted: false };
+    const temporary = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(temporary, safeStorage.encryptString(trimmed), { mode: 0o600 });
+    fs.renameSync(temporary, file);
+    return { ok: true, encrypted: true };
   } catch {
     return { ok: false, encrypted: false };
   }
@@ -52,8 +55,7 @@ function readSecret(file: string): string | null {
   try {
     if (!fs.existsSync(file)) return null;
     const buf = fs.readFileSync(file);
-    const head = buf.subarray(0, 6).toString("utf8");
-    if (head.startsWith("plain:")) return buf.toString("utf8").slice(6);
+    if (!safeStorage.isEncryptionAvailable()) return null;
     return safeStorage.decryptString(buf);
   } catch {
     return null;
@@ -63,13 +65,13 @@ function readSecret(file: string): string | null {
 // ── Account Personal Access Token (management endpoints: session list, connect, QR) ──
 export const setToken = (token: string) => writeSecret(TOKEN_FILE(), token);
 export const clearToken = () => removeSecret(TOKEN_FILE());
-export const hasToken = () => fs.existsSync(TOKEN_FILE());
+export const hasToken = () => readSecret(TOKEN_FILE()) !== null;
 const readToken = () => readSecret(TOKEN_FILE());
 
 // ── Session API Key (messaging endpoints: /send-message) ──
 export const setApiKey = (key: string) => writeSecret(APIKEY_FILE(), key);
 export const clearApiKey = () => removeSecret(APIKEY_FILE());
-export const hasApiKey = () => fs.existsSync(APIKEY_FILE());
+export const hasApiKey = () => readSecret(APIKEY_FILE()) !== null;
 const readApiKey = () => readSecret(APIKEY_FILE());
 
 export interface WasenderRequestArgs {
@@ -110,18 +112,35 @@ async function doFetch(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const encodedBody = body !== undefined ? JSON.stringify(body) : undefined;
+    if (encodedBody && Buffer.byteLength(encodedBody, "utf8") > MAX_BODY_BYTES) {
+      return { ok: false, status: 0, data: null, error: "Request payload is too large." };
+    }
+    const safeHeaders = Object.fromEntries(
+      Object.entries(headers ?? {}).filter(([name]) =>
+        ["accept", "content-type"].includes(name.toLowerCase()),
+      ),
+    );
     const res = await fetch(url, {
       method,
       headers: {
-        Authorization: `Bearer ${bearer}`,
         Accept: "application/json",
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-        ...(headers ?? {}),
+        ...safeHeaders,
+        Authorization: `Bearer ${bearer}`,
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: encodedBody,
       signal: controller.signal,
     });
+    const declaredLength = Number(res.headers.get("content-length") ?? 0);
+    if (declaredLength > MAX_RESPONSE_BYTES) {
+      await res.body?.cancel();
+      return { ok: false, status: res.status, data: null, error: "API response is too large." };
+    }
     const text = await res.text();
+    if (Buffer.byteLength(text, "utf8") > MAX_RESPONSE_BYTES) {
+      return { ok: false, status: res.status, data: null, error: "API response is too large." };
+    }
     let data: unknown = text;
     try {
       data = text ? JSON.parse(text) : null;
@@ -178,10 +197,31 @@ export async function wasenderRequest(args: WasenderRequestArgs): Promise<Wasend
     };
   }
 
-  const base = (args.baseUrl || "").replace(/\/+$/, "");
-  const rel = args.path.startsWith("/") ? args.path : `/${args.path}`;
-  const url = `${base}${rel}`;
-  const method = args.method ?? "GET";
+  let url: string;
+  try {
+    const base = new URL(args.baseUrl);
+    const trustedHost =
+      base.hostname === "wasenderapi.com" || base.hostname.endsWith(".wasenderapi.com");
+    if (base.protocol !== "https:" || !trustedHost || base.username || base.password) {
+      throw new Error("Untrusted WasenderAPI endpoint.");
+    }
+    if (!args.path || args.path.startsWith("//") || args.path.includes("\\")) {
+      throw new Error("Invalid WasenderAPI path.");
+    }
+    const relativePath = args.path.startsWith("/") ? args.path.slice(1) : args.path;
+    url = new URL(relativePath, `${base.toString().replace(/\/+$/, "")}/`).toString();
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      data: null,
+      error: error instanceof Error ? error.message : "Invalid WasenderAPI endpoint.",
+    };
+  }
+  const method = (args.method ?? "GET").toUpperCase();
+  if (!ALLOWED_METHODS.has(method)) {
+    return { ok: false, status: 0, data: null, error: "Unsupported HTTP method." };
+  }
 
   const result = await doFetch(
     url,
@@ -189,19 +229,11 @@ export async function wasenderRequest(args: WasenderRequestArgs): Promise<Wasend
     bearer,
     args.body,
     args.headers,
-    args.timeoutMs ?? 20000,
+    Math.min(60_000, Math.max(1_000, args.timeoutMs ?? 20_000)),
   );
 
   // Communication Log for debugging: full URL + payload + response, never a secret.
-  console.log(
-    `[wasender] ${method} ${url}`,
-    JSON.stringify({
-      auth: args.useApiKey ? "session-api-key" : "personal-access-token",
-      payload: args.body ?? null,
-      status: result.status,
-      response: result.data,
-    }),
-  );
+  if (!app.isPackaged) console.log(`[wasender] ${method} ${url} -> ${result.status}`);
 
   return result;
 }

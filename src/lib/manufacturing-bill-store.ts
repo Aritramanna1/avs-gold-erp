@@ -24,7 +24,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import type { JobCard, WorkReceiptRecord } from "./jobcards-store";
 import { useWorkflowEngine } from "./workflow-engine";
 import { commService } from "./comm/service";
@@ -174,7 +174,7 @@ export interface ManufacturingBill {
   /** Profit margin in basis points (e.g. 1500 = 15.00%) */
   profitMarginBps: number;
 
-  // ── Karigar Account Settlement (Ledger Balance) ───────────────────────
+  // ── Jeweller Account Settlement (Ledger Balance) ───────────────────────
   /** LB — opening balance of karigar account (negative = they owe us) */
   openingBalanceMg: number;
   /** MP entries — gold received from karigar that reduces their debit */
@@ -797,7 +797,7 @@ export const useMfgBills = create<MfgBillState>()(
             const { useOrders } = await import("./orders-store");
             await useOrders.getState().appendTimeline(bill.orderId, {
               ts: now,
-              label: "Karigar Account Settled",
+              label: "Jeweller Account Settled",
               note: `${bill.karigarName ?? "Karigar"} — closing balance ${(bill.closingBalanceMg / 1000).toFixed(3)}g · Bill ${bill.billNo}`,
             });
           } catch {

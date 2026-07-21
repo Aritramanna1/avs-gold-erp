@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,7 +85,7 @@ export async function verifyUserRoleAndStatus(
 
 export function AuthLayout({ prefilledError, onClearError, onSuccess }: AuthLayoutProps) {
   const { t } = useLanguage();
-  const { firm } = useSettings();
+  const { firm, branding } = useSettings();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -332,13 +332,13 @@ export function AuthLayout({ prefilledError, onClearError, onSuccess }: AuthLayo
             <Lock className="h-5 w-5" />
           </div>
           <h1 className="font-serif text-2xl font-semibold tracking-wide text-gold mt-1.5">
-            {(firm.shopName || APP_NAME).toUpperCase()}
+            {(firm.shopName || branding.applicationName || APP_NAME).toUpperCase()}
           </h1>
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
             {t("auth.productionPortal")}
           </p>
           <p className="text-[9px] tracking-widest text-muted-foreground/70 font-medium">
-            {APP_TAGLINE}
+            {branding.tagline || APP_TAGLINE}
           </p>
         </div>
 
@@ -450,6 +450,12 @@ export function AuthLayout({ prefilledError, onClearError, onSuccess }: AuthLayo
               className="text-gold font-medium hover:text-gold/85 hover:underline focus:outline-none transition-colors"
             >
               {t("auth.otpBtn")}
+            </Link>
+            <Link
+              to="/forgot-password"
+              className="text-gold font-medium hover:text-gold/85 hover:underline focus:outline-none transition-colors"
+            >
+              Forgot Username / Email?
             </Link>
             <Link
               to="/invite/accept"

@@ -3,19 +3,18 @@
  *
  * ONE call for any printable document: it reuses the Universal Print Engine to
  * build the SAME PDF the print/preview screens produce (no second generator),
- * hosts it via Supabase Storage to get a fetchable URL, and hands that to the
- * branch's active WhatsApp provider (WasenderAPI sends it as a document; the
- * deep-link fallback can only carry the caption text — see `attached`).
+ * saves it in the local vault and hands the caption to the branch's active
+ * WhatsApp provider. Files are never hosted in Supabase Storage.
  *
  * Data flow: (docType, recordId) → resolvePrintContext → generateDocumentPdf
- * (blob) → Supabase Storage (signed URL) → provider.send({ pdfUrl }).
+ * (blob) → local application vault → provider.send({ caption }).
  */
 import { resolveWhatsAppProvider } from "./send-whatsapp-text";
 import { resolvePrintContext } from "@/lib/print-engine/data-mapper";
 import { usePrintTemplates } from "@/lib/print-engine/template-store";
 import { generateDocumentPdf } from "@/lib/print-engine/pdf/generate";
 import { useSettings } from "@/lib/settings-store";
-import { uploadToSupabaseStorage, getAttachmentSignedUrl } from "@/lib/supabase-storage";
+import { uploadToSupabaseStorage } from "@/lib/supabase-storage";
 import { isValidWaPhone } from "@/lib/wa-link";
 import type { PrintDocType } from "@/lib/print-engine/types";
 import type { CommResult } from "./types";
@@ -62,26 +61,19 @@ export async function sendWhatsAppDocument(req: WhatsAppDocRequest): Promise<Wha
   const template = usePrintTemplates.getState().getForDocType(req.docType);
   const firm = useSettings.getState().firm;
 
-  let pdfUrl: string | undefined;
   let fileName = `${req.docType}.pdf`;
   try {
     const pdf = await generateDocumentPdf(data, template, firm);
     fileName = pdf.fileName;
-    // 2. Host it so WhatsApp can fetch it (signed URL, ~1h TTL — ample).
+    // 2. Preserve it locally. Wasender's URL-only document endpoint cannot
+    // read a private desktop file, so no public/cloud file URL is created.
     const dataUrl = await blobToDataUrl(pdf.blob);
     const bucket = "order-attachments";
-    const path = await uploadToSupabaseStorage(
-      bucket,
-      fileName,
-      dataUrl,
-      req.recordId,
-      req.docType,
-    );
-    pdfUrl = (await getAttachmentSignedUrl(bucket, path)) || undefined;
+    await uploadToSupabaseStorage(bucket, fileName, dataUrl, req.recordId, req.docType);
   } catch (err) {
     // Fall through to a caption-only send rather than failing outright, so the
     // recipient still gets the message even if hosting is momentarily down.
-    console.error("[sendWhatsAppDocument] PDF/host step failed:", err);
+    console.error("[sendWhatsAppDocument] Local PDF save failed:", err);
   }
 
   const caption = req.caption ?? `${data.title} ${data.docNumber}`;
@@ -96,9 +88,9 @@ export async function sendWhatsAppDocument(req: WhatsAppDocRequest): Promise<Wha
         linkedId: req.linkedId ?? req.recordId,
         linkedType: req.linkedType ?? "order",
       },
-      { textBody: caption, pdfUrl },
+      { textBody: caption },
     );
-    return { ok: result.success, error: result.error, attached: !!pdfUrl && result.success };
+    return { ok: result.success, error: result.error, attached: false };
   } catch (err) {
     return {
       ok: false,

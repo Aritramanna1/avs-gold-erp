@@ -15,7 +15,7 @@ import { usePolishing } from "@/lib/polishing-store";
 import { useBusinessRules } from "@/lib/business-rules-store";
 import type { Order } from "@/lib/orders-store";
 import { mgToGrams } from "@/lib/gold";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { ManufacturingTagPrintDialog } from "@/components/manufacturing-tag-print-dialog";
 import { toast } from "sonner";
 import { Barcode as BarcodeIcon, Printer, ArrowRightCircle } from "lucide-react";

@@ -40,6 +40,7 @@ import { PrintHeader } from "@/components/print-header";
 import { AvsPrintFooter } from "@/components/AvsPrintFooter";
 import { MaterialVaultPanel } from "@/components/material-vault-panel";
 import { exportToCSV, exportToXLSX } from "@/lib/report-engine";
+import { printDocument } from "@/lib/print-document";
 import { compileWorkerBooks } from "@/lib/workshop-worker-books";
 import { useJobCards, JOB_STATUS_ACTIVE, normalizeJobStatus } from "@/lib/jobcards-store";
 import { useOrders, normalizeOrderStatus } from "@/lib/orders-store";
@@ -83,7 +84,10 @@ function LedgerPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto print:p-0 print:m-0 print:bg-white print:text-black">
+    <div
+      data-testid="print-layout-root"
+      className="p-4 md:p-8 max-w-6xl mx-auto print:p-0 print:m-0 print:bg-white print:text-black"
+    >
       <style>{`
         @media print {
           @page {
@@ -104,7 +108,12 @@ function LedgerPage() {
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCSV}>
               <Download className="h-4 w-4" /> Export CSV
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => void printDocument("Gold Material Ledger", "Ledger")}
+            >
               <Printer className="h-4 w-4" /> Print Ledger
             </Button>
           </div>
@@ -476,7 +485,12 @@ function DrillDownPanel({
           <Button variant="outline" size="sm" className="gap-1.5" onClick={exportXlsx}>
             <Download className="h-4 w-4" /> Export
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => void printDocument(table.title, "Ledger")}
+          >
             <Printer className="h-4 w-4" /> Print
           </Button>
           <Button variant="ghost" size="sm" onClick={onClose} className="no-print">

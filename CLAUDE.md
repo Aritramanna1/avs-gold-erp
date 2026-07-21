@@ -19,7 +19,7 @@ Gold Vault is the accounting source of truth. Gold balances derive from vault mo
 
 ## Required Reading
 
-Read relevant documents: `docs/ARCHITECTURE.md`, `DATABASE.md`, `MODULES.md`, `PRINT_ENGINE.md`, `EXPORT_ENGINE.md`, `WORKFLOW_RULES.md`, `NAMING.md`, `SECURITY.md`, `CODING_STANDARDS.md`, `UI_GUIDELINES.md`, `ROADMAP.md`, `CHANGELOG.md`.
+Read relevant documents: `docs/ARCHITECTURE.md`, `DATABASE.md`, `MODULES.md`, `PRINT_ENGINE.md`, `EXPORT_ENGINE.md`, `SETTINGS.md`, `WHATSAPP.md`, `LICENSING.md`, `WORKFLOW_RULES.md`, `NAMING.md`, `SECURITY.md`, `CODING_STANDARDS.md`, `UI_GUIDELINES.md`, `ROADMAP.md`, `CHANGELOG.md`.
 
 ## Architecture Rules
 
@@ -30,6 +30,7 @@ Read relevant documents: `docs/ARCHITECTURE.md`, `DATABASE.md`, `MODULES.md`, `P
 - Migrations: `supabase/migrations/`, timestamp-prefixed, append-only, forward-safe, RLS-aware.
 - Use universal print/export engines. Do not call `window.print`, add a parallel PDF pipeline, or build another CSV/XLSX utility.
 - WasenderAPI uses Electron IPC and `src/lib/comm` providers only. Renderer code never reads secrets.
+- Branding and WhatsApp configuration live under `/settings`; keep runtime identity, provider behavior, templates, retries, and automation configurable through the established stores. Do not add parallel settings pages or top-level settings navigation.
 
 ## Engineering Rules
 

@@ -25,7 +25,7 @@ import { useBusinessRules } from "@/lib/business-rules-store";
 import { generateImageThumbnail } from "@/lib/attachments-store";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
 import { rupeesToPaise, useOrders } from "@/lib/orders-store";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { PackageCheck, AlertTriangle, ImagePlus } from "lucide-react";
 
 /**

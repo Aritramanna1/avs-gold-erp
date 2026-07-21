@@ -6,9 +6,9 @@
  * fine-grained action gates on top of that wall and DB RLS.
  */
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
-import { isOfflineMode } from "@/lib/deployment-mode";
+import { isLocalFirstMode } from "@/lib/deployment-mode";
 import { getLocalSessionUser } from "@/lib/local-auth";
 import { ROLES } from "@/lib/permissions";
 
@@ -126,7 +126,7 @@ export function useRoles(): { roles: AppRole[]; email: string | null; ready: boo
     async function load() {
       // Offline mode (SAD §17): local_users is the sole source of roles —
       // never query Supabase's user_roles table or its auth session.
-      if (isOfflineMode()) {
+      if (isLocalFirstMode()) {
         const localUser = await getLocalSessionUser();
         if (cancelled) return;
         setEmail(localUser?.email ?? null);

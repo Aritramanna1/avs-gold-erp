@@ -1,26 +1,48 @@
-import { supabase } from "@/integrations/supabase/client";
 import { type AttachmentEntityType } from "./attachments-store";
 import { compressImage } from "./image-compression";
-import { isOfflineMode } from "./deployment-mode";
+import { saveFile as saveFileLocally, loadFile as loadFileLocally } from "./local-file-store";
+import { initLocalDb } from "./local-db";
 
-const BUCKETS = [
-  "firm-assets",
-  "catalog-designs",
-  "customer-documents",
-  "worker-kyc",
-  "supplier-documents",
-  "order-attachments",
-  "repair-attachments",
-  "expense-receipts",
-];
+const localUrlCache = new Map<string, string>();
 
-// Map our entity types to the requested Supabase Storage buckets
+function localFileId(namespace: string, path: string): string {
+  return `storage:${namespace}:${path}`;
+}
+
+async function storeLocal(
+  namespace: string,
+  path: string,
+  blob: Blob,
+  fileName: string,
+  mimeType: string,
+  entityId: string,
+): Promise<void> {
+  await initLocalDb();
+  await saveFileLocally(localFileId(namespace, path), new Uint8Array(await blob.arrayBuffer()), {
+    fileName,
+    mimeType,
+    entityType: namespace,
+    entityId,
+  });
+}
+
+async function localUrl(namespace: string, path: string): Promise<string> {
+  const id = localFileId(namespace, path);
+  const cached = localUrlCache.get(id);
+  if (cached) return cached;
+  await initLocalDb();
+  const bytes = await loadFileLocally(id);
+  if (!bytes) return "";
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart]));
+  localUrlCache.set(id, url);
+  return url;
+}
+
+/** Local-vault namespace mapper. The returned value is never a cloud bucket. */
 export function getBucketForEntityType(
   entityType: AttachmentEntityType | "firm-logo" | "expense",
 ): string {
-  if (entityType === "firm-logo") {
-    return "firm-assets";
-  }
+  if (entityType === "firm-logo") return "firm-assets";
   switch (entityType) {
     case "catalog":
       return "catalog-designs";
@@ -38,166 +60,77 @@ export function getBucketForEntityType(
     case "expense":
       return "expense-receipts";
     default:
-      return "order-attachments"; // Safe fallback
+      return "order-attachments";
   }
 }
 
-let _bucketsInitPromise: Promise<void> | null = null;
+let readyPromise: Promise<void> | null = null;
 
-/**
- * Ensures storage bucket names are recorded for upload routing.
- * Bucket creation requires service-role access and is handled by Supabase migrations/dashboard.
- * The anon/publishable key cannot create buckets — this function is a no-op safety guard
- * that runs only once per process lifetime to avoid spamming the Supabase API.
- */
+/** Compatibility no-op: local storage requires no bucket provisioning. */
 export function ensureStorageBucketsReady(): Promise<void> {
-  if (_bucketsInitPromise) return _bucketsInitPromise;
-  _bucketsInitPromise = Promise.resolve();
-  return _bucketsInitPromise;
+  if (!readyPromise) readyPromise = Promise.resolve();
+  return readyPromise;
 }
 
-/**
- * Converts a Base64 Data URL to a native binary Blob.
- */
-export function base64ToBlob(base64DataUrl: string): { blob: Blob; mimeType: string } {
-  const parts = base64DataUrl.split(";base64,");
+export function base64ToBlob(dataUrl: string): { blob: Blob; mimeType: string } {
+  const parts = dataUrl.split(";base64,");
   const mimeType = parts[0].split(":")[1] || "application/octet-stream";
-  const b64Data = parts[1];
-
-  const byteCharacters = atob(b64Data);
-  const byteArrays = [];
-
-  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-    const slice = byteCharacters.slice(offset, offset + 512);
-    const byteNumbers = new Array(slice.length);
-    for (let i = 0; i < slice.length; i++) {
-      byteNumbers[i] = slice.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    byteArrays.push(byteArray);
+  const characters = atob(parts[1]);
+  const bytes = new Uint8Array(characters.length);
+  for (let index = 0; index < characters.length; index += 1) {
+    bytes[index] = characters.charCodeAt(index);
   }
-
-  const blob = new Blob(byteArrays, { type: mimeType });
-  return { blob, mimeType };
+  return { blob: new Blob([bytes.buffer], { type: mimeType }), mimeType };
 }
 
 /**
- * Uploads a local file / Base64 image to Supabase Storage.
- * Returns the final storage path inside the bucket.
+ * Stores a file in the local application vault in every deployment mode.
+ * The historical export name is retained to avoid rewriting completed callers.
  */
 export async function uploadToSupabaseStorage(
-  bucket: string,
+  namespace: string,
   fileName: string,
-  base64DataUrl: string,
+  dataUrl: string,
   entityId: string,
   docKey: string,
 ): Promise<string> {
-  const { blob, mimeType } = base64ToBlob(base64DataUrl);
-
-  // Clean special characters from file names and generate a unique file key
-  const sanitizedName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
-  const fileExt = sanitizedName.split(".").pop() || mimeType.split("/")[1] || "bin";
-  const uniqueId = Math.random().toString(36).substring(2, 10);
-  const filePath = `${entityId}/${docKey}_${Date.now()}_${uniqueId}.${fileExt}`;
-
-  const { error } = await supabase.storage.from(bucket).upload(filePath, blob, {
-    contentType: mimeType,
-    cacheControl: "3600",
-    upsert: true,
-  });
-
-  if (error) {
-    throw new Error(`Supabase Storage upload failed: ${error.message}`);
-  }
-
-  return filePath;
+  const { blob, mimeType } = base64ToBlob(dataUrl);
+  const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const ext = safeName.split(".").pop() || mimeType.split("/")[1] || "bin";
+  const path = `${entityId}/${docKey}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
+  await storeLocal(namespace, path, blob, safeName, mimeType, entityId);
+  return path;
 }
 
-// Global cache for signed URLs to minimize Supabase API calls
-const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
-
-/**
- * Generates a signed access URL for private files with short TTL (e.g., 1 hour).
- * Caches in-memory to prevent rapid re-signing.
- */
+/** Resolves a local object URL; no cloud signed URL is generated. */
 export async function getAttachmentSignedUrl(
-  bucket: string,
+  namespace: string,
   path: string,
-  forceRefresh = false,
+  _forceRefresh = false,
 ): Promise<string> {
-  // Offline mode has no cloud storage: files live in the local DB as data
-  // URLs (see attachment-placeholder-modal.tsx), so there is nothing to sign
-  // and nothing to fetch. Returning "" keeps every caller's existing
-  // "no signed URL available" path working instead of throwing.
-  if (isOfflineMode()) return "";
-
-  const cacheKey = `${bucket}:${path}`;
-  const now = Date.now();
-
-  if (!forceRefresh) {
-    const cached = signedUrlCache.get(cacheKey);
-    // Cache remains valid for 45 minutes of the signed 1 hour
-    if (cached && cached.expiresAt > now) {
-      return cached.url;
-    }
-  }
-
-  try {
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600); // 1 hour validity
-
-    if (error || !data?.signedUrl) {
-      console.error(
-        `[Storage] Failed to generate signed URL for path '${path}' in bucket '${bucket}':`,
-        error,
-      );
-      return "";
-    }
-
-    signedUrlCache.set(cacheKey, {
-      url: data.signedUrl,
-      expiresAt: now + 45 * 60 * 1000, // 45 minutes TTL
-    });
-
-    return data.signedUrl;
-  } catch (err) {
-    console.error("[Storage] Error fetching signed URL:", err);
-    return "";
-  }
+  return localUrl(namespace, path);
 }
 
-/**
- * High-level helper to compress an image file, convert it to Base64,
- * upload it to Supabase Storage, and return the storage path and a signed URL.
- */
+/** Compresses an image and stores it in the local application vault. */
 export async function uploadFileToSupabase(
-  bucket: string,
+  namespace: string,
   file: File,
   entityId: string,
   docKey: string,
 ): Promise<{ filePath: string; signedUrl: string }> {
-  // 1. Pre-compress image if applicable
-  const compResult = await compressImage(file);
-  const fileToUpload = compResult.file;
-
-  // 2. Convert to Base64
-  const base64DataUrl = await new Promise<string>((resolve, reject) => {
+  const { file: storedFile } = await compressImage(file);
+  const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (e) => reject(e);
-    reader.readAsDataURL(fileToUpload);
+    reader.onerror = reject;
+    reader.readAsDataURL(storedFile);
   });
-
-  // 3. Upload to Supabase Storage
   const filePath = await uploadToSupabaseStorage(
-    bucket,
-    fileToUpload.name,
-    base64DataUrl,
+    namespace,
+    storedFile.name,
+    dataUrl,
     entityId,
     docKey,
   );
-
-  // 4. Pre-sign the URL for direct presentation
-  const signedUrl = await getAttachmentSignedUrl(bucket, filePath);
-
-  return { filePath, signedUrl };
+  return { filePath, signedUrl: await getAttachmentSignedUrl(namespace, filePath) };
 }

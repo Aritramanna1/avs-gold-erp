@@ -20,6 +20,7 @@
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { append as appendAuditEntry } from "./security/audit-log";
+import { getMetaValue, setMetaValue } from "./local-db";
 
 // ── Material categories — extensible registry, not a closed enum ──────────
 
@@ -151,6 +152,39 @@ export interface GroupedBalances {
 
 const movementRepository = createRepository<MaterialMovement>("material_vault_movements");
 
+// ── Admin-configurable materials — persisted, nothing hard-coded ────────────
+const CUSTOM_CATEGORIES_KEY = "material_custom_categories";
+
+/** Admin-defined materials (persisted). Built-ins live in DEFAULT_MATERIAL_CATEGORIES. */
+export function readCustomCategories(): MaterialCategoryDef[] {
+  try {
+    const raw = getMetaValue(CUSTOM_CATEGORIES_KEY);
+    const arr = raw ? (JSON.parse(raw) as MaterialCategoryDef[]) : [];
+    return Array.isArray(arr) ? arr.filter((c) => c && c.key && c.label && c.group) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCustomCategories(list: MaterialCategoryDef[]): void {
+  setMetaValue(CUSTOM_CATEGORIES_KEY, JSON.stringify(list));
+}
+
+/** Built-ins + admin-defined materials, deduped by key (custom overrides on clash). */
+export function mergeCategories(custom: MaterialCategoryDef[]): MaterialCategoryDef[] {
+  const seen = new Set(DEFAULT_MATERIAL_CATEGORIES.map((c) => c.key));
+  return [...DEFAULT_MATERIAL_CATEGORIES, ...custom.filter((c) => !seen.has(c.key))];
+}
+
+/** Slugify a material name into a stable category key. */
+export function materialKeyFromName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 // Guards a rapid double-click/double-submit from recording the same
 // adjustment twice for the same category before React's disabled state
 // commits — same class of race fixed in manufacturing-barcode-store.ts's
@@ -269,6 +303,8 @@ interface MaterialVaultState {
   categories: MaterialCategoryDef[];
   refresh: () => Promise<void>;
   registerCategory: (def: MaterialCategoryDef) => void;
+  /** Remove an admin-defined material (built-ins are permanent, ignored). */
+  removeCategory: (key: string) => void;
   /** Generic single-sided movement — Purchase, Worker Issue, Worker Return, Outside Work, Gold Sale all funnel through this with the appropriate `type`. */
   append: (
     input: Omit<MaterialMovement, "id" | "ts" | "balanceAfterMg">,
@@ -289,14 +325,30 @@ interface MaterialVaultState {
 
 export const useMaterialVault = create<MaterialVaultState>()((set, get) => ({
   movements: [],
-  categories: DEFAULT_MATERIAL_CATEGORIES,
-  refresh: async () => set({ movements: await movementRepository.readAll() }),
-  registerCategory: (def) =>
-    set((s) => ({
-      categories: s.categories.some((c) => c.key === def.key)
-        ? s.categories
-        : [...s.categories, def],
-    })),
+  categories: mergeCategories(readCustomCategories()),
+  refresh: async () =>
+    set({
+      movements: await movementRepository.readAll(),
+      // Custom materials are admin-configurable and persisted — reload them so a
+      // material added on another screen/session shows up here too.
+      categories: mergeCategories(readCustomCategories()),
+    }),
+  registerCategory: (def) => {
+    // Persist admin-defined materials so they survive reload; built-ins are
+    // never written to the custom store (they always come from DEFAULT).
+    const isDefault = DEFAULT_MATERIAL_CATEGORIES.some((c) => c.key === def.key);
+    if (!isDefault) {
+      const custom = readCustomCategories().filter((c) => c.key !== def.key);
+      writeCustomCategories([...custom, def]);
+    }
+    set({ categories: mergeCategories(readCustomCategories()) });
+  },
+  removeCategory: (key) => {
+    // Only admin-defined materials can be removed; built-ins are permanent.
+    if (DEFAULT_MATERIAL_CATEGORIES.some((c) => c.key === key)) return;
+    writeCustomCategories(readCustomCategories().filter((c) => c.key !== key));
+    set({ categories: mergeCategories(readCustomCategories()) });
+  },
   append: async (input) => {
     const balanceBefore = computeCategoryBalance(get().movements, input.category);
     const movement: MaterialMovement = {

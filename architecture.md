@@ -1,5 +1,7 @@
 # MTJ ERP — Architecture Blueprint
 
+> This file is retained for historical context. The canonical architecture is [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Settings now owns runtime brand identity and the consolidated WhatsApp configuration workspace; encrypted WasenderAPI credentials remain in Electron secure storage.
+
 This document details the layered system architecture, modular design patterns, service integrations, and runtime boundaries of the MTJ ERP platform.
 
 ---

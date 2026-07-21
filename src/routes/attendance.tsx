@@ -2,10 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { guardRoute } from "@/lib/permissions";
 import { ModuleComingSoon } from "@/components/ModuleComingSoon";
-import {
-  ATTENDANCE_COMING_SOON_MESSAGE,
-  ATTENDANCE_COMING_SOON_DETAIL,
-} from "@/lib/pilot-config";
+import { ATTENDANCE_COMING_SOON_MESSAGE, ATTENDANCE_COMING_SOON_DETAIL } from "@/lib/pilot-config";
 
 // Workshop V1.1 scope: Attendance & Payroll (daily tracking, salary rules,
 // settlement, loans, wastage) isn't part of the first production release —

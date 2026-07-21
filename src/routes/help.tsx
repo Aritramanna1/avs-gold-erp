@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useDeploymentMode } from "@/lib/deployment-mode";
+import { useSettings } from "@/lib/settings-store";
 import {
   BookOpen,
   Key,
@@ -22,18 +24,23 @@ export const Route = createFileRoute("/help")({
 });
 
 function HelpPage() {
+  const deploymentMode = useDeploymentMode((state) => state.mode) ?? "offline";
+  const firm = useSettings((state) => state.firm);
+  const isOffline = deploymentMode === "offline";
+  const deploymentLabel =
+    deploymentMode === "hybrid" ? "HYBRID" : deploymentMode === "online" ? "ONLINE" : "OFFLINE";
+  const verificationBase =
+    firm.website?.replace(/\/$/, "") || "the configured verification address";
+
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2 pb-2">
         <PageHeader
           title="MTJ ERP Pilot Operating Guide"
-          subtitle="Reference manual for the multi-branch live ERP deployment."
+          subtitle={`Reference manual for this ${deploymentLabel.toLowerCase()} jewellery manufacturing deployment.`}
         />
-        <Badge
-          variant="outline"
-          className="bg-gold/10 text-gold border-gold/40 animate-pulse py-1 px-3"
-        >
-          ● STABILIZED PILOT ACTIVE
+        <Badge variant="outline" className="bg-gold/10 text-gold border-gold/40 py-1 px-3">
+          ● {deploymentLabel} PILOT ACTIVE
         </Badge>
       </div>
 
@@ -43,10 +50,15 @@ function HelpPage() {
           <div>
             <h2 className="font-serif text-lg text-gold font-semibold">Welcome to Jewellers ERP</h2>
             <p className="text-sm mt-1 text-muted-foreground leading-relaxed">
-              This system is fully synchronized with our cloud database (Supabase) and file server
-              (Hostinger API). Manual paper registers must be kept in parallel for the first 30 days
-              of live testing until the workflow has been completely validated. Runs on physical
-              domain <strong>maatarajewellers.shop</strong>.
+              {isOffline
+                ? "This installation runs entirely from the local SQLite database and encrypted application storage; no cloud connection is required."
+                : deploymentMode === "hybrid"
+                  ? "This installation remains local-first and replicates eligible data and documents to its configured cloud services."
+                  : "This installation uses its configured managed services for connected operation."}
+              <span className="ml-1">
+                Manual registers should be kept in parallel during the selected-workshop testing
+                period until each workflow has been validated.
+              </span>
             </p>
           </div>
         </div>
@@ -58,8 +70,9 @@ function HelpPage() {
           title="1. Login & Profile Validation"
         >
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Every user needs a registered Google Auth / email credential in the MTJ Supabase
-            directory.
+            {isOffline
+              ? "Every user signs in through the local user directory configured on this device."
+              : "Every user needs an active account in the configured organization directory."}
           </p>
           <ul className="list-disc pl-4 mt-2 space-y-1 text-xs text-muted-foreground">
             <li>
@@ -68,8 +81,8 @@ function HelpPage() {
               the User Directory. Contact Admin to add your email.
             </li>
             <li>
-              <strong>Password Reset:</strong> Passwords can be changed via the Supabase Admin Panel
-              or by requesting an administrator password override.
+              <strong>Password Reset:</strong> Passwords are managed through User Management or the
+              available sign-in recovery flow for this deployment.
             </li>
             <li>
               <strong>Show/Hide Password:</strong> Use the eye icon in the input field to review
@@ -109,8 +122,14 @@ function HelpPage() {
               and PAN.
             </li>
             <li>
-              <strong>Hostinger File Storage:</strong> Document uploads go directly to our physical
-              Hostinger file server under <code>/uploads/*</code>.
+              <strong>Document Storage:</strong>
+              <span className="ml-1">
+                {isOffline
+                  ? "Documents are stored in the encrypted local application vault."
+                  : deploymentMode === "hybrid"
+                    ? "Documents stay in this computer's local application vault."
+                    : "Documents are saved through the configured storage provider."}
+              </span>
             </li>
             <li>
               <strong>KYC Completeness check:</strong> The system strictly blocks issuing vault gold
@@ -203,12 +222,12 @@ function HelpPage() {
           </p>
           <ul className="list-disc pl-4 mt-2 space-y-1 text-xs text-muted-foreground">
             <li>
-              <strong>The Verification Route:</strong> Scanning the QR code points the scanner
-              directly to <code>maatarajewellers.shop/verify?code=...</code>
+              <strong>The Verification Route:</strong> Scanning the QR code points the scanner to{" "}
+              <code>{verificationBase}/verify?code=...</code>
             </li>
             <li>
               <strong>Tamper Detection:</strong> The verification portal checks the cryptographic
-              checksum of the document against the real-time live database.
+              checksum of the document against the records available to the active deployment.
             </li>
             <li>
               <strong>Reprint Tracking:</strong> If a ticket has been printed multiple times, the
@@ -226,8 +245,8 @@ function HelpPage() {
             <div>
               <span className="text-rose-400 font-medium">Account Not Permitted / Deactivated</span>
               <p className="mt-0.5">
-                Your email authenticates in Supabase but the authorization flag is off. Contact
-                partner group to toggle status to active.
+                The signed-in account is inactive or does not have access to the requested module.
+                Ask the Super Owner to review the user and role in User Management.
               </p>
             </div>
             <div>
@@ -247,10 +266,10 @@ function HelpPage() {
           Verification
         </h3>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          This system complies with the Gold Hallmarking &amp; GST guidelines of India for
-          multi-branch retail jewellery operations. All overdrafts are logged as potential loss
-          audit lines. Ensure you run a <strong>Daily Close</strong> at the end of each physical
-          business day to commit branch balances to the permanent database.
+          This system complies with the Gold Hallmarking &amp; GST guidelines of India for jewellery
+          manufacturing operations. All overdrafts are logged as potential loss audit lines. Ensure
+          you run a <strong>Daily Close</strong> at the end of each physical business day to commit
+          branch balances to the permanent database.
         </p>
       </Card>
     </div>

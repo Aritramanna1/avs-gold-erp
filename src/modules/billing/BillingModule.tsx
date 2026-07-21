@@ -114,13 +114,10 @@ interface MfgMpEntry {
   fineMg: number; // computed: grossMg × purity / 100
 }
 
+// "Custom Order Delivery" (custom_order) removed as a selectable type — order
+// billing now flows through the Manufacturing Bill. The type remains in the
+// billing-store union so any legacy custom_order bill still renders.
 const BILLING_TYPES = [
-  {
-    id: "custom_order",
-    label: "Custom Order Delivery / ऑर्डर डिलिव्हरी",
-    desc: "Job-work delivery — bill making charges only, gold is customer-owned",
-    group: "primary" as const,
-  },
   {
     id: "repair",
     label: "Repair Job / दुरुस्ती आणि रिपेअरिंग",
@@ -142,7 +139,7 @@ const BILLING_TYPES = [
   {
     id: "manufacturing",
     label: "Manufacturing Bill / कारीगर खाते",
-    desc: "Karigar gold account — gold given, received, balance",
+    desc: "Jeweller gold account — gold given, received, balance",
     group: "primary" as const,
   },
   {
@@ -278,7 +275,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
   // Billing Type state
   const [billingType, setBillingType, clearBillingType] = useDraft<BillingType>(
     "mtj-billing-billingType-v1",
-    linkedOrder ? "custom_order" : linkedStock ? "ready_stock" : "ready_stock",
+    linkedOrder ? "manufacturing" : linkedStock ? "ready_stock" : "ready_stock",
   );
 
   // Customer
@@ -1690,7 +1687,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             }
           >
             {scaleConnected
-              ? `Scale: ${scaleReading.weightGrams.toFixed(3)}g${!scaleReading.isStable ? " âš " : ""}`
+              ? `Scale: ${scaleReading.weightGrams.toFixed(3)}g${!scaleReading.isStable ? " ⚠" : ""}`
               : "Scale: —"}
           </span>
         </div>
@@ -2324,10 +2321,10 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             </div>
           </Section>
 
-          {/* Section 2b: Manufacturing Bill — Karigar Account (MP entries + balances) */}
+          {/* Section 2b: Manufacturing Bill — Jeweller Account (MP entries + balances) */}
           {billingType === "manufacturing" && (
             <Section
-              title="Karigar Account — Metal Received (MP Entries)"
+              title="Jeweller Account — Metal Received (MP Entries)"
               right={
                 <div className="flex gap-2">
                   <Button
@@ -2490,7 +2487,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                   return (
                     <div className="rounded-xl border border-border bg-card p-4 space-y-2 text-sm font-mono">
                       <div className="text-[10px] uppercase tracking-wider font-black text-muted-foreground mb-2">
-                        Karigar Account Summary
+                        Jeweller Account Summary
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Total Gold Given (P entries)</span>

@@ -12,6 +12,14 @@ exports.IPC = {
     NOTIFY_SHOW: "notify:show",
     APP_GET_VERSION: "app:get-version",
     APP_RELAUNCH: "app:relaunch",
+    DIAGNOSTICS_REPORT_ERROR: "diagnostics:report-error",
+    HYBRID_VALIDATE_SETUP: "hybrid:validate-setup",
+    // Retained for compatibility. The owner applies the master SQL outside the
+    // customer application; the renderer never submits database passwords.
+    HYBRID_INITIALIZE_SCHEMA: "hybrid:initialize-schema",
+    SECURE_STORE_GET: "secure-store:get",
+    SECURE_STORE_SET: "secure-store:set",
+    SECURE_STORE_DELETE: "secure-store:delete",
     WINDOW_MINIMIZE: "window:minimize",
     WINDOW_MAXIMIZE_TOGGLE: "window:maximize-toggle",
     WINDOW_CLOSE: "window:close",

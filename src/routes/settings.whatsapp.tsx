@@ -3,7 +3,7 @@
  * Full WhatsApp Business API configuration, template mappings, and automation toggles.
  * All credentials are stored in branch_settings.wa_config in Supabase — never in frontend code.
  */
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { PageHeader } from "@/components/app-shell";
@@ -43,6 +43,12 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings/whatsapp")({
+  beforeLoad: () => {
+    throw redirect({
+      to: "/settings",
+      search: { tab: "whatsapp", waSection: "business" },
+    });
+  },
   head: () => ({ meta: [{ title: "WhatsApp Settings · AVS Gold ERP" }] }),
   component: WhatsAppSettingsPage,
 });
@@ -88,7 +94,7 @@ const AUTOMATION_GROUPS: { title: string; keys: WaAutomationKey[] }[] = [
   },
 ];
 
-function WhatsAppSettingsPage() {
+export function WhatsAppSettingsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const branchId = useCurrentBranchId();
   const accessible = useBranch(useShallow((s) => s.getAccessibleBranches()));
   const [selectedBranch, setSelectedBranch] = useState(branchId);
@@ -154,16 +160,20 @@ function WhatsAppSettingsPage() {
   ].includes(local.providerType);
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
-      <PageHeader
-        title="WhatsApp Configuration"
-        subtitle="Advanced: template ID mapping, per-event automation toggles. For Email/SMS/other channels, or the basic provider connection, see Settings → Communications."
-      />
-      <div className="text-xs text-muted-foreground">
-        <Link to="/settings/communications" className="text-gold underline">
-          ← Back to Communications Settings
-        </Link>
-      </div>
+    <div className={embedded ? "space-y-8" : "p-4 md:p-8 max-w-4xl mx-auto space-y-8"}>
+      {!embedded && (
+        <>
+          <PageHeader
+            title="WhatsApp Configuration"
+            subtitle="Provider connection, template mapping, reliability, and per-event automation."
+          />
+          <div className="text-xs text-muted-foreground">
+            <Link to="/settings/communications" className="text-gold underline">
+              ← Back to Communications Settings
+            </Link>
+          </div>
+        </>
+      )}
 
       {/* Branch Selector */}
       {accessible.length > 1 && (

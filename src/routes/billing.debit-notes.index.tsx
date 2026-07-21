@@ -16,7 +16,7 @@ import {
 import { useDebitNotes } from "@/lib/billing-documents-store";
 import { useBilling, paiseToRupees, rupeesToPaise } from "@/lib/billing-store";
 import { useCan } from "@/lib/rbac";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 

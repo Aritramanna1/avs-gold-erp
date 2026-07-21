@@ -107,6 +107,10 @@ export async function drainCommQueue(): Promise<{
   stillPending: number;
 }> {
   if (draining) return { attempted: 0, sent: 0, stillPending: 0 };
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    const stillPending = (await getQueueEntries("pending")).length;
+    return { attempted: 0, sent: 0, stillPending };
+  }
   draining = true;
   let attempted = 0;
   let sent = 0;
@@ -186,7 +190,12 @@ export function startCommQueueScheduler(intervalMs = 30_000): () => void {
   schedulerHandle = setInterval(() => {
     drainCommQueue().catch((err) => console.error("[CommQueue] drain failed:", err));
   }, intervalMs);
+  if (typeof window !== "undefined") window.addEventListener("online", handleOnline);
   return () => stopCommQueueScheduler();
+}
+
+function handleOnline(): void {
+  void drainCommQueue().catch((err) => console.error("[CommQueue] reconnect drain failed:", err));
 }
 
 export function stopCommQueueScheduler(): void {
@@ -194,4 +203,5 @@ export function stopCommQueueScheduler(): void {
     clearInterval(schedulerHandle);
     schedulerHandle = null;
   }
+  if (typeof window !== "undefined") window.removeEventListener("online", handleOnline);
 }

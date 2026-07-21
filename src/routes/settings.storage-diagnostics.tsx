@@ -1,23 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useCallback, useEffect, useState } from "react";
+import { useAttachments } from "@/lib/attachments-store";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Server,
-  Database,
-  CheckCircle2,
-  AlertTriangle,
-  FolderOpen,
-  ArrowLeft,
-  Loader2,
-  ExternalLink,
-  User,
-  Calendar,
-} from "lucide-react";
+import { Server, Database, CheckCircle2, FolderOpen, ArrowLeft, Loader2, User } from "lucide-react";
 
 export const Route = createFileRoute("/settings/storage-diagnostics")({
   head: () => ({ meta: [{ title: "Storage Diagnostics · AVS Gold ERP" }] }),
@@ -25,69 +13,55 @@ export const Route = createFileRoute("/settings/storage-diagnostics")({
 });
 
 function StorageDiagnostics() {
-  const { t } = useLanguage();
+  const localAttachments = useAttachments((state) => state.items);
   const [gatewayStatus, setGatewayStatus] = useState<"checking" | "online" | "offline">("checking");
   const [gatewayMsg, setGatewayMsg] = useState("");
   const [attachments, setAttachments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [testResponse, setTestResponse] = useState<any>(null);
 
-  // Check the Supabase Storage connectivity
-  async function checkGateway() {
+  // File storage is local in every deployment mode.
+  const checkGateway = useCallback(async () => {
     setGatewayStatus("checking");
-    try {
-      const { data, error } = await supabase.storage.listBuckets();
-      if (error) {
-        setGatewayStatus("offline");
-        setGatewayMsg(`Supabase Storage error: ${error.message}`);
-        setTestResponse({ status: "error", text: error.message });
-      } else {
-        setGatewayStatus("online");
-        const bucketNames = (data || []).map((b: any) => b.name).join(", ");
-        setGatewayMsg(`Supabase Storage connected. Buckets: ${bucketNames || "none"}`);
-        setTestResponse({ status: "ok", text: bucketNames });
-      }
-    } catch (err: any) {
-      setGatewayStatus("offline");
-      setGatewayMsg(err.message || "Failed to connect to Supabase Storage.");
-      setTestResponse({ status: "error", text: err.message });
-    }
-  }
+    setGatewayStatus("online");
+    setGatewayMsg("Encrypted local storage is ready. No cloud connection is required.");
+  }, []);
 
   // Load last 20 attachments from the database
-  async function loadAttachments() {
+  const loadAttachments = useCallback(async () => {
     setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("attachments")
-        .select("*")
-        .order("updated_at", { ascending: false })
-        .limit(20);
-
-      if (error) {
-        console.error("Database retrieve error:", error);
-        setAttachments([]);
-      } else {
-        setAttachments(data || []);
-      }
-    } catch (err) {
-      console.error(err);
-      setAttachments([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+    const rows = Object.entries(localAttachments)
+      .sort(([, a], [, b]) => b.updatedAt - a.updatedAt)
+      .slice(0, 20)
+      .map(([id, record]) => {
+        const [linkedTable, linkedId] = id.split(":");
+        return {
+          id,
+          file_name: record.fileName,
+          mime_type: record.mimeType,
+          size_bytes: 0,
+          linked_table: linkedTable,
+          linked_id: linkedId,
+          data: {
+            notes: record.note,
+            storage_provider: "local",
+            uploadedByEmail: record.uploadedBy,
+          },
+        };
+      });
+    setAttachments(rows);
+    setLoading(false);
+  }, [localAttachments]);
 
   useEffect(() => {
     checkGateway();
     loadAttachments();
-  }, []);
+  }, [checkGateway, loadAttachments]);
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
       <PageHeader
         title="Storage & File Diagnostics"
-        subtitle="Verify Supabase Storage connectivity and file persistence records."
+        subtitle="Verify encrypted local storage and locally persisted file records."
         actions={
           <Link to="/settings">
             <Button variant="outline" size="sm" className="gap-2">
@@ -105,8 +79,8 @@ function StorageDiagnostics() {
               <Server className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold">Supabase Storage</h3>
-              <p className="text-[11px] text-muted-foreground">Storage buckets</p>
+              <h3 className="text-sm font-semibold">Local Application Storage</h3>
+              <p className="text-[11px] text-muted-foreground">Encrypted device vault</p>
             </div>
           </div>
           <div>
@@ -115,29 +89,24 @@ function StorageDiagnostics() {
                 variant="outline"
                 className="animate-pulse flex items-center gap-1.5 text-amber-300"
               >
-                <Loader2 className="h-3 w-3 animate-spin" /> Ping Handshake
+                <Loader2 className="h-3 w-3 animate-spin" /> Checking storage
               </Badge>
             ) : gatewayStatus === "online" ? (
               <Badge
                 variant="outline"
                 className="flex items-center gap-1.5 border-emerald-500/35 text-emerald-300 bg-emerald-500/10"
               >
-                <CheckCircle2 className="h-3 w-3" /> Online & Responsive
+                <CheckCircle2 className="h-3 w-3" /> Ready
               </Badge>
             ) : (
-              <Badge
-                variant="outline"
-                className="flex items-center gap-1.5 border-red-500/35 text-red-300 bg-red-500/10"
-              >
-                <AlertTriangle className="h-3 w-3" /> Offline / Simulation fallback
-              </Badge>
+              <Badge variant="outline">Storage unavailable</Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground pt-1 border-t border-border/40">
             {gatewayMsg}
           </p>
           <Button size="sm" variant="outline" onClick={checkGateway}>
-            Retest Connection
+            Recheck Storage
           </Button>
         </Card>
 
@@ -148,14 +117,13 @@ function StorageDiagnostics() {
               <Database className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold">Supabase Attachments Table</h3>
-              <p className="text-[11px] text-muted-foreground">public.attachments</p>
+              <h3 className="text-sm font-semibold">Local Attachment Register</h3>
+              <p className="text-[11px] text-muted-foreground">SQLite attachment metadata</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Every secure document or image uploaded via the ERP writes a tracking row inside
-            Supabase with the file's binary url link, physical Hostinger path, file size, mime type,
-            and linked parent module reference.
+            Every document or image saved by the ERP is tracked locally while its bytes remain in
+            the encrypted application vault.
           </p>
           <div className="flex gap-2">
             <div className="text-center bg-muted/30 border border-border rounded-lg p-2 flex-1">
@@ -169,7 +137,7 @@ function StorageDiagnostics() {
             <div className="text-center bg-muted/30 border border-border rounded-lg p-2 flex-1">
               <span className="text-xs text-muted-foreground block text-left">Target Storage</span>
               <span className="font-mono text-xs font-semibold block text-left text-foreground mt-1.5">
-                Hostinger FTP
+                Local Vault
               </span>
             </div>
           </div>
@@ -179,18 +147,19 @@ function StorageDiagnostics() {
       {/* Uploaded folders overview checklist */}
       <Card className="p-5">
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <FolderOpen className="h-4 w-4 text-gold" /> Hostinger Directories Required
+          <FolderOpen className="h-4 w-4 text-gold" />
+          Local Storage Areas
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
           {[
-            "uploads/firm-logos/",
-            "uploads/expense-attachments/",
-            "uploads/kyc-documents/",
-            "uploads/order-attachments/",
-            "uploads/billing-attachments/",
-            "uploads/gold-settlement-proofs/",
-            "uploads/worker-documents/",
-            "uploads/customer-documents/",
+            "Company assets",
+            "Expense documents",
+            "KYC documents",
+            "Order attachments",
+            "Billing documents",
+            "Settlement proofs",
+            "Worker documents",
+            "Customer documents",
           ].map((dir) => (
             <div
               key={dir}
@@ -208,7 +177,7 @@ function StorageDiagnostics() {
       {/* Last 20 rows table */}
       <Card className="p-5">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-sm font-semibold">Supabase Metadata Ledger (Last 20 Files)</h3>
+          <h3 className="text-sm font-semibold">Local Attachment Ledger (Last 20 Files)</h3>
           <Button size="sm" variant="outline" className="text-xs h-7" onClick={loadAttachments}>
             Refresh Ledger Data
           </Button>
@@ -220,8 +189,8 @@ function StorageDiagnostics() {
           </div>
         ) : attachments.length === 0 ? (
           <div className="text-center text-xs text-muted-foreground py-10">
-            No tracked attachments rows found in public.attachments. Create an order or worker KYC
-            to upload files.
+            No tracked attachments found. Add a document to an order, person, or worker to see it
+            here.
           </div>
         ) : (
           <div className="overflow-x-auto border border-border rounded-lg">
@@ -280,15 +249,9 @@ function StorageDiagnostics() {
                         {meta.storage_provider || "hostinger"}
                       </td>
                       <td className="p-3 text-right">
-                        <a
-                          href={meta.file_url || meta.fileDataUrl || "#"}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <Button size="sm" variant="ghost" className="h-6 gap-1 text-[11px]">
-                            View URL <ExternalLink className="h-2.5 w-2.5" />
-                          </Button>
-                        </a>
+                        <Badge variant="outline" className="text-[10px]">
+                          Encrypted local
+                        </Badge>
                       </td>
                     </tr>
                   );

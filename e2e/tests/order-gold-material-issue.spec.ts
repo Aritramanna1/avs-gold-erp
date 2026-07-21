@@ -31,7 +31,8 @@ test.describe("Gold / Material Issue workflow (from Production Order)", () => {
     await page.getByTestId("issue-submit").click();
     await expect(page.getByText(/issuing…/i)).toBeHidden({ timeout: 10_000 });
 
-    await expect(page.locator("text=Issue History").first()).toBeVisible();
+    // The issue list section is titled "Worker Issues" in the order page.
+    await expect(page.locator("text=Worker Issues").first()).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/Gold · 2\.000 g/)).toBeVisible({ timeout: 10_000 });
     // Let the first dialog's close animation fully finish before reopening —
     // otherwise the lingering overlay can intercept the next click.

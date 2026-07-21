@@ -1,10 +1,12 @@
+import { printDocument } from "@/lib/print-document";
+
 /**
  * MTJ ERP — Report Engine
  * Shared utilities for all report pages: PDF, XLSX, CSV export,
  * date range filters, branch filters.
  *
- * NOTE: `xlsx` (~280 kB) is lazy-loaded on demand inside exportToXLSX so that
- * merely viewing a report does not pull the spreadsheet library into the chunk.
+ * The spreadsheet writer is lazy-loaded so report browsing does not add its
+ * cost to application startup.
  */
 
 export interface DateRange {
@@ -73,13 +75,22 @@ export async function exportToXLSX(
   filename: string,
   sheets: Record<string, (string | number)[][]>,
 ): Promise<void> {
-  const XLSX = await import("xlsx");
-  const wb = XLSX.utils.book_new();
+  const { Workbook } = await import("exceljs");
+  const workbook = new Workbook();
+  const usedNames = new Set<string>();
+
   for (const [sheetName, rows] of Object.entries(sheets)) {
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
+    const worksheet = workbook.addWorksheet(uniqueWorksheetName(sheetName, usedNames));
+    worksheet.addRows(rows.map((row) => row.map(sanitizeSpreadsheetCell)));
   }
-  XLSX.writeFile(wb, filename);
+
+  const output = await workbook.xlsx.writeBuffer();
+  downloadBlob(
+    new Blob([new Uint8Array(output)], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+    safeDownloadName(filename, ".xlsx"),
+  );
 }
 
 export function exportToCSV(filename: string, rows: (string | number)[][]): void {
@@ -87,23 +98,63 @@ export function exportToCSV(filename: string, rows: (string | number)[][]): void
     .map((r) =>
       r
         .map((c) => {
-          const s = String(c ?? "");
+          const s = String(sanitizeSpreadsheetCell(c));
           return /["\n,]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
         })
         .join(","),
     )
     .join("\n");
-  const blob = new Blob(["" + csv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  downloadBlob(blob, safeDownloadName(filename, ".csv"));
+}
+
+function sanitizeSpreadsheetCell(value: string | number): string | number {
+  if (typeof value !== "string") return value;
+  return /^\s*[=+\-@]/.test(value) ? `'${value}` : value;
+}
+
+function uniqueWorksheetName(requested: string, usedNames: Set<string>): string {
+  const base =
+    requested
+      .replace(/[\\/*?:[\]]/g, " ")
+      .trim()
+      .slice(0, 31) || "Sheet";
+  let name = base;
+  let suffix = 1;
+  while (usedNames.has(name.toLocaleLowerCase())) {
+    const marker = ` (${++suffix})`;
+    name = `${base.slice(0, 31 - marker.length)}${marker}`;
+  }
+  usedNames.add(name.toLocaleLowerCase());
+  return name;
+}
+
+function safeDownloadName(requested: string, extension: ".xlsx" | ".csv"): string {
+  const rawLeaf = requested
+    .split(/[\\/]/)
+    .pop()
+    ?.replace(/[<>:"|?*]/g, "-");
+  const leaf = rawLeaf
+    ? Array.from(rawLeaf, (character) => (character.charCodeAt(0) < 32 ? "-" : character))
+        .join("")
+        .trim()
+    : "";
+  const name = leaf || `erp-export${extension}`;
+  return name.toLocaleLowerCase().endsWith(extension) ? name : `${name}${extension}`;
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.rel = "noopener";
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
 export function triggerPrint(): void {
-  window.print();
+  void printDocument("ERP Report");
 }
 
 export function fmtG(mg: number): string {

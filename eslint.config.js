@@ -24,10 +24,14 @@ export default tseslint.config(
       "release",
       "release-build",
       "build",
+      ".agents",
+      ".claude",
+      ".claude-flow",
+      ".codex",
+      ".serena",
+      ".swarm",
+      "claude-obsidian",
       "AVS Gold ERP v1.1 Test Build",
-      // Development-only test/seed files — never imported in production builds
-      "src/lib/gold-payment-test-suite.ts",
-      "src/lib/test-seed.ts",
       // Generated Playwright output — bundled vendor assets, not source code
       "e2e/report",
       "e2e/test-results",
@@ -57,6 +61,11 @@ export default tseslint.config(
               name: "server-only",
               message:
                 "TanStack Start does not use the Next.js `server-only` package. Rename the module to `*.server.ts` or mark it with `@tanstack/react-start/server-only`.",
+            },
+            {
+              name: "@/integrations/supabase/client",
+              message:
+                "Import the provider-neutral facade from @/lib/providers/data-provider instead.",
             },
           ],
         },

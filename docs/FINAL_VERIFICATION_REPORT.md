@@ -1,5 +1,7 @@
 # Comprehensive Final Verification & Validation Report (Pilot-Stable Release v1.0)
 
+> Archived point-in-time report. Current release evidence and limitations are in [Version 1 Testing Build](TESTING_BUILD.md) and [V1 Release Notes](V1_RELEASE_NOTES.md).
+
 ## 1. Executive Summary
 
 This report completes and delivers the **Sprint Verification Audit** for the **Areva Venture Studios ERP System**. By systematic analysis, full white-label automation, math validation, and path routing updates, the application is confirmed **PILOT-STABLE** and has been prepared for commercial franchise deployment.

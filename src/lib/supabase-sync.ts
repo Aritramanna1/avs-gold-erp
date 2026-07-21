@@ -8,9 +8,10 @@
  * multiple users — they are the source of truth in Postgres, not localStorage.
  */
 import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
 import type { Branch, WorkshopDefinition } from "@/lib/settings-store";
+import { isOfflineMode } from "@/lib/deployment-mode";
 
 // ── Row shapes from Supabase (snake_case) ────────────────────────
 
@@ -72,6 +73,9 @@ export function useSupabaseSync() {
     let cancelled = false;
 
     async function sync() {
+      // Offline mode never touches Supabase — branches/workshops come from the
+      // local settings store (localStorage-cached), which is the source of truth.
+      if (isOfflineMode()) return;
       const [{ data: branchRows }, { data: workshopRows }] = await Promise.all([
         supabase.from("branches").select("*").order("is_default", { ascending: false }),
         supabase.from("workshops").select("*").order("name"),
@@ -97,6 +101,7 @@ export function useSupabaseSync() {
 // ── Supabase-backed CRUD for branches ────────────────────────────
 
 export async function dbAddBranch(branch: Branch): Promise<void> {
+  if (isOfflineMode()) return;
   await supabase.from("branches").insert({
     id: branch.id,
     name: branch.name,
@@ -111,6 +116,7 @@ export async function dbAddBranch(branch: Branch): Promise<void> {
 }
 
 export async function dbUpdateBranch(id: string, patch: Partial<Branch>): Promise<void> {
+  if (isOfflineMode()) return;
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.code !== undefined) row.code = patch.code;
@@ -129,10 +135,12 @@ export async function dbUpdateBranch(id: string, patch: Partial<Branch>): Promis
 }
 
 export async function dbRemoveBranch(id: string): Promise<void> {
+  if (isOfflineMode()) return;
   await supabase.from("branches").delete().eq("id", id);
 }
 
 export async function dbSetDefaultBranch(id: string): Promise<void> {
+  if (isOfflineMode()) return;
   // Clear all is_default first, then set the chosen one
   await supabase.from("branches").update({ is_default: false }).neq("id", "");
   await supabase.from("branches").update({ is_default: true }).eq("id", id);
@@ -141,6 +149,7 @@ export async function dbSetDefaultBranch(id: string): Promise<void> {
 // ── Supabase-backed CRUD for workshops ───────────────────────────
 
 export async function dbAddWorkshop(w: WorkshopDefinition): Promise<void> {
+  if (isOfflineMode()) return;
   await supabase.from("workshops").insert({
     id: w.id,
     name: w.name,
@@ -155,6 +164,7 @@ export async function dbUpdateWorkshop(
   id: string,
   patch: Partial<WorkshopDefinition>,
 ): Promise<void> {
+  if (isOfflineMode()) return;
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.type !== undefined) row.type = patch.type;
@@ -169,5 +179,6 @@ export async function dbUpdateWorkshop(
 }
 
 export async function dbRemoveWorkshop(id: string): Promise<void> {
+  if (isOfflineMode()) return;
   await supabase.from("workshops").delete().eq("id", id);
 }

@@ -486,7 +486,7 @@ async function finaliseNow(
   try {
     const [{ append }, { supabase: sb }] = await Promise.all([
       import("./security/audit-log"),
-      import("@/integrations/supabase/client"),
+      import("@/lib/providers/data-provider"),
     ]);
     const { data } = await sb.auth.getSession();
     await append({

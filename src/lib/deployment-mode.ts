@@ -85,3 +85,12 @@ export async function hydrateDeploymentMode(): Promise<void> {
 export function isOfflineMode(): boolean {
   return useDeploymentMode.getState().mode === "offline";
 }
+
+export function isLocalFirstMode(): boolean {
+  const mode = useDeploymentMode.getState().mode;
+  return mode === "offline" || mode === "hybrid";
+}
+
+export function isHybridMode(): boolean {
+  return useDeploymentMode.getState().mode === "hybrid";
+}

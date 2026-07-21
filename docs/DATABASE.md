@@ -1,49 +1,29 @@
-# Database
+# Database Guide
 
-## Two tiers
+## Local database
 
-1. **Local** — `sql.js` (SQLite compiled to WebAssembly), managed by `src/lib/local-db.ts`. Holds the working dataset and an **outbox** table for pending writes. This is what makes the app work with no internet.
-2. **Cloud** — Supabase Postgres with Row-Level Security, Storage, and Edge Functions. Schema lives in `supabase/migrations/` (timestamp-prefixed, append-only, forward-safe, RLS-aware).
+`src/lib/local-db.ts` runs SQLite through `sql.js`. The encrypted database snapshot is persisted in IndexedDB with AES-256-GCM and a SHA-256 plaintext integrity checksum. SQLite is primary in Offline and Hybrid modes.
 
-## Persistence contract
+Domain writes go through repositories/services, commit locally, and enqueue an outbox row. Do not add frontend direct-Supabase writes. Gold is stored in integer milligrams, purity in integer per-mille, and money in integer paise.
 
-Domain records persist through **`createRepository<T>(table)`** (`src/lib/repositories/base-repository.ts`), never ad hoc Supabase calls. A repository:
+## Hybrid database
 
-- `saveLocal` / `save` — writes local first, enqueues an outbox entry, best-effort audit.
-- `readAll` / `delete` / `updateLocal` — local operations.
-- `sync-engine.ts` drains the outbox to Supabase; `supabase-write.ts` performs the remote upsert with branch inference.
+Supabase stores structured business records only. The canonical new-customer schema is [AVS_GOLD_ERP_HYBRID_MASTER.sql](../supabase/AVS_GOLD_ERP_HYBRID_MASTER.sql). It contains tables, constraints, indexes, functions, metadata, explicit Data API grants, RLS, and policies.
 
-**Never bypass the outbox** with a direct remote write. A record written straight to Supabase will not exist locally and breaks offline reads.
+Owner setup:
 
-## Row shape
+1. Create a separate Supabase project for the customer.
+2. Run the complete master SQL in Supabase SQL Editor.
+3. In ERP Hybrid setup, enter Project URL, anon key, and the setup-only service-role key.
+4. Allow validation to check the setup guard/schema. The service-role key is discarded and never stored.
+5. Confirm an initial sync and inspect unresolved conflicts before normal use.
 
-Most tables store a JSON `data` payload plus a `kind` discriminator and sync columns (`ts`, `branchId`). Example: `worker_transactions` rows carry `{ data: WorkerGoldBookEntry, kind: "gold_book_given" | "gold_book_return" }`; `gold_ledger` rows carry the `LedgerEntry` in `data`.
+Supabase Storage is never used. Logos, photos, KYC files, attachments, reports, PDFs, exports, barcodes, and backups remain local and are excluded from synchronization.
 
-## Units — integers only
+## Backup and migration rules
 
-| Quantity | Unit | Type |
-|---|---|---|
-| Gold weight | milligrams (mg) | integer |
-| Purity / touch | per-mille (‰), e.g. 916 = 22K | integer |
-| Money | paise | integer |
-
-Fine gold = `round(grossMg × purity ÷ 1000)`. All accounting math runs on integer mg/paise to avoid floating-point drift (`src/lib/gold.ts`). Convert to grams/rupees only at the display boundary (`mgToGrams`, `paiseToRupees`).
-
-## Document numbering
-
-Sequential document numbers come from **`nextDocumentNumber(scope, prefix, padWidth)`** (`src/lib/document-numbering.ts`) — e.g. `WGB-G-20260717-001`, job cards `JC-…`, daily material slips `MTS-YYYYMMDD-NNN`. The scope key isolates independent counters (per type, per day). Never generate ad hoc numbers.
-
-## Financial locks
-
-Postings dated inside a month-end-closed period are rejected by `assertPeriodOpen` (`financial-lock-store.ts`), gated by `workflow-engine` config `financialLockEnforcementEnabled` (default on). Applies to `gold_ledger` and `worker_transactions` writes.
-
-## Migrations
-
-- Location: `supabase/migrations/`, timestamp-prefixed.
-- Append-only and forward-safe: never rewrite a shipped migration; add a new one.
-- RLS-aware: every new table needs policies.
-- Bucket creation (Storage) is done via dashboard/migration with service-role, not at runtime (`supabase-storage.ts` `ensureStorageBucketsReady` is a no-op guard).
-
-## Storage buckets
-
-Routed by entity type in `getBucketForEntityType` — e.g. `order-attachments`, `customer-documents`, `worker-kyc`, `firm-assets`. Generated PDFs sent over WhatsApp are uploaded here and served via short-TTL signed URLs.
+- Back up before mode changes, imports, restoration, or upgrades.
+- Never delete the local database after enabling Hybrid.
+- Preserve stable record IDs and `updated_at` values.
+- Update the master SQL whenever a synchronized local table or mapping changes.
+- Test schema changes against a disposable fresh Supabase project before customer rollout.

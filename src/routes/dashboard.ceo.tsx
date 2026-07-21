@@ -7,7 +7,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { getBranchKPIs } from "@/lib/services/ceo-dashboard-service";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -330,6 +330,8 @@ interface BranchKPIs {
 // ── Fetch per-branch KPIs from Supabase ───────────────────────────────────────
 
 async function fetchBranchKPIs(branchId: string): Promise<BranchKPIs> {
+  return getBranchKPIs(branchId);
+  /* legacy query retained below only until the provider cutover is verified
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
@@ -392,7 +394,7 @@ async function fetchBranchKPIs(branchId: string): Promise<BranchKPIs> {
     readyJobCards: jobs.filter((j: { status?: string }) => j.status === "ready").length,
     pendingRepairs: repairs.length,
     totalCustomers: customers.length,
-  };
+  }; */
 }
 
 // ── KPI Tile ──────────────────────────────────────────────────────────────────

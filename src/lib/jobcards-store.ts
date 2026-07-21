@@ -8,7 +8,7 @@ import { create } from "zustand";
 import type { Priority } from "./orders-store";
 import { useWorkerGoldBook } from "./worker-gold-book-store";
 import { useSettings } from "./settings-store";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { createRepository } from "./repositories/base-repository";
 import { nextDocumentNumber } from "./document-numbering";
 
@@ -413,7 +413,7 @@ export const useJobCards = create<JobCardsState>()((set, get) => ({
     try {
       const [{ append: appendAudit }, { supabase: sb }] = await Promise.all([
         import("./security/audit-log"),
-        import("@/integrations/supabase/client"),
+        import("@/lib/providers/data-provider"),
       ]);
       const { data } = await sb.auth.getSession();
       await appendAudit({

@@ -143,7 +143,7 @@ export function PrintLayout({
   autoFit = true,
   branchId,
 }: PrintLayoutProps) {
-  const { firm: profile, branches, selectedBranchId } = useSettings();
+  const { firm: profile, branding, branches, selectedBranchId } = useSettings();
   // Page setup (paper size, orientation, margins, scale, fit-to-page). The
   // document declares its own default; the user's override wins. These same
   // values produce BOTH the on-screen sheet below AND the @page rule the
@@ -313,16 +313,16 @@ export function PrintLayout({
             <div className="flex items-center gap-3 mb-1">
               <Logo variant="png" className="h-12 w-12 object-contain flex-shrink-0" />
               <h1 className="font-serif text-2xl font-bold tracking-tight text-stone-900 leading-none">
-                {profile.shopName || "MAA TARA JEWELLERS"}
+                {branding.printHeader || profile.shopName || branding.applicationName}
               </h1>
             </div>
-            {profile.tagline && (
+            {(profile.tagline || branding.tagline) && (
               <p className="text-[10px] italic font-medium text-stone-600 uppercase tracking-wider">
-                {profile.tagline}
+                {profile.tagline || branding.tagline}
               </p>
             )}
             <p className="text-xs text-stone-600 font-mono mt-1 max-w-sm leading-relaxed">
-              {displayAddress || "Main Market, Gold Bazar, West Bengal"}
+              {displayAddress}
             </p>
             {branch && branch.id !== "MAIN" && (
               <p className="text-[10px] font-semibold text-stone-700">({branch.name})</p>
@@ -378,7 +378,10 @@ export function PrintLayout({
         /* Compressed Header for Thermal / Jewellery Tag sizes */
         <div className="text-center border-b border-dashed border-stone-400 pb-2 mb-3">
           <h2 className="font-serif text-sm font-bold tracking-tight text-stone-900">
-            {profile.shopName || "MAA TARA JEWELLERS"}
+            {profile.shopName ||
+              branding.printHeader ||
+              branding.companyName ||
+              branding.applicationName}
           </h2>
           <div className="text-[9px] font-mono text-stone-600 leading-tight">
             {title} · <span className="font-semibold">{docNumber}</span>

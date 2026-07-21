@@ -1,14 +1,9 @@
 /**
- * Hostinger file upload client.
- * Uploads a file blob to the PHP endpoint at hostingerUploadUrl (configured in firm settings).
- * Server counterpart: public/api/hostinger-upload.php — the one canonical
- * upload endpoint (see its header comment; two prior duplicates were
- * retired 2026-07-10). Returns the public URL of the uploaded file.
- *
- * Falls back gracefully: if no Hostinger URL is configured, throws so callers can use
- * Supabase Storage as the fallback.
+ * Compatibility adapter for legacy callers. The final Hybrid architecture
+ * keeps every file local, so this stores the blob in the local application
+ * vault and never contacts Hostinger or Supabase Storage.
  */
-import { useSettings } from "@/lib/settings-store";
+import { uploadToSupabaseStorage, getAttachmentSignedUrl } from "@/lib/supabase-storage";
 
 export interface HostingerUploadResult {
   fileUrl: string;
@@ -22,30 +17,16 @@ export async function uploadToHostingerServer(
   module: string,
   recordId: string,
 ): Promise<HostingerUploadResult> {
-  const uploadUrl = useSettings.getState().firm.hostingerUploadUrl?.trim();
-  if (!uploadUrl) {
-    throw new Error("Hostinger upload URL not configured in Settings → Firm Profile.");
-  }
-
-  const form = new FormData();
-  form.append("file", blob, fileName);
-  form.append("module", module);
-  form.append("recordId", recordId);
-
-  const res = await fetch(uploadUrl, { method: "POST", body: form });
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`Hostinger upload failed (HTTP ${res.status}): ${text}`);
-  }
-
-  const json = await res.json();
-  if (!json.success) {
-    throw new Error(`Hostinger upload error: ${json.error ?? "Unknown error"}`);
-  }
-
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+  const filePath = await uploadToSupabaseStorage(module, fileName, dataUrl, recordId, "document");
   return {
-    fileUrl: json.file_url as string,
-    filePath: json.file_path as string,
-    fileName: json.file_name as string,
+    fileUrl: await getAttachmentSignedUrl(module, filePath),
+    filePath,
+    fileName,
   };
 }

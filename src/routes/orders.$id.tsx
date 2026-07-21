@@ -41,6 +41,7 @@ import { mgToGrams } from "@/lib/gold";
 import { useWorkerReturns, computeGoldPosition } from "@/lib/worker-return-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { WorkerReturnDialog } from "@/components/worker-return-dialog";
+import { WorkerIssueDialog } from "@/components/worker-issue-dialog";
 import {
   useOutsideWorkLabour,
   computeOutsideWorkCostForOrder,
@@ -102,6 +103,7 @@ function OrderDetailPage() {
     itemName: string;
   } | null>(null);
   const [workerReturnOpen, setWorkerReturnOpen] = useState(false);
+  const [workerIssueOpen, setWorkerIssueOpen] = useState(false);
   const [sendPolishingOpen, setSendPolishingOpen] = useState(false);
   const [receivePolishingOpen, setReceivePolishingOpen] = useState(false);
 
@@ -716,10 +718,17 @@ function OrderDetailPage() {
               — the single approved place to issue gold. This is the structured, order-linked issue
               that Manufacturing Barcode eligibility and Manufacturing Bill auto-collect read from.
             </p>
+            <Button
+              className="w-full gap-2 mb-3"
+              onClick={() => setWorkerIssueOpen(true)}
+              data-testid="order-issue-gold-material"
+            >
+              <Hammer className="h-4 w-4" /> Issue Gold / Material
+            </Button>
             {workerIssueHistory.length === 0 ? (
               <p className="text-sm text-muted-foreground mt-3">No issues recorded yet.</p>
             ) : (
-              <ul className="space-y-2 text-xs mt-3">
+              <ul className="space-y-2 text-xs mt-3" data-testid="order-issue-history-list">
                 {workerIssueHistory.map((iss) => (
                   <li
                     key={iss.id}
@@ -975,6 +984,20 @@ function OrderDetailPage() {
             ts: Date.now(),
             label: "Worker Return",
             note: `${(info.grossMg / 1000).toFixed(3)}g ${info.materialReturned} ← ${info.workerName}`,
+          });
+        }}
+      />
+      <WorkerIssueDialog
+        open={workerIssueOpen}
+        onClose={() => setWorkerIssueOpen(false)}
+        orderId={order.id}
+        orderNo={order.orderNo}
+        defaultPurity={order.item.purity}
+        onSaved={(info) => {
+          append(order!.id, {
+            ts: Date.now(),
+            label: "Worker Issue",
+            note: `${(info.grossMg / 1000).toFixed(3)}g ${info.material} → ${info.workerName}`,
           });
         }}
       />

@@ -1,7 +1,0 @@
-# Development-only files excluded from lint — never imported in production builds
-src/lib/gold-payment-test-suite.ts
-src/lib/test-seed.ts
-
-# Generated files
-dist/
-node_modules/

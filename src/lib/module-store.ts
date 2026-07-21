@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { createRepository } from "./repositories/base-repository";
 
 const moduleStateRepository = createRepository<{ id: string } & Record<string, unknown>>(

@@ -36,7 +36,7 @@ import { mgToGrams, getCaratLabel } from "@/lib/gold";
 import { ArrowLeft, Printer, Receipt, Trash2, FileText, Ban } from "lucide-react";
 import { useCan } from "@/lib/rbac";
 import { useSettings } from "@/lib/settings-store";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { usePeople } from "@/lib/people-store";
 import { DocCommActions } from "@/components/doc-comm-actions";
 import { toast } from "sonner";

@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,12 +15,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { runDisasterRecoveryDrill, type DrillResult } from "@/lib/security/disaster-recovery";
-import {
-  useDeploymentMode,
-  setDeploymentMode,
-  type DeploymentMode,
-} from "@/lib/deployment-mode";
-import { isSupabaseConfigured } from "@/integrations/supabase/client";
+import { useDeploymentMode, setDeploymentMode, type DeploymentMode } from "@/lib/deployment-mode";
+import { isSupabaseConfigured, SUPABASE_RUNTIME_KEYS } from "@/lib/providers/data-provider";
 import { pushPendingOutbox, getSyncStatus, type SyncStatus } from "@/lib/sync-engine";
 import {
   createBackupSnapshot,
@@ -58,6 +56,39 @@ function BackupRecoveryPage() {
   const [switching, setSwitching] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
+  const [hybridSetupOpen, setHybridSetupOpen] = useState(false);
+  const [projectUrl, setProjectUrl] = useState("");
+  const [anonKey, setAnonKey] = useState("");
+  const [serviceRoleKey, setServiceRoleKey] = useState("");
+  const [setupError, setSetupError] = useState("");
+
+  async function handleHybridSetup() {
+    const desktop = (window as any).mtjDesktop;
+    if (!desktop?.hybrid?.validateSetup) {
+      setSetupError("Hybrid setup validation is available only in the Electron desktop app.");
+      return;
+    }
+    setSwitching(true);
+    setSetupError("");
+    try {
+      const result = await desktop.hybrid.validateSetup({
+        projectUrl: projectUrl.trim(),
+        anonKey: anonKey.trim(),
+        serviceRoleKey: serviceRoleKey.trim(),
+      });
+      if (!result.ok) {
+        setSetupError(result.error || "Supabase project validation failed.");
+        return;
+      }
+      localStorage.setItem(SUPABASE_RUNTIME_KEYS.url, projectUrl.trim().replace(/\/$/, ""));
+      localStorage.setItem(SUPABASE_RUNTIME_KEYS.key, anonKey.trim());
+      setServiceRoleKey("");
+      setHybridSetupOpen(false);
+      setPendingMode("hybrid");
+    } finally {
+      setSwitching(false);
+    }
+  }
 
   function refreshSyncStatus() {
     try {
@@ -216,17 +247,17 @@ function BackupRecoveryPage() {
               </div>
               <div className="text-sm text-muted-foreground mt-1">
                 Daily operations always run on the local database. Offline uses only local storage.
-                Hybrid additionally authenticates, backs up and syncs to the cloud. Switching
-                reloads the app.
+                Hybrid additionally synchronizes structured business data to the owner-managed
+                Supabase project. Files remain local. Switching reloads the app.
               </div>
             </div>
             {deploymentMode === "offline" ? (
               <Button
-                onClick={() => setPendingMode("hybrid")}
-                disabled={!canHybrid || switching}
+                onClick={() => (canHybrid ? setPendingMode("hybrid") : setHybridSetupOpen(true))}
+                disabled={switching}
                 variant="outline"
                 className="gap-2 shrink-0"
-                title={canHybrid ? undefined : "Cloud is not configured for this install."}
+                title={canHybrid ? undefined : "Configure the owner-managed Supabase project."}
               >
                 <Cloud className="h-4 w-4" /> Enable Hybrid / Cloud
               </Button>
@@ -416,7 +447,7 @@ function BackupRecoveryPage() {
             <AlertDialogDescription>
               {pendingMode === "offline"
                 ? "The app will stop authenticating and syncing to the cloud and run entirely on the local database. Your local data is untouched. The app reloads."
-                : "The app will additionally use the cloud for authentication, backup and sync. Daily operations still run on the local database. You will need to sign in with your cloud account after reload."}
+                : "The app will synchronize structured business data to the configured Supabase project. Authentication, daily operations and every file remain local."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -424,6 +455,56 @@ function BackupRecoveryPage() {
             <AlertDialogAction onClick={handleConfirmModeSwitch} disabled={switching}>
               {switching ? "Switching…" : "Switch & Reload"}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={hybridSetupOpen} onOpenChange={setHybridSetupOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enable owner-managed Hybrid sync</AlertDialogTitle>
+            <AlertDialogDescription>
+              Run the master SQL migration in the customer project first. The Service Role Key is
+              used only for validation and is never stored.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="hybrid-project-url">Project URL</Label>
+              <Input
+                id="hybrid-project-url"
+                value={projectUrl}
+                onChange={(event) => setProjectUrl(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="hybrid-anon-key">Anon Key</Label>
+              <Input
+                id="hybrid-anon-key"
+                type="password"
+                value={anonKey}
+                onChange={(event) => setAnonKey(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="hybrid-service-key">Service Role Key (setup only)</Label>
+              <Input
+                id="hybrid-service-key"
+                type="password"
+                value={serviceRoleKey}
+                onChange={(event) => setServiceRoleKey(event.target.value)}
+              />
+            </div>
+            {setupError && <p className="text-xs text-destructive">{setupError}</p>}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={switching}>Cancel</AlertDialogCancel>
+            <Button
+              onClick={handleHybridSetup}
+              disabled={switching || !projectUrl || !anonKey || !serviceRoleKey}
+            >
+              {switching ? "Validating…" : "Validate & Continue"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

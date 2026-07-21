@@ -1,11 +1,10 @@
 {
   "name": "avs-gold-erp",
-  "version": "1.1.0-demo-rc1",
+  "version": "1.1.0",
   "description": "AVS Gold ERP — Professional Jewellery Manufacturing ERP by Arivahly Venture Sphere",
   "author": {
     "name": "Arivahly Venture Sphere",
-    "email": "support@your-domain.com",
-    "url": "https://your-domain.com"
+    "url": "https://arivahly.in/"
   },
   "private": true,
   "sideEffects": false,
@@ -49,9 +48,11 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "exceljs": "4.4.0",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.575.0",
+    "pg": "^8.22.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -61,15 +62,15 @@
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
     "tw-animate-css": "^1.3.4",
-    "xlsx": "^0.18.5",
     "zod": "^3.24.2",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
     "@eslint/js": "^9.32.0",
     "@playwright/test": "^1.61.1",
-    "@reticlehq/core": "^1.3.1",
     "@types/node": "^22.16.5",
+    "@types/pg": "^8.20.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -91,6 +92,11 @@
     "vite": "^8.0.16",
     "wait-on": "^9.0.10"
   },
+  "overrides": {
+    "exceljs": {
+      "uuid": "11.1.1"
+    }
+  },
   "build": {
     "appId": "com.avs.goldenerp",
     "productName": "AVS Gold ERP",
@@ -104,6 +110,12 @@
       "dist/**/*",
       "dist-electron/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "supabase/AVS_GOLD_ERP_HYBRID_MASTER.sql",
+        "to": "AVS_GOLD_ERP_HYBRID_MASTER.sql"
+      }
+    ],
     "protocols": [
       {
         "name": "AVS Gold ERP Deep Link",
@@ -112,7 +124,7 @@
         ]
       }
     ],
-    "artifactName": "AVS-Gold-ERP-Demo-RC1-Setup.${ext}",
+    "artifactName": "AVS-Gold-ERP-V1-Testing-Setup.${ext}",
     "win": {
       "target": "nsis",
       "icon": "build/icon.png"
@@ -125,7 +137,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "AVS Gold ERP",
       "license": "build/LICENSE.txt",
-      "uninstallDisplayName": "AVS Gold ERP (Demo RC1)"
+      "uninstallDisplayName": "AVS Gold ERP — Version 1 Testing Build"
     },
     "mac": {
       "target": "dmg",

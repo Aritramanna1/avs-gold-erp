@@ -1,0 +1,14 @@
+﻿{
+  "mcpServers": {
+    "serena": { "command": "uvx", "args": ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server", "--project-from-cwd", "--context", "desktop-app"] },
+    "context7": { "command": "npx", "args": ["-y", "@upstash/context7-mcp"] },
+    "sequential-thinking": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"] },
+    "filesystem": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\avs-test-install\\emergent-mtj-V1"] },
+    "memory": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-memory"] },
+    "git": { "command": "uvx", "args": ["mcp-server-git", "--repository", "C:\\avs-test-install\\emergent-mtj-V1"] },
+    "supabase": { "type": "http", "url": "https://mcp.supabase.com/mcp?project_ref=kjfjsfhftytezsjyegmb" },
+    "claude-flow": { "command": "cmd", "args": ["/c", "npx", "-y", "ruflo@latest", "mcp", "start"], "env": { "npm_config_update_notifier": "false", "CLAUDE_FLOW_MODE": "v3", "CLAUDE_FLOW_HOOKS_ENABLED": "true", "CLAUDE_FLOW_TOPOLOGY": "adaptive", "CLAUDE_FLOW_MAX_AGENTS": "15", "CLAUDE_FLOW_MEMORY_BACKEND": "hybrid" }, "autoStart": false },
+    "ruv-swarm": { "command": "cmd", "args": ["/c", "npx", "-y", "ruv-swarm", "mcp", "start"], "env": { "npm_config_update_notifier": "false" }, "optional": true },
+    "flow-nexus": { "command": "cmd", "args": ["/c", "npx", "-y", "flow-nexus@latest", "mcp", "start"], "env": { "npm_config_update_notifier": "false" }, "optional": true, "requiresAuth": true }
+  }
+}

@@ -20,6 +20,7 @@ import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RepairRouteImport } from './routes/repair'
 import { Route as OtpLoginRouteImport } from './routes/otp-login'
 import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MeltRouteImport } from './routes/melt'
 import { Route as ManufacturingRouteImport } from './routes/manufacturing'
 import { Route as LedgerRouteImport } from './routes/ledger'
@@ -71,6 +72,7 @@ import { Route as SettingsWhatsappRouteImport } from './routes/settings.whatsapp
 import { Route as SettingsStorageDiagnosticsRouteImport } from './routes/settings.storage-diagnostics'
 import { Route as SettingsSecurityCenterRouteImport } from './routes/settings.security-center'
 import { Route as SettingsPrintTemplatesRouteImport } from './routes/settings.print-templates'
+import { Route as SettingsLicenseRouteImport } from './routes/settings.license'
 import { Route as SettingsDocumentVaultRouteImport } from './routes/settings.document-vault'
 import { Route as SettingsCommunicationsRouteImport } from './routes/settings.communications'
 import { Route as SettingsBranchSettingsRouteImport } from './routes/settings.branch-settings'
@@ -109,6 +111,9 @@ import { Route as OrdersIdRouteImport } from './routes/orders.$id'
 import { Route as InviteAcceptRouteImport } from './routes/invite.accept'
 import { Route as DocTokenRouteImport } from './routes/doc.$token'
 import { Route as DashboardCeoRouteImport } from './routes/dashboard.ceo'
+import { Route as ComingSoonMeenaBookRouteImport } from './routes/coming-soon.meena-book'
+import { Route as ComingSoonBarcodeScannerRouteImport } from './routes/coming-soon.barcode-scanner'
+import { Route as ComingSoonBarcodePrintingRouteImport } from './routes/coming-soon.barcode-printing'
 import { Route as CatalogIdRouteImport } from './routes/catalog.$id'
 import { Route as BillingNewRouteImport } from './routes/billing.new'
 import { Route as BillingIdRouteImport } from './routes/billing.$id'
@@ -206,6 +211,11 @@ const OtpLoginRoute = OtpLoginRouteImport.update({
 const OrdersRoute = OrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MeltRoute = MeltRouteImport.update({
@@ -466,6 +476,11 @@ const SettingsPrintTemplatesRoute = SettingsPrintTemplatesRouteImport.update({
   path: '/print-templates',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsLicenseRoute = SettingsLicenseRouteImport.update({
+  id: '/license',
+  path: '/license',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsDocumentVaultRoute = SettingsDocumentVaultRouteImport.update({
   id: '/document-vault',
   path: '/document-vault',
@@ -661,6 +676,23 @@ const DashboardCeoRoute = DashboardCeoRouteImport.update({
   path: '/ceo',
   getParentRoute: () => DashboardRoute,
 } as any)
+const ComingSoonMeenaBookRoute = ComingSoonMeenaBookRouteImport.update({
+  id: '/coming-soon/meena-book',
+  path: '/coming-soon/meena-book',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComingSoonBarcodeScannerRoute =
+  ComingSoonBarcodeScannerRouteImport.update({
+    id: '/coming-soon/barcode-scanner',
+    path: '/coming-soon/barcode-scanner',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ComingSoonBarcodePrintingRoute =
+  ComingSoonBarcodePrintingRouteImport.update({
+    id: '/coming-soon/barcode-printing',
+    path: '/coming-soon/barcode-printing',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CatalogIdRoute = CatalogIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -905,6 +937,7 @@ export interface FileRoutesByFullPath {
   '/ledger': typeof LedgerRoute
   '/manufacturing': typeof ManufacturingRouteWithChildren
   '/melt': typeof MeltRouteWithChildren
+  '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
   '/repair': typeof RepairRouteWithChildren
@@ -920,6 +953,9 @@ export interface FileRoutesByFullPath {
   '/billing/$id': typeof BillingIdRoute
   '/billing/new': typeof BillingNewRoute
   '/catalog/$id': typeof CatalogIdRoute
+  '/coming-soon/barcode-printing': typeof ComingSoonBarcodePrintingRoute
+  '/coming-soon/barcode-scanner': typeof ComingSoonBarcodeScannerRoute
+  '/coming-soon/meena-book': typeof ComingSoonMeenaBookRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
@@ -958,6 +994,7 @@ export interface FileRoutesByFullPath {
   '/settings/branch-settings': typeof SettingsBranchSettingsRoute
   '/settings/communications': typeof SettingsCommunicationsRoute
   '/settings/document-vault': typeof SettingsDocumentVaultRoute
+  '/settings/license': typeof SettingsLicenseRoute
   '/settings/print-templates': typeof SettingsPrintTemplatesRoute
   '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
@@ -1044,6 +1081,7 @@ export interface FileRoutesByTo {
   '/help': typeof HelpRoute
   '/invite': typeof InviteRouteWithChildren
   '/ledger': typeof LedgerRoute
+  '/notifications': typeof NotificationsRoute
   '/otp-login': typeof OtpLoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/setup': typeof SetupRoute
@@ -1053,6 +1091,9 @@ export interface FileRoutesByTo {
   '/billing/$id': typeof BillingIdRoute
   '/billing/new': typeof BillingNewRoute
   '/catalog/$id': typeof CatalogIdRoute
+  '/coming-soon/barcode-printing': typeof ComingSoonBarcodePrintingRoute
+  '/coming-soon/barcode-scanner': typeof ComingSoonBarcodeScannerRoute
+  '/coming-soon/meena-book': typeof ComingSoonMeenaBookRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
@@ -1091,6 +1132,7 @@ export interface FileRoutesByTo {
   '/settings/branch-settings': typeof SettingsBranchSettingsRoute
   '/settings/communications': typeof SettingsCommunicationsRoute
   '/settings/document-vault': typeof SettingsDocumentVaultRoute
+  '/settings/license': typeof SettingsLicenseRoute
   '/settings/print-templates': typeof SettingsPrintTemplatesRoute
   '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
@@ -1184,6 +1226,7 @@ export interface FileRoutesById {
   '/ledger': typeof LedgerRoute
   '/manufacturing': typeof ManufacturingRouteWithChildren
   '/melt': typeof MeltRouteWithChildren
+  '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
   '/repair': typeof RepairRouteWithChildren
@@ -1199,6 +1242,9 @@ export interface FileRoutesById {
   '/billing/$id': typeof BillingIdRoute
   '/billing/new': typeof BillingNewRoute
   '/catalog/$id': typeof CatalogIdRoute
+  '/coming-soon/barcode-printing': typeof ComingSoonBarcodePrintingRoute
+  '/coming-soon/barcode-scanner': typeof ComingSoonBarcodeScannerRoute
+  '/coming-soon/meena-book': typeof ComingSoonMeenaBookRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
@@ -1237,6 +1283,7 @@ export interface FileRoutesById {
   '/settings/branch-settings': typeof SettingsBranchSettingsRoute
   '/settings/communications': typeof SettingsCommunicationsRoute
   '/settings/document-vault': typeof SettingsDocumentVaultRoute
+  '/settings/license': typeof SettingsLicenseRoute
   '/settings/print-templates': typeof SettingsPrintTemplatesRoute
   '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
@@ -1331,6 +1378,7 @@ export interface FileRouteTypes {
     | '/ledger'
     | '/manufacturing'
     | '/melt'
+    | '/notifications'
     | '/orders'
     | '/otp-login'
     | '/repair'
@@ -1346,6 +1394,9 @@ export interface FileRouteTypes {
     | '/billing/$id'
     | '/billing/new'
     | '/catalog/$id'
+    | '/coming-soon/barcode-printing'
+    | '/coming-soon/barcode-scanner'
+    | '/coming-soon/meena-book'
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
@@ -1384,6 +1435,7 @@ export interface FileRouteTypes {
     | '/settings/branch-settings'
     | '/settings/communications'
     | '/settings/document-vault'
+    | '/settings/license'
     | '/settings/print-templates'
     | '/settings/security-center'
     | '/settings/storage-diagnostics'
@@ -1470,6 +1522,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/invite'
     | '/ledger'
+    | '/notifications'
     | '/otp-login'
     | '/reset-password'
     | '/setup'
@@ -1479,6 +1532,9 @@ export interface FileRouteTypes {
     | '/billing/$id'
     | '/billing/new'
     | '/catalog/$id'
+    | '/coming-soon/barcode-printing'
+    | '/coming-soon/barcode-scanner'
+    | '/coming-soon/meena-book'
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
@@ -1517,6 +1573,7 @@ export interface FileRouteTypes {
     | '/settings/branch-settings'
     | '/settings/communications'
     | '/settings/document-vault'
+    | '/settings/license'
     | '/settings/print-templates'
     | '/settings/security-center'
     | '/settings/storage-diagnostics'
@@ -1609,6 +1666,7 @@ export interface FileRouteTypes {
     | '/ledger'
     | '/manufacturing'
     | '/melt'
+    | '/notifications'
     | '/orders'
     | '/otp-login'
     | '/repair'
@@ -1624,6 +1682,9 @@ export interface FileRouteTypes {
     | '/billing/$id'
     | '/billing/new'
     | '/catalog/$id'
+    | '/coming-soon/barcode-printing'
+    | '/coming-soon/barcode-scanner'
+    | '/coming-soon/meena-book'
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
@@ -1662,6 +1723,7 @@ export interface FileRouteTypes {
     | '/settings/branch-settings'
     | '/settings/communications'
     | '/settings/document-vault'
+    | '/settings/license'
     | '/settings/print-templates'
     | '/settings/security-center'
     | '/settings/storage-diagnostics'
@@ -1755,6 +1817,7 @@ export interface RootRouteChildren {
   LedgerRoute: typeof LedgerRoute
   ManufacturingRoute: typeof ManufacturingRouteWithChildren
   MeltRoute: typeof MeltRouteWithChildren
+  NotificationsRoute: typeof NotificationsRoute
   OrdersRoute: typeof OrdersRouteWithChildren
   OtpLoginRoute: typeof OtpLoginRoute
   RepairRoute: typeof RepairRouteWithChildren
@@ -1767,6 +1830,9 @@ export interface RootRouteChildren {
   WhatsappRoute: typeof WhatsappRoute
   WorkshopRoute: typeof WorkshopRouteWithChildren
   AuthCallbackRoute: typeof AuthCallbackRoute
+  ComingSoonBarcodePrintingRoute: typeof ComingSoonBarcodePrintingRoute
+  ComingSoonBarcodeScannerRoute: typeof ComingSoonBarcodeScannerRoute
+  ComingSoonMeenaBookRoute: typeof ComingSoonMeenaBookRoute
   DocTokenRoute: typeof DocTokenRoute
   PeopleIdRoute: typeof PeopleIdRoute
   PeopleImportRoute: typeof PeopleImportRoute
@@ -1858,6 +1924,13 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/orders'
       preLoaderRoute: typeof OrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/melt': {
@@ -2217,6 +2290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsPrintTemplatesRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/license': {
+      id: '/settings/license'
+      path: '/license'
+      fullPath: '/settings/license'
+      preLoaderRoute: typeof SettingsLicenseRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/document-vault': {
       id: '/settings/document-vault'
       path: '/document-vault'
@@ -2482,6 +2562,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/ceo'
       preLoaderRoute: typeof DashboardCeoRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/coming-soon/meena-book': {
+      id: '/coming-soon/meena-book'
+      path: '/coming-soon/meena-book'
+      fullPath: '/coming-soon/meena-book'
+      preLoaderRoute: typeof ComingSoonMeenaBookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coming-soon/barcode-scanner': {
+      id: '/coming-soon/barcode-scanner'
+      path: '/coming-soon/barcode-scanner'
+      fullPath: '/coming-soon/barcode-scanner'
+      preLoaderRoute: typeof ComingSoonBarcodeScannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coming-soon/barcode-printing': {
+      id: '/coming-soon/barcode-printing'
+      path: '/coming-soon/barcode-printing'
+      fullPath: '/coming-soon/barcode-printing'
+      preLoaderRoute: typeof ComingSoonBarcodePrintingRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/catalog/$id': {
       id: '/catalog/$id'
@@ -3028,6 +3129,7 @@ interface SettingsRouteChildren {
   SettingsBranchSettingsRoute: typeof SettingsBranchSettingsRoute
   SettingsCommunicationsRoute: typeof SettingsCommunicationsRoute
   SettingsDocumentVaultRoute: typeof SettingsDocumentVaultRoute
+  SettingsLicenseRoute: typeof SettingsLicenseRoute
   SettingsPrintTemplatesRoute: typeof SettingsPrintTemplatesRoute
   SettingsSecurityCenterRoute: typeof SettingsSecurityCenterRoute
   SettingsStorageDiagnosticsRoute: typeof SettingsStorageDiagnosticsRoute
@@ -3044,6 +3146,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsBranchSettingsRoute: SettingsBranchSettingsRoute,
   SettingsCommunicationsRoute: SettingsCommunicationsRoute,
   SettingsDocumentVaultRoute: SettingsDocumentVaultRoute,
+  SettingsLicenseRoute: SettingsLicenseRoute,
   SettingsPrintTemplatesRoute: SettingsPrintTemplatesRoute,
   SettingsSecurityCenterRoute: SettingsSecurityCenterRoute,
   SettingsStorageDiagnosticsRoute: SettingsStorageDiagnosticsRoute,
@@ -3144,6 +3247,7 @@ const rootRouteChildren: RootRouteChildren = {
   LedgerRoute: LedgerRoute,
   ManufacturingRoute: ManufacturingRouteWithChildren,
   MeltRoute: MeltRouteWithChildren,
+  NotificationsRoute: NotificationsRoute,
   OrdersRoute: OrdersRouteWithChildren,
   OtpLoginRoute: OtpLoginRoute,
   RepairRoute: RepairRouteWithChildren,
@@ -3156,6 +3260,9 @@ const rootRouteChildren: RootRouteChildren = {
   WhatsappRoute: WhatsappRoute,
   WorkshopRoute: WorkshopRouteWithChildren,
   AuthCallbackRoute: AuthCallbackRoute,
+  ComingSoonBarcodePrintingRoute: ComingSoonBarcodePrintingRoute,
+  ComingSoonBarcodeScannerRoute: ComingSoonBarcodeScannerRoute,
+  ComingSoonMeenaBookRoute: ComingSoonMeenaBookRoute,
   DocTokenRoute: DocTokenRoute,
   PeopleIdRoute: PeopleIdRoute,
   PeopleImportRoute: PeopleImportRoute,

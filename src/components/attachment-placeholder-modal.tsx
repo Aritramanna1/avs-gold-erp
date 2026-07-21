@@ -18,14 +18,6 @@ import {
   getAttachmentUrl,
 } from "@/lib/attachments-store";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  uploadToHostinger,
-  saveAttachmentMetadata,
-  type HostingerModule,
-} from "@/lib/hostinger-storage";
-import { uploadFileToSupabase, getBucketForEntityType } from "@/lib/supabase-storage";
-import { isOfflineMode } from "@/lib/deployment-mode";
 
 export type AttachmentPlaceholderModalProps = {
   open: boolean;
@@ -44,54 +36,6 @@ export type AttachmentPlaceholderModalProps = {
     thumbnailDataUrl?: string;
   }) => void;
 };
-
-const HELP =
-  "Physical File Register — MTJ documents and photographs are hosted physically on fast Hostinger servers and indexed securely on Supabase.";
-
-// Utility to translate page/entity keys to physical Hostinger subdirectories
-function mapToHostingerModule(entityType: string, docKey: string): HostingerModule {
-  const ek = `${entityType}:${docKey}`.toLowerCase();
-
-  if (ek.includes("logo")) return "firm-logos";
-  if (
-    docKey.includes("kyc") ||
-    docKey.includes("aadhaar") ||
-    docKey.includes("pan") ||
-    docKey.includes("id")
-  ) {
-    return "kyc-documents";
-  }
-  if (entityType === "person") return "customer-documents";
-  if (entityType === "worker") return "worker-documents";
-  if (entityType === "catalog") return "catalog";
-  if (entityType === "repair" || docKey.includes("repair")) return "repair-photos";
-
-  if (
-    entityType === "expense" ||
-    docKey.includes("expense") ||
-    docKey.includes("withdrawal") ||
-    docKey.includes("bill")
-  ) {
-    return "expense-attachments";
-  }
-  if (
-    docKey.includes("settlement") ||
-    docKey.includes("gold-settlement") ||
-    docKey.includes("proof")
-  ) {
-    return "gold-settlement-proofs";
-  }
-  if (
-    docKey.includes("pay") ||
-    docKey.includes("bill") ||
-    docKey.includes("invoice") ||
-    entityType === "billing"
-  ) {
-    return "billing-attachments";
-  }
-
-  return "order-attachments"; // Safe fallback directory
-}
 
 export function AttachmentPlaceholderModal({
   open,
@@ -117,6 +61,8 @@ export function AttachmentPlaceholderModal({
   const [isUploading, setIsUploading] = useState(false);
   const [fileMissing, setFileMissing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const helpText =
+    "Documents and photographs are stored securely in this device's encrypted application vault.";
 
   // Reset local state whenever the modal opens for a (possibly different) record.
   useEffect(() => {
@@ -210,60 +156,6 @@ export function AttachmentPlaceholderModal({
         save(entityType, entityId, docKey, { filed, note: note.trim(), fileName });
       }
 
-      // 2. Cloud replication — best-effort, and deliberately non-fatal. A failed
-      //    upload must never fail the save or discard the file: the bytes are
-      //    already durable on disk. Offline mode skips it entirely.
-      let cloudFailed = false;
-      if (selectedFile && !isOfflineMode()) {
-        try {
-          const bucket = getBucketForEntityType(entityType);
-          const module = mapToHostingerModule(entityType, docKey);
-          const previousPath = existing?.storagePath;
-
-          const { filePath, signedUrl } = await uploadFileToSupabase(
-            bucket,
-            selectedFile,
-            entityId,
-            docKey,
-          );
-
-          // Replacing an existing file — remove the old storage object so it
-          // doesn't linger as an orphaned blob in the bucket.
-          if (previousPath && previousPath !== filePath) {
-            const { error: removeError } = await supabase.storage
-              .from(bucket)
-              .remove([previousPath]);
-            if (removeError) {
-              console.warn(
-                "[AttachmentModal] Failed to remove previous storage object:",
-                removeError,
-              );
-            }
-          }
-
-          await saveAttachmentMetadata({
-            filePath,
-            fileUrl: signedUrl,
-            fileName: selectedFile.name,
-            originalFileName: selectedFile.name,
-            mimeType: selectedFile.type || "application/octet-stream",
-            fileSize: selectedFile.size,
-            relatedModule: module,
-            relatedTable: entityType,
-            relatedRecordId: entityId,
-            notes: note.trim(),
-            docKey,
-            thumbnailDataUrl: thumbnailDataUrl || undefined,
-            storageProvider: "supabase",
-          });
-
-          save(entityType, entityId, docKey, { storagePath: filePath, bucket });
-        } catch (err) {
-          cloudFailed = true;
-          console.warn("[AttachmentModal] Cloud replication failed; file is safe locally:", err);
-        }
-      }
-
       const rec = useAttachments.getState().items[`${entityType}:${entityId}:${docKey}`];
       onSaved?.({
         filed: rec?.filed ?? filed,
@@ -272,13 +164,7 @@ export function AttachmentPlaceholderModal({
         thumbnailDataUrl: rec?.thumbnailDataUrl,
       });
 
-      if (cloudFailed) {
-        toast.warning("Saved locally. Cloud upload failed — it will sync when back online.");
-      } else {
-        toast.success(
-          isOfflineMode() ? "Attachment saved locally." : "Attachment saved and uploaded securely.",
-        );
-      }
+      toast.success("Attachment saved locally.");
       onOpenChange(false);
     } catch (err: any) {
       console.error("[AttachmentModal Save Error]:", err);
@@ -291,22 +177,6 @@ export function AttachmentPlaceholderModal({
   const handleClear = async () => {
     setIsUploading(true);
     try {
-      // Find matching metadata record and delete in Supabase
-      const key = `${entityType}:${entityId}:${docKey}`;
-      await supabase.from("attachments").delete().eq("id", key);
-
-      // Remove the underlying storage object so nothing is left orphaned in the
-      // bucket. Offline attachments have no bucket object — only the local row.
-      if (existing?.storagePath && !isOfflineMode()) {
-        const bucket = getBucketForEntityType(entityType);
-        const { error: removeError } = await supabase.storage
-          .from(bucket)
-          .remove([existing.storagePath]);
-        if (removeError) {
-          console.warn("[AttachmentModal] Failed to remove storage object:", removeError);
-        }
-      }
-
       clear(entityType, entityId, docKey);
       setFileName("");
       setFileDataUrl("");
@@ -314,7 +184,7 @@ export function AttachmentPlaceholderModal({
       setFileMissing(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
       onSaved?.({ filed: false, note: "" });
-      toast.success("Documents cleared from database and storage references.");
+      toast.success("Document cleared from local storage.");
       onOpenChange(false);
     } catch (err: any) {
       console.error("[AttachmentModal Clear Error]:", err);
@@ -341,7 +211,7 @@ export function AttachmentPlaceholderModal({
             <Paperclip className="h-5 w-5" /> {title}
           </DialogTitle>
           <DialogDescription className="leading-relaxed text-xs text-muted-foreground">
-            {HELP}
+            {helpText}
           </DialogDescription>
         </DialogHeader>
 
@@ -388,7 +258,7 @@ export function AttachmentPlaceholderModal({
                   <div className="max-h-48 rounded overflow-hidden shadow-sm border border-border/60 bg-white flex items-center justify-center">
                     {fileMissing ? (
                       <div className="p-8 text-center text-xs text-red-500 font-medium font-mono">
-                        File missing on storage server
+                        File missing from local storage
                       </div>
                     ) : (
                       <img
@@ -510,7 +380,8 @@ export function AttachmentPlaceholderModal({
           >
             {isUploading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Uploading...
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                Saving...
               </>
             ) : (
               "Save Register"

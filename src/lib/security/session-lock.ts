@@ -10,8 +10,8 @@
  * with the already-known email) rather than trusting anything client-side.
  */
 import { create } from "zustand";
-import { supabase } from "@/integrations/supabase/client";
-import { isOfflineMode } from "@/lib/deployment-mode";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { isLocalFirstMode } from "@/lib/deployment-mode";
 import { verifyLocalLogin } from "@/lib/local-auth";
 
 interface SessionLockState {
@@ -44,7 +44,7 @@ export const useSessionLock = create<SessionLockState>()((set, get) => ({
   recordActivity: () => set({ lastActivityAt: Date.now() }),
 
   unlock: async (email, password) => {
-    if (isOfflineMode()) {
+    if (isLocalFirstMode()) {
       const result = await verifyLocalLogin(email, password);
       if (!result.ok) return { ok: false, error: result.error };
       set({ locked: false, lockedAt: null, lastActivityAt: Date.now() });

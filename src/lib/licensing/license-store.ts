@@ -360,31 +360,8 @@ export async function verifyLicense(mode: DeploymentMode | null): Promise<Licens
       if (usingSupabase) {
         // Trust boundary is TLS + RLS (validate_license is the only path to
         // the locked-down licenses table) — no client-side signature to verify.
-        const entitlement = JSON.parse(response.entitlement) as {
-          status: string;
-          edition?: string;
-          expiry: string | null;
-          enabledFeatures?: string[];
-          maximumDevices?: number;
-          offlineValidUntil: string;
-        };
-        const expiry = entitlement.expiry ? Date.parse(entitlement.expiry) : null;
-        const status: LicenseCache["status"] =
-          entitlement.status === "active" && expiry !== null && now > expiry
-            ? "expired"
-            : (entitlement.status as LicenseCache["status"]);
-        cache = {
-          status,
-          expiry,
-          trialStartedAt: null,
-          trialEndsAt: null,
-          seats: entitlement.maximumDevices ?? null,
-          edition: entitlement.edition ?? null,
-          features: entitlement.enabledFeatures ?? [],
-          customerStatus: response.customerStatus,
-          lastVerifiedAt: now,
-          offlineValidUntil: Date.parse(entitlement.offlineValidUntil),
-        };
+        const entitlement = JSON.parse(response.entitlement) as SignedEntitlementPayload;
+        cache = cacheFromPayload(entitlement, now);
       } else {
         if (!response.signature) throw new Error("The Licensing API did not return a signature.");
         const envelope = { payload: response.entitlement, signature: response.signature };

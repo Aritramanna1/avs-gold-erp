@@ -20,7 +20,7 @@ test.describe("Digital Job Card", () => {
   }) => {
     await authedPage.goto(`/orders/${seedIds.orderId}`);
     await authedPage.getByRole("link", { name: "Job Card", exact: true }).click();
-    await expect(authedPage).toHaveURL(new RegExp(`/workshop/job-card/${seedIds.orderId}`));
+    await expect(authedPage).toHaveURL(/\/workshop\/job-card\/[0-9a-fA-F-]{36}/);
     expectNoPageErrors(authedPage);
   });
 

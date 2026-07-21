@@ -10,7 +10,7 @@
  *   getDocumentShare()         — called from public portal (no auth)
  */
 
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
 import { useBilling } from "@/lib/billing-store";
 import { useOrders } from "@/lib/orders-store";

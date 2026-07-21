@@ -11,7 +11,7 @@
  * Recovery % stored as basis-points (e.g. 9850 = 98.50%).
  */
 import { create } from "zustand";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useLedger } from "@/lib/ledger-store";
 import { useSettings } from "@/lib/settings-store";
 import { createRepository } from "./repositories/base-repository";

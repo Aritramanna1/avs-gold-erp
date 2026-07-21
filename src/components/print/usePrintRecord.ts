@@ -294,7 +294,29 @@ export function usePrintRecord(
   // reprint counter, no duplicate-print confirmation — a document may be
   // printed as many times as the workshop needs, with one click.
   const handlePrintTrigger = useCallback(() => {
-    void printDocument(`${docType?.replace(/_/g, " ").toUpperCase() || "Document"} - ${docNumber}`);
+    // Map the internal docType to the printer profile template mapping label
+    const DOC_TYPE_TO_LABEL: Record<string, string> = {
+      invoice: "Invoice",
+      gst_invoice: "Invoice",
+      retail_invoice: "Invoice",
+      credit_note: "Invoice",
+      debit_note: "Invoice",
+      estimate: "Estimate",
+      receipt: "Receipt",
+      payment_receipt: "Receipt",
+      job_card: "Job Card",
+      repair_slip: "Repair Slip",
+      worker_settlement: "Worker Settlement",
+      gold_settlement: "Invoice",
+      ledger: "Ledger",
+      reports: "Reports",
+      label: "Label",
+    };
+    const docLabel = docType ? DOC_TYPE_TO_LABEL[docType] : undefined;
+    void printDocument(
+      `${docType?.replace(/_/g, " ").toUpperCase() || "Document"} - ${docNumber}`,
+      docLabel,
+    );
   }, [docType, docNumber]);
 
   return {

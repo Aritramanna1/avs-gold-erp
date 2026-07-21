@@ -31,7 +31,7 @@ import {
   Clock,
   CalendarCheck,
   ClipboardList,
-  Send,
+  MessageCircle,
   TrendingDown,
 } from "lucide-react";
 
@@ -125,14 +125,23 @@ function Home() {
   ).length;
   const stockCount = (stock ?? []).filter((s) => s?.status === "available").length;
 
-  const [reminder, setReminder] = useState<{ cust: string; kari?: string } | null>(null);
+  const [reminder, setReminder] = useState<{
+    cust: string;
+    kari?: string;
+    custPhone?: string;
+    kariPhone?: string;
+  } | null>(null);
 
   function openReminder(orderId: string) {
     const o = orders.find((x) => x.id === orderId);
     if (!o) return;
     const cust = people.find((p) => p.id === o.customerId);
-    const kari = o.karigarId ? people.find((p) => p.id === o.karigarId) : null;
+    // Karigar from the order, or from the job card assigned to it.
+    const jobKarigarId = jobs.find((j) => j.orderId === o.id && j.karigarId)?.karigarId;
+    const kari = people.find((p) => p.id === (o.karigarId ?? jobKarigarId)) ?? null;
     setReminder({
+      custPhone: cust?.phone,
+      kariPhone: kari?.phone,
       cust: customerReminderMessage({
         customerName: cust?.fullName ?? "Customer",
         orderNo: o.orderNo,
@@ -230,6 +239,7 @@ function Home() {
           label={t("dashboard.pendingJobCard")}
           count={buckets?.pendingJobCard?.length ?? 0}
           orders={buckets?.pendingJobCard?.slice(0, 3) ?? []}
+          onReminder={openReminder}
         />
         <BucketCard
           icon={Receipt}
@@ -319,6 +329,8 @@ function Home() {
         onClose={() => setReminder(null)}
         customerMessage={reminder?.cust ?? ""}
         karigarMessage={reminder?.kari}
+        customerPhone={reminder?.custPhone}
+        karigarPhone={reminder?.kariPhone}
       />
     </div>
   );
@@ -406,10 +418,11 @@ function BucketCard({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-6 px-2"
+                  className="h-6 px-2 text-[#25D366] hover:bg-[#25D366]/10 shrink-0"
                   onClick={() => onReminder(o.id)}
+                  title="Send WhatsApp reminder (Customer / Karigar)"
                 >
-                  <Send className="h-3 w-3" />
+                  <MessageCircle className="h-3.5 w-3.5" />
                 </Button>
               )}
             </li>

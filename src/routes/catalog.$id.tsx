@@ -16,18 +16,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  useCatalog,
-  DESIGN_SOURCE_LABELS,
-  DIFFICULTY_LABELS,
-  type Difficulty,
-  type DesignSource,
-} from "@/lib/catalog-store";
+import { useCatalog, type Difficulty, type DesignSource } from "@/lib/catalog-store";
 import { ITEM_CATEGORIES } from "@/lib/orders-store";
 import { usePeople } from "@/lib/people-store";
 import { useOrders } from "@/lib/orders-store";
 import { COMMON_PURITIES, gramsToMg, mgToGrams } from "@/lib/gold";
 import { ArrowLeft, Image as ImageIcon, Save, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/catalog/$id")({
   head: () => ({ meta: [{ title: "Design · AVS Gold ERP" }] }),
@@ -35,6 +41,7 @@ export const Route = createFileRoute("/catalog/$id")({
 });
 
 function DesignPage() {
+  const { t } = useLanguage();
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const d = useCatalog((s) => s.designs.find((x) => x.id === id));
@@ -43,6 +50,7 @@ function DesignPage() {
   const customers = usePeople((s) => s.people);
   const orders = useOrders((s) => s.orders);
   const [editing, setEditing] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [draft, setDraft] = useState(d);
   const [isCustomCategory, setIsCustomCategory] = useState(
     d ? !ITEM_CATEGORIES.includes(d.category) && d.category !== "" : false,
@@ -61,10 +69,10 @@ function DesignPage() {
   if (!d) {
     return (
       <div className="p-8 max-w-3xl mx-auto">
-        <p className="text-muted-foreground">Design not found.</p>
+        <p className="text-muted-foreground">{t("catalog.not_found")}</p>
         <Link to="/catalog">
           <Button variant="ghost" className="mt-4 gap-2">
-            <ArrowLeft className="h-4 w-4" /> Catalog
+            <ArrowLeft className="h-4 w-4" /> {t("catalog.title")}
           </Button>
         </Link>
       </div>
@@ -91,6 +99,7 @@ function DesignPage() {
       notes: draft.notes,
     });
     setEditing(false);
+    toast.success(t("catalog.changes_saved"));
   }
 
   return (
@@ -102,7 +111,7 @@ function DesignPage() {
           <div className="flex gap-2">
             <Link to="/catalog">
               <Button variant="ghost" className="gap-2">
-                <ArrowLeft className="h-4 w-4" /> Back
+                <ArrowLeft className="h-4 w-4" /> {t("catalog.back")}
               </Button>
             </Link>
             {!editing ? (
@@ -112,11 +121,11 @@ function DesignPage() {
                   setEditing(true);
                 }}
               >
-                Edit
+                {t("catalog.edit")}
               </Button>
             ) : (
               <Button onClick={save} className="gap-2">
-                <Save className="h-4 w-4" /> Save
+                <Save className="h-4 w-4" /> {t("catalog.save_changes")}
               </Button>
             )}
           </div>
@@ -142,13 +151,13 @@ function DesignPage() {
                   entityType="catalog"
                   entityId={d.id}
                   docKey="design_photo"
-                  docLabel="Design photo"
-                  title={`Upload Design Photo for ${d.designNumber}`}
+                  docLabel={t("catalog.design_photo")}
+                  title={`${t("catalog.upload_photo")} ${d.designNumber}`}
                   className="bg-gold text-stone-950 font-semibold hover:bg-gold-light"
                 />
               </div>
               <p className="text-[10px] text-muted-foreground leading-relaxed max-w-[200px] mx-auto">
-                No design photo on file. Upload a JPG or PNG format image to render here.
+                {t("catalog.no_photo_desc")}
               </p>
             </div>
           </div>
@@ -156,34 +165,36 @@ function DesignPage() {
 
         <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
           <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">{DESIGN_SOURCE_LABELS[cur.source]}</Badge>
-            <Badge variant="outline">{DIFFICULTY_LABELS[cur.difficulty]}</Badge>
+            <Badge variant="secondary">{t(`catalog.source_${cur.source}`)}</Badge>
+            <Badge variant="outline">{t(`catalog.difficulty_${cur.difficulty}`)}</Badge>
             <Badge variant="outline">{cur.purity}</Badge>
           </div>
           {!editing ? (
             <dl className="grid grid-cols-2 gap-3 text-sm">
-              <Pair k="Category" v={cur.category} />
-              <Pair k="Subcategory" v={cur.subcategory || "—"} />
-              <Pair k="Item type" v={cur.itemType || "—"} />
-              <Pair k="Approx gross" v={`${mgToGrams(cur.approxGrossMg)} g`} />
-              <Pair k="Approx net" v={`${mgToGrams(cur.approxNetMg)} g`} />
-              <Pair k="Tags" v={cur.tags.join(", ") || "—"} />
-              {cust && <Pair k="Customer" v={cust.fullName} />}
-              {order && <Pair k="From order" v={order.orderNo} />}
+              <Pair k={t("catalog.category")} v={cur.category} />
+              <Pair k={t("catalog.subcategory")} v={cur.subcategory || "—"} />
+              <Pair k={t("catalog.item_type")} v={cur.itemType || "—"} />
+              <Pair k={t("catalog.approx_gross")} v={`${mgToGrams(cur.approxGrossMg)} g`} />
+              <Pair k={t("catalog.approx_net")} v={`${mgToGrams(cur.approxNetMg)} g`} />
+              <Pair k={t("catalog.tags")} v={cur.tags.join(", ") || "—"} />
+              {cust && <Pair k={t("catalog.customer")} v={cust.fullName} />}
+              {order && <Pair k={t("catalog.from_order")} v={order.orderNo} />}
               <div className="col-span-2">
-                <div className="text-xs text-muted-foreground uppercase tracking-wider">Notes</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider">
+                  {t("catalog.notes")}
+                </div>
                 <p className="mt-1 whitespace-pre-wrap text-sm">{cur.notes || "—"}</p>
               </div>
             </dl>
           ) : (
             <div className="grid sm:grid-cols-2 gap-3">
-              <F label="Name">
+              <F label={t("catalog.design_name")}>
                 <Input
                   value={cur.designName}
                   onChange={(e) => setDraft({ ...cur, designName: e.target.value })}
                 />
               </F>
-              <F label="Category">
+              <F label={t("catalog.category")}>
                 <Select
                   value={isCustomCategory ? "Custom" : cur.category}
                   onValueChange={(v) => {
@@ -205,31 +216,31 @@ function DesignPage() {
                         {c}
                       </SelectItem>
                     ))}
-                    <SelectItem value="Custom">Custom</SelectItem>
+                    <SelectItem value="Custom">{t("catalog.custom")}</SelectItem>
                   </SelectContent>
                 </Select>
                 {isCustomCategory && (
                   <Input
                     className="mt-2"
-                    placeholder="Enter custom category"
+                    placeholder={t("catalog.custom_category_placeholder")}
                     value={cur.category}
                     onChange={(e) => setDraft({ ...cur, category: e.target.value })}
                   />
                 )}
               </F>
-              <F label="Subcategory">
+              <F label={t("catalog.subcategory")}>
                 <Input
                   value={cur.subcategory || ""}
                   onChange={(e) => setDraft({ ...cur, subcategory: e.target.value })}
                 />
               </F>
-              <F label="Item type">
+              <F label={t("catalog.item_type")}>
                 <Input
                   value={cur.itemType || ""}
                   onChange={(e) => setDraft({ ...cur, itemType: e.target.value })}
                 />
               </F>
-              <F label="Purity">
+              <F label={t("catalog.purity")}>
                 <Select
                   value={String(cur.purity)}
                   onValueChange={(v) => setDraft({ ...cur, purity: Number(v) })}
@@ -246,7 +257,7 @@ function DesignPage() {
                   </SelectContent>
                 </Select>
               </F>
-              <F label="Difficulty">
+              <F label={t("catalog.making_difficulty")}>
                 <Select
                   value={cur.difficulty}
                   onValueChange={(v) => setDraft({ ...cur, difficulty: v as Difficulty })}
@@ -255,13 +266,13 @@ function DesignPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="easy">Easy</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="hard">Hard</SelectItem>
+                    <SelectItem value="easy">{t("catalog.difficulty_easy")}</SelectItem>
+                    <SelectItem value="medium">{t("catalog.difficulty_medium")}</SelectItem>
+                    <SelectItem value="hard">{t("catalog.difficulty_hard")}</SelectItem>
                   </SelectContent>
                 </Select>
               </F>
-              <F label="Approx gross (g)">
+              <F label={`${t("catalog.approx_gross")} (g)`}>
                 <Input
                   value={mgToGrams(cur.approxGrossMg)}
                   onChange={(e) => {
@@ -271,7 +282,7 @@ function DesignPage() {
                   }}
                 />
               </F>
-              <F label="Approx net (g)">
+              <F label={`${t("catalog.approx_net")} (g)`}>
                 <Input
                   value={mgToGrams(cur.approxNetMg)}
                   onChange={(e) => {
@@ -281,7 +292,7 @@ function DesignPage() {
                   }}
                 />
               </F>
-              <F label="Source">
+              <F label={t("catalog.source")}>
                 <Select
                   value={cur.source}
                   onValueChange={(v) => setDraft({ ...cur, source: v as DesignSource })}
@@ -290,14 +301,18 @@ function DesignPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="internal">Internal</SelectItem>
-                    <SelectItem value="customer_reference">Customer Reference</SelectItem>
-                    <SelectItem value="external">External</SelectItem>
-                    <SelectItem value="saved_from_order">Saved From Order</SelectItem>
+                    <SelectItem value="internal">{t("catalog.source_internal")}</SelectItem>
+                    <SelectItem value="customer_reference">
+                      {t("catalog.source_customer_reference")}
+                    </SelectItem>
+                    <SelectItem value="external">{t("catalog.source_external")}</SelectItem>
+                    <SelectItem value="saved_from_order">
+                      {t("catalog.source_saved_from_order")}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </F>
-              <F label="Tags (comma separated)">
+              <F label={t("catalog.tags")}>
                 <Input
                   value={cur.tags.join(", ")}
                   onChange={(e) =>
@@ -312,7 +327,7 @@ function DesignPage() {
                 />
               </F>
               <div className="sm:col-span-2">
-                <F label="Notes">
+                <F label={t("catalog.notes")}>
                   <Textarea
                     rows={3}
                     value={cur.notes || ""}
@@ -326,14 +341,9 @@ function DesignPage() {
             <Button
               variant="ghost"
               className="text-destructive hover:text-destructive gap-2"
-              onClick={() => {
-                if (confirm("Delete this design?")) {
-                  remove(d!.id);
-                  navigate({ to: "/catalog" });
-                }
-              }}
+              onClick={() => setDeleteOpen(true)}
             >
-              <Trash2 className="h-4 w-4" /> Delete
+              <Trash2 className="h-4 w-4" /> {t("catalog.delete")}
             </Button>
           </div>
         </div>
@@ -343,11 +353,33 @@ function DesignPage() {
         entityType="catalog"
         entityId={d!.id}
         slots={[
-          { key: "design_photo", label: "Design photo" },
-          { key: "customer_reference", label: "Customer reference" },
-          { key: "tech_drawing", label: "Technical drawing" },
+          { key: "design_photo", label: t("catalog.design_photo") },
+          { key: "customer_reference", label: t("catalog.customer_reference_attachment") },
+          { key: "tech_drawing", label: t("catalog.technical_drawing") },
         ]}
       />
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("catalog.delete_title")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("catalog.delete_description")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("catalog.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                remove(d.id);
+                toast.success(t("catalog.design_deleted"));
+                void navigate({ to: "/catalog" });
+              }}
+            >
+              {t("catalog.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

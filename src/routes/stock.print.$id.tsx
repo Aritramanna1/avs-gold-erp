@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { useStock } from "@/lib/stock-store";
 import { BarcodeLabelPreview } from "@/components/print/BarcodeLabelPreview";
 import { ArrowLeft, Printer, Settings2, LayoutGrid, Sliders } from "lucide-react";
+import { printDocument } from "@/lib/print-document";
 
 export const Route = createFileRoute("/stock/print/$id")({
   head: () => ({ meta: [{ title: "Tag Preview · AVS Gold ERP" }] }),
@@ -47,9 +48,9 @@ function TagPreview() {
 
   if (!item) return <div className="p-8 text-black">Item not found.</div>;
 
-  function triggerThermalPrint() {
-    window.print();
-  }
+  const triggerThermalPrint = () => {
+    void printDocument(`Jewellery Tag - ${item.itemCode}`, "Label");
+  };
 
   // Generate preview array based on layout configurations
   const renderCount = layout === "single_thermal" ? 1 : numCopies;
@@ -90,6 +91,7 @@ function TagPreview() {
 
             {/* Simulated sticker roll layout */}
             <div
+              data-testid="print-layout-root"
               className={`grid gap-6 justify-items-center ${layout === "dual_landscape" ? "grid-cols-2 max-w-2xl" : "grid-cols-1 max-w-sm"}`}
               style={{ padding: `${customMargin}mm` }}
             >

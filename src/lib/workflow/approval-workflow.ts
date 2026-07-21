@@ -16,7 +16,8 @@
  */
 import { createRepository } from "@/lib/repositories/base-repository";
 import { append as appendAudit } from "@/lib/security/audit-log";
-import { getRawSupabaseClient } from "@/integrations/supabase/client";
+import { getCloudDataClient as getRawSupabaseClient } from "@/lib/providers/data-provider";
+import { isOfflineMode } from "@/lib/deployment-mode";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 
@@ -85,6 +86,7 @@ export async function requestApproval(
  * race past this guard and both "successfully" decide the same request.
  */
 async function fetchCurrentRequest(requestId: string): Promise<ApprovalRequest | null> {
+  if (isOfflineMode()) return approvalRepository.read(requestId);
   const client = getRawSupabaseClient();
   const { data, error } = await client
     .from("approval_requests" as any)
@@ -156,6 +158,7 @@ export function rejectRequest(
  * request itself fails, so this still degrades gracefully offline.
  */
 async function fetchAllRequests(): Promise<ApprovalRequest[]> {
+  if (isOfflineMode()) return approvalRepository.readAll();
   try {
     const client = getRawSupabaseClient();
     const { data, error } = await client.from("approval_requests" as any).select("id, data");

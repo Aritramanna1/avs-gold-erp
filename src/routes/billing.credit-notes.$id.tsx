@@ -5,7 +5,7 @@ import { paiseToRupees } from "@/lib/billing-store";
 import { useSettings } from "@/lib/settings-store";
 import { usePrintEngine } from "@/lib/print-engine";
 import { useCan } from "@/lib/rbac";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {

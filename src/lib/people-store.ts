@@ -5,7 +5,7 @@
 import { create } from "zustand";
 import { useAttachments } from "./attachments-store";
 import { getNextSequenceSync } from "./sequence-manager";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "./settings-store";
 import { createRepository } from "./repositories/base-repository";
 

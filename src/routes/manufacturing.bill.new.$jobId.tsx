@@ -862,8 +862,8 @@ export default function NewMfgBill() {
         </div>
       </Card>
 
-      {/* ── Section 4: Karigar Account Settlement ─────────────────────────── */}
-      <Card title="Karigar Account Settlement" icon={TrendingDown} color="text-purple-400">
+      {/* ── Section 4: Jeweller Account Settlement ─────────────────────────── */}
+      <Card title="Jeweller Account Settlement" icon={TrendingDown} color="text-purple-400">
         <p className="text-xs text-muted-foreground mb-4">
           LB = opening balance from karigar's previous account. P entries increase debit. MP entries
           (gold received back) reduce debit. Cash payment converted to gold equivalent via Bhav

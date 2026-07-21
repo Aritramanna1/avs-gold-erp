@@ -49,6 +49,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   // Whenever the active language changes, fetch its dictionary (cached after the first load).
   useEffect(() => {
     let cancelled = false;
+    document.documentElement.lang = language;
+    document.documentElement.dir = "ltr";
     if (language === "en") {
       setDict(englishDictionary);
       setLoading(false);

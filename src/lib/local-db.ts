@@ -3,8 +3,41 @@ import sqlWasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import type { Database, SqlJsStatic, SqlValue } from "sql.js";
 
 const SQLITE_DB_KEY = "mtj_erp_local_db";
-const SQLITE_DB_VERSION = 2;
+const SQLITE_DB_VERSION = 4;
 const ATTACHMENT_KEY_STORE = "mtj_erp_crypto_key";
+const DESKTOP_DATA_KEY = "local-data-key" as const;
+const DESKTOP_SIGNING_KEY = "local-signing-key" as const;
+
+type DesktopKeyName = typeof DESKTOP_DATA_KEY | typeof DESKTOP_SIGNING_KEY;
+interface DesktopKeyStore {
+  get: (key: DesktopKeyName) => Promise<string | null>;
+  set: (key: DesktopKeyName, value: string) => Promise<void>;
+}
+
+function getDesktopKeyStore(): DesktopKeyStore | null {
+  return (
+    (window as unknown as { mtjDesktop?: { secureStore?: DesktopKeyStore } }).mtjDesktop
+      ?.secureStore ?? null
+  );
+}
+
+function toBase64Bytes(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function fromBase64Bytes(value: string): Uint8Array {
+  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+}
+
+async function deleteLegacyIndexedKey(idb: IDBDatabase, key: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const request = idb.transaction("crypto", "readwrite").objectStore("crypto").delete(key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
 const DB_CHECKSUM_META_KEY = "db_checksum_sha256";
 
 let SQL: SqlJsStatic | null = null;
@@ -639,6 +672,11 @@ function createTables(): void {
     failed_login_count INTEGER DEFAULT 0,
     active INTEGER DEFAULT 1,
     is_super_owner INTEGER DEFAULT 0,
+    recovery_question_1 TEXT,
+    recovery_answer_hash_1 TEXT,
+    recovery_question_2 TEXT,
+    recovery_answer_hash_2 TEXT,
+    recovery_key_hash TEXT,
     created_at TEXT,
     updated_at TEXT
   );`);
@@ -747,6 +785,23 @@ function createTables(): void {
     last_verified_at TEXT,
     corrupted INTEGER NOT NULL DEFAULT 0
   );`);
+
+  // Automatic, rotated database backups (Database Hardening Priority 4).
+  // Each row is a full encrypted BackupSnapshot (see createBackupSnapshot).
+  // Separate from the ad hoc disaster-recovery drill (which verifies but
+  // discards) — these rows are the actual retained backups a restore reads
+  // from. `valid=1` only once verifyBackupRestorable() has passed on it.
+  db.run(`CREATE TABLE IF NOT EXISTS auto_backups (
+    id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    schema_version INTEGER NOT NULL,
+    checksum TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    valid INTEGER NOT NULL DEFAULT 0,
+    encrypted_blob BLOB NOT NULL,
+    iv BLOB NOT NULL
+  );`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_auto_backups_created ON auto_backups(created_at);`);
 
   // One row per (attachment, version). `is_current=1` marks the active
   // version; older versions are retained for history, never deleted by a
@@ -1096,6 +1151,20 @@ const MIGRATIONS: { version: number; up: (database: Database) => void }[] = [
       addColumnIfMissing(database, "local_users", "failed_login_count", "INTEGER DEFAULT 0");
     },
   },
+  // v3 records the complete current table/index baseline. Existing v1/v2
+  // databases run idempotent createTables() once during upgrade; subsequent
+  // launches can skip hundreds of CREATE IF NOT EXISTS statements entirely.
+  { version: 3, up: () => {} },
+  {
+    version: 4,
+    up: (database) => {
+      addColumnIfMissing(database, "local_users", "recovery_question_1", "TEXT");
+      addColumnIfMissing(database, "local_users", "recovery_answer_hash_1", "TEXT");
+      addColumnIfMissing(database, "local_users", "recovery_question_2", "TEXT");
+      addColumnIfMissing(database, "local_users", "recovery_answer_hash_2", "TEXT");
+      addColumnIfMissing(database, "local_users", "recovery_key_hash", "TEXT");
+    },
+  },
 ];
 
 function getSchemaVersion(database: Database): number {
@@ -1184,7 +1253,9 @@ async function initializeDatabase(): Promise<void> {
     throw err;
   }
   db = persisted ? new sql.Database(persisted) : new sql.Database();
-  createTables();
+  const previousVersion = persisted ? getSchemaVersion(db) : 0;
+  const schemaChanged = !persisted || previousVersion < SQLITE_DB_VERSION;
+  if (schemaChanged) createTables();
   // SQLite no-ops `PRAGMA foreign_keys = ON` if issued before the schema's
   // CREATE TABLE statements settle in some sql.js/WASM builds — asserting it
   // again after schema creation is what actually makes it stick for this
@@ -1201,7 +1272,12 @@ async function initializeDatabase(): Promise<void> {
       `SQLite PRAGMA integrity_check failed: ${integrity.issues.join("; ")}`,
     );
   }
-  await persistDatabase(new Uint8Array(db.export()), getSchemaVersion(db));
+  // Exporting, encrypting, hashing, and writing the entire SQLite database is
+  // unnecessary on an unchanged launch. Persist only new/upgraded schemas;
+  // normal writes continue to persist transactionally through runLocal().
+  if (schemaChanged) {
+    await persistDatabase(new Uint8Array(db.export()), getSchemaVersion(db));
+  }
 }
 
 /** Hard ceiling on DB init. It should take well under a second; this only
@@ -1524,6 +1600,19 @@ export async function decryptData(
 }
 
 export async function getOrCreateMasterKey(): Promise<CryptoKey> {
+  const desktopStore = getDesktopKeyStore();
+  if (desktopStore) {
+    const protectedKey = await desktopStore.get(DESKTOP_DATA_KEY);
+    if (protectedKey) {
+      return window.crypto.subtle.importKey(
+        "raw",
+        fromBase64Bytes(protectedKey) as unknown as BufferSource,
+        "AES-GCM",
+        true,
+        ["encrypt", "decrypt"],
+      );
+    }
+  }
   const idb = await openIndexedDb();
   const keyRaw = await new Promise<ArrayBuffer | null>((resolve, reject) => {
     const tx = idb.transaction("crypto", "readwrite");
@@ -1533,6 +1622,10 @@ export async function getOrCreateMasterKey(): Promise<CryptoKey> {
     request.onerror = () => reject(request.error);
   });
   if (keyRaw instanceof ArrayBuffer) {
+    if (desktopStore) {
+      await desktopStore.set(DESKTOP_DATA_KEY, toBase64Bytes(new Uint8Array(keyRaw)));
+      await deleteLegacyIndexedKey(idb, ATTACHMENT_KEY_STORE);
+    }
     return window.crypto.subtle.importKey("raw", keyRaw, "AES-GCM", true, ["encrypt", "decrypt"]);
   }
   const newKey = await window.crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, [
@@ -1540,6 +1633,10 @@ export async function getOrCreateMasterKey(): Promise<CryptoKey> {
     "decrypt",
   ]);
   const exported = await window.crypto.subtle.exportKey("raw", newKey);
+  if (desktopStore) {
+    await desktopStore.set(DESKTOP_DATA_KEY, toBase64Bytes(new Uint8Array(exported)));
+    return newKey;
+  }
   await new Promise<void>((resolve, reject) => {
     const tx = idb.transaction("crypto", "readwrite");
     const store = tx.objectStore("crypto");
@@ -1560,6 +1657,19 @@ const SIGNING_KEY_STORE = "mtj_erp_signing_key";
  * store), generated once per install.
  */
 export async function getOrCreateSigningKey(): Promise<CryptoKey> {
+  const desktopStore = getDesktopKeyStore();
+  if (desktopStore) {
+    const protectedKey = await desktopStore.get(DESKTOP_SIGNING_KEY);
+    if (protectedKey) {
+      return window.crypto.subtle.importKey(
+        "raw",
+        fromBase64Bytes(protectedKey) as unknown as BufferSource,
+        { name: "HMAC", hash: "SHA-256" },
+        true,
+        ["sign", "verify"],
+      );
+    }
+  }
   const idb = await openIndexedDb();
   const keyRaw = await new Promise<ArrayBuffer | null>((resolve, reject) => {
     const tx = idb.transaction("crypto", "readwrite");
@@ -1569,6 +1679,10 @@ export async function getOrCreateSigningKey(): Promise<CryptoKey> {
     request.onerror = () => reject(request.error);
   });
   if (keyRaw instanceof ArrayBuffer) {
+    if (desktopStore) {
+      await desktopStore.set(DESKTOP_SIGNING_KEY, toBase64Bytes(new Uint8Array(keyRaw)));
+      await deleteLegacyIndexedKey(idb, SIGNING_KEY_STORE);
+    }
     return window.crypto.subtle.importKey("raw", keyRaw, { name: "HMAC", hash: "SHA-256" }, true, [
       "sign",
       "verify",
@@ -1579,6 +1693,10 @@ export async function getOrCreateSigningKey(): Promise<CryptoKey> {
     "verify",
   ]);
   const exported = await window.crypto.subtle.exportKey("raw", newKey);
+  if (desktopStore) {
+    await desktopStore.set(DESKTOP_SIGNING_KEY, toBase64Bytes(new Uint8Array(exported)));
+    return newKey;
+  }
   await new Promise<void>((resolve, reject) => {
     const tx = idb.transaction("crypto", "readwrite");
     const store = tx.objectStore("crypto");
@@ -1642,10 +1760,16 @@ export async function rotateMasterKey(): Promise<KeyRotationResult> {
     "decrypt",
   ]);
   const exportedNewKey = await window.crypto.subtle.exportKey("raw", newKey);
+  const desktopStore = getDesktopKeyStore();
+  if (desktopStore) {
+    await desktopStore.set(DESKTOP_DATA_KEY, toBase64Bytes(new Uint8Array(exportedNewKey)));
+  }
   await new Promise<void>((resolve, reject) => {
     const tx = idb.transaction("crypto", "readwrite");
     const store = tx.objectStore("crypto");
-    const request = store.put(exportedNewKey, ATTACHMENT_KEY_STORE);
+    const request = desktopStore
+      ? store.delete(ATTACHMENT_KEY_STORE)
+      : store.put(exportedNewKey, ATTACHMENT_KEY_STORE);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
@@ -1834,6 +1958,132 @@ export async function verifyBackupRestorable(
     sizeBytes,
     issues,
   };
+}
+
+// ============================================================================
+// Retained automatic backups (auto_backups table) — Database Hardening
+// Priority 4. Distinct from the disaster-recovery drill: rows here are the
+// actual backups a restore reads from, with configurable retention/rotation.
+// ============================================================================
+
+export interface AutoBackupEntry {
+  id: string;
+  createdAt: string;
+  schemaVersion: number;
+  checksum: string;
+  sizeBytes: number;
+  valid: boolean;
+}
+
+function autoBackupId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? `bkp_${crypto.randomUUID()}`
+    : `bkp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Creates a snapshot, verifies it's genuinely restorable (never trusts a
+ * backup that hasn't proven it decrypts + passes integrity_check), and
+ * retains it as a row. Rotation happens after: oldest backups beyond
+ * `retainCount` are removed, but the single most recent VALID backup is
+ * never removed even if retention would otherwise drop it (never leaves the
+ * install with zero good backups).
+ */
+export async function createAndRetainBackup(retainCount: number): Promise<AutoBackupEntry> {
+  await initLocalDb();
+  const database = getDb();
+  const snapshot = await createBackupSnapshot();
+  const verification = await verifyBackupRestorable(snapshot);
+  const id = autoBackupId();
+  database.run(
+    `INSERT INTO auto_backups (id, created_at, schema_version, checksum, size_bytes, valid, encrypted_blob, iv)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+    [
+      id,
+      snapshot.createdAt,
+      snapshot.schemaVersion,
+      snapshot.checksum,
+      verification.sizeBytes,
+      verification.ok ? 1 : 0,
+      snapshot.encryptedBlob,
+      snapshot.iv,
+    ],
+  );
+  await persistDatabase(new Uint8Array(database.export()), snapshot.schemaVersion);
+  await rotateAutoBackups(Math.max(1, retainCount));
+  return {
+    id,
+    createdAt: snapshot.createdAt,
+    schemaVersion: snapshot.schemaVersion,
+    checksum: snapshot.checksum,
+    sizeBytes: verification.sizeBytes,
+    valid: verification.ok,
+  };
+}
+
+/** Newest first. */
+export function listAutoBackups(): AutoBackupEntry[] {
+  const database = getDb();
+  const stmt = database.prepare(
+    `SELECT id, created_at, schema_version, checksum, size_bytes, valid FROM auto_backups ORDER BY created_at DESC;`,
+  );
+  const rows: AutoBackupEntry[] = [];
+  while (stmt.step()) {
+    const r = stmt.getAsObject();
+    rows.push({
+      id: String(r.id),
+      createdAt: String(r.created_at),
+      schemaVersion: Number(r.schema_version),
+      checksum: String(r.checksum),
+      sizeBytes: Number(r.size_bytes),
+      valid: Number(r.valid) === 1,
+    });
+  }
+  stmt.free();
+  return rows;
+}
+
+/** Loads a retained backup's full snapshot for restore. */
+export function getAutoBackupSnapshot(id: string): BackupSnapshot | null {
+  const database = getDb();
+  const stmt = database.prepare(
+    `SELECT schema_version, checksum, created_at, encrypted_blob, iv FROM auto_backups WHERE id = ?;`,
+  );
+  stmt.bind([id]);
+  if (!stmt.step()) {
+    stmt.free();
+    return null;
+  }
+  const r = stmt.getAsObject();
+  stmt.free();
+  return {
+    schemaVersion: Number(r.schema_version),
+    checksum: String(r.checksum),
+    createdAt: String(r.created_at),
+    encryptedBlob: r.encrypted_blob as Uint8Array,
+    iv: r.iv as Uint8Array,
+  };
+}
+
+/**
+ * Keeps the newest `retainCount` backups. Always keeps at least the single
+ * newest VALID backup regardless of count, so rotation can never leave the
+ * install with zero good backups to fall back on.
+ */
+async function rotateAutoBackups(retainCount: number): Promise<void> {
+  const database = getDb();
+  const all = listAutoBackups(); // newest first
+  const newestValidId = all.find((b) => b.valid)?.id;
+  const toDelete = all
+    .slice(retainCount)
+    .filter((b) => b.id !== newestValidId)
+    .map((b) => b.id);
+  for (const id of toDelete) {
+    database.run(`DELETE FROM auto_backups WHERE id = ?;`, [id]);
+  }
+  if (toDelete.length > 0) {
+    await persistDatabase(new Uint8Array(database.export()), getSchemaVersion(database));
+  }
 }
 
 // ============================================================================

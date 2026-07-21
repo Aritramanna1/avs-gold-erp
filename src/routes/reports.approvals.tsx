@@ -9,7 +9,7 @@ import {
   rejectRequest,
   type ApprovalRequest,
 } from "@/lib/workflow/approval-workflow";
-import { supabase } from "@/integrations/supabase/client";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { exportToCSV, triggerPrint } from "@/lib/report-engine";
 import {
   CheckCircle2,

@@ -40,7 +40,7 @@ const SUPER_ROLES: string[] = [ROLES.SUPER_OWNER, ROLES.ADMINISTRATOR, "Owner"];
  * explicitly — handled in `hasRoutePermission`).
  */
 const ROUTE_ACL: Record<string, Role[]> = {
-  /dashboard/ceo: [ROLES.CEO],
+  "/dashboard/ceo": [ROLES.CEO],
   "/dashboard": [
     ROLES.SUPER_OWNER,
     ROLES.ADMINISTRATOR,
@@ -192,9 +192,33 @@ const ROUTE_ACL: Record<string, Role[]> = {
  * Super roles bypass all checks. Print/public sub-paths are always allowed
  * because AuthGate already verified the session.
  */
+/**
+ * Routes restricted to an exact role set, even for super roles. The CEO
+ * Dashboard is deliberately CEO-only: owners/admins do not see it. Checked
+ * BEFORE the super-role bypass below.
+ */
+const EXCLUSIVE_ROUTES: Record<string, Role[]> = {
+  "/dashboard/ceo": [ROLES.CEO],
+};
+
 export function hasRoutePermission(role: string | null | undefined, path: string): boolean {
   if (!role) return false;
+
+  // The first setup account is the Super Owner and is never constrained by a
+  // route ACL, including routes that are exclusive for ordinary roles.
+  if (role === ROLES.SUPER_OWNER || role === "Owner") return true;
+
+  for (const prefix of Object.keys(EXCLUSIVE_ROUTES)) {
+    if (path === prefix || path.startsWith(prefix + "/") || path.startsWith(prefix + "?")) {
+      return (EXCLUSIVE_ROUTES[prefix] as string[]).includes(role);
+    }
+  }
+
   if (SUPER_ROLES.includes(role)) return true;
+
+  // Planned manufacturing entries intentionally remain navigable so their
+  // professional Coming Soon pages are visible instead of hidden or disabled.
+  if (path === "/coming-soon" || path.startsWith("/coming-soon/")) return true;
 
   // Find the longest matching prefix
   const prefixes = Object.keys(ROUTE_ACL).sort((a, b) => b.length - a.length);

@@ -41,9 +41,9 @@ import {
  */
 const MATERIAL_BOOKS = [
   { key: "worker", label: "Worker Gold Book", icon: Users, available: true },
-  { key: "outside", label: "Outside Worker Book", icon: Truck, available: false },
-  { key: "polishing", label: "Polishing Book", icon: Sparkles, available: false },
+  { key: "outside", label: "Outside Gold Book (Coming Soon)", icon: Truck, available: false },
   { key: "meena", label: "Meena Book", icon: Gem, available: false },
+  { key: "polishing", label: "Polishing Book (Coming Soon)", icon: Sparkles, available: false },
 ] as const;
 type MaterialBookKey = (typeof MATERIAL_BOOKS)[number]["key"];
 
@@ -91,9 +91,14 @@ function WorkerGoldBookPage() {
   const [selectedBook, setSelectedBook] = useState<MaterialBookKey>("worker");
 
   // Active view states
+  // Daily Material Slip is the active workflow. The raw Ledger Statements and
+  // Custody Balances views are retired from this module (detail lives in
+  // Manufacturing Books); only New Entry (which creates the slips) and Daily
+  // Material Slips are reachable. Key bumped to v2 so a persisted "ledger"/
+  // "balances" tab from before never strands a returning user on a hidden view.
   const [activeTab, setActiveTab] = useDraft<"ledger" | "balances" | "daily_slips" | "new_entry">(
-    "mtj-goldbook-activeTab-v1",
-    "ledger",
+    "mtj-goldbook-activeTab-v2",
+    "daily_slips",
   );
   // Search box for the Daily Slips tab (by slip number or worker).
   const [slipSearch, setSlipSearch] = useState<string>("");
@@ -247,21 +252,7 @@ function WorkerGoldBookPage() {
       return;
     }
 
-    let lessMg = 0;
-    try {
-      if (formLessG) {
-        lessMg = gramsToMg(formLessG);
-      }
-    } catch (err) {
-      setFormError("Invalid less weight. Please enter a valid number.");
-      return;
-    }
-
-    if (lessMg > grossMg) {
-      setFormError("Less weight cannot be greater than gross weight.");
-      return;
-    }
-
+    const lessMg = 0;
     const purityVal =
       formPurity === "custom" ? Number(formCustomPurity) || 0 : Number(formPurity) || 0;
 
@@ -280,7 +271,7 @@ function WorkerGoldBookPage() {
         particulars: finalParticulars,
         grossMg,
         lessMg,
-        netMg: grossMg - lessMg,
+        netMg: grossMg,
         purity: purityVal,
         fineMg: 0, // Store will calculate
         quantity: qtyVal,
@@ -306,8 +297,8 @@ function WorkerGoldBookPage() {
     clearFormCustomParticulars();
     clearFormParticulars();
 
-    // Return to ledger view instead of printing
-    setActiveTab("ledger");
+    // After recording, show the Daily Material Slips (the active workflow).
+    setActiveTab("daily_slips");
   };
 
   // Filter and process ledger entries
@@ -481,20 +472,10 @@ function WorkerGoldBookPage() {
             </div>
           </div>
 
-          {/* Tabs list bar */}
+          {/* Tabs list bar — Daily Material Slip is the active workflow; the raw
+              Ledger Statements and Custody Balances views are retired here (they
+              live in Manufacturing Books). Only Daily Slips + New Entry remain. */}
           <div className="border-b border-border mb-6 flex flex-wrap gap-2">
-            <button
-              onClick={() => setActiveTab("ledger")}
-              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === "ledger" ? "border-gold text-gold" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-            >
-              <History className="h-4 w-4" /> Ledger Statements ({filteredEntries.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("balances")}
-              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === "balances" ? "border-gold text-gold" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-            >
-              <Scale className="h-4 w-4" /> Worker Custody Balances ({workerBalances.length})
-            </button>
             <button
               onClick={() => setActiveTab("daily_slips")}
               className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === "daily_slips" ? "border-gold text-gold" : "border-transparent text-muted-foreground hover:text-foreground"}`}
@@ -1122,7 +1103,7 @@ function WorkerGoldBookPage() {
                   </div>
 
                   {/* Weights block */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-border/40 pt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border/40 pt-3">
                     <div>
                       <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
                         Gross Weight (grams)
@@ -1135,32 +1116,6 @@ function WorkerGoldBookPage() {
                         value={formGrossG}
                         onChange={(e) => setFormGrossG(e.target.value)}
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                        Less Weight (grams)
-                      </label>
-                      <Input
-                        type="number"
-                        step="0.001"
-                        min="0"
-                        placeholder="0.000"
-                        value={formLessG}
-                        onChange={(e) => setFormLessG(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                        Net Weight (grams)
-                      </label>
-                      <div className="bg-muted/40 font-mono border border-border rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground select-none">
-                        {Math.max(0, (Number(formGrossG) || 0) - (Number(formLessG) || 0)).toFixed(
-                          3,
-                        )}{" "}
-                        g
-                      </div>
                     </div>
                   </div>
 
@@ -1216,7 +1171,7 @@ function WorkerGoldBookPage() {
                     {/* Real-time Fine Gold display if purity > 0 */}
                     {((formPurity !== "custom" && Number(formPurity) > 0) ||
                       (formPurity === "custom" && Number(formCustomPurity) > 0)) && (
-                      <div className="sm:col-span-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between">
+                      <div className="sm:col-span-2 bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between">
                         <div>
                           <strong className="text-xs text-amber-500 block font-semibold uppercase tracking-wider">
                             Estimated Fine Gold Impact
@@ -1229,13 +1184,11 @@ function WorkerGoldBookPage() {
                           <span className="font-mono text-base font-bold text-amber-500">
                             {(() => {
                               const gross = (Number(formGrossG) || 0) * 1000;
-                              const less = (Number(formLessG) || 0) * 1000;
-                              const net = Math.max(0, gross - less);
                               const pur =
                                 formPurity === "custom"
                                   ? Number(formCustomPurity) || 0
                                   : Number(formPurity) || 0;
-                              const fine = fineGoldMg(Math.round(net), pur);
+                              const fine = fineGoldMg(Math.round(gross), pur);
                               return (fine / 1000).toFixed(3);
                             })()}{" "}
                             g Fine Gold

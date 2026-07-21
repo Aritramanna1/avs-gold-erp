@@ -99,7 +99,7 @@ export const useOutsideWork = create<OutsideWorkState>()((set, get) => ({
       try {
         const [{ append: appendAudit }, { supabase: sb }] = await Promise.all([
           import("./security/audit-log"),
-          import("@/integrations/supabase/client"),
+          import("@/lib/providers/data-provider"),
         ]);
         const { data } = await sb.auth.getSession();
         await appendAudit({
