@@ -40,71 +40,16 @@ export default async function globalSetup(config: FullConfig) {
   } catch (err) {
     const pageUrl = page.url();
     const bodyText = await page.locator("body").innerText().catch(() => "N/A");
-    console.warn(
-      `[global-setup] UI login failed or timed out. Page URL: ${pageUrl}. Body preview: ${bodyText.slice(0, 300)}`,
-      err,
-    );
-    // Write a mock session state directly to avoid failing the setup phase.
-    const mockState = {
-      cookies: [],
-      origins: [
-        {
-          origin: baseURL,
-          localStorage: [
-            {
-              name: "sb-zbfbnwgbqydttsuuhmxn-auth-token",
-              value: JSON.stringify({
-                access_token: "mock-access-token",
-                token_type: "bearer",
-                expires_in: 3600,
-                refresh_token: "mock-refresh-token",
-                user: {
-                  id: "7d140df8-7290-4680-bb56-1031a1f1f8e3",
-                  email: email,
-                  role: "authenticated",
-                },
-                expires_at: Math.floor(Date.now() / 1000) + 3600 * 24,
-              }),
-            },
-            {
-              name: "local-session",
-              value: JSON.stringify({
-                sessionId: "mock-session-id",
-                userId: "7d140df8-7290-4680-bb56-1031a1f1f8e3",
-                deviceId: "mock-device-id",
-                issuedAt: Date.now(),
-                expiresAt: Date.now() + 12 * 60 * 60 * 1000,
-              }),
-            },
-          ],
-        },
-      ],
-    };
-    fs.writeFileSync(statePath, JSON.stringify(mockState, null, 2));
-
-    // Create a dummy seed.json so tests requiring seedIds don't crash
-    const dummySeed = {
-      customerId: "cust_123",
-      karigarId: "kar_123",
-      orderId: "ord_123",
-      orderNo: "ORD-001",
-      jobId: "job_123",
-      jobNo: "JOB-001",
-      stockItemId: "stock_123",
-      invoiceId: "inv_123",
-      invoiceNo: "INV-001",
-      creditNoteId: "cn_123",
-      creditNoteNo: "CN-001",
-      debitNoteId: "dn_123",
-      debitNoteNo: "DN-001",
-      estimateId: "est_123",
-      estimateNo: "EST-001",
-      deliveryChallanId: "dc_123",
-      deliveryChallanNo: "DC-001",
-    };
-    fs.writeFileSync(path.join(authDir, "seed.json"), JSON.stringify(dummySeed, null, 2));
     await browser.close();
-    return;
+    // No mock-session fallback: a login failure here means the whole suite
+    // would otherwise run against a fabricated session, giving false
+    // confidence that every downstream test against real Supabase auth/RLS/
+    // writes actually passed. Fail loudly instead so a broken test account
+    // or a real login regression is never silently masked.
+    throw new Error(
+      `[global-setup] Real login failed for ${email} against ${baseURL}. Page URL: ${pageUrl}. ` +
+        `Body preview: ${bodyText.slice(0, 300)}. Original error: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 
   console.log("[global-setup] Waiting for window.__mtjSeed to be loaded");

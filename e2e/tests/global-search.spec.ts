@@ -21,9 +21,12 @@ test.describe("Global search (command palette records)", () => {
     await page.locator("[cmdk-input]").fill(fragment);
     await page.waitForTimeout(300);
 
-    await expect(page.getByText("Records", { exact: true })).toBeVisible();
+    // Against the real backend, useBilling's own invoice fetch (triggered by
+    // the /billing visit above) may still be in flight — networkidle only
+    // tracks network requests, not the store's own async hydration.
+    await expect(page.getByText("Records", { exact: true })).toBeVisible({ timeout: 30_000 });
     const resultItem = page.locator("[cmdk-item]", { hasText: seedIds.invoiceNo });
-    await expect(resultItem).toBeVisible();
+    await expect(resultItem).toBeVisible({ timeout: 30_000 });
 
     await resultItem.click();
     await page.waitForURL(new RegExp(seedIds.invoiceId), { timeout: 5000 });

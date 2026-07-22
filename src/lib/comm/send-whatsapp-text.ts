@@ -29,6 +29,7 @@ import { createProvider } from "./provider-registry";
 import { useCommSettings } from "./comm-settings-store";
 import { isValidWaPhone } from "@/lib/wa-link";
 import type { CommResult, ProviderType } from "./types";
+import { useCommLog } from "@/lib/comm-log-store";
 
 export interface WhatsAppTextRequest {
   phone: string;
@@ -36,8 +37,11 @@ export interface WhatsAppTextRequest {
   recipientName?: string;
   branchId?: string;
   /** For the comm log — what this message was about. */
-  linkedType?: "invoice" | "order" | "job" | "repair" | "estimate";
+  linkedType?:
+    "invoice" | "order" | "job" | "repair" | "estimate" | "delivery_challan" | "gold_settlement";
   linkedId?: string;
+  /** Skip the comm log write — callers that already record their own event (e.g. the deep-link-only path in doc-comm-actions.tsx). */
+  skipLog?: boolean;
 }
 
 export interface WhatsAppTextResult {
@@ -50,6 +54,10 @@ export interface WhatsAppTextResult {
    * must respect the difference.
    */
   via: ProviderType;
+  /** Provider-assigned message id, when the send went through a real API provider. */
+  messageId?: string;
+  /** Provider-reported delivery status. */
+  status?: CommResult["status"];
 }
 
 import { useWaAutomation } from "@/lib/wa-automation-store";
@@ -59,13 +67,11 @@ import { WHATSAPP_KEYS } from "./types";
 export function activeWhatsAppProvider(branchId?: string): ProviderType | null {
   const bId = branchId || "MAIN";
 
-  // 1. Check if WhatsApp is enabled in wa-automation-store
-  const waConfig = useWaAutomation.getState().getConfig(bId);
-  if (!waConfig.enabled) {
-    return null; // WhatsApp is disabled!
-  }
-
-  // 2. Check if Wasender API is active in comm-settings
+  // 1. WasenderAPI has its own independent "enabled" toggle (Settings →
+  // Integrations → WhatsApp, stored in comm-settings-store, not
+  // wa-automation-store). Check it FIRST — a shop that only ever configured
+  // WasenderAPI and never touched the separate legacy Cloud API/BSP/OpenWA
+  // "enabled" flag below must not be told WhatsApp is disabled.
   const commConfigs = useCommSettings.getState().configs;
   const wasenderConfig = commConfigs.find(
     (c) =>
@@ -78,7 +84,14 @@ export function activeWhatsAppProvider(branchId?: string): ProviderType | null {
     return "whatsapp_wasender";
   }
 
-  // 3. Otherwise, return the configured provider type (which defaults to whatsapp_deep_link)
+  // 2. Otherwise fall back to the legacy Cloud API/BSP/OpenWA path, gated by
+  // its own enabled flag.
+  const waConfig = useWaAutomation.getState().getConfig(bId);
+  if (!waConfig.enabled) {
+    return null; // WhatsApp is disabled!
+  }
+
+  // 3. Configured provider type (defaults to whatsapp_deep_link).
   return waConfig.providerType || "whatsapp_deep_link";
 }
 
@@ -179,6 +192,7 @@ export async function sendWhatsAppText(req: WhatsAppTextRequest): Promise<WhatsA
 
   try {
     const { provider } = resolveWhatsAppProvider(req.branchId);
+    const linkedType = req.linkedType ?? "order";
 
     const result: CommResult = await provider.send(
       {
@@ -188,15 +202,41 @@ export async function sendWhatsAppText(req: WhatsAppTextRequest): Promise<WhatsA
         branchId: req.branchId ?? "MAIN",
         recipient: { name: req.recipientName ?? "Customer", phone: req.phone },
         linkedId: req.linkedId ?? "",
-        linkedType: req.linkedType ?? "order",
+        linkedType,
       },
       { textBody: req.message },
     );
+
+    // Single source of truth for the manual "Send via WhatsApp" button —
+    // matches comm/service.ts's own log() shape so both the automated and
+    // manual send paths produce the same kind of Communication Log entry
+    // (message id + delivery status included, not just "opened_app").
+    if (!req.skipLog && req.linkedId) {
+      useCommLog.getState().record({
+        kind:
+          result.status === "deep_link_opened"
+            ? "opened_app"
+            : result.success
+              ? "manually_sent"
+              : "prepared",
+        templateKind: "custom",
+        templateName: "WhatsApp Document",
+        target: "customer",
+        recipientLabel: req.recipientName ?? "Customer",
+        recipientPhone: req.phone,
+        linkedType,
+        linkedId: req.linkedId,
+        body: req.message || `WhatsApp via ${result.provider} — ${result.status ?? "unknown"}`,
+        deliveryStatus: result.status,
+      });
+    }
 
     return {
       ok: result.success,
       error: result.error,
       via: providerType,
+      messageId: result.messageId,
+      status: result.status,
     };
   } catch (err) {
     // A provider that throws (misconfigured, unimplemented) must surface, not

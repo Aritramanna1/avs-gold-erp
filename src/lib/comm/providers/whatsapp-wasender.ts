@@ -39,7 +39,8 @@ function templateToPdfType(template: string, linkedType?: string): PdfDocumentTy
   if (
     template === "gold_settlement_reminder" ||
     template === "settlement_ready" ||
-    template === "pending_settlement"
+    template === "pending_settlement" ||
+    linkedType === "gold_settlement"
   )
     return "gold_settlement";
   if (template === "business_report") return "business_report";
@@ -81,10 +82,10 @@ function resolveDocumentRecord(req: CommRequest): any {
     const list: any[] = s.bills ?? s.mfgBills ?? s.items ?? [];
     return list.find((b: any) => b.id === linkedId) ?? null;
   }
-  if (req.template === "delivery_challan") {
+  if (linkedType === "delivery_challan" || req.template === "delivery_challan") {
     return useDeliveryChallans.getState().challans.find((c) => c.id === linkedId) ?? null;
   }
-  if (req.template.includes("settlement")) {
+  if (linkedType === "gold_settlement" || req.template.includes("settlement")) {
     return useGoldSettlement.getState().settlements.find((s) => s.id === linkedId) ?? null;
   }
   return null;

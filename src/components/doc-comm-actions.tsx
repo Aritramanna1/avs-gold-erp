@@ -50,7 +50,8 @@ export interface DocCommActionsProps {
     body: string;
   };
   /** For comm log recording */
-  linkedType?: "invoice" | "order" | "job" | "repair" | "estimate";
+  linkedType?:
+    "invoice" | "order" | "job" | "repair" | "estimate" | "delivery_challan" | "gold_settlement";
   linkedId?: string;
   recipientLabel?: string;
   /** Layout variant */
@@ -129,6 +130,8 @@ export function DocCommActions({
     }
     // Through the configured provider, not a hard-coded wa.me link — this is
     // the seam OpenWA will slot into without touching this screen.
+    // sendWhatsAppText records the Communication Log entry itself (message
+    // id + delivery status included) — no separate recordComm() call needed.
     const result = await sendWhatsAppText({
       phone: whatsapp.phone,
       message: whatsapp.message,
@@ -140,18 +143,8 @@ export function DocCommActions({
       toast.error(result.error ?? "Could not send the WhatsApp message.");
       return;
     }
-    if (linkedType && linkedId) {
-      recordComm({
-        kind: "opened_app",
-        templateKind: "custom",
-        templateName: "WhatsApp Deep Link",
-        target: "customer",
-        recipientLabel,
-        recipientPhone: whatsapp.phone,
-        linkedType,
-        linkedId,
-        body: whatsapp.message,
-      });
+    if (result.via !== "whatsapp_deep_link") {
+      toast.success(`WhatsApp document sent to ${whatsapp.phone}`);
     }
   }
 

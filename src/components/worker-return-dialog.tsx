@@ -18,19 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useLedger } from "@/lib/ledger-store";
 import { useOrders } from "@/lib/orders-store";
 import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { useWorkerReturns, COMMON_RETURN_MATERIALS } from "@/lib/worker-return-store";
-import { useMaterialVault } from "@/lib/material-vault-store";
-import {
-  returnMaterialToVaultCategory,
-  RETURN_VAULT_MOVEMENT_TYPE,
-} from "@/lib/material-vault-sync";
 import { generateImageThumbnail } from "@/lib/attachments-store";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
-import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { PackageCheck, AlertTriangle, ImagePlus } from "lucide-react";
 
 /**
@@ -58,7 +51,6 @@ export function WorkerReturnDialog({
   defaultPurity?: number;
   onSaved?: (info: { materialReturned: string; grossMg: number; workerName: string }) => void;
 }) {
-  const appendLedger = useLedger((s) => s.append);
   const people = usePeople((s) => s.people);
   const addWorkerReturn = useWorkerReturns((s) => s.add);
   // NOTE: calling a store method like `forOrder()` directly inside the
@@ -146,20 +138,15 @@ export function WorkerReturnDialog({
     }
     setSaving(true);
     try {
-      const isFinished = materialReturned === "Finished Product";
-      const ledgerEntry = await appendLedger({
-        type: "receive_from_karigar",
-        netFineMg: 0,
-        deltas: isFinished
-          ? { karigar: -fineMg, finished: fineMg }
-          : { karigar: -fineMg, scrap: fineMg },
-        grossMg,
-        purity: purity || undefined,
-        fineMg,
-        reference: orderNo,
-        notes: `Received ${materialReturned} from ${worker.fullName} · Order ${orderNo}${remarks.trim() ? ` · ${remarks.trim()}` : ""}`,
-      });
-
+      // Single source of truth: useWorkerGoldBook.addEntry() is the ONE place
+      // a return gets posted — it routes through the centralized Gold
+      // Transaction Service (gold-transaction-service.ts) internally, which
+      // atomically updates the Gold Ledger and the Material Vault (Gold
+      // Stock) alongside the Worker Gold Book entry itself. This dialog used
+      // to also post its own direct Ledger + Material Vault entries, which
+      // after that service existed meant every vault-tracked return got
+      // double-counted (once here, once inside addEntry). Do not re-add
+      // direct appendLedger/useMaterialVault writes here.
       const gbEntry = await useWorkerGoldBook.getState().addEntry({
         workerId,
         workerName: worker.fullName,
@@ -175,6 +162,8 @@ export function WorkerReturnDialog({
         receivedBy: "Vault Manager",
         type: "return",
         reference: orderNo,
+        orderId,
+        orderNo,
       });
 
       await addWorkerReturn({
@@ -188,33 +177,9 @@ export function WorkerReturnDialog({
         fineMg,
         remarks: remarks.trim() || undefined,
         referencePhotoDataUrl: photoDataUrl ?? undefined,
-        ledgerEntryId: ledgerEntry.id,
         workerGoldBookEntryId: gbEntry.id,
         relatedIssueId: orderIssues[0]?.id,
       });
-
-      // Automatic synchronization: one return action updates the Gold
-      // Ledger (above), the Worker Gold Book (above), and — for material
-      // types the vault actually tracks — the Gold & Material Vault. See
-      // returnMaterialToVaultCategory()'s doc comment for why "Finished
-      // Product" is deliberately excluded (already tracked by the ledger's
-      // `finished` bucket; syncing it here would double-count it).
-      const vaultCategory = returnMaterialToVaultCategory(materialReturned);
-      if (vaultCategory) {
-        const { data } = await supabase.auth.getSession();
-        await useMaterialVault.getState().append({
-          category: vaultCategory,
-          type: RETURN_VAULT_MOVEMENT_TYPE,
-          deltaMg: grossMg,
-          grossMg,
-          purity: purity || undefined,
-          reference: orderNo,
-          remarks: remarks.trim() || undefined,
-          relatedOrderId: orderId,
-          actorId: data.session?.user.id ?? null,
-          actorEmail: data.session?.user.email ?? null,
-        });
-      }
 
       // Order Timeline entry — mirrors the pattern send-to-polishing-dialog.tsx
       // uses (appendTimeline), so a worker return shows up in the order's own

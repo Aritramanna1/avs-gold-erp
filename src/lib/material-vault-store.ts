@@ -112,7 +112,7 @@ export interface MaterialMovement {
   actorEmail?: string | null;
 
   // ── Integration points ──────────────────────────────────────────────────
-  /** Production Order this movement is issued/returned against — populated by WorkerIssueDialog/WorkerReturnDialog/OutsideWorkIssueDialog. */
+  /** Production Order this movement is issued/returned against — populated by the Worker Gold Book (order-linked Issue/Return)/WorkerReturnDialog/OutsideWorkIssueDialog. */
   relatedOrderId?: string;
   /** Future: the Worker Gold Book entry (worker-gold-book-store.ts WorkerGoldBookEntry, type "given") this movement mirrors. */
   relatedIssueId?: string;
@@ -398,16 +398,26 @@ export const useMaterialVault = create<MaterialVaultState>()((set, get) => ({
     }
     adjustmentInFlight.add(input.category);
     try {
-      return await get().append({
+      // An opening/adjustment is still a physical stock movement. Route it
+      // through the same service as purchases and worker issues so the
+      // balance sheet, dashboard, reports, and Material Vault cannot diverge.
+      const { executeGoldTransaction } = await import("./gold-transaction-service");
+      const { useSettings } = await import("./settings-store");
+      const result = await executeGoldTransaction({
         category: input.category,
-        type: "adjustment",
+        purity: 0,
         deltaMg: input.deltaMg,
         grossMg: Math.abs(input.deltaMg),
+        movementType: "adjustment",
+        ledgerMovement: "adjustment",
+        branchId: useSettings.getState().selectedBranchId || "MAIN",
         reference: input.reference,
-        remarks: input.remarks.trim(),
+        notes: input.remarks.trim(),
         actorId: input.actor.id,
         actorEmail: input.actor.email,
       });
+      await get().refresh();
+      return get().movements.find((m) => m.id === result.vaultMovementId) ?? get().movements[0];
     } finally {
       adjustmentInFlight.delete(input.category);
     }

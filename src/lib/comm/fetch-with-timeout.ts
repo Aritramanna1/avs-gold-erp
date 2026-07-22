@@ -57,3 +57,42 @@ export async function withRateLimit<T>(channel: string, fn: () => Promise<T>): P
   lastSendAt.set(channel, Date.now());
   return fn();
 }
+
+/**
+ * Retries a WasenderAPI upload/send step with exponential backoff. Only
+ * retries transient failures (network error, HTTP 429, HTTP 5xx) — a
+ * validation failure (bad phone, missing PDF, 4xx other than 429) is not
+ * transient and must fail immediately instead of burning 3 attempts.
+ */
+export interface RetryableResult {
+  ok: boolean;
+  status?: number;
+}
+
+export async function withRetry<T extends RetryableResult>(
+  fn: (attempt: number) => Promise<T>,
+  opts: { maxRetries?: number; onRetry?: (attempt: number, delayMs: number) => void } = {},
+): Promise<T & { retryCount: number }> {
+  const maxRetries = opts.maxRetries ?? 3;
+  let lastResult: T | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await fn(attempt);
+      if (result.ok) return { ...result, retryCount: attempt };
+      const status = result.status ?? 0;
+      const transient = status === 429 || status >= 500 || status === 0;
+      lastResult = result;
+      if (!transient || attempt === maxRetries) return { ...result, retryCount: attempt };
+    } catch (err) {
+      if (attempt === maxRetries) {
+        return { ok: false, status: 0, retryCount: attempt, error: String(err) } as unknown as T & {
+          retryCount: number;
+        };
+      }
+    }
+    const delayMs = 500 * 2 ** attempt; // 500ms, 1s, 2s
+    opts.onRetry?.(attempt + 1, delayMs);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return { ...(lastResult as T), retryCount: maxRetries };
+}

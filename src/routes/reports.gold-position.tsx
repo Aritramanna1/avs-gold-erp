@@ -146,7 +146,9 @@ export default function GoldPositionReport() {
         </Card>
         <Card>
           <CardHeader className="pb-1">
-            <CardTitle className="text-xs text-muted-foreground">Karigar Balance</CardTitle>
+            <CardTitle className="text-xs text-muted-foreground">
+              Gold With Workers (Owed Back)
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xl font-bold">{fmtG(Math.max(0, balance.buckets.karigar))}</p>

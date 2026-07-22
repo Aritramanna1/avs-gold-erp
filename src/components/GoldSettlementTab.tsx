@@ -3,6 +3,8 @@ import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { usePeople } from "@/lib/people-store";
 import { useSettings } from "@/lib/settings-store";
 import { useLedger } from "@/lib/ledger-store";
+import { useMaterialVault } from "@/lib/material-vault-store";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useBilling } from "@/lib/billing-store";
 import { useWorkers } from "@/lib/workers-store";
 import { generateNumber } from "@/lib/numbers";
@@ -584,6 +586,7 @@ export function GoldSettlementTab() {
       // 3. Record double-entry items in the official Gold Ledger
       const appendLedger = useLedger.getState().append;
       const goldRows = items.filter((it) => it.kind === "gold");
+      const { data: sessionData } = await supabase.auth.getSession();
 
       for (const it of goldRows) {
         const itemPurityNum = Math.round((it.purity || 91.6) * 10); // e.g. 91.60 => 916
@@ -621,6 +624,28 @@ export function GoldSettlementTab() {
           reference: voucherNo,
           notes: `${it.description} [Voucher No: ${voucherNo}] [Party: ${resolvedPartyName}] (${linkUseLabel(linkUse)})`,
         });
+
+        // Worker settlements are an accountability TRANSFER between the
+        // vault and karigar buckets — no new physical metal crosses the
+        // shop's boundary, so Gold Stock is unaffected. Customer/vendor
+        // rows genuinely move physical metal in or out of the vault
+        // (deltas.vault above with no offsetting karigar leg) — Gold Stock
+        // (Material Vault) must record that too, or it silently diverges
+        // from the Gold Ledger's vault bucket, which is exactly the
+        // "independent balance" this architecture must never allow.
+        if (partyType !== "worker") {
+          await useMaterialVault.getState().append({
+            category: linkUse === "old_gold" ? "old_gold" : "raw_gold",
+            purity: itemPurityNum,
+            type: isJama ? "purchase" : "gold_sale",
+            deltaMg: factorSign * itemFineMg,
+            grossMg: itemGrossMg,
+            reference: voucherNo,
+            remarks: `${it.description} — Gold Settlement Voucher ${voucherNo} (${linkUseLabel(linkUse)})`,
+            actorId: sessionData.session?.user.id ?? null,
+            actorEmail: sessionData.session?.user.email ?? null,
+          });
+        }
       }
 
       toast.success(`Government-traceable voucher ${voucherNo} stored successfully.`);

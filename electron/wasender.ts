@@ -283,16 +283,13 @@ export async function wasenderUploadMedia(
 
   try {
     const buffer = Buffer.from(args.base64Data, "base64");
-    const blob = new Blob([buffer], { type: args.mimeType || "application/pdf" });
-    const formData = new FormData();
-    formData.append("file", blob, args.fileName || "document.pdf");
-
     const res = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${bearer}`,
+        "Content-Type": args.mimeType || "application/pdf",
       },
-      body: formData,
+      body: buffer,
     });
 
     const resText = await res.text();

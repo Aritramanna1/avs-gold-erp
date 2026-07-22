@@ -1,19 +1,42 @@
 import { test, expect } from "../fixtures/base";
 
 test.describe("Gold / Material Issue workflow (from Production Order)", () => {
-  test("issuing gold from an order updates the Gold Ledger, Worker Gold Book, and Issue History; supports multiple issues", async ({
+  test.skip("issuing gold from an order updates the Gold Ledger, Worker Gold Book, and Issue History; supports multiple issues (RC scope: Gold Issue removed from Orders — gold is now issued only via the Worker Gold Book, see routes/orders.$id.tsx)", async ({
     authedPage: page,
     seedIds,
   }) => {
     await page.goto(`/orders/${seedIds.orderId}`);
     await expect(page.getByTestId("order-issue-gold-material")).toBeVisible({ timeout: 15_000 });
+  });
+});
+
+test.describe("Gold / Material Issue workflow (Worker Gold Book — the only approved entry point)", () => {
+  test("issuing material to a worker updates Gold Stock (vault), Worker Gold Book, and rejects over-issue", async ({
+    authedPage: page,
+  }) => {
+    await page.goto("/workshop/gold-book");
+    // Form fields persist as drafts (useDraft → localStorage) across runs —
+    // clear this page's drafts so the form always starts in a known state
+    // ("given" entry type, empty fields) regardless of a prior test run.
+    await page.evaluate(() => {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith("mtj-goldbook-")) localStorage.removeItem(key);
+      }
+    });
+    // Persisted local SQLite meta (deployment_mode) survives storageState reuse
+    // across tests — force "online" so this run actually exercises the
+    // execute_gold_transaction RPC path, not the offline/local-first one.
+    await page.evaluate(async () => {
+      const mod = await import(/* @vite-ignore */ "/src/lib/deployment-mode.ts");
+      await mod.setDeploymentMode("online");
+    });
+    await page.reload();
 
     const beforeVault: number = await page.evaluate(async () => {
       const modPath = "/src/lib/ledger-store.ts";
       const mod = await import(/* @vite-ignore */ modPath);
       await mod.useLedger.getState().refresh();
-      const balances = mod.computeBalances(mod.useLedger.getState().entries);
-      return balances.buckets.vault;
+      return mod.computeBalances(mod.useLedger.getState().entries).buckets.vault;
     });
 
     const beforeWgbCount: number = await page.evaluate(async () => {
@@ -23,54 +46,52 @@ test.describe("Gold / Material Issue workflow (from Production Order)", () => {
       return mod.useWorkerGoldBook.getState().entries.length;
     });
 
-    // Issue #1: Gold
-    await page.getByTestId("order-issue-gold-material").click();
-    await page.getByTestId("issue-worker-select").click();
-    await page.getByRole("option").first().click();
-    await page.getByTestId("issue-weight-input").fill("2");
-    await page.getByTestId("issue-submit").click();
-    await expect(page.getByText(/issuing…/i)).toBeHidden({ timeout: 10_000 });
+    await page.getByTestId("wgb-new-entry-tab").click();
+    await page.getByTestId("wgb-worker-select").selectOption({ index: 1 });
+    await page.getByTestId("wgb-particulars-select").selectOption("Wire");
+    await page.getByTestId("wgb-gross-weight-input").fill("2");
+    await page.getByTestId("wgb-submit-entry").click();
 
-    // The issue list section is titled "Worker Issues" in the order page.
-    await expect(page.locator("text=Worker Issues").first()).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(/Gold · 2\.000 g/)).toBeVisible({ timeout: 10_000 });
-    // Let the first dialog's close animation fully finish before reopening —
-    // otherwise the lingering overlay can intercept the next click.
-    await expect(page.getByRole("dialog")).toBeHidden({ timeout: 10_000 });
+    // Real Gold Stock impact — this is the actual bug fix: issuing used to
+    // write nothing to the vault at all.
+    await expect(async () => {
+      const afterVault: number = await page.evaluate(async () => {
+        const modPath = "/src/lib/ledger-store.ts";
+        const mod = await import(/* @vite-ignore */ modPath);
+        await mod.useLedger.getState().refresh();
+        return mod.computeBalances(mod.useLedger.getState().entries).buckets.vault;
+      });
+      expect(afterVault).toBe(beforeVault - 2000);
+    }).toPass({ timeout: 10_000 });
 
-    // Issue #2: KDM material, different worker/weight — confirms multiple issues supported
-    await page.getByTestId("order-issue-gold-material").click();
-    await expect(page.getByTestId("issue-worker-select")).toBeVisible({ timeout: 10_000 });
-    await page.getByTestId("issue-worker-select").click();
-    await page.getByRole("option").first().click();
-    await page.getByTestId("issue-material-select").click();
-    await page.getByRole("option", { name: "KDM" }).click();
-    await page.getByTestId("issue-weight-input").fill("1.5");
-    await page.getByTestId("issue-submit").click();
-    await expect(page.getByText(/issuing…/i)).toBeHidden({ timeout: 10_000 });
+    let afterWgbCount = 0;
+    await expect(async () => {
+      afterWgbCount = await page.evaluate(async () => {
+        const modPath = "/src/lib/worker-gold-book-store.ts";
+        const mod = await import(/* @vite-ignore */ modPath);
+        await mod.useWorkerGoldBook.getState().refresh();
+        return mod.useWorkerGoldBook.getState().entries.length;
+      });
+      expect(afterWgbCount).toBe(beforeWgbCount + 1);
+    }).toPass({ timeout: 10_000 });
 
-    await expect(page.getByText(/KDM · 1\.500 g/)).toBeVisible({ timeout: 10_000 });
+    // A successful submit switches the view to Daily Material Slips — go
+    // back to the entry form for the over-issue attempt.
+    await page.getByTestId("wgb-new-entry-tab").click();
+    await page.getByTestId("wgb-worker-select").selectOption({ index: 1 });
+    await page.getByTestId("wgb-particulars-select").selectOption("Wire");
 
-    const historyRows = page.getByTestId("order-issue-history-list").locator("li");
-    await expect(historyRows).toHaveCount(2, { timeout: 10_000 });
+    // Over-issue is rejected with a validation message, not a silent failure.
+    await page.getByTestId("wgb-gross-weight-input").fill("999999");
+    await page.getByTestId("wgb-submit-entry").click();
+    await expect(page.getByText(/not enough gold stock/i)).toBeVisible({ timeout: 5_000 });
 
-    // Verify Gold Ledger actually moved (vault decreased by the two gold-purity issues)
-    const afterVault: number = await page.evaluate(async () => {
-      const modPath = "/src/lib/ledger-store.ts";
-      const mod = await import(/* @vite-ignore */ modPath);
-      await mod.useLedger.getState().refresh();
-      const balances = mod.computeBalances(mod.useLedger.getState().entries);
-      return balances.buckets.vault;
-    });
-    expect(afterVault).toBeLessThan(beforeVault);
-
-    // Verify Worker Gold Book got 2 new entries
-    const afterWgbCount: number = await page.evaluate(async () => {
+    const afterRejectedWgbCount: number = await page.evaluate(async () => {
       const modPath = "/src/lib/worker-gold-book-store.ts";
       const mod = await import(/* @vite-ignore */ modPath);
       await mod.useWorkerGoldBook.getState().refresh();
       return mod.useWorkerGoldBook.getState().entries.length;
     });
-    expect(afterWgbCount).toBe(beforeWgbCount + 2);
+    expect(afterRejectedWgbCount).toBe(afterWgbCount);
   });
 });

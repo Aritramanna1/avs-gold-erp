@@ -35,6 +35,8 @@ import { useStock } from "@/lib/stock-store";
 import { useJobCards } from "@/lib/jobcards-store";
 import { usePeople } from "@/lib/people-store";
 import { useLedger } from "@/lib/ledger-store";
+import { useMaterialVault } from "@/lib/material-vault-store";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
 import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useAttachments } from "@/lib/attachments-store";
@@ -123,7 +125,7 @@ const BILLING_TYPES = [
     id: "repair",
     label: "Repair Job / दुरुस्ती आणि रिपेअरिंग",
     desc: "Billing for repairing / soldering work",
-    group: "primary" as const,
+    group: "legacy" as const,
   },
   {
     id: "polishing",
@@ -132,10 +134,10 @@ const BILLING_TYPES = [
     group: "primary" as const,
   },
   {
-    id: "wholesale",
+    id: "workshop_wholesale_disabled",
     label: "Wholesale Bill / घाऊक आणि होलसेल बिल",
     desc: "Wholesale transactions with other firms or goldsmiths",
-    group: "primary" as const,
+    group: "legacy" as const,
   },
   {
     id: "manufacturing",
@@ -144,10 +146,13 @@ const BILLING_TYPES = [
     group: "primary" as const,
   },
   {
-    id: "ready_stock",
+    // Ready Stock Sales are handled from Inventory, never from this billing
+    // workflow. Keep the legacy definition for rendering old invoices but do
+    // not expose it as a selectable billing type.
+    id: "legacy_ready_stock",
     label: "Ready Stock Sale / रेडी स्टॉक विक्री",
     desc: "Direct sale of workshop-owned stock (minority flow — most billing is job-work)",
-    group: "primary" as const,
+    group: "legacy" as const,
   },
   {
     id: "advance_receipt",
@@ -276,7 +281,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
   // Billing Type state
   const [billingType, setBillingType, clearBillingType] = useDraft<BillingType>(
     "mtj-billing-billingType-v1",
-    linkedOrder ? "manufacturing" : linkedStock ? "ready_stock" : "ready_stock",
+    "manufacturing",
   );
 
   // Customer
@@ -1301,6 +1306,28 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         });
       } catch (err) {
         console.error("Failed writing customer gold surplus settlement record:", err);
+      }
+
+      // Real physical metal just entered the shop (unlike the shortfall
+      // case above, which is a receivable — no metal has actually arrived).
+      // Gold Stock must record it too, matching the same vault delta the
+      // Gold Ledger entry above just posted, or Material Vault silently
+      // diverges from the Gold Ledger's own vault bucket.
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        await useMaterialVault.getState().append({
+          category: "raw_gold",
+          purity: goldPayment.goldPurity ?? 916,
+          type: "purchase",
+          deltaMg: goldSurplusFineMg,
+          grossMg: Math.round(goldSurplusGrams * 1000),
+          reference: allocatedInvoiceNo,
+          remarks: `Excess gold received against Invoice ${allocatedInvoiceNo}`,
+          actorId: sessionData.session?.user.id ?? null,
+          actorEmail: sessionData.session?.user.email ?? null,
+        });
+      } catch (err) {
+        console.error("Failed writing Material Vault movement for gold surplus:", err);
       }
     }
 
@@ -2642,10 +2669,10 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                         <span className={closingMg < 0 ? "text-rose-400" : "text-emerald-400"}>
                           Closing Balance{" "}
                           {closingMg < 0
-                            ? "— Karigar Owes (Jama)"
+                            ? "— Jeweller Owes Company"
                             : closingMg === 0
                               ? "— NIL"
-                              : "— We Owe Karigar"}
+                              : "— Company Owes Jeweller"}
                         </span>
                         <span className={closingMg < 0 ? "text-rose-400" : "text-emerald-400"}>
                           G {Math.abs(closingMg / 1000).toFixed(3)}
@@ -3341,18 +3368,36 @@ function MfgItemRow({
   const addWtG = parseFloat(addWtStr) || 0;
   const netG = grossG + addWtG;
 
-  function commitMfgWeights() {
-    const netMgCalc = Math.round(netG * 1000);
+  // Recomputes and pushes every derived field on EVERY keystroke (not just
+  // blur) so the invoice total/fine weight update live as the user types —
+  // `overrides` lets a field's own onChange pass its just-typed value in,
+  // since the local *Str state it would otherwise read from is still stale
+  // (setState hasn't flushed yet) at the point this is called.
+  function commitMfgWeights(overrides?: {
+    tunchStr?: string;
+    wstgStr?: string;
+    addWtStr?: string;
+    labourStr?: string;
+    pcsStr?: string;
+  }) {
+    const tunch = parseFloat(overrides?.tunchStr ?? tunchStr) || 0;
+    const wstg = parseFloat(overrides?.wstgStr ?? wstgStr) || 0;
+    const addWt = parseFloat(overrides?.addWtStr ?? addWtStr) || 0;
+    const labour = overrides?.labourStr ?? labourStr;
+    const pcs = overrides?.pcsStr ?? pcsStr;
+    const netGCalc = grossG + addWt;
+    const netMgCalc = Math.round(netGCalc * 1000);
+    const fineMgCalc = Math.round((it.netMg * (tunch + wstg)) / 100);
     onChange({
       netMg: netMgCalc,
-      purity: Math.round(tunchPct * 10),
-      otherChargesPaise: Math.round(wstgPct * 100),
-      stoneWeightMg: Math.round(addWtG * 1000),
-      stoneChargesPaise: rupeesToPaise(labourStr),
-      diamondWeightMg: parseInt(pcsStr) || 0,
-      fineMg,
+      purity: Math.round(tunch * 10),
+      otherChargesPaise: Math.round(wstg * 100),
+      stoneWeightMg: Math.round(addWt * 1000),
+      stoneChargesPaise: rupeesToPaise(labour),
+      diamondWeightMg: parseInt(pcs) || 0,
+      fineMg: fineMgCalc,
       goldValuePaise: 0,
-      lineTotalPaise: rupeesToPaise(labourStr),
+      lineTotalPaise: rupeesToPaise(labour),
     });
   }
 
@@ -3419,8 +3464,10 @@ function MfgItemRow({
           <div className="text-[9px] uppercase text-muted-foreground font-bold mb-1">Add Wt</div>
           <Input
             value={addWtStr}
-            onChange={(e) => setAddWtStr(e.target.value)}
-            onBlur={commitMfgWeights}
+            onChange={(e) => {
+              setAddWtStr(e.target.value);
+              commitMfgWeights({ addWtStr: e.target.value });
+            }}
             className="h-7 text-xs font-mono border-border/50 px-1"
             placeholder="0.000"
           />
@@ -3437,8 +3484,10 @@ function MfgItemRow({
           <div className="text-[9px] uppercase text-muted-foreground font-bold mb-1">Tunch</div>
           <Input
             value={tunchStr}
-            onChange={(e) => setTunchStr(e.target.value)}
-            onBlur={commitMfgWeights}
+            onChange={(e) => {
+              setTunchStr(e.target.value);
+              commitMfgWeights({ tunchStr: e.target.value });
+            }}
             className="h-7 text-xs font-mono border-border/50 px-1"
             placeholder="84.00"
           />
@@ -3448,8 +3497,10 @@ function MfgItemRow({
           <div className="text-[9px] uppercase text-muted-foreground font-bold mb-1">Wstg%</div>
           <Input
             value={wstgStr}
-            onChange={(e) => setWstgStr(e.target.value)}
-            onBlur={commitMfgWeights}
+            onChange={(e) => {
+              setWstgStr(e.target.value);
+              commitMfgWeights({ wstgStr: e.target.value });
+            }}
             className="h-7 text-xs font-mono border-border/50 px-1"
             placeholder="4.00"
           />
@@ -3459,8 +3510,10 @@ function MfgItemRow({
           <div className="text-[9px] uppercase text-muted-foreground font-bold mb-1">Pcs</div>
           <Input
             value={pcsStr}
-            onChange={(e) => setPcsStr(e.target.value)}
-            onBlur={commitMfgWeights}
+            onChange={(e) => {
+              setPcsStr(e.target.value);
+              commitMfgWeights({ pcsStr: e.target.value });
+            }}
             className="h-7 text-xs font-mono border-border/50 px-1"
             placeholder="1"
             type="number"
@@ -3473,8 +3526,10 @@ function MfgItemRow({
           </div>
           <Input
             value={labourStr}
-            onChange={(e) => setLabourStr(e.target.value)}
-            onBlur={commitMfgWeights}
+            onChange={(e) => {
+              setLabourStr(e.target.value);
+              commitMfgWeights({ labourStr: e.target.value });
+            }}
             className="h-7 text-xs font-mono border-border/50 px-1"
             placeholder="0"
           />

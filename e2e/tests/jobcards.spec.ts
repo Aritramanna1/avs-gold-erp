@@ -8,10 +8,12 @@ test.describe("Job Cards (Workshop)", () => {
     // getByText("Workshop") is ambiguous — the sidebar nav link is also
     // literally "Workshop" — getByRole("heading") targets only the page's
     // own <h1> title, unambiguously.
+    // A hard page.goto() re-pays the real app's boot-overlay delay (see
+    // auth-invitation.spec.ts's note).
     await expect(
       authedPage.getByRole("heading", { name: "Manufacturing Books", exact: true }),
     ).toBeVisible({
-      timeout: 15_000,
+      timeout: 45_000,
     });
     expectNoPageErrors(authedPage);
   });

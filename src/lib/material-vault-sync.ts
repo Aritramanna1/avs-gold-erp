@@ -10,6 +10,7 @@
  * Issue and Return can never drift into inconsistent mappings.
  */
 import type { MaterialMovementType } from "./material-vault-store";
+import { materialKeyFromName } from "./material-vault-store";
 
 /** Gold/Material Issue material → vault category. */
 export function issueMaterialToVaultCategory(material: string): string {
@@ -17,9 +18,9 @@ export function issueMaterialToVaultCategory(material: string): string {
     case "Gold":
       return "raw_gold";
     case "KDM":
-      return "kdm";
+      return "kdm_balls";
     case "Ball":
-      return "ball";
+      return "kdm_balls";
     case "Wire":
       return "wire";
     case "Die":
@@ -27,7 +28,9 @@ export function issueMaterialToVaultCategory(material: string): string {
     case "Finding":
       return "findings";
     default:
-      return "other_material";
+      // Custom materials added in Gold Stock/Worker Gold Book retain their
+      // own category instead of being collapsed into Other Material.
+      return materialKeyFromName(material) || "other_material";
   }
 }
 

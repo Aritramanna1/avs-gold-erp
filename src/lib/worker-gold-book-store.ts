@@ -1,11 +1,19 @@
 import { create } from "zustand";
-import { fineGoldMg, type Purity } from "./gold";
+import type { Purity } from "./gold";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { createRepository } from "./repositories/base-repository";
 import { assertPeriodOpen, ensureFinancialLocksLoaded } from "./financial-lock-store";
 import { useSettings } from "./settings-store";
 import { useWorkflowEngine } from "./workflow-engine";
+import { getRuntimeProviders } from "./providers/runtime-providers";
 import { nextDocumentNumber } from "./document-numbering";
+import { executeGoldTransaction } from "./gold-transaction-service";
+import {
+  issueMaterialToVaultCategory,
+  returnMaterialToVaultCategory,
+  ISSUE_VAULT_MOVEMENT_TYPE,
+  RETURN_VAULT_MOVEMENT_TYPE,
+} from "./material-vault-sync";
 
 const workerTransactionRepository = createRepository<{ id: string } & Record<string, unknown>>(
   "worker_transactions",
@@ -94,6 +102,15 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
   entries: [],
 
   refresh: async () => {
+    const runtime = await getRuntimeProviders();
+    if (runtime.database.localPrimary) {
+      const localRows = await workerTransactionRepository.getAllLocal();
+      const sorted = (localRows as unknown as WorkerGoldBookEntry[])
+        .filter((entry) => entry?.id && (entry.type === "given" || entry.type === "return"))
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      set({ entries: sorted });
+      return;
+    }
     const { data, error } = await supabase
       .from("worker_transactions")
       .select("data, kind")
@@ -147,11 +164,11 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
     const lessMg = input.lessMg || 0;
     const netMg = Math.max(0, grossMg - lessMg);
 
-    // Calculate fineMg if purity is provided (> 0)
-    let fineMg = 0;
-    if (input.purity && input.purity > 0) {
-      fineMg = fineGoldMg(netMg, input.purity);
-    }
+    // RC fix: Worker Gold Book tracks the actual material issued/returned,
+    // not a purity-derived fine-gold estimate — `fineMg` mirrors `netMg` so
+    // every running balance in this book (and the Gold Ledger vault entry
+    // workshop.gold-book.tsx posts alongside it) is real material weight.
+    const fineMg = netMg;
 
     const newEntry: WorkerGoldBookEntry = {
       id: makeId(),
@@ -185,7 +202,48 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
     }
 
     const kind = input.type === "given" ? "gold_book_given" : "gold_book_return";
-    await workerTransactionRepository.save({ ...newEntry, kind });
+
+    // Single source of truth: this is the ONE place a Worker Gold Book entry
+    // gets created, so routing it through the centralized Gold Transaction
+    // Service here means every caller (Worker Gold Book page, and any future
+    // caller) automatically gets the Gold Stock (Material Vault) + Gold
+    // Ledger updates atomically alongside it — no caller writes those
+    // directly anymore. Zero-weight entries and materials with no vault
+    // category (e.g. "Finished Product" returns) have nothing to post to
+    // Gold Stock, so they fall back to a plain worker_transactions save.
+    const vaultCategory =
+      grossMg > 0
+        ? input.type === "given"
+          ? issueMaterialToVaultCategory(input.particulars)
+          : returnMaterialToVaultCategory(input.particulars)
+        : null;
+
+    if (vaultCategory) {
+      const branchId = useSettings.getState().selectedBranchId || "MAIN";
+      // Best-effort — an auth lookup failure must never block a stock posting.
+      const sessionUser = await supabase.auth
+        .getSession()
+        .then((r) => r.data.session?.user ?? null)
+        .catch(() => null);
+      await executeGoldTransaction({
+        category: vaultCategory,
+        purity: input.purity || 0,
+        deltaMg: input.type === "given" ? -grossMg : grossMg,
+        grossMg,
+        movementType:
+          input.type === "given" ? ISSUE_VAULT_MOVEMENT_TYPE : RETURN_VAULT_MOVEMENT_TYPE,
+        ledgerMovement: input.type === "given" ? "issue_to_karigar" : "receive_from_karigar",
+        branchId,
+        reference: input.reference,
+        notes: `${input.type === "given" ? "Issue" : "Return"} of ${input.particulars} ${input.type === "given" ? "to" : "from"} ${input.workerName}`,
+        actorId: sessionUser?.id ?? null,
+        actorEmail: sessionUser?.email ?? null,
+        workerId: input.workerId,
+        workerEntry: newEntry,
+      });
+    } else {
+      await workerTransactionRepository.save({ ...newEntry, kind });
+    }
     await get().refresh();
     // Best-effort audit trail — a logging failure never blocks the posting
     // itself (same pattern as ledger-store.ts's append()/reverse()).

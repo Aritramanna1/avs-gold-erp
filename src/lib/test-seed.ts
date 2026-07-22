@@ -200,6 +200,72 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     notes: "Opening vault (pilot test seed)",
     reference: "OPEN-001",
   });
+  // Gold Ledger's vault bucket (above) and the Material Vault (Gold Stock —
+  // what executeGoldTransaction's stock validation actually reads) are two
+  // separate tables; the opening balance must seed both or the very first
+  // Worker Gold Book issue below fails with InsufficientStockError against
+  // an empty Gold Stock even though the Gold Ledger shows plenty of gold.
+  //
+  // useMaterialVault.append() itself is NOT synchronous enough for this: in
+  // local-first modes it saves locally and lets the background outbox
+  // scheduler push it to Supabase over the next ~15s; in pure online mode a
+  // local save is a no-op there and the row still only exists once the
+  // Supabase write actually completes. Either way, the Worker Gold Book
+  // issue immediately below would race it. Write directly and synchronously
+  // instead, branching the same way runtime-providers.ts's own consumers do.
+  const { getRuntimeProviders } = await import("./providers/runtime-providers");
+  const openingVaultRuntime = await getRuntimeProviders();
+  const openingVaultId = makeId();
+  if (openingVaultRuntime.database.localPrimary) {
+    const { upsertRow, enqueueOutbox } = await import("./local-db");
+    const vaultData = {
+      id: openingVaultId,
+      category: "raw_gold",
+      purity: 916,
+      type: "purchase",
+      deltaMg: 1000000,
+      grossMg: 1000000,
+      reference: "OPEN-001",
+      remarks: "Opening vault (pilot test seed)",
+      actorId: null,
+      actorEmail: null,
+      createdAt: Date.now(),
+    };
+    upsertRow("material_vault_movements", {
+      id: openingVaultId,
+      data: vaultData,
+      updated_at: new Date().toISOString(),
+    });
+    enqueueOutbox(
+      `material_vault_movements:${openingVaultId}:${Date.now()}`,
+      "material_vault_movements",
+      openingVaultId,
+      "insert",
+      vaultData,
+    );
+  } else {
+    const { getCloudDataClient } = await import("./providers/data-provider");
+    const { error: vaultSeedError } = await getCloudDataClient()
+      .from("material_vault_movements")
+      .insert({
+        id: openingVaultId,
+        branch_id: useSettings.getState().selectedBranchId || "MAIN",
+        data: {
+          id: openingVaultId,
+          category: "raw_gold",
+          purity: 916,
+          type: "purchase",
+          deltaMg: 1000000,
+          grossMg: 1000000,
+          reference: "OPEN-001",
+          remarks: "Opening vault (pilot test seed)",
+          actorId: null,
+          actorEmail: null,
+          createdAt: Date.now(),
+        },
+      });
+    if (vaultSeedError) throw vaultSeedError;
+  }
 
   // 5. WhatsApp message
   const wa = useWhatsapp.getState().add({
@@ -337,7 +403,7 @@ export async function seedPilotDataset(): Promise<SeedResult> {
   await useWorkerGoldBook.getState().addEntry({
     workerId: karigar.id,
     workerName: karigar.fullName,
-    particulars: "Gold Given",
+    particulars: "Gold",
     grossMg: 500000,
     lessMg: 0,
     netMg: 500000,
@@ -354,7 +420,7 @@ export async function seedPilotDataset(): Promise<SeedResult> {
   await useWorkerGoldBook.getState().addEntry({
     workerId: karigar.id,
     workerName: karigar.fullName,
-    particulars: "Gold Received",
+    particulars: "Leftover Gold",
     grossMg: 500000,
     lessMg: 0,
     netMg: 500000,

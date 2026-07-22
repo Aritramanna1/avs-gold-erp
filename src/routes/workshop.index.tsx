@@ -3,17 +3,24 @@ import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { BookCard, type BookCardData } from "@/components/workshop/book-card";
-import { useOrders } from "@/lib/orders-store";
-import { useJobCards } from "@/lib/jobcards-store";
-import { useMfgBills } from "@/lib/manufacturing-bill-store";
 import { useBilling, paiseToRupees } from "@/lib/billing-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
 import { compileJewellerBooks, jewellerBooksTotals, type JewellerBook } from "@/lib/workshop-books";
-import { BOOK_TYPES } from "@/lib/workshop-book-types";
 import { formatWeight } from "@/lib/gold";
-import { useBusinessRules } from "@/lib/business-rules-store";
-import { Search, BookOpen, Sparkles, ScanLine, Scale, Library } from "lucide-react";
+import { Search, BookOpen, Scale, Library } from "lucide-react";
+
+// The Workshop Edition exposes only the jeweller ledger here. Production book
+// types remain isolated in the enterprise code path and are not rendered.
+const BOOK_TYPES: {
+  key: string;
+  icon: typeof BookOpen;
+  status: string;
+  title: string;
+  note?: string;
+  description?: string;
+  indexRoute: string;
+}[] = [];
 
 /** Jeweller book → People-style card metrics. */
 function jewellerCardData(b: JewellerBook): BookCardData {
@@ -42,7 +49,7 @@ function jewellerCardData(b: JewellerBook): BookCardData {
 }
 
 export const Route = createFileRoute("/workshop/")({
-  head: () => ({ meta: [{ title: "Manufacturing Books · AVS Gold ERP" }] }),
+  head: () => ({ meta: [{ title: "Jeweller Gold Book · AVS Gold ERP" }] }),
   component: WorkshopBooksPage,
 });
 
@@ -50,25 +57,16 @@ export const Route = createFileRoute("/workshop/")({
  * Workshop — Jeweller Books.
  *
  * The workshop's own set of ledgers, one page per client jeweller: the digital
- * form of the physical books kept on the bench today. Order management, job
- * creation and production tracking are NOT here — they live in the Orders and
- * Job Card workflows. Workshop shows the ledger consequences of that work, and
- * each book links out to the individual orders / job cards / bills it touched.
+ * form of the physical jeweller ledger kept by the workshop. Production
+ * planning and execution are outside this edition.
  * The Karigar Gold Book, Outside Work and Polishing remain their own modules,
  * only linked from here.
  */
 function WorkshopBooksPage() {
-  // Every store the books are compiled from — subscribed so a new order,
-  // bill, settlement or payment re-renders the books immediately.
+  // Subscribe to the stores that can change a jeweller's gold/cash ledger.
   const people = usePeople((s) => s.people);
-  const orders = useOrders((s) => s.orders);
-  const jobs = useJobCards((s) => s.jobs);
-  const bills = useMfgBills((s) => s.bills);
   const invoices = useBilling((s) => s.invoices);
   const settlements = useGoldSettlement((s) => s.settlements);
-
-  const polishingModuleEnabled = useBusinessRules((s) => s.isEnabled("enable_polishing_module"));
-  const barcodeModuleEnabled = useBusinessRules((s) => s.isEnabled("enable_barcode_module"));
 
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -78,7 +76,7 @@ function WorkshopBooksPage() {
     () => compileJewellerBooks(),
     // Recompiled from the stores above; the deps are the re-render triggers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [people, orders, jobs, bills, invoices, settlements],
+    [people, invoices, settlements],
   );
   const totals = useMemo(() => jewellerBooksTotals(books), [books]);
 
@@ -95,17 +93,11 @@ function WorkshopBooksPage() {
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <PageHeader
-        title="Manufacturing Books"
-        subtitle="The central ledger for every jeweller, worker and vendor we manufacture for — gold received, gold issued, outstanding balances and the full running book of each."
+        title="Jeweller Gold Book"
+        subtitle="Gold received, gold returned, balances and transaction history for each jeweller."
         actions={
           <div className="flex flex-wrap gap-2 justify-end">
             <ModuleLink to="/workshop/gold-book" icon={BookOpen} label="Worker Gold Book" />
-            {polishingModuleEnabled && (
-              <ModuleLink to="/workshop/polishing" icon={Sparkles} label="Polishing" />
-            )}
-            {barcodeModuleEnabled && (
-              <ModuleLink to="/workshop/barcode-scanner" icon={ScanLine} label="Barcode Scanner" />
-            )}
           </div>
         }
       />
@@ -189,8 +181,7 @@ function WorkshopBooksPage() {
           v={`₹${paiseToRupees(totals.cashDuePaise)}`}
           hint="Billed but unpaid"
         />
-        <Totals k="Open orders" v={String(totals.openOrders)} hint="Not yet delivered" />
-        <Totals k="Open job cards" v={String(totals.openJobCards)} hint="Still on the bench" />
+        <Totals k="Jeweller books" v={String(books.length)} hint="Active gold ledgers" />
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-4 mb-4">
@@ -211,7 +202,7 @@ function WorkshopBooksPage() {
           <Library className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 font-serif text-xl text-gold">No jeweller books yet</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            A book opens itself the moment a jeweller gives gold, places an order, or is billed.
+            A book opens when a jeweller has gold or billing activity.
           </p>
         </div>
       ) : (
@@ -235,7 +226,7 @@ function WorkshopBooksPage() {
 
       <p className="mt-6 text-xs text-muted-foreground">
         Books are compiled from the same postings the rest of the ERP makes — gold settlements,
-        orders, job cards, manufacturing bills and payments. Nothing is entered twice.
+        settlements, billing and gold postings. Nothing is entered twice.
       </p>
     </div>
   );

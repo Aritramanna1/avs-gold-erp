@@ -34,8 +34,16 @@ test.describe("Invitation (signed out)", () => {
 
 test.describe("Invitation (signed in)", () => {
   test("admin can open the Send Invitation panel in Settings", async ({ authedPage }) => {
+    // page.goto() is a hard browser navigation, not a client-side route
+    // change — it remounts AuthGate from scratch, re-paying the same
+    // ~20-25s localStorage-session-restore cost the authedPage fixture's
+    // own initial wait already absorbed once (see fixtures/base.ts's
+    // "KNOWN APP DEFECT" note), before AppShell even mounts to start its
+    // own critical-data-load overlay. The default action timeout isn't
+    // long enough to cover both back-to-back, so wait explicitly for the
+    // boot overlay to clear before interacting with anything underneath it.
     await authedPage.goto("/settings");
-    await authedPage.getByRole("tab", { name: /users.*roles/i }).click();
+    await authedPage.getByRole("tab", { name: /users.*roles/i }).click({ timeout: 60_000 });
     await expect(authedPage.getByRole("button", { name: /send invite/i })).toBeVisible({
       timeout: 15_000,
     });

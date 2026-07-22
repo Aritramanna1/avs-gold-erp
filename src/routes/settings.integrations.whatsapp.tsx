@@ -25,6 +25,7 @@ import {
 } from "@/lib/comm/scheduled-statements";
 import { useCurrentBranchId } from "@/lib/branch-store";
 import { useCommSettings } from "@/lib/comm/comm-settings-store";
+import { useCommLog } from "@/lib/comm-log-store";
 import { WHATSAPP_KEYS } from "@/lib/comm/types";
 import {
   wasenderClient,
@@ -75,6 +76,14 @@ export function WhatsAppIntegrationPage({ embedded = false }: { embedded?: boole
   const setWasender = useCommSettings((s) => s.setWasender);
 
   const bridgeAvailable = isWasenderBridgeAvailable();
+  const lastWasenderEvent = useCommLog((s) =>
+    s.events.find((e) => e.providerName === "WhatsApp (WasenderAPI)"),
+  );
+  const lastSuccess = useCommLog((s) =>
+    s.events.find(
+      (e) => e.providerName === "WhatsApp (WasenderAPI)" && e.deliveryStatus === "sent",
+    ),
+  );
 
   const [enabled, setEnabled] = useState(existing?.isActive ?? false);
   const [weeklyStatements, setWeeklyStatements] = useState(isWeeklyStatementsEnabled());
@@ -403,6 +412,45 @@ export function WhatsAppIntegrationPage({ embedded = false }: { embedded?: boole
             )}
             List Sessions
           </Button>
+        </div>
+      </section>
+
+      {/* Provider health */}
+      <section className="rounded-2xl border border-border bg-card p-5 space-y-2">
+        <div className="font-serif text-lg text-gold">Provider Health</div>
+        <div className="grid gap-2 sm:grid-cols-2 text-xs">
+          <div className="flex items-center justify-between rounded-lg border border-border/60 p-2.5">
+            <span className="text-muted-foreground">Last successful send</span>
+            <span className="font-medium">
+              {lastSuccess ? new Date(lastSuccess.ts).toLocaleString() : "None yet"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border/60 p-2.5">
+            <span className="text-muted-foreground">Last attempt status</span>
+            {lastWasenderEvent ? (
+              <Badge
+                variant="outline"
+                className={
+                  lastWasenderEvent.deliveryStatus === "sent"
+                    ? "border-emerald-500/40 text-emerald-300"
+                    : "border-red-500/40 text-red-300"
+                }
+              >
+                {lastWasenderEvent.deliveryStatus === "sent" ? "Delivered" : "Failed"}
+                {typeof lastWasenderEvent.retryCount === "number" &&
+                lastWasenderEvent.retryCount > 0
+                  ? ` (${lastWasenderEvent.retryCount} ${lastWasenderEvent.retryCount === 1 ? "retry" : "retries"})`
+                  : ""}
+              </Badge>
+            ) : (
+              <span className="text-muted-foreground">No sends yet</span>
+            )}
+          </div>
+          {lastWasenderEvent?.deliveryStatus === "failed" && lastWasenderEvent.failureReason && (
+            <div className="sm:col-span-2 rounded-lg border border-red-500/30 bg-red-500/5 p-2.5 text-red-300">
+              {lastWasenderEvent.failureReason}
+            </div>
+          )}
         </div>
       </section>
 

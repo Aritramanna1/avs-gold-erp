@@ -19,6 +19,7 @@ import { useSettings } from "./settings-store";
 import { createRepository } from "./repositories/base-repository";
 import { assertPeriodOpen, ensureFinancialLocksLoaded } from "./financial-lock-store";
 import { useWorkflowEngine } from "./workflow-engine";
+import { getRuntimeProviders } from "./providers/runtime-providers";
 
 export type MovementType =
   | "opening_vault"
@@ -136,6 +137,19 @@ const ledgerRepository = createRepository<LedgerEntry>("gold_ledger");
 export const useLedger = create<LedgerState>()((set, get) => ({
   entries: [],
   refresh: async () => {
+    const runtime = await getRuntimeProviders();
+    if (runtime.database.localPrimary) {
+      // Offline/Hybrid writes are committed to the local SQLite ledger first.
+      // Reading Supabase here made the balance sheet lag behind Gold Stock
+      // until a sync/reload, which split the accounting source of truth.
+      const rows = await ledgerRepository.readAll();
+      set({
+        entries: rows
+          .filter((e) => !!e?.id && typeof e.netFineMg === "number")
+          .sort((a, b) => a.createdAt - b.createdAt),
+      });
+      return;
+    }
     const { currentUserRole, selectedBranchId } = useSettings.getState();
     const GLOBAL_ROLES = ["Super Owner", "Administrator", "CEO (View Only)"];
     const bid =

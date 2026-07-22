@@ -578,7 +578,8 @@ export type DropdownKey =
   | "stockLocation"
   | "priority"
   | "sourceType"
-  | "stoneType";
+  | "stoneType"
+  | "materialType";
 
 export const DROPDOWN_LABELS: Record<DropdownKey, string> = {
   orderType: "Order Type",
@@ -591,6 +592,7 @@ export const DROPDOWN_LABELS: Record<DropdownKey, string> = {
   priority: "Priority",
   sourceType: "Source Type",
   stoneType: "Stone Type",
+  materialType: "Material Type",
 };
 
 /**
@@ -802,6 +804,19 @@ const DEFAULT_DROPDOWNS: Record<DropdownKey, string[]> = {
   priority: ["Normal", "High", "Urgent"],
   sourceType: ["Walk-in", "Phone", "WhatsApp", "Referral", "Repeat Customer"],
   stoneType: ["Diamond", "Ruby", "Emerald", "Pearl", "CZ", "Other"],
+  materialType: [
+    "KDM",
+    "Die",
+    "Ball",
+    "Chain",
+    "Finding",
+    "Wire",
+    "Patti",
+    "Stone",
+    "Item / Ornaments",
+    "Filings / Dust",
+    "Other",
+  ],
 };
 
 const DEFAULT_PRINTER_PROFILES: PrinterProfile[] = [

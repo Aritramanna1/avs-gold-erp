@@ -47,7 +47,7 @@ export function WhatsAppDocMenu({
 
   async function send(item: WhatsAppDocItem) {
     setBusy(true);
-    const t = toast.loading(`Sending ${item.label}…`);
+    const t = toast.loading(`Generating PDF…`);
     try {
       const res = await sendWhatsAppDocument({
         docType: item.docType,
@@ -57,11 +57,22 @@ export function WhatsAppDocMenu({
         recipientName,
         linkedType,
         linkedId,
+        onProgress: (stage) => {
+          const label =
+            stage === "generating"
+              ? "Generating PDF…"
+              : stage === "uploading"
+                ? "Uploading…"
+                : stage === "sending"
+                  ? "Sending…"
+                  : "Retrying…";
+          toast.loading(label, { id: t });
+        },
       });
       if (!res.ok) {
-        toast.error(res.error ?? "WhatsApp send failed.", { id: t });
+        toast.error(res.error ?? "Failed", { id: t });
       } else if (res.attached) {
-        toast.success(`${item.label} sent on WhatsApp.`, { id: t });
+        toast.success(`${item.label} delivered on WhatsApp.`, { id: t });
       } else {
         toast.warning(`${item.label}: caption sent, PDF could not be attached.`, { id: t });
       }

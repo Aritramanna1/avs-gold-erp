@@ -1,12 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useDraft } from "@/lib/drafts-store";
-import { useSettings } from "@/lib/settings-store";
+import { useSettings, useActiveDropdownValues } from "@/lib/settings-store";
+import { useMaterialVault, materialKeyFromName } from "@/lib/material-vault-store";
 import { shortShopName } from "@/lib/app-info";
 import { usePeople } from "@/lib/people-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { compileAllDailySlips, slipNumberForEntry } from "@/lib/daily-material-slip";
-import { mgToGrams, gramsToMg, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
+import { mgToGrams, gramsToMg, COMMON_PURITIES } from "@/lib/gold";
+import { useLedger, computeBalances } from "@/lib/ledger-store";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,11 +29,7 @@ import {
   History,
   X,
   Sparkles,
-  Users,
-  Truck,
-  Gem,
   Receipt,
-  Lock,
 } from "lucide-react";
 
 /**
@@ -39,14 +38,6 @@ import {
  * "Coming Soon" panel until they are built. Adding a real book later = flip
  * `available` and point it at its section.
  */
-const MATERIAL_BOOKS = [
-  { key: "worker", label: "Worker Gold Book", icon: Users, available: true },
-  { key: "outside", label: "Outside Gold Book (Coming Soon)", icon: Truck, available: false },
-  { key: "meena", label: "Meena Book", icon: Gem, available: false },
-  { key: "polishing", label: "Polishing Book (Coming Soon)", icon: Sparkles, available: false },
-] as const;
-type MaterialBookKey = (typeof MATERIAL_BOOKS)[number]["key"];
-
 export const Route = createFileRoute("/workshop/gold-book")({
   head: () => {
     const shortName = shortShopName(useSettings.getState().firm?.shopName);
@@ -56,20 +47,6 @@ export const Route = createFileRoute("/workshop/gold-book")({
   },
   component: WorkerGoldBookPage,
 });
-
-const MATERIAL_OPTIONS = [
-  "KDM",
-  "Die",
-  "Ball",
-  "Chain",
-  "Finding",
-  "Wire",
-  "Patti",
-  "Stone",
-  "Item / Ornaments",
-  "Filings / Dust",
-  "Other",
-];
 
 const RETURN_PARTICULAR_OPTIONS = [
   "returned remaining chain",
@@ -84,17 +61,39 @@ const RETURN_PARTICULAR_OPTIONS = [
 
 function WorkerGoldBookPage() {
   const { firm } = useSettings();
+  const materialOptions = useActiveDropdownValues("materialType");
+  const addDropdownItem = useSettings((s) => s.addDropdownItem);
+  const registerCategory = useMaterialVault((s) => s.registerCategory);
+  const [newMaterialName, setNewMaterialName] = useState("");
+
+  const handleQuickAddMaterial = () => {
+    const label = newMaterialName.trim();
+    if (!label) return;
+    const key = materialKeyFromName(label);
+    if (!key) return;
+    registerCategory({ key, label, group: "manufacturing_materials" });
+    addDropdownItem("materialType", label);
+    setNewMaterialName("");
+    setFormParticulars(label);
+    toast.success(`Material "${label}" added successfully.`);
+  };
+
   const people = usePeople((s) => s.people);
   const { entries, addEntry, removeEntry, getWorkerBalance } = useWorkerGoldBook();
+  const ledgerEntries = useLedger((s) => s.entries);
+  const vaultBalance = useMemo(() => computeBalances(ledgerEntries).buckets.vault, [ledgerEntries]);
+
+  // Arriving from an order's "Worker Gold Book" shortcut (see orders.$id.tsx)
+  // links this Issue back to that order — the only remaining way to create
+  // an order-linked entry now that the order page's own issue dialog is gone.
+  // Worker Gold Book is intentionally independent of orders and job cards.
 
   // Which material book is open (only Worker Gold Book is functional).
-  const [selectedBook, setSelectedBook] = useState<MaterialBookKey>("worker");
 
   // Active view states
   // Daily Material Slip is the active workflow. The raw Ledger Statements and
   // Custody Balances views are retired from this module (detail lives in
-  // Manufacturing Books); only New Entry (which creates the slips) and Daily
-  // Material Slips are reachable. Key bumped to v2 so a persisted "ledger"/
+  // Only New Entry and Daily Material Slips are reachable. Key bumped to v2 so a persisted "ledger"/
   // "balances" tab from before never strands a returning user on a hidden view.
   const [activeTab, setActiveTab] = useDraft<"ledger" | "balances" | "daily_slips" | "new_entry">(
     "mtj-goldbook-activeTab-v2",
@@ -216,6 +215,10 @@ function WorkerGoldBookPage() {
     }
   };
 
+  // Deep-linked from an order ("Worker Gold Book" shortcut on orders.$id.tsx)
+  // — jump straight to a pre-filled Issue so the order link survives even
+  // though useDraft would otherwise keep whatever tab/type the user last had
+  // shouldn't fight the user's own tab navigation).
   // Form submission
   const handleSubmitEntry = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -263,7 +266,11 @@ function WorkerGoldBookPage() {
       return;
     }
 
-    // Add entry
+    // Stock validation and the Gold Stock (Material Vault) + Gold Ledger
+    // writes all happen inside addEntry() now, via the centralized Gold
+    // Transaction Service (gold-transaction-service.ts) — this page no
+    // longer writes to either directly, so every caller of addEntry gets
+    // the same atomic, consistent behavior.
     try {
       await addEntry({
         workerId: formWorkerId,
@@ -404,42 +411,7 @@ function WorkerGoldBookPage() {
         </Link>
       </div>
 
-      {/* ==================== MATERIAL BOOK SELECTOR ==================== */}
-      <div className="mb-6">
-        <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-          Material Book
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {MATERIAL_BOOKS.map((b) => {
-            const Icon = b.icon;
-            const active = selectedBook === b.key;
-            return (
-              <button
-                key={b.key}
-                onClick={() => setSelectedBook(b.key)}
-                className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
-                  active
-                    ? "border-gold bg-gold/10 text-gold"
-                    : "border-border text-muted-foreground hover:text-foreground hover:border-gold/40"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {b.label}
-                {!b.available && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                    <Lock className="h-2.5 w-2.5" /> Soon
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {selectedBook !== "worker" ? (
-        <ComingSoonBook bookKey={selectedBook} />
-      ) : (
-        <>
+      <>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div>
               <h1 className="font-serif text-3xl text-gold flex items-center gap-2">
@@ -474,7 +446,7 @@ function WorkerGoldBookPage() {
 
           {/* Tabs list bar — Daily Material Slip is the active workflow; the raw
               Ledger Statements and Custody Balances views are retired here (they
-              live in Manufacturing Books). Only Daily Slips + New Entry remain. */}
+              remain in this Worker Gold Book. */}
           <div className="border-b border-border mb-6 flex flex-wrap gap-2">
             <button
               onClick={() => setActiveTab("daily_slips")}
@@ -485,6 +457,7 @@ function WorkerGoldBookPage() {
             <button
               onClick={() => setActiveTab("new_entry")}
               className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === "new_entry" ? "border-gold text-gold" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              data-testid="wgb-new-entry-tab"
             >
               <Sparkles className="h-4 w-4" /> New Entry Form
             </button>
@@ -624,7 +597,6 @@ function WorkerGoldBookPage() {
                         <th className="p-4">Type</th>
                         <th className="p-4 text-right">Net Wt. (g)</th>
                         <th className="p-4 text-right">Purity</th>
-                        <th className="p-4 text-right">Fine Gold (g)</th>
                         <th className="p-4 text-right">Qty / Pcs</th>
                         <th className="p-4 text-center">Actions</th>
                       </tr>
@@ -697,11 +669,6 @@ function WorkerGoldBookPage() {
                               </td>
                               <td className="p-4 text-right font-mono">
                                 {e.purity > 0 ? e.purity : "—"}
-                              </td>
-                              <td
-                                className={`p-4 text-right font-mono font-bold ${isGiven ? "text-red-400" : "text-green-400"}`}
-                              >
-                                {e.fineMg > 0 ? `${mgToGrams(e.fineMg)} g` : "—"}
                               </td>
                               <td className="p-4 text-right font-mono">
                                 {e.quantity > 0 ? e.quantity : "—"}
@@ -1048,6 +1015,7 @@ function WorkerGoldBookPage() {
                       onChange={(e) => handleWorkerChange(e.target.value)}
                       className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold"
                       required
+                      data-testid="wgb-worker-select"
                     >
                       <option value="">-- Choose Worker --</option>
                       {workers.map((w) => (
@@ -1070,10 +1038,11 @@ function WorkerGoldBookPage() {
                         onChange={(e) => setFormParticulars(e.target.value)}
                         className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold"
                         required
+                        data-testid="wgb-particulars-select"
                       >
                         <option value="">-- Select Material --</option>
                         {entryType === "given"
-                          ? MATERIAL_OPTIONS.map((opt) => (
+                          ? materialOptions.map((opt) => (
                               <option key={opt} value={opt}>
                                 {opt}
                               </option>
@@ -1084,6 +1053,24 @@ function WorkerGoldBookPage() {
                               </option>
                             ))}
                       </select>
+                      {entryType === "given" && (
+                        <div className="mt-2 flex gap-2">
+                          <Input
+                            placeholder="Add new material..."
+                            value={newMaterialName}
+                            onChange={(e) => setNewMaterialName(e.target.value)}
+                            className="text-xs h-8"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleQuickAddMaterial}
+                            className="bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 text-xs h-8 font-semibold shrink-0"
+                          >
+                            + Quick Add
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Custom input if "Other" is chosen */}
@@ -1115,6 +1102,7 @@ function WorkerGoldBookPage() {
                         placeholder="0.000"
                         value={formGrossG}
                         onChange={(e) => setFormGrossG(e.target.value)}
+                        data-testid="wgb-gross-weight-input"
                       />
                     </div>
                   </div>
@@ -1168,30 +1156,31 @@ function WorkerGoldBookPage() {
                       />
                     </div>
 
-                    {/* Real-time Fine Gold display if purity > 0 */}
-                    {((formPurity !== "custom" && Number(formPurity) > 0) ||
-                      (formPurity === "custom" && Number(formCustomPurity) > 0)) && (
+                    {/* Actual material weight moving in/out of Gold Stock —
+                        no purity-derived fine-gold estimate, matching what
+                        this book itself tracks. */}
+                    {Number(formGrossG) > 0 && (
                       <div className="sm:col-span-2 bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between">
                         <div>
                           <strong className="text-xs text-amber-500 block font-semibold uppercase tracking-wider">
-                            Estimated Fine Gold Impact
+                            {entryType === "given"
+                              ? "Gold Stock After Issue"
+                              : "Gold Stock After Return"}
                           </strong>
                           <span className="text-[11px] text-muted-foreground">
-                            Automatically credited or debited from worker gold account.
+                            Automatically updates the Gold Stock vault and Material Vault.
                           </span>
                         </div>
                         <div className="text-right">
                           <span className="font-mono text-base font-bold text-amber-500">
-                            {(() => {
-                              const gross = (Number(formGrossG) || 0) * 1000;
-                              const pur =
-                                formPurity === "custom"
-                                  ? Number(formCustomPurity) || 0
-                                  : Number(formPurity) || 0;
-                              const fine = fineGoldMg(Math.round(gross), pur);
-                              return (fine / 1000).toFixed(3);
-                            })()}{" "}
-                            g Fine Gold
+                            {mgToGrams(
+                              Math.max(
+                                0,
+                                vaultBalance +
+                                  (entryType === "given" ? -1 : 1) * gramsToMg(formGrossG || "0"),
+                              ),
+                            )}{" "}
+                            g
                           </span>
                         </div>
                       </div>
@@ -1240,7 +1229,7 @@ function WorkerGoldBookPage() {
                       Voucher Internal Notes
                     </label>
                     <textarea
-                      placeholder="Provide detailed description of manufacturing requirements, die number, ball wire size..."
+                      placeholder="Add a short note about the gold or material movement..."
                       value={formNotes}
                       onChange={(e) => setFormNotes(e.target.value)}
                       className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold h-20 resize-none"
@@ -1252,6 +1241,7 @@ function WorkerGoldBookPage() {
                     <Button
                       type="submit"
                       className={`w-full font-bold uppercase tracking-wider py-3 h-auto ${entryType === "given" ? "bg-red-500 hover:bg-red-600 text-white" : "bg-green-600 hover:bg-green-700 text-white"}`}
+                      data-testid="wgb-submit-entry"
                     >
                       {entryType === "given" ? "Record Material Issue" : "Record Material Return"}
                     </Button>
@@ -1260,31 +1250,7 @@ function WorkerGoldBookPage() {
               </div>
             </div>
           )}
-        </>
-      )}
-    </div>
-  );
-}
-
-/** Professional placeholder for the material books not yet built. */
-function ComingSoonBook({ bookKey }: { bookKey: MaterialBookKey }) {
-  const book = MATERIAL_BOOKS.find((b) => b.key === bookKey);
-  const Icon = book?.icon ?? BookOpen;
-  return (
-    <div className="grid place-items-center py-24">
-      <div className="max-w-md text-center space-y-4">
-        <div className="mx-auto h-16 w-16 rounded-2xl bg-gold/10 grid place-items-center text-gold">
-          <Icon className="h-8 w-8" />
-        </div>
-        <h2 className="font-serif text-2xl text-gold">{book?.label}</h2>
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          <Lock className="h-3 w-3" /> Coming Soon
-        </div>
-        <p className="text-sm text-muted-foreground">
-          This material-movement ledger is part of the Material Book and will follow the same Daily
-          Material Slip workflow as the Worker Gold Book. It is not yet available for transactions.
-        </p>
-      </div>
+      </>
     </div>
   );
 }

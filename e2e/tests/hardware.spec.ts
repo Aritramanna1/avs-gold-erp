@@ -2,9 +2,11 @@ import { test, expect, expectNoPageErrors } from "../fixtures/base";
 
 test.describe("Hardware page", () => {
   test("loads with sensible disconnected states (no blank/broken UI)", async ({ authedPage }) => {
+    // A hard page.goto() re-pays the real app's boot-overlay delay (see
+    // auth-invitation.spec.ts's note).
     await authedPage.goto("/hardware");
     await expect(authedPage.getByText("Hardware Management", { exact: true })).toBeVisible({
-      timeout: 15_000,
+      timeout: 45_000,
     });
     // A disconnected scale must show a safe placeholder reading, not a crash.
     // Both the weight display ("— g") and the status line ("No reading yet")

@@ -431,7 +431,11 @@ export function AttachmentButton({
         type="button"
         size={size}
         variant={filed ? "secondary" : variant}
-        onClick={() => setOpen(true)}
+        onClick={() =>
+          toast.info(
+            "Workshop Edition stores identification numbers as text; file uploads are disabled.",
+          )
+        }
         className={className}
         data-testid={`attachment-btn-${docKey}`}
       >
@@ -441,20 +445,10 @@ export function AttachmentButton({
           </>
         ) : (
           <>
-            <Camera className="h-3.5 w-3.5 mr-1" /> Add / Attach
+            <FileText className="h-3.5 w-3.5 mr-1" /> Text-only record
           </>
         )}
       </Button>
-      <AttachmentPlaceholderModal
-        open={open}
-        onOpenChange={setOpen}
-        title={title ?? `${docLabel}`}
-        entityType={entityType}
-        entityId={entityId}
-        docKey={docKey}
-        docLabel={docLabel}
-        onSaved={onSaved}
-      />
     </>
   );
 }

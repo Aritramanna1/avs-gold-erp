@@ -168,78 +168,9 @@ export const test = base.extend<Fixtures>({
     // manually resolves immediately with a valid session, but AuthGate's
     // own internal check still takes ~25s wall-clock to reflect it. This
     // timeout is widened to match observed reality rather than masking it.
-    // In-memory mock database for Supabase simulation
-    const mockDb: Record<string, any[]> = {};
-
-    // Intercept Supabase REST API requests to simulate database operations in-memory
-    await page.route("**/rest/v1/**", async (route) => {
-      const url = route.request().url();
-      const method = route.request().method();
-      const match = url.match(/\/rest\/v1\/([^?#]+)/);
-      const table = match ? match[1] : null;
-
-      if (!table) {
-        await route.continue();
-        return;
-      }
-
-      if (table.startsWith("rpc/")) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ valid: true, status: "lifetime" }),
-        });
-        return;
-      }
-
-      if (method === "GET") {
-        const data = mockDb[table] || [];
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(data),
-        });
-      } else if (method === "POST" || method === "PUT" || method === "PATCH") {
-        const bodyStr = route.request().postData();
-        let payload: any = [];
-        try {
-          payload = bodyStr ? JSON.parse(bodyStr) : [];
-        } catch {
-          payload = [];
-        }
-
-        if (!Array.isArray(payload)) {
-          payload = [payload];
-        }
-
-        if (!mockDb[table]) {
-          mockDb[table] = [];
-        }
-
-        // Upsert items into mockDb
-        for (const item of payload) {
-          const index = mockDb[table].findIndex((x) => x.id === item.id);
-          if (index !== -1) {
-            mockDb[table][index] = { ...mockDb[table][index], ...item };
-          } else {
-            mockDb[table].push(item);
-          }
-        }
-
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(payload),
-        });
-      } else if (method === "DELETE") {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({}),
-        });
-      }
-    });
-
+    // No mocking: every Supabase REST/RPC call goes to the real backend
+    // configured in .env (see playwright.config.ts) — auth, licensing, and
+    // every database write are exercised for real.
     await page.goto("/");
     await expect(page.getByTestId("auth-form")).toBeHidden({ timeout: 30_000 });
 

@@ -37,7 +37,7 @@ async function snapshot(page: import("@playwright/test").Page) {
 }
 
 test.describe("Workflow Integration — Production Order ↔ Gold Ledger ↔ Worker Gold Book ↔ Material Vault", () => {
-  test("one issue + one return automatically synchronizes every system exactly once, with correct timeline and dashboard summary", async ({
+  test.skip("one issue + one return automatically synchronizes every system exactly once, with correct timeline and dashboard summary (RC scope: Gold Issue removed from Orders — this test's issue step used the order-linked WorkerIssueDialog, which no longer mounts on the order page; the Worker Gold Book's own issue flow is order-agnostic and covered separately in order-gold-material-issue.spec.ts)", async ({
     authedPage: page,
     seedIds,
   }) => {

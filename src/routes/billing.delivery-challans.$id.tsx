@@ -6,6 +6,8 @@ import { usePrintEngine } from "@/lib/print-engine";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useCan } from "@/lib/rbac";
+import { usePeople } from "@/lib/people-store";
+import { DocCommActions } from "@/components/doc-comm-actions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Printer, Ban, CheckCircle } from "lucide-react";
@@ -25,7 +27,9 @@ function DeliveryChallanDetail() {
   const { firm } = useSettings();
   const { triggerPrint } = usePrintEngine();
   const { can } = useCan();
+  const people = usePeople((s) => s.people);
   const c = challans.find((x) => x.id === id);
+  const customer = c ? people.find((p) => p.id === c.customerId) : undefined;
 
   useEffect(() => {
     if (challans.length === 0) refresh();
@@ -112,6 +116,16 @@ function DeliveryChallanDetail() {
         >
           <Printer className="h-4 w-4" /> Print
         </Button>
+        <DocCommActions
+          whatsapp={{
+            phone: customer?.phone,
+            message: `Your Delivery Challan ${c.challanNo} from ${firm.shopName} is attached.`,
+          }}
+          linkedType="delivery_challan"
+          linkedId={c.id}
+          recipientLabel={c.customerName}
+          variant="compact"
+        />
         {c.status === "issued" && (
           <>
             <Button onClick={handleReturn} disabled={busy} className="gap-1.5">

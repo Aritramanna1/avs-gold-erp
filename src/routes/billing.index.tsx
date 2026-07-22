@@ -19,6 +19,8 @@ import {
   DELIVERY_STATUS_LABELS,
 } from "@/lib/settlement-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
+import { useLedger, computeBalances } from "@/lib/ledger-store";
+import { formatWeight } from "@/lib/gold";
 
 export const Route = createFileRoute("/billing/")({
   head: () => ({ meta: [{ title: "Billing · AVS Gold ERP" }] }),
@@ -27,6 +29,7 @@ export const Route = createFileRoute("/billing/")({
 
 function BillingIndex() {
   const invoices = useBilling((s) => s.invoices);
+  const ledgerEntries = useLedger((s) => s.entries);
   const people = usePeople((s) => s.people);
   const [q, setQ] = useState("");
   const { can } = useCan();
@@ -81,29 +84,15 @@ function BillingIndex() {
   const totalCollected = invoices.reduce((s, i) => s + i.paidPaise, 0);
   const totalOutstanding = outstanding.reduce((s, o) => s + o.amount, 0);
   const totalInvoices = invoices.length;
+  const currentFine = computeBalances(ledgerEntries).totalUnderManagement;
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <PageHeader
-        title="Billing"
-        subtitle="Invoices, payments and customer ledger."
+        title="Workshop Billing"
+        subtitle="Job-work invoices, settlements, payments and customer ledger."
         actions={
           <div className="flex gap-2 flex-wrap">
-            <Link to="/billing/credit-notes">
-              <Button variant="outline" size="sm">
-                Credit Notes
-              </Button>
-            </Link>
-            <Link to="/billing/debit-notes">
-              <Button variant="outline" size="sm">
-                Debit Notes
-              </Button>
-            </Link>
-            <Link to="/billing/estimates">
-              <Button variant="outline" size="sm">
-                Estimates (Coming Soon)
-              </Button>
-            </Link>
             <Link to="/billing/delivery-challans">
               <Button variant="outline" size="sm">
                 Delivery Challans
@@ -127,7 +116,8 @@ function BillingIndex() {
         }
       />
 
-      <div className="grid sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Stat label="Current Fine Gold" value={formatWeight(currentFine)} tone="text-gold" />
         <Stat label="Invoices" value={String(totalInvoices)} />
         <Stat
           label="Collected"

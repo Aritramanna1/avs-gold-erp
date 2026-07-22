@@ -2,94 +2,43 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Home,
   Users,
-  ClipboardCheck,
-  ShoppingBag,
-  Sparkles,
-  Hammer,
-  Wrench,
-  Package,
-  ScanLine,
   Receipt,
-  Scale,
   BookOpen,
   BarChart3,
   Settings as SettingsIcon,
   MessageSquare,
-  LifeBuoy,
-  Building2,
-  TrendingDown,
-  Mail,
-  FlameKindling,
-  Cpu,
 } from "lucide-react";
 import { useSettings } from "@/lib/settings-store";
 import { useModuleStore } from "@/lib/module-store";
-import {
-  isPilotHiddenModule,
-  RETAIL_COMING_SOON_MESSAGE,
-  ATTENDANCE_COMING_SOON_MESSAGE,
-} from "@/lib/pilot-config";
+import { isPilotHiddenModule } from "@/lib/pilot-config";
 import { usePermissions } from "@/lib/use-permissions";
 import { Logo } from "@/components/ui/Logo";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useMemo } from "react";
 
-// Manufacturing Mode pilot: ordered to follow the production workflow
-// (intake → job execution → finished goods → materials/gold → money →
-// supporting/admin) rather than the prior alphabetical-ish grouping.
+// Workshop Edition navigation follows the physical gold-control workflow.
 export const navigationItems = [
   { to: "/", label: "Home", icon: Home },
   { to: "/people", label: "People / KYC", icon: Users },
-  { to: "/orders", label: "Orders", icon: ShoppingBag },
-  { to: "/catalog", label: "Catalog", icon: Sparkles },
-  { to: "/workshop/gold-book", label: "Worker Gold Book", icon: BookOpen },
-  { to: "/workshop", label: "Manufacturing Books (Coming Soon)", icon: Hammer, comingSoon: true },
-  { to: "/barcode", label: "Barcode & Tagging (Coming Soon)", icon: ScanLine, comingSoon: true },
-  { to: "/melt", label: "Melt Account", icon: FlameKindling },
-  { to: "/stock", label: "Ready Stock (Coming Soon)", icon: Package, comingSoon: true },
-  { to: "/billing", label: "Billing", icon: Receipt },
   { to: "/ledger", label: "Gold Stock", icon: BookOpen },
-  {
-    to: "/communications",
-    label: "Communications (Coming Soon)",
-    icon: MessageSquare,
-    comingSoon: true,
-  },
-  { to: "/repair", label: RETAIL_COMING_SOON_MESSAGE, icon: ShoppingBag, retailOnly: true },
-  {
-    to: "/attendance",
-    label: ATTENDANCE_COMING_SOON_MESSAGE,
-    icon: ClipboardCheck,
-    comingSoon: true,
-  },
-  { to: "/expenses", label: "Expenses (Coming Soon)", icon: TrendingDown, comingSoon: true },
-  { to: "/dashboard/ceo", label: "CEO Dashboard", icon: Building2 },
-  { to: "/reports", label: "Reports (Coming Soon)", icon: BarChart3, comingSoon: true },
-  { to: "/branches", label: "Branches", icon: Building2 },
-  { to: "/manufacturing", label: "Manufacturing (Coming Soon)", icon: Wrench, comingSoon: true },
-  { to: "/hardware", label: "Hardware Integrations (Coming Soon)", icon: Cpu, comingSoon: true },
+  { to: "/workshop/gold-book", label: "Worker Gold Book", icon: BookOpen },
+  { to: "/workshop", label: "Jeweller Gold Book", icon: BookOpen },
+  { to: "/billing", label: "Billing", icon: Receipt },
+  { to: "/reports/gold-position", label: "Gold Reports", icon: BarChart3 },
+  { to: "/whatsapp", label: "WhatsApp", icon: MessageSquare },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
-  { to: "/help", label: "Help & Guide", icon: LifeBuoy },
 ] as const;
 
 const labelKeys: Record<string, string> = {
   "/": "home",
   "/people": "peopleKyc",
-  "/communications": "communications",
-  "/orders": "orders",
-  "/catalog": "catalog",
   "/workshop": "workshop",
   "/workshop/gold-book": "workerGoldBook",
-  "/stock": "stock",
-  "/barcode": "barcodeTagging",
   "/billing": "billing",
   "/ledger": "ledger",
-  "/expenses": "expenses",
-  "/branches": "branches",
-  "/reports": "reports",
-  "/hardware": "hardware",
+  "/reports/gold-position": "reports",
+  "/whatsapp": "communications",
   "/settings": "settings",
-  "/help": "helpGuide",
 };
 
 interface SidebarProps {
@@ -113,23 +62,10 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
     const mStore = useModuleStore.getState();
 
     const pathModuleMap: Record<string, import("@/lib/module-store").ERPModuleKey> = {
-      "/attendance": "attendance",
-      "/orders": "orders",
-      "/catalog": "inventory",
-      "/workshop": "job_work",
       "/workshop/gold-book": "payroll",
-      "/manufacturing": "manufacturing",
-      "/melt": "melt_account",
-      "/stock": "inventory",
-      "/barcode": "barcode",
-      "/hardware": "hardware_integration",
       "/billing": "billing",
       "/ledger": "billing",
-      "/expenses": "billing",
-      "/reports": "reports",
-      "/dashboard/ceo": "analytics",
-      "/communications": "crm_communications",
-      "/repair": "repairs",
+      "/reports/gold-position": "reports",
     };
 
     const isAllowed = (path: string) => {
@@ -250,8 +186,9 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
           const Icon = item.icon;
           const translationKey = labelKeys[item.to];
           const translatedLabel = translationKey ? t(`navigation.${translationKey}`) : item.label;
-          const isComingSoonPlaceholder =
-            ("retailOnly" in item && item.retailOnly) || ("comingSoon" in item && item.comingSoon);
+          const isComingSoonPlaceholder = Boolean(
+            ("retailOnly" in item && item.retailOnly) || ("comingSoon" in item && item.comingSoon),
+          );
           return (
             <Link
               key={item.to}
@@ -268,7 +205,7 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
               <Icon
                 className={`h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110 ${isComingSoonPlaceholder ? "text-sidebar-foreground/40" : active ? "text-gold" : "text-muted-foreground"}`}
               />
-              <span className="min-w-0 flex-1 truncate">{translatedLabel}</span>
+              <span className="min-w-0 flex-1 truncate">{String(translatedLabel)}</span>
               {isComingSoonPlaceholder && (
                 <span className="shrink-0 rounded-full border border-gold/25 bg-gold/10 px-1.5 py-0.5 text-[8px] font-bold not-italic uppercase tracking-wider text-gold">
                   Soon

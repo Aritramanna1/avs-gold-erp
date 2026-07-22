@@ -16,7 +16,8 @@ export const COMM_KIND_LABELS: Record<CommKind, string> = {
   manually_sent: "Marked manually sent",
 };
 
-export type CommLinkedType = "order" | "job" | "invoice" | "repair" | "estimate";
+export type CommLinkedType =
+  "order" | "job" | "invoice" | "repair" | "estimate" | "delivery_challan" | "gold_settlement";
 
 export interface CommEvent {
   id: string;
@@ -39,6 +40,19 @@ export interface CommEvent {
    * status) so provider status is never lost or conflated with it.
    */
   deliveryStatus?: "queued" | "sent" | "delivered" | "failed" | "deep_link_opened";
+
+  // Full document-pipeline audit trail (WasenderAPI upload+send flow) —
+  // undefined for the legacy manual-paste flow, which has no upload step.
+  uploadStatus?: "skipped" | "success" | "failed";
+  uploadTime?: number;
+  uploadResponse?: string;
+  sendStatus?: "success" | "failed";
+  sendResponse?: string;
+  retryCount?: number;
+  failureReason?: string;
+  providerName?: string;
+  documentUrl?: string;
+  correlationId?: string;
 }
 
 interface CommLogState {

@@ -135,6 +135,10 @@ export const useAttachments = create<State>()((set, getStore) => ({
       });
   },
   saveWithFile: async (t, id, k, file, patch = {}) => {
+    const attachmentPatch = patch ?? {};
+    throw new Error(
+      "Workshop Edition does not store uploaded files. Keep identification details as text instead.",
+    );
     const key = makeKey(t, id, k);
     const bytes = new Uint8Array(await file.arrayBuffer());
     const mimeType = file.type || "application/octet-stream";
@@ -147,7 +151,7 @@ export const useAttachments = create<State>()((set, getStore) => ({
       mimeType,
       entityType: t,
       entityId: id,
-      createdBy: patch.uploadedBy,
+      createdBy: attachmentPatch.uploadedBy,
     });
 
     let thumbnailDataUrl: string | undefined;
@@ -163,13 +167,13 @@ export const useAttachments = create<State>()((set, getStore) => ({
     invalidateAttachmentUrl(t, id, k);
 
     getStore().save(t, id, k, {
-      filed: patch.filed ?? true,
-      note: patch.note ?? "",
+      filed: attachmentPatch.filed ?? true,
+      note: attachmentPatch.note ?? "",
       fileName: file.name,
       checksum,
       mimeType,
       thumbnailDataUrl,
-      uploadedBy: patch.uploadedBy,
+      uploadedBy: attachmentPatch.uploadedBy,
       // A fresh file supersedes any legacy inlined base64 on this key.
       fileDataUrl: undefined,
     });

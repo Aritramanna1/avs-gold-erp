@@ -40,6 +40,7 @@ import { useCurrentBranchId } from "@/lib/branch-store";
 import { mgToGrams, gramsToMg, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
 import { useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { ArrowLeft, Printer, CheckCircle2, Truck, Coins } from "lucide-react";
+import { DocCommActions } from "@/components/doc-comm-actions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settlement/$id")({
@@ -264,11 +265,23 @@ function SettlementView() {
                 </Button>
               </Link>
               {s.goldSettlementId && (
-                <Link to="/billing/gold-settlement-print/$id" params={{ id: s.goldSettlementId }}>
-                  <Button variant="outline" size="sm" className="gap-1.5">
-                    <Printer className="h-3.5 w-3.5" /> Gold Settlement Voucher
-                  </Button>
-                </Link>
+                <>
+                  <Link to="/billing/gold-settlement-print/$id" params={{ id: s.goldSettlementId }}>
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <Printer className="h-3.5 w-3.5" /> Gold Settlement Voucher
+                    </Button>
+                  </Link>
+                  <DocCommActions
+                    whatsapp={{
+                      phone: s.customerPhone,
+                      message: `Your Gold Settlement Voucher for ${s.settlementNo} is attached.`,
+                    }}
+                    linkedType="gold_settlement"
+                    linkedId={s.goldSettlementId}
+                    recipientLabel={s.customerName}
+                    variant="compact"
+                  />
+                </>
               )}
               <Button
                 size="sm"

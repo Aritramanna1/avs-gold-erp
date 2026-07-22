@@ -204,8 +204,8 @@ function JewellerBookPage() {
           tone={book.cashDuePaise > 0 ? "red" : undefined}
         />
         <Stat
-          k="Manufacturing"
-          v={`${book.openJobCards} on bench`}
+          k="Ledger entries"
+          v={String(ledger.rows.length)}
           hint={`${book.deliveredPieces} delivered · ${book.openOrders} open orders`}
         />
       </div>
@@ -214,12 +214,6 @@ function JewellerBookPage() {
         <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="ledger" className="gap-2">
             <History className="h-4 w-4" /> Ledger ({ledger.rows.length})
-          </TabsTrigger>
-          <TabsTrigger value="orders" className="gap-2">
-            <ClipboardList className="h-4 w-4" /> Orders &amp; Job Cards ({book.orders.length})
-          </TabsTrigger>
-          <TabsTrigger value="bills" className="gap-2">
-            <FileText className="h-4 w-4" /> Manufacturing Bills ({book.bills.length})
           </TabsTrigger>
           <TabsTrigger value="settlements" className="gap-2">
             <Coins className="h-4 w-4" /> Settlements ({book.settlements.length})

@@ -3083,6 +3083,24 @@ export type Database = {
         Args: { p_key: string; p_pad_length?: number; p_prefix?: string };
         Returns: string;
       };
+      execute_gold_transaction: {
+        Args: {
+          p_category: string;
+          p_purity: number;
+          p_delta_mg: number;
+          p_gross_mg: number;
+          p_movement_type: string;
+          p_ledger_movement: string;
+          p_branch_id: string;
+          p_reference: string | null;
+          p_notes: string | null;
+          p_actor_id: string | null;
+          p_actor_email: string | null;
+          p_worker_id?: string | null;
+          p_worker_entry?: Json | null;
+        };
+        Returns: Json;
+      };
       restore_deleted: {
         Args: { p_id: string; p_table: string };
         Returns: undefined;

@@ -48,7 +48,8 @@ export interface CommRequest {
   };
   /** The document being communicated */
   linkedId: string;
-  linkedType: "invoice" | "order" | "job" | "repair" | "estimate";
+  linkedType:
+    "invoice" | "order" | "job" | "repair" | "estimate" | "delivery_challan" | "gold_settlement";
   /** Arbitrary key-value pairs injected into template variables */
   variables?: Record<string, string | number>;
 }

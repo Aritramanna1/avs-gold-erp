@@ -41,6 +41,9 @@ import { mgToGrams, gramsToMg, getCaratLabel, COMMON_PURITIES } from "@/lib/gold
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { toast } from "sonner";
 import { Coins, Wrench, Recycle, Settings2 } from "lucide-react";
+import { useSettings } from "@/lib/settings-store";
+import { useLedger } from "@/lib/ledger-store";
+import { executeGoldTransaction } from "@/lib/gold-transaction-service";
 
 const GROUP_ICONS: Record<MaterialGroup, typeof Coins> = {
   gold: Coins,
@@ -263,7 +266,6 @@ const STOCK_ACTIONS = [
 ] as const;
 
 function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const appendMovement = useMaterialVault((s) => s.append);
   const movements = useMaterialVault((s) => s.movements);
   const [category, setCategory] = useState("kdm_balls");
   const [purity, setPurity] = useState("916");
@@ -272,6 +274,11 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
   const [reference, setReference] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [newMaterialName, setNewMaterialName] = useState("");
+
+  const addDropdownItem = useSettings((s) => s.addDropdownItem);
+  const registerCategory = useMaterialVault((s) => s.registerCategory);
+  const branchId = useSettings((s) => s.selectedBranchId) || "MAIN";
 
   useEffect(() => {
     if (open) {
@@ -281,8 +288,21 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
       setWeightG("");
       setReference("");
       setError(null);
+      setNewMaterialName("");
     }
   }, [open]);
+
+  const handleQuickAddMaterial = () => {
+    const label = newMaterialName.trim();
+    if (!label) return;
+    const key = materialKeyFromName(label);
+    if (!key) return;
+    registerCategory({ key, label, group: "manufacturing_materials" });
+    addDropdownItem("materialType", label);
+    setNewMaterialName("");
+    setCategory(key);
+    toast.success(`Material "${label}" added successfully.`);
+  };
 
   async function submit() {
     setError(null);
@@ -309,16 +329,30 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
     setSaving(true);
     try {
       const { data } = await supabase.auth.getSession();
-      await appendMovement({
+
+      const ledgerMovementMap = {
+        purchase: "purchase",
+        worker_return: "receive_from_karigar",
+        worker_issue: "issue_to_karigar",
+      } as const;
+
+      await executeGoldTransaction({
         category,
-        type: action,
+        purity: purityVal,
         deltaMg,
         grossMg: gramsToMg(n),
-        purity: purityVal || undefined,
+        movementType: action,
+        ledgerMovement: ledgerMovementMap[action],
+        branchId,
         reference: reference.trim() || undefined,
+        notes: "Recorded via Gold Stock",
         actorId: data.session?.user.id ?? null,
         actorEmail: data.session?.user.email ?? null,
       });
+
+      // Refresh both stores to keep them in sync immediately
+      await Promise.all([useMaterialVault.getState().refresh(), useLedger.getState().refresh()]);
+
       toast.success("Stock movement recorded.");
       onClose();
     } catch (err: any) {
@@ -341,6 +375,22 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
           <div>
             <Label>Material *</Label>
             <CategorySelect value={category} onChange={setCategory} testId="stock-category" />
+            <div className="mt-2 flex gap-2">
+              <Input
+                placeholder="Quick add new material..."
+                value={newMaterialName}
+                onChange={(e) => setNewMaterialName(e.target.value)}
+                className="text-xs h-8"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleQuickAddMaterial}
+                className="bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 text-xs h-8 font-semibold shrink-0"
+              >
+                + Quick Add
+              </Button>
+            </div>
           </div>
           <div>
             <Label>Purity / Touch *</Label>
@@ -465,6 +515,7 @@ function MaterialManageDialog({ open, onClose }: { open: boolean; onClose: () =>
       return;
     }
     registerCategory({ key, label, group });
+    useSettings.getState().addDropdownItem("materialType", label);
     setName("");
     toast.success(`Material "${label}" added.`);
   }

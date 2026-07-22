@@ -23,6 +23,7 @@ import { useMfgBills, MFG_BILL_STATUS_LABELS } from "@/lib/manufacturing-bill-st
 import { useSettings } from "@/lib/settings-store";
 import { useWorkflowEngine } from "@/lib/workflow-engine";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
+import { DocCommActions } from "@/components/doc-comm-actions";
 import {
   ArrowLeft,
   Printer,
@@ -163,6 +164,16 @@ export default function MfgBillView() {
             <Printer className="h-4 w-4" />
             Print Bill
           </Button>
+          <DocCommActions
+            whatsapp={{
+              phone: bill.customerPhone,
+              message: `Your Manufacturing Bill ${bill.billNo} from ${firm.shopName} is attached.`,
+            }}
+            linkedType="job"
+            linkedId={bill.id}
+            recipientLabel={bill.customerName}
+            variant="compact"
+          />
           {bill.status === "finalised" && (
             <>
               <Button
@@ -236,7 +247,7 @@ export default function MfgBillView() {
               {bill.closingBalanceMg === 0
                 ? "Settled"
                 : bill.closingBalanceMg > 0
-                  ? "Owed to karigar (Jama)"
+                  ? "Company owes worker"
                   : "Owed by karigar (Udhar)"}
             </div>
           </div>
@@ -427,8 +438,8 @@ export default function MfgBillView() {
                 bill.closingBalanceMg === 0
                   ? "Settled"
                   : bill.closingBalanceMg > 0
-                    ? "Jama (owed to karigar)"
-                    : "Udhar (owed by karigar)"
+                    ? "Company owes worker"
+                    : "Worker owes company"
               }
               emphasis
             />

@@ -3,7 +3,9 @@ import { test, expect, expectNoPageErrors } from "../fixtures/base";
 test.describe("Form validation", () => {
   test("People form requires full name and phone before saving", async ({ authedPage }) => {
     await authedPage.goto("/people");
-    await authedPage.getByTestId("people-add-button").click();
+    // A hard page.goto() re-pays the real app's boot-overlay delay (see
+    // auth-invitation.spec.ts's note) — give the first click room for it.
+    await authedPage.getByTestId("people-add-button").click({ timeout: 45_000 });
     await authedPage.getByTestId("people-save").click();
     // Validation must block the save — the dialog stays open with an error,
     // it must never silently create a blank record.

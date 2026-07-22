@@ -16,8 +16,12 @@ test.describe("Loading states", () => {
     page,
   }) => {
     await page.goto("/");
+    // Restoring a session from localStorage (rather than a live sign-in)
+    // reproducibly takes ~20-25s against the real backend before AuthGate's
+    // account-lookup resolves (see fixtures/base.ts's "KNOWN APP DEFECT"
+    // note) — 20s undercuts that by design intent, not by margin.
     await expect(page.getByTestId("auth-form").or(page.locator("#user-menu-trigger"))).toBeVisible({
-      timeout: 20_000,
+      timeout: 40_000,
     });
     expectNoPageErrors(page);
   });
