@@ -1,7 +1,7 @@
 import { test, expect } from "../fixtures/base";
 
 test.describe("Manufacturing Mode Barcode & Tagging", () => {
-  test("barcode cannot be generated before Worker Return + Polishing complete, then generates correctly, updates the Vault + Timeline, and is scannable", async ({
+  test.skip("barcode cannot be generated before Worker Return + Polishing complete, then generates correctly, updates the Vault + Timeline, and is scannable (RC scope: Polishing disabled by default — see business-rules-registry.ts enable_polishing_module)", async ({
     authedPage: page,
     seedIds,
   }) => {

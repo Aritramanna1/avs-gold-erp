@@ -26,6 +26,7 @@ export type MessageTemplate =
   | "business_report"
   | "settlement_ready"
   | "pending_settlement"
+  | "delivery_challan"
   /**
    * Free text the user typed or that a screen composed — a delivery reminder, an
    * order confirmation. There is no template to resolve: the message body IS the

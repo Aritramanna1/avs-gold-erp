@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { useCreditNotes } from "@/lib/billing-documents-store";
 import { useBilling, paiseToRupees, rupeesToPaise } from "@/lib/billing-store";
+import { usePeople } from "@/lib/people-store";
 import { useCan } from "@/lib/rbac";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { Plus, Search } from "lucide-react";
+import { ArrowLeft, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/billing/credit-notes/")({
@@ -30,6 +31,7 @@ function CreditNotesIndex() {
   const refresh = useCreditNotes((s) => s.refresh);
   const issue = useCreditNotes((s) => s.issue);
   const invoices = useBilling((s) => s.invoices);
+  const people = usePeople((s) => s.people);
   const { can, email } = useCan();
 
   useEffect(() => {
@@ -39,6 +41,7 @@ function CreditNotesIndex() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [invoiceId, setInvoiceId] = useState("");
+  const [customerId, setCustomerId] = useState("");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
@@ -50,16 +53,22 @@ function CreditNotesIndex() {
       return (
         n.creditNoteNo.toLowerCase().includes(t) ||
         n.customerName.toLowerCase().includes(t) ||
-        n.invoiceNo.toLowerCase().includes(t)
+        (n.invoiceNo?.toLowerCase().includes(t) ?? false)
       );
     });
   }, [notes, q]);
 
   const selectedInvoice = invoices.find((i) => i.id === invoiceId);
+  const selectedCustomer = people.find((p) => p.id === customerId);
 
   async function handleCreate() {
-    if (!selectedInvoice) {
-      toast.error("Select an invoice to issue the credit note against.");
+    const customerRef = selectedInvoice
+      ? { id: selectedInvoice.customerId, name: selectedInvoice.customerName }
+      : selectedCustomer
+        ? { id: selectedCustomer.id, name: selectedCustomer.fullName }
+        : null;
+    if (!customerRef) {
+      toast.error("Select an invoice, or a customer for a standalone credit note.");
       return;
     }
     const amt = rupeesToPaise(amount);
@@ -76,10 +85,10 @@ function CreditNotesIndex() {
       const { data } = await supabase.auth.getSession();
       await issue(
         {
-          invoiceId: selectedInvoice.id,
-          invoiceNo: selectedInvoice.invoiceNo,
-          customerId: selectedInvoice.customerId,
-          customerName: selectedInvoice.customerName,
+          invoiceId: selectedInvoice?.id,
+          invoiceNo: selectedInvoice?.invoiceNo,
+          customerId: customerRef.id,
+          customerName: customerRef.name,
           amountPaise: amt,
           goldFineMg: 0,
           reason: reason.trim(),
@@ -92,6 +101,7 @@ function CreditNotesIndex() {
       toast.success("Credit note issued.");
       setOpen(false);
       setInvoiceId("");
+      setCustomerId("");
       setAmount("");
       setReason("");
     } catch (e: any) {
@@ -103,6 +113,11 @@ function CreditNotesIndex() {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
+      <Link to="/billing">
+        <Button variant="ghost" className="gap-1.5 mb-3">
+          <ArrowLeft className="h-4 w-4" /> Back to Billing
+        </Button>
+      </Link>
       <PageHeader
         title="Credit Notes"
         subtitle="Adjustments issued in the customer's favor against an invoice."
@@ -145,7 +160,9 @@ function CreditNotesIndex() {
                   <tr key={n.id} className="border-b border-border/60 hover:bg-background/30">
                     <td className="py-2 font-mono text-xs text-gold">{n.creditNoteNo}</td>
                     <td>{n.customerName}</td>
-                    <td className="text-xs text-muted-foreground">{n.invoiceNo}</td>
+                    <td className="text-xs text-muted-foreground">
+                      {n.invoiceNo || "— (standalone)"}
+                    </td>
                     <td className="text-right">₹ {paiseToRupees(n.amountPaise)}</td>
                     <td className="pl-3">
                       <Badge variant="outline" className="text-[10px]">
@@ -176,13 +193,16 @@ function CreditNotesIndex() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Invoice</Label>
+              <Label>Invoice (optional)</Label>
               <select
                 className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
                 value={invoiceId}
-                onChange={(e) => setInvoiceId(e.target.value)}
+                onChange={(e) => {
+                  setInvoiceId(e.target.value);
+                  if (e.target.value) setCustomerId("");
+                }}
               >
-                <option value="">Select invoice…</option>
+                <option value="">No invoice — standalone credit note</option>
                 {invoices.map((i) => (
                   <option key={i.id} value={i.id}>
                     {i.invoiceNo} · {i.customerName}
@@ -190,6 +210,23 @@ function CreditNotesIndex() {
                 ))}
               </select>
             </div>
+            {!invoiceId && (
+              <div>
+                <Label>Customer</Label>
+                <select
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  value={customerId}
+                  onChange={(e) => setCustomerId(e.target.value)}
+                >
+                  <option value="">Select customer…</option>
+                  {people.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.fullName} · {p.phone}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <Label>Amount (₹)</Label>
               <Input

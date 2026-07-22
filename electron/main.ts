@@ -13,7 +13,9 @@ import {
   clearApiKey as wasenderClearApiKey,
   hasApiKey as wasenderHasApiKey,
   wasenderRequest,
+  wasenderUploadMedia,
   type WasenderRequestArgs,
+  type WasenderUploadMediaArgs,
 } from "./wasender";
 import { secureStoreDelete, secureStoreGet, secureStoreSet } from "./secure-store";
 import {
@@ -23,6 +25,9 @@ import {
 } from "./error-handling";
 
 installMainProcessErrorHandlers();
+
+// Enable native Barcode Detection API in Chromium for Electron barcode scanning
+app.commandLine.appendSwitch("enable-blink-features", "BarcodeDetection");
 
 // CommonJS output (see electron/tsconfig.json + dist-electron/package.json's
 // {"type":"commonjs"} override) — __dirname is a real CommonJS global here,
@@ -496,6 +501,9 @@ function registerIpcHandlers(): void {
   handle(IPC.WASENDER_CLEAR_APIKEY, () => wasenderClearApiKey());
   handle(IPC.WASENDER_HAS_APIKEY, () => wasenderHasApiKey());
   handle(IPC.WASENDER_REQUEST, (_e, args: WasenderRequestArgs) => wasenderRequest(args));
+  handle(IPC.WASENDER_UPLOAD_MEDIA, (_e, args: WasenderUploadMediaArgs) =>
+    wasenderUploadMedia(args),
+  );
 
   handle(IPC.SECURE_STORE_GET, (_event, key: string) => secureStoreGet(key));
   handle(IPC.SECURE_STORE_SET, (_event, key: string, value: string) => secureStoreSet(key, value));

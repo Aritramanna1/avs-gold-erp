@@ -276,13 +276,14 @@ export async function verifyLicense(mode: DeploymentMode | null): Promise<Licens
   const cfg = getLicenseConfig();
   const now = Date.now();
 
-  // Local development or E2E test runner bypass
+  // Local development bypass only when no explicit license key is entered
   if (
-    import.meta.env.DEV ||
-    (typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1" ||
-        window.location.hostname === "::1"))
+    !cfg.key &&
+    (import.meta.env.DEV ||
+      (typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1" ||
+          window.location.hostname === "::1")))
   ) {
     apply(
       "lifetime",
@@ -360,7 +361,7 @@ export async function verifyLicense(mode: DeploymentMode | null): Promise<Licens
       if (usingSupabase) {
         // Trust boundary is TLS + RLS (validate_license is the only path to
         // the locked-down licenses table) — no client-side signature to verify.
-        const entitlement = JSON.parse(response.entitlement) as SignedEntitlementPayload;
+        const entitlement = response.entitlement as unknown as SignedEntitlementPayload;
         cache = cacheFromPayload(entitlement, now);
       } else {
         if (!response.signature) throw new Error("The Licensing API did not return a signature.");

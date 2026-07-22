@@ -38,4 +38,5 @@ exports.IPC = {
     WASENDER_CLEAR_APIKEY: "wasender:clear-apikey",
     WASENDER_HAS_APIKEY: "wasender:has-apikey",
     WASENDER_REQUEST: "wasender:request",
+    WASENDER_UPLOAD_MEDIA: "wasender:upload-media",
 };

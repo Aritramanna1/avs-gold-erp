@@ -122,7 +122,7 @@ function CreditNoteDetail() {
           </div>
           <div>
             <div className="text-xs uppercase text-neutral-400">Against Invoice</div>
-            <div className="font-medium">{note.invoiceNo}</div>
+            <div className="font-medium">{note.invoiceNo || "Standalone (no invoice)"}</div>
           </div>
           <div>
             <div className="text-xs uppercase text-neutral-400">Date</div>

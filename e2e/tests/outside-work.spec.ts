@@ -7,7 +7,7 @@ import { test, expect, expectNoPageErrors } from "../fixtures/base";
  * issue/return cycles, exactly mirroring worker-return.spec.ts's shape.
  */
 test.describe("Outside Work", () => {
-  test("issue then receive from outside jeweller updates Current Position, and supports multiple cycles", async ({
+  test.skip("issue then receive from outside jeweller updates Current Position, and supports multiple cycles (RC scope: Outside Work gated to Coming Soon — see workshop-book-types.ts / workshop.outside-work.tsx)", async ({
     authedPage,
   }) => {
     await authedPage.goto("/workshop/outside-work");
@@ -76,7 +76,7 @@ test.describe("Outside Work", () => {
     expectNoPageErrors(authedPage);
   });
 
-  test("labour charge, payment, and settlement update Labour Earned/Paid/Outstanding correctly", async ({
+  test.skip("labour charge, payment, and settlement update Labour Earned/Paid/Outstanding correctly (RC scope: Outside Work gated to Coming Soon — see workshop-book-types.ts / workshop.outside-work.tsx)", async ({
     authedPage,
   }) => {
     await authedPage.goto("/workshop/outside-work");
@@ -126,7 +126,7 @@ test.describe("Outside Work", () => {
     expectNoPageErrors(authedPage);
   });
 
-  test("statement generation downloads a PDF for the selected outside jeweller", async ({
+  test.skip("statement generation downloads a PDF for the selected outside jeweller (RC scope: Outside Work gated to Coming Soon — see workshop-book-types.ts / workshop.outside-work.tsx)", async ({
     authedPage,
   }) => {
     await authedPage.goto("/workshop/outside-work");

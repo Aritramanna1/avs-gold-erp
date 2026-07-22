@@ -263,6 +263,13 @@ function SettlementView() {
                   <Printer className="h-3.5 w-3.5" /> GST Invoice
                 </Button>
               </Link>
+              {s.goldSettlementId && (
+                <Link to="/billing/gold-settlement-print/$id" params={{ id: s.goldSettlementId }}>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <Printer className="h-3.5 w-3.5" /> Gold Settlement Voucher
+                  </Button>
+                </Link>
+              )}
               <Button
                 size="sm"
                 className="gap-1.5"

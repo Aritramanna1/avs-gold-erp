@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useDeliveryChallans } from "@/lib/billing-documents-store";
 import { useSettings } from "@/lib/settings-store";
 import { usePrintEngine } from "@/lib/print-engine";
+import { useGoldSettlement } from "@/lib/gold-settlement-store";
+import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useCan } from "@/lib/rbac";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +60,31 @@ function DeliveryChallanDetail() {
     setBusy(true);
     try {
       await cancel(c!.id);
+      // Reverse the "gold_given" settlement posted at issue time — cancelling
+      // a challan means the gold never actually left, so the customer's Gold
+      // Account/Manufacturing Books must not stay debited for it.
+      const fineMg = c!.items.reduce((sum, it) => sum + it.fineMg, 0);
+      if (fineMg > 0) {
+        try {
+          await useGoldSettlement.getState().addSettlement({
+            party_type: "customer",
+            party_id: c!.customerId,
+            branch_id: useSettings.getState().selectedBranchId || "MAIN",
+            settlement_type: "gold_received",
+            purity: c!.items[0]?.purity ?? 916,
+            gross_mg: c!.items.reduce((sum, it) => sum + it.grossMg, 0),
+            net_mg: fineMg,
+            wastage_mg: 0,
+            rate_per_gram_paise: getCurrentGoldRatePaise() || 0,
+            amount_paise: 0,
+            notes: `Reversal — Delivery Challan ${c!.challanNo} cancelled`,
+            payment_mode: "gold_exchange",
+            direction: "Jama",
+          });
+        } catch (err) {
+          console.error("Failed writing gold settlement reversal for cancelled challan:", err);
+        }
+      }
       toast.success("Delivery challan cancelled.");
     } catch (e: any) {
       toast.error(e?.message || "Failed to cancel.");
@@ -146,6 +173,9 @@ function DeliveryChallanDetail() {
                 <th className="text-left py-2">Item</th>
                 <th className="text-center">Qty</th>
                 <th className="text-center">Gross (g)</th>
+                <th className="text-center">Net (g)</th>
+                <th className="text-center">Purity</th>
+                <th className="text-center">Fine (g)</th>
               </tr>
             </thead>
             <tbody>
@@ -155,6 +185,11 @@ function DeliveryChallanDetail() {
                   <td className="text-center">{it.qty}</td>
                   <td className="text-center font-mono text-xs">
                     {(it.grossMg / 1000).toFixed(3)}g
+                  </td>
+                  <td className="text-center font-mono text-xs">{(it.netMg / 1000).toFixed(3)}g</td>
+                  <td className="text-center font-mono text-xs">{it.purity}</td>
+                  <td className="text-center font-mono text-xs">
+                    {(it.fineMg / 1000).toFixed(3)}g
                   </td>
                 </tr>
               ))}

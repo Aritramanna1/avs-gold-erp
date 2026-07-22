@@ -101,7 +101,7 @@ function BillingIndex() {
             </Link>
             <Link to="/billing/estimates">
               <Button variant="outline" size="sm">
-                Estimates
+                Estimates (Coming Soon)
               </Button>
             </Link>
             <Link to="/billing/delivery-challans">

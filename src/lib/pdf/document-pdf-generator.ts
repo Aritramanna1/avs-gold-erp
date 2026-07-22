@@ -1,4 +1,4 @@
-﻿/**
+/**
  * PDF generator for ERP documents (Invoice, Order, Repair, Manufacturing Bill).
  * Uses jsPDF native text/vector API — no html2canvas, no external images required.
  * Produces mobile-friendly A4 PDFs suitable for sharing via WhatsApp / email.
@@ -607,9 +607,181 @@ export function generateManufacturingBillPdf(bill: any, firm: FirmProfile): Blob
   return doc.output("blob");
 }
 
+// ── Delivery Challan PDF ──────────────────────────────────────────────────────
+
+export function generateDeliveryChallanPdf(challan: any, firm: FirmProfile): Blob {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const dateStr = new Date(challan.createdAt || Date.now()).toLocaleDateString("en-IN", {
+    dateStyle: "medium",
+  });
+
+  let y = addPageHeader(
+    doc,
+    firm,
+    "Delivery Challan",
+    challan.challanNo || challan.id,
+    dateStr,
+  );
+  y += 2;
+
+  // Customer
+  y = addSectionTitle(doc, "Customer", y);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text(challan.customerName || "-", MARGIN, y);
+  y += 5;
+  if (challan.purpose) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`Purpose: ${challan.purpose.replace(/_/g, " ")}`, MARGIN, y);
+    y += 4;
+  }
+  y += 2;
+  y = addHRule(doc, y, true);
+
+  // Items table
+  y = addSectionTitle(doc, "Items Sent", y);
+  const items = (challan.items || []).map((it: any, i: number) => ({
+    no: String(i + 1),
+    name: it.itemName || "-",
+    qty: String(it.qty || 1),
+    grossWt: mgToG(it.grossMg || 0) + " g",
+    netWt: mgToG(it.netMg || 0) + " g",
+    purity: purity1000ToLabel(it.purity || 0),
+    fineWt: mgToG(it.fineMg || 0) + " g",
+  }));
+  const cols: TableColumn[] = [
+    { header: "#", key: "no", width: 10 },
+    { header: "Description", key: "name", width: 65 },
+    { header: "Qty", key: "qty", width: 15, align: "center" },
+    { header: "Gross Wt", key: "grossWt", width: 30, align: "right" },
+    { header: "Purity", key: "purity", width: 30, align: "center" },
+    { header: "Fine Wt", key: "fineWt", width: 30, align: "right" },
+  ];
+  y = addTable(doc, cols, items, y);
+
+  if (challan.notes) {
+    y += 2;
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.text(`Note: ${challan.notes}`, MARGIN, y);
+    y += 5;
+  }
+
+  addPageFooter(doc, firm);
+  return doc.output("blob");
+}
+
+// ── Gold Settlement Voucher PDF ───────────────────────────────────────────────
+
+export function generateGoldSettlementPdf(settlement: any, firm: FirmProfile): Blob {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const dateStr = new Date(
+    settlement.settlement_date || settlement.createdAt || Date.now(),
+  ).toLocaleDateString("en-IN", { dateStyle: "medium" });
+
+  let y = addPageHeader(
+    doc,
+    firm,
+    "Gold Settlement Voucher",
+    settlement.voucher_no || settlement.id || "SET-001",
+    dateStr,
+  );
+  y += 2;
+
+  y = addSectionTitle(doc, "Party Details", y);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text(
+    `${settlement.party_name || settlement.customerName || settlement.workerName || "Party"} (${(settlement.party_type || "party").toUpperCase()})`,
+    MARGIN,
+    y,
+  );
+  y += 6;
+  y = addHRule(doc, y, true);
+
+  y = addSectionTitle(doc, "Settlement Details", y);
+  const fields: [string, string][] = [
+    [
+      "Type",
+      (settlement.settlement_type || settlement.type || "gold_exchange")
+        .replace(/_/g, " ")
+        .toUpperCase(),
+    ],
+    ["Direction", settlement.direction === "Jama" ? "Received (Jama)" : "Given (Naam)"],
+    ["Gross Weight", mgToG(settlement.gross_mg || 0) + " g"],
+    ["Net Weight", mgToG(settlement.net_mg || 0) + " g"],
+    ["Purity", purity1000ToLabel(settlement.purity || 916)],
+    ["Wastage / Less", mgToG(settlement.wastage_mg || 0) + " g"],
+    ["Rate per Gram", `₹${paiseToRs(settlement.rate_per_gram_paise || 0)}`],
+    ["Amount", `₹${paiseToRs(settlement.amount_paise || 0)}`],
+    ["Payment Mode", (settlement.payment_mode || "cash").toUpperCase()],
+  ];
+  for (const [label, value] of fields) {
+    y = addTwoColRow(doc, label, value, y);
+  }
+
+  if (settlement.notes) {
+    y += 2;
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.text(`Notes: ${settlement.notes}`, MARGIN, y);
+    y += 5;
+  }
+
+  addPageFooter(doc, firm);
+  return doc.output("blob");
+}
+
+// ── Business Report PDF ───────────────────────────────────────────────────────
+
+export function generateReportPdf(report: any, firm: FirmProfile): Blob {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const dateStr = new Date().toLocaleDateString("en-IN", { dateStyle: "medium" });
+
+  let y = addPageHeader(
+    doc,
+    firm,
+    report.title || "Business Report",
+    report.reportNo || `RPT-${Date.now().toString().slice(-4)}`,
+    dateStr,
+  );
+  y += 2;
+
+  if (report.summaryText) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(report.summaryText, MARGIN, y);
+    y += 8;
+  }
+
+  if (report.metrics && Array.isArray(report.metrics)) {
+    y = addSectionTitle(doc, "Key Performance Indicators", y);
+    for (const m of report.metrics) {
+      y = addTwoColRow(doc, String(m.label), String(m.value), y);
+    }
+    y += 3;
+  }
+
+  if (report.rows && Array.isArray(report.rows) && report.columns) {
+    y = addSectionTitle(doc, "Detailed Records", y);
+    y = addTable(doc, report.columns, report.rows, y);
+  }
+
+  addPageFooter(doc, firm);
+  return doc.output("blob");
+}
+
 // ── Dispatch helper ───────────────────────────────────────────────────────────
 
-export type PdfDocumentType = "invoice" | "order" | "repair" | "manufacturing_bill";
+export type PdfDocumentType =
+  | "invoice"
+  | "order"
+  | "repair"
+  | "manufacturing_bill"
+  | "delivery_challan"
+  | "gold_settlement"
+  | "business_report";
 
 export async function generateDocumentPdf(
   docType: PdfDocumentType,
@@ -636,11 +808,23 @@ export async function generateDocumentPdf(
       blob = generateManufacturingBillPdf(docData, firm);
       docNo = docData.billNo || docData.id;
       break;
+    case "delivery_challan":
+      blob = generateDeliveryChallanPdf(docData, firm);
+      docNo = docData.challanNo || docData.id;
+      break;
+    case "gold_settlement":
+      blob = generateGoldSettlementPdf(docData, firm);
+      docNo = docData.voucher_no || docData.id;
+      break;
+    case "business_report":
+      blob = generateReportPdf(docData, firm);
+      docNo = docData.reportNo || docData.id || "REPORT";
+      break;
     default:
       throw new Error(`Unknown document type: ${docType}`);
   }
 
-  const safeName = docNo.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeName = String(docNo || "DOC").replace(/[^a-zA-Z0-9_-]/g, "_");
   const fileName = `${firm.shopName?.replace(/\s+/g, "_") || "ERP"}_${docType}_${safeName}.pdf`;
 
   return { blob, fileName };

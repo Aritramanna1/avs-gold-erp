@@ -7,9 +7,17 @@ export const Route = createFileRoute("/billing/delivery-challan-print/$id")({
   component: DeliveryChallanPrintPage,
 });
 
+import { useEffect } from "react";
+
 function DeliveryChallanPrintPage() {
   const { id } = useParams({ from: "/billing/delivery-challan-print/$id" });
-  const c = useDeliveryChallans((s) => s.challans.find((x) => x.id === id));
+  const challans = useDeliveryChallans((s) => s.challans);
+  const refresh = useDeliveryChallans((s) => s.refresh);
+  const c = challans.find((x) => x.id === id);
+
+  useEffect(() => {
+    if (challans.length === 0) refresh();
+  }, [challans.length, refresh]);
 
   if (!c) {
     return (

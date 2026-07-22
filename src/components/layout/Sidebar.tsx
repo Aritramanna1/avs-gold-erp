@@ -43,30 +43,31 @@ export const navigationItems = [
   { to: "/orders", label: "Orders", icon: ShoppingBag },
   { to: "/catalog", label: "Catalog", icon: Sparkles },
   { to: "/workshop/gold-book", label: "Worker Gold Book", icon: BookOpen },
-  { to: "/workshop", label: "Manufacturing Books", icon: Hammer },
-  { to: "/barcode", label: "Barcode & Tagging", icon: ScanLine, comingSoon: true },
+  { to: "/workshop", label: "Manufacturing Books (Coming Soon)", icon: Hammer, comingSoon: true },
+  { to: "/barcode", label: "Barcode & Tagging (Coming Soon)", icon: ScanLine, comingSoon: true },
   { to: "/melt", label: "Melt Account", icon: FlameKindling },
-  { to: "/stock", label: "Ready Stock", icon: Package, comingSoon: true },
+  { to: "/stock", label: "Ready Stock (Coming Soon)", icon: Package, comingSoon: true },
   { to: "/billing", label: "Billing", icon: Receipt },
-  { to: "/ledger", label: "Ledger", icon: BookOpen },
-  { to: "/communications", label: "Communications Hub", icon: MessageSquare },
-  // Retail-only, hidden for the Manufacturing Mode pilot — kept in the repo,
-  // shown as a disabled placeholder rather than removed. See pilot-config.ts.
+  { to: "/ledger", label: "Gold Stock", icon: BookOpen },
+  {
+    to: "/communications",
+    label: "Communications (Coming Soon)",
+    icon: MessageSquare,
+    comingSoon: true,
+  },
   { to: "/repair", label: RETAIL_COMING_SOON_MESSAGE, icon: ShoppingBag, retailOnly: true },
-  // Workshop V1.1 scope: kept in the repo, shown as a disabled placeholder
-  // rather than removed. See src/lib/pilot-config.ts.
   {
     to: "/attendance",
     label: ATTENDANCE_COMING_SOON_MESSAGE,
     icon: ClipboardCheck,
     comingSoon: true,
   },
-  { to: "/expenses", label: "Expenses", icon: TrendingDown, comingSoon: true },
+  { to: "/expenses", label: "Expenses (Coming Soon)", icon: TrendingDown, comingSoon: true },
   { to: "/dashboard/ceo", label: "CEO Dashboard", icon: Building2 },
-  { to: "/reports", label: "Reports", icon: BarChart3, comingSoon: true },
+  { to: "/reports", label: "Reports (Coming Soon)", icon: BarChart3, comingSoon: true },
   { to: "/branches", label: "Branches", icon: Building2 },
-  { to: "/manufacturing", label: "Manufacturing", icon: Wrench, comingSoon: true },
-  { to: "/hardware", label: "Hardware", icon: Cpu },
+  { to: "/manufacturing", label: "Manufacturing (Coming Soon)", icon: Wrench, comingSoon: true },
+  { to: "/hardware", label: "Hardware Integrations (Coming Soon)", icon: Cpu, comingSoon: true },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
   { to: "/help", label: "Help & Guide", icon: LifeBuoy },
 ] as const;
@@ -138,7 +139,14 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
       return mStore.isModuleEnabled(key);
     };
 
-    return navigationItems.filter((item) => isAllowed(item.to) && permissions.can(item.to));
+    const allowed = navigationItems.filter(
+      (item) => isAllowed(item.to) && permissions.can(item.to),
+    );
+    const isDeferred = (item: (typeof navigationItems)[number]) =>
+      ("comingSoon" in item && item.comingSoon) || ("retailOnly" in item && item.retailOnly);
+    // Stable partition: deferred/placeholder modules sink to the bottom,
+    // active modules keep their production-workflow order above them.
+    return [...allowed.filter((i) => !isDeferred(i)), ...allowed.filter(isDeferred)];
   }, [moduleStates, permissions]);
 
   const shopInitials = firm?.shopName

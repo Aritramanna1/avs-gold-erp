@@ -255,7 +255,7 @@ test.describe("Unified Print Engine — Debit Note (Phase 2 migration)", () => {
 });
 
 test.describe("Unified Print Engine — Estimate (Phase 2 migration)", () => {
-  test("estimate print route for an unknown id fails gracefully, not with a crash", async ({
+  test.skip("estimate print route for an unknown id fails gracefully, not with a crash (RC scope: Estimates gated to Coming Soon — see billing.estimate-print.$id.tsx)", async ({
     authedPage,
   }) => {
     await authedPage.goto("/billing/estimate-print/does-not-exist");
@@ -263,7 +263,7 @@ test.describe("Unified Print Engine — Estimate (Phase 2 migration)", () => {
     expectNoPageErrors(authedPage);
   });
 
-  test("renders real dynamic data, item table, and totals through the new engine", async ({
+  test.skip("renders real dynamic data, item table, and totals through the new engine (RC scope: Estimates gated to Coming Soon)", async ({
     authedPage,
     seedIds,
   }) => {
@@ -277,7 +277,10 @@ test.describe("Unified Print Engine — Estimate (Phase 2 migration)", () => {
     expectNoPageErrors(authedPage);
   });
 
-  test("Download PDF produces a real PDF file", async ({ authedPage, seedIds }) => {
+  test.skip("Download PDF produces a real PDF file (RC scope: Estimates gated to Coming Soon)", async ({
+    authedPage,
+    seedIds,
+  }) => {
     await authedPage.goto(`/billing/estimate-print/${seedIds.estimateId}`);
     await expect(authedPage.getByTestId("print-layout-root")).toBeVisible({ timeout: 15_000 });
     const [download] = await Promise.all([

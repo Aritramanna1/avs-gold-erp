@@ -33,8 +33,9 @@ export type CreditDebitNoteStatus = "issued" | "cancelled";
 export interface CreditNote {
   id: string;
   creditNoteNo: string;
-  invoiceId: string;
-  invoiceNo: string;
+  /** Absent for a standalone credit note issued without a linked invoice. */
+  invoiceId?: string;
+  invoiceNo?: string;
   customerId: string;
   customerName: string;
   amountPaise: number;
@@ -113,8 +114,9 @@ export const useCreditNotes = create<CreditNoteState>()((set, get) => ({
 export interface DebitNote {
   id: string;
   debitNoteNo: string;
-  invoiceId: string;
-  invoiceNo: string;
+  /** Absent for a standalone debit note issued without a linked invoice. */
+  invoiceId?: string;
+  invoiceNo?: string;
   customerId: string;
   customerName: string;
   amountPaise: number;
@@ -300,6 +302,8 @@ export interface DeliveryChallanItem {
   itemName: string;
   category: string;
   grossMg: number;
+  /** Net weight (gross minus stone/less weight). Equals grossMg for a manual entry with no order link. */
+  netMg: number;
   purity: number;
   fineMg: number;
   qty: number;
@@ -314,6 +318,7 @@ export interface DeliveryChallan {
   purpose: DeliveryChallanPurpose;
   status: DeliveryChallanStatus;
   convertedToInvoiceId?: string;
+  linkedOrderId?: string;
   branchId?: string;
   notes?: string;
   createdAt: number;

@@ -15,6 +15,7 @@ import { usePeople } from "@/lib/people-store";
 import { useOrders } from "@/lib/orders-store";
 import { useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useCurrentBranchId } from "@/lib/branch-store";
+import { useBilling } from "@/lib/billing-store";
 import { useSettlements, previewSettlementTotals } from "@/lib/settlement-store";
 import { computeItemTotals, type InvoiceItem, type GstKind } from "@/lib/billing-store";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
@@ -52,8 +53,15 @@ function NewSettlement() {
     [people],
   );
 
+  const invoices = useBilling((s) => s.invoices);
+  const unpaidInvoices = useMemo(
+    () => invoices.filter((i) => i.balancePaise > 0 && i.status !== "cancelled"),
+    [invoices],
+  );
+
   const [customerId, setCustomerId] = useState("");
   const [orderId, setOrderId] = useState("none");
+  const [invoiceId, setInvoiceId] = useState("none");
   const [itemName, setItemName] = useState("");
   const [grossStr, setGrossStr] = useState("");
   const [purityStr, setPurityStr] = useState("916");
@@ -68,6 +76,7 @@ function NewSettlement() {
   // it only fires at the moment of selection.
   function handleOrderSelect(id: string) {
     setOrderId(id);
+    setInvoiceId("none");
     if (id === "none") return;
     const order = orders.find((o) => o.id === id);
     if (!order) return;
@@ -76,6 +85,19 @@ function NewSettlement() {
     setGrossStr(mgToGrams(order.item.grossMg));
     if (order.item.purity) setPurityStr(String(order.item.purity));
   }
+
+  function handleInvoiceSelect(id: string) {
+    setInvoiceId(id);
+    setOrderId("none");
+    if (id === "none") return;
+    const inv = invoices.find((i) => i.id === id);
+    if (!inv) return;
+    setCustomerId(inv.customerId);
+    setItemName(`Settlement for Invoice ${inv.invoiceNo}`);
+  }
+
+  const selectedInvoice =
+    invoiceId !== "none" ? invoices.find((i) => i.id === invoiceId) : undefined;
 
   const grossMg = gramsToMg(grossStr || "0");
   const purity = Number(purityStr) || 0;
@@ -105,16 +127,46 @@ function NewSettlement() {
         })()
       : null;
 
-  const preview = item ? previewSettlementTotals([item], gst) : null;
+  function invoiceBalanceItem(inv: NonNullable<typeof selectedInvoice>): InvoiceItem {
+    const base = {
+      itemName: `Settlement for Invoice ${inv.invoiceNo}`,
+      category: "Other",
+      purity: 0,
+      grossMg: 0,
+      netMg: 0,
+      fineMg: 0,
+      goldRatePerGramPaise: 0,
+      makingChargesPaise: inv.balancePaise,
+      stoneChargesPaise: 0,
+      hallmarkChargesPaise: 0,
+      otherChargesPaise: 0,
+      discountPaise: 0,
+    };
+    return { id: makeId(), ...base, ...computeItemTotals(base) };
+  }
 
-  const canSubmit = !!customerId && !!item && !saving;
+  const preview =
+    item || selectedInvoice
+      ? previewSettlementTotals(
+          selectedInvoice ? [invoiceBalanceItem(selectedInvoice)] : [item!],
+          selectedInvoice ? "none" : gst,
+        )
+      : null;
+
+  const canSubmit =
+    (!!customerId && !!item && !saving) || (!!customerId && !!selectedInvoice && !saving);
 
   async function submit() {
-    if (!canSubmit || !item) return;
+    if (!canSubmit) return;
+    if (!item && !selectedInvoice) return;
     setSaving(true);
     try {
       const customer = people.find((p) => p.id === customerId)!;
       const order = orderId !== "none" ? orders.find((o) => o.id === orderId) : undefined;
+      const draftItems: InvoiceItem[] = selectedInvoice
+        ? [invoiceBalanceItem(selectedInvoice)]
+        : [item!];
+
       const draft = await createDraft({
         branchId,
         customerId,
@@ -122,8 +174,10 @@ function NewSettlement() {
         customerPhone: customer.phone,
         orderId: order?.id,
         orderNo: order?.orderNo,
-        items: [item],
-        gst,
+        targetInvoiceId: selectedInvoice?.id,
+        targetInvoiceNo: selectedInvoice?.invoiceNo,
+        items: draftItems,
+        gst: selectedInvoice ? "none" : gst,
       });
       toast.success(`Settlement Draft ${draft.settlementNo} created`);
       navigate({ to: "/settlement/$id", params: { id: draft.id } });
@@ -186,63 +240,85 @@ function NewSettlement() {
         </div>
 
         <div>
-          <Label>Product</Label>
-          <Input
-            value={itemName}
-            onChange={(e) => setItemName(e.target.value)}
-            placeholder="e.g. Gold Necklace"
-          />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <Label>Gross Weight (g) *</Label>
-            <Input
-              value={grossStr}
-              onChange={(e) => setGrossStr(e.target.value)}
-              inputMode="decimal"
-              data-testid="settlement-gross-input"
-            />
-          </div>
-          <div>
-            <Label>Purity *</Label>
-            <Select value={purityStr} onValueChange={setPurityStr}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {COMMON_PURITIES.map((p) => (
-                  <SelectItem key={p.value} value={String(p.value)}>
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Making Charges (₹)</Label>
-            <Input
-              value={makingStr}
-              onChange={(e) => setMakingStr(e.target.value)}
-              inputMode="decimal"
-            />
-          </div>
-        </div>
-
-        <div>
-          <Label>GST</Label>
-          <Select value={gst} onValueChange={(v) => setGst(v as GstKind)}>
-            <SelectTrigger>
+          <Label>Unpaid Invoice (optional — auto-fills Customer and Amount)</Label>
+          <Select value={invoiceId} onValueChange={handleInvoiceSelect}>
+            <SelectTrigger data-testid="settlement-invoice-select">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">No GST</SelectItem>
-              <SelectItem value="gst3">GST (3%)</SelectItem>
+              <SelectItem value="none">No linked invoice</SelectItem>
+              {unpaidInvoices.map((inv) => (
+                <SelectItem key={inv.id} value={inv.id}>
+                  {inv.invoiceNo} · {inv.customerName} (Bal: ₹{(inv.balancePaise / 100).toFixed(2)})
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
-        {item && preview && (
+        {/* Hide product/weight inputs if an invoice is selected, as it's purely a financial settlement */}
+        {!selectedInvoice && (
+          <>
+            <div>
+              <Label>Product</Label>
+              <Input
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+                placeholder="e.g. Gold Necklace"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>Gross Weight (g) *</Label>
+                <Input
+                  value={grossStr}
+                  onChange={(e) => setGrossStr(e.target.value)}
+                  inputMode="decimal"
+                  data-testid="settlement-gross-input"
+                />
+              </div>
+              <div>
+                <Label>Purity *</Label>
+                <Select value={purityStr} onValueChange={setPurityStr}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMMON_PURITIES.map((p) => (
+                      <SelectItem key={p.value} value={String(p.value)}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Making Charges (₹)</Label>
+                <Input
+                  value={makingStr}
+                  onChange={(e) => setMakingStr(e.target.value)}
+                  inputMode="decimal"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>GST</Label>
+              <Select value={gst} onValueChange={(v) => setGst(v as GstKind)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No GST</SelectItem>
+                  <SelectItem value="gst3">GST (3%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+
+        {(item || selectedInvoice) && preview && (
           <div className="rounded-lg border border-gold/30 bg-gold/5 p-3 text-sm space-y-1">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Fine Gold</span>

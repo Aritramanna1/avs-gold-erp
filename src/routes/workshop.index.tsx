@@ -13,7 +13,7 @@ import { compileJewellerBooks, jewellerBooksTotals, type JewellerBook } from "@/
 import { BOOK_TYPES } from "@/lib/workshop-book-types";
 import { formatWeight } from "@/lib/gold";
 import { useBusinessRules } from "@/lib/business-rules-store";
-import { Search, BookOpen, Truck, Sparkles, ScanLine, Scale, Library } from "lucide-react";
+import { Search, BookOpen, Sparkles, ScanLine, Scale, Library } from "lucide-react";
 
 /** Jeweller book → People-style card metrics. */
 function jewellerCardData(b: JewellerBook): BookCardData {
@@ -100,7 +100,6 @@ function WorkshopBooksPage() {
         actions={
           <div className="flex flex-wrap gap-2 justify-end">
             <ModuleLink to="/workshop/gold-book" icon={BookOpen} label="Worker Gold Book" />
-            <ModuleLink to="/workshop/outside-work" icon={Truck} label="Outside Work" />
             {polishingModuleEnabled && (
               <ModuleLink to="/workshop/polishing" icon={Sparkles} label="Polishing" />
             )}
@@ -118,16 +117,9 @@ function WorkshopBooksPage() {
         {BOOK_TYPES.map((bt) => {
           const Icon = bt.icon;
           const active = bt.status === "implemented";
-          return (
-            <Link
-              key={bt.key}
-              to={bt.indexRoute as never}
-              className={`rounded-2xl border p-4 flex gap-3 transition-colors ${
-                active
-                  ? "border-gold/40 bg-gold/5 hover:bg-gold/10"
-                  : "border-border bg-card hover:bg-muted/20"
-              }`}
-            >
+          const planned = bt.status === "planned";
+          const content = (
+            <>
               <Icon
                 className={`h-5 w-5 mt-0.5 shrink-0 ${active ? "text-gold" : "text-muted-foreground"}`}
               />
@@ -139,14 +131,40 @@ function WorkshopBooksPage() {
                       Workshop section
                     </span>
                   )}
-                  {bt.status === "planned" && (
+                  {planned && (
                     <span className="text-[9px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-0.5">
-                      Planned
+                      Coming Soon
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">{bt.description}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  {bt.note ?? bt.description}
+                </div>
               </div>
+            </>
+          );
+          if (planned) {
+            return (
+              <div
+                key={bt.key}
+                className="rounded-2xl border border-border bg-card p-4 flex gap-3 opacity-60 cursor-not-allowed"
+                aria-disabled="true"
+              >
+                {content}
+              </div>
+            );
+          }
+          return (
+            <Link
+              key={bt.key}
+              to={bt.indexRoute as never}
+              className={`rounded-2xl border p-4 flex gap-3 transition-colors ${
+                active
+                  ? "border-gold/40 bg-gold/5 hover:bg-gold/10"
+                  : "border-border bg-card hover:bg-muted/20"
+              }`}
+            >
+              {content}
             </Link>
           );
         })}

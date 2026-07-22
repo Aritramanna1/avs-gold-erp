@@ -178,7 +178,8 @@ const builders: Partial<Record<PrintDocType, PrintContextBuilder>> = {
         gstLabel: `₹ ${paiseToRupees(est.gstPaise)}`,
         grandTotalLabel: `₹ ${paiseToRupees(est.grandTotalPaise)}`,
         notesText: est.notes || "",
-        validityText: "Valid for 15 days from the date of issue. Prices subject to gold rate at time of order confirmation.",
+        validityText:
+          "Valid for 15 days from the date of issue. Prices subject to gold rate at time of order confirmation.",
       },
       tables: {
         items: est.items.map((it) => ({
@@ -217,6 +218,9 @@ const builders: Partial<Record<PrintDocType, PrintContextBuilder>> = {
           itemName: it.itemName,
           qty: it.qty,
           grossWt: `${mgToGrams(it.grossMg)}g`,
+          netWt: `${mgToGrams(it.netMg)}g`,
+          purity: String(it.purity),
+          fineWt: `${mgToGrams(it.fineMg)}g`,
         })),
       },
       flags: {

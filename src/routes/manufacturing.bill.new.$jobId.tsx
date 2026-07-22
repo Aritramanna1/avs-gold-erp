@@ -8,7 +8,7 @@
  */
 import { createFileRoute, useParams, useNavigate, Link } from "@tanstack/react-router";
 import { guardRoute } from "@/lib/permissions";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ import {
 } from "@/lib/manufacturing-bill-store";
 import { calcNetMfgCost } from "@/lib/mfg-costing";
 import { fineGoldMg } from "@/lib/gold";
+import { compileCustomerLedger } from "@/lib/customer-account-ledger";
 import { useWorkflowEngine } from "@/lib/workflow-engine";
 import { useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useCurrentBranchId } from "@/lib/branch-store";
@@ -56,6 +57,7 @@ import {
   TrendingDown,
   IndianRupee,
   RefreshCw,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -101,6 +103,11 @@ export default function NewMfgBill() {
     ok: boolean;
     warnings: string[];
   } | null>(null);
+
+  const customerLedger = useMemo(
+    () => (job?.customerId ? compileCustomerLedger(job.customerId) : null),
+    [job?.customerId],
+  );
 
   // Initialise bill from job card or existing draft
   useEffect(() => {
@@ -412,6 +419,34 @@ export default function NewMfgBill() {
           </Button>
         </div>
       </div>
+
+      {/* ── Customer Gold Account Summary ── */}
+      {customerLedger && (
+        <Card title={`Customer Gold Account — ${job.customerName}`} icon={Users} color="text-amber-400">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <SummaryTile
+              label="Gold Advance Available"
+              value={`${MG_TO_G(customerLedger.goldAdvanceMg)} g`}
+              color="text-emerald-400"
+            />
+            <SummaryTile
+              label="Gold We Owe Customer"
+              value={`${MG_TO_G(Math.max(0, customerLedger.goldCreditOwedMg))} g`}
+              color="text-amber-400"
+            />
+            <SummaryTile
+              label="Gold Customer Owes Us"
+              value={`${MG_TO_G(Math.max(0, -customerLedger.goldCreditOwedMg))} g`}
+              color="text-rose-400"
+            />
+            <SummaryTile
+              label="Outstanding Gold Balance"
+              value={`${MG_TO_G(customerLedger.closingGoldMg)} g`}
+              color="text-amber-300"
+            />
+          </div>
+        </Card>
+      )}
 
       {/* ── Gold Position — always visible, gold is the primary accounting
           unit here (cash is only a supporting/reference value). Placed

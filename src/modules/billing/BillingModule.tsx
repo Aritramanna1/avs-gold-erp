@@ -40,6 +40,7 @@ import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useAttachments } from "@/lib/attachments-store";
 import { useBillingStore, type BillingType } from "./billingStore";
 import { useModuleStore } from "@/lib/module-store";
+import { compileJewellerBook } from "@/lib/workshop-books";
 import {
   Dialog,
   DialogContent,
@@ -459,7 +460,12 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       {
         id: newItemId(),
         type,
-        label: type === "fine" ? "MP FINE" : type === "lagad" ? "MP LAGAD" : "MP SCRAP",
+        label:
+          type === "fine"
+            ? "Metal Received — Fine"
+            : type === "lagad"
+              ? "Metal Received — Lagad (Alloy)"
+              : "Metal Received — Scrap",
         grossMg: 0,
         purity: type === "fine" ? 100 : 0,
         pcs: 0,
@@ -699,6 +705,11 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         return bal;
       }, 0);
   }, [customerId, settlements]);
+
+  const jewellerBook = useMemo(() => {
+    if (!customerId) return null;
+    return compileJewellerBook(customerId);
+  }, [customerId, billing, settlements, orders]);
 
   const customerOpenOrders = useMemo(() => {
     if (!customerId) return [];
@@ -1192,7 +1203,10 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         ? Math.round(goldSurplusGrams * 1000 * ((goldPayment.goldPurity ?? 916) / 1000))
         : 0;
 
-    if (isGoldExchange && goldShortfallFineMg > 0) {
+    const isPhysicalGoldExchange = goldPayment?.mode === "gold_exchange";
+    const isGoldCreditUsage = goldPayment?.mode === "customer_gold_credit";
+
+    if (isPhysicalGoldExchange && goldShortfallFineMg > 0) {
       const shortfallEntry = await appendLedger({
         type: "gold_overdraft_issue",
         netFineMg: 0,
@@ -1254,7 +1268,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         .catch((err) => console.error("[Billing] gold shortfall reminder automation failed:", err));
     }
 
-    if (isGoldExchange && goldSurplusFineMg > 0) {
+    if (isPhysicalGoldExchange && goldSurplusFineMg > 0) {
       // Customer physically handed over MORE gold than the invoice
       // required — this is genuinely `gold_received` (goldIn): it's real
       // gold sitting with us right now as the customer's credit/advance.
@@ -1290,8 +1304,55 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       }
     }
 
-    const finalBalancePaise = isGoldExchange ? 0 : computed.balancePaise;
-    const finalPaidPaise = isGoldExchange ? computed.grandTotalPaise : computed.paidPaise;
+    if (isGoldCreditUsage && (goldPayment.goldFineMg ?? 0) > 0) {
+      // Applying the customer's existing Gold Advance — no new gold moves
+      // in/out of the vault (that gold already arrived earlier), only the
+      // customer's balance is drawn down by what this invoice consumed.
+      // Same "gold_given" accounting every other gold-issue flow posts, so
+      // the Manufacturing Books / Gold Account reflect the deduction the
+      // next time they're read.
+      try {
+        await useGoldSettlement.getState().addSettlement({
+          party_type: "customer",
+          party_id: customerId,
+          branch_id: useSettings.getState().selectedBranchId || "MAIN",
+          settlement_type: "gold_given",
+          purity: goldPayment.goldPurity ?? 916,
+          gross_mg: goldPayment.goldGrossMg ?? 0,
+          net_mg: goldPayment.goldFineMg ?? 0,
+          wastage_mg: 0,
+          rate_per_gram_paise: getCurrentGoldRatePaise() || 0,
+          amount_paise: 0,
+          notes: `Gold Advance applied against Invoice ${allocatedInvoiceNo}`,
+          payment_mode: "customer_gold_credit",
+          direction: "Naam",
+        });
+      } catch (err) {
+        console.error("Failed writing customer gold-advance usage settlement record:", err);
+      }
+    }
+
+    // Gold payments already carry their fine-gold value as amountPaise (see
+    // autoFillFromGold), so computed.balancePaise already reflects exactly
+    // what a partial gold payment leaves outstanding — it must never be
+    // force-zeroed just because a gold payment row exists, or a customer
+    // who only partially covers the bill from their Gold Advance would show
+    // as fully paid with the shortfall silently dropped.
+    const finalBalancePaise = computed.balancePaise;
+    const finalPaidPaise = computed.paidPaise;
+
+    // Automate outstanding record creation:
+    // If the invoice is unpaid, append an explicit outstanding payment row so
+    // it balances visually and allows proper clearance later.
+    if (finalBalancePaise > 0 && !realPayments.some((p) => p.mode === "outstanding")) {
+      realPayments.push({
+        id: newItemId(),
+        ts: Date.now(),
+        mode: "outstanding",
+        amountPaise: finalBalancePaise,
+        notes: "Unpaid balance recorded as outstanding",
+      });
+    }
 
     let inv;
     try {
@@ -2089,41 +2150,93 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             {/* Display Customer Ledger Account Summary */}
             {customer && (
               <div className="mt-4 p-3 rounded-xl border border-border/80 bg-background/40 flex flex-wrap gap-6 text-xs justify-between">
-                <div>
-                  <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">
-                    Outstanding balance
-                  </span>
-                  <span
-                    className={`font-mono font-bold text-sm ${customerOutstandingPaise > 0 ? "text-destructive" : "text-emerald-500"}`}
-                  >
-                    ₹{" "}
-                    {(customerOutstandingPaise / 100).toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">
-                    Advances (Active orders)
-                  </span>
-                  <span className="font-mono font-bold text-sm text-amber-500">
-                    ₹{" "}
-                    {pendingCashAdvanceRupees.toLocaleString("en-IN", { minimumFractionDigits: 2 })}{" "}
-                    + {pendingGoldAdvanceGrams.toFixed(3)}g fine
-                  </span>
-                </div>
-                {customerGoldBalanceMg !== 0 && (
-                  <div>
-                    <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">
-                      Gold Credit Balance
-                    </span>
-                    <span
-                      className={`font-mono font-bold text-sm ${customerGoldBalanceMg > 0 ? "text-yellow-500" : "text-rose-500"}`}
-                    >
-                      {mgToGrams(Math.abs(customerGoldBalanceMg))} g{" "}
-                      {customerGoldBalanceMg > 0 ? "(Cr)" : "(Dr)"}
-                    </span>
-                  </div>
+                {jewellerBook ? (
+                  <>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">
+                        Gold Advance Available
+                      </span>
+                      <span className="font-mono font-bold text-sm text-emerald-500">
+                        {mgToGrams(jewellerBook.goldHeldMg)} g
+                      </span>
+                    </div>
+                    {jewellerBook.goldHeldMg > 0 && (
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">
+                          Gold We Owe the Customer
+                        </span>
+                        <span className="font-mono font-bold text-sm text-emerald-500">
+                          {mgToGrams(jewellerBook.goldHeldMg)} g
+                        </span>
+                      </div>
+                    )}
+                    {jewellerBook.goldOwedMg > 0 && (
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">
+                          Gold the Customer Owes Us
+                        </span>
+                        <span className="font-mono font-bold text-sm text-destructive">
+                          {mgToGrams(jewellerBook.goldOwedMg)} g
+                        </span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">
+                        Current Outstanding Gold Balance
+                      </span>
+                      <span
+                        className={`font-mono font-bold text-sm ${jewellerBook.goldHeldMg - jewellerBook.goldOwedMg >= 0 ? "text-emerald-500" : "text-destructive"}`}
+                      >
+                        {mgToGrams(Math.abs(jewellerBook.goldHeldMg - jewellerBook.goldOwedMg))} g{" "}
+                        {jewellerBook.goldHeldMg - jewellerBook.goldOwedMg >= 0
+                          ? "(in customer's favor)"
+                          : "(owed by customer)"}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">
+                        Outstanding balance
+                      </span>
+                      <span
+                        className={`font-mono font-bold text-sm ${customerOutstandingPaise > 0 ? "text-destructive" : "text-emerald-500"}`}
+                      >
+                        ₹{" "}
+                        {(customerOutstandingPaise / 100).toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">
+                        Advances (Active orders)
+                      </span>
+                      <span className="font-mono font-bold text-sm text-amber-500">
+                        ₹{" "}
+                        {pendingCashAdvanceRupees.toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                        })}{" "}
+                        + {pendingGoldAdvanceGrams.toFixed(3)}g fine
+                      </span>
+                    </div>
+                    {customerGoldBalanceMg !== 0 && (
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-bold">
+                          Gold Credit Balance
+                        </span>
+                        <span
+                          className={`font-mono font-bold text-sm ${customerGoldBalanceMg > 0 ? "text-yellow-500" : "text-rose-500"}`}
+                        >
+                          {mgToGrams(Math.abs(customerGoldBalanceMg))} g{" "}
+                          {customerGoldBalanceMg > 0
+                            ? "(in customer's favor)"
+                            : "(owed by customer)"}
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -2324,7 +2437,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           {/* Section 2b: Manufacturing Bill — Jeweller Account (MP entries + balances) */}
           {billingType === "manufacturing" && (
             <Section
-              title="Jeweller Account — Metal Received (MP Entries)"
+              title="Jeweller Account — Metal Received"
               right={
                 <div className="flex gap-2">
                   <Button
@@ -2417,7 +2530,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                         value={e.label}
                         onChange={(ev) => patchMfgMp(e.id, { label: ev.target.value })}
                         className="h-8 text-xs font-medium"
-                        placeholder="MP FINE / MP LAGAD"
+                        placeholder="Metal Received — Fine / Lagad"
                       />
                       <Input
                         type="number"
@@ -2509,7 +2622,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                       </div>
                       {totalMpFineMg > 0 && (
                         <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">MP Received (Fine)</span>
+                          <span className="text-muted-foreground">Metal Received (Fine)</span>
                           <span className="text-emerald-400">
                             + G {(totalMpFineMg / 1000).toFixed(3)}
                           </span>
@@ -2606,7 +2719,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                               </SelectItem>
                               <SelectItem value="customer_gold_credit">
                                 <span className="inline-flex items-center gap-1.5">
-                                  <Wallet className="h-3.5 w-3.5 text-gold" /> Gold Credit (Balance)
+                                  <Wallet className="h-3.5 w-3.5 text-gold" /> Use Gold Advance
                                 </span>
                               </SelectItem>
                               <SelectItem value="cash">
@@ -2705,7 +2818,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                           <Sparkles className="h-3 w-3" />
                           {p.mode === "gold_exchange"
                             ? "Gold Payment Details / सोने पेमेंट"
-                            : "Customer Gold Credit Usage"}
+                            : "Using Customer's Gold Advance"}
                         </div>
                         {/* Input row */}
                         <div className="grid grid-cols-3 gap-2">
@@ -2793,17 +2906,63 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                           }
                         })()}
                         {/* Customer gold balance display for credit mode */}
-                        {p.mode === "customer_gold_credit" && customerGoldBalanceMg !== 0 && (
-                          <div
-                            className={`text-[10px] font-mono px-3 py-1.5 rounded-lg flex items-center justify-between ${customerGoldBalanceMg > 0 ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border border-rose-500/20"}`}
-                          >
-                            <span>Customer Gold Balance:</span>
-                            <span className="font-bold">
-                              {mgToGrams(Math.abs(customerGoldBalanceMg))} g{" "}
-                              {customerGoldBalanceMg > 0 ? "(Cr)" : "(Dr)"}
-                            </span>
-                          </div>
-                        )}
+                        {p.mode === "customer_gold_credit" &&
+                          (jewellerBook?.goldHeldMg || 0) !== 0 && (
+                            <div className="flex flex-col gap-2 mt-2">
+                              <div
+                                className={`text-[10px] font-mono px-3 py-1.5 rounded-lg flex items-center justify-between ${
+                                  jewellerBook && jewellerBook.goldHeldMg > 0
+                                    ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                                    : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                                }`}
+                              >
+                                <span>Gold Advance Available:</span>
+                                <span className="font-bold">
+                                  {mgToGrams(Math.abs(jewellerBook?.goldHeldMg || 0))} g{" "}
+                                </span>
+                              </div>
+
+                              {jewellerBook &&
+                                jewellerBook.goldHeldMg > 0 &&
+                                totals.balancePaise > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-[10px] w-full border-gold text-gold hover:bg-gold/10"
+                                    onClick={() => {
+                                      const rateStr =
+                                        p.goldRateStr || (firstItemGoldRate / 100).toString();
+                                      const ratePaise = rupeesToPaise(rateStr);
+                                      if (ratePaise <= 0) {
+                                        toast.error("Please enter a valid gold rate first");
+                                        return;
+                                      }
+                                      const fineMgNeeded = Math.round(
+                                        (totals.balancePaise * 1000) / ratePaise,
+                                      );
+                                      const availableMg = jewellerBook.goldHeldMg;
+                                      const fineToApply = Math.min(fineMgNeeded, availableMg);
+
+                                      const gramsStr = mgToGrams(fineToApply).toString();
+                                      const purityStr = "100";
+
+                                      patchPayment(idx, {
+                                        goldGramsStr: gramsStr,
+                                        goldPurityStr: purityStr,
+                                        goldRateStr: rateStr,
+                                      });
+                                      autoFillFromGold(idx, {
+                                        goldGramsStr: gramsStr,
+                                        goldPurityStr: purityStr,
+                                        goldRateStr: rateStr,
+                                      });
+                                    }}
+                                  >
+                                    Apply Gold Advance
+                                  </Button>
+                                )}
+                            </div>
+                          )}
                       </div>
                     )}
                   </div>

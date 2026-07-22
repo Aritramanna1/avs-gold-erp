@@ -21,8 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import { useDeliveryChallans, type DeliveryChallanPurpose } from "@/lib/billing-documents-store";
 import { usePeople } from "@/lib/people-store";
+import { useOrders } from "@/lib/orders-store";
+import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { useCan } from "@/lib/rbac";
-import { Plus, Search } from "lucide-react";
+import { useSettings } from "@/lib/settings-store";
+import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
+import { gramsToMg, mgToGrams, fineGoldMg } from "@/lib/gold";
+import { ArrowLeft, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/billing/delivery-challans/")({
@@ -52,6 +57,8 @@ function DeliveryChallansIndex() {
   const people = usePeople((s) => s.people);
   const { can } = useCan();
 
+  const orders = useOrders((s) => s.orders);
+
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -59,10 +66,30 @@ function DeliveryChallansIndex() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [customerId, setCustomerId] = useState("");
+  const [orderId, setOrderId] = useState("none");
   const [itemName, setItemName] = useState("");
+  const [category, setCategory] = useState("");
+  const [grossStr, setGrossStr] = useState("");
+  const [netStr, setNetStr] = useState("");
+  const [purityStr, setPurityStr] = useState("916");
+  const [qtyStr, setQtyStr] = useState("1");
   const [purpose, setPurpose] = useState<DeliveryChallanPurpose>("sale_on_approval");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  function handleOrderSelect(id: string) {
+    setOrderId(id);
+    if (id === "none") return;
+    const order = orders.find((o) => o.id === id);
+    if (!order) return;
+    setCustomerId(order.customerId);
+    setItemName(order.item.itemName || order.item.category || "");
+    setCategory(order.item.category || "");
+    setGrossStr(mgToGrams(order.item.grossMg));
+    setNetStr(mgToGrams(order.item.netMg));
+    if (order.item.purity) setPurityStr(String(order.item.purity));
+    if (order.item.quantity) setQtyStr(String(order.item.quantity));
+  }
 
   const list = useMemo(() => {
     const t = q.toLowerCase();
@@ -84,19 +111,57 @@ function DeliveryChallansIndex() {
     }
     setSaving(true);
     try {
-      await create({
+      const grossMg = gramsToMg(grossStr || "0");
+      const netMg = netStr ? gramsToMg(netStr) : grossMg;
+      const purity = Number(purityStr) || 0;
+      const fineMg = netMg > 0 && purity > 0 ? fineGoldMg(netMg, purity) : 0;
+      const qty = Number(qtyStr) || 1;
+
+      const challan = await create({
         customerId: customer.id,
         customerName: customer.fullName,
-        items: [
-          { itemName: itemName.trim(), category: "", grossMg: 0, purity: 0, fineMg: 0, qty: 1 },
-        ],
+        linkedOrderId: orderId === "none" ? undefined : orderId,
+        items: [{ itemName: itemName.trim(), category, grossMg, netMg, purity, fineMg, qty }],
         purpose,
         notes: notes.trim() || undefined,
       });
+
+      // Single source of truth for gold balances: a Delivery Challan physically
+      // hands gold to the customer, so it must post the same "gold_given" gold
+      // settlement record every other gold-issue flow posts — this is what
+      // customerGoldBalanceMg (Gold Account) and the Manufacturing Books read.
+      if (fineMg > 0) {
+        try {
+          await useGoldSettlement.getState().addSettlement({
+            party_type: "customer",
+            party_id: customer.id,
+            branch_id: useSettings.getState().selectedBranchId || "MAIN",
+            settlement_type: "gold_given",
+            purity,
+            gross_mg: grossMg,
+            net_mg: fineMg,
+            wastage_mg: 0,
+            rate_per_gram_paise: getCurrentGoldRatePaise() || 0,
+            amount_paise: 0,
+            notes: `Gold issued via Delivery Challan ${challan.challanNo}`,
+            payment_mode: "gold_exchange",
+            direction: "Naam",
+          });
+        } catch (err) {
+          console.error("Failed writing gold settlement for delivery challan:", err);
+        }
+      }
+
       toast.success("Delivery challan issued.");
       setOpen(false);
       setCustomerId("");
+      setOrderId("none");
       setItemName("");
+      setCategory("");
+      setGrossStr("");
+      setNetStr("");
+      setPurityStr("916");
+      setQtyStr("1");
       setNotes("");
     } catch (e: any) {
       toast.error(e?.message || "Failed to issue delivery challan.");
@@ -107,6 +172,11 @@ function DeliveryChallansIndex() {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
+      <Link to="/billing">
+        <Button variant="ghost" className="gap-1.5 mb-3">
+          <ArrowLeft className="h-4 w-4" /> Back to Billing
+        </Button>
+      </Link>
       <PageHeader
         title="Delivery Challans"
         subtitle="Goods sent out without a sale (approval, job work, transfer)."
@@ -178,6 +248,26 @@ function DeliveryChallansIndex() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
+              <Label>Link to Order (Optional)</Label>
+              <select
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                value={orderId}
+                onChange={(e) => handleOrderSelect(e.target.value)}
+              >
+                <option value="none">-- No Order (Manual Challan) --</option>
+                {orders
+                  .filter((o) => o.status === "in_production" || o.status === "ready_for_delivery")
+                  .map((o) => {
+                    const c = people.find((p) => p.id === o.customerId);
+                    return (
+                      <option key={o.id} value={o.id}>
+                        {o.orderNo} · {c?.fullName || "Unknown"}
+                      </option>
+                    );
+                  })}
+              </select>
+            </div>
+            <div>
               <Label>Customer</Label>
               <select
                 className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
@@ -199,6 +289,46 @@ function DeliveryChallansIndex() {
                 onChange={(e) => setItemName(e.target.value)}
                 placeholder="e.g. Gold necklace, 22K"
               />
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+              <div>
+                <Label>Gross Wt (g)</Label>
+                <Input
+                  type="number"
+                  step="0.001"
+                  value={grossStr}
+                  onChange={(e) => setGrossStr(e.target.value)}
+                  placeholder="0.000"
+                />
+              </div>
+              <div>
+                <Label>Net Wt (g)</Label>
+                <Input
+                  type="number"
+                  step="0.001"
+                  value={netStr}
+                  onChange={(e) => setNetStr(e.target.value)}
+                  placeholder="Same as gross"
+                />
+              </div>
+              <div>
+                <Label>Purity</Label>
+                <Input
+                  type="number"
+                  value={purityStr}
+                  onChange={(e) => setPurityStr(e.target.value)}
+                  placeholder="916"
+                />
+              </div>
+              <div>
+                <Label>Qty</Label>
+                <Input
+                  type="number"
+                  value={qtyStr}
+                  onChange={(e) => setQtyStr(e.target.value)}
+                  placeholder="1"
+                />
+              </div>
             </div>
             <div>
               <Label>Purpose</Label>

@@ -397,7 +397,13 @@ const offlineAuth = {
   onAuthStateChange: () => ({
     data: { subscription: { unsubscribe: () => {} } },
   }),
-  signOut: async () => ({ error: null }),
+  signOut: async () => {
+    try {
+      const { clearLocalSession } = await import("@/lib/local-auth");
+      await clearLocalSession();
+    } catch {}
+    return { error: null };
+  },
   signInWithPassword: async () => ({
     data: { session: null, user: null },
     error: OFFLINE_AUTH_ERROR,

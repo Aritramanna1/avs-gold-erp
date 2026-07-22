@@ -68,6 +68,20 @@ interface DesktopWasender {
     timeoutMs?: number;
     useApiKey?: boolean;
   }) => Promise<{ ok: boolean; status: number; data: unknown; error?: string }>;
+  uploadMedia?: (args: {
+    baseUrl: string;
+    fileName: string;
+    mimeType: string;
+    base64Data: string;
+    useApiKey?: boolean;
+  }) => Promise<{
+    ok: boolean;
+    status: number;
+    url?: string;
+    error?: string;
+    responseBody?: unknown;
+    requestUrl?: string;
+  }>;
 }
 
 /** The bridge is only present in the Electron desktop build. */
@@ -264,6 +278,51 @@ class WasenderClient {
       { to, documentUrl, fileName, ...(caption ? { text: caption } : {}) },
       true,
     );
+  }
+
+  /**
+   * Upload a Blob/File to WasenderAPI /upload endpoint and return public URL.
+   * Never passes local Windows paths or blob: URLs directly to messaging endpoints.
+   */
+  async uploadMedia(
+    blob: Blob,
+    fileName: string,
+    mimeType = "application/pdf",
+  ): Promise<{ ok: boolean; status: number; url?: string; error?: string; raw?: unknown }> {
+    const b = desktopWasender();
+    if (!b?.uploadMedia) {
+      return { ok: false, status: 0, error: "Desktop Wasender upload media bridge unavailable." };
+    }
+    const arrayBuf = await blob.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuf);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64Data = btoa(binary);
+
+    const res = await b.uploadMedia({
+      baseUrl: this.base,
+      fileName,
+      mimeType: mimeType || blob.type || "application/pdf",
+      base64Data,
+      useApiKey: true,
+    });
+
+    if (!res.ok || !res.url) {
+      console.error(
+        `[WasenderAPI Upload Failed] URL: ${res.requestUrl} HTTP ${res.status} Error: ${res.error}`,
+        "Response body:",
+        res.responseBody,
+      );
+    }
+    return {
+      ok: res.ok,
+      status: res.status,
+      url: res.url,
+      error: res.error,
+      raw: res.responseBody,
+    };
   }
 }
 

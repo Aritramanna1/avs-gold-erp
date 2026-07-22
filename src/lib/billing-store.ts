@@ -655,7 +655,26 @@ export const useBilling = create<BillingState>()((set, get) => ({
       goldFineMg: p.goldFineMg,
       goldRatePerGramPaise: p.goldRatePerGramPaise,
     };
-    const payments = [...inv.payments, pay];
+
+    // If there is an "outstanding" placeholder payment, we must reduce or remove it
+    // because a real payment is being made against that outstanding balance.
+    let currentPayments = [...inv.payments];
+    const outstandingIdx = currentPayments.findIndex(p => p.mode === "outstanding");
+    if (outstandingIdx >= 0) {
+      const outstandingPay = currentPayments[outstandingIdx];
+      if (pay.amountPaise >= outstandingPay.amountPaise) {
+        // Full (or over) payment of the outstanding amount — remove the placeholder
+        currentPayments.splice(outstandingIdx, 1);
+      } else {
+        // Partial payment — reduce the placeholder
+        currentPayments[outstandingIdx] = {
+          ...outstandingPay,
+          amountPaise: outstandingPay.amountPaise - pay.amountPaise
+        };
+      }
+    }
+
+    const payments = [...currentPayments, pay];
     const totals = computeInvoiceTotals(inv.items, inv.gst, inv.orderAdjustment, payments);
     const status: InvoiceStatus =
       totals.balancePaise <= 0

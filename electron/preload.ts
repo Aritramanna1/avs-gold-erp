@@ -39,6 +39,7 @@ const IPC = {
   WASENDER_CLEAR_APIKEY: "wasender:clear-apikey",
   WASENDER_HAS_APIKEY: "wasender:has-apikey",
   WASENDER_REQUEST: "wasender:request",
+  WASENDER_UPLOAD_MEDIA: "wasender:upload-media",
 } as const satisfies Record<string, IpcChannel>;
 
 const invoke = <T>(channel: IpcChannel, ...args: unknown[]): Promise<T> =>
@@ -138,6 +139,20 @@ const api = {
       useApiKey?: boolean;
     }): Promise<{ ok: boolean; status: number; data: unknown; error?: string }> =>
       invoke(IPC.WASENDER_REQUEST, args),
+    uploadMedia: (args: {
+      baseUrl: string;
+      fileName: string;
+      mimeType: string;
+      base64Data: string;
+      useApiKey?: boolean;
+    }): Promise<{
+      ok: boolean;
+      status: number;
+      url?: string;
+      error?: string;
+      responseBody?: unknown;
+      requestUrl?: string;
+    }> => invoke(IPC.WASENDER_UPLOAD_MEDIA, args),
   },
   // DORMANT — no renderer code calls this today (see main.ts). Kept so a
   // future feature can subscribe without touching the preload bridge.

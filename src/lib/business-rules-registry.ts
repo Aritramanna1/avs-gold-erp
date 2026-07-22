@@ -356,7 +356,7 @@ export const BUSINESS_RULE_REGISTRY: Record<BusinessRuleKey, BusinessRuleDefinit
     name: "Enable Polishing Module",
     description:
       "Turns the Polishing workflow (Send to Polishing / Receive from Polishing) on or off across the ERP. Polishing is an optional business process, not every workshop uses an external polisher.",
-    defaultValue: true,
+    defaultValue: false,
     permissionRequired: "owner_or_admin",
     category: "automation",
   },

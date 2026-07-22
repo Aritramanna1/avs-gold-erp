@@ -237,3 +237,113 @@ export async function wasenderRequest(args: WasenderRequestArgs): Promise<Wasend
 
   return result;
 }
+
+export interface WasenderUploadMediaArgs {
+  baseUrl: string;
+  fileName: string;
+  mimeType: string;
+  base64Data: string;
+  useApiKey?: boolean;
+}
+
+export interface WasenderUploadResponse {
+  ok: boolean;
+  status: number;
+  url?: string;
+  error?: string;
+  responseBody?: unknown;
+  requestUrl?: string;
+}
+
+/** Upload media (PDF/images) via WasenderAPI multipart /upload endpoint. */
+export async function wasenderUploadMedia(
+  args: WasenderUploadMediaArgs,
+): Promise<WasenderUploadResponse> {
+  const bearer = args.useApiKey ? readApiKey() : readApiKey() || readToken();
+  if (!bearer) {
+    return {
+      ok: false,
+      status: 0,
+      error: "No WasenderAPI key configured for media upload.",
+    };
+  }
+
+  let url: string;
+  try {
+    const base = new URL(args.baseUrl || "https://www.wasenderapi.com/api");
+    const trustedHost =
+      base.hostname === "wasenderapi.com" || base.hostname.endsWith(".wasenderapi.com");
+    if (base.protocol !== "https:" || !trustedHost) {
+      throw new Error("Untrusted WasenderAPI endpoint.");
+    }
+    url = new URL("upload", `${base.toString().replace(/\/+$/, "")}/`).toString();
+  } catch (err: any) {
+    return { ok: false, status: 0, error: err?.message || "Invalid upload endpoint." };
+  }
+
+  try {
+    const buffer = Buffer.from(args.base64Data, "base64");
+    const blob = new Blob([buffer], { type: args.mimeType || "application/pdf" });
+    const formData = new FormData();
+    formData.append("file", blob, args.fileName || "document.pdf");
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${bearer}`,
+      },
+      body: formData,
+    });
+
+    const resText = await res.text();
+    let resJson: any = null;
+    try {
+      resJson = resText ? JSON.parse(resText) : null;
+    } catch {}
+
+    const publicUrl =
+      resJson?.url ||
+      resJson?.fileUrl ||
+      resJson?.mediaUrl ||
+      resJson?.link ||
+      resJson?.data?.url ||
+      resJson?.data?.link ||
+      resJson?.data?.fileUrl;
+
+    if (!res.ok || !publicUrl) {
+      const errMsg =
+        resJson?.message || resJson?.error || apiError(res.status, resJson ?? resText);
+      console.error(
+        `[wasender-upload-failed] ${url} HTTP ${res.status}:`,
+        resText,
+        "Validation errors:",
+        resJson?.errors || resJson?.validation,
+      );
+      return {
+        ok: false,
+        status: res.status,
+        requestUrl: url,
+        responseBody: resJson ?? resText,
+        error: `WasenderAPI Upload failed (${res.status}): ${errMsg}`,
+      };
+    }
+
+    if (!app.isPackaged) console.log(`[wasender-upload-success] ${url} -> ${publicUrl}`);
+
+    return {
+      ok: true,
+      status: res.status,
+      url: publicUrl,
+      responseBody: resJson,
+      requestUrl: url,
+    };
+  } catch (err: any) {
+    console.error(`[wasender-upload-error] ${url}:`, err);
+    return {
+      ok: false,
+      status: 0,
+      requestUrl: url,
+      error: err?.message || String(err),
+    };
+  }
+}

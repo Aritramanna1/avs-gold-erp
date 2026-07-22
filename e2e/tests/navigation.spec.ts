@@ -13,7 +13,7 @@ const MODULE_ROUTES: { path: string; heading: string | RegExp }[] = [
   { path: "/stock", heading: /./ },
   { path: "/billing", heading: "Billing" },
   { path: "/reports", heading: /./ },
-  { path: "/communications", heading: "Communications & CRM" },
+  { path: "/communications", heading: "Communications (Coming Soon)" },
   { path: "/settings", heading: "Settings" },
   { path: "/hardware", heading: "Hardware Management" },
 ];

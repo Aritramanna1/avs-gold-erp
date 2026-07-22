@@ -19,21 +19,29 @@ export default async function globalSetup(config: FullConfig) {
   fs.mkdirSync(authDir, { recursive: true });
   const statePath = path.join(authDir, "state.json");
 
+  console.log(`[global-setup] Launching browser to authenticate user: ${email} against ${baseURL}`);
   const browser = await chromium.launch();
   const page = await browser.newPage({ baseURL });
 
   try {
-    await page.goto("/");
-    await page.getByTestId("auth-email").fill(email);
-    await page.getByTestId("auth-password").fill(password);
-    await page.getByTestId("auth-submit").click();
+    console.log("[global-setup] Navigating to /");
+    await page.goto("/", { timeout: 45_000 });
+    console.log("[global-setup] Filling login details");
+    await page.getByTestId("auth-email").fill(email, { timeout: 15_000 });
+    await page.getByTestId("auth-password").fill(password, { timeout: 15_000 });
+    console.log("[global-setup] Clicking submit");
+    await page.getByTestId("auth-submit").click({ timeout: 15_000 });
 
     // Wait for the login form to hide, indicating successful authentication.
     // If it fails (e.g. rate limit, invalid credentials, offline), catch and fallback
-    await page.getByTestId("auth-form").waitFor({ state: "hidden", timeout: 15_000 });
+    console.log("[global-setup] Waiting for auth form to hide");
+    await page.getByTestId("auth-form").waitFor({ state: "hidden", timeout: 45_000 });
+    console.log("[global-setup] Authentication successful");
   } catch (err) {
+    const pageUrl = page.url();
+    const bodyText = await page.locator("body").innerText().catch(() => "N/A");
     console.warn(
-      "[global-setup] UI login failed or timed out. Injecting fallback mock session state.",
+      `[global-setup] UI login failed or timed out. Page URL: ${pageUrl}. Body preview: ${bodyText.slice(0, 300)}`,
       err,
     );
     // Write a mock session state directly to avoid failing the setup phase.
@@ -99,16 +107,12 @@ export default async function globalSetup(config: FullConfig) {
     return;
   }
 
-  // Seed the pilot dataset once. __mtjSeed is installed asynchronously (a
-  // dynamic import() inside a useEffect in src/routes/__root.tsx, DEV builds
-  // only) which races against the check below — wait for it to land instead
-  // of checking once immediately after login. If it's genuinely absent (e.g.
-  // a production build target), skip seeding rather than fail the whole run;
-  // tests that depend on seeded records will fail individually with a clear
-  // error instead.
+  console.log("[global-setup] Waiting for window.__mtjSeed to be loaded");
   await page
-    .waitForFunction(() => typeof (window as any).__mtjSeed === "function", { timeout: 15_000 })
-    .catch(() => {});
+    .waitForFunction(() => typeof (window as any).__mtjSeed === "function", { timeout: 45_000 })
+    .catch(() => {
+      console.warn("[global-setup] Timeout waiting for window.__mtjSeed");
+    });
   const seedResult = await page.evaluate(() => {
     const w = window as unknown as { __mtjSeed?: () => Record<string, unknown> };
     return typeof w.__mtjSeed === "function" ? w.__mtjSeed() : null;

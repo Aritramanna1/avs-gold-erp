@@ -1,7 +1,7 @@
 import { test, expect, expectNoPageErrors } from "../fixtures/base";
 
 test.describe("CRM — Lead Source & Buyer Type (AVS-102)", () => {
-  test("new lead requires Source and Buyer Type, and defaults are sensible", async ({
+  test.skip("new lead requires Source and Buyer Type, and defaults are sensible (RC scope: Communications/CRM gated to Coming Soon — see routes/communications.tsx)", async ({
     authedPage,
   }) => {
     await authedPage.goto("/communications");

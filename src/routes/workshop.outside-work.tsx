@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { ModuleComingSoon } from "@/components/ModuleComingSoon";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,10 +40,20 @@ import {
 
 export const Route = createFileRoute("/workshop/outside-work")({
   head: () => ({ meta: [{ title: "Outside Work · AVS Gold ERP" }] }),
-  component: OutsideWorkPage,
+  // Manufacturing Books freeze (Workshop V1 RC): Outside Work is deferred
+  // pending a dedicated pass — see docs/CHANGELOG.md. OutsideWorkPage stays
+  // in the repo untouched, just unreachable, so it renders again once this
+  // is un-frozen.
+  component: () => (
+    <ModuleComingSoon
+      title="Outside Work (Coming Soon)"
+      message="Outside worker gold issue/return and labour tracking are deferred to a future manufacturing release."
+      icon={Truck}
+    />
+  ),
 });
 
-function OutsideWorkPage() {
+export function OutsideWorkPage() {
   const people = usePeople((s) => s.people);
   const transactions = useOutsideWork((s) => s.transactions);
   const refreshOutsideWork = useOutsideWork((s) => s.refresh);

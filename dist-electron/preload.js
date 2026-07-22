@@ -39,6 +39,7 @@ const IPC = {
     WASENDER_CLEAR_APIKEY: "wasender:clear-apikey",
     WASENDER_HAS_APIKEY: "wasender:has-apikey",
     WASENDER_REQUEST: "wasender:request",
+    WASENDER_UPLOAD_MEDIA: "wasender:upload-media",
 };
 const invoke = (channel, ...args) => electron_1.ipcRenderer.invoke(channel, ...args).catch((error) => {
     const message = error instanceof Error ? error.message : String(error);
@@ -93,6 +94,7 @@ const api = {
         clearApiKey: () => invoke(IPC.WASENDER_CLEAR_APIKEY),
         hasApiKey: () => invoke(IPC.WASENDER_HAS_APIKEY),
         request: (args) => invoke(IPC.WASENDER_REQUEST, args),
+        uploadMedia: (args) => invoke(IPC.WASENDER_UPLOAD_MEDIA, args),
     },
     // DORMANT — no renderer code calls this today (see main.ts). Kept so a
     // future feature can subscribe without touching the preload bridge.

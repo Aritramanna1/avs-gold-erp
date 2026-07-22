@@ -14,7 +14,12 @@
 // @ts-nocheck
 import { useAttachments } from "./attachments-store";
 import { useBilling, type GstKind } from "./billing-store";
-import { useCreditNotes, useDebitNotes, useEstimates, useDeliveryChallans } from "./billing-documents-store";
+import {
+  useCreditNotes,
+  useDebitNotes,
+  useEstimates,
+  useDeliveryChallans,
+} from "./billing-documents-store";
 import { useCommLog } from "./comm-log-store";
 import { useDailyCloses } from "./dailyclose-store";
 import { useJobCards } from "./jobcards-store";
@@ -582,6 +587,7 @@ export async function seedPilotDataset(): Promise<SeedResult> {
         itemName: stockItem.itemName,
         category: stockItem.category,
         grossMg: stockItem.grossMg,
+        netMg: stockItem.grossMg,
         purity: stockItem.purity,
         fineMg: stockItem.fineMg,
         qty: 1,

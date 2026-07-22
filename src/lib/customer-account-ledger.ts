@@ -10,6 +10,7 @@ import { useOrders, type Order } from "./orders-store";
 import { useGoldSettlement } from "./gold-settlement-store";
 import { useMfgBills } from "./manufacturing-bill-store";
 import { useJobCards } from "./jobcards-store";
+import { useDeliveryChallans } from "./billing-documents-store";
 import { fineGoldMg, mgToGrams, parsePurity } from "./gold";
 
 /**
@@ -17,7 +18,7 @@ import { fineGoldMg, mgToGrams, parsePurity } from "./gold";
  * group by origin, and so the upcoming Payment module has a named slot
  * ("payment") to post into without the compiler having to guess from text.
  */
-export type LedgerSource = "settlement" | "order" | "invoice" | "payment" | "manufacturing_bill";
+export type LedgerSource = "settlement" | "order" | "invoice" | "payment" | "manufacturing_bill" | "delivery_challan";
 
 export interface CustomerLedgerRow {
   id: string;
@@ -472,6 +473,46 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
         goldInMg: 0,
         goldOutMg: 0,
         moneyDebitPaise: b.netMfgCostPaise,
+        moneyCreditPaise: 0,
+      });
+    }
+  }
+
+  // --- 4b. DELIVERY CHALLANS ---
+  const challans = useDeliveryChallans
+    .getState()
+    .challans.filter((c) => c.customerId === customerId && c.status === "issued");
+    
+  for (const c of challans) {
+    const ts = c.createdAt;
+    const dateStr = new Date(ts).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+    
+    // Sum the fine gold out from the items
+    let goldOutMg = 0;
+    let grossMg = 0;
+    for (const item of c.items) {
+       goldOutMg += item.fineMg;
+       grossMg += item.grossMg;
+    }
+    
+    if (goldOutMg > 0) {
+      rawRows.push({
+        id: c.id,
+        ts,
+        date: dateStr,
+        voucherNo: c.challanNo,
+        type: "Delivery Challan Issued",
+        description: `Gold issued via Challan ${c.challanNo} · ${c.purpose.replace(/_/g, " ")}`,
+        source: "delivery_challan",
+        grossMg: grossMg > 0 ? grossMg : undefined,
+        fineMg: goldOutMg,
+        goldInMg: 0,
+        goldOutMg: goldOutMg,
+        moneyDebitPaise: 0,
         moneyCreditPaise: 0,
       });
     }

@@ -22,7 +22,7 @@ async function snapshot(page: import("@playwright/test").Page) {
 }
 
 test.describe("Polishing workflow", () => {
-  test("Send to Polishing then Receive from Polishing synchronizes Gold Ledger, Polishing Ledger, and the linked order's timeline exactly once each", async ({
+  test.skip("Send to Polishing then Receive from Polishing synchronizes Gold Ledger, Polishing Ledger, and the linked order's timeline exactly once each (RC scope: Polishing disabled by default — see business-rules-registry.ts enable_polishing_module)", async ({
     authedPage: page,
     seedIds,
   }) => {
@@ -90,7 +90,7 @@ test.describe("Polishing workflow", () => {
     expect(after.polishingTxnCount).toBe(before.polishingTxnCount + 2);
   });
 
-  test("Polishing Ledger page shows grouped Current Position and per-polisher summary", async ({
+  test.skip("Polishing Ledger page shows grouped Current Position and per-polisher summary (RC scope: Polishing disabled by default — see business-rules-registry.ts enable_polishing_module)", async ({
     authedPage: page,
   }) => {
     await page.goto("/workshop/polishing");
@@ -103,7 +103,7 @@ test.describe("Polishing workflow", () => {
     await expect(page.getByText("Polishing Ledger — by Polisher")).toBeVisible();
   });
 
-  test("Sending to Polishing from the standalone Polishing page can link a Production Order and still updates that order's timeline", async ({
+  test.skip("Sending to Polishing from the standalone Polishing page can link a Production Order and still updates that order's timeline (RC scope: Polishing disabled by default — see business-rules-registry.ts enable_polishing_module)", async ({
     authedPage: page,
     seedIds,
   }) => {
