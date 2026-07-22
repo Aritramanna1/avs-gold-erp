@@ -632,7 +632,7 @@ function SelectedPersonCard({
           Shop Gold Ledger
         </Button>
         {isCustomerLike ? (
-          <Button size="sm" variant="ghost" onClick={() => navigate({ to: "/orders/new" })}>
+          <Button size="sm" variant="ghost" onClick={() => navigate({ to: "/billing" })}>
             {t("people.btn_create_order")}
           </Button>
         ) : (
@@ -670,7 +670,7 @@ function SelectedPersonCard({
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => navigate({ to: `/communications` as any })}
+            onClick={() => navigate({ to: "/whatsapp" })}
             className="col-span-2 text-gold hover:text-gold border border-gold/25 bg-gold/5"
           >
             <Clock className="h-3.5 w-3.5 mr-1" />
@@ -681,7 +681,7 @@ function SelectedPersonCard({
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => navigate({ to: "/repair/new" })}
+            onClick={() => navigate({ to: "/people" })}
             className="col-span-2"
           >
             Add Repair

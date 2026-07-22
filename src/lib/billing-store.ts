@@ -139,6 +139,7 @@ export type BillingType =
   | "wholesale"
   | "advance_receipt"
   | "payment_receipt"
+  | "workshop"
   | "manufacturing";
 
 export interface Invoice {
@@ -218,7 +219,7 @@ interface BillingState {
   setGstDefault: (g: GstKind) => void;
   refresh: () => Promise<void>;
   add: (
-    i: Omit<Invoice, "id" | "createdAt" | "updatedAt" | "payments"> & {
+    i: Omit<Invoice, "id" | "createdAt" | "updatedAt" | "payments" | "invoiceNo"> & {
       invoiceNo?: string;
       payments?: PaymentRecord[];
     },

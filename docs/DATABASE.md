@@ -1,14 +1,10 @@
 # Database Guide
 
-## Local database
+## Web database
 
-`src/lib/local-db.ts` runs SQLite through `sql.js`. The encrypted database snapshot is persisted in IndexedDB with AES-256-GCM and a SHA-256 plaintext integrity checksum. SQLite is primary in Offline and Hybrid modes.
+Supabase PostgreSQL is the single source of truth. The browser uses Supabase Auth for sessions and cloud-backed repositories/services for business data. There is no local database, offline sync queue, or desktop persistence layer.
 
-Domain writes go through repositories/services, commit locally, and enqueue an outbox row. Do not add frontend direct-Supabase writes. Gold is stored in integer milligrams, purity in integer per-mille, and money in integer paise.
-
-## Hybrid database
-
-Supabase stores structured business records only. The canonical new-customer schema is [AVS_GOLD_ERP_HYBRID_MASTER.sql](../supabase/AVS_GOLD_ERP_HYBRID_MASTER.sql). It contains tables, constraints, indexes, functions, metadata, explicit Data API grants, RLS, and policies.
+Gold is stored in integer milligrams, purity in integer per-mille, and money in integer paise.
 
 Owner setup:
 

@@ -23,7 +23,7 @@ test.describe("Gold / Material Issue workflow (Worker Gold Book — the only app
         if (key.startsWith("mtj-goldbook-")) localStorage.removeItem(key);
       }
     });
-    // Persisted local SQLite meta (deployment_mode) survives storageState reuse
+    // Persisted cloud session metadata survives storageState reuse
     // across tests — force "online" so this run actually exercises the
     // execute_gold_transaction RPC path, not the offline/local-first one.
     await page.evaluate(async () => {

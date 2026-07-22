@@ -1,9 +1,8 @@
 /**
  * WasenderAPI WhatsApp provider.
  *
- * Delivery goes through the Electron main process (wasender-client → the
- * `mtjDesktop.wasender` bridge), which holds the encrypted token — this
- * provider never sees a credential. A PDF/document takes priority over a plain
+ * Delivery goes through the Supabase Edge Function, which holds the provider
+ * credential. A PDF/document takes priority over a plain
  * text body: the recipient receives the actual ERP document with the message
  * as its caption, matching the Cloud API / OpenWA providers.
  *
@@ -134,8 +133,7 @@ export class WhatsAppWasenderProvider implements CommProvider {
   }
 
   async send(req: CommRequest, content: ResolvedContent): Promise<CommResult> {
-    if (!isWasenderBridgeAvailable())
-      return this.fail("WasenderAPI bridge unavailable (desktop app required)");
+    if (!isWasenderBridgeAvailable()) return this.fail("WhatsApp cloud provider unavailable");
     if (!this.config) return this.fail("WasenderAPI Provider not configured in settings");
 
     const phone = cleanPhone(req.recipient.phone);

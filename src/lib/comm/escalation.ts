@@ -14,7 +14,6 @@
  * sent — so calling `escalate()` daily only actually sends when a NEW tier
  * threshold has been crossed, not every single day.
  */
-import { runLocal, getDb, queryTable, initLocalDb } from "@/lib/local-db";
 import { emitBusinessEvent } from "./comm-automation";
 import type { AutomationEventKey } from "./automation-settings-store";
 import { useSettings } from "@/lib/settings-store";
@@ -51,13 +50,7 @@ function resolveEscalationRecipient(
   return null; // "responsible" — caller already knows who that is (the customer/worker themselves)
 }
 
-function getState(entityType: string, entityId: string): Record<string, unknown> | null {
-  const rows = queryTable("escalation_state", "entity_type = ? AND entity_id = ?", [
-    entityType,
-    entityId,
-  ]);
-  return (rows as Record<string, unknown>[])[0] ?? null;
-}
+const states = new Map<string, { firstFlaggedAt: string; lastTierIndex: number }>();
 
 /**
  * Evaluates and (if a new tier is due) fires the escalation for one
@@ -73,11 +66,11 @@ export async function escalate(
   responsibleRecipient: { name: string; email?: string; phone?: string },
   context: { branchId: string; linkedType: Parameters<typeof emitBusinessEvent>[1]["linkedType"] },
 ): Promise<{ tierSent: EscalationTier | null }> {
-  await initLocalDb();
   const now = Date.now();
-  const existing = getState(entityType, entityId);
-  const firstFlaggedAt = (existing?.first_flagged_at as string) ?? new Date(now).toISOString();
-  const lastTierIndex = existing ? Number(existing.last_tier_index) : -1;
+  const stateKey = `${entityType}:${entityId}`;
+  const existing = states.get(stateKey);
+  const firstFlaggedAt = existing?.firstFlaggedAt ?? new Date(now).toISOString();
+  const lastTierIndex = existing?.lastTierIndex ?? -1;
 
   const daysSince = daysBetween(firstFlaggedAt, now);
   // Highest tier whose threshold has been reached but hasn't been sent yet.
@@ -86,14 +79,7 @@ export async function escalate(
     if (daysSince >= ESCALATION_LADDER[i].dayThreshold && i > lastTierIndex) dueTierIndex = i;
   }
 
-  if (!existing) {
-    await runLocal(() => {
-      getDb().run(
-        `INSERT INTO escalation_state (entity_type, entity_id, first_flagged_at, last_tier_index, last_sent_at) VALUES (?, ?, ?, -1, NULL);`,
-        [entityType, entityId, firstFlaggedAt],
-      );
-    });
-  }
+  states.set(stateKey, { firstFlaggedAt, lastTierIndex });
 
   if (dueTierIndex === -1) return { tierSent: null };
 
@@ -110,23 +96,12 @@ export async function escalate(
     });
   }
 
-  await runLocal(() => {
-    getDb().run(
-      `UPDATE escalation_state SET last_tier_index = ?, last_sent_at = ? WHERE entity_type = ? AND entity_id = ?;`,
-      [dueTierIndex, new Date(now).toISOString(), entityType, entityId],
-    );
-  });
+  states.set(stateKey, { firstFlaggedAt, lastTierIndex: dueTierIndex });
 
   return { tierSent: tier };
 }
 
 /** Call when the underlying condition clears (paid, settled, resolved) so escalation restarts fresh if it recurs later. */
 export async function resolveEscalation(entityType: string, entityId: string): Promise<void> {
-  await initLocalDb();
-  await runLocal(() => {
-    getDb().run(`DELETE FROM escalation_state WHERE entity_type = ? AND entity_id = ?;`, [
-      entityType,
-      entityId,
-    ]);
-  });
+  states.delete(`${entityType}:${entityId}`);
 }

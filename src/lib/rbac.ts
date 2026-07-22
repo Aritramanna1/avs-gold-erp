@@ -8,8 +8,6 @@
 import { useEffect, useState } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
-import { isLocalFirstMode } from "@/lib/deployment-mode";
-import { getLocalSessionUser } from "@/lib/local-auth";
 import { ROLES } from "@/lib/permissions";
 
 export type AppRole =
@@ -82,9 +80,8 @@ const MATRIX: Record<Action, AppRole[]> = {
 };
 
 /**
- * Maps a local_users role label (the "Super Owner"/"Branch Manager"/... strings
- * used by permissions.ts) onto this module's fine-grained AppRole set. Offline
- * mode has no user_roles table to read, so the mapping lives here.
+ * Maps the legacy settings-store role labels onto this module's fine-grained
+ * AppRole set when a cloud role row is not yet available.
  */
 function mapLocalRole(role: string, isSuperOwner: boolean): AppRole[] {
   if (isSuperOwner || role === ROLES.SUPER_OWNER || role === ROLES.ADMINISTRATOR) {
@@ -124,16 +121,6 @@ export function useRoles(): { roles: AppRole[]; email: string | null; ready: boo
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      // Offline mode (SAD §17): local_users is the sole source of roles —
-      // never query Supabase's user_roles table or its auth session.
-      if (isLocalFirstMode()) {
-        const localUser = await getLocalSessionUser();
-        if (cancelled) return;
-        setEmail(localUser?.email ?? null);
-        setRoles(localUser ? mapLocalRole(localUser.role, localUser.isSuperOwner) : []);
-        setReady(true);
-        return;
-      }
       const { data: sessionData } = await supabase.auth.getSession();
       const user = sessionData.session?.user;
       const userId = user?.id;
@@ -152,10 +139,9 @@ export function useRoles(): { roles: AppRole[]; email: string | null; ready: boo
         setEmail(userEmail);
       }
 
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-      if (cancelled) return;
-
-      const dbRoles = (data ?? []).map((r) => r.role as AppRole);
+      // The legacy user_roles table is not part of the Workshop schema.
+      // Roles are resolved from the organization settings payload below.
+      const dbRoles: AppRole[] = [];
 
       // Look up defined users from store as fallback or overriding role authority
       const registeredUsers = useSettings.getState().users;

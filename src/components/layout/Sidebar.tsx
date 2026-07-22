@@ -5,6 +5,7 @@ import {
   Receipt,
   BookOpen,
   BarChart3,
+  FileText,
   Settings as SettingsIcon,
   MessageSquare,
 } from "lucide-react";
@@ -18,13 +19,14 @@ import { useMemo } from "react";
 
 // Workshop Edition navigation follows the physical gold-control workflow.
 export const navigationItems = [
-  { to: "/", label: "Home", icon: Home },
-  { to: "/people", label: "People / KYC", icon: Users },
+  { to: "/", label: "Dashboard", icon: Home },
+  { to: "/people", label: "People", icon: Users },
   { to: "/ledger", label: "Gold Stock", icon: BookOpen },
   { to: "/workshop/gold-book", label: "Worker Gold Book", icon: BookOpen },
   { to: "/workshop", label: "Jeweller Gold Book", icon: BookOpen },
   { to: "/billing", label: "Billing", icon: Receipt },
-  { to: "/reports/gold-position", label: "Gold Reports", icon: BarChart3 },
+  { to: "/reports/gold-position", label: "Reports", icon: BarChart3 },
+  { to: "/documents", label: "Documents", icon: FileText },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageSquare },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;

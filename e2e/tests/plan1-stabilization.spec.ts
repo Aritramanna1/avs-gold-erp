@@ -20,7 +20,7 @@ declare global {
 
 /**
  * Plan 1 Stabilization (Priority 8) — permanent regression coverage for the
- * offline-first migration's later phases (Step 8 Enterprise Security, Step 9
+ * cloud migration's later phases (Step 8 Enterprise Security, Step 9
  * Communication Engine, Priority 5 Print Queue, Priority 6 Gold
  * Reconciliation, Priority 7 Hardware fallbacks, Priority 4 keyboard-first).
  *

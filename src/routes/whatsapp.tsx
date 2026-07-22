@@ -162,7 +162,7 @@ function WhatsappPage() {
     } as any);
     update(id, { status: "converted", convertedOrderId: order.id, linkedPersonId: customer.id });
     toast.success(`Order draft ${order.orderNo} created${wasNewCustomer ? " (new customer)" : ""}`);
-    navigate({ to: "/orders/$id", params: { id: order.id } });
+    navigate({ to: "/billing" });
   };
 
   return (
@@ -404,7 +404,7 @@ function MessageCard(props: {
           </Button>
         )}
         {props.status === "converted" && props.convertedOrderId && (
-          <Link to="/orders/$id" params={{ id: props.convertedOrderId }}>
+          <Link to="/billing">
             <Button size="sm" variant="outline">
               Open Order
             </Button>

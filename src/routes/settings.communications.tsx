@@ -624,7 +624,7 @@ function ProviderCard({
             <strong>encrypted in the desktop app</strong> (never here), and sessions/QR are managed
             on its own page.
           </p>
-          <Link to="/settings" search={{ tab: "whatsapp", waSection: "wasender" }}>
+          <Link to="/settings" search={{ tab: "whatsapp", waSection: "business" }}>
             <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8">
               Configure WasenderAPI <ExternalLink className="h-3 w-3" />
             </Button>

@@ -1,9 +1,5 @@
 import { create } from "zustand";
-import { getQueueEntries } from "@/lib/comm/comm-queue";
-import { initLocalDb } from "@/lib/local-db";
-import { getSyncStatus } from "@/lib/sync-engine";
 import { getPendingApprovals } from "@/lib/workflow/approval-workflow";
-import { useLicense } from "@/lib/licensing/license-store";
 import { useSettings } from "@/lib/settings-store";
 
 export type NotificationSeverity = "info" | "warning" | "critical";
@@ -45,13 +41,6 @@ function persistReadIds(ids: string[]): void {
   window.localStorage.setItem(READ_KEY, JSON.stringify(ids.slice(-250)));
 }
 
-function interpolateCount(
-  descriptionKey: string,
-  count: number,
-): Pick<AppNotification, "descriptionKey" | "descriptionValues"> {
-  return { descriptionKey, descriptionValues: { count } };
-}
-
 export const useNotifications = create<NotificationsState>()((set, get) => ({
   items: [],
   readIds: readStoredIds(),
@@ -76,73 +65,8 @@ export const useNotifications = create<NotificationsState>()((set, get) => ({
       });
     }
 
-    const license = useLicense.getState();
-    if (["trial", "expired", "suspended"].includes(license.status)) {
-      items.push({
-        id: `license-${license.status}`,
-        titleKey: "notifications.license_title",
-        descriptionKey: `notifications.license_${license.status}`,
-        severity: license.status === "trial" ? "warning" : "critical",
-        href: "/settings/license",
-        createdAt: now,
-      });
-    }
-
     try {
-      await initLocalDb();
-      const [pendingMessages, failedMessages, approvals] = await Promise.all([
-        getQueueEntries("pending"),
-        getQueueEntries("permanently_failed"),
-        getPendingApprovals(),
-      ]);
-      const sync = getSyncStatus();
-
-      if (sync.conflicts > 0) {
-        items.push({
-          id: "sync-conflicts",
-          titleKey: "notifications.sync_conflict_title",
-          ...interpolateCount("notifications.sync_conflict_description", sync.conflicts),
-          severity: "critical",
-          href: "/settings/storage-diagnostics",
-          createdAt: now,
-        });
-      } else if (sync.pending > 0) {
-        items.push({
-          id: "sync-pending",
-          titleKey: "notifications.sync_pending_title",
-          ...interpolateCount("notifications.sync_pending_description", sync.pending),
-          severity: "info",
-          href: "/settings/storage-diagnostics",
-          createdAt: now,
-        });
-      }
-
-      if (failedMessages.length > 0) {
-        items.push({
-          id: "communications-failed",
-          titleKey: "notifications.communication_failed_title",
-          ...interpolateCount(
-            "notifications.communication_failed_description",
-            failedMessages.length,
-          ),
-          severity: "critical",
-          href: "/communications",
-          createdAt: Math.max(...failedMessages.map((entry) => Date.parse(entry.created_at) || 0)),
-        });
-      } else if (pendingMessages.length > 0) {
-        items.push({
-          id: "communications-pending",
-          titleKey: "notifications.communication_pending_title",
-          ...interpolateCount(
-            "notifications.communication_pending_description",
-            pendingMessages.length,
-          ),
-          severity: "warning",
-          href: "/communications",
-          createdAt: Math.max(...pendingMessages.map((entry) => Date.parse(entry.created_at) || 0)),
-        });
-      }
-
+      const approvals = await getPendingApprovals();
       for (const approval of approvals) {
         items.push({
           id: `approval-${approval.id}`,

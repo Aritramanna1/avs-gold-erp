@@ -1,6 +1,6 @@
 # ERP Gold
 
-Offline-first jewellery manufacturing ERP for Electron, React, TypeScript, SQLite, and optional Supabase hybrid/SaaS operation.
+Web-first workshop ERP for React, TypeScript, Supabase Authentication, and Supabase PostgreSQL.
 
 Current distributable identity: **AVS Gold ERP Version 1.1.0 Production Release** (`1.1.0`) by [Arivahly Venture Sphere](https://arivahly.in/). This is a controlled jewellery-manufacturing workshop build, not a retail POS.
 
@@ -13,11 +13,6 @@ npm install
 npm run dev
 ```
 
-Run the Electron development application with:
-
-```sh
-npm run electron:dev
-```
 
 Production checks and builds:
 
@@ -50,4 +45,3 @@ Licensing is isolated from customer data: the replaceable client provider calls 
 ## Repository safety
 
 This repository is connected to Lovable. Do not rewrite published history with force pushes, rebases, amended pushed commits, or squashed pushed commits.
-

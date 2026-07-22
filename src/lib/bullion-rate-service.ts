@@ -123,7 +123,7 @@ export function getCurrentGoldRatePaise(): number {
   return useSettings.getState().goldRatePerGramPaise;
 }
 
-// ── Scheduled refresh — mirrors sync-engine.ts's startSyncOutboxScheduler() pattern ──
+// ── Scheduled refresh ──
 
 let schedulerHandle: ReturnType<typeof setInterval> | null = null;
 

@@ -1,7 +1,5 @@
 import { toast } from "sonner";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { isOfflineMode } from "@/lib/deployment-mode";
-import { getAttachmentSignedUrl } from "@/lib/supabase-storage";
 import { usePeople, type Person } from "@/lib/people-store";
 import { useLedger, type LedgerEntry } from "@/lib/ledger-store";
 import { useOrders, type Order } from "@/lib/orders-store";
@@ -25,11 +23,9 @@ import { useDailyCloses, type DailyClose as DailyCloseRecord } from "@/lib/daily
 import { usePrintLog, type PrintEvent as PrintLogRecord } from "@/lib/printlog-store";
 import { useWhatsapp, type WhatsappMessage } from "@/lib/whatsapp-store";
 import { useSettings, isSettingsPullStale } from "@/lib/settings-store";
-import { useAttachments, hydrateAttachmentsFromLocal } from "@/lib/attachments-store";
-import { migrateLegacyRepairsToOrders } from "@/lib/repair-migration";
 import { useCommLog, type CommEvent } from "@/lib/comm-log-store";
 import { startRealtimeSync, stopRealtimeSync } from "@/lib/realtime-sync";
-import { resolveAllSignedUrls, initializeStorage } from "@/lib/storage";
+import { initializeStorage } from "@/lib/storage";
 import { markCriticalLoadDone, markInitialLoadDone } from "@/lib/app-loading-store";
 import { reportUnexpectedError } from "@/lib/error-handling";
 
@@ -317,17 +313,6 @@ export async function pullAppSettings(): Promise<void> {
 
     // Resolve through the mode-aware provider: local vault in Offline, local
     // fallback in Hybrid, signed cloud URL in Online.
-    if (firm && firm.logoStoragePath) {
-      try {
-        const freshUrl = await getAttachmentSignedUrl("firm-assets", firm.logoStoragePath);
-        if (freshUrl) {
-          firm.logoUrl = freshUrl;
-        }
-      } catch (err) {
-        console.warn("[data-loader] Failed to dynamically sign firm logo:", err);
-      }
-    }
-
     const updatedUsers = payload.users ?? useSettings.getState().users;
     useSettings.setState({
       firm,
@@ -396,81 +381,14 @@ export async function pullDropdownMasters(): Promise<void> {
   if (error) throw new Error(`dropdown_masters pull: ${error.message}`);
   const dict: Record<string, string[]> = {};
   (data ?? []).forEach((r) => {
-    if (!dict[r.master_key]) dict[r.master_key] = [];
-    dict[r.master_key].push(r.value);
+    const key = r.master_key;
+    if (!key) return;
+    if (!dict[key]) dict[key] = [];
+    if (r.value) dict[key].push(r.value);
   });
   if (Object.keys(dict).length > 0) {
     useSettings.setState({ dropdowns: { ...useSettings.getState().dropdowns, ...dict } });
   }
-}
-
-export async function pullAttachments(): Promise<void> {
-  // Local SQLite is the source of truth for attachments and runs FIRST, in every
-  // deployment mode. Previously this function only asked Supabase, so any boot
-  // without a working cloud session (Offline, Hybrid, or just no network) came up
-  // with zero attachments and every uploaded photo/KYC doc looked deleted — even
-  // though the bytes were sitting on disk the whole time.
-  await hydrateAttachmentsFromLocal();
-
-  const dict: any = {};
-  try {
-    const { data: legacyData, error: legacyError } = await supabase
-      .from("attachments")
-      .select("data, id, file_name, storage_path")
-      .limit(10000);
-
-    if (legacyError) {
-      console.warn("Attachments table query skipped/errored:", legacyError.message);
-    } else {
-      (legacyData ?? []).forEach((r) => {
-        const rawData = (r.data as any) ?? {};
-        dict[r.id] = {
-          filed: rawData.filed ?? true,
-          note: rawData.note ?? "",
-          updatedAt: rawData.updatedAt ?? Date.now(),
-          fileName: r.file_name || rawData.fileName || undefined,
-          checksum: rawData.checksum || undefined,
-          mimeType: rawData.mimeType || undefined,
-          bucket: rawData.bucket || undefined,
-          storagePath: r.storage_path || rawData.storagePath || undefined,
-          uploadedBy: rawData.uploadedBy || undefined,
-          fileDataUrl: rawData.fileDataUrl || undefined,
-          thumbnailDataUrl: rawData.thumbnailDataUrl || undefined,
-        };
-      });
-    }
-  } catch (err) {
-    console.warn("Attachments fetch skipped:", err);
-  }
-
-  // Merge rather than replace — a blind overwrite here could clobber an
-  // attachment .save() that landed in memory a moment ago but hasn't yet
-  // round-tripped through this exact pull (this pull can re-run later, e.g.
-  // on branch switch or reconnect), which is exactly the "upload succeeds,
-  // then later the attachment disappears / its status flips back" symptom.
-  // The freshly-pulled DB row still wins per key — it's only the KEYS this
-  // pull doesn't know about yet that are preserved from the in-memory state.
-  //
-  // `checksum` is the exception: it points at locally-vaulted bytes. A cloud row
-  // that predates the vault (or came from another device that hasn't synced its
-  // blobs) carries no checksum, and letting that undefined win would strand the
-  // file we already hold on this disk. Local reference always survives.
-  useAttachments.setState((s) => ({
-    items: Object.fromEntries(
-      Object.entries({ ...s.items, ...dict }).map(([k, v]: [string, any]) => [
-        k,
-        { ...v, checksum: v.checksum ?? s.items[k]?.checksum },
-      ]),
-    ),
-  }));
-
-  const legacyDictOnly: any = {};
-  Object.entries(dict).forEach(([k, v]: [string, any]) => {
-    if (v.bucket && v.storagePath) {
-      legacyDictOnly[k] = v;
-    }
-  });
-  void resolveAllSignedUrls(legacyDictOnly);
 }
 
 export async function pullBranches(): Promise<void> {
@@ -609,23 +527,13 @@ export async function pullBackground(): Promise<{ ok: boolean; errors: string[] 
     runSafe("workshops", pullWorkshops, errors),
     runSafe("people", pullPeople, errors),
     runSafe("gold_ledger", pullLedger, errors),
-    runSafe("orders", pullOrders, errors),
-    runSafe("job_cards", pullJobCards, errors),
-    runSafe("inventory", pullInventory, errors),
     runSafe("stock_movements", pullMovements, errors),
     runSafe("invoices", pullInvoices, errors),
     runSafe("payments", pullPayments, errors),
-    runSafe("attendance", pullAttendance, errors),
-    runSafe("salary_rules", pullSalaryRules, errors),
     runSafe("worker_transactions", pullWorkerTransactions, errors),
     runSafe("worker_settlements", pullWorkerSettlements, errors),
-    runSafe("catalog_designs", pullCatalogDesigns, errors),
-    runSafe("rate_cut_records", pullRateCutRecords, errors),
-    runSafe("repairs", pullRepairs, errors),
-    runSafe("daily_close", pullDailyCloses, errors),
     runSafe("print_logs", pullPrintLogs, errors),
     runSafe("whatsapp_inbox", pullWhatsappInbox, errors),
-    runSafe("attachments", pullAttachments, errors),
     runSafe("communication_logs", pullCommLogs, errors),
     runSafe(
       "crm",
@@ -712,7 +620,6 @@ let starting = false;
 let isLoaded = false;
 
 export async function startCloudSync(): Promise<void> {
-  if (isOfflineMode()) return;
   if (isLoaded || starting) {
     // Already hydrated (e.g. HMR remount or a second auth event) — the shell
     // must not stay stuck on the loading skeleton.
@@ -757,13 +664,7 @@ export async function startCloudSync(): Promise<void> {
       });
     isLoaded = true;
     startRealtimeSync();
-    void initializeStorage()
-      .then(() => {
-        void migrateLegacyRepairsToOrders().catch((error) =>
-          reportUnexpectedError(error, "data-loader.repair-migration"),
-        );
-      })
-      .catch((error) => reportUnexpectedError(error, "data-loader.storage-init"));
+    void initializeStorage().catch((error) => reportUnexpectedError(error, "data-loader.storage-init"));
   } finally {
     starting = false;
   }
@@ -772,37 +673,4 @@ export async function startCloudSync(): Promise<void> {
 export function stopCloudSync(): void {
   stopRealtimeSync();
   isLoaded = false;
-}
-
-/**
- * Offline-mode boot load. Same pulls as startCloudSync, but they resolve
- * against the local SQLite database (supabase.from() is routed to the local
- * query shim in Offline mode — see integrations/supabase/client.ts), with no
- * realtime subscription and no cloud storage init. Without this, an Offline
- * install booted into empty stores: the data was on disk but nothing read it.
- */
-export async function startLocalLoad(): Promise<void> {
-  if (isLoaded || starting) {
-    if (isLoaded) markInitialLoadDone();
-    return;
-  }
-  starting = true;
-  try {
-    // Only the shell's own data (settings/branches/modules) is on the critical
-    // path. Reveal the UI as soon as it's in — Offline reads are local SQLite,
-    // so this is a handful of synchronous queries, not a network wait.
-    await pullCritical();
-    useSettings.getState().setSettingsHydrated(true);
-    isLoaded = true;
-    markCriticalLoadDone();
-    // Operational data loads in the background WITHOUT blocking the shell, the
-    // same way Cloud mode already does it. Previously this was awaited, so an
-    // Offline boot sat on the loading skeleton until every table + heavy store
-    // refresh finished — the exact "startup should not wait" regression.
-    void pullBackground()
-      .catch((error) => reportUnexpectedError(error, "data-loader.local-background"))
-      .finally(() => markInitialLoadDone());
-  } finally {
-    starting = false;
-  }
 }

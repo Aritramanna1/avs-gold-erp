@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -19,17 +19,13 @@ import { useFinancialLocks, loadFinancialLocks, isPeriodLocked } from "@/lib/fin
 import { useSettings } from "@/lib/settings-store";
 import { mgToGrams } from "@/lib/gold";
 import { exportToCSV } from "@/lib/report-engine";
-import { migrateAllToCloud } from "@/lib/cloud-migrate";
-import { hasLocalDiverged, getLastMigrationAt } from "@/lib/db-status";
 import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
-  CloudOff,
   Download,
   Loader2,
   Printer,
-  RefreshCw,
   Save,
   XCircle,
 } from "lucide-react";
@@ -72,12 +68,7 @@ function DailyClosePage() {
   const [pendingOrdersReviewed, setPendingOrdersReviewed] = useState(false);
   const [karigarCustodyReviewed, setKarigarCustodyReviewed] = useState(false);
   const [printReportsSaved, setPrintReportsSaved] = useState(false);
-  const [syncState, setSyncState] = useState<"idle" | "running" | "ok" | "error">("idle");
-  const [syncMsg, setSyncMsg] = useState<string>("");
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
-  const diverged = hasLocalDiverged();
-  const lastMig = getLastMigrationAt();
-
   const dayStart = new Date(date + "T00:00:00").getTime();
   const dayEnd = new Date(date + "T23:59:59").getTime();
   const isToday = (ts: number) => ts >= dayStart && ts <= dayEnd;
@@ -179,31 +170,6 @@ function DailyClosePage() {
   const expectedCash = snapshot.cashTotalPaise;
   const cashVariance = physCash - expectedCash;
 
-  const runSyncAndPrint = async (closeId: string) => {
-    setSyncState("running");
-    setSyncMsg("Pushing today's data to Lovable Cloud…");
-    try {
-      const res = await migrateAllToCloud((p) => {
-        if (!p.ok) return;
-        setSyncMsg(`Syncing ${p.table} (${p.inserted}/${p.total})…`);
-      });
-      if (res.ok) {
-        setSyncState("ok");
-        setSyncMsg("Daily Close synced to cloud.");
-        navigate({ to: "/reports/dailyclose-print/$id", params: { id: closeId } });
-      } else {
-        setSyncState("error");
-        setSyncMsg("Cloud sync failed — printable close blocked. " + res.errors.join("; "));
-      }
-    } catch (e) {
-      setSyncState("error");
-      setSyncMsg(
-        "Cloud sync error — printable close blocked. " +
-          (e instanceof Error ? e.message : String(e)),
-      );
-    }
-  };
-
   const onSave = async () => {
     if (isPeriodLocked(selectedBranchId || "MAIN", date)) {
       toast.error(
@@ -229,17 +195,10 @@ function DailyClosePage() {
       ownerSignature: owner,
     });
     setLastSavedId(c.id);
-    // Auto-push pilot data to Lovable Cloud at end of day so nothing is missed.
-    await runSyncAndPrint(c.id);
+    navigate({ to: "/reports/dailyclose-print/$id", params: { id: c.id } });
   };
 
-  const onReprint = async (id: string) => {
-    // If local diverges from last cloud snapshot, force a re-sync before allowing print.
-    if (hasLocalDiverged()) {
-      setLastSavedId(id);
-      await runSyncAndPrint(id);
-      return;
-    }
+  const onReprint = (id: string) => {
     navigate({ to: "/reports/dailyclose-print/$id", params: { id } });
   };
 
@@ -437,53 +396,18 @@ function DailyClosePage() {
         </Section>
       </div>
 
-      {(diverged || !lastMig) && (
-        <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 flex items-start gap-2 text-xs text-amber-200">
-          <CloudOff className="h-4 w-4 shrink-0 mt-0.5" />
-          <div>
-            <b>Local data differs from cloud.</b> Saving the Daily Close will auto-migrate
-            everything to Lovable Cloud first. The printable close opens only after sync succeeds.
-          </div>
-        </div>
-      )}
-
       <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
-        {syncState !== "idle" && (
-          <div
-            className={`text-xs flex items-center gap-2 px-3 py-1.5 rounded-md border ${
-              syncState === "ok"
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                : syncState === "error"
-                  ? "border-red-500/30 bg-red-500/10 text-red-300"
-                  : "border-amber-500/30 bg-amber-500/10 text-amber-200"
-            }`}
-          >
-            {syncState === "running" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {syncState === "ok" && <CheckCircle2 className="h-3.5 w-3.5" />}
-            {syncState === "error" && <XCircle className="h-3.5 w-3.5" />}
-            <span>{syncMsg}</span>
-          </div>
-        )}
-        {syncState === "error" && lastSavedId && (
-          <Button variant="outline" onClick={() => runSyncAndPrint(lastSavedId)} className="gap-2">
-            <RefreshCw className="h-4 w-4" /> Retry Sync
-          </Button>
-        )}
         <Link to="/reports">
           <Button variant="outline">Cancel</Button>
         </Link>
         <Button
           data-testid="dailyclose-save"
           onClick={onSave}
-          disabled={syncState === "running"}
+
           className="gap-2"
         >
-          {syncState === "running" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          Save Daily Close & Sync
+          <Save className="h-4 w-4" />
+          Save Daily Close
         </Button>
       </div>
 
@@ -506,7 +430,6 @@ function DailyClosePage() {
                   variant="outline"
                   className="gap-1"
                   onClick={() => onReprint(c.id)}
-                  disabled={syncState === "running"}
                 >
                   <Printer className="h-3 w-3" /> Reprint
                 </Button>

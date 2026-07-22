@@ -166,6 +166,6 @@ export const WHATSAPP_KEYS = {
   templatePaymentReminder: "template_payment_reminder",
   templateOtp: "template_otp",
   // WasenderAPI. The token is NOT stored here — it lives encrypted in the
-  // Electron main process (see wasender.ts). Only non-secret config here.
+  // Only non-secret provider configuration is stored here.
   wasenderSession: "wasender_session",
 } as const;

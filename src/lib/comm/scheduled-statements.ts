@@ -21,15 +21,14 @@ import { sendWhatsAppText } from "./send-whatsapp-text";
 import { usePeople } from "@/lib/people-store";
 import { getPartyGoldBalance } from "@/lib/customer-account-ledger";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
-import { getMetaValue, setMetaValue } from "@/lib/local-db";
 
-const FLAG = "weekly_statements_enabled";
+let weeklyStatementsEnabled = false;
 
 export function isWeeklyStatementsEnabled(): boolean {
-  return getMetaValue(FLAG) === "1";
+  return weeklyStatementsEnabled;
 }
 export function setWeeklyStatementsEnabled(on: boolean): void {
-  setMetaValue(FLAG, on ? "1" : "0");
+  weeklyStatementsEnabled = on;
 }
 
 /** True when a real sending WhatsApp provider (not the deep-link fallback) is active. */

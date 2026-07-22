@@ -20,7 +20,6 @@
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { append as appendAuditEntry } from "./security/audit-log";
-import { getMetaValue, setMetaValue } from "./local-db";
 
 // ── Material categories — extensible registry, not a closed enum ──────────
 
@@ -153,21 +152,15 @@ export interface GroupedBalances {
 const movementRepository = createRepository<MaterialMovement>("material_vault_movements");
 
 // ── Admin-configurable materials — persisted, nothing hard-coded ────────────
-const CUSTOM_CATEGORIES_KEY = "material_custom_categories";
+let customCategories: MaterialCategoryDef[] = [];
 
 /** Admin-defined materials (persisted). Built-ins live in DEFAULT_MATERIAL_CATEGORIES. */
 export function readCustomCategories(): MaterialCategoryDef[] {
-  try {
-    const raw = getMetaValue(CUSTOM_CATEGORIES_KEY);
-    const arr = raw ? (JSON.parse(raw) as MaterialCategoryDef[]) : [];
-    return Array.isArray(arr) ? arr.filter((c) => c && c.key && c.label && c.group) : [];
-  } catch {
-    return [];
-  }
+  return customCategories;
 }
 
 function writeCustomCategories(list: MaterialCategoryDef[]): void {
-  setMetaValue(CUSTOM_CATEGORIES_KEY, JSON.stringify(list));
+  customCategories = list;
 }
 
 /** Built-ins + admin-defined materials, deduped by key (custom overrides on clash). */
@@ -360,14 +353,14 @@ export const useMaterialVault = create<MaterialVaultState>()((set, get) => ({
     // Offline-first pilot (Priority 4.5): writes locally + enqueues the
     // outbox entry immediately (works with no internet), rather than
     // blocking on a direct Supabase round trip. The background scheduler
-    // (sync-engine.ts's startSyncOutboxScheduler(), started in __root.tsx)
+    // Cloud persistence is handled by the movement repository.
     // pushes it to Supabase within ~15s, on reconnect, or on next app boot.
     // material_vault_movements was chosen as the first repository to migrate
     // because it's append-only (no cross-row sequence dependency like
     // invoice/order numbering) and already the most heavily
     // sync-integration-tested table this sprint (order-workflow-integration
     // e2e exercises it end to end).
-    await movementRepository.saveLocal(movement);
+    await movementRepository.save(movement);
     set((s) => ({ movements: [movement, ...s.movements] }));
     await appendAuditEntry({
       actorId: movement.actorId ?? null,

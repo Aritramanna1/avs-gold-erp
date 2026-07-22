@@ -1,6 +1,5 @@
 import { getCloudDataClient as getRawSupabaseClient } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
-import { runLocal, upsertRow, softDeleteRow } from "@/lib/local-db";
 
 // Map our entity types to Supabase table structures
 const BRANCH_SUPPORTED_TABLES = [
@@ -499,12 +498,6 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
   // keeps local-first reads immediately consistent with what was just
   // saved. Best-effort: the remote save already succeeded and must not be
   // undone by a local-cache hiccup, so a failure here is only logged.
-  try {
-    if (table === "branch_settings") return;
-    await runLocal(() => upsertRow(table, { id, data: JSON.stringify(rawPayload) }));
-  } catch (err) {
-    console.error(`[supabase-write] Failed to mirror ${table}/${id} to local cache:`, err);
-  }
 }
 
 export async function deleteDirect(table: string, id: string): Promise<void> {
@@ -526,12 +519,4 @@ export async function deleteDirect(table: string, id: string): Promise<void> {
   // Same local-cache mirroring as saveDirect above — without this, a
   // deleted row kept showing up in local-first reads until an unrelated
   // full resync happened to catch up.
-  try {
-    await runLocal(() => softDeleteRow(table, id));
-  } catch (err) {
-    console.error(
-      `[supabase-write] Failed to mirror delete of ${table}/${id} to local cache:`,
-      err,
-    );
-  }
 }

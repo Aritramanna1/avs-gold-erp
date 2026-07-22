@@ -3,7 +3,7 @@
  *
  * Every entry here is a real, currently-hardcoded-or-implicit behavior
  * this session built or found (gold-first accounting, auto PDF/email/
- * WhatsApp attachment, provider enablement, automatic backups/sync,
+ * WhatsApp attachment, provider enablement,
  * approval gates, mandatory-field enforcement) turned into a named,
  * described, permissioned, audited ON/OFF switch. This file is PURE
  * METADATA — name/description/default/permission — no behavior lives
@@ -29,9 +29,6 @@ export type BusinessRuleKey =
   | "enable_openwa"
   | "enable_meta_whatsapp"
   | "enable_automatic_reports"
-  | "enable_automatic_backups"
-  | "enable_automatic_sync"
-  | "enable_offline_mode"
   | "enable_customer_portal"
   | "enable_dealer_portal"
   | "enable_karigar_portal"
@@ -209,32 +206,6 @@ export const BUSINESS_RULE_REGISTRY: Record<BusinessRuleKey, BusinessRuleDefinit
     description:
       "Runs daily/weekly/monthly business report generation and distribution on the background scheduler.",
     defaultValue: false,
-    permissionRequired: "owner_or_admin",
-    category: "automation",
-  },
-  enable_automatic_backups: {
-    key: "enable_automatic_backups",
-    name: "Enable Automatic Backups",
-    description: "Runs the weekly disaster-recovery drill and backup verification automatically.",
-    defaultValue: true,
-    permissionRequired: "owner_or_admin",
-    category: "automation",
-  },
-  enable_automatic_sync: {
-    key: "enable_automatic_sync",
-    name: "Enable Automatic Sync",
-    description:
-      "Automatically syncs local changes to Supabase in the background as connectivity allows.",
-    defaultValue: true,
-    permissionRequired: "owner_or_admin",
-    category: "automation",
-  },
-  enable_offline_mode: {
-    key: "enable_offline_mode",
-    name: "Enable Offline Mode",
-    description:
-      "Allows the app to read and write locally (SQLite) when the network is unavailable, syncing once reconnected.",
-    defaultValue: true,
     permissionRequired: "owner_or_admin",
     category: "automation",
   },

@@ -1,44 +1,7 @@
 import { type AttachmentEntityType } from "./attachments-store";
 import { compressImage } from "./image-compression";
-import { saveFile as saveFileLocally, loadFile as loadFileLocally } from "./local-file-store";
-import { initLocalDb } from "./local-db";
+import { getCloudDataClient } from "./providers/data-provider";
 
-const localUrlCache = new Map<string, string>();
-
-function localFileId(namespace: string, path: string): string {
-  return `storage:${namespace}:${path}`;
-}
-
-async function storeLocal(
-  namespace: string,
-  path: string,
-  blob: Blob,
-  fileName: string,
-  mimeType: string,
-  entityId: string,
-): Promise<void> {
-  await initLocalDb();
-  await saveFileLocally(localFileId(namespace, path), new Uint8Array(await blob.arrayBuffer()), {
-    fileName,
-    mimeType,
-    entityType: namespace,
-    entityId,
-  });
-}
-
-async function localUrl(namespace: string, path: string): Promise<string> {
-  const id = localFileId(namespace, path);
-  const cached = localUrlCache.get(id);
-  if (cached) return cached;
-  await initLocalDb();
-  const bytes = await loadFileLocally(id);
-  if (!bytes) return "";
-  const url = URL.createObjectURL(new Blob([bytes as BlobPart]));
-  localUrlCache.set(id, url);
-  return url;
-}
-
-/** Local-vault namespace mapper. The returned value is never a cloud bucket. */
 export function getBucketForEntityType(
   entityType: AttachmentEntityType | "firm-logo" | "expense",
 ): string {
@@ -46,6 +9,8 @@ export function getBucketForEntityType(
   switch (entityType) {
     case "catalog":
       return "catalog-designs";
+    case "expense":
+      return "expense-receipts";
     case "person":
       return "customer-documents";
     case "worker":
@@ -57,36 +22,22 @@ export function getBucketForEntityType(
       return "order-attachments";
     case "repair":
       return "repair-attachments";
-    case "expense":
-      return "expense-receipts";
     default:
       return "order-attachments";
   }
 }
 
-let readyPromise: Promise<void> | null = null;
-
-/** Compatibility no-op: local storage requires no bucket provisioning. */
 export function ensureStorageBucketsReady(): Promise<void> {
-  if (!readyPromise) readyPromise = Promise.resolve();
-  return readyPromise;
+  return Promise.resolve();
 }
 
 export function base64ToBlob(dataUrl: string): { blob: Blob; mimeType: string } {
-  const parts = dataUrl.split(";base64,");
-  const mimeType = parts[0].split(":")[1] || "application/octet-stream";
-  const characters = atob(parts[1]);
-  const bytes = new Uint8Array(characters.length);
-  for (let index = 0; index < characters.length; index += 1) {
-    bytes[index] = characters.charCodeAt(index);
-  }
-  return { blob: new Blob([bytes.buffer], { type: mimeType }), mimeType };
+  const [header, encoded] = dataUrl.split(",", 2);
+  const mimeType = header.match(/data:([^;]+)/)?.[1] ?? "application/octet-stream";
+  const bytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
+  return { blob: new Blob([bytes], { type: mimeType }), mimeType };
 }
 
-/**
- * Stores a file in the local application vault in every deployment mode.
- * The historical export name is retained to avoid rewriting completed callers.
- */
 export async function uploadToSupabaseStorage(
   namespace: string,
   fileName: string,
@@ -94,43 +45,41 @@ export async function uploadToSupabaseStorage(
   entityId: string,
   docKey: string,
 ): Promise<string> {
-  const { blob, mimeType } = base64ToBlob(dataUrl);
+  const { blob } = base64ToBlob(dataUrl);
   const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
-  const ext = safeName.split(".").pop() || mimeType.split("/")[1] || "bin";
-  const path = `${entityId}/${docKey}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
-  await storeLocal(namespace, path, blob, safeName, mimeType, entityId);
+  const path = `${entityId}/${docKey}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${safeName}`;
+  const { error } = await getCloudDataClient().storage.from(namespace).upload(path, blob, {
+    contentType: blob.type,
+    upsert: true,
+  });
+  if (error) throw new Error(`Cloud file upload failed: ${error.message}`);
   return path;
 }
 
-/** Resolves a local object URL; no cloud signed URL is generated. */
 export async function getAttachmentSignedUrl(
   namespace: string,
   path: string,
-  _forceRefresh = false,
+  forceRefresh = false,
 ): Promise<string> {
-  return localUrl(namespace, path);
+  const { data, error } = await getCloudDataClient().storage
+    .from(namespace)
+    .createSignedUrl(path, 3600, forceRefresh ? { download: true } : undefined);
+  if (error) throw new Error(`Cloud file URL failed: ${error.message}`);
+  return data.signedUrl;
 }
 
-/** Compresses an image and stores it in the local application vault. */
 export async function uploadFileToSupabase(
   namespace: string,
   file: File,
   entityId: string,
   docKey: string,
 ): Promise<{ filePath: string; signedUrl: string }> {
-  const { file: storedFile } = await compressImage(file);
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(storedFile);
+  const { file: compressed } = await compressImage(file);
+  const path = `${entityId}/${docKey}_${Date.now()}_${compressed.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+  const { error } = await getCloudDataClient().storage.from(namespace).upload(path, compressed, {
+    contentType: compressed.type,
+    upsert: true,
   });
-  const filePath = await uploadToSupabaseStorage(
-    namespace,
-    storedFile.name,
-    dataUrl,
-    entityId,
-    docKey,
-  );
-  return { filePath, signedUrl: await getAttachmentSignedUrl(namespace, filePath) };
+  if (error) throw new Error(`Cloud file upload failed: ${error.message}`);
+  return { filePath: path, signedUrl: await getAttachmentSignedUrl(namespace, path) };
 }

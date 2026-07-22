@@ -1,12 +1,12 @@
 # Security
 
-The desktop uses Electron context isolation, renderer sandboxing, disabled Node integration and DevTools, no application menu, blocked inspection shortcuts, CSP, blocked top-level remote navigation, scheme-restricted external links, camera-only permission scoping, trusted-renderer IPC checks, bounded IPC payloads, and sandboxed print windows.
+The web application uses Supabase Auth sessions, organization-aware access controls, PostgreSQL RLS, CSP, and browser-safe external-link handling.
 
 ## Secrets and local protection
 
-- Local database/file encryption keys, audit signing keys, sessions, and signed license entitlements use Electron `safeStorage`; production has no plaintext fallback.
+- Sessions and authorization are managed by Supabase Auth and PostgreSQL RLS.
 - WasenderAPI credentials remain in the main process, require OS-backed encryption, and are never readable through the preload bridge. The outbound proxy restricts HTTPS hosts/methods, request sizes, response sizes, and caller headers.
-- SQLite snapshots and local file blobs use AES-256-GCM with integrity checks. Files stay local in every Version 1 deployment mode.
+- Business-generated files use Supabase Storage where required; personal identity documents are not stored.
 - The Hybrid service-role key is setup-only and discarded. Project URL and anon key are runtime configuration.
 - The licensing client knows only the Arivahly Licensing API and an Ed25519 public key. It never knows Central Licensing Database credentials.
 

@@ -86,8 +86,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   async function handleSignOut() {
     try {
-      const { clearLocalSession } = await import("@/lib/local-auth");
-      await clearLocalSession();
       await supabase.auth.signOut();
       toast.success("Signed out successfully");
       navigate({ to: "/" });

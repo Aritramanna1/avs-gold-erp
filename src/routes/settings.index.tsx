@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
+﻿import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { guardRoute } from "@/lib/permissions";
 import { useEffect, useRef, useState } from "react";
 import { useDraft } from "@/lib/drafts-store";
@@ -35,7 +35,6 @@ import {
   exportPilotData,
   importPilotData,
   clearPilotData,
-  clearAllLocalData,
   PILOT_STORAGE_KEYS,
   type DropdownKey,
   type PrinterProfile,
@@ -78,22 +77,19 @@ import { updateFirmProfile } from "@/lib/supabase-services";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { extractEdgeFunctionError } from "@/lib/edge-function-error";
 import { useDbStatus, getDbStatusLabel } from "@/lib/db-status";
-import { migrateAllToCloud, type MigrationProgress } from "@/lib/cloud-migrate";
 import { useRoles } from "@/lib/rbac";
 import { Logo } from "@/components/ui/Logo";
 import { APP_NAME, APP_DESCRIPTION, APP_VERSION, COMPANY_NAME, APP_TAGLINE } from "@/lib/app-info";
 import { ALL_LANGUAGES, LANGUAGE_INFO, type LanguageCode } from "@/i18n";
 import { useDeploymentMode } from "@/lib/deployment-mode";
 
-import { FactoryResetDialog } from "@/components/security/FactoryResetDialog";
 import { useBullionRate } from "@/lib/bullion-rate-service";
-import { WhatsAppIntegrationPage } from "@/routes/settings.integrations.whatsapp";
 import { WhatsAppSettingsPage } from "@/routes/settings.whatsapp";
 import { WaTemplatesPage } from "@/routes/settings.whatsapp-templates";
 
 const SearchSchema = z.object({
   tab: z.string().optional(),
-  waSection: z.enum(["business", "wasender", "templates"]).optional(),
+  waSection: z.enum(["business", "templates"]).optional(),
 });
 
 export const Route = createFileRoute("/settings/")({
@@ -108,7 +104,6 @@ function SettingsPage() {
   const deploymentMode = useDeploymentMode((state) => state.mode);
   const { tab, waSection } = useSearch({ from: "/settings/" });
   const [activeTab, setActiveTab] = useState(tab || "firm");
-  const [isFactoryResetOpen, setIsFactoryResetOpen] = useState(false);
 
   useEffect(() => {
     if (tab) {
@@ -150,7 +145,7 @@ function SettingsPage() {
           </div>
         </Link>
         <Link
-          to="/settings/license"
+          to="/settings"
           className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
           <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
@@ -159,7 +154,7 @@ function SettingsPage() {
           <div className="flex-1">
             <div className="font-medium text-sm">License &amp; Activation</div>
             <div className="text-xs text-muted-foreground">
-              Online activation server, license key, offline grace window.
+              Supabase organization and account settings.
             </div>
           </div>
         </Link>
@@ -202,14 +197,12 @@ function SettingsPage() {
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Storage &amp; File Diagnostics</div>
             <div className="text-xs text-muted-foreground">
-              {deploymentMode === "offline"
-                ? "Verify the encrypted local vault and SQLite attachment records."
-                : "Verify configured storage connectivity and synchronized attachment records."}
+              Verify configured cloud storage connectivity and attachment records.
             </div>
           </div>
         </Link>
         <Link
-          to="/settings/document-vault"
+          to="/settings/storage-diagnostics"
           className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
           <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
@@ -218,12 +211,12 @@ function SettingsPage() {
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Document Vault</div>
             <div className="text-xs text-muted-foreground">
-              Encrypted, versioned, checksum-verified local file storage.
+              Cloud-backed attachment storage and diagnostics.
             </div>
           </div>
         </Link>
         <Link
-          to="/settings/security-center"
+          to="/settings"
           className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
           <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
@@ -237,7 +230,7 @@ function SettingsPage() {
           </div>
         </Link>
         <Link
-          to="/settings/backup-recovery"
+          to="/settings/storage-diagnostics"
           className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
           <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
@@ -251,7 +244,7 @@ function SettingsPage() {
           </div>
         </Link>
         <Link
-          to="/communications"
+          to="/whatsapp"
           className="rounded-xl border border-border bg-gold/5 border-gold/20 hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
           <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
@@ -307,7 +300,6 @@ function SettingsPage() {
           <TabsTrigger value="language">Language</TabsTrigger>
           <TabsTrigger value="modules">Modules Manager</TabsTrigger>
           <TabsTrigger value="email">Email &amp; SMTP</TabsTrigger>
-          <TabsTrigger value="backup">Backup</TabsTrigger>
           <TabsTrigger value="db">Database</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
         </TabsList>
@@ -380,9 +372,6 @@ function SettingsPage() {
         <TabsContent value="email">
           <EmailTab />
         </TabsContent>
-        <TabsContent value="backup">
-          <BackupTab />
-        </TabsContent>
         <TabsContent value="db">
           <DbTab />
         </TabsContent>
@@ -400,13 +389,6 @@ function SettingsPage() {
         </p>
         <div className="flex gap-4">
           <Button
-            variant="destructive"
-            onClick={() => setIsFactoryResetOpen(true)}
-            className="bg-red-600 hover:bg-red-700"
-          >
-            Factory Reset App
-          </Button>
-          <Button
             size="sm"
             variant="ghost"
             onClick={() => {
@@ -423,12 +405,6 @@ function SettingsPage() {
           </Button>
         </div>
       </div>
-
-      <FactoryResetDialog
-        open={isFactoryResetOpen}
-        onOpenChange={setIsFactoryResetOpen}
-        firmName={s.firm?.shopName || "AVS Gold"}
-      />
     </div>
   );
 }
@@ -509,11 +485,7 @@ function LogoUploader({ logoUrl, logoStoragePath, onLogoChange, onClearLogo }: L
           ) : (
             <Upload className="h-3.5 w-3.5" />
           )}
-          {uploading
-            ? deploymentMode === "offline"
-              ? "Saving..."
-              : "Uploading..."
-            : "Upload Logo"}
+          {uploading ? (false ? "Saving..." : "Uploading...") : "Upload Logo"}
         </Button>
         <input
           ref={fileInputRef}
@@ -725,7 +697,7 @@ function FirmTab() {
       // Offline profiles are persisted by the settings store and must never
       // depend on a cloud session. Connected modes retain the existing cloud
       // persistence path.
-      if (deploymentMode !== "offline") {
+      if (true) {
         const success = await updateFirmProfile(updatedProfile);
         if (!success) {
           throw new Error("The connected profile service could not save these changes.");
@@ -735,7 +707,7 @@ function FirmTab() {
       // Commit to local store configuration (causes immediate layout/sidebar sync).
       setFirm(updatedProfile);
       toast.success(
-        deploymentMode === "offline"
+        false
           ? "Firm profile and settings saved locally."
           : "Firm profile and settings saved successfully.",
       );
@@ -1286,7 +1258,7 @@ function BrandingTab() {
 function WhatsAppTab({
   initialSection = "business",
 }: {
-  initialSection?: "business" | "wasender" | "templates";
+  initialSection?: "business" | "templates";
 }) {
   return (
     <div className="space-y-4 mt-4">
@@ -1301,14 +1273,10 @@ function WhatsAppTab({
       <Tabs defaultValue={initialSection}>
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="business">Providers &amp; Automation</TabsTrigger>
-          <TabsTrigger value="wasender">WasenderAPI</TabsTrigger>
           <TabsTrigger value="templates">Message Templates</TabsTrigger>
         </TabsList>
         <TabsContent value="business" className="pt-4">
           <WhatsAppSettingsPage embedded />
-        </TabsContent>
-        <TabsContent value="wasender" className="pt-4">
-          <WhatsAppIntegrationPage embedded />
         </TabsContent>
         <TabsContent value="templates" className="pt-4">
           <WaTemplatesPage embedded />
@@ -2370,7 +2338,7 @@ This invitation expires in 7 days.`,
                 <option value="/dashboard">Owner Executive</option>
                 <option value="/workshop">Workshop Floor</option>
                 <option value="/billing">Billing POS Counter</option>
-                <option value="/communications">CRM Manager</option>
+                <option value="/whatsapp">WhatsApp</option>
               </select>
             </div>
             <div className="flex items-center gap-4 h-9">
@@ -4166,8 +4134,7 @@ function EmailTab() {
 }
 
 function BackupTab() {
-  const deploymentMode = useDeploymentMode((state) => state.mode);
-  const offline = deploymentMode === "offline";
+  const cloudOnly = true;
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<string>("");
   const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(null);
@@ -4226,26 +4193,22 @@ function BackupTab() {
   return (
     <Card className="p-5 mt-4 space-y-4">
       <div className="text-sm">
-        {offline
-          ? "This device's local SQLite database is the source of truth for business data. "
-          : "Local data supports offline-first operation and is synchronized by the configured provider. "}
-        Take a local backup at least once a day in case this device is lost or damaged. For
-        verified, drill-tested backup/restore (recommended for anything beyond a quick local safety
-        copy), use{" "}
-        <Link to="/settings/backup-recovery" className="underline text-gold">
-          Backup &amp; Disaster Recovery
+        Supabase PostgreSQL is the source of truth for business data. Cloud backups and recovery are
+        managed by the hosted project. For more information, use{" "}
+        <Link to="/settings/storage-diagnostics" className="underline text-gold">
+          Cloud Backup &amp; Recovery
         </Link>
         .
       </div>
       <div className="flex flex-wrap gap-2">
         <Button data-testid="settings-export-backup" onClick={handleExport}>
-          <Download className="h-4 w-4 mr-1.5" /> Export Local Pilot Data (JSON)
+          <Download className="h-4 w-4 mr-1.5" /> Export Report Data (JSON)
         </Button>
         <Button variant="outline" onClick={handleExport}>
-          <Download className="h-4 w-4 mr-1.5" /> Download Pilot Backup
+          <Download className="h-4 w-4 mr-1.5" /> Download Summary
         </Button>
         <Button variant="outline" onClick={() => fileRef.current?.click()}>
-          <Upload className="h-4 w-4 mr-1.5" /> Import Local Pilot Data
+          <Upload className="h-4 w-4 mr-1.5" /> Import Settings JSON
         </Button>
         <input
           ref={fileRef}
@@ -4262,7 +4225,7 @@ function BackupTab() {
           <Button
             variant="destructive"
             onClick={() => {
-              if (offline) {
+              if (!cloudOnly) {
                 setClearConfirmOpen(true);
                 return;
               }
@@ -4271,7 +4234,7 @@ function BackupTab() {
               setPasswordGateOpen(true);
             }}
           >
-            <Lock className="h-4 w-4 mr-1.5" /> Clear Local Pilot Data (Dev)
+            <Lock className="h-4 w-4 mr-1.5" /> Clear Local Preferences
           </Button>
         )}
       </div>
@@ -4288,7 +4251,7 @@ function BackupTab() {
               This will overwrite every local store on this device with the contents of{" "}
               <strong>{pendingRestoreFile?.name}</strong>. Any local changes made since that backup
               was taken will be lost.
-              {offline ? " Continue?" : " Synchronized cloud data is not affected. Continue?"}
+              {" Synchronized cloud data is not affected. Continue?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -4367,7 +4330,7 @@ function BackupTab() {
               This will permanently delete all local data on this device — cached settings AND the
               local encrypted database (orders, ledger, stock, invoices, etc. cached for offline
               use).
-              {offline
+              {!cloudOnly
                 ? " This is the only business-data copy on this installation and cannot be undone. Continue?"
                 : " Synchronized cloud data is not affected. This cannot be undone. Continue?"}
             </AlertDialogDescription>
@@ -4378,7 +4341,8 @@ function BackupTab() {
               onClick={() => {
                 setClearConfirmOpen(false);
                 setMsg("Clearing local data (including local database)…");
-                void clearAllLocalData().then(() => {
+                clearPilotData();
+                void Promise.resolve().then(() => {
                   setMsg("Local data cleared. Reloading…");
                   setTimeout(() => window.location.reload(), 500);
                 });
@@ -4399,18 +4363,6 @@ function AboutTab() {
   const branches = useSettings((s) => s.branches);
   const selectedBranchId = useSettings((s) => s.selectedBranchId);
   const currentBranch = branches.find((b) => b.id === selectedBranchId);
-  const [desktopVersion, setDesktopVersion] = useState<string | null>(null);
-
-  useEffect(() => {
-    const desktop = (window as any).mtjDesktop;
-    if (desktop?.getVersion) {
-      desktop
-        .getVersion()
-        .then(setDesktopVersion)
-        .catch(() => {});
-    }
-  }, []);
-
   return (
     <Card className="p-6 max-w-lg space-y-4">
       <div className="flex items-center gap-3">
@@ -4427,13 +4379,6 @@ function AboutTab() {
         <div className="text-muted-foreground">Version</div>
         <div className="font-mono text-right">{APP_VERSION}</div>
 
-        {desktopVersion && (
-          <>
-            <div className="text-muted-foreground">Desktop Build</div>
-            <div className="font-mono text-right">{desktopVersion}</div>
-          </>
-        )}
-
         <div className="text-muted-foreground">Company</div>
         <div className="text-right">{branding.companyName || COMPANY_NAME}</div>
 
@@ -4448,25 +4393,10 @@ function AboutTab() {
         <div className="text-muted-foreground">Website</div>
         <div className="text-right">{branding.website || "—"}</div>
 
-        {deploymentMode === "offline" ? (
-          <>
-            <div className="text-muted-foreground">Database Status</div>
-            <div className="text-right">Local SQLite · Connected</div>
-
-            <div className="text-muted-foreground">Data Source</div>
-            <div className="text-right">Gold Vault / Local Database</div>
-          </>
-        ) : (
-          <ConnectedDatabaseSummary />
-        )}
+        <ConnectedDatabaseSummary />
 
         <div className="text-muted-foreground">Current Branch</div>
         <div className="text-right">{currentBranch?.name ?? selectedBranchId ?? "—"}</div>
-
-        <div className="text-muted-foreground">Installation</div>
-        <div className="text-right">
-          {(window as any).mtjDesktop ? "Desktop (Electron)" : "Web"}
-        </div>
       </div>
 
       <p className="text-[10px] text-muted-foreground text-center pt-2 border-t border-border">
@@ -4490,8 +4420,7 @@ function ConnectedDatabaseSummary() {
 }
 
 function DbTab() {
-  const deploymentMode = useDeploymentMode((state) => state.mode);
-  return deploymentMode === "offline" ? <OfflineDbStatusPanel /> : <DbStatusPanel />;
+  return <DbStatusPanel />;
 }
 
 function OfflineDbStatusPanel() {
@@ -4503,7 +4432,7 @@ function OfflineDbStatusPanel() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 text-xs">
           <div className="rounded-lg border border-border bg-muted/20 p-3">
-            <div className="text-muted-foreground mb-1">Local SQLite</div>
+            <div className="text-muted-foreground mb-1">Cloud Database</div>
             <Badge
               variant="outline"
               className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
@@ -4517,7 +4446,7 @@ function OfflineDbStatusPanel() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Offline Mode is fully local. No cloud account or connection is required for normal ERP
+          Supabase PostgreSQL is the only application data source. No local database is used.
           operation.
         </p>
       </Card>
@@ -4526,248 +4455,37 @@ function OfflineDbStatusPanel() {
 }
 
 function DbStatusPanel() {
-  const { status, email, userId, lastMigrationAt, sourceOfTruth } = useDbStatus();
-  const deploymentMode = useDeploymentMode((state) => state.mode);
-  const offline = deploymentMode === "offline";
-  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPass, setAuthPass] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [migBusy, setMigBusy] = useState(false);
-  const [progress, setProgress] = useState<MigrationProgress[]>([]);
-  const [roles, setRoles] = useState<string[]>([]);
-
-  // Load this user's roles when signed in
-  useEffect(() => {
-    if (offline) {
-      setRoles([]);
-      return;
-    }
-    if (!userId) {
-      setRoles([]);
-      return;
-    }
-    let cancelled = false;
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .then(({ data }) => {
-        if (!cancelled && data) setRoles(data.map((r) => r.role as string));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [offline, userId]);
-
-  async function handleAuth() {
-    setBusy(true);
-    try {
-      const { error } =
-        authMode === "signin"
-          ? await supabase.auth.signInWithPassword({ email: authEmail, password: authPass })
-          : await supabase.auth.signUp({
-              email: authEmail,
-              password: authPass,
-              options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-            });
-      if (error) alert(error.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-  }
-
-  async function handleMigrate() {
-    if (!confirm("Push all local pilot data to Lovable Cloud? Safe to run multiple times.")) return;
-    setMigBusy(true);
-    setProgress([]);
-    const accum: MigrationProgress[] = [];
-    const res = await migrateAllToCloud((p) => {
-      const idx = accum.findIndex((x) => x.table === p.table);
-      if (idx >= 0) accum[idx] = p;
-      else accum.push(p);
-      setProgress([...accum]);
-    });
-    setMigBusy(false);
-    alert(
-      res.ok
-        ? "Migration complete. Cloud is now the live source of truth."
-        : `Completed with errors:\n${res.errors.join("\n")}`,
-    );
-  }
-
-  if (offline) {
-    return (
-      <div data-testid="database-status-root" className="space-y-4 mt-4">
-        <Card className="p-5 space-y-3 text-sm">
-          <div className="flex items-center gap-2 font-medium">
-            <Database className="h-4 w-4" /> Database Status
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 text-xs">
-            <div className="rounded-lg border border-border bg-muted/20 p-3">
-              <div className="text-muted-foreground mb-1">Local SQLite</div>
-              <Badge
-                variant="outline"
-                className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
-              >
-                Connected
-              </Badge>
-            </div>
-            <div className="rounded-lg border border-border bg-muted/20 p-3">
-              <div className="text-muted-foreground mb-1">Data Source</div>
-              <div className="font-medium">Gold Vault / Local Database</div>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Offline Mode is fully local. No cloud account or connection is required for normal ERP
-            operation.
-          </p>
-        </Card>
-      </div>
-    );
-  }
-
+  const { status, email, sourceOfTruth } = useDbStatus();
   return (
     <div data-testid="database-status-root" className="space-y-4 mt-4">
       <Card className="p-5 space-y-3 text-sm">
         <div className="flex items-center gap-2 font-medium">
-          <Database className="h-4 w-4" /> Database Status
+          <Database className="h-4 w-4" /> Supabase Database
         </div>
-        <div className="grid sm:grid-cols-2 gap-3 text-xs">
+        <div className="grid gap-3 sm:grid-cols-3 text-xs">
           <div>
-            <div className="text-muted-foreground mb-1">Supabase Connection</div>
-            <Badge
-              variant="outline"
-              className={
-                status === "connected_authed"
-                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                  : status === "connected_anon"
-                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                    : "bg-red-500/15 text-red-300 border-red-500/30"
-              }
-            >
-              {getDbStatusLabel(status)}
-            </Badge>
+            <div className="text-muted-foreground mb-1">Connection</div>
+            <Badge variant="outline">{getDbStatusLabel(status)}</Badge>
           </div>
           <div>
             <div className="text-muted-foreground mb-1">Signed-in User</div>
-            <div className="font-mono">{email ?? "— not signed in —"}</div>
-            {roles.length > 0 && (
-              <div className="mt-1 flex flex-wrap gap-1">
-                {roles.map((r) => (
-                  <Badge key={r} variant="outline" className="text-[10px]">
-                    {r}
-                  </Badge>
-                ))}
-              </div>
-            )}
+            <div className="font-mono">{email ?? "�"}</div>
           </div>
           <div>
-            <div className="text-muted-foreground mb-1">Last Migration</div>
-            <div className="font-mono">
-              {lastMigrationAt ? new Date(lastMigrationAt).toLocaleString() : "— never —"}
-            </div>
-          </div>
-          <div>
-            <div className="text-muted-foreground mb-1">Current Source of Truth</div>
-            <Badge
-              variant="outline"
-              className={
-                sourceOfTruth === "cloud"
-                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                  : "bg-amber-500/15 text-amber-300 border-amber-500/30"
-              }
-            >
-              {sourceOfTruth === "cloud" ? "Lovable Cloud (live)" : "Local Pilot Storage"}
+            <div className="text-muted-foreground mb-1">Source of Truth</div>
+            <Badge variant="outline">
+              {sourceOfTruth === "cloud" ? "Supabase PostgreSQL" : "Unavailable"}
             </Badge>
-            <div className="mt-1 text-muted-foreground">
-              {sourceOfTruth === "cloud"
-                ? "Local storage continues as offline cache / fallback."
-                : "Run migration to make Cloud the live source of truth."}
-            </div>
           </div>
         </div>
-      </Card>
-
-      {status !== "connected_authed" ? (
-        <Card className="p-5 space-y-3 text-sm">
-          <div className="font-medium">Sign in to enable cloud migration</div>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant={authMode === "signin" ? "default" : "outline"}
-              onClick={() => setAuthMode("signin")}
-            >
-              Sign in
-            </Button>
-            <Button
-              size="sm"
-              variant={authMode === "signup" ? "default" : "outline"}
-              onClick={() => setAuthMode("signup")}
-            >
-              Create account
-            </Button>
-          </div>
-          <Input
-            placeholder="Email"
-            value={authEmail}
-            onChange={(e) => setAuthEmail(e.target.value)}
-          />
-          <Input
-            type="password"
-            placeholder="Password"
-            value={authPass}
-            onChange={(e) => setAuthPass(e.target.value)}
-          />
-          <Button onClick={handleAuth} disabled={busy || !authEmail || !authPass}>
-            {busy ? "Working…" : authMode === "signin" ? "Sign in" : "Create account"}
-          </Button>
-          <div className="text-xs text-muted-foreground">
-            Pilot uses email/password. Add Google sign-in later from Cloud settings.
-          </div>
-        </Card>
-      ) : (
-        <Card className="p-5 space-y-3 text-sm">
-          <div className="font-medium">Migrate Local Pilot Data to Cloud</div>
-          <div className="text-xs text-muted-foreground">
-            Pushes people, KYC, gold ledger, attendance, workers, orders, job cards, catalog,
-            inventory, stock movements, invoices, payments, rate-cuts, repairs, daily close, print
-            logs, WhatsApp inbox and settings to Lovable Cloud. Uses upsert on stable IDs so
-            duplicates are avoided.
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={handleMigrate} disabled={migBusy}>
-              {migBusy ? "Migrating…" : "Migrate Local Pilot Data to Cloud"}
-            </Button>
-            <Button variant="ghost" onClick={handleSignOut}>
-              Sign out
-            </Button>
-          </div>
-          {progress.length > 0 && (
-            <div className="text-xs space-y-1 max-h-56 overflow-y-auto border border-border rounded p-2">
-              {progress.map((p) => (
-                <div key={p.table} className={p.ok ? "text-foreground" : "text-red-400"}>
-                  {p.ok ? "✔" : "✗"} {p.table}: {p.inserted}/{p.total}
-                  {p.error ? ` — ${p.error}` : ""}
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
-
-      <Card className="p-4 text-xs text-muted-foreground">
-        Stores tracked locally: {PILOT_STORAGE_KEYS.length}
-        <div className="mt-1 font-mono break-all">{PILOT_STORAGE_KEYS.join(", ")}</div>
+        <p className="text-xs text-muted-foreground">
+          This Workshop Edition uses Supabase Auth and PostgreSQL as its only primary backend.
+          Legacy local migration and backup controls are not available here.
+        </p>
       </Card>
     </div>
   );
 }
-
 function ToggleRow({
   label,
   value,

@@ -1,8 +1,8 @@
 /**
- * WasenderAPI webhook event store (local, offline-first).
+ * WasenderAPI webhook event store for the web application.
  *
  * WasenderAPI posts delivery statuses, read receipts and incoming customer
- * messages to a webhook URL. A LAN desktop app can't expose a public URL
+ * messages to a webhook URL. The web application can expose a public URL
  * directly, so events reach us one of two future ways (both feed `ingest`
  * below, so the rest of the app is agnostic to which):
  *   1. a small cloud relay that forwards webhook payloads to the app, or

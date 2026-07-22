@@ -82,7 +82,7 @@ test.describe("Manufacturing Mode Barcode & Tagging", () => {
 
     // Gold Ledger should have exactly one finished_item_created entry for this
     // barcode. In Local First mode the ledger is an in-memory Zustand store
-    // seeded from SQLite — read via the window-exposed helper rather than a
+    // seeded from Supabase — read via the window-exposed helper rather than a
     // Supabase REST query (which doesn't exist in Local First mode).
     const matchingEntryCount: number = await page.evaluate((bn) => {
       // The Zustand ledger store is accessible via the global __ledgerEntries

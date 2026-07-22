@@ -11,7 +11,10 @@ import { useEffect } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
 import type { Branch, WorkshopDefinition } from "@/lib/settings-store";
-import { isOfflineMode } from "@/lib/deployment-mode";
+
+// The generated client enforces the live schema. Keep the small legacy
+// settings adapter isolated here while the settings payload is normalized.
+const cloud = supabase as any;
 
 // ── Row shapes from Supabase (snake_case) ────────────────────────
 
@@ -75,10 +78,9 @@ export function useSupabaseSync() {
     async function sync() {
       // Offline mode never touches Supabase — branches/workshops come from the
       // local settings store (localStorage-cached), which is the source of truth.
-      if (isOfflineMode()) return;
       const [{ data: branchRows }, { data: workshopRows }] = await Promise.all([
-        supabase.from("branches").select("*").order("is_default", { ascending: false }),
-        supabase.from("workshops").select("*").order("name"),
+        cloud.from("branches").select("*").order("is_default", { ascending: false }),
+        cloud.from("workshops").select("*").order("name"),
       ]);
 
       if (cancelled) return;
@@ -101,8 +103,7 @@ export function useSupabaseSync() {
 // ── Supabase-backed CRUD for branches ────────────────────────────
 
 export async function dbAddBranch(branch: Branch): Promise<void> {
-  if (isOfflineMode()) return;
-  await supabase.from("branches").insert({
+  await cloud.from("branches").insert({
     id: branch.id,
     name: branch.name,
     code: branch.code,
@@ -116,7 +117,6 @@ export async function dbAddBranch(branch: Branch): Promise<void> {
 }
 
 export async function dbUpdateBranch(id: string, patch: Partial<Branch>): Promise<void> {
-  if (isOfflineMode()) return;
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.code !== undefined) row.code = patch.code;
@@ -135,22 +135,19 @@ export async function dbUpdateBranch(id: string, patch: Partial<Branch>): Promis
 }
 
 export async function dbRemoveBranch(id: string): Promise<void> {
-  if (isOfflineMode()) return;
-  await supabase.from("branches").delete().eq("id", id);
+  await cloud.from("branches").delete().eq("id", id);
 }
 
 export async function dbSetDefaultBranch(id: string): Promise<void> {
-  if (isOfflineMode()) return;
   // Clear all is_default first, then set the chosen one
-  await supabase.from("branches").update({ is_default: false }).neq("id", "");
-  await supabase.from("branches").update({ is_default: true }).eq("id", id);
+  await cloud.from("branches").update({ is_default: false }).neq("id", "");
+  await cloud.from("branches").update({ is_default: true }).eq("id", id);
 }
 
 // ── Supabase-backed CRUD for workshops ───────────────────────────
 
 export async function dbAddWorkshop(w: WorkshopDefinition): Promise<void> {
-  if (isOfflineMode()) return;
-  await supabase.from("workshops").insert({
+  await cloud.from("workshops").insert({
     id: w.id,
     name: w.name,
     type: w.type,
@@ -164,7 +161,6 @@ export async function dbUpdateWorkshop(
   id: string,
   patch: Partial<WorkshopDefinition>,
 ): Promise<void> {
-  if (isOfflineMode()) return;
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.type !== undefined) row.type = patch.type;
@@ -179,6 +175,5 @@ export async function dbUpdateWorkshop(
 }
 
 export async function dbRemoveWorkshop(id: string): Promise<void> {
-  if (isOfflineMode()) return;
-  await supabase.from("workshops").delete().eq("id", id);
+  await cloud.from("workshops").delete().eq("id", id);
 }

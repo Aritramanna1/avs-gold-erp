@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSessionLock } from "@/lib/security/session-lock";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { isOfflineMode } from "@/lib/deployment-mode";
-import { getLocalSessionUser } from "@/lib/local-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Lock } from "lucide-react";
@@ -45,11 +43,6 @@ export function SessionLockOverlay() {
 
     void (async () => {
       try {
-        if (isOfflineMode()) {
-          const user = await getLocalSessionUser();
-          if (!cancelled) setEmail(user?.email ?? "");
-          return;
-        }
         const { data } = await supabase.auth.getSession();
         if (!cancelled) setEmail(data.session?.user.email ?? "");
       } catch (err) {

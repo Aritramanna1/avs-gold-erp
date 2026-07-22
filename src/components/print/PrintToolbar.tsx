@@ -191,7 +191,7 @@ export function PrintToolbar({
   const handleBack = () => {
     if (backUrl) {
       // Route through the app router, not window.location.href — under the
-      // packaged Electron build (file:// + hash history, see router.tsx),
+      // browser build,
       // a bare app path like "/people" is not a real filesystem path or
       // hash fragment, so assigning it to location.href fails to load and
       // Chromium shows its chrome-error://chromewebdata/ page (a blank

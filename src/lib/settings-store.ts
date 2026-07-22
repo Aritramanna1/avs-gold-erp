@@ -83,13 +83,12 @@ async function saveBranchToDb(b: {
         {
           id: b.id,
           name: b.name,
-          code: b.code,
+          branch_type: b.code,
           address: b.address,
           phone: b.phone,
-          manager_name: b.managerName,
           gstin: b.gstin ?? null,
           active: b.active,
-          is_default: b.isDefault ?? false,
+          data: { is_default: b.isDefault ?? false, manager_name: b.managerName },
           updated_at: new Date().toISOString(),
         },
       ],
@@ -122,10 +121,8 @@ async function saveWorkshopToDb(w: {
         {
           id: w.id,
           name: w.name,
-          type: w.type,
           branch_id: w.branchId,
-          active: w.active,
-          description: w.description ?? null,
+          data: { type: w.type, active: w.active, description: w.description ?? null },
         },
       ],
       { onConflict: "id" },
@@ -1927,7 +1924,7 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   // used to be `set({ ...DEFAULTS })`, which wiped every registered user back
   // to a single default "Owner" stub, blanked the firm profile, and reset
   // currentUserRole/branches — locking the administrator out mid-pilot.
-  // Factory Reset (FactoryResetDialog -> clearAllLocalData) is the only
+  // Settings reset is limited to cosmetic and preference fields.
   // operation allowed to erase that data.
   resetAll: () => {
     set({
@@ -1999,9 +1996,9 @@ export function importPilotData(json: string): { ok: boolean; restored: string[]
 }
 
 /**
- * Clears the flat localStorage-based pilot cache only. Does NOT touch the
- * encrypted local SQLite database in IndexedDB (see clearAllLocalData below)
- * — base-repository.ts's local-first read()/readAll() serve from that
+ * Clears legacy preference keys only. Does NOT touch the
+ * cloud-backed application state.
+ * cloud repositories that provide business data.
  * database, so this alone leaves orders/ledger/etc. looking unchanged.
  */
 export function clearPilotData() {
@@ -2033,18 +2030,10 @@ export function clearPilotData() {
 }
 
 /**
- * The real "clear everything local" reset: the flat localStorage pilot cache
- * (clearPilotData above) PLUS the encrypted local SQLite database in
- * IndexedDB, PLUS sessionStorage. This is what the Settings "Clear Local
+ * The real "clear everything local" reset: the legacy preference cache
+ * (clearPilotData above) plus sessionStorage.
+ * plus sessionStorage. This is what the Settings "Clear Local
  * Pilot Data (Dev)" button actually needs to call — clearPilotData() alone
  * left orders/vault/etc. showing stale numbers because they're served
- * local-first from the SQLite database, not from these flat keys.
+ * from cloud-backed records.
  */
-export async function clearAllLocalData(): Promise<void> {
-  clearPilotData();
-  if (typeof window !== "undefined") {
-    window.sessionStorage.clear();
-  }
-  const { clearLocalDatabase } = await import("@/lib/local-db");
-  await clearLocalDatabase();
-}

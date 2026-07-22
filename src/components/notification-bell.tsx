@@ -12,7 +12,7 @@ export function NotificationBell() {
   const unread = items.filter((item) => !readIds.includes(item.id)).length;
 
   useEffect(() => {
-    // Notification aggregation touches several operational stores and SQLite.
+    // Notification aggregation touches several operational stores.
     // It is useful background work, but not part of the first-paint path.
     let interval: number | undefined;
     const initial = window.setTimeout(() => {

@@ -30,10 +30,9 @@ export async function nextDocumentNumber(
   padLength = 3,
 ): Promise<string> {
   try {
-    const { data, error } = await supabase.rpc("next_document_number", {
-      p_key: key,
+    const { data, error } = await supabase.rpc("generate_sequential_number", {
+      p_type: key,
       p_prefix: prefix,
-      p_pad_length: padLength,
     });
     if (error || typeof data !== "string") throw error ?? new Error("No sequence returned");
     return data;

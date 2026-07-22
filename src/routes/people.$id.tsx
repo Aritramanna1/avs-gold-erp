@@ -99,7 +99,7 @@ function JewellerAccountPage() {
         <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/people" })}>
           <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to People
         </Button>
-        <Link to="/orders/new" className="text-sm text-gold hover:underline">
+        <Link to="/billing" className="text-sm text-gold hover:underline">
           + New Order for {person.fullName}
         </Link>
       </div>
@@ -146,7 +146,7 @@ function JewellerAccountPage() {
           <ul className="divide-y">
             {partyOrders.map((o) => (
               <li key={o.id} className="py-2 flex items-center justify-between text-sm">
-                <Link to="/orders/$id" params={{ id: o.id }} className="hover:underline">
+                <Link to="/billing" className="hover:underline">
                   {o.orderNo} · {o.item.itemName}
                 </Link>
                 <Badge variant="outline">{ORDER_STATUS_LABELS[o.status]}</Badge>

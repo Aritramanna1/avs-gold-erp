@@ -8,9 +8,6 @@ export type ErrorCategory =
   | "validation"
   | "file"
   | "authentication"
-  | "licensing"
-  | "ipc"
-  | "renderer"
   | "unknown";
 
 export interface NormalizedAppError {
@@ -26,15 +23,6 @@ export interface NormalizedAppError {
   timestamp: string;
   recoverable: boolean;
 }
-
-type DesktopDiagnosticsApi = {
-  diagnostics?: {
-    reportError?: (payload: NormalizedAppError) => Promise<void>;
-  };
-};
-
-const LOG_KEY = "mtj_erp_error_log";
-const MAX_LOGS = 50;
 
 function createErrorId(): string {
   const suffix =
@@ -63,25 +51,6 @@ function classifyError(
   const text = `${error.name} ${error.message}`.toLowerCase();
 
   if (
-    error.name === "LocalDbIntegrityError" ||
-    text.includes("integrity_check") ||
-    text.includes("checksum mismatch") ||
-    text.includes("database disk image is malformed") ||
-    text.includes("corrupt")
-  ) {
-    return {
-      title: "Local database needs attention",
-      message: "The local offline database could not be opened safely.",
-      guidance:
-        "Use Retry once. If it fails again, restore a verified backup or reset the local database after confirming cloud data is synced.",
-      category: "database",
-      severity: "critical",
-      recoverable: true,
-    };
-  }
-
-  if (
-    text.includes("sqlite") ||
     text.includes("database") ||
     text.includes("transaction") ||
     text.includes("constraint") ||
@@ -118,26 +87,9 @@ function classifyError(
       title: "Connection problem",
       message: "The app could not reach an online service.",
       guidance:
-        "Continue in Offline Mode where available, then retry when internet or the service connection is restored.",
+        "Check your internet connection and retry when the service is available.",
       category: "network",
       severity: "warning",
-      recoverable: true,
-    };
-  }
-
-  if (
-    text.includes("license") ||
-    text.includes("activation") ||
-    text.includes("device limit") ||
-    text.includes("entitlement")
-  ) {
-    return {
-      title: "License check could not be completed",
-      message: "The license or activation state needs attention.",
-      guidance:
-        "Check the license status, verify internet access for activation, or contact support with the Error Reference ID.",
-      category: "licensing",
-      severity: "error",
       recoverable: true,
     };
   }
@@ -198,18 +150,6 @@ function classifyError(
     };
   }
 
-  if (text.includes("ipc") || text.includes("renderer") || text.includes("electron")) {
-    return {
-      title: "Desktop service problem",
-      message: "The desktop shell could not complete a protected operation.",
-      guidance:
-        "Retry the action. If it repeats, restart the app and contact support with the Error Reference ID.",
-      category: "ipc",
-      severity: "error",
-      recoverable: true,
-    };
-  }
-
   return {
     title: "Something went wrong",
     message: "The app hit an unexpected problem, but your session can continue.",
@@ -249,26 +189,13 @@ export function formatErrorDetails(error: NormalizedAppError): string {
     .join("\n");
 }
 
-function storeLog(error: NormalizedAppError): void {
-  try {
-    const logs = JSON.parse(localStorage.getItem(LOG_KEY) ?? "[]") as NormalizedAppError[];
-    logs.unshift(error);
-    localStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(0, MAX_LOGS)));
-  } catch {
-    // Diagnostics must never become a user-facing failure.
-  }
-}
-
 export function logAppError(error: NormalizedAppError): void {
-  storeLog(error);
   console.error(`[${error.id}] ${error.title}`, {
     category: error.category,
     context: error.context,
     message: error.technicalMessage,
     stack: error.stack,
   });
-  const desktop = (window as unknown as { mtjDesktop?: DesktopDiagnosticsApi }).mtjDesktop;
-  void desktop?.diagnostics?.reportError?.(error).catch(() => {});
 }
 
 export function reportUnexpectedError(error: unknown, context?: string): NormalizedAppError {

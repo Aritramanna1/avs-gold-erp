@@ -4,7 +4,6 @@ import { lazy, Suspense, useEffect, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { AuthGate } from "@/components/auth-gate";
-import { LicenseGate } from "@/components/license-gate";
 import { BackendGate } from "@/components/backend-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteErrorFallback } from "@/components/app-error-boundary";
@@ -123,7 +122,7 @@ function RootComponent() {
     PRINT_ROUTE_PREFIXES.some((p) => currentPath.startsWith(p));
 
   // Start non-essential services in stages after the shell has painted. This
-  // avoids SQLite, network, and scheduler work competing with authentication
+  // avoids network and scheduler work competing with authentication
   // and the first useful render.
   useEffect(() => {
     if (
@@ -134,39 +133,17 @@ function RootComponent() {
           window.location.hostname === "::1"))
     ) {
       console.log(`[startup] renderer mounted +${Math.round(performance.now())}ms`);
-      import("@/lib/test-seed")
-        .then((m) => {
-          m.installTestSeedOnWindow();
-        })
-        .catch((e) => {
-          console.error("Failed to load test seed:", e);
-        });
       import("@/lib/settings-store").then((m) => {
         (window as any).__settingsStore = m;
       });
       import("@/lib/billing-store").then((m) => {
         (window as any).__billingStore = m;
       });
-      import("@/lib/manufacturing-bill-store").then((m) => {
-        (window as any).__mfgBillStore = m;
-      });
-      import("@/lib/sync-engine").then((m) => {
-        (window as any).__syncEngine = m;
-      });
       import("@/lib/ledger-store").then((m) => {
         (window as any).__ledgerEntries = () => m.useLedger.getState().entries;
       });
-      // Permanent regression coverage (e2e/tests/plan1-stabilization.spec.ts)
-      // for the offline-first migration's later phases — exposes the same
-      // module surface used during each feature's original validation.
       import("@/lib/security/audit-log").then((m) => {
         (window as any).__auditLog = m;
-      });
-      import("@/lib/local-db").then((m) => {
-        (window as any).__localDb = m;
-      });
-      import("@/lib/security/device-registry").then((m) => {
-        (window as any).__deviceRegistry = m;
       });
       import("@/lib/security/session-lock").then((m) => {
         (window as any).__sessionLock = m;
@@ -224,10 +201,6 @@ function RootComponent() {
 
     const securityTimer = schedule(1_500, () => {
       protect(
-        import("@/lib/security/device-registry").then((m) => m.registerThisDevice()),
-        "startup.device-registry",
-      );
-      protect(
         import("@/lib/security/session-lock").then((m) => {
           if (!cancelled) stops.push(m.startSessionLockMonitor());
         }),
@@ -236,20 +209,8 @@ function RootComponent() {
     });
     const operationalTimer = schedule(6_000, () => {
       protect(
-        import("@/lib/comm/comm-queue").then((m) => stops.push(m.startCommQueueScheduler())),
-        "startup.comm-queue",
-      );
-      protect(
-        import("@/lib/sync-engine").then((m) => stops.push(m.startSyncOutboxScheduler())),
-        "startup.sync-engine",
-      );
-      protect(
         import("@/lib/bullion-rate-service").then((m) => stops.push(m.startBullionRateScheduler())),
         "startup.bullion-rate",
-      );
-      protect(
-        import("@/lib/security/backup-scheduler").then((m) => stops.push(m.startBackupScheduler())),
-        "startup.backup-scheduler",
       );
     });
     const automationTimer = schedule(12_000, () => {
@@ -259,13 +220,11 @@ function RootComponent() {
           import("@/lib/comm/scheduled-reports"),
           import("@/lib/comm/reminder-sweeps"),
           import("@/lib/reconciliation/scheduled-reconciliation"),
-          import("@/lib/security/disaster-recovery"),
           import("@/lib/comm/scheduled-statements"),
-        ]).then(([scheduler, reports, reminders, reconciliation, disasterRecovery, statements]) => {
+        ]).then(([scheduler, reports, reminders, reconciliation, statements]) => {
           reports.registerScheduledReportJobs();
           reminders.registerReminderSweeps();
           reconciliation.registerGoldReconciliationJob();
-          disasterRecovery.registerDisasterRecoveryDrillJob();
           statements.registerWeeklyStatementJobs();
           if (!cancelled) stops.push(scheduler.startScheduler());
         }),
@@ -325,8 +284,7 @@ function RootComponent() {
       <ThemeProvider>
         <LanguageProvider>
           <AuthGate>
-            <LicenseGate>
-              <BackendGate>
+            <BackendGate>
                 <AppShell>
                   <CatchBoundary
                     getResetKey={() => currentPath}
@@ -336,7 +294,6 @@ function RootComponent() {
                   </CatchBoundary>
                 </AppShell>
               </BackendGate>
-            </LicenseGate>
           </AuthGate>
           <Toaster richColors position="top-right" />
           <Suspense fallback={null}>

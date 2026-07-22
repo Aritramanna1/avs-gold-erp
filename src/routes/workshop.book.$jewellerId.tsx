@@ -266,8 +266,7 @@ function JewellerBookPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <Link
-                          to="/orders/$id"
-                          params={{ id: o.id }}
+                          to="/workshop/gold-book"
                           className="font-mono text-xs text-gold hover:underline"
                         >
                           {o.orderNo}
@@ -321,8 +320,7 @@ function JewellerBookPage() {
                         {orderBills.map((b) => (
                           <Link
                             key={b.id}
-                            to="/manufacturing/bill/$id"
-                            params={{ id: b.id }}
+                            to="/billing"
                             className="font-mono text-gold hover:underline mr-2"
                           >
                             {b.billNo}
@@ -364,8 +362,7 @@ function JewellerBookPage() {
                       <tr key={b.id} className="border-t border-border hover:bg-muted/20">
                         <td className="px-4 py-3">
                           <Link
-                            to="/manufacturing/bill/$id"
-                            params={{ id: b.id }}
+                            to="/billing"
                             className="font-mono text-xs text-gold hover:underline"
                           >
                             {b.billNo}

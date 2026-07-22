@@ -2,7 +2,7 @@
  * Unified Print Engine — Template CRUD + versioning.
  *
  * Persistence follows printlog-store.ts's pattern exactly: one row per
- * template in the generic `print_templates` table (local SQLite +
+ * template in the generic `print_templates` table (Supabase +
  * Supabase-synced via createRepository), not a single JSON blob. Builtin
  * templates (isBuiltin: true) ship as in-memory defaults and only get a
  * row written once a user edits them — resetToDefault() removes the row

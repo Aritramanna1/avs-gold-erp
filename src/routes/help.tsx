@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useDeploymentMode } from "@/lib/deployment-mode";
 import { useSettings } from "@/lib/settings-store";
 import {
   BookOpen,
@@ -24,11 +23,8 @@ export const Route = createFileRoute("/help")({
 });
 
 function HelpPage() {
-  const deploymentMode = useDeploymentMode((state) => state.mode) ?? "offline";
   const firm = useSettings((state) => state.firm);
-  const isOffline = deploymentMode === "offline";
-  const deploymentLabel =
-    deploymentMode === "hybrid" ? "HYBRID" : deploymentMode === "online" ? "ONLINE" : "OFFLINE";
+  const deploymentLabel = "ONLINE";
   const verificationBase =
     firm.website?.replace(/\/$/, "") || "the configured verification address";
 
@@ -50,11 +46,7 @@ function HelpPage() {
           <div>
             <h2 className="font-serif text-lg text-gold font-semibold">Welcome to Jewellers ERP</h2>
             <p className="text-sm mt-1 text-muted-foreground leading-relaxed">
-              {isOffline
-                ? "This installation runs entirely from the local SQLite database and encrypted application storage; no cloud connection is required."
-                : deploymentMode === "hybrid"
-                  ? "This installation remains local-first and replicates eligible data and documents to its configured cloud services."
-                  : "This installation uses its configured managed services for connected operation."}
+              This installation uses Supabase Auth, PostgreSQL, and configured cloud services for connected operation.
               <span className="ml-1">
                 Manual registers should be kept in parallel during the selected-workshop testing
                 period until each workflow has been validated.
@@ -70,9 +62,7 @@ function HelpPage() {
           title="1. Login & Profile Validation"
         >
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {isOffline
-              ? "Every user signs in through the local user directory configured on this device."
-              : "Every user needs an active account in the configured organization directory."}
+            Every user needs an active Supabase account in the configured organization directory.
           </p>
           <ul className="list-disc pl-4 mt-2 space-y-1 text-xs text-muted-foreground">
             <li>
@@ -124,11 +114,7 @@ function HelpPage() {
             <li>
               <strong>Document Storage:</strong>
               <span className="ml-1">
-                {isOffline
-                  ? "Documents are stored in the encrypted local application vault."
-                  : deploymentMode === "hybrid"
-                    ? "Documents stay in this computer's local application vault."
-                    : "Documents are saved through the configured storage provider."}
+                Documents are saved through the configured Supabase Storage provider.
               </span>
             </li>
             <li>

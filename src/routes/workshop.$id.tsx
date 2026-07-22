@@ -130,7 +130,7 @@ function JobCardDetail() {
                 <ArrowLeft className="h-4 w-4" /> Workshop
               </Button>
             </Link>
-            <Link to="/orders/$id" params={{ id: job.orderId }}>
+            <Link to="/workshop/gold-book">
               <Button variant="ghost" className="gap-2">
                 Back to Order
               </Button>
@@ -303,7 +303,7 @@ function JobCardDetail() {
                     View profile
                   </Link>
                   <Link
-                    to="/attendance"
+                    to="/people"
                     className="text-xs text-muted-foreground hover:text-gold underline"
                   >
                     View passbook
@@ -416,7 +416,7 @@ function JobCardDetail() {
                   <PackageCheck className="h-4 w-4" /> Receive Work from Karigar
                 </Button>
               )}
-              <Link to="/orders/$id" params={{ id: job.orderId }}>
+              <Link to="/workshop/gold-book">
                 <Button variant="outline" className="w-full justify-start gap-2 mt-2">
                   <ArrowLeft className="h-4 w-4" /> Back to Order {job.orderNo}
                 </Button>

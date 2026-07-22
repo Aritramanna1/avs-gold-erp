@@ -4,7 +4,7 @@
 -- future callers). A Postgres function body is one implicit transaction —
 -- any exception raised anywhere below rolls back every insert made so far
 -- in this call. This is the Hybrid/Supabase-mode counterpart to the
--- Offline mode's local SQLite transaction (see local-db.ts's runLocal).
+-- The web application executes this logic atomically in PostgreSQL.
 --
 -- Stock validation, the Gold Ledger vault movement, the Material Vault
 -- movement, and (when applicable) the Worker Gold Book entry all happen

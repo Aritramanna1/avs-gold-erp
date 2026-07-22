@@ -1,68 +1,35 @@
-import { getDeploymentMode, type DeploymentMode } from "@/lib/deployment-mode";
-
 export interface DatabaseProvider {
-  kind: "sqlite" | "sqlite-supabase" | "managed";
-  localPrimary: boolean;
+  kind: "managed";
+  localPrimary: false;
 }
-
 export interface StorageProvider {
-  kind: "local-filesystem";
-  synchronizesFiles: false;
+  kind: "supabase-storage";
+  synchronizesFiles: true;
 }
-
 export interface AuthenticationProvider {
-  kind: "local" | "managed";
+  kind: "managed";
 }
-
 export interface SynchronizationProvider {
-  kind: "disabled" | "supabase-database" | "managed";
-  enabled: boolean;
+  kind: "managed";
+  enabled: false;
 }
-
 export interface RuntimeProviders {
-  mode: DeploymentMode;
+  mode: "online";
   database: DatabaseProvider;
   storage: StorageProvider;
   authentication: AuthenticationProvider;
   synchronization: SynchronizationProvider;
 }
-
-export function resolveRuntimeProviders(mode: DeploymentMode): RuntimeProviders {
-  const storage: StorageProvider = { kind: "local-filesystem", synchronizesFiles: false };
-  if (mode === "hybrid") {
-    return {
-      mode,
-      database: { kind: "sqlite-supabase", localPrimary: true },
-      storage,
-      authentication: { kind: "local" },
-      synchronization: { kind: "supabase-database", enabled: true },
-    };
-  }
-  if (mode === "online") {
-    return {
-      mode,
-      database: { kind: "managed", localPrimary: false },
-      storage,
-      authentication: { kind: "managed" },
-      synchronization: { kind: "managed", enabled: false },
-    };
-  }
+export function resolveRuntimeProviders(_mode?: string): RuntimeProviders {
   return {
-    mode: "offline",
-    database: { kind: "sqlite", localPrimary: true },
-    storage,
-    authentication: { kind: "local" },
-    synchronization: { kind: "disabled", enabled: false },
+    mode: "online",
+    database: { kind: "managed", localPrimary: false },
+    storage: { kind: "supabase-storage", synchronizesFiles: true },
+    authentication: { kind: "managed" },
+    synchronization: { kind: "managed", enabled: false },
   };
 }
-
 export async function getRuntimeProviders(): Promise<RuntimeProviders> {
-  return resolveRuntimeProviders((await getDeploymentMode()) ?? "offline");
+  return resolveRuntimeProviders();
 }
-
-export const LOCAL_ONLY_TABLES = new Set([
-  "attachments",
-  "file_attachments",
-  "kyc_documents",
-  "document_shares",
-]);
+export const LOCAL_ONLY_TABLES = new Set<string>();

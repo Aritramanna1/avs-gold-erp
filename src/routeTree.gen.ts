@@ -17,76 +17,41 @@ import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as RepairRouteImport } from './routes/repair'
 import { Route as OtpLoginRouteImport } from './routes/otp-login'
-import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as NotificationsRouteImport } from './routes/notifications'
-import { Route as MeltRouteImport } from './routes/melt'
-import { Route as ManufacturingRouteImport } from './routes/manufacturing'
 import { Route as LedgerRouteImport } from './routes/ledger'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as CommunicationsRouteImport } from './routes/communications'
-import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as BillingRouteImport } from './routes/billing'
-import { Route as BarcodeRouteImport } from './routes/barcode'
-import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkshopIndexRouteImport } from './routes/workshop.index'
 import { Route as StockIndexRouteImport } from './routes/stock.index'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
-import { Route as RepairIndexRouteImport } from './routes/repair.index'
 import { Route as PeopleIndexRouteImport } from './routes/people.index'
-import { Route as OrdersIndexRouteImport } from './routes/orders.index'
-import { Route as MeltIndexRouteImport } from './routes/melt.index'
-import { Route as ManufacturingIndexRouteImport } from './routes/manufacturing.index'
 import { Route as HardwareIndexRouteImport } from './routes/hardware/index'
-import { Route as ExpensesIndexRouteImport } from './routes/expenses.index'
-import { Route as CommunicationsIndexRouteImport } from './routes/communications.index'
-import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
 import { Route as BranchesIndexRouteImport } from './routes/branches.index'
 import { Route as BillingIndexRouteImport } from './routes/billing.index'
-import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
 import { Route as WorkshopWorkerBooksRouteImport } from './routes/workshop.worker-books'
-import { Route as WorkshopPolishingBooksRouteImport } from './routes/workshop.polishing-books'
-import { Route as WorkshopPolishingRouteImport } from './routes/workshop.polishing'
-import { Route as WorkshopOutsideWorkerBooksRouteImport } from './routes/workshop.outside-worker-books'
-import { Route as WorkshopOutsideWorkRouteImport } from './routes/workshop.outside-work'
 import { Route as WorkshopGoldBookRouteImport } from './routes/workshop.gold-book'
-import { Route as WorkshopBarcodeScannerRouteImport } from './routes/workshop.barcode-scanner'
 import { Route as WorkshopIdRouteImport } from './routes/workshop.$id'
 import { Route as StockVerificationRouteImport } from './routes/stock.verification'
-import { Route as StockStonesRouteImport } from './routes/stock.stones'
-import { Route as StockLotsRouteImport } from './routes/stock.lots'
 import { Route as StockImportRouteImport } from './routes/stock.import'
-import { Route as StockHallmarkRouteImport } from './routes/stock.hallmark'
 import { Route as StockIdRouteImport } from './routes/stock.$id'
-import { Route as SettlementNewRouteImport } from './routes/settlement.new'
-import { Route as SettlementIdRouteImport } from './routes/settlement.$id'
-import { Route as SettingsWorkflowRouteImport } from './routes/settings.workflow'
 import { Route as SettingsWhatsappTemplatesRouteImport } from './routes/settings.whatsapp-templates'
 import { Route as SettingsWhatsappRouteImport } from './routes/settings.whatsapp'
 import { Route as SettingsStorageDiagnosticsRouteImport } from './routes/settings.storage-diagnostics'
-import { Route as SettingsSecurityCenterRouteImport } from './routes/settings.security-center'
 import { Route as SettingsPrintTemplatesRouteImport } from './routes/settings.print-templates'
-import { Route as SettingsLicenseRouteImport } from './routes/settings.license'
-import { Route as SettingsDocumentVaultRouteImport } from './routes/settings.document-vault'
 import { Route as SettingsCommunicationsRouteImport } from './routes/settings.communications'
 import { Route as SettingsBranchSettingsRouteImport } from './routes/settings.branch-settings'
-import { Route as SettingsBackupRecoveryRouteImport } from './routes/settings.backup-recovery'
 import { Route as SettingsAutomationRouteImport } from './routes/settings.automation'
 import { Route as ReportsWorkerRouteImport } from './routes/reports.worker'
 import { Route as ReportsVaultReconciliationRouteImport } from './routes/reports.vault-reconciliation'
-import { Route as ReportsSettlementsRouteImport } from './routes/reports.settlements'
-import { Route as ReportsSettlementReconciliationRouteImport } from './routes/reports.settlement-reconciliation'
 import { Route as ReportsRemindersRouteImport } from './routes/reports.reminders'
-import { Route as ReportsOutsideWorkRouteImport } from './routes/reports.outside-work'
 import { Route as ReportsMonthEndCloseRouteImport } from './routes/reports.month-end-close'
-import { Route as ReportsManufacturingReconciliationRouteImport } from './routes/reports.manufacturing-reconciliation'
-import { Route as ReportsManufacturingRouteImport } from './routes/reports.manufacturing'
 import { Route as ReportsInventoryAgeingRouteImport } from './routes/reports.inventory-ageing'
 import { Route as ReportsGoldSummaryRouteImport } from './routes/reports.gold-summary'
 import { Route as ReportsGoldReconciliationRouteImport } from './routes/reports.gold-reconciliation'
@@ -94,27 +59,15 @@ import { Route as ReportsGoldPositionRouteImport } from './routes/reports.gold-p
 import { Route as ReportsGoldOutstandingRouteImport } from './routes/reports.gold-outstanding'
 import { Route as ReportsExceptionsRouteImport } from './routes/reports.exceptions'
 import { Route as ReportsDeliverySummaryRouteImport } from './routes/reports.delivery-summary'
-import { Route as ReportsDealerRouteImport } from './routes/reports.dealer'
 import { Route as ReportsDailyGoldFlowRouteImport } from './routes/reports.daily-gold-flow'
 import { Route as ReportsDailyCloseRouteImport } from './routes/reports.daily-close'
 import { Route as ReportsCommunicationAnalyticsRouteImport } from './routes/reports.communication-analytics'
-import { Route as ReportsBranchRouteImport } from './routes/reports.branch'
 import { Route as ReportsAuditLogRouteImport } from './routes/reports.audit-log'
 import { Route as ReportsApprovalsRouteImport } from './routes/reports.approvals'
-import { Route as RepairNewRouteImport } from './routes/repair.new'
-import { Route as RepairIdRouteImport } from './routes/repair.$id'
 import { Route as PeopleImportRouteImport } from './routes/people.import'
 import { Route as PeopleIdRouteImport } from './routes/people.$id'
-import { Route as OrdersNewRouteImport } from './routes/orders.new'
-import { Route as OrdersImportRouteImport } from './routes/orders.import'
-import { Route as OrdersIdRouteImport } from './routes/orders.$id'
 import { Route as InviteAcceptRouteImport } from './routes/invite.accept'
 import { Route as DocTokenRouteImport } from './routes/doc.$token'
-import { Route as DashboardCeoRouteImport } from './routes/dashboard.ceo'
-import { Route as ComingSoonMeenaBookRouteImport } from './routes/coming-soon.meena-book'
-import { Route as ComingSoonBarcodeScannerRouteImport } from './routes/coming-soon.barcode-scanner'
-import { Route as ComingSoonBarcodePrintingRouteImport } from './routes/coming-soon.barcode-printing'
-import { Route as CatalogIdRouteImport } from './routes/catalog.$id'
 import { Route as BillingNewRouteImport } from './routes/billing.new'
 import { Route as BillingIdRouteImport } from './routes/billing.$id'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -124,24 +77,15 @@ import { Route as BillingDebitNotesIndexRouteImport } from './routes/billing.deb
 import { Route as BillingCreditNotesIndexRouteImport } from './routes/billing.credit-notes.index'
 import { Route as WorkshopWorkerBookWorkerIdRouteImport } from './routes/workshop.worker-book.$workerId'
 import { Route as WorkshopReceiveSlipIdRouteImport } from './routes/workshop.receive-slip.$id'
-import { Route as WorkshopPolishingBookPartyIdRouteImport } from './routes/workshop.polishing-book.$partyId'
-import { Route as WorkshopOutsideWorkerBookPartyIdRouteImport } from './routes/workshop.outside-worker-book.$partyId'
-import { Route as WorkshopJobCardOrderIdRouteImport } from './routes/workshop.job-card.$orderId'
 import { Route as WorkshopGoldBookPrintWorkerIdRouteImport } from './routes/workshop.gold-book-print.$workerId'
 import { Route as WorkshopFilingsSlipIdRouteImport } from './routes/workshop.filings-slip.$id'
 import { Route as WorkshopBookJewellerIdRouteImport } from './routes/workshop.book.$jewellerId'
 import { Route as StockPrintIdRouteImport } from './routes/stock.print.$id'
-import { Route as SettlementDraftPrintIdRouteImport } from './routes/settlement.draft-print.$id'
-import { Route as SettingsIntegrationsWhatsappRouteImport } from './routes/settings.integrations.whatsapp'
 import { Route as ReportsDailyclosePrintIdRouteImport } from './routes/reports.dailyclose-print.$id'
-import { Route as RepairPolishingNewRouteImport } from './routes/repair.polishing.new'
 import { Route as PeoplePrintIdRouteImport } from './routes/people.print.$id'
 import { Route as PeopleLedgerPrintIdRouteImport } from './routes/people.ledger-print.$id'
-import { Route as ManufacturingBillIdRouteImport } from './routes/manufacturing.bill.$id'
-import { Route as BillingSettlementSlipIdRouteImport } from './routes/billing.settlement-slip.$id'
 import { Route as BillingReceiptIdRouteImport } from './routes/billing.receipt.$id'
 import { Route as BillingPrintIdRouteImport } from './routes/billing.print.$id'
-import { Route as BillingGoldSettlementPrintIdRouteImport } from './routes/billing.gold-settlement-print.$id'
 import { Route as BillingEstimatesIdRouteImport } from './routes/billing.estimates.$id'
 import { Route as BillingEstimateIdRouteImport } from './routes/billing.estimate.$id'
 import { Route as BillingEstimatePrintIdRouteImport } from './routes/billing.estimate-print.$id'
@@ -151,12 +95,7 @@ import { Route as BillingDebitNotesIdRouteImport } from './routes/billing.debit-
 import { Route as BillingDebitNotePrintIdRouteImport } from './routes/billing.debit-note-print.$id'
 import { Route as BillingCreditNotesIdRouteImport } from './routes/billing.credit-notes.$id'
 import { Route as BillingCreditNotePrintIdRouteImport } from './routes/billing.credit-note-print.$id'
-import { Route as WorkshopPrintJobCardOrderIdRouteImport } from './routes/workshop.print.job-card.$orderId'
 import { Route as WorkshopMaterialSlipWorkerIdDateRouteImport } from './routes/workshop.material-slip.$workerId.$date'
-import { Route as RepairPrintKindIdRouteImport } from './routes/repair.print.$kind.$id'
-import { Route as OrdersPrintKindIdRouteImport } from './routes/orders.print.$kind.$id'
-import { Route as ManufacturingBillNewJobIdRouteImport } from './routes/manufacturing.bill.new.$jobId'
-import { Route as AttendancePrintKindIdRouteImport } from './routes/attendance.print.$kind.$id'
 
 const WorkshopRoute = WorkshopRouteImport.update({
   id: '/workshop',
@@ -198,34 +137,14 @@ const ReportsRoute = ReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RepairRoute = RepairRouteImport.update({
-  id: '/repair',
-  path: '/repair',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const OtpLoginRoute = OtpLoginRouteImport.update({
   id: '/otp-login',
   path: '/otp-login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OrdersRoute = OrdersRouteImport.update({
-  id: '/orders',
-  path: '/orders',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MeltRoute = MeltRouteImport.update({
-  id: '/melt',
-  path: '/melt',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ManufacturingRoute = ManufacturingRouteImport.update({
-  id: '/manufacturing',
-  path: '/manufacturing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LedgerRoute = LedgerRouteImport.update({
@@ -248,34 +167,19 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CommunicationsRoute = CommunicationsRouteImport.update({
-  id: '/communications',
-  path: '/communications',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CatalogRoute = CatalogRouteImport.update({
-  id: '/catalog',
-  path: '/catalog',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const BillingRoute = BillingRouteImport.update({
   id: '/billing',
   path: '/billing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BarcodeRoute = BarcodeRouteImport.update({
-  id: '/barcode',
-  path: '/barcode',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AttendanceRoute = AttendanceRouteImport.update({
-  id: '/attendance',
-  path: '/attendance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -303,50 +207,15 @@ const ReportsIndexRoute = ReportsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ReportsRoute,
 } as any)
-const RepairIndexRoute = RepairIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => RepairRoute,
-} as any)
 const PeopleIndexRoute = PeopleIndexRouteImport.update({
   id: '/people/',
   path: '/people/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OrdersIndexRoute = OrdersIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => OrdersRoute,
-} as any)
-const MeltIndexRoute = MeltIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => MeltRoute,
-} as any)
-const ManufacturingIndexRoute = ManufacturingIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ManufacturingRoute,
-} as any)
 const HardwareIndexRoute = HardwareIndexRouteImport.update({
   id: '/hardware/',
   path: '/hardware/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const ExpensesIndexRoute = ExpensesIndexRouteImport.update({
-  id: '/expenses/',
-  path: '/expenses/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CommunicationsIndexRoute = CommunicationsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => CommunicationsRoute,
-} as any)
-const CatalogIndexRoute = CatalogIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => CatalogRoute,
 } as any)
 const BranchesIndexRoute = BranchesIndexRouteImport.update({
   id: '/branches/',
@@ -358,45 +227,14 @@ const BillingIndexRoute = BillingIndexRouteImport.update({
   path: '/',
   getParentRoute: () => BillingRoute,
 } as any)
-const AttendanceIndexRoute = AttendanceIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AttendanceRoute,
-} as any)
 const WorkshopWorkerBooksRoute = WorkshopWorkerBooksRouteImport.update({
   id: '/worker-books',
   path: '/worker-books',
   getParentRoute: () => WorkshopRoute,
 } as any)
-const WorkshopPolishingBooksRoute = WorkshopPolishingBooksRouteImport.update({
-  id: '/polishing-books',
-  path: '/polishing-books',
-  getParentRoute: () => WorkshopRoute,
-} as any)
-const WorkshopPolishingRoute = WorkshopPolishingRouteImport.update({
-  id: '/polishing',
-  path: '/polishing',
-  getParentRoute: () => WorkshopRoute,
-} as any)
-const WorkshopOutsideWorkerBooksRoute =
-  WorkshopOutsideWorkerBooksRouteImport.update({
-    id: '/outside-worker-books',
-    path: '/outside-worker-books',
-    getParentRoute: () => WorkshopRoute,
-  } as any)
-const WorkshopOutsideWorkRoute = WorkshopOutsideWorkRouteImport.update({
-  id: '/outside-work',
-  path: '/outside-work',
-  getParentRoute: () => WorkshopRoute,
-} as any)
 const WorkshopGoldBookRoute = WorkshopGoldBookRouteImport.update({
   id: '/gold-book',
   path: '/gold-book',
-  getParentRoute: () => WorkshopRoute,
-} as any)
-const WorkshopBarcodeScannerRoute = WorkshopBarcodeScannerRouteImport.update({
-  id: '/barcode-scanner',
-  path: '/barcode-scanner',
   getParentRoute: () => WorkshopRoute,
 } as any)
 const WorkshopIdRoute = WorkshopIdRouteImport.update({
@@ -409,45 +247,15 @@ const StockVerificationRoute = StockVerificationRouteImport.update({
   path: '/verification',
   getParentRoute: () => StockRoute,
 } as any)
-const StockStonesRoute = StockStonesRouteImport.update({
-  id: '/stones',
-  path: '/stones',
-  getParentRoute: () => StockRoute,
-} as any)
-const StockLotsRoute = StockLotsRouteImport.update({
-  id: '/lots',
-  path: '/lots',
-  getParentRoute: () => StockRoute,
-} as any)
 const StockImportRoute = StockImportRouteImport.update({
   id: '/import',
   path: '/import',
-  getParentRoute: () => StockRoute,
-} as any)
-const StockHallmarkRoute = StockHallmarkRouteImport.update({
-  id: '/hallmark',
-  path: '/hallmark',
   getParentRoute: () => StockRoute,
 } as any)
 const StockIdRoute = StockIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => StockRoute,
-} as any)
-const SettlementNewRoute = SettlementNewRouteImport.update({
-  id: '/settlement/new',
-  path: '/settlement/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettlementIdRoute = SettlementIdRouteImport.update({
-  id: '/settlement/$id',
-  path: '/settlement/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsWorkflowRoute = SettingsWorkflowRouteImport.update({
-  id: '/workflow',
-  path: '/workflow',
-  getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsWhatsappTemplatesRoute =
   SettingsWhatsappTemplatesRouteImport.update({
@@ -466,24 +274,9 @@ const SettingsStorageDiagnosticsRoute =
     path: '/storage-diagnostics',
     getParentRoute: () => SettingsRoute,
   } as any)
-const SettingsSecurityCenterRoute = SettingsSecurityCenterRouteImport.update({
-  id: '/security-center',
-  path: '/security-center',
-  getParentRoute: () => SettingsRoute,
-} as any)
 const SettingsPrintTemplatesRoute = SettingsPrintTemplatesRouteImport.update({
   id: '/print-templates',
   path: '/print-templates',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsLicenseRoute = SettingsLicenseRouteImport.update({
-  id: '/license',
-  path: '/license',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsDocumentVaultRoute = SettingsDocumentVaultRouteImport.update({
-  id: '/document-vault',
-  path: '/document-vault',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsCommunicationsRoute = SettingsCommunicationsRouteImport.update({
@@ -494,11 +287,6 @@ const SettingsCommunicationsRoute = SettingsCommunicationsRouteImport.update({
 const SettingsBranchSettingsRoute = SettingsBranchSettingsRouteImport.update({
   id: '/branch-settings',
   path: '/branch-settings',
-  getParentRoute: () => SettingsRoute,
-} as any)
-const SettingsBackupRecoveryRoute = SettingsBackupRecoveryRouteImport.update({
-  id: '/backup-recovery',
-  path: '/backup-recovery',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsAutomationRoute = SettingsAutomationRouteImport.update({
@@ -517,41 +305,14 @@ const ReportsVaultReconciliationRoute =
     path: '/vault-reconciliation',
     getParentRoute: () => ReportsRoute,
   } as any)
-const ReportsSettlementsRoute = ReportsSettlementsRouteImport.update({
-  id: '/settlements',
-  path: '/settlements',
-  getParentRoute: () => ReportsRoute,
-} as any)
-const ReportsSettlementReconciliationRoute =
-  ReportsSettlementReconciliationRouteImport.update({
-    id: '/settlement-reconciliation',
-    path: '/settlement-reconciliation',
-    getParentRoute: () => ReportsRoute,
-  } as any)
 const ReportsRemindersRoute = ReportsRemindersRouteImport.update({
   id: '/reminders',
   path: '/reminders',
   getParentRoute: () => ReportsRoute,
 } as any)
-const ReportsOutsideWorkRoute = ReportsOutsideWorkRouteImport.update({
-  id: '/outside-work',
-  path: '/outside-work',
-  getParentRoute: () => ReportsRoute,
-} as any)
 const ReportsMonthEndCloseRoute = ReportsMonthEndCloseRouteImport.update({
   id: '/month-end-close',
   path: '/month-end-close',
-  getParentRoute: () => ReportsRoute,
-} as any)
-const ReportsManufacturingReconciliationRoute =
-  ReportsManufacturingReconciliationRouteImport.update({
-    id: '/manufacturing-reconciliation',
-    path: '/manufacturing-reconciliation',
-    getParentRoute: () => ReportsRoute,
-  } as any)
-const ReportsManufacturingRoute = ReportsManufacturingRouteImport.update({
-  id: '/manufacturing',
-  path: '/manufacturing',
   getParentRoute: () => ReportsRoute,
 } as any)
 const ReportsInventoryAgeingRoute = ReportsInventoryAgeingRouteImport.update({
@@ -590,11 +351,6 @@ const ReportsDeliverySummaryRoute = ReportsDeliverySummaryRouteImport.update({
   path: '/delivery-summary',
   getParentRoute: () => ReportsRoute,
 } as any)
-const ReportsDealerRoute = ReportsDealerRouteImport.update({
-  id: '/dealer',
-  path: '/dealer',
-  getParentRoute: () => ReportsRoute,
-} as any)
 const ReportsDailyGoldFlowRoute = ReportsDailyGoldFlowRouteImport.update({
   id: '/daily-gold-flow',
   path: '/daily-gold-flow',
@@ -611,11 +367,6 @@ const ReportsCommunicationAnalyticsRoute =
     path: '/communication-analytics',
     getParentRoute: () => ReportsRoute,
   } as any)
-const ReportsBranchRoute = ReportsBranchRouteImport.update({
-  id: '/branch',
-  path: '/branch',
-  getParentRoute: () => ReportsRoute,
-} as any)
 const ReportsAuditLogRoute = ReportsAuditLogRouteImport.update({
   id: '/audit-log',
   path: '/audit-log',
@@ -625,16 +376,6 @@ const ReportsApprovalsRoute = ReportsApprovalsRouteImport.update({
   id: '/approvals',
   path: '/approvals',
   getParentRoute: () => ReportsRoute,
-} as any)
-const RepairNewRoute = RepairNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => RepairRoute,
-} as any)
-const RepairIdRoute = RepairIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => RepairRoute,
 } as any)
 const PeopleImportRoute = PeopleImportRouteImport.update({
   id: '/people/import',
@@ -646,21 +387,6 @@ const PeopleIdRoute = PeopleIdRouteImport.update({
   path: '/people/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OrdersNewRoute = OrdersNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => OrdersRoute,
-} as any)
-const OrdersImportRoute = OrdersImportRouteImport.update({
-  id: '/import',
-  path: '/import',
-  getParentRoute: () => OrdersRoute,
-} as any)
-const OrdersIdRoute = OrdersIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => OrdersRoute,
-} as any)
 const InviteAcceptRoute = InviteAcceptRouteImport.update({
   id: '/accept',
   path: '/accept',
@@ -670,33 +396,6 @@ const DocTokenRoute = DocTokenRouteImport.update({
   id: '/doc/$token',
   path: '/doc/$token',
   getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardCeoRoute = DashboardCeoRouteImport.update({
-  id: '/ceo',
-  path: '/ceo',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const ComingSoonMeenaBookRoute = ComingSoonMeenaBookRouteImport.update({
-  id: '/coming-soon/meena-book',
-  path: '/coming-soon/meena-book',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ComingSoonBarcodeScannerRoute =
-  ComingSoonBarcodeScannerRouteImport.update({
-    id: '/coming-soon/barcode-scanner',
-    path: '/coming-soon/barcode-scanner',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ComingSoonBarcodePrintingRoute =
-  ComingSoonBarcodePrintingRouteImport.update({
-    id: '/coming-soon/barcode-printing',
-    path: '/coming-soon/barcode-printing',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const CatalogIdRoute = CatalogIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => CatalogRoute,
 } as any)
 const BillingNewRoute = BillingNewRouteImport.update({
   id: '/new',
@@ -745,23 +444,6 @@ const WorkshopReceiveSlipIdRoute = WorkshopReceiveSlipIdRouteImport.update({
   path: '/receive-slip/$id',
   getParentRoute: () => WorkshopRoute,
 } as any)
-const WorkshopPolishingBookPartyIdRoute =
-  WorkshopPolishingBookPartyIdRouteImport.update({
-    id: '/polishing-book/$partyId',
-    path: '/polishing-book/$partyId',
-    getParentRoute: () => WorkshopRoute,
-  } as any)
-const WorkshopOutsideWorkerBookPartyIdRoute =
-  WorkshopOutsideWorkerBookPartyIdRouteImport.update({
-    id: '/outside-worker-book/$partyId',
-    path: '/outside-worker-book/$partyId',
-    getParentRoute: () => WorkshopRoute,
-  } as any)
-const WorkshopJobCardOrderIdRoute = WorkshopJobCardOrderIdRouteImport.update({
-  id: '/job-card/$orderId',
-  path: '/job-card/$orderId',
-  getParentRoute: () => WorkshopRoute,
-} as any)
 const WorkshopGoldBookPrintWorkerIdRoute =
   WorkshopGoldBookPrintWorkerIdRouteImport.update({
     id: '/gold-book-print/$workerId',
@@ -783,28 +465,12 @@ const StockPrintIdRoute = StockPrintIdRouteImport.update({
   path: '/print/$id',
   getParentRoute: () => StockRoute,
 } as any)
-const SettlementDraftPrintIdRoute = SettlementDraftPrintIdRouteImport.update({
-  id: '/settlement/draft-print/$id',
-  path: '/settlement/draft-print/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsIntegrationsWhatsappRoute =
-  SettingsIntegrationsWhatsappRouteImport.update({
-    id: '/integrations/whatsapp',
-    path: '/integrations/whatsapp',
-    getParentRoute: () => SettingsRoute,
-  } as any)
 const ReportsDailyclosePrintIdRoute =
   ReportsDailyclosePrintIdRouteImport.update({
     id: '/dailyclose-print/$id',
     path: '/dailyclose-print/$id',
     getParentRoute: () => ReportsRoute,
   } as any)
-const RepairPolishingNewRoute = RepairPolishingNewRouteImport.update({
-  id: '/polishing/new',
-  path: '/polishing/new',
-  getParentRoute: () => RepairRoute,
-} as any)
 const PeoplePrintIdRoute = PeoplePrintIdRouteImport.update({
   id: '/people/print/$id',
   path: '/people/print/$id',
@@ -814,16 +480,6 @@ const PeopleLedgerPrintIdRoute = PeopleLedgerPrintIdRouteImport.update({
   id: '/people/ledger-print/$id',
   path: '/people/ledger-print/$id',
   getParentRoute: () => rootRouteImport,
-} as any)
-const ManufacturingBillIdRoute = ManufacturingBillIdRouteImport.update({
-  id: '/bill/$id',
-  path: '/bill/$id',
-  getParentRoute: () => ManufacturingRoute,
-} as any)
-const BillingSettlementSlipIdRoute = BillingSettlementSlipIdRouteImport.update({
-  id: '/settlement-slip/$id',
-  path: '/settlement-slip/$id',
-  getParentRoute: () => BillingRoute,
 } as any)
 const BillingReceiptIdRoute = BillingReceiptIdRouteImport.update({
   id: '/receipt/$id',
@@ -835,12 +491,6 @@ const BillingPrintIdRoute = BillingPrintIdRouteImport.update({
   path: '/print/$id',
   getParentRoute: () => BillingRoute,
 } as any)
-const BillingGoldSettlementPrintIdRoute =
-  BillingGoldSettlementPrintIdRouteImport.update({
-    id: '/gold-settlement-print/$id',
-    path: '/gold-settlement-print/$id',
-    getParentRoute: () => BillingRoute,
-  } as any)
 const BillingEstimatesIdRoute = BillingEstimatesIdRouteImport.update({
   id: '/estimates/$id',
   path: '/estimates/$id',
@@ -889,58 +539,24 @@ const BillingCreditNotePrintIdRoute =
     path: '/credit-note-print/$id',
     getParentRoute: () => BillingRoute,
   } as any)
-const WorkshopPrintJobCardOrderIdRoute =
-  WorkshopPrintJobCardOrderIdRouteImport.update({
-    id: '/print/job-card/$orderId',
-    path: '/print/job-card/$orderId',
-    getParentRoute: () => WorkshopRoute,
-  } as any)
 const WorkshopMaterialSlipWorkerIdDateRoute =
   WorkshopMaterialSlipWorkerIdDateRouteImport.update({
     id: '/material-slip/$workerId/$date',
     path: '/material-slip/$workerId/$date',
     getParentRoute: () => WorkshopRoute,
   } as any)
-const RepairPrintKindIdRoute = RepairPrintKindIdRouteImport.update({
-  id: '/print/$kind/$id',
-  path: '/print/$kind/$id',
-  getParentRoute: () => RepairRoute,
-} as any)
-const OrdersPrintKindIdRoute = OrdersPrintKindIdRouteImport.update({
-  id: '/print/$kind/$id',
-  path: '/print/$kind/$id',
-  getParentRoute: () => OrdersRoute,
-} as any)
-const ManufacturingBillNewJobIdRoute =
-  ManufacturingBillNewJobIdRouteImport.update({
-    id: '/bill/new/$jobId',
-    path: '/bill/new/$jobId',
-    getParentRoute: () => ManufacturingRoute,
-  } as any)
-const AttendancePrintKindIdRoute = AttendancePrintKindIdRouteImport.update({
-  id: '/print/$kind/$id',
-  path: '/print/$kind/$id',
-  getParentRoute: () => AttendanceRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/attendance': typeof AttendanceRouteWithChildren
-  '/barcode': typeof BarcodeRoute
   '/billing': typeof BillingRouteWithChildren
-  '/catalog': typeof CatalogRouteWithChildren
-  '/communications': typeof CommunicationsRouteWithChildren
-  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard': typeof DashboardRoute
+  '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/invite': typeof InviteRouteWithChildren
   '/ledger': typeof LedgerRoute
-  '/manufacturing': typeof ManufacturingRouteWithChildren
-  '/melt': typeof MeltRouteWithChildren
   '/notifications': typeof NotificationsRoute
-  '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
-  '/repair': typeof RepairRouteWithChildren
   '/reports': typeof ReportsRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -952,27 +568,15 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/billing/$id': typeof BillingIdRoute
   '/billing/new': typeof BillingNewRoute
-  '/catalog/$id': typeof CatalogIdRoute
-  '/coming-soon/barcode-printing': typeof ComingSoonBarcodePrintingRoute
-  '/coming-soon/barcode-scanner': typeof ComingSoonBarcodeScannerRoute
-  '/coming-soon/meena-book': typeof ComingSoonMeenaBookRoute
-  '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
-  '/orders/$id': typeof OrdersIdRoute
-  '/orders/import': typeof OrdersImportRoute
-  '/orders/new': typeof OrdersNewRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/import': typeof PeopleImportRoute
-  '/repair/$id': typeof RepairIdRoute
-  '/repair/new': typeof RepairNewRoute
   '/reports/approvals': typeof ReportsApprovalsRoute
   '/reports/audit-log': typeof ReportsAuditLogRoute
-  '/reports/branch': typeof ReportsBranchRoute
   '/reports/communication-analytics': typeof ReportsCommunicationAnalyticsRoute
   '/reports/daily-close': typeof ReportsDailyCloseRoute
   '/reports/daily-gold-flow': typeof ReportsDailyGoldFlowRoute
-  '/reports/dealer': typeof ReportsDealerRoute
   '/reports/delivery-summary': typeof ReportsDeliverySummaryRoute
   '/reports/exceptions': typeof ReportsExceptionsRoute
   '/reports/gold-outstanding': typeof ReportsGoldOutstandingRoute
@@ -980,55 +584,27 @@ export interface FileRoutesByFullPath {
   '/reports/gold-reconciliation': typeof ReportsGoldReconciliationRoute
   '/reports/gold-summary': typeof ReportsGoldSummaryRoute
   '/reports/inventory-ageing': typeof ReportsInventoryAgeingRoute
-  '/reports/manufacturing': typeof ReportsManufacturingRoute
-  '/reports/manufacturing-reconciliation': typeof ReportsManufacturingReconciliationRoute
   '/reports/month-end-close': typeof ReportsMonthEndCloseRoute
-  '/reports/outside-work': typeof ReportsOutsideWorkRoute
   '/reports/reminders': typeof ReportsRemindersRoute
-  '/reports/settlement-reconciliation': typeof ReportsSettlementReconciliationRoute
-  '/reports/settlements': typeof ReportsSettlementsRoute
   '/reports/vault-reconciliation': typeof ReportsVaultReconciliationRoute
   '/reports/worker': typeof ReportsWorkerRoute
   '/settings/automation': typeof SettingsAutomationRoute
-  '/settings/backup-recovery': typeof SettingsBackupRecoveryRoute
   '/settings/branch-settings': typeof SettingsBranchSettingsRoute
   '/settings/communications': typeof SettingsCommunicationsRoute
-  '/settings/document-vault': typeof SettingsDocumentVaultRoute
-  '/settings/license': typeof SettingsLicenseRoute
   '/settings/print-templates': typeof SettingsPrintTemplatesRoute
-  '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
   '/settings/whatsapp': typeof SettingsWhatsappRoute
   '/settings/whatsapp-templates': typeof SettingsWhatsappTemplatesRoute
-  '/settings/workflow': typeof SettingsWorkflowRoute
-  '/settlement/$id': typeof SettlementIdRoute
-  '/settlement/new': typeof SettlementNewRoute
   '/stock/$id': typeof StockIdRoute
-  '/stock/hallmark': typeof StockHallmarkRoute
   '/stock/import': typeof StockImportRoute
-  '/stock/lots': typeof StockLotsRoute
-  '/stock/stones': typeof StockStonesRoute
   '/stock/verification': typeof StockVerificationRoute
   '/workshop/$id': typeof WorkshopIdRoute
-  '/workshop/barcode-scanner': typeof WorkshopBarcodeScannerRoute
   '/workshop/gold-book': typeof WorkshopGoldBookRoute
-  '/workshop/outside-work': typeof WorkshopOutsideWorkRoute
-  '/workshop/outside-worker-books': typeof WorkshopOutsideWorkerBooksRoute
-  '/workshop/polishing': typeof WorkshopPolishingRoute
-  '/workshop/polishing-books': typeof WorkshopPolishingBooksRoute
   '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
-  '/attendance/': typeof AttendanceIndexRoute
   '/billing/': typeof BillingIndexRoute
   '/branches/': typeof BranchesIndexRoute
-  '/catalog/': typeof CatalogIndexRoute
-  '/communications/': typeof CommunicationsIndexRoute
-  '/expenses/': typeof ExpensesIndexRoute
   '/hardware/': typeof HardwareIndexRoute
-  '/manufacturing/': typeof ManufacturingIndexRoute
-  '/melt/': typeof MeltIndexRoute
-  '/orders/': typeof OrdersIndexRoute
   '/people/': typeof PeopleIndexRoute
-  '/repair/': typeof RepairIndexRoute
   '/reports/': typeof ReportsIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/stock/': typeof StockIndexRoute
@@ -1042,41 +618,27 @@ export interface FileRoutesByFullPath {
   '/billing/estimate-print/$id': typeof BillingEstimatePrintIdRoute
   '/billing/estimate/$id': typeof BillingEstimateIdRoute
   '/billing/estimates/$id': typeof BillingEstimatesIdRoute
-  '/billing/gold-settlement-print/$id': typeof BillingGoldSettlementPrintIdRoute
   '/billing/print/$id': typeof BillingPrintIdRoute
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
-  '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
-  '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
-  '/repair/polishing/new': typeof RepairPolishingNewRoute
   '/reports/dailyclose-print/$id': typeof ReportsDailyclosePrintIdRoute
-  '/settings/integrations/whatsapp': typeof SettingsIntegrationsWhatsappRoute
-  '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
   '/workshop/book/$jewellerId': typeof WorkshopBookJewellerIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
   '/workshop/gold-book-print/$workerId': typeof WorkshopGoldBookPrintWorkerIdRoute
-  '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
-  '/workshop/outside-worker-book/$partyId': typeof WorkshopOutsideWorkerBookPartyIdRoute
-  '/workshop/polishing-book/$partyId': typeof WorkshopPolishingBookPartyIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
   '/workshop/worker-book/$workerId': typeof WorkshopWorkerBookWorkerIdRoute
   '/billing/credit-notes/': typeof BillingCreditNotesIndexRoute
   '/billing/debit-notes/': typeof BillingDebitNotesIndexRoute
   '/billing/delivery-challans/': typeof BillingDeliveryChallansIndexRoute
   '/billing/estimates/': typeof BillingEstimatesIndexRoute
-  '/attendance/print/$kind/$id': typeof AttendancePrintKindIdRoute
-  '/manufacturing/bill/new/$jobId': typeof ManufacturingBillNewJobIdRoute
-  '/orders/print/$kind/$id': typeof OrdersPrintKindIdRoute
-  '/repair/print/$kind/$id': typeof RepairPrintKindIdRoute
   '/workshop/material-slip/$workerId/$date': typeof WorkshopMaterialSlipWorkerIdDateRoute
-  '/workshop/print/job-card/$orderId': typeof WorkshopPrintJobCardOrderIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/barcode': typeof BarcodeRoute
-  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard': typeof DashboardRoute
+  '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/invite': typeof InviteRouteWithChildren
@@ -1090,27 +652,15 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/billing/$id': typeof BillingIdRoute
   '/billing/new': typeof BillingNewRoute
-  '/catalog/$id': typeof CatalogIdRoute
-  '/coming-soon/barcode-printing': typeof ComingSoonBarcodePrintingRoute
-  '/coming-soon/barcode-scanner': typeof ComingSoonBarcodeScannerRoute
-  '/coming-soon/meena-book': typeof ComingSoonMeenaBookRoute
-  '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
-  '/orders/$id': typeof OrdersIdRoute
-  '/orders/import': typeof OrdersImportRoute
-  '/orders/new': typeof OrdersNewRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/import': typeof PeopleImportRoute
-  '/repair/$id': typeof RepairIdRoute
-  '/repair/new': typeof RepairNewRoute
   '/reports/approvals': typeof ReportsApprovalsRoute
   '/reports/audit-log': typeof ReportsAuditLogRoute
-  '/reports/branch': typeof ReportsBranchRoute
   '/reports/communication-analytics': typeof ReportsCommunicationAnalyticsRoute
   '/reports/daily-close': typeof ReportsDailyCloseRoute
   '/reports/daily-gold-flow': typeof ReportsDailyGoldFlowRoute
-  '/reports/dealer': typeof ReportsDealerRoute
   '/reports/delivery-summary': typeof ReportsDeliverySummaryRoute
   '/reports/exceptions': typeof ReportsExceptionsRoute
   '/reports/gold-outstanding': typeof ReportsGoldOutstandingRoute
@@ -1118,55 +668,27 @@ export interface FileRoutesByTo {
   '/reports/gold-reconciliation': typeof ReportsGoldReconciliationRoute
   '/reports/gold-summary': typeof ReportsGoldSummaryRoute
   '/reports/inventory-ageing': typeof ReportsInventoryAgeingRoute
-  '/reports/manufacturing': typeof ReportsManufacturingRoute
-  '/reports/manufacturing-reconciliation': typeof ReportsManufacturingReconciliationRoute
   '/reports/month-end-close': typeof ReportsMonthEndCloseRoute
-  '/reports/outside-work': typeof ReportsOutsideWorkRoute
   '/reports/reminders': typeof ReportsRemindersRoute
-  '/reports/settlement-reconciliation': typeof ReportsSettlementReconciliationRoute
-  '/reports/settlements': typeof ReportsSettlementsRoute
   '/reports/vault-reconciliation': typeof ReportsVaultReconciliationRoute
   '/reports/worker': typeof ReportsWorkerRoute
   '/settings/automation': typeof SettingsAutomationRoute
-  '/settings/backup-recovery': typeof SettingsBackupRecoveryRoute
   '/settings/branch-settings': typeof SettingsBranchSettingsRoute
   '/settings/communications': typeof SettingsCommunicationsRoute
-  '/settings/document-vault': typeof SettingsDocumentVaultRoute
-  '/settings/license': typeof SettingsLicenseRoute
   '/settings/print-templates': typeof SettingsPrintTemplatesRoute
-  '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
   '/settings/whatsapp': typeof SettingsWhatsappRoute
   '/settings/whatsapp-templates': typeof SettingsWhatsappTemplatesRoute
-  '/settings/workflow': typeof SettingsWorkflowRoute
-  '/settlement/$id': typeof SettlementIdRoute
-  '/settlement/new': typeof SettlementNewRoute
   '/stock/$id': typeof StockIdRoute
-  '/stock/hallmark': typeof StockHallmarkRoute
   '/stock/import': typeof StockImportRoute
-  '/stock/lots': typeof StockLotsRoute
-  '/stock/stones': typeof StockStonesRoute
   '/stock/verification': typeof StockVerificationRoute
   '/workshop/$id': typeof WorkshopIdRoute
-  '/workshop/barcode-scanner': typeof WorkshopBarcodeScannerRoute
   '/workshop/gold-book': typeof WorkshopGoldBookRoute
-  '/workshop/outside-work': typeof WorkshopOutsideWorkRoute
-  '/workshop/outside-worker-books': typeof WorkshopOutsideWorkerBooksRoute
-  '/workshop/polishing': typeof WorkshopPolishingRoute
-  '/workshop/polishing-books': typeof WorkshopPolishingBooksRoute
   '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
-  '/attendance': typeof AttendanceIndexRoute
   '/billing': typeof BillingIndexRoute
   '/branches': typeof BranchesIndexRoute
-  '/catalog': typeof CatalogIndexRoute
-  '/communications': typeof CommunicationsIndexRoute
-  '/expenses': typeof ExpensesIndexRoute
   '/hardware': typeof HardwareIndexRoute
-  '/manufacturing': typeof ManufacturingIndexRoute
-  '/melt': typeof MeltIndexRoute
-  '/orders': typeof OrdersIndexRoute
   '/people': typeof PeopleIndexRoute
-  '/repair': typeof RepairIndexRoute
   '/reports': typeof ReportsIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/stock': typeof StockIndexRoute
@@ -1180,56 +702,35 @@ export interface FileRoutesByTo {
   '/billing/estimate-print/$id': typeof BillingEstimatePrintIdRoute
   '/billing/estimate/$id': typeof BillingEstimateIdRoute
   '/billing/estimates/$id': typeof BillingEstimatesIdRoute
-  '/billing/gold-settlement-print/$id': typeof BillingGoldSettlementPrintIdRoute
   '/billing/print/$id': typeof BillingPrintIdRoute
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
-  '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
-  '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
-  '/repair/polishing/new': typeof RepairPolishingNewRoute
   '/reports/dailyclose-print/$id': typeof ReportsDailyclosePrintIdRoute
-  '/settings/integrations/whatsapp': typeof SettingsIntegrationsWhatsappRoute
-  '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
   '/workshop/book/$jewellerId': typeof WorkshopBookJewellerIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
   '/workshop/gold-book-print/$workerId': typeof WorkshopGoldBookPrintWorkerIdRoute
-  '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
-  '/workshop/outside-worker-book/$partyId': typeof WorkshopOutsideWorkerBookPartyIdRoute
-  '/workshop/polishing-book/$partyId': typeof WorkshopPolishingBookPartyIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
   '/workshop/worker-book/$workerId': typeof WorkshopWorkerBookWorkerIdRoute
   '/billing/credit-notes': typeof BillingCreditNotesIndexRoute
   '/billing/debit-notes': typeof BillingDebitNotesIndexRoute
   '/billing/delivery-challans': typeof BillingDeliveryChallansIndexRoute
   '/billing/estimates': typeof BillingEstimatesIndexRoute
-  '/attendance/print/$kind/$id': typeof AttendancePrintKindIdRoute
-  '/manufacturing/bill/new/$jobId': typeof ManufacturingBillNewJobIdRoute
-  '/orders/print/$kind/$id': typeof OrdersPrintKindIdRoute
-  '/repair/print/$kind/$id': typeof RepairPrintKindIdRoute
   '/workshop/material-slip/$workerId/$date': typeof WorkshopMaterialSlipWorkerIdDateRoute
-  '/workshop/print/job-card/$orderId': typeof WorkshopPrintJobCardOrderIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/attendance': typeof AttendanceRouteWithChildren
-  '/barcode': typeof BarcodeRoute
   '/billing': typeof BillingRouteWithChildren
-  '/catalog': typeof CatalogRouteWithChildren
-  '/communications': typeof CommunicationsRouteWithChildren
-  '/dashboard': typeof DashboardRouteWithChildren
+  '/dashboard': typeof DashboardRoute
+  '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/invite': typeof InviteRouteWithChildren
   '/ledger': typeof LedgerRoute
-  '/manufacturing': typeof ManufacturingRouteWithChildren
-  '/melt': typeof MeltRouteWithChildren
   '/notifications': typeof NotificationsRoute
-  '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
-  '/repair': typeof RepairRouteWithChildren
   '/reports': typeof ReportsRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -1241,27 +742,15 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/billing/$id': typeof BillingIdRoute
   '/billing/new': typeof BillingNewRoute
-  '/catalog/$id': typeof CatalogIdRoute
-  '/coming-soon/barcode-printing': typeof ComingSoonBarcodePrintingRoute
-  '/coming-soon/barcode-scanner': typeof ComingSoonBarcodeScannerRoute
-  '/coming-soon/meena-book': typeof ComingSoonMeenaBookRoute
-  '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
-  '/orders/$id': typeof OrdersIdRoute
-  '/orders/import': typeof OrdersImportRoute
-  '/orders/new': typeof OrdersNewRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/import': typeof PeopleImportRoute
-  '/repair/$id': typeof RepairIdRoute
-  '/repair/new': typeof RepairNewRoute
   '/reports/approvals': typeof ReportsApprovalsRoute
   '/reports/audit-log': typeof ReportsAuditLogRoute
-  '/reports/branch': typeof ReportsBranchRoute
   '/reports/communication-analytics': typeof ReportsCommunicationAnalyticsRoute
   '/reports/daily-close': typeof ReportsDailyCloseRoute
   '/reports/daily-gold-flow': typeof ReportsDailyGoldFlowRoute
-  '/reports/dealer': typeof ReportsDealerRoute
   '/reports/delivery-summary': typeof ReportsDeliverySummaryRoute
   '/reports/exceptions': typeof ReportsExceptionsRoute
   '/reports/gold-outstanding': typeof ReportsGoldOutstandingRoute
@@ -1269,55 +758,27 @@ export interface FileRoutesById {
   '/reports/gold-reconciliation': typeof ReportsGoldReconciliationRoute
   '/reports/gold-summary': typeof ReportsGoldSummaryRoute
   '/reports/inventory-ageing': typeof ReportsInventoryAgeingRoute
-  '/reports/manufacturing': typeof ReportsManufacturingRoute
-  '/reports/manufacturing-reconciliation': typeof ReportsManufacturingReconciliationRoute
   '/reports/month-end-close': typeof ReportsMonthEndCloseRoute
-  '/reports/outside-work': typeof ReportsOutsideWorkRoute
   '/reports/reminders': typeof ReportsRemindersRoute
-  '/reports/settlement-reconciliation': typeof ReportsSettlementReconciliationRoute
-  '/reports/settlements': typeof ReportsSettlementsRoute
   '/reports/vault-reconciliation': typeof ReportsVaultReconciliationRoute
   '/reports/worker': typeof ReportsWorkerRoute
   '/settings/automation': typeof SettingsAutomationRoute
-  '/settings/backup-recovery': typeof SettingsBackupRecoveryRoute
   '/settings/branch-settings': typeof SettingsBranchSettingsRoute
   '/settings/communications': typeof SettingsCommunicationsRoute
-  '/settings/document-vault': typeof SettingsDocumentVaultRoute
-  '/settings/license': typeof SettingsLicenseRoute
   '/settings/print-templates': typeof SettingsPrintTemplatesRoute
-  '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
   '/settings/whatsapp': typeof SettingsWhatsappRoute
   '/settings/whatsapp-templates': typeof SettingsWhatsappTemplatesRoute
-  '/settings/workflow': typeof SettingsWorkflowRoute
-  '/settlement/$id': typeof SettlementIdRoute
-  '/settlement/new': typeof SettlementNewRoute
   '/stock/$id': typeof StockIdRoute
-  '/stock/hallmark': typeof StockHallmarkRoute
   '/stock/import': typeof StockImportRoute
-  '/stock/lots': typeof StockLotsRoute
-  '/stock/stones': typeof StockStonesRoute
   '/stock/verification': typeof StockVerificationRoute
   '/workshop/$id': typeof WorkshopIdRoute
-  '/workshop/barcode-scanner': typeof WorkshopBarcodeScannerRoute
   '/workshop/gold-book': typeof WorkshopGoldBookRoute
-  '/workshop/outside-work': typeof WorkshopOutsideWorkRoute
-  '/workshop/outside-worker-books': typeof WorkshopOutsideWorkerBooksRoute
-  '/workshop/polishing': typeof WorkshopPolishingRoute
-  '/workshop/polishing-books': typeof WorkshopPolishingBooksRoute
   '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
-  '/attendance/': typeof AttendanceIndexRoute
   '/billing/': typeof BillingIndexRoute
   '/branches/': typeof BranchesIndexRoute
-  '/catalog/': typeof CatalogIndexRoute
-  '/communications/': typeof CommunicationsIndexRoute
-  '/expenses/': typeof ExpensesIndexRoute
   '/hardware/': typeof HardwareIndexRoute
-  '/manufacturing/': typeof ManufacturingIndexRoute
-  '/melt/': typeof MeltIndexRoute
-  '/orders/': typeof OrdersIndexRoute
   '/people/': typeof PeopleIndexRoute
-  '/repair/': typeof RepairIndexRoute
   '/reports/': typeof ReportsIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/stock/': typeof StockIndexRoute
@@ -1331,57 +792,36 @@ export interface FileRoutesById {
   '/billing/estimate-print/$id': typeof BillingEstimatePrintIdRoute
   '/billing/estimate/$id': typeof BillingEstimateIdRoute
   '/billing/estimates/$id': typeof BillingEstimatesIdRoute
-  '/billing/gold-settlement-print/$id': typeof BillingGoldSettlementPrintIdRoute
   '/billing/print/$id': typeof BillingPrintIdRoute
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
-  '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
-  '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
-  '/repair/polishing/new': typeof RepairPolishingNewRoute
   '/reports/dailyclose-print/$id': typeof ReportsDailyclosePrintIdRoute
-  '/settings/integrations/whatsapp': typeof SettingsIntegrationsWhatsappRoute
-  '/settlement/draft-print/$id': typeof SettlementDraftPrintIdRoute
   '/stock/print/$id': typeof StockPrintIdRoute
   '/workshop/book/$jewellerId': typeof WorkshopBookJewellerIdRoute
   '/workshop/filings-slip/$id': typeof WorkshopFilingsSlipIdRoute
   '/workshop/gold-book-print/$workerId': typeof WorkshopGoldBookPrintWorkerIdRoute
-  '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
-  '/workshop/outside-worker-book/$partyId': typeof WorkshopOutsideWorkerBookPartyIdRoute
-  '/workshop/polishing-book/$partyId': typeof WorkshopPolishingBookPartyIdRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
   '/workshop/worker-book/$workerId': typeof WorkshopWorkerBookWorkerIdRoute
   '/billing/credit-notes/': typeof BillingCreditNotesIndexRoute
   '/billing/debit-notes/': typeof BillingDebitNotesIndexRoute
   '/billing/delivery-challans/': typeof BillingDeliveryChallansIndexRoute
   '/billing/estimates/': typeof BillingEstimatesIndexRoute
-  '/attendance/print/$kind/$id': typeof AttendancePrintKindIdRoute
-  '/manufacturing/bill/new/$jobId': typeof ManufacturingBillNewJobIdRoute
-  '/orders/print/$kind/$id': typeof OrdersPrintKindIdRoute
-  '/repair/print/$kind/$id': typeof RepairPrintKindIdRoute
   '/workshop/material-slip/$workerId/$date': typeof WorkshopMaterialSlipWorkerIdDateRoute
-  '/workshop/print/job-card/$orderId': typeof WorkshopPrintJobCardOrderIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/attendance'
-    | '/barcode'
     | '/billing'
-    | '/catalog'
-    | '/communications'
     | '/dashboard'
+    | '/documents'
     | '/forgot-password'
     | '/help'
     | '/invite'
     | '/ledger'
-    | '/manufacturing'
-    | '/melt'
     | '/notifications'
-    | '/orders'
     | '/otp-login'
-    | '/repair'
     | '/reports'
     | '/reset-password'
     | '/settings'
@@ -1393,27 +833,15 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/billing/$id'
     | '/billing/new'
-    | '/catalog/$id'
-    | '/coming-soon/barcode-printing'
-    | '/coming-soon/barcode-scanner'
-    | '/coming-soon/meena-book'
-    | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
-    | '/orders/$id'
-    | '/orders/import'
-    | '/orders/new'
     | '/people/$id'
     | '/people/import'
-    | '/repair/$id'
-    | '/repair/new'
     | '/reports/approvals'
     | '/reports/audit-log'
-    | '/reports/branch'
     | '/reports/communication-analytics'
     | '/reports/daily-close'
     | '/reports/daily-gold-flow'
-    | '/reports/dealer'
     | '/reports/delivery-summary'
     | '/reports/exceptions'
     | '/reports/gold-outstanding'
@@ -1421,55 +849,27 @@ export interface FileRouteTypes {
     | '/reports/gold-reconciliation'
     | '/reports/gold-summary'
     | '/reports/inventory-ageing'
-    | '/reports/manufacturing'
-    | '/reports/manufacturing-reconciliation'
     | '/reports/month-end-close'
-    | '/reports/outside-work'
     | '/reports/reminders'
-    | '/reports/settlement-reconciliation'
-    | '/reports/settlements'
     | '/reports/vault-reconciliation'
     | '/reports/worker'
     | '/settings/automation'
-    | '/settings/backup-recovery'
     | '/settings/branch-settings'
     | '/settings/communications'
-    | '/settings/document-vault'
-    | '/settings/license'
     | '/settings/print-templates'
-    | '/settings/security-center'
     | '/settings/storage-diagnostics'
     | '/settings/whatsapp'
     | '/settings/whatsapp-templates'
-    | '/settings/workflow'
-    | '/settlement/$id'
-    | '/settlement/new'
     | '/stock/$id'
-    | '/stock/hallmark'
     | '/stock/import'
-    | '/stock/lots'
-    | '/stock/stones'
     | '/stock/verification'
     | '/workshop/$id'
-    | '/workshop/barcode-scanner'
     | '/workshop/gold-book'
-    | '/workshop/outside-work'
-    | '/workshop/outside-worker-books'
-    | '/workshop/polishing'
-    | '/workshop/polishing-books'
     | '/workshop/worker-books'
-    | '/attendance/'
     | '/billing/'
     | '/branches/'
-    | '/catalog/'
-    | '/communications/'
-    | '/expenses/'
     | '/hardware/'
-    | '/manufacturing/'
-    | '/melt/'
-    | '/orders/'
     | '/people/'
-    | '/repair/'
     | '/reports/'
     | '/settings/'
     | '/stock/'
@@ -1483,41 +883,27 @@ export interface FileRouteTypes {
     | '/billing/estimate-print/$id'
     | '/billing/estimate/$id'
     | '/billing/estimates/$id'
-    | '/billing/gold-settlement-print/$id'
     | '/billing/print/$id'
     | '/billing/receipt/$id'
-    | '/billing/settlement-slip/$id'
-    | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
-    | '/repair/polishing/new'
     | '/reports/dailyclose-print/$id'
-    | '/settings/integrations/whatsapp'
-    | '/settlement/draft-print/$id'
     | '/stock/print/$id'
     | '/workshop/book/$jewellerId'
     | '/workshop/filings-slip/$id'
     | '/workshop/gold-book-print/$workerId'
-    | '/workshop/job-card/$orderId'
-    | '/workshop/outside-worker-book/$partyId'
-    | '/workshop/polishing-book/$partyId'
     | '/workshop/receive-slip/$id'
     | '/workshop/worker-book/$workerId'
     | '/billing/credit-notes/'
     | '/billing/debit-notes/'
     | '/billing/delivery-challans/'
     | '/billing/estimates/'
-    | '/attendance/print/$kind/$id'
-    | '/manufacturing/bill/new/$jobId'
-    | '/orders/print/$kind/$id'
-    | '/repair/print/$kind/$id'
     | '/workshop/material-slip/$workerId/$date'
-    | '/workshop/print/job-card/$orderId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/barcode'
     | '/dashboard'
+    | '/documents'
     | '/forgot-password'
     | '/help'
     | '/invite'
@@ -1531,27 +917,15 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/billing/$id'
     | '/billing/new'
-    | '/catalog/$id'
-    | '/coming-soon/barcode-printing'
-    | '/coming-soon/barcode-scanner'
-    | '/coming-soon/meena-book'
-    | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
-    | '/orders/$id'
-    | '/orders/import'
-    | '/orders/new'
     | '/people/$id'
     | '/people/import'
-    | '/repair/$id'
-    | '/repair/new'
     | '/reports/approvals'
     | '/reports/audit-log'
-    | '/reports/branch'
     | '/reports/communication-analytics'
     | '/reports/daily-close'
     | '/reports/daily-gold-flow'
-    | '/reports/dealer'
     | '/reports/delivery-summary'
     | '/reports/exceptions'
     | '/reports/gold-outstanding'
@@ -1559,55 +933,27 @@ export interface FileRouteTypes {
     | '/reports/gold-reconciliation'
     | '/reports/gold-summary'
     | '/reports/inventory-ageing'
-    | '/reports/manufacturing'
-    | '/reports/manufacturing-reconciliation'
     | '/reports/month-end-close'
-    | '/reports/outside-work'
     | '/reports/reminders'
-    | '/reports/settlement-reconciliation'
-    | '/reports/settlements'
     | '/reports/vault-reconciliation'
     | '/reports/worker'
     | '/settings/automation'
-    | '/settings/backup-recovery'
     | '/settings/branch-settings'
     | '/settings/communications'
-    | '/settings/document-vault'
-    | '/settings/license'
     | '/settings/print-templates'
-    | '/settings/security-center'
     | '/settings/storage-diagnostics'
     | '/settings/whatsapp'
     | '/settings/whatsapp-templates'
-    | '/settings/workflow'
-    | '/settlement/$id'
-    | '/settlement/new'
     | '/stock/$id'
-    | '/stock/hallmark'
     | '/stock/import'
-    | '/stock/lots'
-    | '/stock/stones'
     | '/stock/verification'
     | '/workshop/$id'
-    | '/workshop/barcode-scanner'
     | '/workshop/gold-book'
-    | '/workshop/outside-work'
-    | '/workshop/outside-worker-books'
-    | '/workshop/polishing'
-    | '/workshop/polishing-books'
     | '/workshop/worker-books'
-    | '/attendance'
     | '/billing'
     | '/branches'
-    | '/catalog'
-    | '/communications'
-    | '/expenses'
     | '/hardware'
-    | '/manufacturing'
-    | '/melt'
-    | '/orders'
     | '/people'
-    | '/repair'
     | '/reports'
     | '/settings'
     | '/stock'
@@ -1621,55 +967,34 @@ export interface FileRouteTypes {
     | '/billing/estimate-print/$id'
     | '/billing/estimate/$id'
     | '/billing/estimates/$id'
-    | '/billing/gold-settlement-print/$id'
     | '/billing/print/$id'
     | '/billing/receipt/$id'
-    | '/billing/settlement-slip/$id'
-    | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
-    | '/repair/polishing/new'
     | '/reports/dailyclose-print/$id'
-    | '/settings/integrations/whatsapp'
-    | '/settlement/draft-print/$id'
     | '/stock/print/$id'
     | '/workshop/book/$jewellerId'
     | '/workshop/filings-slip/$id'
     | '/workshop/gold-book-print/$workerId'
-    | '/workshop/job-card/$orderId'
-    | '/workshop/outside-worker-book/$partyId'
-    | '/workshop/polishing-book/$partyId'
     | '/workshop/receive-slip/$id'
     | '/workshop/worker-book/$workerId'
     | '/billing/credit-notes'
     | '/billing/debit-notes'
     | '/billing/delivery-challans'
     | '/billing/estimates'
-    | '/attendance/print/$kind/$id'
-    | '/manufacturing/bill/new/$jobId'
-    | '/orders/print/$kind/$id'
-    | '/repair/print/$kind/$id'
     | '/workshop/material-slip/$workerId/$date'
-    | '/workshop/print/job-card/$orderId'
   id:
     | '__root__'
     | '/'
-    | '/attendance'
-    | '/barcode'
     | '/billing'
-    | '/catalog'
-    | '/communications'
     | '/dashboard'
+    | '/documents'
     | '/forgot-password'
     | '/help'
     | '/invite'
     | '/ledger'
-    | '/manufacturing'
-    | '/melt'
     | '/notifications'
-    | '/orders'
     | '/otp-login'
-    | '/repair'
     | '/reports'
     | '/reset-password'
     | '/settings'
@@ -1681,27 +1006,15 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/billing/$id'
     | '/billing/new'
-    | '/catalog/$id'
-    | '/coming-soon/barcode-printing'
-    | '/coming-soon/barcode-scanner'
-    | '/coming-soon/meena-book'
-    | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
-    | '/orders/$id'
-    | '/orders/import'
-    | '/orders/new'
     | '/people/$id'
     | '/people/import'
-    | '/repair/$id'
-    | '/repair/new'
     | '/reports/approvals'
     | '/reports/audit-log'
-    | '/reports/branch'
     | '/reports/communication-analytics'
     | '/reports/daily-close'
     | '/reports/daily-gold-flow'
-    | '/reports/dealer'
     | '/reports/delivery-summary'
     | '/reports/exceptions'
     | '/reports/gold-outstanding'
@@ -1709,55 +1022,27 @@ export interface FileRouteTypes {
     | '/reports/gold-reconciliation'
     | '/reports/gold-summary'
     | '/reports/inventory-ageing'
-    | '/reports/manufacturing'
-    | '/reports/manufacturing-reconciliation'
     | '/reports/month-end-close'
-    | '/reports/outside-work'
     | '/reports/reminders'
-    | '/reports/settlement-reconciliation'
-    | '/reports/settlements'
     | '/reports/vault-reconciliation'
     | '/reports/worker'
     | '/settings/automation'
-    | '/settings/backup-recovery'
     | '/settings/branch-settings'
     | '/settings/communications'
-    | '/settings/document-vault'
-    | '/settings/license'
     | '/settings/print-templates'
-    | '/settings/security-center'
     | '/settings/storage-diagnostics'
     | '/settings/whatsapp'
     | '/settings/whatsapp-templates'
-    | '/settings/workflow'
-    | '/settlement/$id'
-    | '/settlement/new'
     | '/stock/$id'
-    | '/stock/hallmark'
     | '/stock/import'
-    | '/stock/lots'
-    | '/stock/stones'
     | '/stock/verification'
     | '/workshop/$id'
-    | '/workshop/barcode-scanner'
     | '/workshop/gold-book'
-    | '/workshop/outside-work'
-    | '/workshop/outside-worker-books'
-    | '/workshop/polishing'
-    | '/workshop/polishing-books'
     | '/workshop/worker-books'
-    | '/attendance/'
     | '/billing/'
     | '/branches/'
-    | '/catalog/'
-    | '/communications/'
-    | '/expenses/'
     | '/hardware/'
-    | '/manufacturing/'
-    | '/melt/'
-    | '/orders/'
     | '/people/'
-    | '/repair/'
     | '/reports/'
     | '/settings/'
     | '/stock/'
@@ -1771,56 +1056,35 @@ export interface FileRouteTypes {
     | '/billing/estimate-print/$id'
     | '/billing/estimate/$id'
     | '/billing/estimates/$id'
-    | '/billing/gold-settlement-print/$id'
     | '/billing/print/$id'
     | '/billing/receipt/$id'
-    | '/billing/settlement-slip/$id'
-    | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
-    | '/repair/polishing/new'
     | '/reports/dailyclose-print/$id'
-    | '/settings/integrations/whatsapp'
-    | '/settlement/draft-print/$id'
     | '/stock/print/$id'
     | '/workshop/book/$jewellerId'
     | '/workshop/filings-slip/$id'
     | '/workshop/gold-book-print/$workerId'
-    | '/workshop/job-card/$orderId'
-    | '/workshop/outside-worker-book/$partyId'
-    | '/workshop/polishing-book/$partyId'
     | '/workshop/receive-slip/$id'
     | '/workshop/worker-book/$workerId'
     | '/billing/credit-notes/'
     | '/billing/debit-notes/'
     | '/billing/delivery-challans/'
     | '/billing/estimates/'
-    | '/attendance/print/$kind/$id'
-    | '/manufacturing/bill/new/$jobId'
-    | '/orders/print/$kind/$id'
-    | '/repair/print/$kind/$id'
     | '/workshop/material-slip/$workerId/$date'
-    | '/workshop/print/job-card/$orderId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AttendanceRoute: typeof AttendanceRouteWithChildren
-  BarcodeRoute: typeof BarcodeRoute
   BillingRoute: typeof BillingRouteWithChildren
-  CatalogRoute: typeof CatalogRouteWithChildren
-  CommunicationsRoute: typeof CommunicationsRouteWithChildren
-  DashboardRoute: typeof DashboardRouteWithChildren
+  DashboardRoute: typeof DashboardRoute
+  DocumentsRoute: typeof DocumentsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HelpRoute: typeof HelpRoute
   InviteRoute: typeof InviteRouteWithChildren
   LedgerRoute: typeof LedgerRoute
-  ManufacturingRoute: typeof ManufacturingRouteWithChildren
-  MeltRoute: typeof MeltRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
-  OrdersRoute: typeof OrdersRouteWithChildren
   OtpLoginRoute: typeof OtpLoginRoute
-  RepairRoute: typeof RepairRouteWithChildren
   ReportsRoute: typeof ReportsRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRouteWithChildren
@@ -1830,21 +1094,14 @@ export interface RootRouteChildren {
   WhatsappRoute: typeof WhatsappRoute
   WorkshopRoute: typeof WorkshopRouteWithChildren
   AuthCallbackRoute: typeof AuthCallbackRoute
-  ComingSoonBarcodePrintingRoute: typeof ComingSoonBarcodePrintingRoute
-  ComingSoonBarcodeScannerRoute: typeof ComingSoonBarcodeScannerRoute
-  ComingSoonMeenaBookRoute: typeof ComingSoonMeenaBookRoute
   DocTokenRoute: typeof DocTokenRoute
   PeopleIdRoute: typeof PeopleIdRoute
   PeopleImportRoute: typeof PeopleImportRoute
-  SettlementIdRoute: typeof SettlementIdRoute
-  SettlementNewRoute: typeof SettlementNewRoute
   BranchesIndexRoute: typeof BranchesIndexRoute
-  ExpensesIndexRoute: typeof ExpensesIndexRoute
   HardwareIndexRoute: typeof HardwareIndexRoute
   PeopleIndexRoute: typeof PeopleIndexRoute
   PeopleLedgerPrintIdRoute: typeof PeopleLedgerPrintIdRoute
   PeoplePrintIdRoute: typeof PeoplePrintIdRoute
-  SettlementDraftPrintIdRoute: typeof SettlementDraftPrintIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1905,13 +1162,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/repair': {
-      id: '/repair'
-      path: '/repair'
-      fullPath: '/repair'
-      preLoaderRoute: typeof RepairRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/otp-login': {
       id: '/otp-login'
       path: '/otp-login'
@@ -1919,32 +1169,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OtpLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/orders': {
-      id: '/orders'
-      path: '/orders'
-      fullPath: '/orders'
-      preLoaderRoute: typeof OrdersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/notifications': {
       id: '/notifications'
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/melt': {
-      id: '/melt'
-      path: '/melt'
-      fullPath: '/melt'
-      preLoaderRoute: typeof MeltRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/manufacturing': {
-      id: '/manufacturing'
-      path: '/manufacturing'
-      fullPath: '/manufacturing'
-      preLoaderRoute: typeof ManufacturingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ledger': {
@@ -1975,6 +1204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -1982,39 +1218,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/communications': {
-      id: '/communications'
-      path: '/communications'
-      fullPath: '/communications'
-      preLoaderRoute: typeof CommunicationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/catalog': {
-      id: '/catalog'
-      path: '/catalog'
-      fullPath: '/catalog'
-      preLoaderRoute: typeof CatalogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/billing': {
       id: '/billing'
       path: '/billing'
       fullPath: '/billing'
       preLoaderRoute: typeof BillingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/barcode': {
-      id: '/barcode'
-      path: '/barcode'
-      fullPath: '/barcode'
-      preLoaderRoute: typeof BarcodeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/attendance': {
-      id: '/attendance'
-      path: '/attendance'
-      fullPath: '/attendance'
-      preLoaderRoute: typeof AttendanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -2052,13 +1260,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsIndexRouteImport
       parentRoute: typeof ReportsRoute
     }
-    '/repair/': {
-      id: '/repair/'
-      path: '/'
-      fullPath: '/repair/'
-      preLoaderRoute: typeof RepairIndexRouteImport
-      parentRoute: typeof RepairRoute
-    }
     '/people/': {
       id: '/people/'
       path: '/people'
@@ -2066,54 +1267,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeopleIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/orders/': {
-      id: '/orders/'
-      path: '/'
-      fullPath: '/orders/'
-      preLoaderRoute: typeof OrdersIndexRouteImport
-      parentRoute: typeof OrdersRoute
-    }
-    '/melt/': {
-      id: '/melt/'
-      path: '/'
-      fullPath: '/melt/'
-      preLoaderRoute: typeof MeltIndexRouteImport
-      parentRoute: typeof MeltRoute
-    }
-    '/manufacturing/': {
-      id: '/manufacturing/'
-      path: '/'
-      fullPath: '/manufacturing/'
-      preLoaderRoute: typeof ManufacturingIndexRouteImport
-      parentRoute: typeof ManufacturingRoute
-    }
     '/hardware/': {
       id: '/hardware/'
       path: '/hardware'
       fullPath: '/hardware/'
       preLoaderRoute: typeof HardwareIndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/expenses/': {
-      id: '/expenses/'
-      path: '/expenses'
-      fullPath: '/expenses/'
-      preLoaderRoute: typeof ExpensesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/communications/': {
-      id: '/communications/'
-      path: '/'
-      fullPath: '/communications/'
-      preLoaderRoute: typeof CommunicationsIndexRouteImport
-      parentRoute: typeof CommunicationsRoute
-    }
-    '/catalog/': {
-      id: '/catalog/'
-      path: '/'
-      fullPath: '/catalog/'
-      preLoaderRoute: typeof CatalogIndexRouteImport
-      parentRoute: typeof CatalogRoute
     }
     '/branches/': {
       id: '/branches/'
@@ -2129,13 +1288,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BillingIndexRouteImport
       parentRoute: typeof BillingRoute
     }
-    '/attendance/': {
-      id: '/attendance/'
-      path: '/'
-      fullPath: '/attendance/'
-      preLoaderRoute: typeof AttendanceIndexRouteImport
-      parentRoute: typeof AttendanceRoute
-    }
     '/workshop/worker-books': {
       id: '/workshop/worker-books'
       path: '/worker-books'
@@ -2143,46 +1295,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkshopWorkerBooksRouteImport
       parentRoute: typeof WorkshopRoute
     }
-    '/workshop/polishing-books': {
-      id: '/workshop/polishing-books'
-      path: '/polishing-books'
-      fullPath: '/workshop/polishing-books'
-      preLoaderRoute: typeof WorkshopPolishingBooksRouteImport
-      parentRoute: typeof WorkshopRoute
-    }
-    '/workshop/polishing': {
-      id: '/workshop/polishing'
-      path: '/polishing'
-      fullPath: '/workshop/polishing'
-      preLoaderRoute: typeof WorkshopPolishingRouteImport
-      parentRoute: typeof WorkshopRoute
-    }
-    '/workshop/outside-worker-books': {
-      id: '/workshop/outside-worker-books'
-      path: '/outside-worker-books'
-      fullPath: '/workshop/outside-worker-books'
-      preLoaderRoute: typeof WorkshopOutsideWorkerBooksRouteImport
-      parentRoute: typeof WorkshopRoute
-    }
-    '/workshop/outside-work': {
-      id: '/workshop/outside-work'
-      path: '/outside-work'
-      fullPath: '/workshop/outside-work'
-      preLoaderRoute: typeof WorkshopOutsideWorkRouteImport
-      parentRoute: typeof WorkshopRoute
-    }
     '/workshop/gold-book': {
       id: '/workshop/gold-book'
       path: '/gold-book'
       fullPath: '/workshop/gold-book'
       preLoaderRoute: typeof WorkshopGoldBookRouteImport
-      parentRoute: typeof WorkshopRoute
-    }
-    '/workshop/barcode-scanner': {
-      id: '/workshop/barcode-scanner'
-      path: '/barcode-scanner'
-      fullPath: '/workshop/barcode-scanner'
-      preLoaderRoute: typeof WorkshopBarcodeScannerRouteImport
       parentRoute: typeof WorkshopRoute
     }
     '/workshop/$id': {
@@ -2199,32 +1316,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StockVerificationRouteImport
       parentRoute: typeof StockRoute
     }
-    '/stock/stones': {
-      id: '/stock/stones'
-      path: '/stones'
-      fullPath: '/stock/stones'
-      preLoaderRoute: typeof StockStonesRouteImport
-      parentRoute: typeof StockRoute
-    }
-    '/stock/lots': {
-      id: '/stock/lots'
-      path: '/lots'
-      fullPath: '/stock/lots'
-      preLoaderRoute: typeof StockLotsRouteImport
-      parentRoute: typeof StockRoute
-    }
     '/stock/import': {
       id: '/stock/import'
       path: '/import'
       fullPath: '/stock/import'
       preLoaderRoute: typeof StockImportRouteImport
-      parentRoute: typeof StockRoute
-    }
-    '/stock/hallmark': {
-      id: '/stock/hallmark'
-      path: '/hallmark'
-      fullPath: '/stock/hallmark'
-      preLoaderRoute: typeof StockHallmarkRouteImport
       parentRoute: typeof StockRoute
     }
     '/stock/$id': {
@@ -2233,27 +1329,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/stock/$id'
       preLoaderRoute: typeof StockIdRouteImport
       parentRoute: typeof StockRoute
-    }
-    '/settlement/new': {
-      id: '/settlement/new'
-      path: '/settlement/new'
-      fullPath: '/settlement/new'
-      preLoaderRoute: typeof SettlementNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settlement/$id': {
-      id: '/settlement/$id'
-      path: '/settlement/$id'
-      fullPath: '/settlement/$id'
-      preLoaderRoute: typeof SettlementIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/workflow': {
-      id: '/settings/workflow'
-      path: '/workflow'
-      fullPath: '/settings/workflow'
-      preLoaderRoute: typeof SettingsWorkflowRouteImport
-      parentRoute: typeof SettingsRoute
     }
     '/settings/whatsapp-templates': {
       id: '/settings/whatsapp-templates'
@@ -2276,32 +1351,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsStorageDiagnosticsRouteImport
       parentRoute: typeof SettingsRoute
     }
-    '/settings/security-center': {
-      id: '/settings/security-center'
-      path: '/security-center'
-      fullPath: '/settings/security-center'
-      preLoaderRoute: typeof SettingsSecurityCenterRouteImport
-      parentRoute: typeof SettingsRoute
-    }
     '/settings/print-templates': {
       id: '/settings/print-templates'
       path: '/print-templates'
       fullPath: '/settings/print-templates'
       preLoaderRoute: typeof SettingsPrintTemplatesRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/license': {
-      id: '/settings/license'
-      path: '/license'
-      fullPath: '/settings/license'
-      preLoaderRoute: typeof SettingsLicenseRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/document-vault': {
-      id: '/settings/document-vault'
-      path: '/document-vault'
-      fullPath: '/settings/document-vault'
-      preLoaderRoute: typeof SettingsDocumentVaultRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/communications': {
@@ -2316,13 +1370,6 @@ declare module '@tanstack/react-router' {
       path: '/branch-settings'
       fullPath: '/settings/branch-settings'
       preLoaderRoute: typeof SettingsBranchSettingsRouteImport
-      parentRoute: typeof SettingsRoute
-    }
-    '/settings/backup-recovery': {
-      id: '/settings/backup-recovery'
-      path: '/backup-recovery'
-      fullPath: '/settings/backup-recovery'
-      preLoaderRoute: typeof SettingsBackupRecoveryRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/automation': {
@@ -2346,20 +1393,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsVaultReconciliationRouteImport
       parentRoute: typeof ReportsRoute
     }
-    '/reports/settlements': {
-      id: '/reports/settlements'
-      path: '/settlements'
-      fullPath: '/reports/settlements'
-      preLoaderRoute: typeof ReportsSettlementsRouteImport
-      parentRoute: typeof ReportsRoute
-    }
-    '/reports/settlement-reconciliation': {
-      id: '/reports/settlement-reconciliation'
-      path: '/settlement-reconciliation'
-      fullPath: '/reports/settlement-reconciliation'
-      preLoaderRoute: typeof ReportsSettlementReconciliationRouteImport
-      parentRoute: typeof ReportsRoute
-    }
     '/reports/reminders': {
       id: '/reports/reminders'
       path: '/reminders'
@@ -2367,32 +1400,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsRemindersRouteImport
       parentRoute: typeof ReportsRoute
     }
-    '/reports/outside-work': {
-      id: '/reports/outside-work'
-      path: '/outside-work'
-      fullPath: '/reports/outside-work'
-      preLoaderRoute: typeof ReportsOutsideWorkRouteImport
-      parentRoute: typeof ReportsRoute
-    }
     '/reports/month-end-close': {
       id: '/reports/month-end-close'
       path: '/month-end-close'
       fullPath: '/reports/month-end-close'
       preLoaderRoute: typeof ReportsMonthEndCloseRouteImport
-      parentRoute: typeof ReportsRoute
-    }
-    '/reports/manufacturing-reconciliation': {
-      id: '/reports/manufacturing-reconciliation'
-      path: '/manufacturing-reconciliation'
-      fullPath: '/reports/manufacturing-reconciliation'
-      preLoaderRoute: typeof ReportsManufacturingReconciliationRouteImport
-      parentRoute: typeof ReportsRoute
-    }
-    '/reports/manufacturing': {
-      id: '/reports/manufacturing'
-      path: '/manufacturing'
-      fullPath: '/reports/manufacturing'
-      preLoaderRoute: typeof ReportsManufacturingRouteImport
       parentRoute: typeof ReportsRoute
     }
     '/reports/inventory-ageing': {
@@ -2444,13 +1456,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsDeliverySummaryRouteImport
       parentRoute: typeof ReportsRoute
     }
-    '/reports/dealer': {
-      id: '/reports/dealer'
-      path: '/dealer'
-      fullPath: '/reports/dealer'
-      preLoaderRoute: typeof ReportsDealerRouteImport
-      parentRoute: typeof ReportsRoute
-    }
     '/reports/daily-gold-flow': {
       id: '/reports/daily-gold-flow'
       path: '/daily-gold-flow'
@@ -2472,13 +1477,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsCommunicationAnalyticsRouteImport
       parentRoute: typeof ReportsRoute
     }
-    '/reports/branch': {
-      id: '/reports/branch'
-      path: '/branch'
-      fullPath: '/reports/branch'
-      preLoaderRoute: typeof ReportsBranchRouteImport
-      parentRoute: typeof ReportsRoute
-    }
     '/reports/audit-log': {
       id: '/reports/audit-log'
       path: '/audit-log'
@@ -2492,20 +1490,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/reports/approvals'
       preLoaderRoute: typeof ReportsApprovalsRouteImport
       parentRoute: typeof ReportsRoute
-    }
-    '/repair/new': {
-      id: '/repair/new'
-      path: '/new'
-      fullPath: '/repair/new'
-      preLoaderRoute: typeof RepairNewRouteImport
-      parentRoute: typeof RepairRoute
-    }
-    '/repair/$id': {
-      id: '/repair/$id'
-      path: '/$id'
-      fullPath: '/repair/$id'
-      preLoaderRoute: typeof RepairIdRouteImport
-      parentRoute: typeof RepairRoute
     }
     '/people/import': {
       id: '/people/import'
@@ -2521,27 +1505,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeopleIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/orders/new': {
-      id: '/orders/new'
-      path: '/new'
-      fullPath: '/orders/new'
-      preLoaderRoute: typeof OrdersNewRouteImport
-      parentRoute: typeof OrdersRoute
-    }
-    '/orders/import': {
-      id: '/orders/import'
-      path: '/import'
-      fullPath: '/orders/import'
-      preLoaderRoute: typeof OrdersImportRouteImport
-      parentRoute: typeof OrdersRoute
-    }
-    '/orders/$id': {
-      id: '/orders/$id'
-      path: '/$id'
-      fullPath: '/orders/$id'
-      preLoaderRoute: typeof OrdersIdRouteImport
-      parentRoute: typeof OrdersRoute
-    }
     '/invite/accept': {
       id: '/invite/accept'
       path: '/accept'
@@ -2555,41 +1518,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/doc/$token'
       preLoaderRoute: typeof DocTokenRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/dashboard/ceo': {
-      id: '/dashboard/ceo'
-      path: '/ceo'
-      fullPath: '/dashboard/ceo'
-      preLoaderRoute: typeof DashboardCeoRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/coming-soon/meena-book': {
-      id: '/coming-soon/meena-book'
-      path: '/coming-soon/meena-book'
-      fullPath: '/coming-soon/meena-book'
-      preLoaderRoute: typeof ComingSoonMeenaBookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coming-soon/barcode-scanner': {
-      id: '/coming-soon/barcode-scanner'
-      path: '/coming-soon/barcode-scanner'
-      fullPath: '/coming-soon/barcode-scanner'
-      preLoaderRoute: typeof ComingSoonBarcodeScannerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coming-soon/barcode-printing': {
-      id: '/coming-soon/barcode-printing'
-      path: '/coming-soon/barcode-printing'
-      fullPath: '/coming-soon/barcode-printing'
-      preLoaderRoute: typeof ComingSoonBarcodePrintingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/catalog/$id': {
-      id: '/catalog/$id'
-      path: '/$id'
-      fullPath: '/catalog/$id'
-      preLoaderRoute: typeof CatalogIdRouteImport
-      parentRoute: typeof CatalogRoute
     }
     '/billing/new': {
       id: '/billing/new'
@@ -2654,27 +1582,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkshopReceiveSlipIdRouteImport
       parentRoute: typeof WorkshopRoute
     }
-    '/workshop/polishing-book/$partyId': {
-      id: '/workshop/polishing-book/$partyId'
-      path: '/polishing-book/$partyId'
-      fullPath: '/workshop/polishing-book/$partyId'
-      preLoaderRoute: typeof WorkshopPolishingBookPartyIdRouteImport
-      parentRoute: typeof WorkshopRoute
-    }
-    '/workshop/outside-worker-book/$partyId': {
-      id: '/workshop/outside-worker-book/$partyId'
-      path: '/outside-worker-book/$partyId'
-      fullPath: '/workshop/outside-worker-book/$partyId'
-      preLoaderRoute: typeof WorkshopOutsideWorkerBookPartyIdRouteImport
-      parentRoute: typeof WorkshopRoute
-    }
-    '/workshop/job-card/$orderId': {
-      id: '/workshop/job-card/$orderId'
-      path: '/job-card/$orderId'
-      fullPath: '/workshop/job-card/$orderId'
-      preLoaderRoute: typeof WorkshopJobCardOrderIdRouteImport
-      parentRoute: typeof WorkshopRoute
-    }
     '/workshop/gold-book-print/$workerId': {
       id: '/workshop/gold-book-print/$workerId'
       path: '/gold-book-print/$workerId'
@@ -2703,33 +1610,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StockPrintIdRouteImport
       parentRoute: typeof StockRoute
     }
-    '/settlement/draft-print/$id': {
-      id: '/settlement/draft-print/$id'
-      path: '/settlement/draft-print/$id'
-      fullPath: '/settlement/draft-print/$id'
-      preLoaderRoute: typeof SettlementDraftPrintIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/integrations/whatsapp': {
-      id: '/settings/integrations/whatsapp'
-      path: '/integrations/whatsapp'
-      fullPath: '/settings/integrations/whatsapp'
-      preLoaderRoute: typeof SettingsIntegrationsWhatsappRouteImport
-      parentRoute: typeof SettingsRoute
-    }
     '/reports/dailyclose-print/$id': {
       id: '/reports/dailyclose-print/$id'
       path: '/dailyclose-print/$id'
       fullPath: '/reports/dailyclose-print/$id'
       preLoaderRoute: typeof ReportsDailyclosePrintIdRouteImport
       parentRoute: typeof ReportsRoute
-    }
-    '/repair/polishing/new': {
-      id: '/repair/polishing/new'
-      path: '/polishing/new'
-      fullPath: '/repair/polishing/new'
-      preLoaderRoute: typeof RepairPolishingNewRouteImport
-      parentRoute: typeof RepairRoute
     }
     '/people/print/$id': {
       id: '/people/print/$id'
@@ -2745,20 +1631,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeopleLedgerPrintIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/manufacturing/bill/$id': {
-      id: '/manufacturing/bill/$id'
-      path: '/bill/$id'
-      fullPath: '/manufacturing/bill/$id'
-      preLoaderRoute: typeof ManufacturingBillIdRouteImport
-      parentRoute: typeof ManufacturingRoute
-    }
-    '/billing/settlement-slip/$id': {
-      id: '/billing/settlement-slip/$id'
-      path: '/settlement-slip/$id'
-      fullPath: '/billing/settlement-slip/$id'
-      preLoaderRoute: typeof BillingSettlementSlipIdRouteImport
-      parentRoute: typeof BillingRoute
-    }
     '/billing/receipt/$id': {
       id: '/billing/receipt/$id'
       path: '/receipt/$id'
@@ -2771,13 +1643,6 @@ declare module '@tanstack/react-router' {
       path: '/print/$id'
       fullPath: '/billing/print/$id'
       preLoaderRoute: typeof BillingPrintIdRouteImport
-      parentRoute: typeof BillingRoute
-    }
-    '/billing/gold-settlement-print/$id': {
-      id: '/billing/gold-settlement-print/$id'
-      path: '/gold-settlement-print/$id'
-      fullPath: '/billing/gold-settlement-print/$id'
-      preLoaderRoute: typeof BillingGoldSettlementPrintIdRouteImport
       parentRoute: typeof BillingRoute
     }
     '/billing/estimates/$id': {
@@ -2843,13 +1708,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BillingCreditNotePrintIdRouteImport
       parentRoute: typeof BillingRoute
     }
-    '/workshop/print/job-card/$orderId': {
-      id: '/workshop/print/job-card/$orderId'
-      path: '/print/job-card/$orderId'
-      fullPath: '/workshop/print/job-card/$orderId'
-      preLoaderRoute: typeof WorkshopPrintJobCardOrderIdRouteImport
-      parentRoute: typeof WorkshopRoute
-    }
     '/workshop/material-slip/$workerId/$date': {
       id: '/workshop/material-slip/$workerId/$date'
       path: '/material-slip/$workerId/$date'
@@ -2857,50 +1715,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkshopMaterialSlipWorkerIdDateRouteImport
       parentRoute: typeof WorkshopRoute
     }
-    '/repair/print/$kind/$id': {
-      id: '/repair/print/$kind/$id'
-      path: '/print/$kind/$id'
-      fullPath: '/repair/print/$kind/$id'
-      preLoaderRoute: typeof RepairPrintKindIdRouteImport
-      parentRoute: typeof RepairRoute
-    }
-    '/orders/print/$kind/$id': {
-      id: '/orders/print/$kind/$id'
-      path: '/print/$kind/$id'
-      fullPath: '/orders/print/$kind/$id'
-      preLoaderRoute: typeof OrdersPrintKindIdRouteImport
-      parentRoute: typeof OrdersRoute
-    }
-    '/manufacturing/bill/new/$jobId': {
-      id: '/manufacturing/bill/new/$jobId'
-      path: '/bill/new/$jobId'
-      fullPath: '/manufacturing/bill/new/$jobId'
-      preLoaderRoute: typeof ManufacturingBillNewJobIdRouteImport
-      parentRoute: typeof ManufacturingRoute
-    }
-    '/attendance/print/$kind/$id': {
-      id: '/attendance/print/$kind/$id'
-      path: '/print/$kind/$id'
-      fullPath: '/attendance/print/$kind/$id'
-      preLoaderRoute: typeof AttendancePrintKindIdRouteImport
-      parentRoute: typeof AttendanceRoute
-    }
   }
 }
-
-interface AttendanceRouteChildren {
-  AttendanceIndexRoute: typeof AttendanceIndexRoute
-  AttendancePrintKindIdRoute: typeof AttendancePrintKindIdRoute
-}
-
-const AttendanceRouteChildren: AttendanceRouteChildren = {
-  AttendanceIndexRoute: AttendanceIndexRoute,
-  AttendancePrintKindIdRoute: AttendancePrintKindIdRoute,
-}
-
-const AttendanceRouteWithChildren = AttendanceRoute._addFileChildren(
-  AttendanceRouteChildren,
-)
 
 interface BillingRouteChildren {
   BillingIdRoute: typeof BillingIdRoute
@@ -2915,10 +1731,8 @@ interface BillingRouteChildren {
   BillingEstimatePrintIdRoute: typeof BillingEstimatePrintIdRoute
   BillingEstimateIdRoute: typeof BillingEstimateIdRoute
   BillingEstimatesIdRoute: typeof BillingEstimatesIdRoute
-  BillingGoldSettlementPrintIdRoute: typeof BillingGoldSettlementPrintIdRoute
   BillingPrintIdRoute: typeof BillingPrintIdRoute
   BillingReceiptIdRoute: typeof BillingReceiptIdRoute
-  BillingSettlementSlipIdRoute: typeof BillingSettlementSlipIdRoute
   BillingCreditNotesIndexRoute: typeof BillingCreditNotesIndexRoute
   BillingDebitNotesIndexRoute: typeof BillingDebitNotesIndexRoute
   BillingDeliveryChallansIndexRoute: typeof BillingDeliveryChallansIndexRoute
@@ -2938,10 +1752,8 @@ const BillingRouteChildren: BillingRouteChildren = {
   BillingEstimatePrintIdRoute: BillingEstimatePrintIdRoute,
   BillingEstimateIdRoute: BillingEstimateIdRoute,
   BillingEstimatesIdRoute: BillingEstimatesIdRoute,
-  BillingGoldSettlementPrintIdRoute: BillingGoldSettlementPrintIdRoute,
   BillingPrintIdRoute: BillingPrintIdRoute,
   BillingReceiptIdRoute: BillingReceiptIdRoute,
-  BillingSettlementSlipIdRoute: BillingSettlementSlipIdRoute,
   BillingCreditNotesIndexRoute: BillingCreditNotesIndexRoute,
   BillingDebitNotesIndexRoute: BillingDebitNotesIndexRoute,
   BillingDeliveryChallansIndexRoute: BillingDeliveryChallansIndexRoute,
@@ -2950,43 +1762,6 @@ const BillingRouteChildren: BillingRouteChildren = {
 
 const BillingRouteWithChildren =
   BillingRoute._addFileChildren(BillingRouteChildren)
-
-interface CatalogRouteChildren {
-  CatalogIdRoute: typeof CatalogIdRoute
-  CatalogIndexRoute: typeof CatalogIndexRoute
-}
-
-const CatalogRouteChildren: CatalogRouteChildren = {
-  CatalogIdRoute: CatalogIdRoute,
-  CatalogIndexRoute: CatalogIndexRoute,
-}
-
-const CatalogRouteWithChildren =
-  CatalogRoute._addFileChildren(CatalogRouteChildren)
-
-interface CommunicationsRouteChildren {
-  CommunicationsIndexRoute: typeof CommunicationsIndexRoute
-}
-
-const CommunicationsRouteChildren: CommunicationsRouteChildren = {
-  CommunicationsIndexRoute: CommunicationsIndexRoute,
-}
-
-const CommunicationsRouteWithChildren = CommunicationsRoute._addFileChildren(
-  CommunicationsRouteChildren,
-)
-
-interface DashboardRouteChildren {
-  DashboardCeoRoute: typeof DashboardCeoRoute
-}
-
-const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardCeoRoute: DashboardCeoRoute,
-}
-
-const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
-  DashboardRouteChildren,
-)
 
 interface InviteRouteChildren {
   InviteAcceptRoute: typeof InviteAcceptRoute
@@ -2999,78 +1774,12 @@ const InviteRouteChildren: InviteRouteChildren = {
 const InviteRouteWithChildren =
   InviteRoute._addFileChildren(InviteRouteChildren)
 
-interface ManufacturingRouteChildren {
-  ManufacturingIndexRoute: typeof ManufacturingIndexRoute
-  ManufacturingBillIdRoute: typeof ManufacturingBillIdRoute
-  ManufacturingBillNewJobIdRoute: typeof ManufacturingBillNewJobIdRoute
-}
-
-const ManufacturingRouteChildren: ManufacturingRouteChildren = {
-  ManufacturingIndexRoute: ManufacturingIndexRoute,
-  ManufacturingBillIdRoute: ManufacturingBillIdRoute,
-  ManufacturingBillNewJobIdRoute: ManufacturingBillNewJobIdRoute,
-}
-
-const ManufacturingRouteWithChildren = ManufacturingRoute._addFileChildren(
-  ManufacturingRouteChildren,
-)
-
-interface MeltRouteChildren {
-  MeltIndexRoute: typeof MeltIndexRoute
-}
-
-const MeltRouteChildren: MeltRouteChildren = {
-  MeltIndexRoute: MeltIndexRoute,
-}
-
-const MeltRouteWithChildren = MeltRoute._addFileChildren(MeltRouteChildren)
-
-interface OrdersRouteChildren {
-  OrdersIdRoute: typeof OrdersIdRoute
-  OrdersImportRoute: typeof OrdersImportRoute
-  OrdersNewRoute: typeof OrdersNewRoute
-  OrdersIndexRoute: typeof OrdersIndexRoute
-  OrdersPrintKindIdRoute: typeof OrdersPrintKindIdRoute
-}
-
-const OrdersRouteChildren: OrdersRouteChildren = {
-  OrdersIdRoute: OrdersIdRoute,
-  OrdersImportRoute: OrdersImportRoute,
-  OrdersNewRoute: OrdersNewRoute,
-  OrdersIndexRoute: OrdersIndexRoute,
-  OrdersPrintKindIdRoute: OrdersPrintKindIdRoute,
-}
-
-const OrdersRouteWithChildren =
-  OrdersRoute._addFileChildren(OrdersRouteChildren)
-
-interface RepairRouteChildren {
-  RepairIdRoute: typeof RepairIdRoute
-  RepairNewRoute: typeof RepairNewRoute
-  RepairIndexRoute: typeof RepairIndexRoute
-  RepairPolishingNewRoute: typeof RepairPolishingNewRoute
-  RepairPrintKindIdRoute: typeof RepairPrintKindIdRoute
-}
-
-const RepairRouteChildren: RepairRouteChildren = {
-  RepairIdRoute: RepairIdRoute,
-  RepairNewRoute: RepairNewRoute,
-  RepairIndexRoute: RepairIndexRoute,
-  RepairPolishingNewRoute: RepairPolishingNewRoute,
-  RepairPrintKindIdRoute: RepairPrintKindIdRoute,
-}
-
-const RepairRouteWithChildren =
-  RepairRoute._addFileChildren(RepairRouteChildren)
-
 interface ReportsRouteChildren {
   ReportsApprovalsRoute: typeof ReportsApprovalsRoute
   ReportsAuditLogRoute: typeof ReportsAuditLogRoute
-  ReportsBranchRoute: typeof ReportsBranchRoute
   ReportsCommunicationAnalyticsRoute: typeof ReportsCommunicationAnalyticsRoute
   ReportsDailyCloseRoute: typeof ReportsDailyCloseRoute
   ReportsDailyGoldFlowRoute: typeof ReportsDailyGoldFlowRoute
-  ReportsDealerRoute: typeof ReportsDealerRoute
   ReportsDeliverySummaryRoute: typeof ReportsDeliverySummaryRoute
   ReportsExceptionsRoute: typeof ReportsExceptionsRoute
   ReportsGoldOutstandingRoute: typeof ReportsGoldOutstandingRoute
@@ -3078,13 +1787,8 @@ interface ReportsRouteChildren {
   ReportsGoldReconciliationRoute: typeof ReportsGoldReconciliationRoute
   ReportsGoldSummaryRoute: typeof ReportsGoldSummaryRoute
   ReportsInventoryAgeingRoute: typeof ReportsInventoryAgeingRoute
-  ReportsManufacturingRoute: typeof ReportsManufacturingRoute
-  ReportsManufacturingReconciliationRoute: typeof ReportsManufacturingReconciliationRoute
   ReportsMonthEndCloseRoute: typeof ReportsMonthEndCloseRoute
-  ReportsOutsideWorkRoute: typeof ReportsOutsideWorkRoute
   ReportsRemindersRoute: typeof ReportsRemindersRoute
-  ReportsSettlementReconciliationRoute: typeof ReportsSettlementReconciliationRoute
-  ReportsSettlementsRoute: typeof ReportsSettlementsRoute
   ReportsVaultReconciliationRoute: typeof ReportsVaultReconciliationRoute
   ReportsWorkerRoute: typeof ReportsWorkerRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
@@ -3094,11 +1798,9 @@ interface ReportsRouteChildren {
 const ReportsRouteChildren: ReportsRouteChildren = {
   ReportsApprovalsRoute: ReportsApprovalsRoute,
   ReportsAuditLogRoute: ReportsAuditLogRoute,
-  ReportsBranchRoute: ReportsBranchRoute,
   ReportsCommunicationAnalyticsRoute: ReportsCommunicationAnalyticsRoute,
   ReportsDailyCloseRoute: ReportsDailyCloseRoute,
   ReportsDailyGoldFlowRoute: ReportsDailyGoldFlowRoute,
-  ReportsDealerRoute: ReportsDealerRoute,
   ReportsDeliverySummaryRoute: ReportsDeliverySummaryRoute,
   ReportsExceptionsRoute: ReportsExceptionsRoute,
   ReportsGoldOutstandingRoute: ReportsGoldOutstandingRoute,
@@ -3106,14 +1808,8 @@ const ReportsRouteChildren: ReportsRouteChildren = {
   ReportsGoldReconciliationRoute: ReportsGoldReconciliationRoute,
   ReportsGoldSummaryRoute: ReportsGoldSummaryRoute,
   ReportsInventoryAgeingRoute: ReportsInventoryAgeingRoute,
-  ReportsManufacturingRoute: ReportsManufacturingRoute,
-  ReportsManufacturingReconciliationRoute:
-    ReportsManufacturingReconciliationRoute,
   ReportsMonthEndCloseRoute: ReportsMonthEndCloseRoute,
-  ReportsOutsideWorkRoute: ReportsOutsideWorkRoute,
   ReportsRemindersRoute: ReportsRemindersRoute,
-  ReportsSettlementReconciliationRoute: ReportsSettlementReconciliationRoute,
-  ReportsSettlementsRoute: ReportsSettlementsRoute,
   ReportsVaultReconciliationRoute: ReportsVaultReconciliationRoute,
   ReportsWorkerRoute: ReportsWorkerRoute,
   ReportsIndexRoute: ReportsIndexRoute,
@@ -3125,36 +1821,24 @@ const ReportsRouteWithChildren =
 
 interface SettingsRouteChildren {
   SettingsAutomationRoute: typeof SettingsAutomationRoute
-  SettingsBackupRecoveryRoute: typeof SettingsBackupRecoveryRoute
   SettingsBranchSettingsRoute: typeof SettingsBranchSettingsRoute
   SettingsCommunicationsRoute: typeof SettingsCommunicationsRoute
-  SettingsDocumentVaultRoute: typeof SettingsDocumentVaultRoute
-  SettingsLicenseRoute: typeof SettingsLicenseRoute
   SettingsPrintTemplatesRoute: typeof SettingsPrintTemplatesRoute
-  SettingsSecurityCenterRoute: typeof SettingsSecurityCenterRoute
   SettingsStorageDiagnosticsRoute: typeof SettingsStorageDiagnosticsRoute
   SettingsWhatsappRoute: typeof SettingsWhatsappRoute
   SettingsWhatsappTemplatesRoute: typeof SettingsWhatsappTemplatesRoute
-  SettingsWorkflowRoute: typeof SettingsWorkflowRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
-  SettingsIntegrationsWhatsappRoute: typeof SettingsIntegrationsWhatsappRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAutomationRoute: SettingsAutomationRoute,
-  SettingsBackupRecoveryRoute: SettingsBackupRecoveryRoute,
   SettingsBranchSettingsRoute: SettingsBranchSettingsRoute,
   SettingsCommunicationsRoute: SettingsCommunicationsRoute,
-  SettingsDocumentVaultRoute: SettingsDocumentVaultRoute,
-  SettingsLicenseRoute: SettingsLicenseRoute,
   SettingsPrintTemplatesRoute: SettingsPrintTemplatesRoute,
-  SettingsSecurityCenterRoute: SettingsSecurityCenterRoute,
   SettingsStorageDiagnosticsRoute: SettingsStorageDiagnosticsRoute,
   SettingsWhatsappRoute: SettingsWhatsappRoute,
   SettingsWhatsappTemplatesRoute: SettingsWhatsappTemplatesRoute,
-  SettingsWorkflowRoute: SettingsWorkflowRoute,
   SettingsIndexRoute: SettingsIndexRoute,
-  SettingsIntegrationsWhatsappRoute: SettingsIntegrationsWhatsappRoute,
 }
 
 const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
@@ -3163,10 +1847,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 interface StockRouteChildren {
   StockIdRoute: typeof StockIdRoute
-  StockHallmarkRoute: typeof StockHallmarkRoute
   StockImportRoute: typeof StockImportRoute
-  StockLotsRoute: typeof StockLotsRoute
-  StockStonesRoute: typeof StockStonesRoute
   StockVerificationRoute: typeof StockVerificationRoute
   StockIndexRoute: typeof StockIndexRoute
   StockPrintIdRoute: typeof StockPrintIdRoute
@@ -3174,10 +1855,7 @@ interface StockRouteChildren {
 
 const StockRouteChildren: StockRouteChildren = {
   StockIdRoute: StockIdRoute,
-  StockHallmarkRoute: StockHallmarkRoute,
   StockImportRoute: StockImportRoute,
-  StockLotsRoute: StockLotsRoute,
-  StockStonesRoute: StockStonesRoute,
   StockVerificationRoute: StockVerificationRoute,
   StockIndexRoute: StockIndexRoute,
   StockPrintIdRoute: StockPrintIdRoute,
@@ -3187,46 +1865,28 @@ const StockRouteWithChildren = StockRoute._addFileChildren(StockRouteChildren)
 
 interface WorkshopRouteChildren {
   WorkshopIdRoute: typeof WorkshopIdRoute
-  WorkshopBarcodeScannerRoute: typeof WorkshopBarcodeScannerRoute
   WorkshopGoldBookRoute: typeof WorkshopGoldBookRoute
-  WorkshopOutsideWorkRoute: typeof WorkshopOutsideWorkRoute
-  WorkshopOutsideWorkerBooksRoute: typeof WorkshopOutsideWorkerBooksRoute
-  WorkshopPolishingRoute: typeof WorkshopPolishingRoute
-  WorkshopPolishingBooksRoute: typeof WorkshopPolishingBooksRoute
   WorkshopWorkerBooksRoute: typeof WorkshopWorkerBooksRoute
   WorkshopIndexRoute: typeof WorkshopIndexRoute
   WorkshopBookJewellerIdRoute: typeof WorkshopBookJewellerIdRoute
   WorkshopFilingsSlipIdRoute: typeof WorkshopFilingsSlipIdRoute
   WorkshopGoldBookPrintWorkerIdRoute: typeof WorkshopGoldBookPrintWorkerIdRoute
-  WorkshopJobCardOrderIdRoute: typeof WorkshopJobCardOrderIdRoute
-  WorkshopOutsideWorkerBookPartyIdRoute: typeof WorkshopOutsideWorkerBookPartyIdRoute
-  WorkshopPolishingBookPartyIdRoute: typeof WorkshopPolishingBookPartyIdRoute
   WorkshopReceiveSlipIdRoute: typeof WorkshopReceiveSlipIdRoute
   WorkshopWorkerBookWorkerIdRoute: typeof WorkshopWorkerBookWorkerIdRoute
   WorkshopMaterialSlipWorkerIdDateRoute: typeof WorkshopMaterialSlipWorkerIdDateRoute
-  WorkshopPrintJobCardOrderIdRoute: typeof WorkshopPrintJobCardOrderIdRoute
 }
 
 const WorkshopRouteChildren: WorkshopRouteChildren = {
   WorkshopIdRoute: WorkshopIdRoute,
-  WorkshopBarcodeScannerRoute: WorkshopBarcodeScannerRoute,
   WorkshopGoldBookRoute: WorkshopGoldBookRoute,
-  WorkshopOutsideWorkRoute: WorkshopOutsideWorkRoute,
-  WorkshopOutsideWorkerBooksRoute: WorkshopOutsideWorkerBooksRoute,
-  WorkshopPolishingRoute: WorkshopPolishingRoute,
-  WorkshopPolishingBooksRoute: WorkshopPolishingBooksRoute,
   WorkshopWorkerBooksRoute: WorkshopWorkerBooksRoute,
   WorkshopIndexRoute: WorkshopIndexRoute,
   WorkshopBookJewellerIdRoute: WorkshopBookJewellerIdRoute,
   WorkshopFilingsSlipIdRoute: WorkshopFilingsSlipIdRoute,
   WorkshopGoldBookPrintWorkerIdRoute: WorkshopGoldBookPrintWorkerIdRoute,
-  WorkshopJobCardOrderIdRoute: WorkshopJobCardOrderIdRoute,
-  WorkshopOutsideWorkerBookPartyIdRoute: WorkshopOutsideWorkerBookPartyIdRoute,
-  WorkshopPolishingBookPartyIdRoute: WorkshopPolishingBookPartyIdRoute,
   WorkshopReceiveSlipIdRoute: WorkshopReceiveSlipIdRoute,
   WorkshopWorkerBookWorkerIdRoute: WorkshopWorkerBookWorkerIdRoute,
   WorkshopMaterialSlipWorkerIdDateRoute: WorkshopMaterialSlipWorkerIdDateRoute,
-  WorkshopPrintJobCardOrderIdRoute: WorkshopPrintJobCardOrderIdRoute,
 }
 
 const WorkshopRouteWithChildren = WorkshopRoute._addFileChildren(
@@ -3235,22 +1895,15 @@ const WorkshopRouteWithChildren = WorkshopRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AttendanceRoute: AttendanceRouteWithChildren,
-  BarcodeRoute: BarcodeRoute,
   BillingRoute: BillingRouteWithChildren,
-  CatalogRoute: CatalogRouteWithChildren,
-  CommunicationsRoute: CommunicationsRouteWithChildren,
-  DashboardRoute: DashboardRouteWithChildren,
+  DashboardRoute: DashboardRoute,
+  DocumentsRoute: DocumentsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HelpRoute: HelpRoute,
   InviteRoute: InviteRouteWithChildren,
   LedgerRoute: LedgerRoute,
-  ManufacturingRoute: ManufacturingRouteWithChildren,
-  MeltRoute: MeltRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
-  OrdersRoute: OrdersRouteWithChildren,
   OtpLoginRoute: OtpLoginRoute,
-  RepairRoute: RepairRouteWithChildren,
   ReportsRoute: ReportsRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRouteWithChildren,
@@ -3260,21 +1913,14 @@ const rootRouteChildren: RootRouteChildren = {
   WhatsappRoute: WhatsappRoute,
   WorkshopRoute: WorkshopRouteWithChildren,
   AuthCallbackRoute: AuthCallbackRoute,
-  ComingSoonBarcodePrintingRoute: ComingSoonBarcodePrintingRoute,
-  ComingSoonBarcodeScannerRoute: ComingSoonBarcodeScannerRoute,
-  ComingSoonMeenaBookRoute: ComingSoonMeenaBookRoute,
   DocTokenRoute: DocTokenRoute,
   PeopleIdRoute: PeopleIdRoute,
   PeopleImportRoute: PeopleImportRoute,
-  SettlementIdRoute: SettlementIdRoute,
-  SettlementNewRoute: SettlementNewRoute,
   BranchesIndexRoute: BranchesIndexRoute,
-  ExpensesIndexRoute: ExpensesIndexRoute,
   HardwareIndexRoute: HardwareIndexRoute,
   PeopleIndexRoute: PeopleIndexRoute,
   PeopleLedgerPrintIdRoute: PeopleLedgerPrintIdRoute,
   PeoplePrintIdRoute: PeoplePrintIdRoute,
-  SettlementDraftPrintIdRoute: SettlementDraftPrintIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

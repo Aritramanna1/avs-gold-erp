@@ -3,7 +3,7 @@
 We welcome contributions to AVS Gold ERP! To maintain a clean and reliable codebase, please adhere to the following contribution workflow.
 
 ## Development Standards
-- **Clean Architecture**: Follow the established offline-first database repositories and store patterns.
+- **Clean Architecture**: Keep Supabase PostgreSQL as the only primary data source and use cloud-backed repositories.
 - **Strict Linting & Formatting**: Ensure code adheres to ESLint rules and Prettier formats:
   ```bash
   npm run lint

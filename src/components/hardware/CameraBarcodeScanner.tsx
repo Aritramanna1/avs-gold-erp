@@ -4,8 +4,7 @@ import { Camera, CameraOff, AlertTriangle } from "lucide-react";
 
 /**
  * Live camera barcode/QR scanner — uses the browser's native BarcodeDetector
- * API (supported in Electron's Chromium engine) rather than pulling in a
- * separate scanning library, since Electron already ships everything this
+ * API without pulling in a separate scanning library.
  * needs. Detects camera availability, requests permission explicitly, runs
  * a live detection loop while open, and fails gracefully (clear message,
  * never a crash) if no camera exists, permission is denied, or

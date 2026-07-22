@@ -235,7 +235,7 @@ class HardwareService {
     const settings = useSettings.getState().hardware;
 
     if (job.rawCommands) {
-      // In a real desktop environment with Electron or direct WebUSB, we stream commands.
+      // Browser hardware APIs are optional; the UI falls back to manual entry.
       // In the web preview we fall back to browser print with styled structures.
     }
 

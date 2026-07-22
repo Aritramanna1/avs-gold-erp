@@ -2,9 +2,7 @@
  * Provider-neutral structured-data facade.
  *
  * UI, stores, and services import this module—not the Supabase integration.
- * Offline and Hybrid calls resolve to SQLite. Only synchronization internals
- * may request the raw Hybrid cloud client. Online resolves to the configured
- * managed data client.
+ * All UI, stores, and services resolve to the configured Supabase data client.
  */
 import {
   getRawSupabaseClient,
@@ -25,7 +23,7 @@ export const dataProvider = new Proxy({} as DataClient, {
 /** Compatibility alias for existing dynamic imports during provider migration. */
 export { dataProvider as supabase };
 
-/** Restricted to synchronization/migration infrastructure. */
+/** Compatibility alias used by services that need the direct client. */
 export function getCloudDataClient(): ReturnType<typeof getRawSupabaseClient> {
   return getRawSupabaseClient();
 }

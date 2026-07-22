@@ -1,7 +1,7 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 import { RequireAction } from "@/components/role-gate";
-import { BillingModule } from "@/modules/billing/BillingModule";
+import { WorkshopBillingModule } from "@/modules/billing/WorkshopBillingModule";
 
 const SearchSchema = z.object({
   orderId: z.string().optional(),
@@ -21,5 +21,5 @@ export const Route = createFileRoute("/billing/new")({
 
 function NewInvoicePage() {
   const { orderId, stockId, jobId } = useSearch({ from: "/billing/new" });
-  return <BillingModule orderId={orderId} stockId={stockId} jobId={jobId} />;
+  return <WorkshopBillingModule />;
 }

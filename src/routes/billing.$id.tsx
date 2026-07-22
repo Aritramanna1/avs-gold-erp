@@ -394,8 +394,7 @@ function InvoiceDetailPage() {
             </div>
             {inv.orderId && (
               <Link
-                to="/orders/$id"
-                params={{ id: inv.orderId }}
+                to="/billing"
                 className="text-xs text-gold underline mt-3 inline-block"
               >
                 Linked order: {inv.orderNo}

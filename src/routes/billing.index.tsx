@@ -11,7 +11,6 @@ import { mgToGrams } from "@/lib/gold";
 import { usePeople } from "@/lib/people-store";
 import { useCan } from "@/lib/rbac";
 import { FileText, Plus, Receipt, Search, Coins, Printer } from "lucide-react";
-import { GoldSettlementTab } from "@/components/GoldSettlementTab";
 import { useEffect } from "react";
 import {
   useSettlements,
@@ -99,7 +98,7 @@ function BillingIndex() {
               </Button>
             </Link>
             {can("billing.create") ? (
-              <Link to="/settlement/new">
+              <Link to="/billing">
                 <Button variant="outline" data-testid="billing-create-settlement" className="gap-2">
                   <Plus className="h-4 w-4" /> New Settlement
                 </Button>
@@ -141,9 +140,6 @@ function BillingIndex() {
           </TabsTrigger>
           <TabsTrigger value="ledger" className="gap-2">
             Customer Ledger
-          </TabsTrigger>
-          <TabsTrigger value="settlements" className="gap-2">
-            <Coins className="h-4 w-4 text-gold" /> Gold Settlements
           </TabsTrigger>
           <TabsTrigger value="customer-settlements" className="gap-2">
             <FileText className="h-4 w-4" /> Customer Settlements
@@ -282,10 +278,6 @@ function BillingIndex() {
           <CustomerLedgerView invoices={invoices} customers={people} />
         </TabsContent>
 
-        <TabsContent value="settlements" className="mt-4">
-          <GoldSettlementTab />
-        </TabsContent>
-
         <TabsContent value="customer-settlements" className="mt-4">
           <CustomerSettlementsList />
         </TabsContent>
@@ -342,7 +334,7 @@ function CustomerSettlementsList() {
                 </Badge>
               </td>
               <td className="text-right">
-                <Link to="/settlement/$id" params={{ id: s.id }}>
+                <Link to="/billing">
                   <Button size="sm" variant="outline">
                     Open
                   </Button>

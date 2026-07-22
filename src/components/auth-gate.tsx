@@ -5,127 +5,18 @@ import type { Session } from "@supabase/supabase-js";
 import { resetAllBusinessStores } from "@/lib/session-cleanup";
 import { useSettings } from "@/lib/settings-store";
 import { AuthLayout } from "@/components/layout/AuthLayout";
-import { LocalAuthLayout } from "@/components/layout/LocalAuthLayout";
-import { useDeploymentMode, hydrateDeploymentMode } from "@/lib/deployment-mode";
-import { getLocalSessionUser } from "@/lib/local-auth";
-import { applyUserBranchAccess } from "@/lib/permissions";
-import { SetupWizard } from "@/components/setup-wizard";
 import { AppBootSkeleton } from "@/components/app-boot-skeleton";
 
 // The data loader imports every operational store. Keep it out of the initial
 // authentication bundle and load it only after a session has been established.
 const startCloudSync = async () => (await import("@/lib/data-loader")).startCloudSync();
-const startLocalLoad = async () => (await import("@/lib/data-loader")).startLocalLoad();
 const pullAll = async () => (await import("@/lib/data-loader")).pullAll();
 const stopCloudSync = () => {
   void import("@/lib/data-loader").then((loader) => loader.stopCloudSync());
 };
 
-/**
- * Deployment-mode switch: hydrates the persisted mode once at boot, shows the
- * first-run setup wizard if none has ever been chosen (fresh install), then
- * dispatches to OfflineAuthGate (no Supabase, ever) or OnlineAuthGate
- * (unchanged, today's exact Supabase-only flow — also what every pre-existing
- * install without a chosen mode falls back to).
- */
 export function AuthGate({ children }: { children: ReactNode }) {
-  const mode = useDeploymentMode((s) => s.mode);
-  const hydrated = useDeploymentMode((s) => s.hydrated);
-
-  useEffect(() => {
-    // Never let a slow/failed local-DB init (deployment mode lives in local
-    // SQLite) hang the whole app on the boot skeleton. If it rejects, or takes
-    // too long, mark hydrated anyway so the app opens — a null mode falls
-    // through to the setup wizard rather than an infinite loader.
-    let settled = false;
-    const settle = () => {
-      settled = true;
-    };
-    void hydrateDeploymentMode()
-      .then(settle)
-      .catch((err) => {
-        console.error("[AuthGate] deployment mode hydrate failed:", err);
-        settle();
-        if (!useDeploymentMode.getState().hydrated) {
-          useDeploymentMode.setState({ hydrated: true });
-        }
-      });
-    const valve = setTimeout(() => {
-      if (!settled && !useDeploymentMode.getState().hydrated) {
-        console.error("[AuthGate] deployment mode hydrate timed out — opening anyway");
-        useDeploymentMode.setState({ hydrated: true });
-      }
-    }, 12_000);
-    return () => clearTimeout(valve);
-  }, []);
-
-  if (!hydrated) {
-    return <AppBootSkeleton />;
-  }
-
-  if (!mode) {
-    return <SetupWizard onComplete={() => void hydrateDeploymentMode()} />;
-  }
-
-  if (mode !== "online") return <OfflineAuthGate>{children}</OfflineAuthGate>;
   return <OnlineAuthGate>{children}</OnlineAuthGate>;
-}
-
-function OfflineAuthGate({ children }: { children: ReactNode }) {
-  const [checking, setChecking] = useState(true);
-  const [role, setRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    // getLocalSessionUser() awaits initLocalDb(); if that rejects or is slow,
-    // this MUST still clear `checking` (via catch + valve) — otherwise the app
-    // hangs on the boot skeleton forever. On failure we fall through to the
-    // local login screen rather than blocking.
-    void getLocalSessionUser()
-      .then((user) => {
-        if (!mounted) return;
-        if (user) {
-          useSettings.getState().setCurrentUserRole(user.role);
-          applyUserBranchAccess(user);
-          void startLocalLoad();
-          setRole(user.role);
-        }
-      })
-      .catch((err) => {
-        console.error("[OfflineAuthGate] session restore failed:", err);
-      })
-      .finally(() => {
-        if (mounted) setChecking(false);
-      });
-    const valve = setTimeout(() => {
-      if (mounted) setChecking(false);
-    }, 12_000);
-    return () => {
-      mounted = false;
-      clearTimeout(valve);
-    };
-  }, []);
-
-  if (checking) {
-    return <AppBootSkeleton />;
-  }
-
-  if (!role) {
-    return (
-      <LocalAuthLayout
-        onSuccess={(_userId, loggedInRole) => {
-          useSettings.getState().setCurrentUserRole(loggedInRole);
-          // Branch isolation (SAD §7) — re-read the session user for its
-          // branch assignment, which onSuccess does not carry.
-          void getLocalSessionUser().then((u) => u && applyUserBranchAccess(u));
-          void startLocalLoad();
-          setRole(loggedInRole);
-        }}
-      />
-    );
-  }
-
-  return <>{children}</>;
 }
 
 // Module-level flag: persists across HMR remounts within the same browser session.

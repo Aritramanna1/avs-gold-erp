@@ -1,107 +1,8 @@
-/**
- * Print path for every generated document (Job Card, KYC Cover Sheet,
- * Manufacturing Bill, Dispatch Slip, Ledger Statement, ...).
- *
- * Only the document itself is printed: the printable HTML is built from the
- * PrintLayout roots on the page, so no toolbar, dialog, toast, overlay or any
- * other application chrome can reach the paper — they are not in the document
- * that gets sent to the printer at all, rather than being hidden by CSS and
- * hoping every overlay was covered by a selector.
- *
- * On the desktop (Electron) the HTML is rendered to a PDF and shown in
- * Chromium's PDF viewer, so the user gets a real preview and prints the exact
- * bytes they previewed. In a plain browser there is no such bridge, so we fall
- * back to window.print() (whose own preview the browser provides).
- */
-
-import { useSettings, type PrinterProfile } from "@/lib/settings-store";
-
-const PRINT_ROOT_SELECTOR = '[data-testid="print-layout-root"]';
+/** Browser-only document printing helpers for the Workshop ERP. */
 
 /**
- * Maps a PrinterProfile's paperSize to a valid CSS `size` value for `@page`.
- * Falls back to "auto" when no profile is available.
- */
-function cssPageSize(profile: PrinterProfile | undefined): string {
-  if (!profile) return "auto";
-  switch (profile.paperSize) {
-    case "A4":
-      return profile.orientation === "landscape" ? "A4 landscape" : "A4";
-    case "A5":
-      return profile.orientation === "landscape" ? "A5 landscape" : "A5";
-    case "80mm":
-      return "80mm 297mm"; // thermal roll: width fixed, height auto-cut
-    case "58mm":
-      return "58mm 297mm";
-    case "40x25":
-      return "40mm 25mm";
-    case "50x25":
-      return "50mm 25mm";
-    default:
-      return "auto";
-  }
-}
-
-/** Every stylesheet on the page, inlined — the print window loads no external assets. */
-function collectStyles(): string {
-  let css = "";
-  for (const sheet of Array.from(document.styleSheets)) {
-    try {
-      for (const rule of Array.from(sheet.cssRules)) css += rule.cssText + "\n";
-    } catch {
-      // A stylesheet we cannot read (cross-origin) — skip it. Every stylesheet
-      // this app ships is same-origin, so this is a defensive skip, not a
-      // silent loss of the document's styling.
-    }
-  }
-  return css;
-}
-
-async function toDataUrl(src: string): Promise<string | null> {
-  try {
-    let resolvedSrc = src;
-    if (src.startsWith("/") && window.location.protocol === "file:") {
-      const base = window.location.href.substring(0, window.location.href.lastIndexOf("/"));
-      resolvedSrc = `${base}${src}`;
-    } else if (
-      !src.includes("://") &&
-      !src.startsWith("data:") &&
-      !src.startsWith("blob:") &&
-      window.location.protocol === "file:"
-    ) {
-      const base = window.location.href.substring(0, window.location.href.lastIndexOf("/"));
-      resolvedSrc = `${base}/${src}`;
-    }
-    const response = await fetch(resolvedSrc);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const blob = await response.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
-  } catch (err) {
-    console.warn("[print] could not inline image:", src, err);
-    return null;
-  }
-}
-
-/**
- * Serializes `root` with every image embedded as a data: URL.
- *
- * Printing on the desktop hands the document's HTML to a SEPARATE Electron
- * window (see main.ts PRINT_HTML / PRINT_PREVIEW_HTML). A `blob:` object URL —
- * which is what the local file vault hands back for any stored attachment: a
- * worker's photo, a scanned Aadhaar/PAN/GST certificate, a signature, a design
- * photo on a job card — is scoped to the document that created it and resolves
- * to nothing in that other window, so the image prints as its alt text and the
- * document goes out with a blank box where a mandatory scan should be. An
- * `http(s):` src fails the same way on a workshop floor with no network.
- *
- * Embedding the bytes is the only form that survives the window boundary, an
- * offline install, and a restart. Every printable document in the ERP goes
- * through here, so a new attachment type needs no print-side work.
+ * Clone printable markup and inline images where possible so browser print
+ * previews remain self-contained. The browser owns the actual print dialog.
  */
 export async function serializeWithInlinedImages(root: HTMLElement): Promise<string> {
   const clone = root.cloneNode(true) as HTMLElement;
@@ -109,129 +10,48 @@ export async function serializeWithInlinedImages(root: HTMLElement): Promise<str
   const clonedImgs = Array.from(clone.querySelectorAll("img"));
 
   await Promise.all(
-    clonedImgs.map(async (img, idx) => {
+    clonedImgs.map(async (img, index) => {
       const src = img.getAttribute("src");
       if (!src || src.startsWith("data:")) return;
-
-      const originalImg = originalImgs[idx];
-      if (originalImg && originalImg.complete && originalImg.naturalWidth > 0) {
+      const original = originalImgs[index];
+      if (original?.complete && original.naturalWidth > 0) {
         try {
           const canvas = document.createElement("canvas");
-          canvas.width = originalImg.naturalWidth;
-          canvas.height = originalImg.naturalHeight;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.drawImage(originalImg, 0, 0);
-            const dataUrl = canvas.toDataURL("image/png");
-            img.setAttribute("src", dataUrl);
+          canvas.width = original.naturalWidth;
+          canvas.height = original.naturalHeight;
+          const context = canvas.getContext("2d");
+          if (context) {
+            context.drawImage(original, 0, 0);
+            img.setAttribute("src", canvas.toDataURL("image/png"));
             return;
           }
-        } catch (canvasErr) {
-          console.warn("[print] canvas inline failed for:", src, canvasErr);
+        } catch {
+          // Fall through to a fetch-based inline attempt.
         }
       }
-
-      const dataUrl = await toDataUrl(src);
-      if (dataUrl) img.setAttribute("src", dataUrl);
+      try {
+        const response = await fetch(src);
+        if (!response.ok) return;
+        const blob = await response.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        });
+        img.setAttribute("src", dataUrl);
+      } catch {
+        // A missing optional image must not prevent the document from printing.
+      }
     }),
   );
+
   return clone.outerHTML;
 }
 
-/** The document's own markup: the PrintLayout roots, in page order. */
-async function collectDocumentHtml(): Promise<string> {
-  const roots = Array.from(document.querySelectorAll<HTMLElement>(PRINT_ROOT_SELECTOR));
-  if (roots.length === 0) return "";
-
-  const htmls = await Promise.all(roots.map((root) => serializeWithInlinedImages(root)));
-
-  return htmls
-    .map((html, i) =>
-      i === 0
-        ? `<section>${html}</section>`
-        : `<section style="break-before: page;">${html}</section>`,
-    )
-    .join("\n");
-}
-
-async function buildPrintableHtml(docLabel?: string): Promise<string> {
-  // Resolve the printer profile for this document category (e.g. "Invoice",
-  // "Receipt", "Job Card") so we can inject the correct @page CSS. Falls
-  // back to no @page rule (browser defaults) when no profile matches.
-  const profile = docLabel
-    ? useSettings.getState().printerProfiles.find((p) => p.templateMapping.includes(docLabel))
-    : undefined;
-
-  const pageSize = cssPageSize(profile);
-  const margins = profile
-    ? `${profile.margins.top}mm ${profile.margins.right}mm ${profile.margins.bottom}mm ${profile.margins.left}mm`
-    : "0";
-
-  return `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <style>${collectStyles()}</style>
-    <style>
-      /* Dynamic @page rule from Printer Profile settings */
-      @page { size: ${pageSize}; margin: ${margins}; }
-      /* The print window contains only the document — make its on-screen
-         (PDF) rendering identical to its print rendering. */
-      body { margin: 0; background: #fff; color: #000; }
-      section { break-inside: auto; }
-    </style>
-  </head>
-  <body>${await collectDocumentHtml()}</body>
-</html>`;
-}
-
-interface DesktopPrintApi {
-  print?: {
-    previewHtml?: (
-      html: string,
-      options?: { title?: string; landscape?: boolean },
-    ) => Promise<{ success: boolean; error?: string }>;
-  };
-}
-
-/**
- * Prints the document currently on screen. One click, no confirmation, no
- * limit on how many times a document may be printed (V1: unlimited reprints).
- * Returns once the print/preview has been handed off to the OS.
- *
- * @param title   — the window/tab title shown in the print preview
- * @param docLabel — category label used to resolve the Printer Profile
- *                   (e.g. "Invoice", "Receipt", "Job Card", "Label")
- */
+/** Open the browser's standard print dialog. */
 export async function printDocument(title?: string, docLabel?: string): Promise<void> {
-  const desktop = (window as unknown as { mtjDesktop?: DesktopPrintApi }).mtjDesktop;
-  const previewHtml = desktop?.print?.previewHtml;
-
-  if (!previewHtml) {
-    window.print();
-    return;
-  }
-
-  const html = await buildPrintableHtml(docLabel);
-  if (!html.includes("<section")) {
-    // No PrintLayout on this page — nothing to serialize. Print the page as
-    // the browser sees it rather than opening an empty preview.
-    window.print();
-    return;
-  }
-
-  // Resolve landscape orientation from the printer profile
-  const profile = docLabel
-    ? useSettings.getState().printerProfiles.find((p) => p.templateMapping.includes(docLabel))
-    : undefined;
-  const landscape = profile?.orientation === "landscape";
-
-  const result = await previewHtml(html, { title, landscape });
-  if (!result.success) {
-    console.error(
-      "[print] Preview failed, falling back to the browser print dialog:",
-      result.error,
-    );
-    window.print();
-  }
+  void title;
+  void docLabel;
+  window.print();
 }

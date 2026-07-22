@@ -173,8 +173,7 @@ export function LinkedOrders({ orders }: { orders: { orderId: string; orderNo: s
       {orders.map((o) => (
         <Link
           key={o.orderId}
-          to="/orders/$id"
-          params={{ id: o.orderId }}
+          to="/billing"
           className="font-mono text-gold hover:underline"
         >
           {o.orderNo}

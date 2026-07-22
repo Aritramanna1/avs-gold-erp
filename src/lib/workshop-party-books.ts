@@ -7,7 +7,7 @@
  * converted). This module holds that logic ONCE so the three book kinds are
  * thin adapters over it, not three copies.
  *
- * Read-only and offline-first: adapters read local zustand state only. Balances
+ * Read-only: adapters read the web application's state only. Balances
  * are "current payable gold" per purity — no salary/wastage/deduction math,
  * which belongs to the (configurable) Payment module.
  */

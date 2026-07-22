@@ -3,7 +3,6 @@
  *
  * Reports live cloud + auth + migration status to the UI.
  * Cloud is the source of truth once a user is signed in.
- * Local pilot storage remains as offline cache / fallback.
  */
 import { useEffect, useState } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
@@ -21,9 +20,9 @@ export function getDbStatusLabel(s: DbStatus): string {
     case "connected_authed":
       return "Cloud Connected · Signed in";
     case "connected_anon":
-      return "Cloud Connected · Local Pilot Storage";
+      return "Cloud Connected · Authentication Required";
     case "not_connected":
-      return "Cloud Not Connected · Using Local Pilot Storage";
+      return "Cloud Not Connected";
   }
 }
 

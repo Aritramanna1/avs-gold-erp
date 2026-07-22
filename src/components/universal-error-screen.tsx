@@ -3,7 +3,6 @@ import { AlertTriangle, ChevronDown, Copy, Headphones, Home, RotateCcw, Undo2 } 
 
 import { Button } from "@/components/ui/button";
 import { formatErrorDetails, type NormalizedAppError } from "@/lib/error-handling";
-import { clearLocalDatabase } from "@/lib/local-db";
 
 interface UniversalErrorScreenProps {
   error: NormalizedAppError;
@@ -25,7 +24,6 @@ export function UniversalErrorScreen({
   onBack,
 }: UniversalErrorScreenProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const isDatabaseCritical = error.category === "database" && error.severity === "critical";
   const details = formatErrorDetails(error);
 
   return (
@@ -86,24 +84,6 @@ export function UniversalErrorScreen({
             Contact Support
           </Button>
         </div>
-
-        {isDatabaseCritical ? (
-          <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
-            <p className="text-sm text-muted-foreground">
-              Use this only after confirming synced data or a verified backup is available.
-            </p>
-            <Button
-              className="mt-3"
-              variant="destructive"
-              onClick={async () => {
-                await clearLocalDatabase();
-                window.location.reload();
-              }}
-            >
-              Reset Local Database and Reload
-            </Button>
-          </div>
-        ) : null}
 
         <div className="rounded-md border border-border">
           <button

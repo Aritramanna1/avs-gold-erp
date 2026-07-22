@@ -17,72 +17,6 @@ interface AuthLayoutProps {
   onSuccess?: () => void;
 }
 
-/**
- * Secures individual user authorization state inside the MTJ ERP system.
- * Returns { allowed: true } if active directory matches, or descriptive error string otherwise.
- */
-export async function verifyUserRoleAndStatus(
-  userEmail: string,
-): Promise<{ allowed: boolean; error?: string }> {
-  if (!userEmail) {
-    return { allowed: false, error: "Missing email address." };
-  }
-
-  let users = useSettings.getState().users;
-  let matched = users.find((u) => u.email.toLowerCase() === userEmail.toLowerCase());
-
-  if (!matched) {
-    try {
-      const { data, error } = await supabase
-        .from("app_settings")
-        .select("data")
-        .eq("id", "firm")
-        .maybeSingle();
-
-      if (error) {
-        console.error("[AuthLayout] Supabase app_settings fetch failed:", error);
-      } else if (data?.data) {
-        const payload = data.data as any;
-        if (payload.users && Array.isArray(payload.users)) {
-          useSettings.setState({
-            users: payload.users,
-            firm: payload.firm ?? useSettings.getState().firm,
-            branches: payload.branches ?? useSettings.getState().branches,
-          });
-          users = payload.users;
-          matched = users.find((u) => u.email.toLowerCase() === userEmail.toLowerCase());
-        }
-      }
-    } catch (err) {
-      console.error("[AuthLayout] Failed to dynamically sync app_settings:", err);
-    }
-  }
-
-  if (!matched) {
-    return {
-      allowed: false,
-      error: "Your account exists, but AVS Gold ERP profile is not linked. Contact admin.",
-    };
-  }
-
-  if (!matched.active) {
-    return {
-      allowed: false,
-      error: "Your account is deactivated. Contact admin.",
-    };
-  }
-
-  if (!matched.role) {
-    return {
-      allowed: false,
-      error:
-        "Your account exists, but no role is assigned to it under AVS Gold ERP. Contact admin.",
-    };
-  }
-
-  return { allowed: true };
-}
-
 export function AuthLayout({ prefilledError, onClearError, onSuccess }: AuthLayoutProps) {
   const { t } = useLanguage();
   const { firm, branding } = useSettings();
@@ -128,174 +62,24 @@ export function AuthLayout({ prefilledError, onClearError, onSuccess }: AuthLayo
     const targetEmail = email.trim();
 
     try {
-      // 1. Initial lookup to see if email exists in active users list
-      // Note: We bypass this check if it's the superowner or if we don't have the user cached yet
-      await verifyUserRoleAndStatus(targetEmail);
-
-      let authUser = null;
-      let authSession = null;
-      let functionInvokedSuccessfully = false;
-      let isRateLimited = false;
-      let lockMinutes = 60;
-
-      try {
-        // Route the sign-in form through the "auth-login" Edge Function.
-        // NOTE: The Edge Function login rate-limiting lockout is a secondary UX lockout boundary,
-        // while the ultimate security boundary is handled natively by the database / Supabase auth settings.
-        const { data: funcData, error: funcErr } = await supabase.functions.invoke("auth-login", {
-          body: { email: targetEmail, password },
-        });
-
-        if (funcErr) {
-          const status = funcErr.status || (funcErr as any).statusCode;
-          if (status === 429) {
-            isRateLimited = true;
-          }
-          throw funcErr;
+      const { error } = await supabase.auth.signInWithPassword({
+        email: targetEmail,
+        password,
+      });
+      if (error) {
+        if (error.status === 429) {
+          setLockedUntil(Date.now() + 5 * 60 * 1000);
+          setErr("Too many failed attempts. Please try again later.");
+        } else {
+          setErr(error.message || "Invalid email or password.");
         }
-
-        if (funcData) {
-          if (funcData.locked) {
-            isRateLimited = true;
-            lockMinutes = funcData.retryAfterMinutes || 60;
-            throw new Error(
-              funcData.error ||
-                `Too many failed attempts. Try again in about ${lockMinutes} minutes.`,
-            );
-          }
-
-          if (funcData.error) {
-            throw new Error(funcData.error);
-          }
-
-          // Successful authentication via Edge Function
-          authSession = funcData.session;
-          authUser = funcData.user;
-          functionInvokedSuccessfully = true;
-        }
-      } catch (ex: any) {
-        console.warn(
-          "[AuthLayout] Edge function login failed or not found, verifying rate-limit status.",
-          ex,
-        );
-
-        // Handle explicit rate limit responses from our Edge Function
-        if (
-          isRateLimited ||
-          ex.status === 429 ||
-          ex.message?.includes("Too many failed attempts") ||
-          ex.message?.includes("429")
-        ) {
-          const errMsg = ex.message?.includes("minutes")
-            ? ex.message
-            : `Too many failed attempts. Try again in about ${lockMinutes} minutes.`;
-          setErr(errMsg);
-          setLockedUntil(Date.now() + lockMinutes * 60 * 1000);
-          useSettings
-            .getState()
-            .addSecurityLog(
-              "rate limited",
-              `Sign-in attempt rate limited for ${targetEmail}: ${errMsg}`,
-              targetEmail,
-            );
-          setBusy(false);
-          return;
-        }
-
-        // Handle generic 401 unauthenticated response from Edge Function
-        if (
-          ex.status === 401 ||
-          ex.message?.includes("Invalid email or password") ||
-          ex.message?.includes("401")
-        ) {
-          setErr("Invalid email or password.");
-          useSettings
-            .getState()
-            .addSecurityLog(
-              "failed login",
-              `Failed Edge Function auth attempt for ${targetEmail}: Invalid credentials`,
-              targetEmail,
-            );
-          setBusy(false);
-          return;
-        }
-
-        // Graceful fallback to client-side login if the Edge Function itself is unreachable
-
-        try {
-          const { data: fallbackData, error: fallbackErr } = await supabase.auth.signInWithPassword(
-            {
-              email: targetEmail,
-              password,
-            },
+        useSettings
+          .getState()
+          .addSecurityLog(
+            "failed login",
+            `Supabase sign-in failed for ${targetEmail}`,
+            targetEmail,
           );
-
-          if (fallbackErr) {
-            if (fallbackErr.status === 429) {
-              setErr("Too many failed attempts. Please try again later.");
-              setLockedUntil(Date.now() + 5 * 60 * 1000);
-            } else if (
-              fallbackErr.status === 400 ||
-              fallbackErr.message?.includes("Invalid login credentials") ||
-              fallbackErr.message?.includes("invalid_credentials")
-            ) {
-              setErr("Invalid email or password.");
-            } else {
-              setErr(
-                fallbackErr.message || "Authentication service error. Please try again later.",
-              );
-            }
-
-            useSettings
-              .getState()
-              .addSecurityLog(
-                "failed login",
-                `Failed fallback auth attempt for ${targetEmail}: ${fallbackErr.message}`,
-                targetEmail,
-              );
-            setBusy(false);
-            return;
-          }
-
-          if (fallbackData?.session) {
-            authSession = fallbackData.session;
-            authUser = fallbackData.user;
-            functionInvokedSuccessfully = false; // session is already loaded client-side, setSession not needed
-          } else {
-            throw new Error("No session returned from authentication provider.");
-          }
-        } catch (fallbackEx: any) {
-          console.error(
-            "[AuthLayout] Fallback client-side sign-in failed:",
-            fallbackEx.message || fallbackEx,
-          );
-          setErr("Login service is temporarily unavailable. Please try again later.");
-          useSettings
-            .getState()
-            .addSecurityLog(
-              "failed login",
-              `Login attempt for ${targetEmail} blocked due to login service outage: ${fallbackEx.message || fallbackEx}`,
-              targetEmail,
-            );
-          setBusy(false);
-          return;
-        }
-      }
-
-      if (functionInvokedSuccessfully && authSession) {
-        // Set the session on client-side Supabase client
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: authSession.access_token,
-          refresh_token: authSession.refresh_token,
-        });
-
-        if (sessionError) {
-          throw sessionError;
-        }
-      } else if (!authSession) {
-        // Fallback or unexpected condition
-        setErr("Login service returned an invalid response. Please try again later.");
-        setBusy(false);
         return;
       }
 

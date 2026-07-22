@@ -139,7 +139,7 @@ export const useLedger = create<LedgerState>()((set, get) => ({
   refresh: async () => {
     const runtime = await getRuntimeProviders();
     if (runtime.database.localPrimary) {
-      // Offline/Hybrid writes are committed to the local SQLite ledger first.
+      // Writes are committed to the cloud-backed ledger.
       // Reading Supabase here made the balance sheet lag behind Gold Stock
       // until a sync/reload, which split the accounting source of truth.
       const rows = await ledgerRepository.readAll();

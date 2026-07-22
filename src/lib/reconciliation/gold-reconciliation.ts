@@ -22,9 +22,9 @@
  * aggregation this pass didn't attempt — documented as a follow-up, not
  * silently implied.
  */
-import { runLocal, getDb, initLocalDb, queryTable } from "@/lib/local-db";
 import { useMfgBills, type ManufacturingBill } from "@/lib/manufacturing-bill-store";
 import { append as appendAuditEntry } from "@/lib/security/audit-log";
+import { getCloudDataClient } from "@/lib/providers/data-provider";
 
 export interface BillReconciliation {
   billId: string;
@@ -86,8 +86,6 @@ export async function runGoldReconciliation(
   branchId?: string,
   toleranceMg = DEFAULT_TOLERANCE_MG,
 ): Promise<ReconciliationReport> {
-  await initLocalDb();
-
   const bills = useMfgBills
     .getState()
     .bills.filter((b) => b.status !== "draft" && (!branchId || b.branchId === branchId));
@@ -105,20 +103,15 @@ export async function runGoldReconciliation(
     all,
   };
 
-  await runLocal(() => {
-    getDb().run(
-      `INSERT INTO gold_reconciliation_reports (id, generated_at, branch_id, total_checked, exception_count, report_json)
-       VALUES (?, ?, ?, ?, ?, ?);`,
-      [
-        report.id,
-        report.generatedAt,
-        branchId ?? null,
-        report.totalChecked,
-        report.exceptionCount,
-        JSON.stringify(report),
-      ],
-    );
+  const { error } = await getCloudDataClient().from("gold_reconciliation_reports" as any).insert({
+    id: report.id,
+    generated_at: report.generatedAt,
+    branch_id: branchId ?? null,
+    total_checked: report.totalChecked,
+    exception_count: report.exceptionCount,
+    report_json: report,
   });
+  if (error) throw error;
 
   for (const exception of exceptions) {
     await appendAuditEntry({
@@ -137,9 +130,13 @@ export async function runGoldReconciliation(
 }
 
 export async function getReconciliationHistory(limit = 50): Promise<ReconciliationReport[]> {
-  await initLocalDb();
-  const rows = (queryTable("gold_reconciliation_reports", "", []) as Record<string, unknown>[])
-    .sort((a, b) => (b.generated_at as string).localeCompare(a.generated_at as string))
-    .slice(0, limit);
-  return rows.map((r) => JSON.parse(r.report_json as string) as ReconciliationReport);
+  const { data, error } = await getCloudDataClient()
+    .from("gold_reconciliation_reports" as any)
+    .select("report_json")
+    .order("generated_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return ((data ?? []) as unknown as Array<{ report_json: ReconciliationReport }>).map(
+    (row) => row.report_json,
+  );
 }

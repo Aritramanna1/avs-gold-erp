@@ -182,45 +182,10 @@ export const useWaAutomation = create<WaAutomationState>((set, get) => ({
       updated_at: new Date().toISOString(),
     };
 
-    const { getDeploymentMode } = await import("@/lib/deployment-mode");
-    const mode = (await getDeploymentMode()) ?? "offline";
-    if (mode === "online") {
-      const { error } = await (supabase.from("branch_settings") as any).upsert(payload, {
-        onConflict: "branch_id",
-      });
-      if (error) throw new Error(error.message);
-      return;
-    }
-
-    const { runLocal, getDb, enqueueOutbox } = await import("@/lib/local-db");
-    await runLocal(() => {
-      const db = getDb();
-      const stmt = db.prepare("SELECT 1 FROM branch_settings WHERE branch_id = ?");
-      stmt.bind([branchId]);
-      const exists = stmt.step();
-      stmt.free();
-
-      if (exists) {
-        db.run(
-          "UPDATE branch_settings SET wa_config = ?, wa_automations = ?, updated_at = ? WHERE branch_id = ?",
-          [JSON.stringify(cfg), JSON.stringify(aut), payload.updated_at as string, branchId],
-        );
-      } else {
-        db.run(
-          "INSERT INTO branch_settings (branch_id, wa_config, wa_automations, updated_at) VALUES (?, ?, ?, ?)",
-          [branchId, JSON.stringify(cfg), JSON.stringify(aut), payload.updated_at as string],
-        );
-      }
-
-      enqueueOutbox(
-        `branch_settings:${branchId}:wa:${Date.now()}`,
-        "branch_settings",
-        branchId,
-        "insert",
-        payload,
-        null,
-      );
+    const { error } = await (supabase.from("branch_settings") as any).upsert(payload, {
+      onConflict: "branch_id",
     });
+    if (error) throw new Error(error.message);
   },
 
   async testConnection(branchId) {

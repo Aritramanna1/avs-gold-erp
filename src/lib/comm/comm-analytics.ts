@@ -3,7 +3,7 @@
  *
  * Searches/aggregates over the two places communication outcomes actually
  * live: `useCommLog` (every attempted send, in-memory + synced to
- * Supabase's communication_logs table) and the local `comm_queue` SQLite
+ * Supabase's communication_logs table) and the in-memory delivery queue
  * table (retryable failures — see comm-queue.ts). This is a read/query
  * layer only; it doesn't change how either is written.
  *
