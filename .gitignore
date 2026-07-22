@@ -37,22 +37,17 @@ dist-ssr
 .env.*.local
 .env.e2e
 
-# Playwright
-/e2e/report/
-/e2e/test-results/
-/e2e/.auth/
-/test-results/
-/playwright-report/
-/blob-report/
-
-# Electron build output
-electron-app/node_modules
-electron-app/dist
-electron-app/release
+# Generated build output
 release/
 release-build/
 out/
-build/LICENSE.txt
+coverage/
+e2e/report/
+e2e/test-results/
+e2e/.auth/
+test-results/
+playwright-report/
+blob-report/
 
 # Local test-build distributions and source exports (never committed)
 /AVS Gold ERP*Test Build/
@@ -68,17 +63,17 @@ tsconfig.tsbuildinfo
 .serena/cache/
 .serena/logs/
 
-# AI tooling scaffolding (agent/skill packs, not app code)
+# Local tooling and agent state
 .agents/
-.claude/agents/
-.claude/commands/
-.claude/helpers/
-.claude/skills/
-.claude/proven-config.json
-.claude/.proven-config-version
+.claude/
 .claude-flow/
 .codex/
+.qodo/
+.serena/
 .swarm/
+.reticle-chrome-profile/
+.scratch-verify/
+.tanstack/
 claude-obsidian/
 central-licensing/
 licensing-tool/

@@ -225,9 +225,7 @@ class HardwareService {
   }
 
   // --- 3. Centralized Printer Service ---
-  public async submitPrintJob(
-    job: PrintJob,
-  ): Promise<{
+  public async submitPrintJob(job: PrintJob): Promise<{
     success: boolean;
     message: string;
     jobId: string;

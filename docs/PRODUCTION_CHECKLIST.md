@@ -9,7 +9,7 @@ Run this AFTER `docs/option_b_schema.sql` has been applied to project
 - [ ] Web build deployed to Horizon (or running locally via `bun run dev`)
 - [ ] Owner role confirmed via `docs/OWNER_SETUP.sql`
 - [ ] No occurrences of `pyvuiyzjabggnjbuvzsj` in `dist/` (`rg pyvuiyzjabggnjbuvzsj dist/` returns nothing)
-- [ ] No occurrences of `SUPABASE_SERVICE_ROLE_KEY` in `dist/` or `electron-app/release/`
+- [ ] No service-role key is present in `dist/`
 
 ## Live workflow (sign in as owner)
 

@@ -39,7 +39,10 @@ export default async function globalSetup(config: FullConfig) {
     console.log("[global-setup] Authentication successful");
   } catch (err) {
     const pageUrl = page.url();
-    const bodyText = await page.locator("body").innerText().catch(() => "N/A");
+    const bodyText = await page
+      .locator("body")
+      .innerText()
+      .catch(() => "N/A");
     await browser.close();
     // No mock-session fallback: a login failure here means the whole suite
     // would otherwise run against a fabricated session, giving false

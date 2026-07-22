@@ -422,7 +422,11 @@ export default function NewMfgBill() {
 
       {/* ── Customer Gold Account Summary ── */}
       {customerLedger && (
-        <Card title={`Customer Gold Account — ${job.customerName}`} icon={Users} color="text-amber-400">
+        <Card
+          title={`Customer Gold Account — ${job.customerName}`}
+          icon={Users}
+          color="text-amber-400"
+        >
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <SummaryTile
               label="Gold Advance Available"

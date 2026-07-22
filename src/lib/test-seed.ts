@@ -11,6 +11,7 @@
  *
  * Only used by `/tmp/browser/audit/*.py` Playwright harnesses. No UI surface.
  */
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { useAttachments } from "./attachments-store";
 import { useBilling, type GstKind } from "./billing-store";

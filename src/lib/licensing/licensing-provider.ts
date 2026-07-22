@@ -173,7 +173,12 @@ export class SupabaseLicensingProvider implements LicensingProvider {
         enabledFeatures: features.filter((v): v is string => typeof v === "string"),
         maximumDevices: nullablePositiveInteger(body.maximumDevices),
         customerStatus: nullableString(body.customerStatus) ?? "invalid",
-        entitlement: typeof body.entitlement === "string" ? body.entitlement : (body.entitlement ? JSON.stringify(body.entitlement) : null),
+        entitlement:
+          typeof body.entitlement === "string"
+            ? body.entitlement
+            : body.entitlement
+              ? JSON.stringify(body.entitlement)
+              : null,
         signature: null,
         message: nullableString(body.message),
       };

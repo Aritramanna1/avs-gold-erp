@@ -615,13 +615,7 @@ export function generateDeliveryChallanPdf(challan: any, firm: FirmProfile): Blo
     dateStyle: "medium",
   });
 
-  let y = addPageHeader(
-    doc,
-    firm,
-    "Delivery Challan",
-    challan.challanNo || challan.id,
-    dateStr,
-  );
+  let y = addPageHeader(doc, firm, "Delivery Challan", challan.challanNo || challan.id, dateStr);
   y += 2;
 
   // Customer

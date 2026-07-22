@@ -1,63 +1,39 @@
-# MTJ ERP — Web Deployment (Horizon / static host)
+# Workshop ERP web deployment
 
-The web build is a TanStack Start app that talks directly to the external
-Supabase project `kjfjsfhftytezsjyegmb` using the publishable key only.
-No Lovable Cloud dependency.
+The application is a Vite React single-page application. Build it with Node.js 20+ and publish the contents of `dist/` to the hosting provider's document root.
 
-## 1. Configure env
+## Build
 
-`.env` (or your host's env vars) MUST contain:
-
-```
-VITE_SUPABASE_URL=https://kjfjsfhftytezsjyegmb.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_fThRlMsK8N5t_wU9_fzd7g_XBvvr-zW
-VITE_SUPABASE_PROJECT_ID=kjfjsfhftytezsjyegmb
-SUPABASE_URL=https://kjfjsfhftytezsjyegmb.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_fThRlMsK8N5t_wU9_fzd7g_XBvvr-zW
-SUPABASE_PROJECT_ID=kjfjsfhftytezsjyegmb
+```bash
+npm ci
+npm run build
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY` is set ONLY in the host's secret manager, never
-in `.env`, never in the git repo, never in `dist/`.
+The build output is `dist/`. It must contain `index.html`, `.htaccess`, `assets/`, and the public static assets.
 
-## 2. Build
+## Hostinger or Apache hosting
 
-```
-bun install
-bun run build
-```
+Upload the contents of `dist/` directly into the domain document root, usually `public_html/`. Do not upload the repository root, `src/`, or the Electron output.
 
-Output is `dist/` (or the framework's configured output dir). Verify:
+Keep the generated `dist/.htaccess` file. It provides the SPA fallback so client-side routes resolve to `index.html`.
 
-```
-rg pyvuiyzjabggnjbuvzsj dist/   # must return nothing
-rg SUPABASE_SERVICE_ROLE_KEY dist/   # must return nothing
-```
+Use these permissions:
 
-## 3. Upload to Horizon
+- directories: `755`
+- files: `644`
 
-1. Zip `dist/`:
+Do not upload the old root-level Hostinger deny-list configuration; it blocks `index.html` and JavaScript files and causes a 403 response.
 
-```
-cd dist && zip -r ../mtj-erp-web.zip . && cd ..
-```
+## Environment
 
-2. Upload `mtj-erp-web.zip` to your Horizon project (or extract to your VPS
-   web root). Configure Horizon to serve `index.html` as SPA fallback.
-3. Set the env vars above in Horizon's project settings.
-4. Re-deploy.
+Set the required `VITE_*` values in the hosting provider's build environment or in a local `.env` copied from `.env.example`. Never commit a populated `.env`, service-role key, password, token, or private key.
 
-## 4. Configure Supabase Auth redirects
+## Verification
 
-In the Supabase dashboard for `kjfjsfhftytezsjyegmb`:
+After deployment, verify:
 
-- Authentication → URL Configuration:
-  - Site URL: the public web URL (e.g. `https://erp.maatara.example`)
-  - Redirect URLs: add the same URL
-
-Without this, email confirmation and Google OAuth callbacks fail.
-
-## 5. Verify
-
-Open the deployed URL, sign up as `games48480@gmail.com`, run
-`docs/OWNER_SETUP.sql`, then walk `docs/PRODUCTION_CHECKLIST.md`.
+1. `/` loads `index.html`.
+2. A direct application route loads successfully after refresh.
+3. JavaScript and CSS files return HTTP 200.
+4. The browser console contains no missing-asset errors.
+5. The published bundle contains no service-role key or private credential.

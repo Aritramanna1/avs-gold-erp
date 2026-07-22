@@ -18,7 +18,8 @@ import { fineGoldMg, mgToGrams, parsePurity } from "./gold";
  * group by origin, and so the upcoming Payment module has a named slot
  * ("payment") to post into without the compiler having to guess from text.
  */
-export type LedgerSource = "settlement" | "order" | "invoice" | "payment" | "manufacturing_bill" | "delivery_challan";
+export type LedgerSource =
+  "settlement" | "order" | "invoice" | "payment" | "manufacturing_bill" | "delivery_challan";
 
 export interface CustomerLedgerRow {
   id: string;
@@ -482,7 +483,7 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
   const challans = useDeliveryChallans
     .getState()
     .challans.filter((c) => c.customerId === customerId && c.status === "issued");
-    
+
   for (const c of challans) {
     const ts = c.createdAt;
     const dateStr = new Date(ts).toLocaleDateString("en-IN", {
@@ -490,15 +491,15 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
       month: "short",
       year: "numeric",
     });
-    
+
     // Sum the fine gold out from the items
     let goldOutMg = 0;
     let grossMg = 0;
     for (const item of c.items) {
-       goldOutMg += item.fineMg;
-       grossMg += item.grossMg;
+      goldOutMg += item.fineMg;
+      grossMg += item.grossMg;
     }
-    
+
     if (goldOutMg > 0) {
       rawRows.push({
         id: c.id,
