@@ -128,14 +128,16 @@ function secureStore(): DesktopSecureStore {
   const desktop = (window as unknown as { mtjDesktop?: { secureStore?: DesktopSecureStore } })
     .mtjDesktop;
   if (desktop?.secureStore) return desktop.secureStore;
-  if (import.meta.env.DEV) {
-    return {
-      get: async () => window.sessionStorage.getItem(SECURE_LICENSE_KEY),
-      set: async (_key, value) => window.sessionStorage.setItem(SECURE_LICENSE_KEY, value),
-      delete: async () => window.sessionStorage.removeItem(SECURE_LICENSE_KEY),
-    };
-  }
-  throw new Error("Secure desktop license storage is unavailable.");
+  // Browser web build (no Electron/OS keychain available): the stored value
+  // is an Ed25519-signed server envelope, not a secret — safe to cache in
+  // localStorage. Previously this fallback only ran in DEV and threw in
+  // production, which meant the license gate blocked every logged-in screen
+  // on the web deploy (caught via Playwright login smoke test).
+  return {
+    get: async () => window.localStorage.getItem(SECURE_LICENSE_KEY),
+    set: async (_key, value) => window.localStorage.setItem(SECURE_LICENSE_KEY, value),
+    delete: async () => window.localStorage.removeItem(SECURE_LICENSE_KEY),
+  };
 }
 
 function decodeBase64Url(value: string): Uint8Array {

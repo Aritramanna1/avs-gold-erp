@@ -2,6 +2,11 @@
   AddType application/wasm .wasm
 </IfModule>
 
+<IfModule mod_headers.c>
+  Header always set X-Frame-Options "DENY"
+  Header always set Content-Security-Policy-Report-Only "frame-ancestors 'none'"
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
