@@ -599,7 +599,7 @@ function OpeningVaultForm() {
           <h2 className="font-serif text-xl text-gold">Record Opening Vault Gold</h2>
           <p className="text-sm text-muted-foreground mt-1">
             One-time or periodic opening entry of physical gold in the vault. Fine gold is
-            calculated as gross × purity ÷ 1000.
+            calculated as gross × purity ÷ 999 (this shop's touch convention).
           </p>
         </div>
 
@@ -727,7 +727,7 @@ function OpeningVaultForm() {
           <div className="mt-4 text-[11px] text-destructive">{previewError}</div>
         ) : null}
         <div className="mt-6 pt-4 border-t border-border text-[11px] text-muted-foreground">
-          Formula: fine = gross × purity ÷ 1000, rounded to nearest mg. All math runs on integer
+          Formula: fine = gross × purity ÷ 999, rounded to nearest mg. All math runs on integer
           milligrams to avoid floating-point error.
         </div>
       </aside>
