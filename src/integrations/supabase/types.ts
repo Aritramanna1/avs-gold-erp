@@ -38,20 +38,74 @@ export type Database = {
       approval_requests: {
         Row: {
           created_at: string;
-          data: Json;
+          data: Json | null;
           id: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
-          data?: Json;
+          data?: Json | null;
           id: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
-          data?: Json;
+          data?: Json | null;
           id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      attachments: {
+        Row: {
+          created_at: string;
+          data: Json;
+          deleted_at: string | null;
+          deleted_by: string | null;
+          file_name: string | null;
+          firm_id: string | null;
+          id: string;
+          is_deleted: boolean;
+          kind: string;
+          linked_id: string;
+          linked_table: string;
+          mime_type: string | null;
+          size_bytes: number | null;
+          storage_path: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          file_name?: string | null;
+          firm_id?: string | null;
+          id: string;
+          is_deleted?: boolean;
+          kind: string;
+          linked_id: string;
+          linked_table: string;
+          mime_type?: string | null;
+          size_bytes?: number | null;
+          storage_path?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          file_name?: string | null;
+          firm_id?: string | null;
+          id?: string;
+          is_deleted?: boolean;
+          kind?: string;
+          linked_id?: string;
+          linked_table?: string;
+          mime_type?: string | null;
+          size_bytes?: number | null;
+          storage_path?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -61,9 +115,12 @@ export type Database = {
           created_at: string;
           data: Json;
           date: string;
+          deleted_at: string | null;
+          deleted_by: string | null;
           firm_id: string | null;
           hours: number | null;
           id: string;
+          is_deleted: boolean;
           status: string;
           updated_at: string;
           worker_id: string;
@@ -72,9 +129,12 @@ export type Database = {
           created_at?: string;
           data?: Json;
           date: string;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           firm_id?: string | null;
           hours?: number | null;
           id: string;
+          is_deleted?: boolean;
           status: string;
           updated_at?: string;
           worker_id: string;
@@ -83,9 +143,12 @@ export type Database = {
           created_at?: string;
           data?: Json;
           date?: string;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           firm_id?: string | null;
           hours?: number | null;
           id?: string;
+          is_deleted?: boolean;
           status?: string;
           updated_at?: string;
           worker_id?: string;
@@ -97,8 +160,8 @@ export type Database = {
           address: string | null;
           barcode_series: string | null;
           branch_id: string;
-          data: Json;
-          default_karat: string | null;
+          comm_provider_settings: Json | null;
+          default_karat: number | null;
           email: string | null;
           gold_rate_source: string | null;
           gstin: string | null;
@@ -118,14 +181,16 @@ export type Database = {
           thermal_printer_ip: string | null;
           thermal_printer_port: string | null;
           updated_at: string;
+          wa_automations: Json | null;
+          wa_config: Json | null;
           wa_phone_number: string | null;
         };
         Insert: {
           address?: string | null;
           barcode_series?: string | null;
           branch_id: string;
-          data?: Json;
-          default_karat?: string | null;
+          comm_provider_settings?: Json | null;
+          default_karat?: number | null;
           email?: string | null;
           gold_rate_source?: string | null;
           gstin?: string | null;
@@ -145,14 +210,16 @@ export type Database = {
           thermal_printer_ip?: string | null;
           thermal_printer_port?: string | null;
           updated_at?: string;
+          wa_automations?: Json | null;
+          wa_config?: Json | null;
           wa_phone_number?: string | null;
         };
         Update: {
           address?: string | null;
           barcode_series?: string | null;
           branch_id?: string;
-          data?: Json;
-          default_karat?: string | null;
+          comm_provider_settings?: Json | null;
+          default_karat?: number | null;
           email?: string | null;
           gold_rate_source?: string | null;
           gstin?: string | null;
@@ -172,69 +239,64 @@ export type Database = {
           thermal_printer_ip?: string | null;
           thermal_printer_port?: string | null;
           updated_at?: string;
+          wa_automations?: Json | null;
+          wa_config?: Json | null;
           wa_phone_number?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "branch_settings_branch_id_fkey";
+            columns: ["branch_id"];
+            isOneToOne: true;
+            referencedRelation: "branches";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       branches: {
         Row: {
           active: boolean;
-          address: string | null;
-          barcode_prefix: string | null;
-          branch_type: string | null;
-          city: string | null;
+          address: string;
+          branch_type: string;
+          code: string;
           created_at: string;
-          data: Json;
-          email: string | null;
           gstin: string | null;
           id: string;
-          invoice_prefix: string | null;
-          logo_url: string | null;
-          name: string | null;
-          phone: string | null;
-          settings: Json;
-          short_name: string | null;
-          state: string | null;
+          is_default: boolean;
+          manager_name: string;
+          name: string;
+          notes: string | null;
+          phone: string;
           updated_at: string;
         };
         Insert: {
           active?: boolean;
-          address?: string | null;
-          barcode_prefix?: string | null;
-          branch_type?: string | null;
-          city?: string | null;
+          address?: string;
+          branch_type?: string;
+          code: string;
           created_at?: string;
-          data?: Json;
-          email?: string | null;
           gstin?: string | null;
           id: string;
-          invoice_prefix?: string | null;
-          logo_url?: string | null;
-          name?: string | null;
-          phone?: string | null;
-          settings?: Json;
-          short_name?: string | null;
-          state?: string | null;
+          is_default?: boolean;
+          manager_name?: string;
+          name: string;
+          notes?: string | null;
+          phone?: string;
           updated_at?: string;
         };
         Update: {
           active?: boolean;
-          address?: string | null;
-          barcode_prefix?: string | null;
-          branch_type?: string | null;
-          city?: string | null;
+          address?: string;
+          branch_type?: string;
+          code?: string;
           created_at?: string;
-          data?: Json;
-          email?: string | null;
           gstin?: string | null;
           id?: string;
-          invoice_prefix?: string | null;
-          logo_url?: string | null;
-          name?: string | null;
-          phone?: string | null;
-          settings?: Json;
-          short_name?: string | null;
-          state?: string | null;
+          is_default?: boolean;
+          manager_name?: string;
+          name?: string;
+          notes?: string | null;
+          phone?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -244,9 +306,12 @@ export type Database = {
           category: string | null;
           created_at: string;
           data: Json;
+          deleted_at: string | null;
+          deleted_by: string | null;
           design_no: string | null;
           firm_id: string | null;
           id: string;
+          is_deleted: boolean;
           name: string;
           updated_at: string;
         };
@@ -254,9 +319,12 @@ export type Database = {
           category?: string | null;
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           design_no?: string | null;
           firm_id?: string | null;
           id: string;
+          is_deleted?: boolean;
           name: string;
           updated_at?: string;
         };
@@ -264,132 +332,93 @@ export type Database = {
           category?: string | null;
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           design_no?: string | null;
           firm_id?: string | null;
           id?: string;
+          is_deleted?: boolean;
           name?: string;
           updated_at?: string;
         };
         Relationships: [];
       };
-      comm_provider_settings: {
+      communication_logs: {
         Row: {
-          branch_id: string | null;
-          channel: string | null;
+          body: string | null;
+          channel: string;
           created_at: string;
           data: Json;
+          direction: string;
+          firm_id: string | null;
           id: string;
-          is_active: boolean;
-          priority: number;
-          provider_type: string | null;
-          settings: Json;
+          linked_id: string | null;
+          linked_table: string | null;
+          person_id: string | null;
+          phone: string | null;
+          status: string;
+          subject: string | null;
           updated_at: string;
         };
         Insert: {
-          branch_id?: string | null;
-          channel?: string | null;
+          body?: string | null;
+          channel: string;
           created_at?: string;
           data?: Json;
+          direction: string;
+          firm_id?: string | null;
           id: string;
-          is_active?: boolean;
-          priority?: number;
-          provider_type?: string | null;
-          settings?: Json;
+          linked_id?: string | null;
+          linked_table?: string | null;
+          person_id?: string | null;
+          phone?: string | null;
+          status?: string;
+          subject?: string | null;
           updated_at?: string;
         };
         Update: {
-          branch_id?: string | null;
-          channel?: string | null;
+          body?: string | null;
+          channel?: string;
           created_at?: string;
           data?: Json;
+          direction?: string;
+          firm_id?: string | null;
           id?: string;
-          is_active?: boolean;
-          priority?: number;
-          provider_type?: string | null;
-          settings?: Json;
+          linked_id?: string | null;
+          linked_table?: string | null;
+          person_id?: string | null;
+          phone?: string | null;
+          status?: string;
+          subject?: string | null;
           updated_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "comm_provider_settings_branch_id_fkey";
-            columns: ["branch_id"];
+            foreignKeyName: "communication_logs_person_id_fkey";
+            columns: ["person_id"];
             isOneToOne: false;
-            referencedRelation: "branches";
+            referencedRelation: "people";
             referencedColumns: ["id"];
           },
         ];
       };
-      communication_logs: {
-        Row: {
-          body: string | null;
-          channel: string | null;
-          created_at: string;
-          data: Json;
-          direction: string | null;
-          id: string;
-          linked_id: string | null;
-          linked_table: string | null;
-          phone: string | null;
-          status: string | null;
-          updated_at: string;
-        };
-        Insert: {
-          body?: string | null;
-          channel?: string | null;
-          created_at?: string;
-          data?: Json;
-          direction?: string | null;
-          id: string;
-          linked_id?: string | null;
-          linked_table?: string | null;
-          phone?: string | null;
-          status?: string | null;
-          updated_at?: string;
-        };
-        Update: {
-          body?: string | null;
-          channel?: string | null;
-          created_at?: string;
-          data?: Json;
-          direction?: string | null;
-          id?: string;
-          linked_id?: string | null;
-          linked_table?: string | null;
-          phone?: string | null;
-          status?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
       credit_notes: {
         Row: {
-          branch_id: string | null;
           created_at: string;
-          customer_id: string | null;
-          data: Json;
+          data: Json | null;
           id: string;
-          invoice_id: string | null;
-          status: string;
           updated_at: string;
         };
         Insert: {
-          branch_id?: string | null;
           created_at?: string;
-          customer_id?: string | null;
-          data?: Json;
+          data?: Json | null;
           id: string;
-          invoice_id?: string | null;
-          status?: string;
           updated_at?: string;
         };
         Update: {
-          branch_id?: string | null;
           created_at?: string;
-          customer_id?: string | null;
-          data?: Json;
+          data?: Json | null;
           id?: string;
-          invoice_id?: string | null;
-          status?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -397,109 +426,123 @@ export type Database = {
       crm_interactions: {
         Row: {
           body: string | null;
-          branch_id: string | null;
+          branch_id: string;
           created_at: string;
           data: Json;
           id: string;
           opportunity_id: string | null;
           person_id: string | null;
           staff_email: string | null;
-          title: string | null;
-          type: string | null;
-          updated_at: string;
+          title: string;
+          type: string;
         };
         Insert: {
           body?: string | null;
-          branch_id?: string | null;
+          branch_id?: string;
           created_at?: string;
           data?: Json;
           id: string;
           opportunity_id?: string | null;
           person_id?: string | null;
           staff_email?: string | null;
-          title?: string | null;
-          type?: string | null;
-          updated_at?: string;
+          title?: string;
+          type?: string;
         };
         Update: {
           body?: string | null;
-          branch_id?: string | null;
+          branch_id?: string;
           created_at?: string;
           data?: Json;
           id?: string;
           opportunity_id?: string | null;
           person_id?: string | null;
           staff_email?: string | null;
-          title?: string | null;
-          type?: string | null;
-          updated_at?: string;
+          title?: string;
+          type?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "fk_crmint_opp";
+            columns: ["opportunity_id"];
+            isOneToOne: false;
+            referencedRelation: "crm_leads_opportunities";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fk_crmint_person";
+            columns: ["person_id"];
+            isOneToOne: false;
+            referencedRelation: "people";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       crm_leads_opportunities: {
         Row: {
           assigned_staff_email: string | null;
-          branch_id: string | null;
-          buyer_type: string;
+          branch_id: string;
           created_at: string;
           data: Json;
           estimated_value_paise: number;
           follow_up_date: string | null;
           id: string;
           last_contacted_at: string | null;
-          lead_name: string | null;
+          lead_name: string;
           person_id: string | null;
-          priority: string | null;
+          priority: string;
           remarks: string | null;
-          source: string;
-          stage: string | null;
+          stage: string;
           target_gold_mg: number;
           updated_at: string;
         };
         Insert: {
           assigned_staff_email?: string | null;
-          branch_id?: string | null;
-          buyer_type?: string;
+          branch_id?: string;
           created_at?: string;
           data?: Json;
           estimated_value_paise?: number;
           follow_up_date?: string | null;
           id: string;
           last_contacted_at?: string | null;
-          lead_name?: string | null;
+          lead_name?: string;
           person_id?: string | null;
-          priority?: string | null;
+          priority?: string;
           remarks?: string | null;
-          source?: string;
-          stage?: string | null;
+          stage?: string;
           target_gold_mg?: number;
           updated_at?: string;
         };
         Update: {
           assigned_staff_email?: string | null;
-          branch_id?: string | null;
-          buyer_type?: string;
+          branch_id?: string;
           created_at?: string;
           data?: Json;
           estimated_value_paise?: number;
           follow_up_date?: string | null;
           id?: string;
           last_contacted_at?: string | null;
-          lead_name?: string | null;
+          lead_name?: string;
           person_id?: string | null;
-          priority?: string | null;
+          priority?: string;
           remarks?: string | null;
-          source?: string;
-          stage?: string | null;
+          stage?: string;
           target_gold_mg?: number;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "fk_crmopp_person";
+            columns: ["person_id"];
+            isOneToOne: false;
+            referencedRelation: "people";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       crm_tasks_meetings: {
         Row: {
           assigned_staff_email: string | null;
-          branch_id: string | null;
+          branch_id: string;
           created_at: string;
           data: Json;
           description: string | null;
@@ -507,15 +550,15 @@ export type Database = {
           id: string;
           opportunity_id: string | null;
           person_id: string | null;
-          priority: string | null;
-          status: string | null;
-          title: string | null;
-          type: string | null;
+          priority: string;
+          status: string;
+          title: string;
+          type: string;
           updated_at: string;
         };
         Insert: {
           assigned_staff_email?: string | null;
-          branch_id?: string | null;
+          branch_id?: string;
           created_at?: string;
           data?: Json;
           description?: string | null;
@@ -523,15 +566,15 @@ export type Database = {
           id: string;
           opportunity_id?: string | null;
           person_id?: string | null;
-          priority?: string | null;
-          status?: string | null;
-          title?: string | null;
-          type?: string | null;
+          priority?: string;
+          status?: string;
+          title?: string;
+          type?: string;
           updated_at?: string;
         };
         Update: {
           assigned_staff_email?: string | null;
-          branch_id?: string | null;
+          branch_id?: string;
           created_at?: string;
           data?: Json;
           description?: string | null;
@@ -539,13 +582,28 @@ export type Database = {
           id?: string;
           opportunity_id?: string | null;
           person_id?: string | null;
-          priority?: string | null;
-          status?: string | null;
-          title?: string | null;
-          type?: string | null;
+          priority?: string;
+          status?: string;
+          title?: string;
+          type?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "fk_crmtask_opp";
+            columns: ["opportunity_id"];
+            isOneToOne: false;
+            referencedRelation: "crm_leads_opportunities";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "fk_crmtask_person";
+            columns: ["person_id"];
+            isOneToOne: false;
+            referencedRelation: "people";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       customer_ledger: {
         Row: {
@@ -659,85 +717,109 @@ export type Database = {
       };
       debit_notes: {
         Row: {
-          branch_id: string | null;
           created_at: string;
-          customer_id: string | null;
-          data: Json;
+          data: Json | null;
           id: string;
-          invoice_id: string | null;
-          status: string;
           updated_at: string;
         };
         Insert: {
-          branch_id?: string | null;
           created_at?: string;
-          customer_id?: string | null;
-          data?: Json;
+          data?: Json | null;
           id: string;
-          invoice_id?: string | null;
-          status?: string;
           updated_at?: string;
         };
         Update: {
-          branch_id?: string | null;
           created_at?: string;
-          customer_id?: string | null;
-          data?: Json;
+          data?: Json | null;
           id?: string;
-          invoice_id?: string | null;
-          status?: string;
           updated_at?: string;
         };
         Relationships: [];
       };
       delivery_challans: {
         Row: {
-          branch_id: string | null;
           created_at: string;
-          customer_id: string | null;
-          data: Json;
+          data: Json | null;
           id: string;
-          status: string;
           updated_at: string;
         };
         Insert: {
-          branch_id?: string | null;
           created_at?: string;
-          customer_id?: string | null;
-          data?: Json;
+          data?: Json | null;
           id: string;
-          status?: string;
           updated_at?: string;
         };
         Update: {
-          branch_id?: string | null;
           created_at?: string;
-          customer_id?: string | null;
-          data?: Json;
+          data?: Json | null;
           id?: string;
-          status?: string;
           updated_at?: string;
         };
         Relationships: [];
       };
       document_sequences: {
         Row: {
-          last_value: number;
+          doc_type: string;
+          firm_id: string;
+          id: string;
+          last_number: number;
+          pad_length: number;
           prefix: string;
-          type: string;
           updated_at: string;
         };
         Insert: {
-          last_value?: number;
-          prefix: string;
-          type: string;
+          doc_type: string;
+          firm_id: string;
+          id?: string;
+          last_number?: number;
+          pad_length?: number;
+          prefix?: string;
           updated_at?: string;
         };
         Update: {
-          last_value?: number;
+          doc_type?: string;
+          firm_id?: string;
+          id?: string;
+          last_number?: number;
+          pad_length?: number;
           prefix?: string;
-          type?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      document_shares: {
+        Row: {
+          branch_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          document_id: string;
+          document_snapshot: Json;
+          document_type: string;
+          expires_at: string;
+          firm_snapshot: Json;
+          id: string;
+        };
+        Insert: {
+          branch_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          document_id: string;
+          document_snapshot?: Json;
+          document_type: string;
+          expires_at?: string;
+          firm_snapshot?: Json;
+          id?: string;
+        };
+        Update: {
+          branch_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          document_id?: string;
+          document_snapshot?: Json;
+          document_type?: string;
+          expires_at?: string;
+          firm_snapshot?: Json;
+          id?: string;
         };
         Relationships: [];
       };
@@ -745,131 +827,194 @@ export type Database = {
         Row: {
           active: boolean;
           created_at: string;
-          data: Json;
+          firm_id: string | null;
           id: string;
-          master_key: string | null;
-          sort_order: number | null;
+          master_key: string;
+          sort_order: number;
           updated_at: string;
-          value: string | null;
+          value: string;
         };
         Insert: {
           active?: boolean;
           created_at?: string;
-          data?: Json;
+          firm_id?: string | null;
           id: string;
-          master_key?: string | null;
-          sort_order?: number | null;
+          master_key: string;
+          sort_order?: number;
           updated_at?: string;
-          value?: string | null;
+          value: string;
         };
         Update: {
           active?: boolean;
           created_at?: string;
-          data?: Json;
+          firm_id?: string | null;
           id?: string;
-          master_key?: string | null;
-          sort_order?: number | null;
+          master_key?: string;
+          sort_order?: number;
           updated_at?: string;
-          value?: string | null;
-        };
-        Relationships: [];
-      };
-      erp_schema_meta: {
-        Row: {
-          applied_at: string;
-          deployment_model: string;
-          id: string;
-          metadata: Json;
-          product: string;
-          schema_version: number;
-        };
-        Insert: {
-          applied_at?: string;
-          deployment_model: string;
-          id: string;
-          metadata?: Json;
-          product: string;
-          schema_version: number;
-        };
-        Update: {
-          applied_at?: string;
-          deployment_model?: string;
-          id?: string;
-          metadata?: Json;
-          product?: string;
-          schema_version?: number;
-        };
-        Relationships: [];
-      };
-      erp_setup_guard: {
-        Row: {
-          created_at: string;
-          id: string;
-        };
-        Insert: {
-          created_at?: string;
-          id: string;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
+          value?: string;
         };
         Relationships: [];
       };
       estimates: {
         Row: {
-          branch_id: string | null;
           created_at: string;
-          customer_id: string | null;
-          data: Json;
+          data: Json | null;
           id: string;
-          status: string;
           updated_at: string;
         };
         Insert: {
-          branch_id?: string | null;
           created_at?: string;
-          customer_id?: string | null;
-          data?: Json;
+          data?: Json | null;
           id: string;
-          status?: string;
           updated_at?: string;
         };
         Update: {
-          branch_id?: string | null;
           created_at?: string;
-          customer_id?: string | null;
-          data?: Json;
+          data?: Json | null;
           id?: string;
-          status?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      feature_flags: {
+        Row: {
+          attendance: boolean;
+          barcode: boolean;
+          billing: boolean;
+          crm: boolean;
+          firm_id: string;
+          gold_ledger: boolean;
+          id: string;
+          orders: boolean;
+          payroll: boolean;
+          repairs: boolean;
+          reports: boolean;
+          saas_panel: boolean;
+          stock: boolean;
+          updated_at: string;
+          updated_by: string | null;
+          whatsapp: boolean;
+          workshop: boolean;
+        };
+        Insert: {
+          attendance?: boolean;
+          barcode?: boolean;
+          billing?: boolean;
+          crm?: boolean;
+          firm_id: string;
+          gold_ledger?: boolean;
+          id?: string;
+          orders?: boolean;
+          payroll?: boolean;
+          repairs?: boolean;
+          reports?: boolean;
+          saas_panel?: boolean;
+          stock?: boolean;
+          updated_at?: string;
+          updated_by?: string | null;
+          whatsapp?: boolean;
+          workshop?: boolean;
+        };
+        Update: {
+          attendance?: boolean;
+          barcode?: boolean;
+          billing?: boolean;
+          crm?: boolean;
+          firm_id?: string;
+          gold_ledger?: boolean;
+          id?: string;
+          orders?: boolean;
+          payroll?: boolean;
+          repairs?: boolean;
+          reports?: boolean;
+          saas_panel?: boolean;
+          stock?: boolean;
+          updated_at?: string;
+          updated_by?: string | null;
+          whatsapp?: boolean;
+          workshop?: boolean;
         };
         Relationships: [];
       };
       financial_lock_periods: {
         Row: {
-          branch_id: string | null;
           created_at: string;
-          data: Json;
+          data: Json | null;
           id: string;
-          period: string | null;
           updated_at: string;
         };
         Insert: {
-          branch_id?: string | null;
           created_at?: string;
-          data?: Json;
+          data?: Json | null;
           id: string;
-          period?: string | null;
           updated_at?: string;
         };
         Update: {
-          branch_id?: string | null;
+          created_at?: string;
+          data?: Json | null;
+          id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      gold_issue_register: {
+        Row: {
+          created_at: string;
+          data: Json;
+          deleted_at: string | null;
+          deleted_by: string | null;
+          fine_mg: number | null;
+          firm_id: string;
+          gross_mg: number;
+          id: string;
+          is_deleted: boolean;
+          issue_no: string;
+          issued_at: string;
+          issued_by: string;
+          notes: string | null;
+          particular: string;
+          purity_ppt: number | null;
+          updated_at: string;
+          worker_id: string;
+        };
+        Insert: {
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          fine_mg?: number | null;
+          firm_id: string;
+          gross_mg: number;
           id?: string;
-          period?: string | null;
+          is_deleted?: boolean;
+          issue_no: string;
+          issued_at?: string;
+          issued_by: string;
+          notes?: string | null;
+          particular: string;
+          purity_ppt?: number | null;
           updated_at?: string;
+          worker_id: string;
+        };
+        Update: {
+          created_at?: string;
+          data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          fine_mg?: number | null;
+          firm_id?: string;
+          gross_mg?: number;
+          id?: string;
+          is_deleted?: boolean;
+          issue_no?: string;
+          issued_at?: string;
+          issued_by?: string;
+          notes?: string | null;
+          particular?: string;
+          purity_ppt?: number | null;
+          updated_at?: string;
+          worker_id?: string;
         };
         Relationships: [];
       };
@@ -878,8 +1023,11 @@ export type Database = {
           bucket_deltas: Json;
           created_at: string;
           data: Json;
+          deleted_at: string | null;
+          deleted_by: string | null;
           firm_id: string | null;
           id: string;
+          is_deleted: boolean;
           movement: string;
           net_fine_mg: number;
           note: string | null;
@@ -891,8 +1039,11 @@ export type Database = {
           bucket_deltas?: Json;
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           firm_id?: string | null;
           id: string;
+          is_deleted?: boolean;
           movement: string;
           net_fine_mg: number;
           note?: string | null;
@@ -904,8 +1055,11 @@ export type Database = {
           bucket_deltas?: Json;
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           firm_id?: string | null;
           id?: string;
+          is_deleted?: boolean;
           movement?: string;
           net_fine_mg?: number;
           note?: string | null;
@@ -915,96 +1069,135 @@ export type Database = {
         };
         Relationships: [];
       };
-      gold_settlements: {
+      gold_receive_register: {
         Row: {
-          amount_paise: number;
-          branch_id: string | null;
           created_at: string;
           data: Json;
-          firm_id: string | null;
+          deleted_at: string | null;
+          deleted_by: string | null;
+          fine_mg: number | null;
+          firm_id: string;
           gross_mg: number;
           id: string;
-          net_mg: number;
+          is_deleted: boolean;
           notes: string | null;
-          party_id: string;
-          party_type: string;
-          payment_mode: string | null;
-          purity: number;
-          rate_per_gram_paise: number;
-          settlement_date: string;
-          settlement_type: string;
+          particular: string;
+          purity_ppt: number | null;
+          receive_no: string;
+          received_at: string;
+          received_by: string;
           updated_at: string;
-          wastage_mg: number;
+          worker_id: string;
         };
         Insert: {
-          amount_paise?: number;
-          branch_id?: string | null;
           created_at?: string;
           data?: Json;
-          firm_id?: string | null;
-          gross_mg?: number;
-          id: string;
-          net_mg?: number;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          fine_mg?: number | null;
+          firm_id: string;
+          gross_mg: number;
+          id?: string;
+          is_deleted?: boolean;
           notes?: string | null;
-          party_id: string;
-          party_type: string;
-          payment_mode?: string | null;
-          purity?: number;
-          rate_per_gram_paise?: number;
-          settlement_date?: string;
-          settlement_type: string;
+          particular: string;
+          purity_ppt?: number | null;
+          receive_no: string;
+          received_at?: string;
+          received_by: string;
           updated_at?: string;
-          wastage_mg?: number;
+          worker_id: string;
         };
         Update: {
-          amount_paise?: number;
-          branch_id?: string | null;
           created_at?: string;
           data?: Json;
-          firm_id?: string | null;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          fine_mg?: number | null;
+          firm_id?: string;
           gross_mg?: number;
           id?: string;
-          net_mg?: number;
+          is_deleted?: boolean;
           notes?: string | null;
-          party_id?: string;
-          party_type?: string;
-          payment_mode?: string | null;
-          purity?: number;
-          rate_per_gram_paise?: number;
-          settlement_date?: string;
-          settlement_type?: string;
+          particular?: string;
+          purity_ppt?: number | null;
+          receive_no?: string;
+          received_at?: string;
+          received_by?: string;
           updated_at?: string;
-          wastage_mg?: number;
+          worker_id?: string;
         };
         Relationships: [];
       };
-      hallmark_batches: {
+      gold_settlements: {
         Row: {
-          batch_number: string | null;
+          amount_paise: number | null;
+          attachment_url: string | null;
           branch_id: string | null;
           created_at: string;
           data: Json;
+          deleted_at: string | null;
+          deleted_by: string | null;
+          gross_mg: number | null;
           id: string;
-          status: string | null;
+          is_deleted: boolean;
+          net_mg: number | null;
+          notes: string | null;
+          party_id: string | null;
+          party_type: string | null;
+          payment_mode: string | null;
+          purity: number | null;
+          rate_per_gram_paise: number | null;
+          settlement_date: string;
+          settlement_type: string | null;
           updated_at: string;
+          wastage_mg: number | null;
         };
         Insert: {
-          batch_number?: string | null;
+          amount_paise?: number | null;
+          attachment_url?: string | null;
           branch_id?: string | null;
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          gross_mg?: number | null;
           id: string;
-          status?: string | null;
+          is_deleted?: boolean;
+          net_mg?: number | null;
+          notes?: string | null;
+          party_id?: string | null;
+          party_type?: string | null;
+          payment_mode?: string | null;
+          purity?: number | null;
+          rate_per_gram_paise?: number | null;
+          settlement_date?: string;
+          settlement_type?: string | null;
           updated_at?: string;
+          wastage_mg?: number | null;
         };
         Update: {
-          batch_number?: string | null;
+          amount_paise?: number | null;
+          attachment_url?: string | null;
           branch_id?: string | null;
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          gross_mg?: number | null;
           id?: string;
-          status?: string | null;
+          is_deleted?: boolean;
+          net_mg?: number | null;
+          notes?: string | null;
+          party_id?: string | null;
+          party_type?: string | null;
+          payment_mode?: string | null;
+          purity?: number | null;
+          rate_per_gram_paise?: number | null;
+          settlement_date?: string;
+          settlement_type?: string | null;
           updated_at?: string;
+          wastage_mg?: number | null;
         };
         Relationships: [];
       };
@@ -1061,6 +1254,60 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      invitations: {
+        Row: {
+          branch_id: string | null;
+          code: string;
+          created_at: string;
+          email: string;
+          expires_at: string | null;
+          id: string;
+          invited_by: string | null;
+          role: string;
+          status: string;
+          workshop_id: string | null;
+        };
+        Insert: {
+          branch_id?: string | null;
+          code: string;
+          created_at?: string;
+          email: string;
+          expires_at?: string | null;
+          id: string;
+          invited_by?: string | null;
+          role: string;
+          status?: string;
+          workshop_id?: string | null;
+        };
+        Update: {
+          branch_id?: string | null;
+          code?: string;
+          created_at?: string;
+          email?: string;
+          expires_at?: string | null;
+          id?: string;
+          invited_by?: string | null;
+          role?: string;
+          status?: string;
+          workshop_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "invitations_branch_id_fkey";
+            columns: ["branch_id"];
+            isOneToOne: false;
+            referencedRelation: "branches";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "invitations_workshop_id_fkey";
+            columns: ["workshop_id"];
+            isOneToOne: false;
+            referencedRelation: "workshops";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       invoices: {
         Row: {
@@ -1140,6 +1387,42 @@ export type Database = {
           },
         ];
       };
+      jeweller_transactions: {
+        Row: {
+          created_at: string;
+          data: Json;
+          firm_id: string | null;
+          gold_mg: number;
+          id: string;
+          jeweller_id: string;
+          kind: string;
+          ts: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          data?: Json;
+          firm_id?: string | null;
+          gold_mg?: number;
+          id: string;
+          jeweller_id: string;
+          kind: string;
+          ts?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          data?: Json;
+          firm_id?: string | null;
+          gold_mg?: number;
+          id?: string;
+          jeweller_id?: string;
+          kind?: string;
+          ts?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       job_cards: {
         Row: {
           created_at: string;
@@ -1194,91 +1477,189 @@ export type Database = {
           },
         ];
       };
-      licenses: {
+      job_process_steps: {
         Row: {
-          bound_device_id: string | null;
-          company_name: string | null;
           created_at: string;
-          customer_name: string;
-          edition: string;
-          enabled_features: Json;
-          expiry: string | null;
-          expiry_date: string | null;
+          data: Json;
+          firm_id: string | null;
           id: string;
-          issued_at: string;
-          license_id: string | null;
-          license_key_hash: string;
-          license_key_prefix: string;
-          maximum_devices: number;
-          offline_valid_days: number;
-          payload: string | null;
-          seats: number | null;
-          signature: string | null;
+          job_id: string;
+          name: string;
+          ordinal: number;
           status: string;
           updated_at: string;
         };
         Insert: {
-          bound_device_id?: string | null;
-          company_name?: string | null;
           created_at?: string;
-          customer_name: string;
-          edition: string;
-          enabled_features?: Json;
-          expiry?: string | null;
-          expiry_date?: string | null;
-          id?: string;
-          issued_at?: string;
-          license_id?: string | null;
-          license_key_hash: string;
-          license_key_prefix: string;
-          maximum_devices?: number;
-          offline_valid_days?: number;
-          payload?: string | null;
-          seats?: number | null;
-          signature?: string | null;
-          status?: string;
+          data?: Json;
+          firm_id?: string | null;
+          id: string;
+          job_id: string;
+          name: string;
+          ordinal: number;
+          status: string;
           updated_at?: string;
         };
         Update: {
-          bound_device_id?: string | null;
-          company_name?: string | null;
           created_at?: string;
-          customer_name?: string;
-          edition?: string;
-          enabled_features?: Json;
-          expiry?: string | null;
-          expiry_date?: string | null;
+          data?: Json;
+          firm_id?: string | null;
           id?: string;
-          issued_at?: string;
-          license_id?: string | null;
-          license_key_hash?: string;
-          license_key_prefix?: string;
-          maximum_devices?: number;
-          offline_valid_days?: number;
-          payload?: string | null;
-          seats?: number | null;
-          signature?: string | null;
+          job_id?: string;
+          name?: string;
+          ordinal?: number;
           status?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      kyc_documents: {
+        Row: {
+          created_at: string;
+          data_url: string | null;
+          deleted_at: string | null;
+          deleted_by: string | null;
+          firm_id: string | null;
+          id: string;
+          is_deleted: boolean;
+          kind: string;
+          notes: string | null;
+          person_id: string;
+          storage_path: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          data_url?: string | null;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          firm_id?: string | null;
+          id: string;
+          is_deleted?: boolean;
+          kind: string;
+          notes?: string | null;
+          person_id: string;
+          storage_path?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          data_url?: string | null;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
+          firm_id?: string | null;
+          id?: string;
+          is_deleted?: boolean;
+          kind?: string;
+          notes?: string | null;
+          person_id?: string;
+          storage_path?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "kyc_documents_person_id_fkey";
+            columns: ["person_id"];
+            isOneToOne: false;
+            referencedRelation: "people";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      licenses: {
+        Row: {
+          company_name: string;
+          created_at: string | null;
+          customer_name: string;
+          edition: string;
+          expiry_date: string | null;
+          id: string;
+          license_id: string;
+          payload: string;
+          seats: number;
+          signature: string;
+          status: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          company_name: string;
+          created_at?: string | null;
+          customer_name: string;
+          edition: string;
+          expiry_date?: string | null;
+          id?: string;
+          license_id: string;
+          payload: string;
+          seats?: number;
+          signature: string;
+          status?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          company_name?: string;
+          created_at?: string | null;
+          customer_name?: string;
+          edition?: string;
+          expiry_date?: string | null;
+          id?: string;
+          license_id?: string;
+          payload?: string;
+          seats?: number;
+          signature?: string;
+          status?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      login_history: {
+        Row: {
+          created_at: string;
+          device_info: Json | null;
+          event: string;
+          firm_id: string | null;
+          id: number;
+          ip_address: unknown;
+          user_agent: string | null;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          device_info?: Json | null;
+          event: string;
+          firm_id?: string | null;
+          id?: never;
+          ip_address?: unknown;
+          user_agent?: string | null;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          device_info?: Json | null;
+          event?: string;
+          firm_id?: string | null;
+          id?: never;
+          ip_address?: unknown;
+          user_agent?: string | null;
+          user_id?: string;
         };
         Relationships: [];
       };
       lot_batches: {
         Row: {
           created_at: string;
-          data: Json;
+          data: Json | null;
           id: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
-          data?: Json;
+          data?: Json | null;
           id: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
-          data?: Json;
+          data?: Json | null;
           id?: string;
           updated_at?: string;
         };
@@ -1293,7 +1674,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
-          data?: Json;
+          data: Json;
           id: string;
           updated_at?: string;
         };
@@ -1486,25 +1867,30 @@ export type Database = {
           total_gold_returned_fine_mg?: number | null;
           updated_at?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "fk_mfgbill_customer";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "people";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       material_vault_movements: {
         Row: {
-          branch_id: string | null;
           created_at: string;
           data: Json;
           id: string;
           updated_at: string;
         };
         Insert: {
-          branch_id?: string | null;
           created_at?: string;
-          data?: Json;
+          data: Json;
           id: string;
           updated_at?: string;
         };
         Update: {
-          branch_id?: string | null;
           created_at?: string;
           data?: Json;
           id?: string;
@@ -1556,28 +1942,28 @@ export type Database = {
       };
       module_states: {
         Row: {
-          branch_id: string | null;
-          data: Json;
+          branch_id: string;
+          created_at: string | null;
           enabled: boolean;
           id: string;
-          module_key: string | null;
-          updated_at: string;
+          module_key: string;
+          updated_at: string | null;
         };
         Insert: {
-          branch_id?: string | null;
-          data?: Json;
+          branch_id: string;
+          created_at?: string | null;
           enabled?: boolean;
           id: string;
-          module_key?: string | null;
-          updated_at?: string;
+          module_key: string;
+          updated_at?: string | null;
         };
         Update: {
-          branch_id?: string | null;
-          data?: Json;
+          branch_id?: string;
+          created_at?: string | null;
           enabled?: boolean;
           id?: string;
-          module_key?: string | null;
-          updated_at?: string;
+          module_key?: string;
+          updated_at?: string | null;
         };
         Relationships: [];
       };
@@ -1594,7 +1980,7 @@ export type Database = {
         Insert: {
           branch_id?: string | null;
           created_at?: string;
-          data?: Json;
+          data: Json;
           id: string;
           order_id?: string | null;
           updated_at?: string;
@@ -1676,6 +2062,57 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      organizations: {
+        Row: {
+          address: string | null;
+          created_at: string;
+          data: Json;
+          email: string | null;
+          gstin: string | null;
+          id: string;
+          is_active: boolean;
+          license_expires_at: string | null;
+          license_type: string;
+          logo_url: string | null;
+          name: string;
+          phone: string | null;
+          slug: string;
+          updated_at: string;
+        };
+        Insert: {
+          address?: string | null;
+          created_at?: string;
+          data?: Json;
+          email?: string | null;
+          gstin?: string | null;
+          id?: string;
+          is_active?: boolean;
+          license_expires_at?: string | null;
+          license_type?: string;
+          logo_url?: string | null;
+          name: string;
+          phone?: string | null;
+          slug: string;
+          updated_at?: string;
+        };
+        Update: {
+          address?: string | null;
+          created_at?: string;
+          data?: Json;
+          email?: string | null;
+          gstin?: string | null;
+          id?: string;
+          is_active?: boolean;
+          license_expires_at?: string | null;
+          license_type?: string;
+          logo_url?: string | null;
+          name?: string;
+          phone?: string | null;
+          slug?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       outside_work_labour_charges: {
         Row: {
@@ -1807,28 +2244,24 @@ export type Database = {
           ts?: string;
           updated_at?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: "payments_invoice_id_fkey";
-            columns: ["invoice_id"];
-            isOneToOne: false;
-            referencedRelation: "invoices";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       people: {
         Row: {
           aadhaar_masked: string | null;
           active: boolean;
+          branch_id: string | null;
           created_at: string;
           current_address: string | null;
           data: Json;
+          deleted_at: string | null;
+          deleted_by: string | null;
           email: string | null;
           firm_id: string | null;
           full_name: string;
           gstin: string | null;
           id: string;
+          is_deleted: boolean;
           notes: string | null;
           pan: string | null;
           permanent_address: string | null;
@@ -1843,14 +2276,18 @@ export type Database = {
         Insert: {
           aadhaar_masked?: string | null;
           active?: boolean;
+          branch_id?: string | null;
           created_at?: string;
           current_address?: string | null;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           email?: string | null;
           firm_id?: string | null;
           full_name: string;
           gstin?: string | null;
           id: string;
+          is_deleted?: boolean;
           notes?: string | null;
           pan?: string | null;
           permanent_address?: string | null;
@@ -1865,14 +2302,18 @@ export type Database = {
         Update: {
           aadhaar_masked?: string | null;
           active?: boolean;
+          branch_id?: string | null;
           created_at?: string;
           current_address?: string | null;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           email?: string | null;
           firm_id?: string | null;
           full_name?: string;
           gstin?: string | null;
           id?: string;
+          is_deleted?: boolean;
           notes?: string | null;
           pan?: string | null;
           permanent_address?: string | null;
@@ -1884,52 +2325,30 @@ export type Database = {
           whatsapp?: string | null;
           work_type?: string | null;
         };
-        Relationships: [];
-      };
-      physical_stock_counts: {
-        Row: {
-          branch_id: string | null;
-          created_at: string;
-          data: Json;
-          id: string;
-          status: string | null;
-          updated_at: string;
-        };
-        Insert: {
-          branch_id?: string | null;
-          created_at?: string;
-          data?: Json;
-          id: string;
-          status?: string | null;
-          updated_at?: string;
-        };
-        Update: {
-          branch_id?: string | null;
-          created_at?: string;
-          data?: Json;
-          id?: string;
-          status?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "people_branch_id_fkey";
+            columns: ["branch_id"];
+            isOneToOne: false;
+            referencedRelation: "branches";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       polishing_transactions: {
         Row: {
-          branch_id: string | null;
           created_at: string;
           data: Json;
           id: string;
           updated_at: string;
         };
         Insert: {
-          branch_id?: string | null;
           created_at?: string;
-          data?: Json;
+          data: Json;
           id: string;
           updated_at?: string;
         };
         Update: {
-          branch_id?: string | null;
           created_at?: string;
           data?: Json;
           id?: string;
@@ -1988,27 +2407,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      print_templates: {
-        Row: {
-          created_at: string;
-          data: Json;
-          id: string;
-          updated_at: string;
-        };
-        Insert: {
-          created_at?: string;
-          data?: Json;
-          id: string;
-          updated_at?: string;
-        };
-        Update: {
-          created_at?: string;
-          data?: Json;
-          id?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
       rate_cut_records: {
         Row: {
           created_at: string;
@@ -2053,13 +2451,6 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "rate_cut_records_job_id_fkey";
-            columns: ["job_id"];
-            isOneToOne: false;
-            referencedRelation: "job_cards";
-            referencedColumns: ["id"];
-          },
           {
             foreignKeyName: "rate_cut_records_karigar_id_fkey";
             columns: ["karigar_id"];
@@ -2126,24 +2517,33 @@ export type Database = {
         Row: {
           created_at: string;
           data: Json;
+          deleted_at: string | null;
+          deleted_by: string | null;
           firm_id: string | null;
           id: string;
+          is_deleted: boolean;
           name: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           firm_id?: string | null;
           id: string;
+          is_deleted?: boolean;
           name: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           firm_id?: string | null;
           id?: string;
+          is_deleted?: boolean;
           name?: string;
           updated_at?: string;
         };
@@ -2152,50 +2552,20 @@ export type Database = {
       saved_filters: {
         Row: {
           created_at: string;
-          data: Json;
+          data: Json | null;
           id: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
-          data?: Json;
+          data?: Json | null;
           id: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
-          data?: Json;
+          data?: Json | null;
           id?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      stock_lots: {
-        Row: {
-          branch_id: string | null;
-          created_at: string;
-          data: Json;
-          id: string;
-          lot_number: string | null;
-          status: string | null;
-          updated_at: string;
-        };
-        Insert: {
-          branch_id?: string | null;
-          created_at?: string;
-          data?: Json;
-          id: string;
-          lot_number?: string | null;
-          status?: string | null;
-          updated_at?: string;
-        };
-        Update: {
-          branch_id?: string | null;
-          created_at?: string;
-          data?: Json;
-          id?: string;
-          lot_number?: string | null;
-          status?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -2240,70 +2610,128 @@ export type Database = {
           ts?: string;
           updated_at?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: "stock_movements_item_id_fkey";
-            columns: ["item_id"];
-            isOneToOne: false;
-            referencedRelation: "inventory";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      stock_stones: {
-        Row: {
-          branch_id: string | null;
-          certificate_number: string | null;
-          created_at: string;
-          data: Json;
-          id: string;
-          item_id: string | null;
-          stone_type: string | null;
-          updated_at: string;
-        };
-        Insert: {
-          branch_id?: string | null;
-          certificate_number?: string | null;
-          created_at?: string;
-          data?: Json;
-          id: string;
-          item_id?: string | null;
-          stone_type?: string | null;
-          updated_at?: string;
-        };
-        Update: {
-          branch_id?: string | null;
-          certificate_number?: string | null;
-          created_at?: string;
-          data?: Json;
-          id?: string;
-          item_id?: string | null;
-          stone_type?: string | null;
-          updated_at?: string;
-        };
         Relationships: [];
       };
       stone_details: {
         Row: {
-          branch_id: string | null;
           created_at: string;
-          data: Json;
+          data: Json | null;
           id: string;
           updated_at: string;
         };
         Insert: {
-          branch_id?: string | null;
           created_at?: string;
-          data?: Json;
+          data?: Json | null;
           id: string;
           updated_at?: string;
         };
         Update: {
+          created_at?: string;
+          data?: Json | null;
+          id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      user_profiles: {
+        Row: {
+          active: boolean;
+          auth_id: string;
+          avatar_url: string | null;
+          branch_id: string | null;
+          created_at: string;
+          data: Json;
+          department: string | null;
+          firm_id: string | null;
+          full_name: string;
+          id: string;
+          is_super_owner: boolean;
+          last_login: string | null;
+          permissions: Json;
+          phone: string | null;
+          reporting_manager_id: string | null;
+          role: string | null;
+          status: string;
+          updated_at: string;
+          workshop_id: string | null;
+        };
+        Insert: {
+          active?: boolean;
+          auth_id: string;
+          avatar_url?: string | null;
           branch_id?: string | null;
           created_at?: string;
           data?: Json;
+          department?: string | null;
+          firm_id?: string | null;
+          full_name: string;
           id?: string;
+          is_super_owner?: boolean;
+          last_login?: string | null;
+          permissions?: Json;
+          phone?: string | null;
+          reporting_manager_id?: string | null;
+          role?: string | null;
+          status?: string;
           updated_at?: string;
+          workshop_id?: string | null;
+        };
+        Update: {
+          active?: boolean;
+          auth_id?: string;
+          avatar_url?: string | null;
+          branch_id?: string | null;
+          created_at?: string;
+          data?: Json;
+          department?: string | null;
+          firm_id?: string | null;
+          full_name?: string;
+          id?: string;
+          is_super_owner?: boolean;
+          last_login?: string | null;
+          permissions?: Json;
+          phone?: string | null;
+          reporting_manager_id?: string | null;
+          role?: string | null;
+          status?: string;
+          updated_at?: string;
+          workshop_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_branch_id_fkey";
+            columns: ["branch_id"];
+            isOneToOne: false;
+            referencedRelation: "branches";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "user_profiles_firm_id_fkey";
+            columns: ["firm_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      user_roles: {
+        Row: {
+          created_at: string;
+          id: string;
+          role: Database["public"]["Enums"]["app_role"];
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          role: Database["public"]["Enums"]["app_role"];
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          role?: Database["public"]["Enums"]["app_role"];
+          user_id?: string;
         };
         Relationships: [];
       };
@@ -2311,7 +2739,6 @@ export type Database = {
         Row: {
           converted_order_id: string | null;
           created_at: string;
-          data: Json;
           firm_id: string | null;
           id: string;
           linked_person_id: string | null;
@@ -2326,7 +2753,6 @@ export type Database = {
         Insert: {
           converted_order_id?: string | null;
           created_at?: string;
-          data?: Json;
           firm_id?: string | null;
           id: string;
           linked_person_id?: string | null;
@@ -2341,7 +2767,6 @@ export type Database = {
         Update: {
           converted_order_id?: string | null;
           created_at?: string;
-          data?: Json;
           firm_id?: string | null;
           id?: string;
           linked_person_id?: string | null;
@@ -2355,13 +2780,6 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "whatsapp_inbox_converted_order_id_fkey";
-            columns: ["converted_order_id"];
-            isOneToOne: false;
-            referencedRelation: "orders";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "whatsapp_inbox_linked_person_id_fkey";
             columns: ["linked_person_id"];
             isOneToOne: false;
@@ -2369,6 +2787,45 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      whatsapp_templates: {
+        Row: {
+          active: boolean;
+          body: string;
+          created_at: string;
+          data: Json;
+          firm_id: string | null;
+          id: string;
+          key: string;
+          label: string;
+          placeholders: Json;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          body: string;
+          created_at?: string;
+          data?: Json;
+          firm_id?: string | null;
+          id: string;
+          key: string;
+          label: string;
+          placeholders?: Json;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          body?: string;
+          created_at?: string;
+          data?: Json;
+          firm_id?: string | null;
+          id?: string;
+          key?: string;
+          label?: string;
+          placeholders?: Json;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       worker_returns: {
         Row: {
@@ -2404,8 +2861,11 @@ export type Database = {
         Row: {
           created_at: string;
           data: Json;
+          deleted_at: string | null;
+          deleted_by: string | null;
           firm_id: string | null;
           id: string;
+          is_deleted: boolean;
           period_from: string | null;
           period_to: string | null;
           updated_at: string;
@@ -2414,8 +2874,11 @@ export type Database = {
         Insert: {
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           firm_id?: string | null;
           id: string;
+          is_deleted?: boolean;
           period_from?: string | null;
           period_to?: string | null;
           updated_at?: string;
@@ -2424,8 +2887,11 @@ export type Database = {
         Update: {
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           firm_id?: string | null;
           id?: string;
+          is_deleted?: boolean;
           period_from?: string | null;
           period_to?: string | null;
           updated_at?: string;
@@ -2438,9 +2904,12 @@ export type Database = {
           amount_paise: number;
           created_at: string;
           data: Json;
+          deleted_at: string | null;
+          deleted_by: string | null;
           firm_id: string | null;
           gold_mg: number;
           id: string;
+          is_deleted: boolean;
           kind: string;
           ts: string;
           updated_at: string;
@@ -2450,9 +2919,12 @@ export type Database = {
           amount_paise?: number;
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           firm_id?: string | null;
           gold_mg?: number;
           id: string;
+          is_deleted?: boolean;
           kind: string;
           ts?: string;
           updated_at?: string;
@@ -2462,9 +2934,12 @@ export type Database = {
           amount_paise?: number;
           created_at?: string;
           data?: Json;
+          deleted_at?: string | null;
+          deleted_by?: string | null;
           firm_id?: string | null;
           gold_mg?: number;
           id?: string;
+          is_deleted?: boolean;
           kind?: string;
           ts?: string;
           updated_at?: string;
@@ -2474,28 +2949,34 @@ export type Database = {
       };
       workshops: {
         Row: {
+          active: boolean;
           branch_id: string | null;
           created_at: string;
           data: Json;
+          description: string | null;
           id: string;
-          name: string | null;
-          updated_at: string;
+          name: string;
+          type: string;
         };
         Insert: {
+          active?: boolean;
           branch_id?: string | null;
           created_at?: string;
           data?: Json;
+          description?: string | null;
           id: string;
-          name?: string | null;
-          updated_at?: string;
+          name: string;
+          type: string;
         };
         Update: {
+          active?: boolean;
           branch_id?: string | null;
           created_at?: string;
           data?: Json;
+          description?: string | null;
           id?: string;
-          name?: string | null;
-          updated_at?: string;
+          name?: string;
+          type?: string;
         };
         Relationships: [
           {
@@ -2509,7 +2990,19 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      worker_gold_balance: {
+        Row: {
+          balance_fine_mg: number | null;
+          balance_mg: number | null;
+          firm_id: string | null;
+          total_issued_fine_mg: number | null;
+          total_issued_mg: number | null;
+          total_received_fine_mg: number | null;
+          total_received_mg: number | null;
+          worker_id: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       execute_gold_transaction: {
@@ -2520,6 +3013,8 @@ export type Database = {
           p_category: string;
           p_delta_mg: number;
           p_gross_mg: number;
+          p_jeweller_entry?: Json;
+          p_jeweller_id?: string;
           p_ledger_movement: string;
           p_movement_type: string;
           p_notes: string;
@@ -2531,30 +3026,60 @@ export type Database = {
         Returns: Json;
       };
       generate_sequential_number: {
-        Args: { p_prefix: string; p_type: string };
+        Args: { p_prefix?: string; p_type: string };
         Returns: string;
       };
-      issue_license: {
+      has_role: {
         Args: {
-          p_customer_name: string;
-          p_edition: string;
-          p_license_key: string;
-          p_maximum_devices?: number;
-          p_months?: number;
+          _role: Database["public"]["Enums"]["app_role"];
+          _user_id: string;
         };
+        Returns: boolean;
+      };
+      is_admin: { Args: { _user_id: string }; Returns: boolean };
+      log_audit: {
+        Args: {
+          p_action: string;
+          p_firm_id: string;
+          p_new?: Json;
+          p_old?: Json;
+          p_record_id: string;
+          p_table: string;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
+      my_firm_id: { Args: never; Returns: string };
+      my_role: { Args: never; Returns: string };
+      next_doc_number: {
+        Args: { p_doc_type: string; p_firm_id: string };
         Returns: string;
       };
-      validate_license: {
-        Args: {
-          p_deployment_mode: string;
-          p_device_id: string;
-          p_license_key: string;
-        };
-        Returns: Json;
+      next_document_number: {
+        Args: { p_key: string; p_pad_length?: number; p_prefix?: string };
+        Returns: string;
+      };
+      restore_deleted: {
+        Args: { p_id: string; p_table: string };
+        Returns: undefined;
+      };
+      soft_delete: {
+        Args: { p_id: string; p_table: string };
+        Returns: undefined;
       };
     };
     Enums: {
-      [_ in never]: never;
+      app_role:
+        | "owner"
+        | "manager"
+        | "billing"
+        | "vault"
+        | "workshop"
+        | "accountant"
+        | "viewer"
+        | "ceo"
+        | "admin"
+        | "saas_admin";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -2675,6 +3200,19 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "owner",
+        "manager",
+        "billing",
+        "vault",
+        "workshop",
+        "accountant",
+        "viewer",
+        "ceo",
+        "admin",
+        "saas_admin",
+      ],
+    },
   },
 } as const;
