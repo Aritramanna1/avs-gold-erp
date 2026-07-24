@@ -179,7 +179,13 @@ function AcceptInvitationPage() {
         body: {
           mode: "accept",
           email: targetEmail,
-          code: resolvedInvite.code,
+          // The validate response's `invite` object never echoes back the
+          // code (see the edge function — it returns id/email/role/branchId/
+          // workshopId/expiresAt only), so resolvedInvite.code is always
+          // undefined here. Use the code already held in component state
+          // from validation instead — every real acceptance was silently
+          // failing with "code and email are required" before this fix.
+          code: inviteCode,
           name: inviteName.trim(),
           phone: invitePhone.trim(),
           password,
