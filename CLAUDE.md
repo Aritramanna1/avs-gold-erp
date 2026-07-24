@@ -36,7 +36,7 @@ Read relevant documents: `docs/ARCHITECTURE.md`, `DATABASE.md`, `MODULES.md`, `P
 
 - Strict TypeScript, named domain types, boundary validation. No new `any`.
 - Follow `docs/NAMING.md`, `CODING_STANDARDS.md`, `UI_GUIDELINES.md`.
-- Add focused tests or runnable self-check for non-trivial logic. Never run Playwright.
+- Add focused tests or runnable self-check for non-trivial logic. Run Playwright (`npm run test:e2e`, or a scoped ad hoc script) after every critical implementation — auth, billing, gold ledger, licensing/activation, anything touching money or stock — to verify the flow actually works end to end, not just that it typechecks and builds.
 - Never edit generated `src/routeTree.gen.ts` manually.
 - Always run `npm run dev` and check the app in a browser after implementation for manual verification.
 - Update documents with architecture/schema/module/print/export/workflow changes. Append release-facing changes to `docs/CHANGELOG.md`.
