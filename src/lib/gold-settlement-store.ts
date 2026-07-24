@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useSettings } from "./settings-store";
+import { reportUnexpectedError } from "./error-handling";
 import {
   GoldSettlementRecord,
   createGoldSettlement as apiCreateGoldSettlement,
@@ -37,7 +38,11 @@ export const useGoldSettlement = create<GoldSettlementState>()((set, get) => ({
       const rows = await listGoldSettlements(branchId);
       set({ settlements: rows });
     } catch (err) {
-      // refresh failed — leave existing state
+      // Leave existing state (don't blank the screen), but this must not
+      // vanish silently — a gold settlement view showing stale numbers with
+      // no signal is exactly the kind of "did my software eat my money"
+      // failure a workshop owner can't afford.
+      reportUnexpectedError(err, "gold-settlement.refresh");
     }
   },
   addSettlement: async (input) => {

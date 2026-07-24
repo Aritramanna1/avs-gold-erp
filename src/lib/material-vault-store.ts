@@ -21,6 +21,7 @@ import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { append as appendAuditEntry } from "./security/audit-log";
 import { getMetaValue, setMetaValue } from "./local-db";
+import { fineGoldMg } from "./gold";
 
 // ── Material categories — extensible registry, not a closed enum ──────────
 
@@ -290,7 +291,12 @@ export function computeMaterialStockItems(
       unit: "g",
     };
     item.weightMg += m.deltaMg;
-    item.fineMg += purity > 0 ? Math.round((m.deltaMg * purity) / 1000) : 0;
+    // fineGoldMg() is the ERP-wide fine-gold formula (gross * purity / 999,
+    // not /1000 — see its docstring). This used to reimplement it with /1000,
+    // which silently under-reports fine gold vs. the ledger for every purity
+    // below 999. Sign is reapplied after computing on the magnitude, since
+    // fineGoldMg() requires a non-negative gross.
+    item.fineMg += purity > 0 ? Math.sign(m.deltaMg) * fineGoldMg(Math.abs(m.deltaMg), purity) : 0;
     map.set(key, item);
   }
   return Array.from(map.values())
