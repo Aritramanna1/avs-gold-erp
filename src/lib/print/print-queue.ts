@@ -28,17 +28,19 @@ export async function recordJob(
   error: string | undefined,
   pdfFileName: string | undefined,
 ): Promise<void> {
-  const { error: insertError } = await getCloudDataClient().from("print_jobs" as any).insert({
-    id,
-    doc_type: docType,
-    title,
-    status,
-    attempts,
-    last_error: error ?? null,
-    pdf_file_name: pdfFileName ?? null,
-    created_at: new Date().toISOString(),
-    completed_at: new Date().toISOString(),
-  });
+  const { error: insertError } = await getCloudDataClient()
+    .from("print_jobs" as any)
+    .insert({
+      id,
+      doc_type: docType,
+      title,
+      status,
+      attempts,
+      last_error: error ?? null,
+      pdf_file_name: pdfFileName ?? null,
+      created_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    });
   if (insertError) throw insertError;
 }
 

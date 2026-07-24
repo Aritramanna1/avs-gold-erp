@@ -80,21 +80,21 @@ export async function executeGoldTransaction(
 
   const supabase = getCloudDataClient();
   const { data, error } = await supabase.rpc("execute_gold_transaction", {
-      p_category: input.category,
-      p_purity: input.purity || 0,
-      p_delta_mg: input.deltaMg,
-      p_gross_mg: input.grossMg,
-      p_movement_type: input.movementType,
-      p_ledger_movement: input.ledgerMovement,
-      p_branch_id: input.branchId,
-      p_reference: input.reference ?? "",
-      p_notes: input.notes ?? "",
-      p_actor_id: input.actorId ?? "",
-      p_actor_email: input.actorEmail ?? "",
-      p_worker_id: input.workerId,
-      p_worker_entry:
-        (input.workerEntry as unknown as import("@/integrations/supabase/types").Json) ?? null,
-    });
+    p_category: input.category,
+    p_purity: input.purity || 0,
+    p_delta_mg: input.deltaMg,
+    p_gross_mg: input.grossMg,
+    p_movement_type: input.movementType,
+    p_ledger_movement: input.ledgerMovement,
+    p_branch_id: input.branchId,
+    p_reference: input.reference ?? "",
+    p_notes: input.notes ?? "",
+    p_actor_id: input.actorId ?? "",
+    p_actor_email: input.actorEmail ?? "",
+    p_worker_id: input.workerId,
+    p_worker_entry:
+      (input.workerEntry as unknown as import("@/integrations/supabase/types").Json) ?? null,
+  });
   if (error) {
     if (error.message?.includes("INSUFFICIENT_STOCK")) {
       throw new InsufficientStockError(0, -input.deltaMg, input.category, input.purity || 0);

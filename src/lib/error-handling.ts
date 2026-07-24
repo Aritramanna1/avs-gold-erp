@@ -3,12 +3,7 @@ import { toast } from "sonner";
 export type ErrorSeverity = "info" | "warning" | "error" | "critical";
 
 export type ErrorCategory =
-  | "database"
-  | "network"
-  | "validation"
-  | "file"
-  | "authentication"
-  | "unknown";
+  "database" | "network" | "validation" | "file" | "authentication" | "unknown";
 
 export interface NormalizedAppError {
   id: string;
@@ -86,8 +81,7 @@ function classifyError(
     return {
       title: "Connection problem",
       message: "The app could not reach an online service.",
-      guidance:
-        "Check your internet connection and retry when the service is available.",
+      guidance: "Check your internet connection and retry when the service is available.",
       category: "network",
       severity: "warning",
       recoverable: true,

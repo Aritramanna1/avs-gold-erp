@@ -60,7 +60,11 @@ export async function append(input: AuditEntryInput): Promise<AuditEntry> {
     after_json: input.after ?? null,
     device_id: input.deviceId ?? null,
   };
-  const { data, error } = await (getCloudDataClient() as any).from("audit_log").insert(entry).select().single();
+  const { data, error } = await (getCloudDataClient() as any)
+    .from("audit_log")
+    .insert(entry)
+    .select()
+    .single();
   if (error) throw error;
   return mapRow(data);
 }
@@ -73,7 +77,10 @@ export interface ChainVerificationResult {
 }
 
 export async function verifyAuditChain(): Promise<ChainVerificationResult> {
-  const { data, error } = await (getCloudDataClient() as any).from("audit_log").select("*").order("seq");
+  const { data, error } = await (getCloudDataClient() as any)
+    .from("audit_log")
+    .select("*")
+    .order("seq");
   if (error) return { ok: false, entriesChecked: 0, brokenAtSeq: null, issues: [error.message] };
   return { ok: true, entriesChecked: data?.length ?? 0, brokenAtSeq: null, issues: [] };
 }
@@ -83,7 +90,10 @@ export async function getAuditEntries(filter?: {
   entityId?: string;
   actorId?: string;
 }): Promise<AuditEntry[]> {
-  let query = (getCloudDataClient() as any).from("audit_log").select("*").order("seq", { ascending: true });
+  let query = (getCloudDataClient() as any)
+    .from("audit_log")
+    .select("*")
+    .order("seq", { ascending: true });
   if (filter?.entityType) query = query.eq("entity_type", filter.entityType);
   if (filter?.entityId) query = query.eq("entity_id", filter.entityId);
   if (filter?.actorId) query = query.eq("actor_id", filter.actorId);

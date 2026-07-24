@@ -7,7 +7,9 @@ import {
   uploadFileToSupabase,
 } from "./supabase-storage";
 
-const attachmentsRepository = createRepository<{ id: string } & Record<string, unknown>>("attachments");
+const attachmentsRepository = createRepository<{ id: string } & Record<string, unknown>>(
+  "attachments",
+);
 
 export type AttachmentEntityType =
   | "person"
@@ -59,11 +61,29 @@ export function generateImageThumbnail(file: File | string, maxSize: number): Pr
 
 type State = {
   items: Record<AttachmentKey, AttachmentRecord>;
-  get: (entityType: AttachmentEntityType, entityId: string, docKey: string) => AttachmentRecord | undefined;
-  save: (entityType: AttachmentEntityType, entityId: string, docKey: string, patch: Partial<AttachmentRecord>) => void;
-  saveWithFile: (entityType: AttachmentEntityType, entityId: string, docKey: string, file: File, patch?: { filed?: boolean; note?: string; uploadedBy?: string }) => Promise<AttachmentRecord>;
+  get: (
+    entityType: AttachmentEntityType,
+    entityId: string,
+    docKey: string,
+  ) => AttachmentRecord | undefined;
+  save: (
+    entityType: AttachmentEntityType,
+    entityId: string,
+    docKey: string,
+    patch: Partial<AttachmentRecord>,
+  ) => void;
+  saveWithFile: (
+    entityType: AttachmentEntityType,
+    entityId: string,
+    docKey: string,
+    file: File,
+    patch?: { filed?: boolean; note?: string; uploadedBy?: string },
+  ) => Promise<AttachmentRecord>;
   clear: (entityType: AttachmentEntityType, entityId: string, docKey: string) => void;
-  listForEntity: (entityType: AttachmentEntityType, entityId: string) => Array<{ docKey: string; rec: AttachmentRecord }>;
+  listForEntity: (
+    entityType: AttachmentEntityType,
+    entityId: string,
+  ) => Array<{ docKey: string; rec: AttachmentRecord }>;
 };
 
 export const useAttachments = create<State>()((set, getStore) => ({
@@ -122,14 +142,23 @@ export const useAttachments = create<State>()((set, getStore) => ({
   },
 }));
 
-export function isAttachmentFiled(entityType: AttachmentEntityType, entityId: string, docKey: string): boolean {
+export function isAttachmentFiled(
+  entityType: AttachmentEntityType,
+  entityId: string,
+  docKey: string,
+): boolean {
   return !!useAttachments.getState().items[makeKey(entityType, entityId, docKey)]?.filed;
 }
 
-export async function getAttachmentUrl(entityType: AttachmentEntityType, entityId: string, docKey: string): Promise<string | null> {
+export async function getAttachmentUrl(
+  entityType: AttachmentEntityType,
+  entityId: string,
+  docKey: string,
+): Promise<string | null> {
   const record = useAttachments.getState().items[makeKey(entityType, entityId, docKey)];
   if (!record) return null;
-  if (record.bucket && record.storagePath) return getAttachmentSignedUrl(record.bucket, record.storagePath);
+  if (record.bucket && record.storagePath)
+    return getAttachmentSignedUrl(record.bucket, record.storagePath);
   return record.fileDataUrl ?? null;
 }
 
@@ -137,7 +166,8 @@ export async function copyAttachment(
   from: { entityType: AttachmentEntityType; entityId: string; docKey: string },
   to: { entityType: AttachmentEntityType; entityId: string; docKey: string },
 ): Promise<boolean> {
-  const source = useAttachments.getState().items[makeKey(from.entityType, from.entityId, from.docKey)];
+  const source =
+    useAttachments.getState().items[makeKey(from.entityType, from.entityId, from.docKey)];
   if (!source?.storagePath || !source.bucket) return false;
   useAttachments.getState().save(to.entityType, to.entityId, to.docKey, {
     filed: true,
@@ -150,9 +180,17 @@ export async function copyAttachment(
   return true;
 }
 
-export function invalidateAttachmentUrl(_entityType: AttachmentEntityType, _entityId: string, _docKey: string): void {}
+export function invalidateAttachmentUrl(
+  _entityType: AttachmentEntityType,
+  _entityId: string,
+  _docKey: string,
+): void {}
 
-export function useAttachmentUrl(entityType: AttachmentEntityType, entityId: string, docKey: string): string | null {
+export function useAttachmentUrl(
+  entityType: AttachmentEntityType,
+  entityId: string,
+  docKey: string,
+): string | null {
   const record = useAttachments((state) => state.items[makeKey(entityType, entityId, docKey)]);
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {

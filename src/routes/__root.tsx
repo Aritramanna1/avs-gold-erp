@@ -285,15 +285,12 @@ function RootComponent() {
         <LanguageProvider>
           <AuthGate>
             <BackendGate>
-                <AppShell>
-                  <CatchBoundary
-                    getResetKey={() => currentPath}
-                    errorComponent={RouteErrorFallback}
-                  >
-                    <Outlet />
-                  </CatchBoundary>
-                </AppShell>
-              </BackendGate>
+              <AppShell>
+                <CatchBoundary getResetKey={() => currentPath} errorComponent={RouteErrorFallback}>
+                  <Outlet />
+                </CatchBoundary>
+              </AppShell>
+            </BackendGate>
           </AuthGate>
           <Toaster richColors position="top-right" />
           <Suspense fallback={null}>

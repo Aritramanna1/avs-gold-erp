@@ -46,7 +46,8 @@ function HelpPage() {
           <div>
             <h2 className="font-serif text-lg text-gold font-semibold">Welcome to Jewellers ERP</h2>
             <p className="text-sm mt-1 text-muted-foreground leading-relaxed">
-              This installation uses Supabase Auth, PostgreSQL, and configured cloud services for connected operation.
+              This installation uses Supabase Auth, PostgreSQL, and configured cloud services for
+              connected operation.
               <span className="ml-1">
                 Manual registers should be kept in parallel during the selected-workshop testing
                 period until each workflow has been validated.

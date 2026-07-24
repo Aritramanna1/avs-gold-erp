@@ -61,8 +61,8 @@ export async function getAttachmentSignedUrl(
   path: string,
   forceRefresh = false,
 ): Promise<string> {
-  const { data, error } = await getCloudDataClient().storage
-    .from(namespace)
+  const { data, error } = await getCloudDataClient()
+    .storage.from(namespace)
     .createSignedUrl(path, 3600, forceRefresh ? { download: true } : undefined);
   if (error) throw new Error(`Cloud file URL failed: ${error.message}`);
   return data.signedUrl;

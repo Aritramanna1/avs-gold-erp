@@ -664,7 +664,9 @@ export async function startCloudSync(): Promise<void> {
       });
     isLoaded = true;
     startRealtimeSync();
-    void initializeStorage().catch((error) => reportUnexpectedError(error, "data-loader.storage-init"));
+    void initializeStorage().catch((error) =>
+      reportUnexpectedError(error, "data-loader.storage-init"),
+    );
   } finally {
     starting = false;
   }

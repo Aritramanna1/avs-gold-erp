@@ -393,10 +393,7 @@ function InvoiceDetailPage() {
               </div>
             </div>
             {inv.orderId && (
-              <Link
-                to="/billing"
-                className="text-xs text-gold underline mt-3 inline-block"
-              >
+              <Link to="/billing" className="text-xs text-gold underline mt-3 inline-block">
                 Linked order: {inv.orderNo}
               </Link>
             )}

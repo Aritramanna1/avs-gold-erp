@@ -485,7 +485,7 @@ function LogoUploader({ logoUrl, logoStoragePath, onLogoChange, onClearLogo }: L
           ) : (
             <Upload className="h-3.5 w-3.5" />
           )}
-          {uploading ? (false ? "Saving..." : "Uploading...") : "Upload Logo"}
+          {uploading ? "Uploading..." : "Upload Logo"}
         </Button>
         <input
           ref={fileInputRef}
@@ -694,23 +694,14 @@ function FirmTab() {
         hostingerUploadUrl,
       };
 
-      // Offline profiles are persisted by the settings store and must never
-      // depend on a cloud session. Connected modes retain the existing cloud
-      // persistence path.
-      if (true) {
-        const success = await updateFirmProfile(updatedProfile);
-        if (!success) {
-          throw new Error("The connected profile service could not save these changes.");
-        }
+      const success = await updateFirmProfile(updatedProfile);
+      if (!success) {
+        throw new Error("The connected profile service could not save these changes.");
       }
 
       // Commit to local store configuration (causes immediate layout/sidebar sync).
       setFirm(updatedProfile);
-      toast.success(
-        false
-          ? "Firm profile and settings saved locally."
-          : "Firm profile and settings saved successfully.",
-      );
+      toast.success("Firm profile and settings saved successfully.");
 
       // Clear draft states
       clearShopName();

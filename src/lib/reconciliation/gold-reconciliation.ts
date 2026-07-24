@@ -103,14 +103,16 @@ export async function runGoldReconciliation(
     all,
   };
 
-  const { error } = await getCloudDataClient().from("gold_reconciliation_reports" as any).insert({
-    id: report.id,
-    generated_at: report.generatedAt,
-    branch_id: branchId ?? null,
-    total_checked: report.totalChecked,
-    exception_count: report.exceptionCount,
-    report_json: report,
-  });
+  const { error } = await getCloudDataClient()
+    .from("gold_reconciliation_reports" as any)
+    .insert({
+      id: report.id,
+      generated_at: report.generatedAt,
+      branch_id: branchId ?? null,
+      total_checked: report.totalChecked,
+      exception_count: report.exceptionCount,
+      report_json: report,
+    });
   if (error) throw error;
 
   for (const exception of exceptions) {

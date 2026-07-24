@@ -37,7 +37,9 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
       <DialogContent className="h-[min(90vh,900px)] max-w-6xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>Review the document, then use the browser print dialog.</DialogDescription>
+          <DialogDescription>
+            Review the document, then use the browser print dialog.
+          </DialogDescription>
         </DialogHeader>
         <div className="relative min-h-0 flex-1 overflow-hidden rounded-md border bg-muted/30">
           {loading && (
@@ -54,8 +56,12 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
           />
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Close</Button>
-          <Button onClick={printFrame} className="gap-2"><Printer className="h-4 w-4" /> Print</Button>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+          <Button onClick={printFrame} className="gap-2">
+            <Printer className="h-4 w-4" /> Print
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

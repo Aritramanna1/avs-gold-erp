@@ -83,12 +83,18 @@ function safe<T extends { id: string }>(table: string, repository: Repository<T>
           const result = value.apply(target, args);
           return result && typeof result.then === "function"
             ? result.catch((error: unknown) => {
-                const normalized = reportUnexpectedError(error, `repository.${table}.${String(property)}`);
+                const normalized = reportUnexpectedError(
+                  error,
+                  `repository.${table}.${String(property)}`,
+                );
                 throw new Error(`${normalized.message} Reference: ${normalized.id}`);
               })
             : result;
         } catch (error) {
-          const normalized = reportUnexpectedError(error, `repository.${table}.${String(property)}`);
+          const normalized = reportUnexpectedError(
+            error,
+            `repository.${table}.${String(property)}`,
+          );
           throw new Error(`${normalized.message} Reference: ${normalized.id}`);
         }
       };
@@ -99,14 +105,23 @@ function safe<T extends { id: string }>(table: string, repository: Repository<T>
 export function createRepository<T extends { id: string }>(table: string): Repository<T> {
   const cloud = getCloudDataClient;
   const read = async (id: string): Promise<T | null> => {
-    const { data, error } = await cloud().from(table as any).select("id, data").eq("id", id).maybeSingle();
+    const { data, error } = await cloud()
+      .from(table as any)
+      .select("id, data")
+      .eq("id", id)
+      .maybeSingle();
     if (error) throw error;
     return unwrap<T>(data as { data?: unknown } | null);
   };
   const readAll = async (): Promise<T[]> => {
-    const { data, error } = await cloud().from(table as any).select("id, data").limit(10000);
+    const { data, error } = await cloud()
+      .from(table as any)
+      .select("id, data")
+      .limit(10000);
     if (error) throw error;
-    return ((data ?? []) as Array<{ data?: unknown }>).map((row) => unwrap<T>(row)).filter((row): row is T => row !== null);
+    return ((data ?? []) as Array<{ data?: unknown }>)
+      .map((row) => unwrap<T>(row))
+      .filter((row): row is T => row !== null);
   };
   const repository: Repository<T> = {
     async save(payload) {
@@ -154,7 +169,9 @@ export function createRepository<T extends { id: string }>(table: string): Repos
         .order("updated_at", { ascending: true })
         .limit(10000);
       if (error) throw error;
-      return ((data ?? []) as Array<{ data?: unknown }>).map((row) => unwrap<T>(row)).filter((row): row is T => row !== null);
+      return ((data ?? []) as Array<{ data?: unknown }>)
+        .map((row) => unwrap<T>(row))
+        .filter((row): row is T => row !== null);
     },
   };
   return safe(table, repository);

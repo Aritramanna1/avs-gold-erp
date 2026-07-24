@@ -34,11 +34,17 @@ export async function enqueueForRetry(req: CommRequest, logEventId?: string): Pr
   return id;
 }
 
-export async function getQueueEntries(status?: CommQueueEntry["status"]): Promise<CommQueueEntry[]> {
+export async function getQueueEntries(
+  status?: CommQueueEntry["status"],
+): Promise<CommQueueEntry[]> {
   return queue.filter((entry) => !status || entry.status === status);
 }
 
-export async function drainCommQueue(): Promise<{ attempted: number; sent: number; failed: number }> {
+export async function drainCommQueue(): Promise<{
+  attempted: number;
+  sent: number;
+  failed: number;
+}> {
   const { commService } = await import("./service");
   let attempted = 0;
   let sent = 0;

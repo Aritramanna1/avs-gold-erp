@@ -171,11 +171,7 @@ export function LinkedOrders({ orders }: { orders: { orderId: string; orderNo: s
     <div className="px-4 pb-3 text-[11px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
       <span className="uppercase tracking-wide">Linked orders:</span>
       {orders.map((o) => (
-        <Link
-          key={o.orderId}
-          to="/billing"
-          className="font-mono text-gold hover:underline"
-        >
+        <Link key={o.orderId} to="/billing" className="font-mono text-gold hover:underline">
           {o.orderNo}
         </Link>
       ))}
