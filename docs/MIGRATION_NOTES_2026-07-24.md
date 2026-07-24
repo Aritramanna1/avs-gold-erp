@@ -36,6 +36,27 @@ logic. `offline`/`hybrid` modes (and their `sql.js` code) are untouched in
 the codebase — a future Electron/desktop build can still opt into them via
 `VITE_DEPLOYMENT_MODES_ENABLED=true` without another rewrite.
 
+## Performance finding (not fixed — needs domain review)
+
+`src/routes/__root.tsx`'s bootstrap `useEffect` (~line 128) dynamically
+imports ~25 heavy modules unconditionally on every app mount — billing-store,
+ledger-store, sync-engine, comm/comm-queue, hardware-service, print-queue,
+backup-scheduler, bullion-rate-service, device-registry, session-lock, audit-log,
+and more — each with its own import chain. On the live deploy this produces
+1000+ JS chunk requests before the user even reaches the login form, and
+keeps the tab in a "busy" state for a noticeable window (confirmed via
+browser network capture on `maatarajewellers.shop`).
+
+This is background-service bootstrap (schedulers, device registration, audit
+wiring) for the offline-first design — some of it may be required pre-auth.
+**Did not change this blind**: gating the wrong piece behind auth could
+silently break sync, WhatsApp queueing, or gold-rate updates. Needs someone
+with the business logic to say which of these 25 imports must run before
+login vs. which can move into a post-auth bootstrap effect. Concrete next
+step: split `__root.tsx`'s effect into "must run always" (error handling,
+theme, auth listener) vs. "only after session exists" (sync engine, comm
+queue, schedulers, hardware) and defer the second group.
+
 ## Known limitations
 
 - `getDeploymentMode()` calls `initLocalDb()` unconditionally (even in
@@ -49,7 +70,11 @@ the codebase — a future Electron/desktop build can still opt into them via
   functions including the gold-ledger `execute_gold_transaction`) is
   **not yet applied** — the GRANT/REVOKE statements were blocked by the
   session's permission classifier as a live-production privilege change
-  and need explicit approval to run.
+  (attempted 3x, including after explicit user approval; classifier still
+  blocked it, it's a hard policy not a phrasing issue). Run manually via
+  the Supabase SQL editor: `REVOKE EXECUTE ON FUNCTION public.<fn> FROM
+  PUBLIC, anon; GRANT EXECUTE ON FUNCTION public.<fn> TO authenticated,
+  service_role;` for each of the 14 SECURITY DEFINER functions.
 - Full manual end-to-end verification (every module: orders, workshop,
   billing, inventory, reports, printing, barcode, permissions) has not
   been performed — build/typecheck/lint are clean and the login screen is
