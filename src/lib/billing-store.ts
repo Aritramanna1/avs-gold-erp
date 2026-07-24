@@ -658,8 +658,8 @@ export const useBilling = create<BillingState>()((set, get) => ({
 
     // If there is an "outstanding" placeholder payment, we must reduce or remove it
     // because a real payment is being made against that outstanding balance.
-    let currentPayments = [...inv.payments];
-    const outstandingIdx = currentPayments.findIndex(p => p.mode === "outstanding");
+    const currentPayments = [...inv.payments];
+    const outstandingIdx = currentPayments.findIndex((p) => p.mode === "outstanding");
     if (outstandingIdx >= 0) {
       const outstandingPay = currentPayments[outstandingIdx];
       if (pay.amountPaise >= outstandingPay.amountPaise) {
@@ -669,7 +669,7 @@ export const useBilling = create<BillingState>()((set, get) => ({
         // Partial payment — reduce the placeholder
         currentPayments[outstandingIdx] = {
           ...outstandingPay,
-          amountPaise: outstandingPay.amountPaise - pay.amountPaise
+          amountPaise: outstandingPay.amountPaise - pay.amountPaise,
         };
       }
     }

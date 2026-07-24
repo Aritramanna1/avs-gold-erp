@@ -15,16 +15,24 @@ test.describe("WhatsApp & WasenderAPI Integration", () => {
     expectNoPageErrors(authedPage);
   });
 
-  test("WasenderAPI Document Pipeline unit test (Invoice, Delivery Challan, Settlement, Reports)", async ({ authedPage }) => {
+  test("WasenderAPI Document Pipeline unit test (Invoice, Delivery Challan, Settlement, Reports)", async ({
+    authedPage,
+  }) => {
     await authedPage.goto("/billing");
 
     // Evaluate in browser context using relative runtime resolution
     const result = await authedPage.evaluate(async () => {
       // Create test document Blobs in browser context
       const invBlob = new Blob(["%PDF-1.4 Fake Invoice PDF Content"], { type: "application/pdf" });
-      const dcBlob = new Blob(["%PDF-1.4 Fake Delivery Challan PDF Content"], { type: "application/pdf" });
-      const gsBlob = new Blob(["%PDF-1.4 Fake Gold Settlement Voucher PDF Content"], { type: "application/pdf" });
-      const rptBlob = new Blob(["%PDF-1.4 Fake Business Report PDF Content"], { type: "application/pdf" });
+      const dcBlob = new Blob(["%PDF-1.4 Fake Delivery Challan PDF Content"], {
+        type: "application/pdf",
+      });
+      const gsBlob = new Blob(["%PDF-1.4 Fake Gold Settlement Voucher PDF Content"], {
+        type: "application/pdf",
+      });
+      const rptBlob = new Blob(["%PDF-1.4 Fake Business Report PDF Content"], {
+        type: "application/pdf",
+      });
 
       const invValid = invBlob.size > 0;
       const dcValid = dcBlob.size > 0;

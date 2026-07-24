@@ -3,7 +3,9 @@ import { test, expect } from "../fixtures/base";
 test.describe("Mobile navigation drawer (C-10)", () => {
   test.use({ viewport: { width: 500, height: 900 } });
 
-  test.skip("closes automatically after navigating via a link inside it", async ({ authedPage }) => {
+  test.skip("closes automatically after navigating via a link inside it", async ({
+    authedPage,
+  }) => {
     await authedPage.goto("/");
     await authedPage.getByLabel("Open navigation menu").click();
 

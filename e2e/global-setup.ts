@@ -39,7 +39,10 @@ export default async function globalSetup(config: FullConfig) {
     console.log("[global-setup] Authentication successful");
   } catch (err) {
     const pageUrl = page.url();
-    const bodyText = await page.locator("body").innerText().catch(() => "N/A");
+    const bodyText = await page
+      .locator("body")
+      .innerText()
+      .catch(() => "N/A");
     console.warn(
       `[global-setup] UI login failed or timed out. Page URL: ${pageUrl}. Body preview: ${bodyText.slice(0, 300)}`,
       err,
