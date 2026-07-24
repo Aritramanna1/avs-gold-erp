@@ -5,7 +5,13 @@ import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 
 export default defineConfig({
-  base: "./",
+  // Absolute base. "./" (relative) was required for Electron's file://
+  // protocol — now removed — but breaks every deep link on the web: from
+  // a nested route like /invite/accept, a relative "./assets/x.js" resolves
+  // to /invite/assets/x.js, which 404s into the SPA fallback (index.html),
+  // so the browser gets HTML where it expected a JS module and the whole
+  // app fails to boot. Confirmed via Playwright against the live deploy.
+  base: "/",
   plugins: [
     TanStackRouterVite({
       target: "react",
