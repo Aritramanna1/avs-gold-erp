@@ -1,7 +1,7 @@
 {
   "name": "avs-gold-erp",
   "version": "1.1.1",
-  "description": "AVS Gold ERP — Professional Jewellery Manufacturing ERP by Arivahly Venture Sphere",
+  "description": "AVS Gold ERP \u00e2\u20ac\u201d Professional Jewellery Manufacturing ERP by Arivahly Venture Sphere",
   "author": {
     "name": "Arivahly Venture Sphere",
     "url": "https://arivahly.in/"
@@ -9,7 +9,6 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
-  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -19,11 +18,7 @@
     "format": "prettier --write .",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:report": "playwright show-report e2e/report",
-    "build:electron": "tsc -p electron/tsconfig.json && node -e \"require('fs').writeFileSync('dist-electron/package.json', JSON.stringify({type:'commonjs'}))\"",
-    "electron:dev": "concurrently -k -n VITE,ELECTRON \"cross-env VITE_DEPLOYMENT_MODES_ENABLED=true vite\" \"npm:electron:wait-and-launch\"",
-    "electron:wait-and-launch": "wait-on tcp:3000 && npm run build:electron && cross-env VITE_DEV_SERVER_URL=http://localhost:3000 electron dist-electron/main.js",
-    "electron:build": "cross-env VITE_DEPLOYMENT_MODES_ENABLED=true npm run build && npm run build:electron && electron-builder"
+    "test:e2e:report": "playwright show-report e2e/report"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -66,7 +61,6 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.2.0",
     "@eslint/js": "^9.32.0",
     "@playwright/test": "^1.61.1",
     "@types/node": "^22.16.5",
@@ -78,8 +72,6 @@
     "@vitejs/plugin-react": "^5.2.0",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
-    "electron": "^43.0.0",
-    "electron-builder": "^26.15.3",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
@@ -95,57 +87,6 @@
   "overrides": {
     "exceljs": {
       "uuid": "11.1.1"
-    }
-  },
-  "build": {
-    "appId": "com.avs.goldenerp",
-    "productName": "AVS Gold ERP",
-    "copyright": "Copyright © Arivahly Venture Sphere",
-    "electronDist": "node_modules/electron/dist",
-    "directories": {
-      "output": "release-build",
-      "buildResources": "build"
-    },
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "supabase/AVS_GOLD_ERP_HYBRID_MASTER.sql",
-        "to": "AVS_GOLD_ERP_HYBRID_MASTER.sql"
-      }
-    ],
-    "protocols": [
-      {
-        "name": "AVS Gold ERP Deep Link",
-        "schemes": [
-          "avsgolderp"
-        ]
-      }
-    ],
-    "artifactName": "AVS-Gold-ERP-V1-Testing-Setup.${ext}",
-    "win": {
-      "target": "nsis",
-      "icon": "build/icon.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "AVS Gold ERP",
-      "license": "build/LICENSE.txt",
-      "uninstallDisplayName": "AVS Gold ERP — Version 1 Testing Build"
-    },
-    "mac": {
-      "target": "dmg",
-      "icon": "build/icon.png"
-    },
-    "linux": {
-      "target": "AppImage",
-      "icon": "build/icon.png"
     }
   }
 }
