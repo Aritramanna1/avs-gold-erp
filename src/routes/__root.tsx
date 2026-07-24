@@ -234,47 +234,85 @@ function RootComponent() {
         "startup.session-lock",
       );
     });
-    const operationalTimer = schedule(6_000, () => {
-      protect(
-        import("@/lib/comm/comm-queue").then((m) => stops.push(m.startCommQueueScheduler())),
-        "startup.comm-queue",
-      );
-      protect(
-        import("@/lib/sync-engine").then((m) => stops.push(m.startSyncOutboxScheduler())),
-        "startup.sync-engine",
-      );
-      protect(
-        import("@/lib/bullion-rate-service").then((m) => stops.push(m.startBullionRateScheduler())),
-        "startup.bullion-rate",
-      );
-      protect(
-        import("@/lib/security/backup-scheduler").then((m) => stops.push(m.startBackupScheduler())),
-        "startup.backup-scheduler",
-      );
+
+    // Firm-scoped background services (sync, comm queue, bullion rate polling,
+    // backups, scheduled reports/reminders/reconciliation) have nothing to do
+    // for a signed-out visitor and no firm to operate on. Starting them on
+    // the login screen was pure waste — dozens of chunk fetches and network
+    // calls before anyone authenticates. Gate on an actual session and start
+    // once, either immediately (session already exists on mount) or on the
+    // first sign-in.
+    let servicesStarted = false;
+    const startFirmScopedServices = () => {
+      if (servicesStarted || cancelled) return;
+      servicesStarted = true;
+      const operationalTimer = schedule(6_000, () => {
+        protect(
+          import("@/lib/comm/comm-queue").then((m) => stops.push(m.startCommQueueScheduler())),
+          "startup.comm-queue",
+        );
+        protect(
+          import("@/lib/sync-engine").then((m) => stops.push(m.startSyncOutboxScheduler())),
+          "startup.sync-engine",
+        );
+        protect(
+          import("@/lib/bullion-rate-service").then((m) =>
+            stops.push(m.startBullionRateScheduler()),
+          ),
+          "startup.bullion-rate",
+        );
+        protect(
+          import("@/lib/security/backup-scheduler").then((m) =>
+            stops.push(m.startBackupScheduler()),
+          ),
+          "startup.backup-scheduler",
+        );
+      });
+      const automationTimer = schedule(12_000, () => {
+        protect(
+          Promise.all([
+            import("@/lib/comm/scheduler"),
+            import("@/lib/comm/scheduled-reports"),
+            import("@/lib/comm/reminder-sweeps"),
+            import("@/lib/reconciliation/scheduled-reconciliation"),
+            import("@/lib/security/disaster-recovery"),
+            import("@/lib/comm/scheduled-statements"),
+          ]).then(
+            ([scheduler, reports, reminders, reconciliation, disasterRecovery, statements]) => {
+              reports.registerScheduledReportJobs();
+              reminders.registerReminderSweeps();
+              reconciliation.registerGoldReconciliationJob();
+              disasterRecovery.registerDisasterRecoveryDrillJob();
+              statements.registerWeeklyStatementJobs();
+              if (!cancelled) stops.push(scheduler.startScheduler());
+            },
+          ),
+          "startup.automation-scheduler",
+        );
+      });
+      firmServiceTimers.push(operationalTimer, automationTimer);
+    };
+
+    const firmServiceTimers: number[] = [];
+    let authUnsub: (() => void) | undefined;
+    void import("@/lib/providers/data-provider").then(({ dataProvider }) => {
+      if (cancelled) return;
+      void dataProvider.auth.getSession().then(({ data }: { data: { session: unknown } }) => {
+        if (!cancelled && data.session) startFirmScopedServices();
+      });
+      const {
+        data: { subscription },
+      } = dataProvider.auth.onAuthStateChange((event: string) => {
+        if (event === "SIGNED_IN") startFirmScopedServices();
+      });
+      authUnsub = () => subscription.unsubscribe();
     });
-    const automationTimer = schedule(12_000, () => {
-      protect(
-        Promise.all([
-          import("@/lib/comm/scheduler"),
-          import("@/lib/comm/scheduled-reports"),
-          import("@/lib/comm/reminder-sweeps"),
-          import("@/lib/reconciliation/scheduled-reconciliation"),
-          import("@/lib/security/disaster-recovery"),
-          import("@/lib/comm/scheduled-statements"),
-        ]).then(([scheduler, reports, reminders, reconciliation, disasterRecovery, statements]) => {
-          reports.registerScheduledReportJobs();
-          reminders.registerReminderSweeps();
-          reconciliation.registerGoldReconciliationJob();
-          disasterRecovery.registerDisasterRecoveryDrillJob();
-          statements.registerWeeklyStatementJobs();
-          if (!cancelled) stops.push(scheduler.startScheduler());
-        }),
-        "startup.automation-scheduler",
-      );
-    });
+
     return () => {
       cancelled = true;
-      [securityTimer, operationalTimer, automationTimer].forEach(window.clearTimeout);
+      window.clearTimeout(securityTimer);
+      firmServiceTimers.forEach(window.clearTimeout);
+      authUnsub?.();
       stops.forEach((stop) => stop());
     };
   }, []);
