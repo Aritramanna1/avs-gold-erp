@@ -143,6 +143,16 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
         typeStr = "Payment Paid";
         descStr = s.notes || "Cash paid to customer for metal";
         break;
+      case "cash_advance_gold_credit":
+        // Cash paid in becomes an actual GOLD-balance credit, converted at
+        // that day's rate — not a money-balance entry. cashGoldEquivMg is
+        // the same gross*purity-free rupee/rate conversion used everywhere
+        // else in this file; here it IS the ledger movement, not just a
+        // reference figure shown alongside a money line.
+        goldIn = cashGoldEquivMg;
+        typeStr = "Gold Credit (Cash Advance)";
+        descStr = s.notes || "Cash advance converted to gold credit at day's rate";
+        break;
       case "wastage_adjustment":
         goldOut = calculatedFine;
         typeStr = "Wastage Adj.";

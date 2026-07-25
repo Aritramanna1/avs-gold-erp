@@ -33,6 +33,12 @@ export interface GoldSettlementRecord {
     | "gold_given"
     | "cash_received_against_gold"
     | "cash_paid_against_gold"
+    // Customer pays cash as an advance; it is converted to gold weight at
+    // that day's rate_per_gram_paise and credited to the customer's GOLD
+    // balance (not the money balance) — a walk-in cash-for-future-gold
+    // deposit, distinct from cash_received_against_gold (which pays off
+    // gold already owed and only touches the money balance).
+    | "cash_advance_gold_credit"
     | "wastage_adjustment"
     | "overloss_adjustment"
     | "final_settlement"
