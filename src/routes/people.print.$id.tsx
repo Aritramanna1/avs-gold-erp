@@ -15,6 +15,8 @@ import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { useSettings } from "@/lib/settings-store";
+import { generateKycCoverSheetPdf } from "@/lib/pdf/document-pdf-generator";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/people/print/$id")({
   head: () => {
@@ -54,6 +56,8 @@ function PrintPage() {
   // encrypted vault, so printing works with no network in any mode.
   const attachmentItems = useAttachments((s) => s.items);
   const formsMetadata = useSettings((s) => s.formsMetadata);
+  const firm = useSettings((s) => s.firm);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Full-size bytes, resolved from the vault. Printing off the 240px thumbnail
   // would be unreadable, and non-image docs (PDF scans) have no thumbnail at
@@ -178,6 +182,49 @@ function PrintPage() {
   const photoDoc = docs.find((d) => d.docKey === "photo");
   const attachedDocs = docs.filter((d) => d !== photoDoc);
 
+  async function handleDownloadPdf() {
+    setDownloadingPdf(true);
+    try {
+      const blob = generateKycCoverSheetPdf(
+        {
+          fullName: person!.fullName,
+          personType: PERSON_TYPE_LABELS[person!.type],
+          aadhaarMasked: person!.aadhaar ? maskAadhaar(person!.aadhaar) : undefined,
+          panNumber: person!.pan,
+          phone: person!.phone,
+          altPhone: person!.altPhone,
+          email: person!.email,
+          currentAddress: person!.currentAddress,
+          workType: person!.workType,
+          joiningDate: person!.joiningDate,
+          kycComplete: isKycComplete,
+          attachedDocs: docs.map((d) => d.label),
+          customFields: printableCustomForms.flatMap((f) =>
+            f.fields
+              .map((field) => {
+                const raw = person!.customForms?.[f.id]?.[field.name];
+                if (raw === undefined || raw === null || raw === "") return null;
+                const value = typeof raw === "boolean" ? (raw ? "Yes" : "No") : String(raw);
+                return { label: `${f.name}: ${field.label}`, value };
+              })
+              .filter((x): x is { label: string; value: string } => x !== null),
+          ),
+        },
+        firm,
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `KYC-${person!.fullName.replace(/\s+/g, "-")}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-neutral-100 text-foreground">
       <PrintToolbar
@@ -190,6 +237,8 @@ function PrintPage() {
         onPrint={handlePrintTrigger}
         onReprintConfirm={recordReprint}
         backUrl="/people"
+        onDownloadPdf={handleDownloadPdf}
+        downloadingPdf={downloadingPdf}
       />
 
       <div className="p-4 md:p-8 flex flex-col items-center gap-8 overflow-y-auto">

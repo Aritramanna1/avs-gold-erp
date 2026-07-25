@@ -766,6 +766,349 @@ export function generateReportPdf(report: any, firm: FirmProfile): Blob {
   return doc.output("blob");
 }
 
+// ── Worker Slip PDF (withdrawal / advance / loan / gold advance / wastage
+//    return / final settlement) ──────────────────────────────────────────────
+//
+// All six share one shape: a person block, then one or more key-value
+// sections. This is the same field set attendance.print.$kind.$id.tsx's
+// Body() renders on screen for each kind — kept as plain data in the caller
+// rather than duplicated here, so there is one generator instead of six
+// near-identical ones.
+
+export interface WorkerSlipSection {
+  heading?: string;
+  rows: [string, string][];
+}
+
+export function generateWorkerSlipPdf(
+  slip: {
+    title: string;
+    docNo: string;
+    date: string;
+    personName: string;
+    personRole?: string;
+    personPhone?: string;
+    sections: WorkerSlipSection[];
+    notes?: string;
+  },
+  firm: FirmProfile,
+): Blob {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  let y = addPageHeader(doc, firm, slip.title, slip.docNo, slip.date);
+  y += 2;
+
+  y = addSectionTitle(doc, "Worker", y);
+  y = addTwoColRow(doc, "Name", slip.personName, y);
+  if (slip.personRole) y = addTwoColRow(doc, "Role", slip.personRole, y);
+  if (slip.personPhone) y = addTwoColRow(doc, "Phone", slip.personPhone, y);
+  y += 2;
+  y = addHRule(doc, y, true);
+
+  for (const section of slip.sections) {
+    if (section.heading) y = addSectionTitle(doc, section.heading, y);
+    for (const [label, value] of section.rows) {
+      y = addTwoColRow(doc, label, value, y);
+    }
+    y += 2;
+  }
+
+  if (slip.notes) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`Notes: ${slip.notes}`, MARGIN, y, { maxWidth: CONTENT_W });
+    y += 6;
+  }
+
+  addPageFooter(doc, firm);
+  return doc.output("blob");
+}
+
+// ── Attendance Sheet PDF (monthly, per worker) ────────────────────────────────
+
+export function generateAttendanceSheetPdf(
+  sheet: {
+    personName: string;
+    personRole?: string;
+    personPhone?: string;
+    month: string;
+    rows: { date: string; status: string; overtime: string; notes: string }[];
+    summary: { present: number; halfDay: number; absent: number; payable: number };
+  },
+  firm: FirmProfile,
+): Blob {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  let y = addPageHeader(doc, firm, "Attendance Sheet", sheet.month, sheet.month);
+  y += 2;
+
+  y = addSectionTitle(doc, "Worker", y);
+  y = addTwoColRow(doc, "Name", sheet.personName, y);
+  if (sheet.personRole) y = addTwoColRow(doc, "Role", sheet.personRole, y);
+  if (sheet.personPhone) y = addTwoColRow(doc, "Phone", sheet.personPhone, y);
+  y += 2;
+  y = addHRule(doc, y, true);
+
+  y = addSectionTitle(doc, "Daily Record", y);
+  y = addTable(
+    doc,
+    [
+      { header: "Date", key: "date", width: 30 },
+      { header: "Status", key: "status", width: 35 },
+      { header: "OT", key: "overtime", width: 25 },
+      { header: "Notes", key: "notes", width: 90 },
+    ],
+    sheet.rows,
+    y,
+  );
+  y += 4;
+
+  y = addSectionTitle(doc, "Summary", y);
+  y = addTwoColRow(doc, "Present", String(sheet.summary.present), y);
+  y = addTwoColRow(doc, "Half-day", String(sheet.summary.halfDay), y);
+  y = addTwoColRow(doc, "Absent", String(sheet.summary.absent), y);
+  y = addTwoColRow(doc, "Payable", String(sheet.summary.payable), y);
+
+  addPageFooter(doc, firm);
+  return doc.output("blob");
+}
+
+// ── Order Advance Receipt PDF (gold-receipt / old-gold-receipt /
+//    advance-receipt kinds of orders.print.$kind.$id.tsx) ────────────────────
+
+export function generateOrderReceiptPdf(
+  receipt: {
+    title: string;
+    docNo: string;
+    date: string;
+    orderNo: string;
+    customerName: string;
+    customerPhone?: string;
+    kind: "gold" | "cash";
+    // gold kind
+    goldLabel?: string;
+    goldGrossMg?: number;
+    goldPurity?: number;
+    goldFineMg?: number;
+    goldTreatment?: string;
+    // cash kind
+    cashPaise?: number;
+    cashMode?: string;
+    cashRef?: string;
+  },
+  firm: FirmProfile,
+): Blob {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  let y = addPageHeader(doc, firm, receipt.title, receipt.docNo, receipt.date);
+  y += 2;
+
+  y = addSectionTitle(doc, "Customer", y);
+  y = addTwoColRow(doc, "Name", receipt.customerName, y);
+  if (receipt.customerPhone) y = addTwoColRow(doc, "Phone", receipt.customerPhone, y);
+  y = addTwoColRow(doc, "Against Order", receipt.orderNo, y);
+  y += 2;
+  y = addHRule(doc, y, true);
+
+  if (receipt.kind === "gold") {
+    y = addSectionTitle(doc, "Gold Received", y);
+    y = addTwoColRow(doc, "Description", receipt.goldLabel ?? "—", y);
+    y = addTwoColRow(doc, "Gross Weight", `${mgToG(receipt.goldGrossMg ?? 0)} g`, y);
+    y = addTwoColRow(doc, "Purity", String(receipt.goldPurity ?? "—"), y);
+    y = addTwoColRow(doc, "Fine Weight", `${mgToG(receipt.goldFineMg ?? 0)} g`, y);
+    if (receipt.goldTreatment) y = addTwoColRow(doc, "Treatment", receipt.goldTreatment, y);
+  } else {
+    y = addSectionTitle(doc, "Cash Received", y);
+    y = addTwoColRow(doc, "Amount", `Rs ${paiseToRs(receipt.cashPaise ?? 0)}`, y);
+    if (receipt.cashMode) y = addTwoColRow(doc, "Mode", receipt.cashMode, y);
+    if (receipt.cashRef) y = addTwoColRow(doc, "Reference", receipt.cashRef, y);
+  }
+
+  addPageFooter(doc, firm);
+  return doc.output("blob");
+}
+
+// ── Repair Invoice / Delivery PDF (invoice + delivery kinds of
+//    repair.print.$kind.$id.tsx — same charges breakdown, delivery adds a
+//    delivered-on line) ───────────────────────────────────────────────────────
+
+export function generateRepairInvoicePdf(
+  data: {
+    title: string;
+    docNo: string;
+    date: string;
+    customerName: string;
+    customerPhone?: string;
+    repairChargePaise: number;
+    polishingChargePaise: number;
+    additionalChargePaise: number;
+    gstEnabled: boolean;
+    cgstPaise: number;
+    sgstPaise: number;
+    grandTotalPaise: number;
+    paidPaise: number;
+    balancePaise: number;
+    deliveredAt?: string;
+  },
+  firm: FirmProfile,
+): Blob {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  let y = addPageHeader(doc, firm, data.title, data.docNo, data.date);
+  y += 2;
+
+  y = addSectionTitle(doc, "Customer", y);
+  y = addTwoColRow(doc, "Name", data.customerName, y);
+  if (data.customerPhone) y = addTwoColRow(doc, "Phone", data.customerPhone, y);
+  y += 2;
+  y = addHRule(doc, y, true);
+
+  y = addSectionTitle(doc, "Charges", y);
+  y = addTwoColRow(doc, "Repair Charge", `Rs ${paiseToRs(data.repairChargePaise)}`, y);
+  y = addTwoColRow(doc, "Polishing Charge", `Rs ${paiseToRs(data.polishingChargePaise)}`, y);
+  y = addTwoColRow(doc, "Additional Material", `Rs ${paiseToRs(data.additionalChargePaise)}`, y);
+  if (data.gstEnabled) {
+    y = addTwoColRow(doc, "CGST 1.5%", `Rs ${paiseToRs(data.cgstPaise)}`, y);
+    y = addTwoColRow(doc, "SGST 1.5%", `Rs ${paiseToRs(data.sgstPaise)}`, y);
+  }
+  y = addTwoColRow(doc, "Grand Total", `Rs ${paiseToRs(data.grandTotalPaise)}`, y);
+  y = addTwoColRow(doc, "Advance + Payments", `Rs ${paiseToRs(data.paidPaise)}`, y);
+  y = addTwoColRow(doc, "Balance", `Rs ${paiseToRs(data.balancePaise)}`, y);
+
+  if (data.deliveredAt) {
+    y += 2;
+    y = addTwoColRow(doc, "Delivered On", data.deliveredAt, y);
+  }
+
+  addPageFooter(doc, firm);
+  return doc.output("blob");
+}
+
+// ── Repair Payment Receipt PDF (payment kind) ─────────────────────────────────
+
+export function generateRepairPaymentReceiptPdf(
+  data: {
+    docNo: string;
+    date: string;
+    customerName: string;
+    rows: { date: string; mode: string; reference: string; amountPaise: number }[];
+    totalPaidPaise: number;
+  },
+  firm: FirmProfile,
+): Blob {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  let y = addPageHeader(doc, firm, "Payment Receipt", data.docNo, data.date);
+  y += 2;
+
+  y = addTwoColRow(doc, "Customer", data.customerName, y);
+  y += 2;
+  y = addHRule(doc, y, true);
+
+  y = addSectionTitle(doc, "Payments", y);
+  y = addTable(
+    doc,
+    [
+      { header: "Date", key: "date", width: 30 },
+      { header: "Mode", key: "mode", width: 30 },
+      { header: "Ref", key: "reference", width: 60 },
+      { header: "Amount", key: "amount", width: 30, align: "right" },
+    ],
+    data.rows.map((r) => ({
+      date: r.date,
+      mode: r.mode,
+      reference: r.reference,
+      amount: paiseToRs(r.amountPaise),
+    })),
+    y,
+  );
+  y += 4;
+  y = addTwoColRow(doc, "Total Paid", `Rs ${paiseToRs(data.totalPaidPaise)}`, y);
+
+  addPageFooter(doc, firm);
+  return doc.output("blob");
+}
+
+// ── KYC Cover Sheet PDF (people.print.$id.tsx) ───────────────────────────────
+//
+// Covers the cover-sheet fields and lists which documents are on file.
+// Does NOT embed the scanned attachment images themselves -- those are
+// loaded async from the encrypted attachment vault as blob/data URLs, a
+// different (and separately schedulable) piece of work from the
+// synchronous jsPDF text/vector API every other generator in this file
+// uses. The on-screen/printed HTML view remains the authoritative way to
+// see the actual attached images; this PDF is the portable summary.
+
+export function generateKycCoverSheetPdf(
+  data: {
+    fullName: string;
+    personType: string;
+    aadhaarMasked?: string;
+    panNumber?: string;
+    phone?: string;
+    altPhone?: string;
+    email?: string;
+    currentAddress?: string;
+    workType?: string;
+    joiningDate?: string;
+    kycComplete: boolean;
+    attachedDocs: string[];
+    customFields?: { label: string; value: string }[];
+  },
+  firm: FirmProfile,
+): Blob {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const dateStr = new Date().toLocaleDateString("en-IN", { dateStyle: "medium" });
+  let y = addPageHeader(doc, firm, "KYC Cover Sheet", data.fullName, dateStr);
+  y += 2;
+
+  y = addSectionTitle(doc, "Details", y);
+  y = addTwoColRow(doc, "Full Name", data.fullName, y);
+  y = addTwoColRow(doc, "Type", data.personType, y);
+  if (data.phone) y = addTwoColRow(doc, "Mobile", data.phone, y);
+  if (data.altPhone) y = addTwoColRow(doc, "Alt Mobile", data.altPhone, y);
+  if (data.email) y = addTwoColRow(doc, "Email", data.email, y);
+  if (data.currentAddress) y = addTwoColRow(doc, "Address", data.currentAddress, y);
+  if (data.aadhaarMasked) y = addTwoColRow(doc, "Aadhaar", data.aadhaarMasked, y);
+  if (data.panNumber) y = addTwoColRow(doc, "PAN", data.panNumber, y);
+  if (data.workType) y = addTwoColRow(doc, "Work / Trade", data.workType, y);
+  if (data.joiningDate) y = addTwoColRow(doc, "Joining Date", data.joiningDate, y);
+  y += 2;
+  y = addHRule(doc, y, true);
+
+  if (data.customFields && data.customFields.length > 0) {
+    y = addSectionTitle(doc, "Additional Details", y);
+    for (const f of data.customFields) {
+      y = addTwoColRow(doc, f.label, f.value, y);
+    }
+    y += 2;
+    y = addHRule(doc, y, true);
+  }
+
+  y = addSectionTitle(doc, "Verification Status", y);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(data.kycComplete ? 20 : 150, data.kycComplete ? 120 : 90, 20);
+  doc.text(
+    data.kycComplete ? "COMPLETE - FULLY VERIFIED" : "INCOMPLETE - PENDING DOCUMENTS",
+    MARGIN,
+    y,
+  );
+  doc.setTextColor(0, 0, 0);
+  y += 8;
+
+  y = addSectionTitle(doc, "Documents On File", y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  if (data.attachedDocs.length === 0) {
+    doc.text("No documents attached.", MARGIN, y);
+    y += 5;
+  } else {
+    for (const label of data.attachedDocs) {
+      doc.text(`• ${label}`, MARGIN, y);
+      y += 5;
+    }
+  }
+
+  addPageFooter(doc, firm);
+  return doc.output("blob");
+}
+
 // ── Dispatch helper ───────────────────────────────────────────────────────────
 
 export type PdfDocumentType =

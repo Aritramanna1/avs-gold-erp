@@ -14,7 +14,11 @@ import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { useSettings } from "@/lib/settings-store";
-import { generateRepairPdf } from "@/lib/pdf/document-pdf-generator";
+import {
+  generateRepairPdf,
+  generateRepairInvoicePdf,
+  generateRepairPaymentReceiptPdf,
+} from "@/lib/pdf/document-pdf-generator";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -77,25 +81,86 @@ function RepairPrint() {
           : TITLES[k]
       : TITLES[k];
 
-  // generateRepairPdf() renders a generic "Repair Job Card" layout -- close
-  // enough to the intake "receipt" kind. delivery/invoice/payment kinds have
-  // no PDF generator yet, so the download button is scoped to "receipt"
-  // rather than silently producing the wrong document for the other three.
   async function handleDownloadPdf() {
+    const repair = r!;
     setDownloadingPdf(true);
     try {
-      const blob = generateRepairPdf(r, firm);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Repair-${r!.repairNo || r!.id}.pdf`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 100);
+      const dateStr = new Date(repair.createdAt).toLocaleDateString("en-IN", {
+        dateStyle: "medium",
+      });
+      if (k === "receipt") {
+        const blob = generateRepairPdf(repair, firm);
+        downloadBlob(blob, `Repair-${repair.repairNo || repair.id}.pdf`);
+      } else if (k === "invoice" || k === "delivery") {
+        const blob = generateRepairInvoicePdf(
+          {
+            title,
+            docNo: docNumber || repair.id,
+            date: dateStr,
+            customerName: repair.customerName,
+            customerPhone: repair.customerPhone,
+            repairChargePaise: repair.finalChargePaise || repair.estimatedChargePaise,
+            polishingChargePaise: repair.polishingChargePaise,
+            additionalChargePaise: repair.additionalChargePaise,
+            gstEnabled: repair.gstEnabled,
+            cgstPaise: totals.cgstPaise,
+            sgstPaise: totals.sgstPaise,
+            grandTotalPaise: totals.grandTotalPaise,
+            paidPaise: totals.paidPaise,
+            balancePaise: totals.balancePaise,
+            deliveredAt:
+              k === "delivery" && repair.deliveredAt
+                ? new Date(repair.deliveredAt).toLocaleString("en-IN")
+                : undefined,
+          },
+          firm,
+        );
+        downloadBlob(blob, `${title.replace(/\s+/g, "-")}-${repair.repairNo || repair.id}.pdf`);
+      } else if (k === "payment") {
+        const rows = [
+          ...(repair.advancePaise > 0
+            ? [
+                {
+                  date: new Date(repair.createdAt).toLocaleDateString("en-IN"),
+                  mode: repair.advanceMode ? PAYMENT_MODE_LABELS[repair.advanceMode] : "—",
+                  reference: "Advance",
+                  amountPaise: repair.advancePaise,
+                },
+              ]
+            : []),
+          ...repair.payments.map((p) => ({
+            date: new Date(p.ts).toLocaleDateString("en-IN"),
+            mode: PAYMENT_MODE_LABELS[p.mode],
+            reference: p.reference ?? "—",
+            amountPaise: p.amountPaise,
+          })),
+        ];
+        const blob = generateRepairPaymentReceiptPdf(
+          {
+            docNo: docNumber || repair.id,
+            date: dateStr,
+            customerName: repair.customerName,
+            rows,
+            totalPaidPaise: totals.paidPaise,
+          },
+          firm,
+        );
+        downloadBlob(blob, `Payment-Receipt-${repair.repairNo || repair.id}.pdf`);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate PDF");
     } finally {
       setDownloadingPdf(false);
     }
+  }
+
+  function downloadBlob(blob: Blob, fileName: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 100);
   }
 
   return (
@@ -110,7 +175,7 @@ function RepairPrint() {
         onPrint={handlePrintTrigger}
         onReprintConfirm={recordReprint}
         backUrl={`/repair/${r.id}`}
-        onDownloadPdf={k === "receipt" ? handleDownloadPdf : undefined}
+        onDownloadPdf={handleDownloadPdf}
         downloadingPdf={downloadingPdf}
       />
 

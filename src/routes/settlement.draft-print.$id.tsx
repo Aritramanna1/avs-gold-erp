@@ -1,11 +1,13 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSettlements, previewSettlementTotals, type Settlement } from "@/lib/settlement-store";
 import { useSettings } from "@/lib/settings-store";
 import { mgToGrams } from "@/lib/gold";
 import { paiseToRupees } from "@/lib/billing-store";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
+import { generateWorkerSlipPdf } from "@/lib/pdf/document-pdf-generator";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/settlement/draft-print/$id")({
   head: () => ({ meta: [{ title: "Settlement Draft · AVS Gold ERP" }] }),
@@ -53,10 +55,65 @@ function SettlementDraftPrint() {
         }
       : null,
   );
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   if (!s) return <div className="p-8">Settlement not found.</div>;
   const preview = previewSettlementTotals(s.items, s.gst, s.payments);
   const item = s.items[0];
+
+  // Front-side preview only, matching DraftCopy's own field set -- the
+  // back page is a deliberately blank handwritten counter form by design
+  // (see this file's own docstring), so there's nothing to render there.
+  async function handleDownloadPdf() {
+    setDownloadingPdf(true);
+    try {
+      const blob = generateWorkerSlipPdf(
+        {
+          title: "Settlement Draft (Preview) — NOT A TAX INVOICE",
+          docNo: s!.settlementNo,
+          date: new Date(s!.createdAt).toLocaleDateString("en-IN"),
+          personName: s!.customerName,
+          sections: [
+            ...(item
+              ? [
+                  {
+                    heading: "Item",
+                    rows: [
+                      ["Product", item.itemName],
+                      ["Gross Weight", `${mgToGrams(item.grossMg)} g`],
+                      ["Net Weight", `${mgToGrams(item.netMg)} g`],
+                      ["Purity", `${(item.purity / 10).toFixed(1)}%`],
+                      ["Making Charges", `Rs ${paiseToRupees(item.makingChargesPaise)}`],
+                    ] as [string, string][],
+                  },
+                ]
+              : []),
+            {
+              heading: "Gold & Cash Preview",
+              rows: [
+                ["Previous Gold Balance", `${mgToGrams(s!.existingGoldCreditMgAtDraft)} g`],
+                ["Gold Payable", `${mgToGrams(item?.fineMg ?? 0)} g fine`],
+                ["Cash Equivalent", `Rs ${paiseToRupees(preview.grandTotalPaise)}`],
+              ],
+            },
+          ],
+          notes:
+            "Employee carries this draft with the jewellery — actual payment is recorded on the reverse side and finalised at the office.",
+        },
+        firm,
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Settlement-Draft-${s!.settlementNo}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -70,6 +127,8 @@ function SettlementDraftPrint() {
         onPrint={handlePrintTrigger}
         onReprintConfirm={recordReprint}
         backUrl={`/settlement/${s.id}`}
+        onDownloadPdf={handleDownloadPdf}
+        downloadingPdf={downloadingPdf}
       />
 
       <div className="p-4 md:p-8 max-w-3xl mx-auto print:p-0">

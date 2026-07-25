@@ -15,7 +15,7 @@ import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { PrintQR } from "@/components/print-qr";
-import { generateOrderPdf } from "@/lib/pdf/document-pdf-generator";
+import { generateOrderPdf, generateOrderReceiptPdf } from "@/lib/pdf/document-pdf-generator";
 import { toast } from "sonner";
 import type { PrintDocType } from "@/lib/printlog-store";
 import { useSettings } from "@/lib/settings-store";
@@ -231,25 +231,72 @@ function PrintPage() {
 
   const bid = (order as any).branchId || (order as any).branch_id || selectedBranchId || "MAIN";
 
-  // generateOrderPdf() renders the "Work Order" layout only -- the slip
-  // kind. gold-receipt/advance-receipt/old-gold-receipt have no PDF
-  // generator yet, so the download button only appears for "slip" rather
-  // than silently producing the wrong document for the other three kinds.
   async function handleDownloadPdf() {
     setDownloadingPdf(true);
     try {
-      const blob = generateOrderPdf(order!, firm);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Order-Slip-${order!.orderNo || order!.id}.pdf`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 100);
+      const dateStr = new Date(order!.createdAt || Date.now()).toLocaleDateString("en-IN", {
+        dateStyle: "medium",
+      });
+      if (kind === "slip") {
+        const blob = generateOrderPdf(order, firm);
+        downloadBlob(blob, `Order-Slip-${order!.orderNo || order!.id}.pdf`);
+      } else if (kind === "gold-receipt" || kind === "old-gold-receipt") {
+        const blob = generateOrderReceiptPdf(
+          {
+            title,
+            docNo: docNumber || order!.id,
+            date: dateStr,
+            orderNo: order!.orderNo,
+            customerName: customer?.fullName ?? "—",
+            customerPhone: customer?.phone,
+            kind: "gold",
+            goldLabel:
+              order!.advance.goldKind === "old_gold"
+                ? "Gold received from customer"
+                : "Pure gold advance",
+            goldGrossMg: order!.advance.goldGrossMg,
+            goldPurity: order!.advance.goldPurity,
+            goldFineMg: order!.advance.goldFineMg,
+            goldTreatment:
+              order!.advance.goldApplyMode === "apply"
+                ? "Applied to this order."
+                : "Held as customer gold credit.",
+          },
+          firm,
+        );
+        downloadBlob(blob, `${title.replace(/\s+/g, "-")}-${order!.orderNo}.pdf`);
+      } else if (kind === "advance-receipt") {
+        const blob = generateOrderReceiptPdf(
+          {
+            title,
+            docNo: docNumber || order!.id,
+            date: dateStr,
+            orderNo: order!.orderNo,
+            customerName: customer?.fullName ?? "—",
+            customerPhone: customer?.phone,
+            kind: "cash",
+            cashPaise: order!.advance.cashPaise,
+            cashMode: order!.advance.cashMode,
+            cashRef: order!.advance.cashRef,
+          },
+          firm,
+        );
+        downloadBlob(blob, `Advance-Receipt-${order!.orderNo}.pdf`);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate PDF");
     } finally {
       setDownloadingPdf(false);
     }
+  }
+
+  function downloadBlob(blob: Blob, fileName: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 100);
   }
 
   return (
@@ -264,7 +311,7 @@ function PrintPage() {
         onPrint={handlePrintTrigger}
         onReprintConfirm={recordReprint}
         backUrl={`/orders/${order.id}`}
-        onDownloadPdf={kind === "slip" ? handleDownloadPdf : undefined}
+        onDownloadPdf={handleDownloadPdf}
         downloadingPdf={downloadingPdf}
       />
 

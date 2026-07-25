@@ -19,7 +19,12 @@ import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import type { PrintDocType } from "@/lib/printlog-store";
 import { buildWorkerPassbookRows } from "@/lib/workers-store";
-import { generateReportPdf } from "@/lib/pdf/document-pdf-generator";
+import {
+  generateReportPdf,
+  generateWorkerSlipPdf,
+  generateAttendanceSheetPdf,
+  type WorkerSlipSection,
+} from "@/lib/pdf/document-pdf-generator";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/attendance/print/$kind/$id")({
@@ -74,6 +79,7 @@ function PrintPage() {
   const goldAdvances = useWorkers((s) => s.goldAdvances);
   const wastageReturns = useWorkers((s) => s.wastageReturns);
   const settlements = useWorkers((s) => s.settlements);
+  const attendance = useWorkers((s) => s.attendance);
 
   const recordExists = (() => {
     switch (kind) {
@@ -111,66 +117,266 @@ function PrintPage() {
 
   const title = titles[kind] ?? "Document";
 
-  // Same buildWorkerPassbookRows() used by the on-screen PassbookContent,
-  // so this can never silently disagree with what's shown on screen. Only
-  // "passbook" has a generator -- the other 7 kinds don't yet.
+  // Every branch here reads the exact same store data/fields that Body()
+  // renders on screen for that kind (see the switch below it) -- kept as
+  // one download handler instead of duplicating the field mapping a second
+  // time per kind.
   async function handleDownloadPdf() {
-    const worker = people.find((p) => p.id === id);
-    if (!worker) return;
+    if (!recordExists) return;
     setDownloadingPdf(true);
     try {
-      const rows = buildWorkerPassbookRows(id, {
-        withdrawals,
-        loans,
-        advances,
-        goldAdvances,
-        wastageReturns,
-        settlements,
-      });
-      let cashBal = 0;
-      let goldBal = 0;
-      const blob = generateReportPdf(
-        {
-          title: `Worker Passbook — ${worker.fullName}`,
-          reportNo: worker.id,
-          columns: [
-            { header: "Date", key: "date", width: 20 },
-            { header: "Event", key: "label", width: 35 },
-            { header: "Cash Out", key: "cashOut", width: 20, align: "right" },
-            { header: "Cash In", key: "cashIn", width: 20, align: "right" },
-            { header: "Cash Bal", key: "cashBal", width: 20, align: "right" },
-            { header: "Gold Out (g)", key: "goldOut", width: 20, align: "right" },
-            { header: "Gold In (g)", key: "goldIn", width: 20, align: "right" },
-            { header: "Note", key: "note", width: 35 },
-          ],
-          rows: rows.map((r) => {
-            cashBal += (r.cashIn ?? 0) - (r.cashOut ?? 0);
-            goldBal += (r.goldIn ?? 0) - (r.goldOut ?? 0);
-            return {
-              date: r.date,
-              label: r.label,
-              cashOut: r.cashOut ? (r.cashOut / 100).toFixed(2) : "",
-              cashIn: r.cashIn ? (r.cashIn / 100).toFixed(2) : "",
-              cashBal: (cashBal / 100).toFixed(2),
-              goldOut: r.goldOut ? (r.goldOut / 1000).toFixed(3) : "",
-              goldIn: r.goldIn ? (r.goldIn / 1000).toFixed(3) : "",
-              note: r.note ?? "",
-            };
-          }),
-        },
-        firm,
-      );
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Passbook-${worker.fullName.replace(/\s+/g, "-")}.pdf`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 100);
+      if (kind === "passbook") {
+        const worker = people.find((p) => p.id === id)!;
+        const rows = buildWorkerPassbookRows(id, {
+          withdrawals,
+          loans,
+          advances,
+          goldAdvances,
+          wastageReturns,
+          settlements,
+        });
+        let cashBal = 0;
+        let goldBal = 0;
+        const blob = generateReportPdf(
+          {
+            title: `Worker Passbook — ${worker.fullName}`,
+            reportNo: worker.id,
+            columns: [
+              { header: "Date", key: "date", width: 20 },
+              { header: "Event", key: "label", width: 35 },
+              { header: "Cash Out", key: "cashOut", width: 20, align: "right" },
+              { header: "Cash In", key: "cashIn", width: 20, align: "right" },
+              { header: "Cash Bal", key: "cashBal", width: 20, align: "right" },
+              { header: "Gold Out (g)", key: "goldOut", width: 20, align: "right" },
+              { header: "Gold In (g)", key: "goldIn", width: 20, align: "right" },
+              { header: "Note", key: "note", width: 35 },
+            ],
+            rows: rows.map((r) => {
+              cashBal += (r.cashIn ?? 0) - (r.cashOut ?? 0);
+              goldBal += (r.goldIn ?? 0) - (r.goldOut ?? 0);
+              return {
+                date: r.date,
+                label: r.label,
+                cashOut: r.cashOut ? (r.cashOut / 100).toFixed(2) : "",
+                cashIn: r.cashIn ? (r.cashIn / 100).toFixed(2) : "",
+                cashBal: (cashBal / 100).toFixed(2),
+                goldOut: r.goldOut ? (r.goldOut / 1000).toFixed(3) : "",
+                goldIn: r.goldIn ? (r.goldIn / 1000).toFixed(3) : "",
+                note: r.note ?? "",
+              };
+            }),
+          },
+          firm,
+        );
+        downloadBlob(blob, `Passbook-${worker.fullName.replace(/\s+/g, "-")}.pdf`);
+        return;
+      }
+
+      if (kind === "attendance") {
+        const worker = people.find((p) => p.id === id)!;
+        const month = monthKey(todayISO());
+        const list = attendance
+          .filter((a) => a.workerId === worker.id && a.date.startsWith(month))
+          .sort((a, b) => (a.date < b.date ? -1 : 1));
+        const s = summarizeAttendance(attendance, {
+          workerId: worker.id,
+          fromDate: `${month}-01`,
+          toDate: `${month}-31`,
+        });
+        const blob = generateAttendanceSheetPdf(
+          {
+            personName: worker.fullName,
+            personRole: worker.workType ?? "Karigar / Worker",
+            personPhone: worker.phone,
+            month,
+            rows: list.map((e) => ({
+              date: e.date,
+              status: ATTENDANCE_LABELS[e.status],
+              overtime: e.overtimeHours ? String(e.overtimeHours) : "",
+              notes: e.notes ?? "",
+            })),
+            summary: {
+              present: s.present,
+              halfDay: s.halfDay,
+              absent: s.absent,
+              payable: s.payable,
+            },
+          },
+          firm,
+        );
+        downloadBlob(blob, `Attendance-${worker.fullName.replace(/\s+/g, "-")}-${month}.pdf`);
+        return;
+      }
+
+      if (kind === "withdrawal" || kind === "advance") {
+        const item =
+          kind === "withdrawal"
+            ? withdrawals.find((w) => w.id === id)
+            : advances.find((a) => a.id === id);
+        if (!item) return;
+        const worker = people.find((p) => p.id === item.workerId);
+        const blob = generateWorkerSlipPdf(
+          {
+            title: kind === "withdrawal" ? "Withdrawal Slip" : "Salary Advance Slip",
+            docNo: docNumber || item.id,
+            date: item.date,
+            personName: worker?.fullName ?? "—",
+            personRole: worker?.workType,
+            personPhone: worker?.phone,
+            sections: [
+              {
+                rows: [
+                  ["Date", item.date],
+                  ["Amount", `Rs ${paiseToRupees(item.amountPaise)}`],
+                  ["Mode", PAY_MODE_LABELS[item.mode]],
+                ],
+              },
+            ],
+            notes: item.notes,
+          },
+          firm,
+        );
+        downloadBlob(blob, `${kind === "withdrawal" ? "Withdrawal" : "Advance"}-${item.id}.pdf`);
+        return;
+      }
+
+      if (kind === "loan") {
+        const item = loans.find((l) => l.id === id);
+        if (!item) return;
+        const worker = people.find((p) => p.id === item.workerId);
+        const blob = generateWorkerSlipPdf(
+          {
+            title: "Loan Slip",
+            docNo: docNumber || item.id,
+            date: item.date,
+            personName: worker?.fullName ?? "—",
+            personRole: worker?.workType,
+            personPhone: worker?.phone,
+            sections: [
+              {
+                rows: [
+                  ["Date", item.date],
+                  ["Loan amount", `Rs ${paiseToRupees(item.amountPaise)}`],
+                  ["Reason", item.reason ?? "—"],
+                ],
+              },
+            ],
+            notes: item.notes,
+          },
+          firm,
+        );
+        downloadBlob(blob, `Loan-${item.id}.pdf`);
+        return;
+      }
+
+      if (kind === "gold_advance" || kind === "wastage_return") {
+        const item =
+          kind === "gold_advance"
+            ? goldAdvances.find((g) => g.id === id)
+            : wastageReturns.find((w) => w.id === id);
+        if (!item) return;
+        const worker = people.find((p) => p.id === item.workerId);
+        const blob = generateWorkerSlipPdf(
+          {
+            title: kind === "gold_advance" ? "Gold Advance Slip" : "Wastage Gold Return Receipt",
+            docNo: docNumber || item.id,
+            date: item.date,
+            personName: worker?.fullName ?? "—",
+            personRole: worker?.workType,
+            personPhone: worker?.phone,
+            sections: [
+              {
+                rows: [
+                  ["Date", item.date],
+                  ["Gross weight", `${mgToGrams(item.grossMg)} g`],
+                  ["Purity / touch", String(item.purity)],
+                  ["Fine gold", `${mgToGrams(item.fineMg)} g`],
+                ],
+              },
+            ],
+            notes: item.notes,
+          },
+          firm,
+        );
+        downloadBlob(
+          blob,
+          `${kind === "gold_advance" ? "GoldAdvance" : "WastageReturn"}-${item.id}.pdf`,
+        );
+        return;
+      }
+
+      if (kind === "settlement") {
+        const s = settlements.find((x) => x.id === id);
+        if (!s) return;
+        const worker = people.find((p) => p.id === s.workerId);
+        const sections: WorkerSlipSection[] = [
+          {
+            heading: "Period",
+            rows: [
+              ["Period", `${s.fromDate} to ${s.toDate}`],
+              ["Present days", String(s.presentDays)],
+              ["Half-days", String(s.halfDays)],
+              ["Absent days", String(s.absentDays)],
+              ["Leave days", String(s.leaveDays)],
+              ["Payable days", String(s.payableDays)],
+            ],
+          },
+          {
+            heading: "Cash Side",
+            rows: [
+              ["Salary earned", `Rs ${paiseToRupees(s.salaryEarnedPaise)}`],
+              ["Less: Withdrawals", `Rs ${paiseToRupees(s.withdrawalsTotalPaise)}`],
+              ["Less: Salary advances applied", `Rs ${paiseToRupees(s.advanceDeductionPaise)}`],
+              ["Less: Loan deducted", `Rs ${paiseToRupees(s.loanDeductionPaise)}`],
+              ["Final cash payable", `Rs ${paiseToRupees(s.finalCashPayablePaise)}`],
+            ],
+          },
+          {
+            heading: "Gold Side",
+            rows: [
+              ["Gold advance (fine)", `${mgToGrams(s.goldAdvanceFineMg)} g`],
+              ["Less: Wastage returned (fine)", `${mgToGrams(s.wastageReturnedFineMg)} g`],
+              [
+                "Net gold",
+                s.netGoldMg === 0
+                  ? "Settled"
+                  : s.netGoldMg > 0
+                    ? `Worker owes ${mgToGrams(s.netGoldMg)} g`
+                    : `Shop holds ${mgToGrams(-s.netGoldMg)} g credit`,
+              ],
+            ],
+          },
+        ];
+        const blob = generateWorkerSlipPdf(
+          {
+            title: "Home-Going Final Settlement Slip",
+            docNo: docNumber || s.id,
+            date: s.toDate,
+            personName: worker?.fullName ?? "—",
+            personRole: worker?.workType,
+            personPhone: worker?.phone,
+            sections,
+            notes: s.notes,
+          },
+          firm,
+        );
+        downloadBlob(blob, `Settlement-${s.id}.pdf`);
+        return;
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate PDF");
     } finally {
       setDownloadingPdf(false);
     }
+  }
+
+  function downloadBlob(blob: Blob, fileName: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 100);
   }
 
   return (
@@ -185,7 +391,7 @@ function PrintPage() {
         onPrint={handlePrintTrigger}
         onReprintConfirm={recordReprint}
         backUrl="/attendance"
-        onDownloadPdf={kind === "passbook" ? handleDownloadPdf : undefined}
+        onDownloadPdf={recordExists ? handleDownloadPdf : undefined}
         downloadingPdf={downloadingPdf}
       />
 
