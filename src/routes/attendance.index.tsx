@@ -49,6 +49,7 @@ import {
   stayDaysForWorker,
   stayEarnedPaise,
   openStayFor,
+  buildWorkerPassbookRows,
 } from "@/lib/workers-store";
 import { COMMON_PURITIES, fineGoldMg, gramsToMg, mgToGrams, parsePurity } from "@/lib/gold";
 import { useLedger } from "@/lib/ledger-store";
@@ -1735,52 +1736,14 @@ export function PassbookContent({ workerId }: { workerId: string }) {
   const wastageReturns = useWorkers((s) => s.wastageReturns);
   const settlements = useWorkers((s) => s.settlements);
 
-  type Row = {
-    date: string;
-    label: string;
-    cashIn?: number; // money in to worker pocket (advance / withdrawal / loan to worker)
-    cashOut?: number; // money returned / deducted in settlement
-    goldIn?: number; // gold owed by worker (advance)
-    goldOut?: number; // gold returned by worker (wastage)
-    note?: string;
-  };
-  const rows: Row[] = [];
-  for (const w of withdrawals.filter((x) => x.workerId === workerId))
-    rows.push({ date: w.date, label: "Withdrawal", cashIn: w.amountPaise, note: w.reason });
-  for (const l of loans.filter((x) => x.workerId === workerId))
-    rows.push({ date: l.date, label: "Loan", cashIn: l.amountPaise, note: l.reason });
-  for (const a of advances.filter((x) => x.workerId === workerId))
-    rows.push({ date: a.date, label: "Salary Advance", cashIn: a.amountPaise });
-  for (const g of goldAdvances.filter((x) => x.workerId === workerId))
-    rows.push({
-      date: g.date,
-      label: "Gold Advance",
-      goldIn: g.fineMg,
-      note: `${mgToGrams(g.grossMg)} g @ ${g.purity}`,
-    });
-  for (const w of wastageReturns.filter((x) => x.workerId === workerId))
-    rows.push({
-      date: w.date,
-      label: "Wastage Gold Returned",
-      goldOut: w.fineMg,
-      note: `${mgToGrams(w.grossMg)} g @ ${w.purity}`,
-    });
-  for (const s of settlements.filter((x) => x.workerId === workerId)) {
-    rows.push({
-      date: s.toDate,
-      label: "Final Settlement — Salary Earned",
-      cashOut: s.salaryEarnedPaise,
-      note: `${s.payableDays} payable days`,
-    });
-    if (s.finalCashPayablePaise !== 0)
-      rows.push({
-        date: s.toDate,
-        label: s.finalCashPayablePaise >= 0 ? "Final Cash Paid Out" : "Worker Owes Shop",
-        cashIn: s.finalCashPayablePaise >= 0 ? s.finalCashPayablePaise : undefined,
-        cashOut: s.finalCashPayablePaise < 0 ? -s.finalCashPayablePaise : undefined,
-      });
-  }
-  rows.sort((a, b) => (a.date < b.date ? -1 : 1));
+  const rows = buildWorkerPassbookRows(workerId, {
+    withdrawals,
+    loans,
+    advances,
+    goldAdvances,
+    wastageReturns,
+    settlements,
+  });
 
   // running balances: cashBalance = sum of (cashIn) - (cashOut) (positive means shop has paid out / owes)
   // gold balance: goldIn - goldOut (positive = worker owes)

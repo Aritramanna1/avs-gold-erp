@@ -11,6 +11,7 @@
  */
 import { create } from "zustand";
 import type { Purity } from "./gold";
+import { mgToGrams } from "./gold";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { useSettings } from "./settings-store";
@@ -596,4 +597,72 @@ export function openStayFor(workerId: string, stays: WorkerStay[]): WorkerStay |
   return stays
     .filter((s) => s.workerId === workerId && !s.departedAt)
     .sort((a, b) => b.arrivedAt - a.arrivedAt)[0];
+}
+
+export interface WorkerPassbookRow {
+  date: string;
+  label: string;
+  cashIn?: number; // money in to worker pocket (advance / withdrawal / loan to worker)
+  cashOut?: number; // money returned / deducted in settlement
+  goldIn?: number; // gold owed by worker (advance)
+  goldOut?: number; // gold returned by worker (wastage)
+  note?: string;
+}
+
+/**
+ * The one authoritative build of a worker's passbook ledger rows — used by
+ * both the on-screen PassbookContent view (attendance.index.tsx) and the
+ * PDF export (attendance.print.$kind.$id.tsx). Keeping this in one place
+ * means the printed passbook can never silently disagree with the on-screen
+ * one — the exact failure mode the material-vault fine-gold bug was.
+ */
+export function buildWorkerPassbookRows(
+  workerId: string,
+  data: {
+    withdrawals: Withdrawal[];
+    loans: Loan[];
+    advances: SalaryAdvance[];
+    goldAdvances: GoldAdvance[];
+    wastageReturns: WastageGoldReturn[];
+    settlements: Settlement[];
+  },
+): WorkerPassbookRow[] {
+  const rows: WorkerPassbookRow[] = [];
+  for (const w of data.withdrawals.filter((x) => x.workerId === workerId))
+    rows.push({ date: w.date, label: "Withdrawal", cashIn: w.amountPaise, note: w.reason });
+  for (const l of data.loans.filter((x) => x.workerId === workerId))
+    rows.push({ date: l.date, label: "Loan", cashIn: l.amountPaise, note: l.reason });
+  for (const a of data.advances.filter((x) => x.workerId === workerId))
+    rows.push({ date: a.date, label: "Salary Advance", cashIn: a.amountPaise });
+  for (const g of data.goldAdvances.filter((x) => x.workerId === workerId))
+    rows.push({
+      date: g.date,
+      label: "Gold Advance",
+      goldIn: g.fineMg,
+      note: `${mgToGrams(g.grossMg)} g @ ${g.purity}`,
+    });
+  for (const w of data.wastageReturns.filter((x) => x.workerId === workerId))
+    rows.push({
+      date: w.date,
+      label: "Wastage Gold Returned",
+      goldOut: w.fineMg,
+      note: `${mgToGrams(w.grossMg)} g @ ${w.purity}`,
+    });
+  for (const s of data.settlements.filter((x) => x.workerId === workerId)) {
+    rows.push({
+      date: s.toDate,
+      label: "Final Settlement — Salary Earned",
+      cashOut: s.salaryEarnedPaise,
+      note: `${s.payableDays} payable days`,
+    });
+    if (s.finalCashPayablePaise !== 0)
+      rows.push({
+        date: s.toDate,
+        label: s.finalCashPayablePaise >= 0 ? "Final Cash Paid Out" : "Worker Owes Shop",
+        cashIn: s.finalCashPayablePaise >= 0 ? s.finalCashPayablePaise : undefined,
+        cashOut: s.finalCashPayablePaise < 0 ? -s.finalCashPayablePaise : undefined,
+      });
+  }
+  rows.sort((a, b) => (a.date < b.date ? -1 : 1));
+  return rows;
 }
