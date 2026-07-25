@@ -13,6 +13,10 @@ import type { PrintDocType } from "@/lib/printlog-store";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { PrintLayout } from "@/components/print/PrintLayout";
+import { useSettings } from "@/lib/settings-store";
+import { generateRepairPdf } from "@/lib/pdf/document-pdf-generator";
+import { useState } from "react";
+import { toast } from "sonner";
 
 type Kind = "receipt" | "delivery" | "invoice" | "payment";
 const TITLES: Record<Kind, string> = {
@@ -58,6 +62,8 @@ function RepairPrint() {
     handlePrintTrigger,
     recordReprint,
   } = usePrintRecord(r ? docType : null, id);
+  const firm = useSettings((s) => s.firm);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   if (!r) return <div className="p-8">Repair not found.</div>;
 
@@ -71,6 +77,27 @@ function RepairPrint() {
           : TITLES[k]
       : TITLES[k];
 
+  // generateRepairPdf() renders a generic "Repair Job Card" layout -- close
+  // enough to the intake "receipt" kind. delivery/invoice/payment kinds have
+  // no PDF generator yet, so the download button is scoped to "receipt"
+  // rather than silently producing the wrong document for the other three.
+  async function handleDownloadPdf() {
+    setDownloadingPdf(true);
+    try {
+      const blob = generateRepairPdf(r, firm);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Repair-${r!.repairNo || r!.id}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <PrintToolbar
@@ -83,6 +110,8 @@ function RepairPrint() {
         onPrint={handlePrintTrigger}
         onReprintConfirm={recordReprint}
         backUrl={`/repair/${r.id}`}
+        onDownloadPdf={k === "receipt" ? handleDownloadPdf : undefined}
+        downloadingPdf={downloadingPdf}
       />
 
       <div className="flex-1 p-4 md:p-8 flex justify-center items-start overflow-y-auto">

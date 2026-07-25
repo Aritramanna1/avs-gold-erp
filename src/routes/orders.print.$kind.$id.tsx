@@ -15,6 +15,8 @@ import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { PrintQR } from "@/components/print-qr";
+import { generateOrderPdf } from "@/lib/pdf/document-pdf-generator";
+import { toast } from "sonner";
 import type { PrintDocType } from "@/lib/printlog-store";
 import { useSettings } from "@/lib/settings-store";
 import { shortShopName } from "@/lib/app-info";
@@ -60,6 +62,7 @@ function PrintPage() {
     handlePrintTrigger,
     recordReprint,
   } = usePrintRecord(order ? (docTypeMap[kind as Kind] ?? "order_slip") : null, id);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Reference images, read back out of the local encrypted vault. Full-size
   // bytes, not the row's inlined thumbnail — a printed reference photo is what
@@ -228,6 +231,27 @@ function PrintPage() {
 
   const bid = (order as any).branchId || (order as any).branch_id || selectedBranchId || "MAIN";
 
+  // generateOrderPdf() renders the "Work Order" layout only -- the slip
+  // kind. gold-receipt/advance-receipt/old-gold-receipt have no PDF
+  // generator yet, so the download button only appears for "slip" rather
+  // than silently producing the wrong document for the other three kinds.
+  async function handleDownloadPdf() {
+    setDownloadingPdf(true);
+    try {
+      const blob = generateOrderPdf(order!, firm);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Order-Slip-${order!.orderNo || order!.id}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <PrintToolbar
@@ -240,6 +264,8 @@ function PrintPage() {
         onPrint={handlePrintTrigger}
         onReprintConfirm={recordReprint}
         backUrl={`/orders/${order.id}`}
+        onDownloadPdf={kind === "slip" ? handleDownloadPdf : undefined}
+        downloadingPdf={downloadingPdf}
       />
 
       <div className="flex-1 p-4 md:p-8 flex justify-center items-start overflow-y-auto">

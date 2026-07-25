@@ -1,4 +1,5 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
+import { useState } from "react";
 import { useDailyCloses } from "@/lib/dailyclose-store";
 import { paiseToRupees } from "@/lib/billing-store";
 import { mgToGrams } from "@/lib/gold";
@@ -6,6 +7,9 @@ import { PrintQR } from "@/components/print-qr";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { PrintLayout } from "@/components/print/PrintLayout";
+import { useSettings } from "@/lib/settings-store";
+import { generateReportPdf } from "@/lib/pdf/document-pdf-generator";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports/dailyclose-print/$id")({
   head: () => ({ meta: [{ title: "Daily Close Print · AVS Gold ERP" }] }),
@@ -25,10 +29,55 @@ function DailyClosePrint() {
     handlePrintTrigger,
     recordReprint,
   } = usePrintRecord(c ? "daily_close_report" : null, id);
+  const firm = useSettings((s) => s.firm);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   if (!c) return <div className="p-8">Daily Close not found.</div>;
   const s = c.snapshot;
   const title = `Daily Close Report — ${c.date}`;
+
+  async function handleDownloadPdf() {
+    setDownloadingPdf(true);
+    try {
+      const blob = generateReportPdf(
+        {
+          title,
+          reportNo: c!.id,
+          metrics: [
+            { label: "Opening Vault", value: `${mgToGrams(s.openingVaultMg)} g` },
+            { label: "Gold Issued", value: `${mgToGrams(s.goldIssuedMg)} g` },
+            { label: "Gold Received", value: `${mgToGrams(s.goldReceivedMg)} g` },
+            { label: "Closing Vault", value: `${mgToGrams(s.closingVaultMg)} g` },
+            {
+              label: "Balance Sheet",
+              value: s.balanceSheetBalanced
+                ? "BALANCED"
+                : `DIFFERENCE ${mgToGrams(s.discrepancyMg)} g`,
+            },
+            { label: "Sales Total", value: `Rs ${paiseToRupees(s.salesTotalPaise)}` },
+            { label: "Cash", value: `Rs ${paiseToRupees(s.cashTotalPaise)}` },
+            {
+              label: "Physical Cash Counted",
+              value: `Rs ${paiseToRupees(c!.physicalCashCountedPaise)}`,
+            },
+            { label: "Expected Cash", value: `Rs ${paiseToRupees(c!.expectedCashPaise)}` },
+            { label: "Cash Variance", value: `Rs ${paiseToRupees(c!.cashVariancePaise)}` },
+          ],
+        },
+        firm,
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Daily-Close-${c!.date}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -42,6 +91,8 @@ function DailyClosePrint() {
         onPrint={handlePrintTrigger}
         onReprintConfirm={recordReprint}
         backUrl="/reports/daily-close"
+        onDownloadPdf={handleDownloadPdf}
+        downloadingPdf={downloadingPdf}
       />
 
       <div className="flex-1 p-4 md:p-8 flex justify-center items-start overflow-y-auto">

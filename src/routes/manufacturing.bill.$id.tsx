@@ -23,6 +23,7 @@ import { useMfgBills, MFG_BILL_STATUS_LABELS } from "@/lib/manufacturing-bill-st
 import { useSettings } from "@/lib/settings-store";
 import { useWorkflowEngine } from "@/lib/workflow-engine";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
+import { generateManufacturingBillPdf } from "@/lib/pdf/document-pdf-generator";
 import {
   ArrowLeft,
   Printer,
@@ -33,6 +34,8 @@ import {
   PackageCheck,
   IndianRupee,
   AlertTriangle,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,10 +60,28 @@ export default function MfgBillView() {
   const { firm } = useSettings();
   const { config: wf } = useWorkflowEngine();
   const [deliverOpen, setDeliverOpen] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const bill = bills.find((b) => b.id === id)!;
 
   const { docNumber, handlePrintTrigger } = usePrintRecord(bill ? "manufacturing_bill" : null, id);
+
+  async function handleDownloadPdf() {
+    setDownloadingPdf(true);
+    try {
+      const blob = generateManufacturingBillPdf(bill, firm);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Manufacturing-Bill-${bill.billNo || bill.id}.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate PDF");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
 
   if (!bill) {
     return (
@@ -162,6 +183,20 @@ export default function MfgBillView() {
           >
             <Printer className="h-4 w-4" />
             Print Bill
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+          >
+            {downloadingPdf ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Download PDF
           </Button>
           {bill.status === "finalised" && (
             <>
