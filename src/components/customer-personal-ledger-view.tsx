@@ -32,7 +32,11 @@ export function CustomerPersonalLedgerView({
   const { t } = useLanguage();
   const [showAddForm, setShowAddForm] = useState(false);
   const [txType, setTxType] = useState<
-    "gold_received" | "gold_given" | "cash_received_against_gold" | "cash_paid_against_gold"
+    | "gold_received"
+    | "gold_given"
+    | "cash_received_against_gold"
+    | "cash_paid_against_gold"
+    | "cash_advance_gold_credit"
   >("gold_received");
   const [gross, setGross] = useState("");
   const [less, setLess] = useState("");
@@ -58,6 +62,19 @@ export function CustomerPersonalLedgerView({
       return 0;
     }
   }, [gross, less, purity]);
+
+  // Same formula as customer-account-ledger.ts's cashGoldEquivMg — cash
+  // paise / rate paise-per-gram, converted to mg.
+  const cashAdvanceGoldEquivMg = useMemo(() => {
+    try {
+      const amountPaise = rupeesToPaise(amount);
+      const ratePaise = rupeesToPaise(rate);
+      if (amountPaise <= 0 || ratePaise <= 0) return 0;
+      return Math.round((amountPaise / ratePaise) * 1000);
+    } catch {
+      return 0;
+    }
+  }, [amount, rate]);
 
   // Auto-fill valued amount if rate and net gold are set
   useEffect(() => {
@@ -95,19 +112,36 @@ export function CustomerPersonalLedgerView({
         throw new Error("Amount is required and must be greater than 0.");
       }
 
+      if (txType === "cash_advance_gold_credit" && (amountPaise <= 0 || ratePaise <= 0)) {
+        throw new Error(
+          "Cash amount and today's rate are both required and must be greater than 0.",
+        );
+      }
+
+      // For a cash advance, the gold-credit weight IS the settlement's
+      // gross/net weight (purity 999 — a fine-gold-denominated credit, not
+      // a physical item with its own touch), so the settlement row is
+      // self-consistent even for a report that reads gross_mg/net_mg
+      // directly instead of going through compileCustomerLedger().
+      const cashAdvanceMg = txType === "cash_advance_gold_credit" ? cashAdvanceGoldEquivMg : 0;
+
       // 1. Add Settlement in store & sync to DB
       await useGoldSettlement.getState().addSettlement({
         party_type: "customer",
         party_id: person.id,
         settlement_type: txType,
-        purity: purityVal,
-        gross_mg: grossMg,
-        net_mg: netMg,
+        purity: txType === "cash_advance_gold_credit" ? 999 : purityVal,
+        gross_mg: txType === "cash_advance_gold_credit" ? cashAdvanceMg : grossMg,
+        net_mg: txType === "cash_advance_gold_credit" ? cashAdvanceMg : netMg,
         wastage_mg: lessMg,
         rate_per_gram_paise: ratePaise,
         amount_paise: amountPaise,
         notes: notes.trim() || undefined,
-        direction: ["gold_received", "cash_received_against_gold"].includes(txType)
+        direction: [
+          "gold_received",
+          "cash_received_against_gold",
+          "cash_advance_gold_credit",
+        ].includes(txType)
           ? "Jama"
           : "Naam",
       });
@@ -243,12 +277,13 @@ export function CustomerPersonalLedgerView({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 col-span-2">
               <Label>Transaction Type</Label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 {[
                   { v: "gold_received", label: "Gold Deposit" },
                   { v: "gold_given", label: "Gold Issue" },
                   { v: "cash_received_against_gold", label: "Receipt Payment" },
                   { v: "cash_paid_against_gold", label: "Payment Paid" },
+                  { v: "cash_advance_gold_credit", label: "Cash → Gold Credit" },
                 ].map((typeOption) => (
                   <Button
                     key={typeOption.v}
@@ -334,6 +369,42 @@ export function CustomerPersonalLedgerView({
                     required
                     className="font-mono font-bold text-base"
                   />
+                </div>
+              </>
+            )}
+
+            {txType === "cash_advance_gold_credit" && (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="txCashAdvanceAmount">Cash Received (₹)</Label>
+                  <Input
+                    id="txCashAdvanceAmount"
+                    inputMode="decimal"
+                    placeholder="150000.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    required
+                    className="font-mono font-bold text-base"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="txCashAdvanceRate">Today's Rate (₹/g)</Label>
+                  <Input
+                    id="txCashAdvanceRate"
+                    inputMode="decimal"
+                    placeholder="15000.00"
+                    value={rate}
+                    onChange={(e) => setRate(e.target.value)}
+                    required
+                    className="font-mono font-bold text-base"
+                  />
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label>Gold Credit (at today's rate)</Label>
+                  <div className="h-10 px-3 bg-gold/10 rounded-lg flex items-center text-sm font-mono text-gold font-bold">
+                    {mgToGrams(cashAdvanceGoldEquivMg)} g fine — credited to this customer's gold
+                    balance, not cash balance
+                  </div>
                 </div>
               </>
             )}
