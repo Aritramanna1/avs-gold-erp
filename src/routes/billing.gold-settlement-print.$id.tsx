@@ -8,8 +8,6 @@ import { paiseToRupees } from "@/lib/billing-store";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
-import { Button } from "@/components/ui/button";
-import { Download, Loader2 } from "lucide-react";
 import {
   generateGoldSettlementPdf,
   goldSettlementPdfFileName,
@@ -218,25 +216,11 @@ function GoldSettlementPrintComponent() {
         onLayoutSizeChange={(sz) =>
           setLayoutSize(sz as "a4" | "a5" | "thermal" | "thermal58" | "tag")
         }
+        onDownloadPdf={handleDownload}
+        downloadingPdf={downloading}
       />
 
       <div className="flex-1 p-4 md:p-8 flex flex-col items-center overflow-y-auto">
-        <div className="w-full max-w-3xl flex justify-end mb-3 print:hidden">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownload}
-            disabled={downloading}
-            className="gap-2"
-          >
-            {downloading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            Download PDF
-          </Button>
-        </div>
         <PrintLayout
           title="Gold Payment Voucher"
           docNumber={docNumber}
