@@ -2,6 +2,9 @@
 -- The browser receives only a high-entropy token; the database stores SHA-256.
 begin;
 
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+
 create or replace function public.resolve_document_share(p_token text)
 returns jsonb
 language plpgsql
@@ -16,7 +19,7 @@ begin
     return null;
   end if;
 
-  v_hash := encode(digest(p_token, 'sha256'), 'hex');
+  v_hash := encode(extensions.digest(p_token::bytea, 'sha256'::text), 'hex');
 
   select * into v_share
   from public.document_shares
