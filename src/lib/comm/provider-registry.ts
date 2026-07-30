@@ -10,6 +10,7 @@ import { WhatsAppOpenWaProvider } from "./providers/whatsapp-openwa";
 import { WhatsAppWasenderProvider } from "./providers/whatsapp-wasender";
 import { WhatsAppBspProvider } from "./providers/whatsapp-bsp";
 import { EmailProvider } from "./providers/email-provider";
+import { SmsProvider } from "./providers/sms-provider";
 
 type ProviderFactory = () => CommProvider;
 
@@ -29,16 +30,9 @@ const REGISTRY: Record<ProviderType, ProviderFactory> = {
   email_sendgrid: () => new EmailProvider("email_sendgrid"),
   email_ses: () => new EmailProvider("email_ses"),
   email_mailgun: () => new EmailProvider("email_mailgun"),
-  // SMS — stubs ready for implementation
-  sms_twilio: () => {
-    throw new Error("sms_twilio not yet implemented");
-  },
-  sms_msg91: () => {
-    throw new Error("sms_msg91 not yet implemented");
-  },
-  sms_fast2sms: () => {
-    throw new Error("sms_fast2sms not yet implemented");
-  },
+  sms_twilio: () => new SmsProvider("sms_twilio"),
+  sms_msg91: () => new SmsProvider("sms_msg91"),
+  sms_fast2sms: () => new SmsProvider("sms_fast2sms"),
 };
 
 export function createProvider(type: ProviderType): CommProvider {

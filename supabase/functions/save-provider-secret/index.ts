@@ -56,6 +56,8 @@ Deno.serve(async (req) => {
       "webhook_verify_token",
       "webhook_secret",
       "username",
+      "account_sid",
+      "auth_token",
     ]);
     const incoming = Object.fromEntries(
       Object.entries(secretData as Record<string, unknown>)

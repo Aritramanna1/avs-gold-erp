@@ -124,6 +124,13 @@ const EMAIL_API_FIELDS = [
   { key: "api_key", label: "API Key", placeholder: "your_api_key", type: "password" },
 ];
 
+const SMS_FIELDS = [
+  { key: "sender_id", label: "Sender ID", placeholder: "MTJERP" },
+  { key: "account_sid", label: "Twilio Account SID", placeholder: "AC..." },
+  { key: "auth_token", label: "Provider Auth Token", placeholder: "••••••••", type: "password" },
+  { key: "api_url", label: "API URL (optional)", placeholder: "https://" },
+];
+
 function getSettingFields(
   type: ProviderType,
 ): { key: string; label: string; placeholder: string; type?: string }[] {
@@ -136,6 +143,7 @@ function getSettingFields(
   if (type.startsWith("whatsapp_")) return [...BSP_FIELDS, ...WA_TEMPLATE_FIELDS];
   if (type === "email_smtp") return EMAIL_SMTP_FIELDS;
   if (type.startsWith("email_")) return EMAIL_API_FIELDS;
+  if (type.startsWith("sms_")) return SMS_FIELDS;
   return [{ key: "api_key", label: "API Key", placeholder: "••••••••", type: "password" }];
 }
 
@@ -316,6 +324,7 @@ function ProviderCard({
     "password",
     "webhook_verify_token",
     "auth_token",
+    "account_sid",
     "token",
   ]);
 
