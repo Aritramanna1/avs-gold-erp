@@ -67,8 +67,7 @@ export const BOOK_TYPES: WorkshopBookType[] = [
       "Read-only per-purity ledgers of gold sent to and returned by outside workers. Transactions are entered in the Outside Work module.",
     icon: Truck,
     indexRoute: "/workshop/outside-worker-books",
-    status: "planned",
-    note: "Coming soon.",
+    status: "implemented",
   },
   {
     key: "polishing",
@@ -77,8 +76,7 @@ export const BOOK_TYPES: WorkshopBookType[] = [
       "Read-only per-purity ledgers of gold sent to and returned by each polisher. Transactions are entered in the Polishing module.",
     icon: Sparkles,
     indexRoute: "/workshop/polishing-books",
-    status: "planned",
-    note: "Coming soon.",
+    status: "implemented",
   },
   {
     key: "kdm",

@@ -40,8 +40,8 @@ import {
 const MATERIAL_BOOKS = [
   { key: "worker", label: "Worker Gold Book", icon: Users, available: true },
   { key: "outside", label: "Outside Work", icon: Truck, available: true },
-  { key: "meena", label: "Meena Book", icon: Gem, available: false },
-  { key: "polishing", label: "Polishing Book (Coming Soon)", icon: Sparkles, available: false },
+  { key: "meena", label: "Meena Book", icon: Gem, available: true },
+  { key: "polishing", label: "Polishing Book", icon: Sparkles, available: true },
 ] as const;
 type MaterialBookKey = (typeof MATERIAL_BOOKS)[number]["key"];
 
