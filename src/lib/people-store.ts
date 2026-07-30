@@ -120,7 +120,14 @@ export const usePeople = create<PeopleState>()((set, get) => ({
       !currentUserRole || GLOBAL_ROLES.includes(currentUserRole)
         ? null
         : selectedBranchId || "MAIN";
-    let q = supabase.from("people").select("data").limit(5000);
+    // The target schema retains indexed person columns alongside the legacy
+    // JSON document. Read both shapes: older imports and QA/onboarding rows
+    // may have identity fields in columns while newer writes keep the full
+    // domain object in `data`.
+    let q = supabase
+      .from("people")
+      .select("id,full_name,phone,email,type,active,created_at,updated_at,data")
+      .limit(5000);
     if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
     const { data, error } = await q;
     if (error) {
@@ -128,7 +135,21 @@ export const usePeople = create<PeopleState>()((set, get) => ({
       return;
     }
     const rows = (data ?? [])
-      .map((r) => r.data as Person | null)
+      .map((r) => {
+        const document = (r.data ?? {}) as Partial<Person>;
+        return {
+          ...document,
+          id: document.id ?? r.id,
+          fullName: document.fullName ?? r.full_name,
+          phone: document.phone ?? r.phone ?? "",
+          email: document.email ?? r.email ?? undefined,
+          type: document.type ?? (r.type as PersonType),
+          active: document.active ?? r.active ?? true,
+          createdAt: document.createdAt ?? (Date.parse(r.created_at ?? "") || Date.now()),
+          updatedAt: document.updatedAt ?? (Date.parse(r.updated_at ?? "") || Date.now()),
+          docs: document.docs ?? {},
+        } as Person;
+      })
       .filter((p): p is Person => !!p && !!p.id && !!p.fullName);
     set({ people: rows });
   },
