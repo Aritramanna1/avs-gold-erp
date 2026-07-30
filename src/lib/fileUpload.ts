@@ -55,6 +55,19 @@ export async function uploadFileToHostinger(args: UploadArgs) {
     throw new Error("You must be logged in to upload files.");
   }
 
+  // Tenant identity is always resolved from the authenticated profile. The
+  // browser may choose a related record, but it must never choose the tenant.
+  const { data: profile, error: profileError } = await supabase
+    .from("user_profiles")
+    .select("firm_id, branch_id")
+    .eq("auth_id", user.id)
+    .maybeSingle();
+  if (profileError || !profile?.firm_id) {
+    throw new Error(
+      "Your account is not linked to a firm. Contact an administrator before uploading files.",
+    );
+  }
+
   // Pre-validate file weight (10MB limit)
   if (file.size > 10 * 1024 * 1024) {
     throw new Error("File exceeds the maximum limit of 10MB.");
@@ -64,9 +77,14 @@ export async function uploadFileToHostinger(args: UploadArgs) {
   const entityId = relatedRecordId || "temp";
   const entityType = mapUploadModuleToEntityType(module);
   const bucket = getBucketForEntityType(entityType);
-
-  // 1. Compress and store the file locally
-  const { filePath, signedUrl } = await uploadFileToSupabase(bucket, file, entityId, docKey);
+  // Store the object in Cloudflare R2 and record its tenant metadata in Supabase.
+  const { filePath, signedUrl } = await uploadFileToSupabase(
+    bucket,
+    file,
+    entityId,
+    docKey,
+    branchId,
+  );
 
   // Pre-sanitize and cast UUID targets
   const relatedRecordUuid = isValidUuid(relatedRecordId) ? relatedRecordId : null;
@@ -84,7 +102,7 @@ export async function uploadFileToHostinger(args: UploadArgs) {
     mime_type: file.type || "application/octet-stream",
 
     // Fallback/Legacy properties for compatibility
-    storage_provider: "supabase",
+    storage_provider: "cloudflare-r2",
     file_path: filePath,
     file_url: signedUrl,
     original_file_name: file.name,
@@ -93,13 +111,14 @@ export async function uploadFileToHostinger(args: UploadArgs) {
     related_table: relatedTable,
     related_record_id: relatedRecordUuid,
     branch_id: branchUuid,
+    firm_id: profile.firm_id,
     uploaded_by: user.id,
     notes: notes ?? null,
     is_deleted: false,
     uploaded_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     data: {
-      storage_provider: "supabase",
+      storage_provider: "cloudflare-r2",
       uploadedByEmail: user.email,
       original_related_record_id: entityId,
       file_url: signedUrl,
@@ -133,6 +152,9 @@ export async function uploadFileToHostinger(args: UploadArgs) {
       updated_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
       data: attachmentPayload.data,
+      firm_id: profile.firm_id,
+      branch_id: branchUuid,
+      uploaded_by: user.id,
     };
 
     const { data: retryData, error: retryError } = await supabase

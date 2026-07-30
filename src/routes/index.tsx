@@ -159,11 +159,11 @@ function Home() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="p-4 md:p-7 max-w-7xl mx-auto page-enter">
       <PageHeader title={t("dashboard.goodDay")} subtitle={t("dashboard.overview")} />
 
       {!firm.shopName && (
-        <div className="mb-6 p-4 rounded-xl border border-gold/40 bg-gold/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="mb-6 p-4 rounded-md border border-gold/40 bg-gold/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="font-serif text-sm text-gold">
               Welcome — finish setting up your business
@@ -207,7 +207,7 @@ function Home() {
       )}
 
       {/* Order Tracking Buckets */}
-      <h2 className="font-serif text-xl text-gold mb-3">{t("dashboard.orderTracking")}</h2>
+      <h2 className="erp-section-title mb-3">{t("dashboard.orderTracking")}</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-6">
         <BucketCard
           icon={CalendarCheck}
@@ -250,7 +250,7 @@ function Home() {
         />
       </div>
 
-      <h2 className="font-serif text-xl text-gold mb-3">{t("dashboard.todaySnapshot")}</h2>
+      <h2 className="erp-section-title mb-3">{t("dashboard.todaySnapshot")}</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Tile
           to="/ledger"
@@ -307,10 +307,7 @@ function Home() {
             { label: "Outstanding", value: todayOutstanding, color: "text-rose-500" },
             { label: "Gold Sold", value: -1, goldGrams: todayGoldSoldMg, color: "text-amber-500" },
           ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-xl border border-border bg-card p-3 text-center"
-            >
+            <div key={item.label} className="erp-surface rounded-md p-3 text-center">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
                 {item.label}
               </div>
@@ -352,14 +349,14 @@ function Tile({
   return (
     <Link
       to={to}
-      className="group rounded-2xl border border-border bg-card p-5 shadow-elegant hover:border-gold/40 hover:shadow-gold transition-all"
+      className="group erp-surface rounded-none p-4 hover:border-primary/40 hover:shadow-sm"
     >
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-          <div className="font-serif text-3xl text-gold mt-2">{value}</div>
+          <div className="font-mono text-2xl font-semibold text-gold mt-2">{value}</div>
         </div>
-        <div className="h-10 w-10 rounded-xl bg-accent/60 grid place-items-center group-hover:bg-gold/10 transition-colors">
+        <div className="h-9 w-9 rounded-md bg-accent/60 grid place-items-center group-hover:bg-gold/10 transition-colors">
           <Icon className="h-5 w-5 text-gold" />
         </div>
       </div>
@@ -369,11 +366,11 @@ function Tile({
 }
 
 const TONE: Record<string, string> = {
-  emerald: "border-emerald-500/30 bg-emerald-500/5",
-  amber: "border-amber-500/30 bg-amber-500/5",
-  red: "border-red-500/30 bg-red-500/5",
-  blue: "border-blue-500/30 bg-blue-500/5",
-  gold: "border-gold/30 bg-gold/5",
+  emerald: "border-l-emerald-500/70",
+  amber: "border-l-amber-500/70",
+  red: "border-l-red-500/70",
+  blue: "border-l-blue-500/70",
+  gold: "border-l-gold/80",
 };
 
 function BucketCard({
@@ -397,7 +394,7 @@ function BucketCard({
   onReminder?: (id: string) => void;
 }) {
   return (
-    <Card className={`p-4 ${TONE[tone]}`}>
+    <Card className={`rounded-none border-l-2 p-3 ${TONE[tone]}`}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
           <Icon className="h-4 w-4" /> {label}

@@ -1,7 +1,7 @@
 # MTJ ERP — Web Deployment (Horizon / static host)
 
-The web build is a TanStack Start app that talks directly to the external
-Supabase project `kjfjsfhftytezsjyegmb` using the publishable key only.
+The web build is a TanStack Start app that talks directly to the production
+Supabase project `dqgrrafuoxaorvyrcuuh` using the publishable key only.
 No Lovable Cloud dependency.
 
 ## 1. Configure env
@@ -9,12 +9,12 @@ No Lovable Cloud dependency.
 `.env` (or your host's env vars) MUST contain:
 
 ```
-VITE_SUPABASE_URL=https://kjfjsfhftytezsjyegmb.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_fThRlMsK8N5t_wU9_fzd7g_XBvvr-zW
-VITE_SUPABASE_PROJECT_ID=kjfjsfhftytezsjyegmb
-SUPABASE_URL=https://kjfjsfhftytezsjyegmb.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_fThRlMsK8N5t_wU9_fzd7g_XBvvr-zW
-SUPABASE_PROJECT_ID=kjfjsfhftytezsjyegmb
+VITE_SUPABASE_URL=https://dqgrrafuoxaorvyrcuuh.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<target publishable key>
+VITE_SUPABASE_PROJECT_ID=dqgrrafuoxaorvyrcuuh
+SUPABASE_URL=https://dqgrrafuoxaorvyrcuuh.supabase.co
+SUPABASE_PUBLISHABLE_KEY=<target publishable key>
+SUPABASE_PROJECT_ID=dqgrrafuoxaorvyrcuuh
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` is set ONLY in the host's secret manager, never
@@ -49,7 +49,7 @@ cd dist && zip -r ../mtj-erp-web.zip . && cd ..
 
 ## 4. Configure Supabase Auth redirects
 
-In the Supabase dashboard for `kjfjsfhftytezsjyegmb`:
+In the Supabase dashboard for `dqgrrafuoxaorvyrcuuh`:
 
 - Authentication → URL Configuration:
   - Site URL: the public web URL (e.g. `https://erp.maatara.example`)

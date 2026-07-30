@@ -15,9 +15,11 @@ import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as StockRouteImport } from './routes/stock'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SaasAdminRouteImport } from './routes/saas-admin'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RepairRouteImport } from './routes/repair'
+import { Route as PlatformRouteImport } from './routes/platform'
 import { Route as OtpLoginRouteImport } from './routes/otp-login'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as NotificationsRouteImport } from './routes/notifications'
@@ -28,6 +30,8 @@ import { Route as InviteRouteImport } from './routes/invite'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CustomerPortalRouteImport } from './routes/customer-portal'
+import { Route as CompanyAdminRouteImport } from './routes/company-admin'
 import { Route as CommunicationsRouteImport } from './routes/communications'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as BillingRouteImport } from './routes/billing'
@@ -45,6 +49,7 @@ import { Route as MeltIndexRouteImport } from './routes/melt.index'
 import { Route as ManufacturingIndexRouteImport } from './routes/manufacturing.index'
 import { Route as HardwareIndexRouteImport } from './routes/hardware/index'
 import { Route as ExpensesIndexRouteImport } from './routes/expenses.index'
+import { Route as ConversionIndexRouteImport } from './routes/conversion.index'
 import { Route as CommunicationsIndexRouteImport } from './routes/communications.index'
 import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
 import { Route as BranchesIndexRouteImport } from './routes/branches.index'
@@ -124,6 +129,7 @@ import { Route as BillingDebitNotesIndexRouteImport } from './routes/billing.deb
 import { Route as BillingCreditNotesIndexRouteImport } from './routes/billing.credit-notes.index'
 import { Route as WorkshopWorkerBookWorkerIdRouteImport } from './routes/workshop.worker-book.$workerId'
 import { Route as WorkshopReceiveSlipIdRouteImport } from './routes/workshop.receive-slip.$id'
+import { Route as WorkshopProcessTypeRouteImport } from './routes/workshop.process.$type'
 import { Route as WorkshopPolishingBookPartyIdRouteImport } from './routes/workshop.polishing-book.$partyId'
 import { Route as WorkshopOutsideWorkerBookPartyIdRouteImport } from './routes/workshop.outside-worker-book.$partyId'
 import { Route as WorkshopJobCardOrderIdRouteImport } from './routes/workshop.job-card.$orderId'
@@ -138,6 +144,7 @@ import { Route as RepairPolishingNewRouteImport } from './routes/repair.polishin
 import { Route as PeoplePrintIdRouteImport } from './routes/people.print.$id'
 import { Route as PeopleLedgerPrintIdRouteImport } from './routes/people.ledger-print.$id'
 import { Route as ManufacturingBillIdRouteImport } from './routes/manufacturing.bill.$id'
+import { Route as ConversionSlipIdRouteImport } from './routes/conversion.slip.$id'
 import { Route as BillingSettlementSlipIdRouteImport } from './routes/billing.settlement-slip.$id'
 import { Route as BillingReceiptIdRouteImport } from './routes/billing.receipt.$id'
 import { Route as BillingPrintIdRouteImport } from './routes/billing.print.$id'
@@ -188,6 +195,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SaasAdminRoute = SaasAdminRouteImport.update({
+  id: '/saas-admin',
+  path: '/saas-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -201,6 +213,11 @@ const ReportsRoute = ReportsRouteImport.update({
 const RepairRoute = RepairRouteImport.update({
   id: '/repair',
   path: '/repair',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlatformRoute = PlatformRouteImport.update({
+  id: '/platform',
+  path: '/platform',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OtpLoginRoute = OtpLoginRouteImport.update({
@@ -251,6 +268,16 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerPortalRoute = CustomerPortalRouteImport.update({
+  id: '/customer-portal',
+  path: '/customer-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompanyAdminRoute = CompanyAdminRouteImport.update({
+  id: '/company-admin',
+  path: '/company-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CommunicationsRoute = CommunicationsRouteImport.update({
@@ -336,6 +363,11 @@ const HardwareIndexRoute = HardwareIndexRouteImport.update({
 const ExpensesIndexRoute = ExpensesIndexRouteImport.update({
   id: '/expenses/',
   path: '/expenses/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConversionIndexRoute = ConversionIndexRouteImport.update({
+  id: '/conversion/',
+  path: '/conversion/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CommunicationsIndexRoute = CommunicationsIndexRouteImport.update({
@@ -745,6 +777,11 @@ const WorkshopReceiveSlipIdRoute = WorkshopReceiveSlipIdRouteImport.update({
   path: '/receive-slip/$id',
   getParentRoute: () => WorkshopRoute,
 } as any)
+const WorkshopProcessTypeRoute = WorkshopProcessTypeRouteImport.update({
+  id: '/process/$type',
+  path: '/process/$type',
+  getParentRoute: () => WorkshopRoute,
+} as any)
 const WorkshopPolishingBookPartyIdRoute =
   WorkshopPolishingBookPartyIdRouteImport.update({
     id: '/polishing-book/$partyId',
@@ -819,6 +856,11 @@ const ManufacturingBillIdRoute = ManufacturingBillIdRouteImport.update({
   id: '/bill/$id',
   path: '/bill/$id',
   getParentRoute: () => ManufacturingRoute,
+} as any)
+const ConversionSlipIdRoute = ConversionSlipIdRouteImport.update({
+  id: '/conversion/slip/$id',
+  path: '/conversion/slip/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BillingSettlementSlipIdRoute = BillingSettlementSlipIdRouteImport.update({
   id: '/settlement-slip/$id',
@@ -930,6 +972,8 @@ export interface FileRoutesByFullPath {
   '/billing': typeof BillingRouteWithChildren
   '/catalog': typeof CatalogRouteWithChildren
   '/communications': typeof CommunicationsRouteWithChildren
+  '/company-admin': typeof CompanyAdminRoute
+  '/customer-portal': typeof CustomerPortalRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
@@ -940,9 +984,11 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
+  '/platform': typeof PlatformRoute
   '/repair': typeof RepairRouteWithChildren
   '/reports': typeof ReportsRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
+  '/saas-admin': typeof SaasAdminRoute
   '/settings': typeof SettingsRouteWithChildren
   '/setup': typeof SetupRoute
   '/stock': typeof StockRouteWithChildren
@@ -1022,6 +1068,7 @@ export interface FileRoutesByFullPath {
   '/branches/': typeof BranchesIndexRoute
   '/catalog/': typeof CatalogIndexRoute
   '/communications/': typeof CommunicationsIndexRoute
+  '/conversion/': typeof ConversionIndexRoute
   '/expenses/': typeof ExpensesIndexRoute
   '/hardware/': typeof HardwareIndexRoute
   '/manufacturing/': typeof ManufacturingIndexRoute
@@ -1046,6 +1093,7 @@ export interface FileRoutesByFullPath {
   '/billing/print/$id': typeof BillingPrintIdRoute
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
   '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
+  '/conversion/slip/$id': typeof ConversionSlipIdRoute
   '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
@@ -1060,6 +1108,7 @@ export interface FileRoutesByFullPath {
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
   '/workshop/outside-worker-book/$partyId': typeof WorkshopOutsideWorkerBookPartyIdRoute
   '/workshop/polishing-book/$partyId': typeof WorkshopPolishingBookPartyIdRoute
+  '/workshop/process/$type': typeof WorkshopProcessTypeRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
   '/workshop/worker-book/$workerId': typeof WorkshopWorkerBookWorkerIdRoute
   '/billing/credit-notes/': typeof BillingCreditNotesIndexRoute
@@ -1076,6 +1125,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/barcode': typeof BarcodeRoute
+  '/company-admin': typeof CompanyAdminRoute
+  '/customer-portal': typeof CustomerPortalRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
@@ -1083,7 +1134,9 @@ export interface FileRoutesByTo {
   '/ledger': typeof LedgerRoute
   '/notifications': typeof NotificationsRoute
   '/otp-login': typeof OtpLoginRoute
+  '/platform': typeof PlatformRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/saas-admin': typeof SaasAdminRoute
   '/setup': typeof SetupRoute
   '/verify': typeof VerifyRoute
   '/whatsapp': typeof WhatsappRoute
@@ -1160,6 +1213,7 @@ export interface FileRoutesByTo {
   '/branches': typeof BranchesIndexRoute
   '/catalog': typeof CatalogIndexRoute
   '/communications': typeof CommunicationsIndexRoute
+  '/conversion': typeof ConversionIndexRoute
   '/expenses': typeof ExpensesIndexRoute
   '/hardware': typeof HardwareIndexRoute
   '/manufacturing': typeof ManufacturingIndexRoute
@@ -1184,6 +1238,7 @@ export interface FileRoutesByTo {
   '/billing/print/$id': typeof BillingPrintIdRoute
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
   '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
+  '/conversion/slip/$id': typeof ConversionSlipIdRoute
   '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
@@ -1198,6 +1253,7 @@ export interface FileRoutesByTo {
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
   '/workshop/outside-worker-book/$partyId': typeof WorkshopOutsideWorkerBookPartyIdRoute
   '/workshop/polishing-book/$partyId': typeof WorkshopPolishingBookPartyIdRoute
+  '/workshop/process/$type': typeof WorkshopProcessTypeRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
   '/workshop/worker-book/$workerId': typeof WorkshopWorkerBookWorkerIdRoute
   '/billing/credit-notes': typeof BillingCreditNotesIndexRoute
@@ -1219,6 +1275,8 @@ export interface FileRoutesById {
   '/billing': typeof BillingRouteWithChildren
   '/catalog': typeof CatalogRouteWithChildren
   '/communications': typeof CommunicationsRouteWithChildren
+  '/company-admin': typeof CompanyAdminRoute
+  '/customer-portal': typeof CustomerPortalRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
@@ -1229,9 +1287,11 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
+  '/platform': typeof PlatformRoute
   '/repair': typeof RepairRouteWithChildren
   '/reports': typeof ReportsRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
+  '/saas-admin': typeof SaasAdminRoute
   '/settings': typeof SettingsRouteWithChildren
   '/setup': typeof SetupRoute
   '/stock': typeof StockRouteWithChildren
@@ -1311,6 +1371,7 @@ export interface FileRoutesById {
   '/branches/': typeof BranchesIndexRoute
   '/catalog/': typeof CatalogIndexRoute
   '/communications/': typeof CommunicationsIndexRoute
+  '/conversion/': typeof ConversionIndexRoute
   '/expenses/': typeof ExpensesIndexRoute
   '/hardware/': typeof HardwareIndexRoute
   '/manufacturing/': typeof ManufacturingIndexRoute
@@ -1335,6 +1396,7 @@ export interface FileRoutesById {
   '/billing/print/$id': typeof BillingPrintIdRoute
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
   '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
+  '/conversion/slip/$id': typeof ConversionSlipIdRoute
   '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
@@ -1349,6 +1411,7 @@ export interface FileRoutesById {
   '/workshop/job-card/$orderId': typeof WorkshopJobCardOrderIdRoute
   '/workshop/outside-worker-book/$partyId': typeof WorkshopOutsideWorkerBookPartyIdRoute
   '/workshop/polishing-book/$partyId': typeof WorkshopPolishingBookPartyIdRoute
+  '/workshop/process/$type': typeof WorkshopProcessTypeRoute
   '/workshop/receive-slip/$id': typeof WorkshopReceiveSlipIdRoute
   '/workshop/worker-book/$workerId': typeof WorkshopWorkerBookWorkerIdRoute
   '/billing/credit-notes/': typeof BillingCreditNotesIndexRoute
@@ -1371,6 +1434,8 @@ export interface FileRouteTypes {
     | '/billing'
     | '/catalog'
     | '/communications'
+    | '/company-admin'
+    | '/customer-portal'
     | '/dashboard'
     | '/forgot-password'
     | '/help'
@@ -1381,9 +1446,11 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/orders'
     | '/otp-login'
+    | '/platform'
     | '/repair'
     | '/reports'
     | '/reset-password'
+    | '/saas-admin'
     | '/settings'
     | '/setup'
     | '/stock'
@@ -1463,6 +1530,7 @@ export interface FileRouteTypes {
     | '/branches/'
     | '/catalog/'
     | '/communications/'
+    | '/conversion/'
     | '/expenses/'
     | '/hardware/'
     | '/manufacturing/'
@@ -1487,6 +1555,7 @@ export interface FileRouteTypes {
     | '/billing/print/$id'
     | '/billing/receipt/$id'
     | '/billing/settlement-slip/$id'
+    | '/conversion/slip/$id'
     | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
@@ -1501,6 +1570,7 @@ export interface FileRouteTypes {
     | '/workshop/job-card/$orderId'
     | '/workshop/outside-worker-book/$partyId'
     | '/workshop/polishing-book/$partyId'
+    | '/workshop/process/$type'
     | '/workshop/receive-slip/$id'
     | '/workshop/worker-book/$workerId'
     | '/billing/credit-notes/'
@@ -1517,6 +1587,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/barcode'
+    | '/company-admin'
+    | '/customer-portal'
     | '/dashboard'
     | '/forgot-password'
     | '/help'
@@ -1524,7 +1596,9 @@ export interface FileRouteTypes {
     | '/ledger'
     | '/notifications'
     | '/otp-login'
+    | '/platform'
     | '/reset-password'
+    | '/saas-admin'
     | '/setup'
     | '/verify'
     | '/whatsapp'
@@ -1601,6 +1675,7 @@ export interface FileRouteTypes {
     | '/branches'
     | '/catalog'
     | '/communications'
+    | '/conversion'
     | '/expenses'
     | '/hardware'
     | '/manufacturing'
@@ -1625,6 +1700,7 @@ export interface FileRouteTypes {
     | '/billing/print/$id'
     | '/billing/receipt/$id'
     | '/billing/settlement-slip/$id'
+    | '/conversion/slip/$id'
     | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
@@ -1639,6 +1715,7 @@ export interface FileRouteTypes {
     | '/workshop/job-card/$orderId'
     | '/workshop/outside-worker-book/$partyId'
     | '/workshop/polishing-book/$partyId'
+    | '/workshop/process/$type'
     | '/workshop/receive-slip/$id'
     | '/workshop/worker-book/$workerId'
     | '/billing/credit-notes'
@@ -1659,6 +1736,8 @@ export interface FileRouteTypes {
     | '/billing'
     | '/catalog'
     | '/communications'
+    | '/company-admin'
+    | '/customer-portal'
     | '/dashboard'
     | '/forgot-password'
     | '/help'
@@ -1669,9 +1748,11 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/orders'
     | '/otp-login'
+    | '/platform'
     | '/repair'
     | '/reports'
     | '/reset-password'
+    | '/saas-admin'
     | '/settings'
     | '/setup'
     | '/stock'
@@ -1751,6 +1832,7 @@ export interface FileRouteTypes {
     | '/branches/'
     | '/catalog/'
     | '/communications/'
+    | '/conversion/'
     | '/expenses/'
     | '/hardware/'
     | '/manufacturing/'
@@ -1775,6 +1857,7 @@ export interface FileRouteTypes {
     | '/billing/print/$id'
     | '/billing/receipt/$id'
     | '/billing/settlement-slip/$id'
+    | '/conversion/slip/$id'
     | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
@@ -1789,6 +1872,7 @@ export interface FileRouteTypes {
     | '/workshop/job-card/$orderId'
     | '/workshop/outside-worker-book/$partyId'
     | '/workshop/polishing-book/$partyId'
+    | '/workshop/process/$type'
     | '/workshop/receive-slip/$id'
     | '/workshop/worker-book/$workerId'
     | '/billing/credit-notes/'
@@ -1810,6 +1894,8 @@ export interface RootRouteChildren {
   BillingRoute: typeof BillingRouteWithChildren
   CatalogRoute: typeof CatalogRouteWithChildren
   CommunicationsRoute: typeof CommunicationsRouteWithChildren
+  CompanyAdminRoute: typeof CompanyAdminRoute
+  CustomerPortalRoute: typeof CustomerPortalRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HelpRoute: typeof HelpRoute
@@ -1820,9 +1906,11 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   OrdersRoute: typeof OrdersRouteWithChildren
   OtpLoginRoute: typeof OtpLoginRoute
+  PlatformRoute: typeof PlatformRoute
   RepairRoute: typeof RepairRouteWithChildren
   ReportsRoute: typeof ReportsRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SaasAdminRoute: typeof SaasAdminRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   SetupRoute: typeof SetupRoute
   StockRoute: typeof StockRouteWithChildren
@@ -1839,9 +1927,11 @@ export interface RootRouteChildren {
   SettlementIdRoute: typeof SettlementIdRoute
   SettlementNewRoute: typeof SettlementNewRoute
   BranchesIndexRoute: typeof BranchesIndexRoute
+  ConversionIndexRoute: typeof ConversionIndexRoute
   ExpensesIndexRoute: typeof ExpensesIndexRoute
   HardwareIndexRoute: typeof HardwareIndexRoute
   PeopleIndexRoute: typeof PeopleIndexRoute
+  ConversionSlipIdRoute: typeof ConversionSlipIdRoute
   PeopleLedgerPrintIdRoute: typeof PeopleLedgerPrintIdRoute
   PeoplePrintIdRoute: typeof PeoplePrintIdRoute
   SettlementDraftPrintIdRoute: typeof SettlementDraftPrintIdRoute
@@ -1891,6 +1981,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/saas-admin': {
+      id: '/saas-admin'
+      path: '/saas-admin'
+      fullPath: '/saas-admin'
+      preLoaderRoute: typeof SaasAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -1910,6 +2007,13 @@ declare module '@tanstack/react-router' {
       path: '/repair'
       fullPath: '/repair'
       preLoaderRoute: typeof RepairRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/platform': {
+      id: '/platform'
+      path: '/platform'
+      fullPath: '/platform'
+      preLoaderRoute: typeof PlatformRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/otp-login': {
@@ -1980,6 +2084,20 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer-portal': {
+      id: '/customer-portal'
+      path: '/customer-portal'
+      fullPath: '/customer-portal'
+      preLoaderRoute: typeof CustomerPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/company-admin': {
+      id: '/company-admin'
+      path: '/company-admin'
+      fullPath: '/company-admin'
+      preLoaderRoute: typeof CompanyAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/communications': {
@@ -2099,6 +2217,13 @@ declare module '@tanstack/react-router' {
       path: '/expenses'
       fullPath: '/expenses/'
       preLoaderRoute: typeof ExpensesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conversion/': {
+      id: '/conversion/'
+      path: '/conversion'
+      fullPath: '/conversion/'
+      preLoaderRoute: typeof ConversionIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/communications/': {
@@ -2654,6 +2779,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkshopReceiveSlipIdRouteImport
       parentRoute: typeof WorkshopRoute
     }
+    '/workshop/process/$type': {
+      id: '/workshop/process/$type'
+      path: '/process/$type'
+      fullPath: '/workshop/process/$type'
+      preLoaderRoute: typeof WorkshopProcessTypeRouteImport
+      parentRoute: typeof WorkshopRoute
+    }
     '/workshop/polishing-book/$partyId': {
       id: '/workshop/polishing-book/$partyId'
       path: '/polishing-book/$partyId'
@@ -2751,6 +2883,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/manufacturing/bill/$id'
       preLoaderRoute: typeof ManufacturingBillIdRouteImport
       parentRoute: typeof ManufacturingRoute
+    }
+    '/conversion/slip/$id': {
+      id: '/conversion/slip/$id'
+      path: '/conversion/slip/$id'
+      fullPath: '/conversion/slip/$id'
+      preLoaderRoute: typeof ConversionSlipIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/billing/settlement-slip/$id': {
       id: '/billing/settlement-slip/$id'
@@ -3201,6 +3340,7 @@ interface WorkshopRouteChildren {
   WorkshopJobCardOrderIdRoute: typeof WorkshopJobCardOrderIdRoute
   WorkshopOutsideWorkerBookPartyIdRoute: typeof WorkshopOutsideWorkerBookPartyIdRoute
   WorkshopPolishingBookPartyIdRoute: typeof WorkshopPolishingBookPartyIdRoute
+  WorkshopProcessTypeRoute: typeof WorkshopProcessTypeRoute
   WorkshopReceiveSlipIdRoute: typeof WorkshopReceiveSlipIdRoute
   WorkshopWorkerBookWorkerIdRoute: typeof WorkshopWorkerBookWorkerIdRoute
   WorkshopMaterialSlipWorkerIdDateRoute: typeof WorkshopMaterialSlipWorkerIdDateRoute
@@ -3223,6 +3363,7 @@ const WorkshopRouteChildren: WorkshopRouteChildren = {
   WorkshopJobCardOrderIdRoute: WorkshopJobCardOrderIdRoute,
   WorkshopOutsideWorkerBookPartyIdRoute: WorkshopOutsideWorkerBookPartyIdRoute,
   WorkshopPolishingBookPartyIdRoute: WorkshopPolishingBookPartyIdRoute,
+  WorkshopProcessTypeRoute: WorkshopProcessTypeRoute,
   WorkshopReceiveSlipIdRoute: WorkshopReceiveSlipIdRoute,
   WorkshopWorkerBookWorkerIdRoute: WorkshopWorkerBookWorkerIdRoute,
   WorkshopMaterialSlipWorkerIdDateRoute: WorkshopMaterialSlipWorkerIdDateRoute,
@@ -3240,6 +3381,8 @@ const rootRouteChildren: RootRouteChildren = {
   BillingRoute: BillingRouteWithChildren,
   CatalogRoute: CatalogRouteWithChildren,
   CommunicationsRoute: CommunicationsRouteWithChildren,
+  CompanyAdminRoute: CompanyAdminRoute,
+  CustomerPortalRoute: CustomerPortalRoute,
   DashboardRoute: DashboardRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HelpRoute: HelpRoute,
@@ -3250,9 +3393,11 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   OrdersRoute: OrdersRouteWithChildren,
   OtpLoginRoute: OtpLoginRoute,
+  PlatformRoute: PlatformRoute,
   RepairRoute: RepairRouteWithChildren,
   ReportsRoute: ReportsRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
+  SaasAdminRoute: SaasAdminRoute,
   SettingsRoute: SettingsRouteWithChildren,
   SetupRoute: SetupRoute,
   StockRoute: StockRouteWithChildren,
@@ -3269,9 +3414,11 @@ const rootRouteChildren: RootRouteChildren = {
   SettlementIdRoute: SettlementIdRoute,
   SettlementNewRoute: SettlementNewRoute,
   BranchesIndexRoute: BranchesIndexRoute,
+  ConversionIndexRoute: ConversionIndexRoute,
   ExpensesIndexRoute: ExpensesIndexRoute,
   HardwareIndexRoute: HardwareIndexRoute,
   PeopleIndexRoute: PeopleIndexRoute,
+  ConversionSlipIdRoute: ConversionSlipIdRoute,
   PeopleLedgerPrintIdRoute: PeopleLedgerPrintIdRoute,
   PeoplePrintIdRoute: PeoplePrintIdRoute,
   SettlementDraftPrintIdRoute: SettlementDraftPrintIdRoute,

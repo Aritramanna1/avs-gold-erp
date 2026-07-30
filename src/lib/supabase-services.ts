@@ -193,7 +193,7 @@ export async function uploadFirmLogo(fileName: string, base64Url: string): Promi
     relatedTable: "app_settings",
     relatedRecordId: "firm_profile",
     docKey: "logo",
-    storageProvider: "supabase",
+    storageProvider: "cloudflare-r2",
   });
 
   // 4. Update the firm profile row

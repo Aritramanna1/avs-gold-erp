@@ -104,9 +104,13 @@ export const useLicense = create<LicenseState>()(() => ({
 }));
 
 export function getLicenseConfig(): LicenseConfig {
+  const browserKey = typeof window !== "undefined" ? window.localStorage.getItem(K_KEY) : null;
   return {
     endpoint: LICENSE_ACTIVATION_ENDPOINT,
-    key: getMetaValue(K_KEY) ?? "",
+    // The license identifier is not a secret. Keep a browser fallback because
+    // first-run setup can recreate the local SQLite database before the next
+    // route load; losing this value would incorrectly lock a valid tenant out.
+    key: getMetaValue(K_KEY) ?? browserKey ?? "",
     graceDays: LICENSE_GRACE_DAYS,
     renewalUrl: LICENSE_SUPPORT_URL,
     renewalNoticeDays: LICENSE_RENEWAL_NOTICE_DAYS,
@@ -114,7 +118,11 @@ export function getLicenseConfig(): LicenseConfig {
 }
 
 export function setLicenseConfig(partial: Partial<LicenseConfig>): void {
-  if (partial.key !== undefined) setMetaValue(K_KEY, partial.key.trim());
+  if (partial.key !== undefined) {
+    const value = partial.key.trim();
+    setMetaValue(K_KEY, value);
+    if (typeof window !== "undefined") window.localStorage.setItem(K_KEY, value);
+  }
 }
 
 export function getSupportUrl(): string {

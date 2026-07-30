@@ -40,6 +40,8 @@ const SUPER_ROLES: string[] = [ROLES.SUPER_OWNER, ROLES.ADMINISTRATOR, "Owner"];
  * explicitly — handled in `hasRoutePermission`).
  */
 const ROUTE_ACL: Record<string, Role[]> = {
+  "/saas-admin": [],
+  "/platform": [],
   "/dashboard/ceo": [ROLES.CEO],
   "/dashboard": [
     ROLES.SUPER_OWNER,
@@ -202,6 +204,17 @@ const EXCLUSIVE_ROUTES: Record<string, Role[]> = {
 };
 
 export function hasRoutePermission(role: string | null | undefined, path: string): boolean {
+  if (path.startsWith("/customer-portal")) {
+    return ["customer", "Customer"].includes(role ?? "");
+  }
+  if (path.startsWith("/saas-admin") || path.startsWith("/platform")) {
+    return role === "saas_admin" || role === "SaaS Admin";
+  }
+  if (path.startsWith("/company-admin")) {
+    return ["owner", "admin", "ceo", "Owner", "Administrator", "CEO (View Only)"].includes(
+      role ?? "",
+    );
+  }
   if (!role) return false;
 
   // The first setup account is the Super Owner and is never constrained by a

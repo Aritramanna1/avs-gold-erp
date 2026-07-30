@@ -29,6 +29,7 @@ import { createProvider } from "./provider-registry";
 import { useCommSettings } from "./comm-settings-store";
 import { isValidWaPhone } from "@/lib/wa-link";
 import type { CommResult, ProviderType } from "./types";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
 export interface WhatsAppTextRequest {
   phone: string;
@@ -178,6 +179,16 @@ export async function sendWhatsAppText(req: WhatsAppTextRequest): Promise<WhatsA
   }
 
   try {
+    if (providerType !== "whatsapp_deep_link") {
+      const { data, error } = await (supabase as any).functions.invoke("send-whatsapp", {
+        body: { branchId: req.branchId ?? "MAIN", phone: req.phone, message: req.message },
+      });
+      return {
+        ok: !error && data?.ok === true,
+        error: error?.message || data?.error,
+        via: providerType,
+      };
+    }
     const { provider } = resolveWhatsAppProvider(req.branchId);
 
     const result: CommResult = await provider.send(

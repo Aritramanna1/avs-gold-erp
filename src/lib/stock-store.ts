@@ -107,6 +107,29 @@ interface StockState {
     toStatus: StockStatus,
     notes?: string,
   ) => Promise<StockMovement | null>;
+  /**
+   * Ready Stock (V1.1 Phase 5): unlike add() (manual, non-ledger stock entry
+   * — e.g. transfers/repairs), this is gold entering the business's finished
+   * inventory with nothing else already accounting for it, so it MUST post
+   * to the Gold Vault. "manufactured" = made in-house with no customer order
+   * behind it (finished_item_created, same type a customer job uses).
+   * "purchased" = bought ready-made (ready_stock_purchase_received).
+   */
+  addReadyStock: (
+    i: Omit<StockItem, "id" | "createdAt" | "updatedAt" | "itemCode" | "barcode" | "fineMg"> & {
+      itemCode?: string;
+      barcode?: string;
+    },
+    source: "manufactured" | "purchased",
+  ) => Promise<StockItem>;
+  /**
+   * Ready Stock Billing (V1.1 Phase 5): marks a sold item and posts the
+   * matching Gold Vault exit — the counterpart to addReadyStock() above.
+   * Call this from the ready-stock billing flow (billingType "ready_stock"
+   * on billing-store.ts's Invoice) once payment is recorded; it does not
+   * create the invoice itself — reuses the existing invoice pipeline.
+   */
+  sellReadyStock: (id: string, invoiceNo: string) => Promise<void>;
   findByBarcode: (barcode: string) => StockItem | undefined;
   setTagSettings: (patch: Partial<TagSettings>) => void;
   nextItemCode: () => string;
@@ -204,6 +227,38 @@ export const useStock = create<StockState>()((set, get) => ({
     // Optimistic local update — realtime will confirm from DB
     set((s) => ({ items: [item, ...s.items], movements: [mv, ...s.movements] }));
     return item;
+  },
+  addReadyStock: async (input, source) => {
+    const { useLedger } = await import("./ledger-store");
+    const fineMg = fineGoldMg(input.netMg, input.purity);
+    await useLedger.getState().append({
+      type: source === "manufactured" ? "finished_item_created" : "ready_stock_purchase_received",
+      netFineMg: fineMg,
+      deltas: { finished: fineMg },
+      grossMg: input.grossMg,
+      purity: input.purity as any,
+      fineMg,
+      reference: input.itemCode,
+      notes: `Ready stock (${source}): ${input.itemName}`,
+    });
+    return get().add(input);
+  },
+  sellReadyStock: async (id, invoiceNo) => {
+    const item = get().items.find((i) => i.id === id);
+    if (!item) throw new Error("Stock item not found.");
+    if (item.status === "sold") throw new Error("This item is already marked sold.");
+    const { useLedger } = await import("./ledger-store");
+    await useLedger.getState().append({
+      type: "sale",
+      netFineMg: -item.fineMg,
+      deltas: { finished: -item.fineMg },
+      grossMg: item.grossMg,
+      purity: item.purity,
+      fineMg: item.fineMg,
+      reference: invoiceNo,
+      notes: `Ready stock sold — ${item.itemName} (${item.itemCode}), Invoice ${invoiceNo}`,
+    });
+    await get().changeStatus(id, "sold", `Sold against Invoice ${invoiceNo}`);
   },
   update: async (id, patch) => {
     const item = get().items.find((i) => i.id === id);

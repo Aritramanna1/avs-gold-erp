@@ -31,6 +31,17 @@ export interface DocumentShare {
   branch_id?: string | null;
 }
 
+function randomToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function tokenHash(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function resolveDocumentData(docType: ShareDocumentType, docId: string): any {
   if (docType === "invoice" || docType === "estimate") {
     return useBilling.getState().invoices.find((i) => i.id === docId) ?? null;
@@ -69,7 +80,8 @@ export async function createDocumentShareLink(
     }
 
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+    expiresAt.setDate(expiresAt.getDate() + Math.min(Math.max(expiresInDays, 1), 7));
+    const token = randomToken();
 
     const { data, error } = await (supabase as any)
       .from("document_shares")
@@ -78,8 +90,10 @@ export async function createDocumentShareLink(
         document_id: docId,
         firm_snapshot: firm,
         document_snapshot: docSnapshot,
+        token_hash: await tokenHash(token),
         expires_at: expiresAt.toISOString(),
         branch_id: branchId || null,
+        created_by: (await supabase.auth.getUser()).data.user?.id ?? null,
       })
       .select("id")
       .single();
@@ -89,8 +103,9 @@ export async function createDocumentShareLink(
       return null;
     }
 
-    const token = (data as any).id as string;
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const origin =
+      import.meta.env.VITE_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ||
+      (typeof window !== "undefined" ? window.location.origin : "");
     return `${origin}/doc/${token}`;
   } catch (err) {
     console.warn("[DocumentShares] Share creation error:", err);
@@ -104,12 +119,9 @@ export async function createDocumentShareLink(
  */
 export async function getDocumentShare(token: string): Promise<DocumentShare | null> {
   try {
-    const { data, error } = await (supabase as any)
-      .from("document_shares")
-      .select("*")
-      .eq("id", token)
-      .gt("expires_at", new Date().toISOString())
-      .single();
+    const { data, error } = await (supabase as any).rpc("resolve_document_share", {
+      p_token: token,
+    });
 
     if (error || !data) return null;
     return data as DocumentShare;

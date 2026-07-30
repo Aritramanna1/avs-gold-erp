@@ -18,13 +18,15 @@ import { isOfflineMode } from "@/lib/deployment-mode";
 interface DbBranch {
   id: string;
   name: string;
-  code: string;
+  code?: string;
+  short_name?: string;
   address: string;
   phone: string;
-  manager_name: string;
+  manager_name?: string;
   gstin: string | null;
   active: boolean;
-  is_default: boolean;
+  is_default?: boolean;
+  data?: Record<string, unknown> | null;
   notes: string | null;
 }
 
@@ -43,13 +45,13 @@ function dbBranchToStore(r: DbBranch): Branch {
   return {
     id: r.id,
     name: r.name,
-    code: r.code,
+    code: r.code ?? r.short_name ?? "MAIN",
     address: r.address ?? "",
     phone: r.phone ?? "",
-    managerName: r.manager_name ?? "Unassigned",
+    managerName: r.manager_name ?? String(r.data?.manager_name ?? "Unassigned"),
     gstin: r.gstin ?? undefined,
     active: r.active,
-    isDefault: r.is_default,
+    isDefault: r.is_default ?? Boolean(r.data?.is_default),
   };
 }
 
@@ -77,7 +79,7 @@ export function useSupabaseSync() {
       // local settings store (localStorage-cached), which is the source of truth.
       if (isOfflineMode()) return;
       const [{ data: branchRows }, { data: workshopRows }] = await Promise.all([
-        supabase.from("branches").select("*").order("is_default", { ascending: false }),
+        supabase.from("branches").select("*"),
         supabase.from("workshops").select("*").order("name"),
       ]);
 
@@ -102,16 +104,15 @@ export function useSupabaseSync() {
 
 export async function dbAddBranch(branch: Branch): Promise<void> {
   if (isOfflineMode()) return;
-  await supabase.from("branches").insert({
+  await (supabase.from("branches") as any).insert({
     id: branch.id,
     name: branch.name,
-    code: branch.code,
+    short_name: branch.code,
     address: branch.address,
     phone: branch.phone,
-    manager_name: branch.managerName,
     gstin: branch.gstin ?? null,
     active: branch.active,
-    is_default: branch.isDefault ?? false,
+    data: { manager_name: branch.managerName, is_default: branch.isDefault ?? false },
   });
 }
 
@@ -119,13 +120,23 @@ export async function dbUpdateBranch(id: string, patch: Partial<Branch>): Promis
   if (isOfflineMode()) return;
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row.name = patch.name;
-  if (patch.code !== undefined) row.code = patch.code;
+  if (patch.code !== undefined) row.short_name = patch.code;
   if (patch.address !== undefined) row.address = patch.address;
   if (patch.phone !== undefined) row.phone = patch.phone;
-  if (patch.managerName !== undefined) row.manager_name = patch.managerName;
   if (patch.gstin !== undefined) row.gstin = patch.gstin ?? null;
   if (patch.active !== undefined) row.active = patch.active;
-  if (patch.isDefault !== undefined) row.is_default = patch.isDefault;
+  if (patch.managerName !== undefined || patch.isDefault !== undefined) {
+    const { data: current } = await (supabase.from("branches") as any)
+      .select("data")
+      .eq("id", id)
+      .maybeSingle();
+    const existing = (current as { data?: Record<string, unknown> | null } | null)?.data ?? {};
+    row.data = {
+      ...existing,
+      ...(patch.managerName !== undefined ? { manager_name: patch.managerName } : {}),
+      ...(patch.isDefault !== undefined ? { is_default: patch.isDefault } : {}),
+    };
+  }
   row.updated_at = new Date().toISOString();
 
   await supabase
@@ -141,9 +152,16 @@ export async function dbRemoveBranch(id: string): Promise<void> {
 
 export async function dbSetDefaultBranch(id: string): Promise<void> {
   if (isOfflineMode()) return;
-  // Clear all is_default first, then set the chosen one
-  await supabase.from("branches").update({ is_default: false }).neq("id", "");
-  await supabase.from("branches").update({ is_default: true }).eq("id", id);
+  const { data: branches } = await (supabase.from("branches") as any).select("id,data");
+  for (const branch of (branches ?? []) as Array<{
+    id: string;
+    data?: Record<string, unknown> | null;
+  }>) {
+    const current = (branch as { data?: Record<string, unknown> | null }).data ?? {};
+    await (supabase.from("branches") as any)
+      .update({ data: { ...current, is_default: branch.id === id } })
+      .eq("id", branch.id);
+  }
 }
 
 // ── Supabase-backed CRUD for workshops ───────────────────────────

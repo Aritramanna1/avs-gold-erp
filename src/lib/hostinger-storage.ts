@@ -80,7 +80,7 @@ function attachmentEntity(value: string): AttachmentEntityType {
     : "order";
 }
 
-/** Compatibility API backed exclusively by the local file vault. */
+/** Compatibility API backed by Cloudflare R2 through the shared adapter. */
 export async function uploadToHostinger(
   fileOrBase64: File | string,
   fileName: string,
@@ -133,7 +133,7 @@ export async function saveAttachmentMetadata(params: {
   });
   return {
     id: `${entityType}:${params.relatedRecordId}:${docKey}`,
-    storage_provider: "local",
+    storage_provider: "cloudflare-r2",
     file_path: params.filePath,
     file_url: params.fileUrl,
     file_name: params.fileName,
@@ -161,7 +161,7 @@ export async function getAttachmentsForRecord(
     .listForEntity(entityType, relatedRecordId)
     .map(({ docKey, rec }) => ({
       id: `${entityType}:${relatedRecordId}:${docKey}`,
-      storage_provider: "local",
+      storage_provider: "cloudflare-r2",
       file_path: rec.storagePath || "",
       file_url: "",
       file_name: rec.fileName || "",

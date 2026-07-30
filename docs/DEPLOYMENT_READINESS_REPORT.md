@@ -2,6 +2,8 @@
 
 > Archived point-in-time report. It does not authorize production deployment; use [Version 1 Testing Build](TESTING_BUILD.md), [Security](SECURITY.md), and [V1 Release Notes](V1_RELEASE_NOTES.md).
 
+> **Reconciliation status (2026-07-30):** This archived report describes the old project and must not be used as current production evidence. The authoritative target is `dqgrrafuoxaorvyrcuuh`; target schema reconciliation, authenticated RLS, storage, onboarding, backup, and live deployment remain unverified. No production approval is granted by this document.
+
 This master document serves as the formal validation sign-off and deployment checklist for the **Areva Venture Studios ERP System (custom tailored for Maa Tara Jewellers)**. It presents verified live test logs, architectural clarifications, mathematical ledger auditing, and security profiles.
 
 ---

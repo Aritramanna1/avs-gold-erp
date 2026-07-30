@@ -60,12 +60,6 @@ function AutomationSettingsPage() {
             <tbody>
               {rules.map((r) => {
                 const sensitive = SENSITIVE_EVENTS.includes(r.eventKey);
-                // Email Automation is Coming Soon for Workshop V1.1 (see
-                // pilot-config.ts) — email checkboxes are shown but inert.
-                // A rule whose only channel is email would do nothing if
-                // enabled, so its master switch is disabled too rather than
-                // leaving a dead toggle.
-                const emailOnly = r.channels.length > 0 && r.channels.every((c) => c === "email");
                 return (
                   <tr key={r.eventKey} className="border-b border-border last:border-0">
                     <td className="p-3">
@@ -79,11 +73,6 @@ function AutomationSettingsPage() {
                             Financial/Gold
                           </Badge>
                         )}
-                        {emailOnly && (
-                          <Badge variant="outline" className="text-[10px]">
-                            Coming Soon
-                          </Badge>
-                        )}
                       </div>
                     </td>
                     <td className="p-3 text-muted-foreground">
@@ -91,11 +80,20 @@ function AutomationSettingsPage() {
                         c === "email" ? (
                           <label
                             key={c}
-                            className="inline-flex items-center gap-1 mr-3 opacity-50"
-                            title="Email Automation — Coming Soon"
+                            className="inline-flex items-center gap-1 mr-3 cursor-pointer"
+                            title="Email delivery requires a configured provider"
                           >
-                            <input type="checkbox" checked={false} disabled />
-                            <span className="capitalize">email (soon)</span>
+                            <input
+                              type="checkbox"
+                              checked={r.channels.includes(c)}
+                              onChange={(e) => {
+                                const next = e.target.checked
+                                  ? [...r.channels, c]
+                                  : r.channels.filter((x) => x !== c);
+                                setRule(r.eventKey, { channels: next });
+                              }}
+                            />
+                            <span className="capitalize">email</span>
                           </label>
                         ) : (
                           <label
@@ -120,7 +118,6 @@ function AutomationSettingsPage() {
                     <td className="p-3 text-right">
                       <Switch
                         checked={r.enabled}
-                        disabled={emailOnly}
                         onCheckedChange={(checked) => setRule(r.eventKey, { enabled: checked })}
                       />
                     </td>
@@ -136,8 +133,7 @@ function AutomationSettingsPage() {
         <Label className="mb-2 block">Business Report Recipient Email</Label>
         <div className="text-xs text-muted-foreground mb-2">
           Daily/weekly/monthly business summaries have no single "customer" to address — sent here
-          instead. Delivery is via Email Automation, which is Coming Soon — the address is saved for
-          when it ships.
+          instead. Delivery requires an active, server-configured email provider and remains opt-in.
         </div>
         <Input
           type="email"

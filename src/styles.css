@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "../tokens.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -64,28 +65,40 @@
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: var(--avs-radius-md);
+
+  /* Hallmark · macrostructure: operational canvas · tone: restrained atelier · anchor hue: aubergine */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --motion-fast: 140ms;
+  --motion-base: 190ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --rule-subtle: 1px solid var(--border);
 
   /* Soft warm off-white/cream background to avoid a plain sterile white dashboard */
-  --background: oklch(0.98 0.005 80);
-  --foreground: oklch(0.18 0.015 80);
+  --background: var(--avs-ivory);
+  --foreground: var(--avs-obsidian);
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.015 80);
+  --card: var(--avs-paper);
+  --card-foreground: var(--avs-obsidian);
 
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.015 80);
 
   /* Sophisticated business-grade royal purple primary for high legibility */
-  --primary: oklch(0.46 0.16 295);
-  --primary-hover: oklch(0.38 0.14 295);
-  --primary-foreground: oklch(0.99 0.002 80);
+  --primary: var(--avs-obsidian);
+  --primary-hover: #242428;
+  --primary-foreground: var(--avs-paper);
 
   --secondary: oklch(0.94 0.01 80);
   --secondary-foreground: oklch(0.18 0.015 80);
 
   --muted: oklch(0.95 0.005 80);
-  --muted-foreground: oklch(0.45 0.02 80);
+  --muted-foreground: var(--avs-titanium);
 
   --accent: oklch(0.94 0.01 80);
   --accent-foreground: oklch(0.18 0.015 80);
@@ -100,22 +113,22 @@
   --warning-foreground: oklch(0.98 0.01 60);
 
   /* Gold used strictly as a premium brand accent - darkened for high contrast on light backgrounds */
-  --gold: oklch(0.44 0.09 75);
-  --gold-soft: oklch(0.94 0.04 85);
-  --gold-deep: oklch(0.35 0.08 75);
+  --gold: var(--avs-gold);
+  --gold-soft: #eee5d2;
+  --gold-deep: #806738;
 
-  --border: oklch(0.85 0.01 80);
-  --input: oklch(0.85 0.01 80);
-  --ring: oklch(0.46 0.16 295 / 40%);
+  --border: var(--avs-line);
+  --input: var(--avs-line);
+  --ring: color-mix(in srgb, var(--avs-gold) 70%, transparent);
 
-  --sidebar: oklch(0.98 0.005 80);
-  --sidebar-foreground: oklch(0.18 0.015 80);
-  --sidebar-primary: oklch(0.46 0.16 295);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.93 0.01 80);
-  --sidebar-accent-foreground: oklch(0.18 0.015 80);
-  --sidebar-border: oklch(0.85 0.01 80);
-  --sidebar-ring: oklch(0.46 0.16 295 / 30%);
+  --sidebar: var(--avs-obsidian);
+  --sidebar-foreground: var(--avs-paper);
+  --sidebar-primary: var(--avs-gold);
+  --sidebar-primary-foreground: var(--avs-obsidian);
+  --sidebar-accent: #242428;
+  --sidebar-accent-foreground: var(--avs-paper);
+  --sidebar-border: #2f2f33;
+  --sidebar-ring: var(--avs-gold);
 
   --gradient-gold: linear-gradient(135deg, oklch(0.94 0.04 85), oklch(0.44 0.09 75));
   --gradient-vault: linear-gradient(160deg, oklch(0.98 0.005 80), oklch(0.94 0.01 80));
@@ -191,6 +204,28 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    overflow-x: clip;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    transition:
+      color var(--motion-fast) var(--ease-out),
+      background-color var(--motion-fast) var(--ease-out),
+      border-color var(--motion-fast) var(--ease-out),
+      box-shadow var(--motion-fast) var(--ease-out),
+      transform var(--motion-fast) var(--ease-out);
+  }
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 
   h1,
@@ -202,8 +237,232 @@
   }
 }
 
+@keyframes erp-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes erp-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@utility page-enter {
+  animation: erp-page-in var(--motion-base) var(--ease-out) both;
+}
+@utility skeleton-line {
+  background: var(--muted);
+  animation: erp-pulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* Shared operational surfaces: quiet edges, clear hierarchy, no decorative gradients. */
+.erp-surface {
+  border: var(--rule-subtle);
+  background: var(--card);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 4%);
+}
+.erp-surface:focus-within,
+.erp-surface:hover {
+  box-shadow: 0 3px 12px oklch(0 0 0 / 6%);
+}
+.erp-section-title {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.erp-table thead {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.erp-table th,
+.erp-table td {
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+}
+.erp-table tbody tr {
+  border-top: var(--rule-subtle);
+}
+.erp-table tbody tr:hover {
+  background: color-mix(in oklch, var(--accent) 55%, transparent);
+}
+
+/* Mobile operations: a compact, persistent task rail beats a shrunken desktop sidebar. */
+.mobile-bottom-nav {
+  position: fixed;
+  z-index: 40;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  min-height: 4.25rem;
+  padding: 0.45rem 0.5rem max(0.45rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklch, var(--card) 94%, transparent);
+  box-shadow: 0 -5px 18px oklch(0 0 0 / 7%);
+  backdrop-filter: blur(14px);
+}
+.mobile-bottom-nav__item {
+  display: flex;
+  min-width: 0;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  flex-direction: column;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+}
+.mobile-bottom-nav__item svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  stroke-width: 1.8;
+}
+.mobile-bottom-nav__item.is-active {
+  color: var(--gold-deep);
+  background: var(--gold-soft);
+}
+.mobile-bottom-nav__item:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 639px) {
+  /* Dense operational UI: keep dialogs and surfaces easy to scan on phones. */
+  .rounded-2xl,
+  .rounded-xl {
+    border-radius: 0.5rem;
+  }
+  #main-header {
+    height: 3.5rem;
+    gap: 0.55rem;
+    padding-inline: 0.75rem;
+  }
+  #mobile-branding span {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+  #header-lang-selector,
+  #theme-toggle,
+  #header-gold-rate-trigger {
+    display: none;
+  }
+  #main-header > .ml-auto {
+    gap: 0.35rem;
+  }
+  #main-view-scroll-container {
+    overscroll-behavior-y: contain;
+  }
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-height: 2.75rem;
+    font-size: 1rem;
+  }
+  table {
+    font-size: 0.78rem;
+  }
+  .erp-table th,
+  .erp-table td {
+    padding: 0.65rem 0.7rem;
+  }
+}
+
 @utility text-gold {
   color: var(--gold);
+}
+
+/* AVS enterprise surface: shared rhythm for every module. */
+html,
+body {
+  background: var(--avs-ivory);
+  color: var(--avs-obsidian);
+  overflow-x: clip;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  transition: border-color var(--avs-fast) var(--avs-ease),
+    background-color var(--avs-fast) var(--avs-ease),
+    color var(--avs-fast) var(--avs-ease),
+    box-shadow var(--avs-fast) var(--avs-ease),
+    transform var(--avs-fast) var(--avs-ease);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--avs-gold);
+  outline-offset: 2px;
+}
+
+button:active:not(:disabled),
+a:active {
+  transform: translateY(1px);
+}
+
+table {
+  border-collapse: collapse;
+}
+
+thead th {
+  color: var(--avs-titanium);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 @utility bg-gold {
   background-color: var(--gold);

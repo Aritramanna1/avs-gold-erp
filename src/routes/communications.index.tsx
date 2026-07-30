@@ -1470,9 +1470,7 @@ export default function CommunicationsDashboardPage() {
                   <SelectItem value="whatsapp:whatsapp_cloud_api">
                     Meta Cloud API (WhatsApp)
                   </SelectItem>
-                  <SelectItem value="email:email_smtp" disabled>
-                    Email — Coming Soon
-                  </SelectItem>
+                  <SelectItem value="email:email_smtp">Email (SMTP)</SelectItem>
                   <SelectItem value="sms:sms_twilio">Twilio (SMS)</SelectItem>
                 </SelectContent>
               </Select>
@@ -1482,13 +1480,13 @@ export default function CommunicationsDashboardPage() {
               <Badge variant="outline" className="text-[9px] px-1 py-0">
                 Soon
               </Badge>
-              Email Automation is Coming Soon — WhatsApp (Deep Link + OpenWA) is fully available
-              below.
+              Email and WhatsApp providers are configured per branch below. Automated delivery
+              remains opt-in in Communication Automation settings.
             </div>
 
             <div className="space-y-4">
               {configs
-                .filter((c) => c.branchId === branchId && c.channel !== "email")
+                .filter((c) => c.branchId === branchId)
                 .map((cfg, i) => {
                   const fields = getSettingFields(cfg.providerType);
                   return (

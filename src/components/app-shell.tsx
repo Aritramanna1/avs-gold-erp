@@ -8,6 +8,10 @@ import {
   User as UserIcon,
   Settings,
   ChevronDown,
+  Home,
+  ShoppingBag,
+  Receipt,
+  BookOpen,
 } from "lucide-react";
 import { type ReactNode, useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -187,7 +191,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => setGoldRateOpen(true)}
-            className={`hidden lg:flex items-center gap-2 rounded-full border px-4 py-1.5 transition-colors cursor-pointer text-current focus:outline-none ${
+            className={`hidden lg:flex items-center gap-2 rounded-md border px-3 py-1.5 transition-colors cursor-pointer text-current focus:outline-none ${
               goldRatePerGramPaise > 0
                 ? "border-border bg-background/60 hover:border-gold/40 hover:bg-gold/5"
                 : "border-red-500 bg-red-500/10 text-red-600 dark:text-red-400 font-bold hover:bg-red-500/20 shadow-sm animate-pulse"
@@ -215,7 +219,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             {/* Quick Language Toggle */}
             <div
-              className="relative flex items-center gap-1 rounded-full border border-border px-2 py-1 text-sm bg-background/60 hover:border-gold/40 transition-colors no-print"
+              className="relative flex items-center gap-1 rounded-md border border-border px-2 py-1 text-sm bg-background/60 hover:border-gold/40 transition-colors no-print"
               id="header-lang-selector"
             >
               <Languages className="h-3.5 w-3.5 text-gold shrink-0" />
@@ -270,7 +274,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       {displayRole}
                     </div>
                   </div>
-                  <div className="h-9 w-9 rounded-full gradient-gold grid place-items-center text-primary-foreground font-bold text-sm shrink-0">
+                  <div className="h-9 w-9 rounded-md bg-primary grid place-items-center text-primary-foreground font-bold text-sm shrink-0">
                     {initials}
                   </div>
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
@@ -299,14 +303,48 @@ export function AppShell({ children }: { children: ReactNode }) {
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto relative" id="main-view-scroll-container">
-          {children}
+        <main
+          className="flex-1 overflow-y-auto relative page-enter pb-16 lg:pb-0"
+          id="main-view-scroll-container"
+        >
+          <div className="min-h-full">{children}</div>
           {!criticalLoadDone && (
             <div className="absolute inset-0 z-20 bg-background overflow-y-auto" aria-hidden="true">
               <ModuleSkeleton />
             </div>
           )}
         </main>
+        <nav className="mobile-bottom-nav lg:hidden" aria-label="Primary navigation">
+          {[
+            { to: "/", label: "Home", icon: Home },
+            { to: "/orders", label: "Orders", icon: ShoppingBag },
+            { to: "/billing", label: "Billing", icon: Receipt },
+            { to: "/ledger", label: "Gold book", icon: BookOpen },
+          ].map((item) => {
+            const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`mobile-bottom-nav__item ${active ? "is-active" : ""}`}
+                aria-current={active ? "page" : undefined}
+              >
+                <Icon aria-hidden="true" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            className="mobile-bottom-nav__item"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open all modules"
+          >
+            <Menu aria-hidden="true" />
+            <span>More</span>
+          </button>
+        </nav>
         <GoldRateEditor open={goldRateOpen} onOpenChange={setGoldRateOpen} />
       </div>
     </div>
@@ -325,10 +363,12 @@ export function PageHeader({
   return (
     <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between mb-6">
       <div className="min-w-0">
-        <h1 className="font-serif text-3xl text-gold">{title}</h1>
+        <h1 className="font-serif text-2xl md:text-3xl text-gold leading-tight">{title}</h1>
         {subtitle ? <p className="text-sm text-muted-foreground mt-1">{subtitle}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-2 justify-end">{actions}</div> : null}
+      {actions ? (
+        <div className="flex flex-wrap gap-2 justify-start sm:justify-end">{actions}</div>
+      ) : null}
     </div>
   );
 }

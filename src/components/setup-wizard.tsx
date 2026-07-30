@@ -69,7 +69,6 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   // Hybrid: customer's own Supabase project. SaaS: central activation server.
   const [supaUrl, setSupaUrl] = useState("");
   const [supaKey, setSupaKey] = useState("");
-  const [supaServiceRoleKey, setSupaServiceRoleKey] = useState("");
   const [licKey, setLicKey] = useState("");
   const [licenseValidated, setLicenseValidated] = useState(false);
   // Shown only when validation reports the schema is missing/outdated.
@@ -101,57 +100,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       setErr("Enter the project's publishable/anon key.");
       return;
     }
-    if (supaServiceRoleKey.trim().length < 20) {
-      setErr("Enter the setup-only Service Role Key.");
-      return;
-    }
-    const desktop = (
-      window as unknown as {
-        mtjDesktop?: {
-          hybrid?: {
-            validateSetup: (args: {
-              projectUrl: string;
-              anonKey: string;
-              serviceRoleKey: string;
-            }) => Promise<{ ok: boolean; schemaVersion?: number; error?: string }>;
-          };
-        };
-      }
-    ).mtjDesktop;
-    if (!desktop?.hybrid?.validateSetup) {
-      setErr("Hybrid setup validation is available only in the Electron desktop application.");
-      return;
-    }
-    setBusy(true);
-    setErr(null);
-    try {
-      setLicenseConfig({ key: licKey.trim() });
-      const licenseStatus = await verifyLicense("hybrid");
-      if (!isAcceptedLicenseStatus(licenseStatus)) {
-        setErr("The license key is invalid, expired, or suspended.");
-        return;
-      }
-      const result = await desktop.hybrid.validateSetup({
-        projectUrl: url,
-        anonKey: supaKey.trim(),
-        serviceRoleKey: supaServiceRoleKey.trim(),
-      });
-      if (!result.ok) {
-        // The owner applies the bundled master SQL outside the customer app.
-        const missing = /master sql migration|schema metadata is missing/i.test(result.error || "");
-        setNeedsSchemaInit(missing);
-        setErr(result.error || "Supabase project validation failed.");
-        return;
-      }
-      setNeedsSchemaInit(false);
-      localStorage.setItem(SUPABASE_RUNTIME_KEYS.url, url.replace(/\/$/, ""));
-      localStorage.setItem(SUPABASE_RUNTIME_KEYS.key, supaKey.trim());
-      setSupaServiceRoleKey("");
-      setLicenseValidated(true);
-      setStep("create-admin");
-    } finally {
-      setBusy(false);
-    }
+    setErr(
+      "Hybrid setup requires deployment-managed server validation. Privileged keys must never be entered in the browser.",
+    );
+    return;
   }
 
   async function handleInitializeSchema() {
@@ -453,21 +405,9 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                 className="font-mono text-xs"
               />
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="supa-service-role">Service Role Key (setup only)</Label>
-              <Input
-                id="supa-service-role"
-                type="password"
-                required
-                disabled={busy}
-                value={supaServiceRoleKey}
-                onChange={(e) => setSupaServiceRoleKey(e.target.value)}
-                className="font-mono text-xs"
-              />
-            </div>
             <p className="text-[11px] text-muted-foreground">
-              This key validates the owner-managed setup and is discarded immediately. It is never
-              stored by the ERP. Runtime synchronization uses only the anon key.
+              Project validation is deployment-managed. Privileged keys are never entered or handled
+              by the browser; runtime synchronization uses only the publishable key.
             </p>
             {err && <ErrorNote message={err} />}
 

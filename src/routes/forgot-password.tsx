@@ -20,6 +20,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
 import { recoverLocalUsernames } from "@/lib/local-auth";
+import { getAuthRedirectUrl } from "@/lib/auth-redirect";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({ meta: [{ title: "Account Recovery · AVS Gold ERP" }] }),
@@ -53,7 +54,7 @@ function ForgotPasswordPage() {
     try {
       if (method === "link") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: getAuthRedirectUrl("/reset-password"),
         });
         if (error) {
           setErr(error.message);

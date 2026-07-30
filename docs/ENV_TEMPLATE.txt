@@ -1,19 +1,22 @@
 # ---------------------------------------------------------------------------
 # MTJ ERP — environment template (Option B: external Supabase, no Lovable Cloud)
 # Copy to `.env` at the project root. Never commit a populated .env.
-# Production backend project ref: kjfjsfhftytezsjyegmb
+# Production backend project ref: dqgrrafuoxaorvyrcuuh
 # ---------------------------------------------------------------------------
 
 # === Client-visible (safe to ship to the browser AND inside Electron) ===
-VITE_SUPABASE_URL="https://kjfjsfhftytezsjyegmb.supabase.co"
-VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_fThRlMsK8N5t_wU9_fzd7g_XBvvr-zW"
-VITE_SUPABASE_PROJECT_ID="kjfjsfhftytezsjyegmb"
+VITE_SUPABASE_URL="https://dqgrrafuoxaorvyrcuuh.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN"
+VITE_SUPABASE_PROJECT_ID="dqgrrafuoxaorvyrcuuh"
+
+# === Cloudflare R2 storage proxy (required for online file storage) ===
+VITE_R2_PROXY_URL="https://mtj-storage-proxy.aritramanna222.workers.dev"
 
 # === Server-only mirror (read by TanStack server functions / SSR) ===
 # Same publishable key, just named without VITE_ for server runtime.
-SUPABASE_URL="https://kjfjsfhftytezsjyegmb.supabase.co"
-SUPABASE_PUBLISHABLE_KEY="sb_publishable_fThRlMsK8N5t_wU9_fzd7g_XBvvr-zW"
-SUPABASE_PROJECT_ID="kjfjsfhftytezsjyegmb"
+SUPABASE_URL="https://dqgrrafuoxaorvyrcuuh.supabase.co"
+SUPABASE_PUBLISHABLE_KEY="sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN"
+SUPABASE_PROJECT_ID="dqgrrafuoxaorvyrcuuh"
 
 # === STRICT SECRETS — never put real values in this file, never ship in any client ===
 # SUPABASE_SERVICE_ROLE_KEY=  # set ONLY in host secret manager (Horizon / VPS env)

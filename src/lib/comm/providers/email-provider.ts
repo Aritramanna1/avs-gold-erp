@@ -64,17 +64,6 @@ export class EmailProvider implements CommProvider {
         to,
         subject,
         htmlBody: html,
-        smtp: {
-          host: s[EMAIL_KEYS.host] || defaultHost,
-          port: Number(s[EMAIL_KEYS.port] || defaultPort),
-          username: s[EMAIL_KEYS.username],
-          password: s[EMAIL_KEYS.password],
-          from_email: s[EMAIL_KEYS.fromEmail],
-          from_name: s[EMAIL_KEYS.fromName] || "Jewellery ERP",
-          reply_to: s[EMAIL_KEYS.replyTo] || "",
-          encryption: s[EMAIL_KEYS.encryption] || "",
-          use_ssl: s[EMAIL_KEYS.useSsl] || "",
-        },
       },
     });
     if (error) {
@@ -97,6 +86,15 @@ export class EmailProvider implements CommProvider {
     }
 
     const s = this.config.settings;
+    if (["email_resend", "email_sendgrid", "email_mailgun"].includes(this.config.providerType)) {
+      return {
+        success: false,
+        provider: this.name,
+        channel: "email",
+        error: "This provider requires server-side relay configuration.",
+        status: "failed",
+      };
+    }
     const to = req.recipient.email;
 
     if (!to) {

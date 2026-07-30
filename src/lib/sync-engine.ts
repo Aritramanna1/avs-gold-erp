@@ -39,10 +39,25 @@ import {
 const MIN_BACKOFF_MS = 2_000;
 const MAX_BACKOFF_MS = 15 * 60_000;
 const PULL_PAGE_SIZE = 500;
+const NETWORK_TIMEOUT_MS = 12_000;
 
 function backoffDelayMs(attempts: number): number {
   const exponential = Math.min(MAX_BACKOFF_MS, MIN_BACKOFF_MS * 2 ** Math.min(attempts, 12));
   return Math.round(exponential * (0.8 + Math.random() * 0.4));
+}
+
+// A flaky (not fully down) connection can otherwise hang a Supabase call for
+// minutes, stalling the whole outbox drain instead of failing fast into the
+// existing per-row backoff below.
+function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<T>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Timed out waiting for ${label} after ${NETWORK_TIMEOUT_MS}ms`)),
+      NETWORK_TIMEOUT_MS,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 function assertSafeTableName(table: string): void {
@@ -161,7 +176,7 @@ export async function pushPendingOutbox(): Promise<PushResult> {
         // Deletes always proceed — there's no "someone edited it since" case
         // that should block a delete; the row's data is gone from our side
         // regardless. If it's already gone remotely, that's a success too.
-        await deleteDirect(entry.table_name, entry.row_id);
+        await withTimeout(deleteDirect(entry.table_name, entry.row_id), "delete");
         await runLocal(() => {
           purgeSoftDeletedRow(entry.table_name, entry.row_id);
           markOutboxSynced(entry.id);
@@ -175,7 +190,10 @@ export async function pushPendingOutbox(): Promise<PushResult> {
       // auto-parse it — so it must be parsed here before use.
       const payload = typeof entry.payload === "string" ? JSON.parse(entry.payload) : entry.payload;
 
-      const remoteUpdatedAt = await fetchRemoteUpdatedAt(entry.table_name, entry.row_id);
+      const remoteUpdatedAt = await withTimeout(
+        fetchRemoteUpdatedAt(entry.table_name, entry.row_id),
+        "remote updatedAt fetch",
+      );
       const baseUpdatedAt = entry.base_updated_at;
       const isConflict =
         remoteUpdatedAt !== null && baseUpdatedAt !== null && remoteUpdatedAt !== baseUpdatedAt;
@@ -189,7 +207,7 @@ export async function pushPendingOutbox(): Promise<PushResult> {
         continue;
       }
 
-      await saveDirect(entry.table_name, entry.row_id, payload);
+      await withTimeout(saveDirect(entry.table_name, entry.row_id, payload), "save");
       await runLocal(() => {
         recordRowSynced(entry.table_name, entry.row_id, extractUpdatedAt(payload));
         markOutboxSynced(entry.id);
@@ -276,11 +294,16 @@ export async function pullChangesSince(table: string): Promise<PullResult> {
   let fetched = 0;
 
   for (;;) {
-    const { data, error } = await client
-      .from(table as any)
-      .select("id, data")
-      .order("id", { ascending: true })
-      .range(offset, offset + PULL_PAGE_SIZE - 1);
+    const { data, error } = await withTimeout(
+      Promise.resolve(
+        client
+          .from(table as any)
+          .select("id, data")
+          .order("id", { ascending: true })
+          .range(offset, offset + PULL_PAGE_SIZE - 1),
+      ),
+      `pull page for ${table}`,
+    );
     if (error) throw error;
     const rows = (data ?? []) as unknown as { id: string; data: Record<string, unknown> }[];
     const changed = since

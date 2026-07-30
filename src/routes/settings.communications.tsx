@@ -310,14 +310,43 @@ function ProviderCard({
   const isEmail = config.channel === "email";
   const isServerEmail = config.providerType === "email_smtp" || config.providerType === "email_ses";
   const isCloudApi = config.providerType === "whatsapp_cloud_api";
+  const secretKeys = new Set([
+    "access_token",
+    "api_key",
+    "password",
+    "webhook_verify_token",
+    "auth_token",
+    "token",
+  ]);
 
   function updateSetting(key: string, value: string) {
     setLocal((c) => ({ ...c, settings: { ...c.settings, [key]: value } }));
   }
 
-  function save() {
-    onUpdate(local);
-    toast.success(`${PROVIDER_LABELS[config.providerType]} settings saved`);
+  async function save() {
+    const secretData = Object.fromEntries(
+      Object.entries(local.settings).filter(([key, value]) => secretKeys.has(key) && value.trim()),
+    );
+    if (Object.keys(secretData).length > 0) {
+      const { error } = await supabase.functions.invoke("save-provider-secret", {
+        body: {
+          branchId: local.branchId,
+          providerType: local.providerType,
+          secretData,
+        },
+      });
+      if (error) {
+        toast.error(await extractEdgeFunctionError(error, "Secret storage failed."));
+        return;
+      }
+    }
+    onUpdate({
+      ...local,
+      settings: Object.fromEntries(
+        Object.entries(local.settings).filter(([key]) => !secretKeys.has(key)),
+      ),
+    });
+    toast.success(`${PROVIDER_LABELS[config.providerType]} settings saved securely`);
   }
 
   // ── Test SMTP Connection (server-side handshake, no email sent) ──────────────
@@ -330,21 +359,20 @@ function ProviderCard({
     setTesting(true);
     setTestResult(null);
     try {
+      const { error: secretError } = await supabase.functions.invoke("save-provider-secret", {
+        body: {
+          branchId: local.branchId,
+          providerType: local.providerType,
+          secretData: { password: s["password"], username: s["username"] },
+        },
+      });
+      if (secretError) {
+        throw new Error(await extractEdgeFunctionError(secretError, "Secret storage failed."));
+      }
       const { data, error } = await supabase.functions.invoke("send-email", {
         body: {
           verifyOnly: true,
           branchId: local.branchId,
-          smtp: {
-            host: s["host"],
-            port: Number(s["port"] || 465),
-            username: s["username"],
-            password: s["password"],
-            from_email: s["from_email"] || s["username"],
-            from_name: s["from_name"] || "MTJ ERP",
-            reply_to: s["reply_to"] || "",
-            encryption: s["encryption"] || "",
-            use_ssl: s["use_ssl"] || "",
-          },
         },
       });
       if (error) {
@@ -387,17 +415,6 @@ function ProviderCard({
           body: {
             to: testRecipient.trim(),
             branchId: local.branchId,
-            smtp: {
-              host: s["host"],
-              port: Number(s["port"] || 465),
-              username: s["username"],
-              password: s["password"],
-              from_email: s["from_email"] || s["username"],
-              from_name: s["from_name"] || "MTJ ERP",
-              reply_to: s["reply_to"] || "",
-              encryption: s["encryption"] || "",
-              use_ssl: s["use_ssl"] || "",
-            },
           },
         });
         if (error) {

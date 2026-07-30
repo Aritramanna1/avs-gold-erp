@@ -37,6 +37,35 @@ export default async function globalSetup(config: FullConfig) {
     console.log("[global-setup] Waiting for auth form to hide");
     await page.getByTestId("auth-form").waitFor({ state: "hidden", timeout: 45_000 });
     console.log("[global-setup] Authentication successful");
+
+    // Tenant-role suites may opt into a disposable QA license and setup
+    // record. Platform-owner suites do not need this because the control
+    // plane intentionally bypasses tenant licensing.
+    const qaLicense = process.env.E2E_LICENSE_KEY;
+    if (qaLicense) {
+      await page.waitForTimeout(3_000);
+      const licenseInput = page.getByPlaceholder("XXXX-XXXX-XXXX-XXXX");
+      await licenseInput.waitFor({ state: "visible", timeout: 15_000 }).catch(() => undefined);
+      console.log(
+        `[global-setup] QA license gate visible: ${await licenseInput.isVisible().catch(() => false)}`,
+      );
+      if ((await licenseInput.count()) && (await licenseInput.isVisible().catch(() => false))) {
+        await licenseInput.fill(qaLicense);
+        await page.getByRole("button", { name: /activate \/ verify/i }).click();
+        await page.waitForTimeout(4_000);
+        console.log(
+          `[global-setup] after QA license: ${(await page.locator("body").innerText()).slice(0, 220).replace(/\s+/g, " ")}`,
+        );
+      }
+      if (await page.getByTestId("setup-finish").count()) {
+        await page.getByTestId("setup-shop-name").fill("MTJ QA Firm A");
+        await page.getByTestId("setup-branch-name").fill("QA Main Branch");
+        await page.getByTestId("setup-address").fill("QA test address");
+        await page.getByTestId("setup-owner-name").fill("QA Firm Owner");
+        await page.getByTestId("setup-finish").click();
+        await page.waitForTimeout(1_000);
+      }
+    }
   } catch (err) {
     const pageUrl = page.url();
     const bodyText = await page
@@ -47,67 +76,10 @@ export default async function globalSetup(config: FullConfig) {
       `[global-setup] UI login failed or timed out. Page URL: ${pageUrl}. Body preview: ${bodyText.slice(0, 300)}`,
       err,
     );
-    // Write a mock session state directly to avoid failing the setup phase.
-    const mockState = {
-      cookies: [],
-      origins: [
-        {
-          origin: baseURL,
-          localStorage: [
-            {
-              name: "sb-zbfbnwgbqydttsuuhmxn-auth-token",
-              value: JSON.stringify({
-                access_token: "mock-access-token",
-                token_type: "bearer",
-                expires_in: 3600,
-                refresh_token: "mock-refresh-token",
-                user: {
-                  id: "7d140df8-7290-4680-bb56-1031a1f1f8e3",
-                  email: email,
-                  role: "authenticated",
-                },
-                expires_at: Math.floor(Date.now() / 1000) + 3600 * 24,
-              }),
-            },
-            {
-              name: "local-session",
-              value: JSON.stringify({
-                sessionId: "mock-session-id",
-                userId: "7d140df8-7290-4680-bb56-1031a1f1f8e3",
-                deviceId: "mock-device-id",
-                issuedAt: Date.now(),
-                expiresAt: Date.now() + 12 * 60 * 60 * 1000,
-              }),
-            },
-          ],
-        },
-      ],
-    };
-    fs.writeFileSync(statePath, JSON.stringify(mockState, null, 2));
-
-    // Create a dummy seed.json so tests requiring seedIds don't crash
-    const dummySeed = {
-      customerId: "cust_123",
-      karigarId: "kar_123",
-      orderId: "ord_123",
-      orderNo: "ORD-001",
-      jobId: "job_123",
-      jobNo: "JOB-001",
-      stockItemId: "stock_123",
-      invoiceId: "inv_123",
-      invoiceNo: "INV-001",
-      creditNoteId: "cn_123",
-      creditNoteNo: "CN-001",
-      debitNoteId: "dn_123",
-      debitNoteNo: "DN-001",
-      estimateId: "est_123",
-      estimateNo: "EST-001",
-      deliveryChallanId: "dc_123",
-      deliveryChallanNo: "DC-001",
-    };
-    fs.writeFileSync(path.join(authDir, "seed.json"), JSON.stringify(dummySeed, null, 2));
     await browser.close();
-    return;
+    throw new Error(
+      `[global-setup] Real authenticated setup failed; refusing to create a mock session or fake seed data. ${String(err)}`,
+    );
   }
 
   console.log("[global-setup] Waiting for window.__mtjSeed to be loaded");

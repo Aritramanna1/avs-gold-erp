@@ -16,6 +16,7 @@ import { getOrCreateDocumentPdfUrl } from "@/lib/document-pdf-service";
 import { createDocumentShareLink, linkedTypeToShareDocType } from "@/lib/document-shares";
 import { withRateLimit } from "./fetch-with-timeout";
 import { toast } from "sonner";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
 export interface SendOptions {
   /** Set by comm-queue.ts when replaying a queued retry — prevents a retry-of-a-retry
@@ -153,6 +154,29 @@ class CommunicationService {
 
     for (const config of configs) {
       try {
+        if (req.channel === "whatsapp" && config.providerType !== "whatsapp_deep_link") {
+          const { data: edgeResult, error: edgeError } = await (supabase as any).functions.invoke(
+            "send-whatsapp",
+            {
+              body: {
+                branchId: req.branchId || "MAIN",
+                phone: req.recipient.phone,
+                message: content.textBody || `${req.template} notification`,
+              },
+            },
+          );
+          const result: CommResult = {
+            success: !edgeError && edgeResult?.ok === true,
+            provider: config.providerType,
+            channel: req.channel,
+            messageId: edgeResult?.messageId,
+            error: edgeError?.message || edgeResult?.error,
+            status: edgeError || edgeResult?.ok !== true ? "failed" : "queued",
+          };
+          this.log(req, result, content.textBody ?? "");
+          if (result.success) return result;
+          continue;
+        }
         const provider = createProvider(config.providerType);
         provider.configure(config);
         // Every channel funnels through the same throttle — a bulk reminder

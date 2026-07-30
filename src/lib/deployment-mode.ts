@@ -45,8 +45,19 @@ function fallbackMode(): DeploymentMode {
   return "offline";
 }
 
+function forceOnlineMode(): boolean {
+  return import.meta.env.VITE_FORCE_ONLINE === "true";
+}
+
 export async function getDeploymentMode(): Promise<DeploymentMode | null> {
   await initLocalDb();
+  // The hosted SaaS build must never inherit an offline/hybrid mode persisted
+  // by an earlier browser session. Identity, RLS and platform roles must come
+  // from the live Supabase project on the production domain.
+  if (forceOnlineMode()) {
+    setMetaValue(META_KEY, "online");
+    return "online";
+  }
   const value = getMetaValue(META_KEY);
   if (value === "offline" || value === "hybrid" || value === "online") return value;
   if (!wizardEnabled()) {

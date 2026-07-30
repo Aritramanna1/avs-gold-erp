@@ -13,6 +13,7 @@ import { getLocalSessionUser } from "@/lib/local-auth";
 import { ROLES } from "@/lib/permissions";
 
 export type AppRole =
+  | "saas_admin" // Platform control-plane administrator; never a company role
   | "super_owner" // Platform administrator — unrestricted access to all companies, branches, system settings
   | "owner"
   | "manager"
@@ -168,7 +169,9 @@ export function useRoles(): { roles: AppRole[]; email: string | null; ready: boo
       // Map any existing DB roles or fallback matching
       dbRoles.forEach((r) => {
         const rLower = r.toLowerCase();
-        if (
+        if (rLower === "saas_admin" || rLower === "saas admin") {
+          if (!finalRoles.includes("saas_admin")) finalRoles.push("saas_admin");
+        } else if (
           rLower.includes("owner") ||
           rLower.includes("manager") ||
           rLower.includes("admin") ||
@@ -191,7 +194,9 @@ export function useRoles(): { roles: AppRole[]; email: string | null; ready: boo
 
       if (matched && matched.active) {
         const roleLabel = matched.role.toLowerCase();
-        if (
+        if (roleLabel === "saas_admin" || roleLabel === "saas admin") {
+          if (!finalRoles.includes("saas_admin")) finalRoles.push("saas_admin");
+        } else if (
           roleLabel.includes("owner") ||
           roleLabel.includes("manager") ||
           roleLabel.includes("admin")

@@ -474,10 +474,7 @@ export async function pullAttachments(): Promise<void> {
 }
 
 export async function pullBranches(): Promise<void> {
-  const { data, error } = await supabase
-    .from("branches")
-    .select("*")
-    .order("is_default", { ascending: false });
+  const { data, error } = await supabase.from("branches").select("*");
   if (error) throw new Error(`branches pull: ${error.message}`);
   if (data && data.length > 0) {
     const branches = data.map((r: any) => ({
@@ -486,10 +483,10 @@ export async function pullBranches(): Promise<void> {
       code: r.code,
       address: r.address ?? "",
       phone: r.phone ?? "",
-      managerName: r.manager_name ?? "Unassigned",
+      managerName: r.manager_name ?? r.data?.manager_name ?? "Unassigned",
       gstin: r.gstin ?? undefined,
       active: r.active,
-      isDefault: r.is_default,
+      isDefault: r.is_default ?? r.data?.is_default ?? false,
     }));
     useSettings.setState({ branches });
     // Also update selectedBranchId if not set
@@ -670,8 +667,9 @@ export async function pullBackground(): Promise<{ ok: boolean; errors: string[] 
         if (error || !data?.data) return;
         const payload = data.data as any;
         if (Array.isArray(payload.configs) && payload.configs.length > 0) {
-          const { useCommSettings } = await import("@/lib/comm/comm-settings-store");
-          useCommSettings.setState({ configs: payload.configs });
+          const { useCommSettings, redactProviderSecrets } =
+            await import("@/lib/comm/comm-settings-store");
+          useCommSettings.setState({ configs: payload.configs.map(redactProviderSecrets) });
         }
       },
       errors,

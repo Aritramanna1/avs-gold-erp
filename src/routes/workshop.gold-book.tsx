@@ -34,14 +34,12 @@ import {
 } from "lucide-react";
 
 /**
- * Material Book hub — the Worker Gold Book is the only functional book today;
- * the other material-movement ledgers are shown as siblings with a professional
- * "Coming Soon" panel until they are built. Adding a real book later = flip
- * `available` and point it at its section.
+ * Material Book hub — Worker Gold Book remains inline; Outside Work opens its
+ * dedicated real workflow. Other material ledgers remain explicitly deferred.
  */
 const MATERIAL_BOOKS = [
   { key: "worker", label: "Worker Gold Book", icon: Users, available: true },
-  { key: "outside", label: "Outside Gold Book (Coming Soon)", icon: Truck, available: false },
+  { key: "outside", label: "Outside Work", icon: Truck, available: true },
   { key: "meena", label: "Meena Book", icon: Gem, available: false },
   { key: "polishing", label: "Polishing Book (Coming Soon)", icon: Sparkles, available: false },
 ] as const;
@@ -87,7 +85,7 @@ function WorkerGoldBookPage() {
   const people = usePeople((s) => s.people);
   const { entries, addEntry, removeEntry, getWorkerBalance } = useWorkerGoldBook();
 
-  // Which material book is open (only Worker Gold Book is functional).
+  // Which material book is open (the inline worker book is selected by default).
   const [selectedBook, setSelectedBook] = useState<MaterialBookKey>("worker");
 
   // Active view states
@@ -416,7 +414,13 @@ function WorkerGoldBookPage() {
             return (
               <button
                 key={b.key}
-                onClick={() => setSelectedBook(b.key)}
+                onClick={() => {
+                  if (b.key === "outside") {
+                    window.location.assign("/workshop/outside-work");
+                    return;
+                  }
+                  setSelectedBook(b.key);
+                }}
                 className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
                   active
                     ? "border-gold bg-gold/10 text-gold"

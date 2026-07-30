@@ -9,7 +9,7 @@
  * Data flow: (docType, recordId) → resolvePrintContext → generateDocumentPdf
  * (blob) → local application vault → provider.send({ caption }).
  */
-import { resolveWhatsAppProvider } from "./send-whatsapp-text";
+import { activeWhatsAppProvider, resolveWhatsAppProvider } from "./send-whatsapp-text";
 import { resolvePrintContext } from "@/lib/print-engine/data-mapper";
 import { usePrintTemplates } from "@/lib/print-engine/template-store";
 import { generateDocumentPdf } from "@/lib/print-engine/pdf/generate";
@@ -18,6 +18,7 @@ import { uploadToSupabaseStorage } from "@/lib/supabase-storage";
 import { isValidWaPhone } from "@/lib/wa-link";
 import type { PrintDocType } from "@/lib/print-engine/types";
 import type { CommResult } from "./types";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
 export interface WhatsAppDocRequest {
   docType: PrintDocType;
@@ -78,6 +79,21 @@ export async function sendWhatsAppDocument(req: WhatsAppDocRequest): Promise<Wha
 
   const caption = req.caption ?? `${data.title} ${data.docNumber}`;
   try {
+    const providerType = activeWhatsAppProvider(req.branchId);
+    if (providerType && providerType !== "whatsapp_deep_link") {
+      const { data: result, error } = await (supabase as any).functions.invoke("send-whatsapp", {
+        body: {
+          branchId: req.branchId ?? "MAIN",
+          phone: req.phone,
+          message: caption,
+        },
+      });
+      return {
+        ok: !error && result?.ok === true,
+        error: error?.message || result?.error,
+        attached: false,
+      };
+    }
     const { provider } = resolveWhatsAppProvider(req.branchId);
     const result: CommResult = await provider.send(
       {

@@ -114,6 +114,18 @@ export const WA_CONFIG_DEFAULTS: WaConfig = {
   templateFestival: "festival_greetings",
 };
 
+const WA_SECRET_FIELDS: Array<keyof WaConfig> = [
+  "accessToken",
+  "webhookVerifyToken",
+  "webhookSecret",
+];
+
+function withoutWaSecrets(config: WaConfig): WaConfig {
+  const sanitized = { ...config };
+  for (const field of WA_SECRET_FIELDS) sanitized[field] = "" as never;
+  return sanitized;
+}
+
 interface WaAutomationState {
   configsByBranch: Record<string, WaConfig>;
   automationsByBranch: Record<string, WaAutomations>;
@@ -164,7 +176,10 @@ export const useWaAutomation = create<WaAutomationState>((set, get) => ({
         ? (waAutomationsRaw as Partial<WaAutomations>)
         : {};
     set((s) => ({
-      configsByBranch: { ...s.configsByBranch, [branchId]: { ...WA_CONFIG_DEFAULTS, ...cfg } },
+      configsByBranch: {
+        ...s.configsByBranch,
+        [branchId]: withoutWaSecrets({ ...WA_CONFIG_DEFAULTS, ...cfg }),
+      },
       automationsByBranch: {
         ...s.automationsByBranch,
         [branchId]: { ...WA_AUTOMATION_DEFAULTS, ...aut },
@@ -173,7 +188,7 @@ export const useWaAutomation = create<WaAutomationState>((set, get) => ({
   },
 
   async saveToDb(branchId) {
-    const cfg = get().getConfig(branchId);
+    const cfg = withoutWaSecrets(get().getConfig(branchId));
     const aut = get().getAutomations(branchId);
     const payload: Record<string, unknown> = {
       branch_id: branchId,
@@ -224,6 +239,18 @@ export const useWaAutomation = create<WaAutomationState>((set, get) => ({
   },
 
   async testConnection(branchId) {
+    const { data: secureResult, error: secureError } = await (supabase as any).functions.invoke(
+      "send-whatsapp",
+      { body: { branchId, verifyOnly: true } },
+    );
+    if (secureError || secureResult?.ok !== true) {
+      return {
+        ok: false,
+        message: secureError?.message || secureResult?.error || "Connection test failed.",
+      };
+    }
+    return { ok: true, message: secureResult.message || "WhatsApp connection verified." };
+    /*
     const cfg = get().getConfig(branchId);
     if (cfg.providerType !== "whatsapp_cloud_api") {
       return { ok: true, message: "Deep-link / BSP providers do not require a connection test." };
@@ -248,6 +275,7 @@ export const useWaAutomation = create<WaAutomationState>((set, get) => ({
     } catch (e: unknown) {
       return { ok: false, message: e instanceof Error ? e.message : String(e) };
     }
+    */
   },
 }));
 

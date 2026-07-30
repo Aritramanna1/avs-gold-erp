@@ -11,7 +11,7 @@
  */
 import type { ERPModuleKey } from "./module-store";
 
-export const RETAIL_ONLY_MODULE_KEYS: ERPModuleKey[] = ["repairs", "loyalty_program"];
+export const RETAIL_ONLY_MODULE_KEYS: ERPModuleKey[] = ["loyalty_program"];
 
 /**
  * Workshop V1.1 scope — first production release. Attendance & Payroll
@@ -19,7 +19,7 @@ export const RETAIL_ONLY_MODULE_KEYS: ERPModuleKey[] = ["repairs", "loyalty_prog
  * production; gated the same way as RETAIL_ONLY_MODULE_KEYS above so it's a
  * one-line revert for V1.2 instead of hunting down every gate.
  */
-export const V1_1_COMING_SOON_MODULE_KEYS: ERPModuleKey[] = ["attendance", "payroll"];
+export const V1_1_COMING_SOON_MODULE_KEYS: ERPModuleKey[] = [];
 
 export function isPilotHiddenModule(key: ERPModuleKey): boolean {
   return RETAIL_ONLY_MODULE_KEYS.includes(key) || V1_1_COMING_SOON_MODULE_KEYS.includes(key);

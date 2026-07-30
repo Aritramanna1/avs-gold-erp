@@ -1,41 +1,34 @@
 import { type AttachmentEntityType } from "./attachments-store";
 import { compressImage } from "./image-compression";
-import { saveFile as saveFileLocally, loadFile as loadFileLocally } from "./local-file-store";
-import { initLocalDb } from "./local-db";
+import { buildFirmStoragePath, resolveStoragePathContext } from "./storage-paths";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
-const localUrlCache = new Map<string, string>();
+// Cloudflare R2 storage proxy Worker URL — all online uploads/downloads route here.
+const R2_PROXY_URL = import.meta.env.VITE_R2_PROXY_URL as string | undefined;
 
-function localFileId(namespace: string, path: string): string {
-  return `storage:${namespace}:${path}`;
+async function r2AuthHeader(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  return data.session ? `Bearer ${data.session.access_token}` : "";
 }
 
-async function storeLocal(
-  namespace: string,
+async function r2Upload(
+  bucket: string,
   path: string,
-  blob: Blob,
-  fileName: string,
-  mimeType: string,
-  entityId: string,
+  file: File | Blob,
+  contentType: string,
 ): Promise<void> {
-  await initLocalDb();
-  await saveFileLocally(localFileId(namespace, path), new Uint8Array(await blob.arrayBuffer()), {
-    fileName,
-    mimeType,
-    entityType: namespace,
-    entityId,
+  const res = await fetch(`${R2_PROXY_URL}/${bucket}/${path}`, {
+    method: "PUT",
+    headers: { Authorization: await r2AuthHeader(), "Content-Type": contentType },
+    body: file,
   });
+  if (!res.ok) throw new Error(`R2 upload failed: ${res.status} ${await res.text()}`);
 }
 
-async function localUrl(namespace: string, path: string): Promise<string> {
-  const id = localFileId(namespace, path);
-  const cached = localUrlCache.get(id);
-  if (cached) return cached;
-  await initLocalDb();
-  const bytes = await loadFileLocally(id);
-  if (!bytes) return "";
-  const url = URL.createObjectURL(new Blob([bytes as BlobPart]));
-  localUrlCache.set(id, url);
-  return url;
+async function r2SignedUrl(bucket: string, path: string): Promise<string> {
+  // Worker streams the object directly — URL itself is the "signed URL" gated by JWT.
+  // Cache the URL client-side; it stays valid as long as the session is valid.
+  return `${R2_PROXY_URL}/${bucket}/${path}`;
 }
 
 /** Local-vault namespace mapper. The returned value is never a cloud bucket. */
@@ -72,6 +65,31 @@ export function ensureStorageBucketsReady(): Promise<void> {
   return readyPromise;
 }
 
+async function recordStorageMetadata(input: {
+  context: { firmId: string; branchId: string };
+  bucketId: string;
+  path: string;
+  entityId: string;
+  mimeType: string;
+  sizeBytes: number;
+}): Promise<void> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new Error("You must be logged in to upload files.");
+  const { error } = await (supabase as any).from("storage_file_metadata").insert({
+    firm_id: input.context.firmId,
+    branch_id: input.context.branchId,
+    entity_type: input.bucketId,
+    entity_id: input.entityId,
+    bucket_id: input.bucketId,
+    storage_path: input.path,
+    uploaded_by: auth.user.id,
+    mime_type: input.mimeType,
+    size_bytes: input.sizeBytes,
+    visibility: "internal",
+  });
+  if (error) throw new Error(`Storage metadata failed: ${error.message}`);
+}
+
 export function base64ToBlob(dataUrl: string): { blob: Blob; mimeType: string } {
   const parts = dataUrl.split(";base64,");
   const mimeType = parts[0].split(":")[1] || "application/octet-stream";
@@ -84,7 +102,7 @@ export function base64ToBlob(dataUrl: string): { blob: Blob; mimeType: string } 
 }
 
 /**
- * Stores a file in the local application vault in every deployment mode.
+ * Stores a file in Cloudflare R2 through the authenticated storage proxy.
  * The historical export name is retained to avoid rewriting completed callers.
  */
 export async function uploadToSupabaseStorage(
@@ -96,41 +114,61 @@ export async function uploadToSupabaseStorage(
 ): Promise<string> {
   const { blob, mimeType } = base64ToBlob(dataUrl);
   const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
-  const ext = safeName.split(".").pop() || mimeType.split("/")[1] || "bin";
-  const path = `${entityId}/${docKey}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
-  await storeLocal(namespace, path, blob, safeName, mimeType, entityId);
+  const context = await resolveStoragePathContext();
+  if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
+  const path = buildFirmStoragePath(
+    context,
+    namespace,
+    entityId,
+    `${crypto.randomUUID()}-${safeName}`,
+  );
+  await r2Upload(namespace, path, blob, mimeType);
+  await recordStorageMetadata({
+    context,
+    bucketId: namespace,
+    path,
+    entityId,
+    mimeType,
+    sizeBytes: blob.size,
+  });
   return path;
 }
 
-/** Resolves a local object URL; no cloud signed URL is generated. */
+/** Returns a URL for downloading a stored file. */
 export async function getAttachmentSignedUrl(
   namespace: string,
   path: string,
   _forceRefresh = false,
 ): Promise<string> {
-  return localUrl(namespace, path);
+  if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
+  return r2SignedUrl(namespace, path);
 }
 
-/** Compresses an image and stores it in the local application vault. */
+/** Compresses an image and stores it in Cloudflare R2. */
 export async function uploadFileToSupabase(
   namespace: string,
   file: File,
   entityId: string,
   docKey: string,
+  branchId?: string | null,
 ): Promise<{ filePath: string; signedUrl: string }> {
   const { file: storedFile } = await compressImage(file);
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(storedFile);
-  });
-  const filePath = await uploadToSupabaseStorage(
+  const context = await resolveStoragePathContext(branchId);
+  const filePath = buildFirmStoragePath(
+    context,
     namespace,
-    storedFile.name,
-    dataUrl,
     entityId,
-    docKey,
+    `${crypto.randomUUID()}-${storedFile.name}`,
   );
+  if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
+  await r2Upload(namespace, filePath, storedFile, storedFile.type || "application/octet-stream");
+  await recordStorageMetadata({
+    context,
+    bucketId: namespace,
+    path: filePath,
+    entityId,
+    mimeType: storedFile.type || "application/octet-stream",
+    sizeBytes: storedFile.size,
+  });
   return { filePath, signedUrl: await getAttachmentSignedUrl(namespace, filePath) };
 }

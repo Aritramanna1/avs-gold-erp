@@ -28,6 +28,7 @@ import {
   WA_CONFIG_DEFAULTS,
 } from "@/lib/wa-automation-store";
 import { useCurrentBranchId, useBranch } from "@/lib/branch-store";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Link } from "@tanstack/react-router";
 import {
   MessageSquare,
@@ -129,6 +130,16 @@ export function WhatsAppSettingsPage({ embedded = false }: { embedded?: boolean 
   async function handleSave() {
     setSaving(true);
     try {
+      const secretData = {
+        access_token: local.accessToken,
+        webhook_verify_token: local.webhookVerifyToken,
+        webhook_secret: local.webhookSecret,
+      };
+      const { error: secretError } = await (supabase as any).functions.invoke(
+        "save-provider-secret",
+        { body: { branchId: selectedBranch, providerType: local.providerType, secretData } },
+      );
+      if (secretError) throw new Error(secretError.message || "Secure secret storage failed.");
       waStore.setConfig(selectedBranch, local);
       await waStore.saveToDb(selectedBranch);
       toast.success("WhatsApp configuration saved.");

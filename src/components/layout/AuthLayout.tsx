@@ -21,6 +21,9 @@ interface AuthLayoutProps {
  * Secures individual user authorization state inside the MTJ ERP system.
  * Returns { allowed: true } if active directory matches, or descriptive error string otherwise.
  */
+// Kept exported for the auth flow's legacy compatibility surface; moving it
+// would change the public import boundary used by downstream builds.
+// eslint-disable-next-line react-refresh/only-export-components
 export async function verifyUserRoleAndStatus(
   userEmail: string,
 ): Promise<{ allowed: boolean; error?: string }> {
@@ -139,6 +142,13 @@ export function AuthLayout({ prefilledError, onClearError, onSuccess }: AuthLayo
       let lockMinutes = 60;
 
       try {
+        // The Edge Function is an optional rate-limit layer. It is opt-in so
+        // a missing/stale deployment cannot produce a browser CORS error or
+        // delay normal Supabase authentication. Supabase Auth remains the
+        // authoritative credential and session boundary.
+        if (import.meta.env.VITE_AUTH_LOGIN_FUNCTION_ENABLED !== "true") {
+          throw Object.assign(new Error("Optional auth-login function disabled"), { status: 0 });
+        }
         // Route the sign-in form through the "auth-login" Edge Function.
         // NOTE: The Edge Function login rate-limiting lockout is a secondary UX lockout boundary,
         // while the ultimate security boundary is handled natively by the database / Supabase auth settings.
@@ -174,10 +184,12 @@ export function AuthLayout({ prefilledError, onClearError, onSuccess }: AuthLayo
           functionInvokedSuccessfully = true;
         }
       } catch (ex: any) {
-        console.warn(
-          "[AuthLayout] Edge function login failed or not found, verifying rate-limit status.",
-          ex,
-        );
+        if (ex?.status !== 0) {
+          console.warn(
+            "[AuthLayout] Edge function login failed or not found, verifying rate-limit status.",
+            ex,
+          );
+        }
 
         // Handle explicit rate limit responses from our Edge Function
         if (

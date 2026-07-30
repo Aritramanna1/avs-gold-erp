@@ -87,7 +87,18 @@ async function readSmtpConfigFromDb(
   const match = scoped[0] ?? candidates[0];
   if (!match) return null;
 
-  return (match.settings ?? {}) as SmtpConfig;
+  const metadata = (match.settings ?? {}) as SmtpConfig;
+  const { data: secretRow, error: secretError } = await admin
+    .from("comm_provider_secrets")
+    .select("secret_data")
+    .eq("branch_id", match.branchId)
+    .eq("provider_type", "email_smtp")
+    .maybeSingle();
+  if (secretError) {
+    console.error("[send-email] Failed to read provider secret vault");
+    throw new Error("Could not read the email provider secret vault.");
+  }
+  return { ...metadata, ...((secretRow?.secret_data ?? {}) as SmtpConfig) };
 }
 
 // Resolve whether the connection is implicit-TLS (465) or upgraded via STARTTLS (587/25).
@@ -133,7 +144,10 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-    let smtp: SmtpConfig | null = body.smtp && Object.keys(body.smtp).length > 0 ? body.smtp : null;
+    if (body.smtp !== undefined) {
+      return json({ error: "SMTP configuration must be stored server-side before use." }, 400);
+    }
+    let smtp: SmtpConfig | null = null;
 
     if (!smtp) {
       if (!supabaseUrl || !serviceKey) {

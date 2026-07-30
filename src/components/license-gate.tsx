@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { KeyRound, ShieldAlert, ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
 const RECHECK_MS = 6 * 60 * 60 * 1000;
 const DAY_MS = 86_400_000;
@@ -42,6 +43,7 @@ export function LicenseGate({ children }: { children: ReactNode }) {
   const trialEndsAt = useLicense((state) => state.trialEndsAt);
   const branding = useSettings((state) => state.branding);
   const config = getLicenseConfig();
+  const [isSaasAdmin, setIsSaasAdmin] = useState(false);
 
   useEffect(() => {
     if (!mode) return;
@@ -51,9 +53,32 @@ export function LicenseGate({ children }: { children: ReactNode }) {
     return () => window.clearInterval(id);
   }, [mode]);
 
+  // Platform administrators operate the control plane and are not tenants;
+  // their access must not depend on any firm's license key. The role is read
+  // from the authoritative user_roles table, never from browser state.
+  useEffect(() => {
+    let cancelled = false;
+    void supabase.auth.getSession().then(async ({ data }) => {
+      const userId = data.session?.user.id;
+      if (!userId) return;
+      const { data: roles } = await supabase
+        .from("user_roles" as never)
+        .select("role")
+        .eq("user_id", userId);
+      if (!cancelled) {
+        setIsSaasAdmin(
+          ((roles ?? []) as Array<{ role?: string }>).some((entry) => entry.role === "saas_admin"),
+        );
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   if (!mode || status === "checking") return <AppBootSkeleton />;
 
-  if (status === "expired" || status === "suspended") {
+  if ((status === "expired" || status === "suspended") && !isSaasAdmin) {
     return (
       <LicenseBlock
         status={status}

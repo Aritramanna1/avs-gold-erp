@@ -16,7 +16,7 @@
  * their own.
  */
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, Truck, Sparkles, Users } from "lucide-react";
+import { BookOpen, Truck, Sparkles, Users, Hammer } from "lucide-react";
 
 export interface WorkshopBookType {
   /** Stable key — also the segment under /workshop/… when it owns a route. */
@@ -79,6 +79,51 @@ export const BOOK_TYPES: WorkshopBookType[] = [
     indexRoute: "/workshop/polishing-books",
     status: "planned",
     note: "Coming soon.",
+  },
+  {
+    key: "kdm",
+    title: "KDM Book",
+    description:
+      "Gold issued to and returned from KDM work, with allowed/excess loss and recovery. Transactions are entered in the KDM module.",
+    icon: Hammer,
+    indexRoute: "/workshop/process/kdm",
+    status: "implemented",
+  },
+  {
+    key: "meena",
+    title: "Meena (Enamel) Book",
+    description:
+      "Gold issued to and returned from Meena work, with allowed/excess loss. Transactions are entered in the Meena module.",
+    icon: Hammer,
+    indexRoute: "/workshop/process/meena",
+    status: "implemented",
+  },
+  {
+    key: "stone_setting",
+    title: "Stone Setting Book",
+    description:
+      "Gold issued to and returned from stone setting, with allowed/excess loss. Transactions are entered in the Stone Setting module.",
+    icon: Hammer,
+    indexRoute: "/workshop/process/stone_setting",
+    status: "implemented",
+  },
+  {
+    key: "polish_process",
+    title: "Polish Book (Process)",
+    description:
+      "Gold issued to and returned from polishing, with allowed/excess loss and recovery. Distinct from the older Polishing Books section above, which tracks per-polisher party ledgers.",
+    icon: Hammer,
+    indexRoute: "/workshop/process/polish",
+    status: "implemented",
+  },
+  {
+    key: "cutting",
+    title: "Cutting Book",
+    description:
+      "Gold issued to and returned from cutting work, with allowed/excess loss and recovery. Transactions are entered in the Cutting module.",
+    icon: Hammer,
+    indexRoute: "/workshop/process/cutting",
+    status: "implemented",
   },
 ];
 

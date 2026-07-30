@@ -183,6 +183,29 @@ export const test = base.extend<Fixtures>({
         return;
       }
 
+      // Never mock the identity, tenancy, authorization, subscription or
+      // platform-control tables. AuthGate and protected routes must exercise
+      // the real authenticated Supabase session; returning an empty mock row
+      // here incorrectly signs a valid user out as "profile not linked".
+      const liveIdentityTables = new Set([
+        "user_profiles",
+        "user_roles",
+        "organizations",
+        "branches",
+        "organization_subscriptions",
+        "organization_features",
+        "platform_plans",
+        "platform_service_requests",
+        "platform_support_tickets",
+        "platform_conversations",
+        "platform_conversation_messages",
+        "platform_notifications",
+      ]);
+      if (liveIdentityTables.has(table)) {
+        await route.continue();
+        return;
+      }
+
       if (table.startsWith("rpc/")) {
         await route.fulfill({
           status: 200,
@@ -240,7 +263,31 @@ export const test = base.extend<Fixtures>({
       }
     });
 
+    const qaLicense = process.env.E2E_LICENSE_KEY;
+    if (qaLicense) {
+      // Keep the authenticated setup's validated entitlement in storage. A
+      // fresh browser context has no IndexedDB license record, and deleting
+      // the serialized key here causes the app to fall back to an expired
+      // local cache before the activation screen can be reached.
+    }
     await page.goto("/");
+    if (qaLicense) {
+      const licenseInput = page.getByPlaceholder("XXXX-XXXX-XXXX-XXXX");
+      await licenseInput.waitFor({ state: "visible", timeout: 15_000 }).catch(() => undefined);
+      if (await licenseInput.isVisible().catch(() => false)) {
+        await licenseInput.fill(qaLicense);
+        await page.getByRole("button", { name: /activate \/ verify/i }).click();
+        await page.waitForTimeout(3_000);
+      }
+      if (await page.getByTestId("setup-finish").count()) {
+        await page.getByTestId("setup-shop-name").fill("MTJ QA Firm A");
+        await page.getByTestId("setup-branch-name").fill("QA Main Branch");
+        await page.getByTestId("setup-address").fill("QA test address");
+        await page.getByTestId("setup-owner-name").fill("QA Firm Owner");
+        await page.getByTestId("setup-finish").click();
+        await page.waitForTimeout(1_000);
+      }
+    }
     await expect(page.getByTestId("auth-form")).toBeHidden({ timeout: 30_000 });
 
     // Ensure database is seeded dynamically

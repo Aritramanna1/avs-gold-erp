@@ -59,35 +59,12 @@ function BackupRecoveryPage() {
   const [hybridSetupOpen, setHybridSetupOpen] = useState(false);
   const [projectUrl, setProjectUrl] = useState("");
   const [anonKey, setAnonKey] = useState("");
-  const [serviceRoleKey, setServiceRoleKey] = useState("");
   const [setupError, setSetupError] = useState("");
 
   async function handleHybridSetup() {
-    const desktop = (window as any).mtjDesktop;
-    if (!desktop?.hybrid?.validateSetup) {
-      setSetupError("Hybrid setup validation is available only in the Electron desktop app.");
-      return;
-    }
-    setSwitching(true);
-    setSetupError("");
-    try {
-      const result = await desktop.hybrid.validateSetup({
-        projectUrl: projectUrl.trim(),
-        anonKey: anonKey.trim(),
-        serviceRoleKey: serviceRoleKey.trim(),
-      });
-      if (!result.ok) {
-        setSetupError(result.error || "Supabase project validation failed.");
-        return;
-      }
-      localStorage.setItem(SUPABASE_RUNTIME_KEYS.url, projectUrl.trim().replace(/\/$/, ""));
-      localStorage.setItem(SUPABASE_RUNTIME_KEYS.key, anonKey.trim());
-      setServiceRoleKey("");
-      setHybridSetupOpen(false);
-      setPendingMode("hybrid");
-    } finally {
-      setSwitching(false);
-    }
+    setSetupError(
+      "Hybrid setup requires a deployment-managed server validation endpoint. No privileged key may be entered in the browser.",
+    );
   }
 
   function refreshSyncStatus() {
@@ -464,8 +441,8 @@ function BackupRecoveryPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Enable owner-managed Hybrid sync</AlertDialogTitle>
             <AlertDialogDescription>
-              Run the master SQL migration in the customer project first. The Service Role Key is
-              used only for validation and is never stored.
+              Run the master SQL migration in the customer project first. Validation must be
+              completed by the deployment-managed server; privileged keys are never entered here.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3">
@@ -486,23 +463,11 @@ function BackupRecoveryPage() {
                 onChange={(event) => setAnonKey(event.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="hybrid-service-key">Service Role Key (setup only)</Label>
-              <Input
-                id="hybrid-service-key"
-                type="password"
-                value={serviceRoleKey}
-                onChange={(event) => setServiceRoleKey(event.target.value)}
-              />
-            </div>
             {setupError && <p className="text-xs text-destructive">{setupError}</p>}
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={switching}>Cancel</AlertDialogCancel>
-            <Button
-              onClick={handleHybridSetup}
-              disabled={switching || !projectUrl || !anonKey || !serviceRoleKey}
-            >
+            <Button onClick={handleHybridSetup} disabled={switching || !projectUrl || !anonKey}>
               {switching ? "Validating…" : "Validate & Continue"}
             </Button>
           </AlertDialogFooter>

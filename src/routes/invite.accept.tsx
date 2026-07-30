@@ -96,7 +96,7 @@ function AcceptInvitationPage() {
   }, []);
 
   // Validate invitation when code + email are available. This ALWAYS goes
-  // through the invite-accept edge function (service role) — app_settings is
+  // through the invite-accept edge function (server-side) — app_settings is
   // RLS-locked to authenticated users only, so a direct client-side read here
   // would be silently blocked for an invitee who has no session yet, which is
   // exactly why validation used to fail for every real invitee.
@@ -172,7 +172,7 @@ function AcceptInvitationPage() {
 
       // The entire accept flow — re-validating the invite, creating/updating
       // the Supabase Auth account, upserting app_settings.users, and marking
-      // the invitation used — happens atomically server-side (service role),
+      // the invitation used — happens atomically in the server function,
       // since this browser has no session yet and app_settings is RLS-locked
       // to authenticated users only.
       const { data, error } = await supabase.functions.invoke("invite-accept", {

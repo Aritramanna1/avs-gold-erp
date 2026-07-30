@@ -45,7 +45,10 @@ test.describe("Core module smoke test (signed out -> disposable account)", () =>
       try {
         await page.goto(route, { timeout: 20_000, waitUntil: "domcontentloaded" });
         await page.waitForTimeout(1_500);
-        const bodyText = await page.locator("body").innerText().catch(() => "");
+        const bodyText = await page
+          .locator("body")
+          .innerText()
+          .catch(() => "");
         const blank = bodyText.trim().length < 20;
         results[route] = blank
           ? `BLANK (${bodyText.length} chars)`

@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ModuleComingSoon } from "@/components/ModuleComingSoon";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,13 +43,7 @@ export const Route = createFileRoute("/workshop/outside-work")({
   // pending a dedicated pass — see docs/CHANGELOG.md. OutsideWorkPage stays
   // in the repo untouched, just unreachable, so it renders again once this
   // is un-frozen.
-  component: () => (
-    <ModuleComingSoon
-      title="Outside Work (Coming Soon)"
-      message="Outside worker gold issue/return and labour tracking are deferred to a future manufacturing release."
-      icon={Truck}
-    />
-  ),
+  component: OutsideWorkPage,
 });
 
 export function OutsideWorkPage() {

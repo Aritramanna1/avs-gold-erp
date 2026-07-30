@@ -3,6 +3,7 @@ import { Outlet, Link, CatchBoundary, createRootRouteWithContext } from "@tansta
 import { lazy, Suspense, useEffect, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
+import { PlatformShell } from "@/components/platform-shell";
 import { AuthGate } from "@/components/auth-gate";
 import { LicenseGate } from "@/components/license-gate";
 import { BackendGate } from "@/components/backend-gate";
@@ -365,14 +366,25 @@ function RootComponent() {
           <AuthGate>
             <LicenseGate>
               <BackendGate>
-                <AppShell>
-                  <CatchBoundary
-                    getResetKey={() => currentPath}
-                    errorComponent={RouteErrorFallback}
-                  >
-                    <Outlet />
-                  </CatchBoundary>
-                </AppShell>
+                {currentPath.startsWith("/platform") ? (
+                  <PlatformShell>
+                    <CatchBoundary
+                      getResetKey={() => currentPath}
+                      errorComponent={RouteErrorFallback}
+                    >
+                      <Outlet />
+                    </CatchBoundary>
+                  </PlatformShell>
+                ) : (
+                  <AppShell>
+                    <CatchBoundary
+                      getResetKey={() => currentPath}
+                      errorComponent={RouteErrorFallback}
+                    >
+                      <Outlet />
+                    </CatchBoundary>
+                  </AppShell>
+                )}
               </BackendGate>
             </LicenseGate>
           </AuthGate>

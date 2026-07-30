@@ -42,15 +42,25 @@ async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<v
   // of when the round trip happens to complete.
   lastLocalSettingsWriteAt = Date.now();
   try {
+    const { data: profile } = await supabase
+      .from("user_profiles" as never)
+      .select("firm_id")
+      .maybeSingle();
+    const firmId = (profile as { firm_id?: string } | null)?.firm_id;
+    if (!firmId) {
+      console.warn("[settings] Skipping app_settings persistence: firm identity is unavailable.");
+      return;
+    }
     const { error } = await supabase.from("app_settings").upsert(
       [
         {
           id: "firm",
+          firm_id: firmId,
           scope: "firm",
           data: snapshot as any,
           updated_at: new Date().toISOString(),
         },
-      ],
+      ] as any,
       { onConflict: "id" },
     );
     // Supabase reports RLS/constraint failures in `error` rather than throwing, so
@@ -78,21 +88,31 @@ async function saveBranchToDb(b: {
   isDefault?: boolean;
 }): Promise<void> {
   try {
+    const { data: profile } = await supabase
+      .from("user_profiles" as never)
+      .select("firm_id")
+      .maybeSingle();
+    const firmId = (profile as { firm_id?: string } | null)?.firm_id;
+    if (!firmId) {
+      console.warn("[settings] Skipping branch persistence: firm identity is unavailable.");
+      return;
+    }
     await supabase.from("branches").upsert(
       [
         {
           id: b.id,
+          firm_id: firmId,
           name: b.name,
-          code: b.code,
+          short_name: b.code,
+          branch_type: "main",
           address: b.address,
           phone: b.phone,
-          manager_name: b.managerName,
           gstin: b.gstin ?? null,
           active: b.active,
-          is_default: b.isDefault ?? false,
+          data: { managerName: b.managerName, isDefault: b.isDefault ?? false },
           updated_at: new Date().toISOString(),
         },
-      ],
+      ] as any,
       { onConflict: "id" },
     );
   } catch (err) {
@@ -165,6 +185,8 @@ function persistSettings(get: () => any): void {
     print: s.print,
     gst: s.gst,
     purities: s.purities,
+    workshopProcesses: s.workshopProcesses,
+    alloyFormulas: s.alloyFormulas,
     making: s.making,
     hardware: s.hardware,
     catalog: s.catalog,
@@ -505,6 +527,48 @@ export interface Purity {
   active: boolean;
 }
 
+/** Workshop process types this ERP supports on the shared workshop-books framework. */
+export type WorkshopProcessType =
+  "manufacturing" | "melting" | "kdm" | "meena" | "stone_setting" | "polish" | "cutting";
+
+/**
+ * Per-process configuration — allowable loss and labour calculation, driven
+ * entirely from Settings so a process's economics can change without a code
+ * change (V1.1 manufacturing spec, Phase 1: Configuration Foundation).
+ */
+export interface WorkshopProcessConfig {
+  id: string;
+  processType: WorkshopProcessType;
+  label: string;
+  active: boolean;
+  /** Loss beyond this % of input weight is flagged as excess loss, never silently absorbed. */
+  allowedLossPct: number;
+  labourCalcMethod: "per_gram" | "fixed" | "per_piece";
+  /** Interpreted per labourCalcMethod: per-gram rate, one fixed charge, or per-piece charge. */
+  labourRatePaise: number;
+  /** Whether this process can recover reclaimable gold (e.g. polish dust, cutting scrap). */
+  recoveryApplicable: boolean;
+  notes?: string;
+}
+
+/**
+ * Purity conversion formula: source purity -> destination purity, with the
+ * alloy ratio needed to make up the difference. permille values reference
+ * Purity.permille — not FK-enforced in this client-side config, resolved by
+ * value at conversion time.
+ */
+export interface AlloyFormula {
+  id: string;
+  active: boolean;
+  fromPurityPermille: number;
+  toPurityPermille: number;
+  /** Alloy metal added per 1000mg of input fine gold, in mg. */
+  alloyRatioMgPer1000: number;
+  /** Expected process loss for this specific conversion, as a % of input weight. */
+  expectedLossPct: number;
+  notes?: string;
+}
+
 export interface MakingTemplate {
   id: string;
   category: string;
@@ -629,6 +693,8 @@ export interface SettingsState {
   print: PrintTemplateSettings;
   gst: GstSettings;
   purities: Purity[];
+  workshopProcesses: WorkshopProcessConfig[];
+  alloyFormulas: AlloyFormula[];
   making: MakingTemplate[];
   hardware: HardwareSettings;
   catalog: CatalogSettings;
@@ -747,6 +813,14 @@ export interface SettingsState {
   updatePurity: (id: string, patch: Partial<Purity>) => void;
   removePurity: (id: string) => void;
 
+  addWorkshopProcess: (p: Omit<WorkshopProcessConfig, "id">) => void;
+  updateWorkshopProcess: (id: string, patch: Partial<WorkshopProcessConfig>) => void;
+  removeWorkshopProcess: (id: string) => void;
+
+  addAlloyFormula: (f: Omit<AlloyFormula, "id">) => void;
+  updateAlloyFormula: (id: string, patch: Partial<AlloyFormula>) => void;
+  removeAlloyFormula: (id: string) => void;
+
   addMaking: (m: Omit<MakingTemplate, "id">) => void;
   updateMaking: (id: string, patch: Partial<MakingTemplate>) => void;
   removeMaking: (id: string) => void;
@@ -780,6 +854,104 @@ const DEFAULT_PURITIES: Purity[] = [
   { id: "p_916", label: "22K / 916", permille: 916, active: true },
   { id: "p_750", label: "18K / 750", permille: 750, active: true },
   { id: "p_585", label: "14K / 585", permille: 585, active: true },
+];
+
+/**
+ * Starting allowed-loss/labour figures per process, sourced from the
+ * pre-existing hardcoded assumptions in mfg-costing.ts / melt-store.ts so
+ * behavior doesn't change the moment those callers switch to reading this
+ * config — an owner tunes these per their own workshop from here on.
+ */
+const DEFAULT_WORKSHOP_PROCESSES: WorkshopProcessConfig[] = [
+  {
+    id: "wp_manufacturing",
+    processType: "manufacturing",
+    label: "Manufacturing",
+    active: true,
+    allowedLossPct: 2,
+    labourCalcMethod: "per_gram",
+    labourRatePaise: 0,
+    recoveryApplicable: true,
+  },
+  {
+    id: "wp_melting",
+    processType: "melting",
+    label: "Melting",
+    active: true,
+    allowedLossPct: 1,
+    labourCalcMethod: "per_gram",
+    labourRatePaise: 0,
+    recoveryApplicable: true,
+  },
+  {
+    id: "wp_kdm",
+    processType: "kdm",
+    label: "KDM",
+    active: true,
+    allowedLossPct: 3,
+    labourCalcMethod: "per_gram",
+    labourRatePaise: 0,
+    recoveryApplicable: true,
+  },
+  {
+    id: "wp_meena",
+    processType: "meena",
+    label: "Meena (Enamel)",
+    active: true,
+    allowedLossPct: 1.5,
+    labourCalcMethod: "per_piece",
+    labourRatePaise: 0,
+    recoveryApplicable: false,
+  },
+  {
+    id: "wp_stone_setting",
+    processType: "stone_setting",
+    label: "Stone Setting",
+    active: true,
+    allowedLossPct: 0.5,
+    labourCalcMethod: "per_piece",
+    labourRatePaise: 0,
+    recoveryApplicable: false,
+  },
+  {
+    id: "wp_polish",
+    processType: "polish",
+    label: "Polish",
+    active: true,
+    allowedLossPct: 1,
+    labourCalcMethod: "per_gram",
+    labourRatePaise: 0,
+    recoveryApplicable: true,
+  },
+  {
+    id: "wp_cutting",
+    processType: "cutting",
+    label: "Cutting",
+    active: true,
+    allowedLossPct: 0.5,
+    labourCalcMethod: "per_gram",
+    labourRatePaise: 0,
+    recoveryApplicable: true,
+  },
+];
+
+const DEFAULT_ALLOY_FORMULAS: AlloyFormula[] = [
+  {
+    id: "af_999_916",
+    active: true,
+    fromPurityPermille: 999,
+    toPurityPermille: 916,
+    alloyRatioMgPer1000: 90,
+    expectedLossPct: 1,
+  },
+  {
+    id: "af_999_750",
+    active: true,
+    fromPurityPermille: 999,
+    toPurityPermille: 750,
+    alloyRatioMgPer1000: 332,
+    expectedLossPct: 1,
+  },
 ];
 
 const DEFAULT_DROPDOWNS: Record<DropdownKey, string[]> = {
@@ -1314,6 +1486,8 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
     gstGoldConversionRatePaise: 0, // 0 = use the live rate the invoice was priced at
   },
   purities: DEFAULT_PURITIES,
+  workshopProcesses: DEFAULT_WORKSHOP_PROCESSES,
+  alloyFormulas: DEFAULT_ALLOY_FORMULAS,
   making: [],
   hardware: {
     scannerEnabled: true,
@@ -1549,6 +1723,12 @@ type Functions = Pick<
   | "addPurity"
   | "updatePurity"
   | "removePurity"
+  | "addWorkshopProcess"
+  | "updateWorkshopProcess"
+  | "removeWorkshopProcess"
+  | "addAlloyFormula"
+  | "updateAlloyFormula"
+  | "removeAlloyFormula"
   | "addMaking"
   | "updateMaking"
   | "removeMaking"
@@ -1703,6 +1883,38 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   },
   removePurity: (pid) => {
     set({ purities: get().purities.filter((x) => x.id !== pid) });
+    persistSettings(get);
+  },
+
+  addWorkshopProcess: (p) => {
+    set({ workshopProcesses: [...get().workshopProcesses, { ...p, id: id("wp") }] });
+    persistSettings(get);
+  },
+  updateWorkshopProcess: (pid, patch) => {
+    set({
+      workshopProcesses: get().workshopProcesses.map((x) =>
+        x.id === pid ? { ...x, ...patch } : x,
+      ),
+    });
+    persistSettings(get);
+  },
+  removeWorkshopProcess: (pid) => {
+    set({ workshopProcesses: get().workshopProcesses.filter((x) => x.id !== pid) });
+    persistSettings(get);
+  },
+
+  addAlloyFormula: (f) => {
+    set({ alloyFormulas: [...get().alloyFormulas, { ...f, id: id("af") }] });
+    persistSettings(get);
+  },
+  updateAlloyFormula: (fid, patch) => {
+    set({
+      alloyFormulas: get().alloyFormulas.map((x) => (x.id === fid ? { ...x, ...patch } : x)),
+    });
+    persistSettings(get);
+  },
+  removeAlloyFormula: (fid) => {
+    set({ alloyFormulas: get().alloyFormulas.filter((x) => x.id !== fid) });
     persistSettings(get);
   },
 

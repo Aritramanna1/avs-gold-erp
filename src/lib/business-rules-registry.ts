@@ -172,7 +172,7 @@ export const BUSINESS_RULE_REGISTRY: Record<BusinessRuleKey, BusinessRuleDefinit
     key: "enable_email",
     name: "Enable Email",
     description:
-      "Master switch for the email communication channel. Off by default for Workshop V1.1 — Email Automation is marked Coming Soon in the UI; WhatsApp is the production channel.",
+      "Master switch for the email communication channel. Email delivery is available when a server-side provider is configured and enabled.",
     defaultValue: false,
     permissionRequired: "owner_or_admin",
     category: "communication",

@@ -1,5 +1,6 @@
 // auth-gate v2 — module-level flag prevents repeated sync on HMR/multi-client auth events
 import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import type { Session } from "@supabase/supabase-js";
 import { resetAllBusinessStores } from "@/lib/session-cleanup";
@@ -138,8 +139,35 @@ let _initialSyncDone = false;
 let _checkInFlight: Promise<{ allowed: boolean; error?: string }> | null = null;
 
 function OnlineAuthGate({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [session, setSession] = useState<Session | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const publicPaths = ["/auth/callback", "/forgot-password", "/reset-password", "/otp-login"];
+    if (
+      !session ||
+      publicPaths.some((path) => pathname.startsWith(path)) ||
+      pathname.startsWith("/platform")
+    )
+      return;
+    void supabase
+      .from("user_roles" as never)
+      .select("role")
+      .eq("user_id", session.user.id)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const isPlatformOwner = ((data ?? []) as Array<{ role?: string }>).some(
+          (row) => row.role === "saas_admin" || row.role === "SaaS Admin",
+        );
+        if (isPlatformOwner) void navigate({ to: "/platform", replace: true });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, pathname, session]);
   // Restoring a session from localStorage (as opposed to a fresh sign-in)
   // can legitimately take up to ~25s (see the account-lookup race below).
   // Without this, that entire window renders the same UI as "logged out" —
@@ -151,6 +179,32 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
     currentSession: Session,
   ): Promise<{ allowed: boolean; error?: string }> => {
     if (!userEmail) return { allowed: false, error: "Missing email address." };
+
+    // The authoritative identity mapping is user_profiles.auth_id. The
+    // legacy app_settings user directory remains only as a compatibility
+    // fallback for older offline/pilot records.
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from("user_profiles" as never)
+        .select("auth_id, full_name, status, active, role")
+        .eq("auth_id", currentSession.user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error("[AuthGate] user_profiles lookup failed:", profileError);
+      } else if (profile) {
+        const p = profile as { active?: boolean; status?: string; role?: string | null };
+        if (p.active === false || p.status === "suspended") {
+          return { allowed: false, error: "Your account is deactivated. Contact admin." };
+        }
+        if (!p.role) {
+          return { allowed: false, error: "Your account has no assigned ERP role. Contact admin." };
+        }
+        return { allowed: true };
+      }
+    } catch (err) {
+      console.error("[AuthGate] user_profiles lookup threw:", err);
+    }
 
     let users = useSettings.getState().users;
     let matched = users.find((u) => u.email.toLowerCase() === userEmail.toLowerCase());
@@ -324,6 +378,19 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
       useSettings.getState().setCurrentUserRole(loggedIn?.role ?? null);
       useSettings.getState().addSecurityLog("login", `User signed in successfully`, s.user.email);
       void startCloudSync();
+      void supabase
+        .from("user_roles" as never)
+        .select("role")
+        .eq("user_id", s.user.id)
+        .then(({ data }) => {
+          const roles = ((data ?? []) as Array<{ role?: string }>).map((item) => item.role);
+          if (
+            roles.includes("saas_admin") &&
+            (window.location.pathname === "/" || window.location.pathname === "/saas-admin")
+          ) {
+            void navigate({ to: "/platform", replace: true });
+          }
+        });
     };
 
     void supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
@@ -352,7 +419,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
       sub.subscription.unsubscribe();
       unsubBranch();
     };
-  }, []);
+  }, [navigate]);
 
   if (checking) {
     return <AppBootSkeleton />;

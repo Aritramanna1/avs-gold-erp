@@ -35,10 +35,31 @@ function defaultConfigs(branchId: string): ProviderConfig[] {
   ];
 }
 
+const SECRET_KEYS = new Set([
+  "access_token",
+  "api_key",
+  "password",
+  "webhook_verify_token",
+  "auth_token",
+  "token",
+]);
+
+export function redactProviderSecrets(config: ProviderConfig): ProviderConfig {
+  return {
+    ...config,
+    settings: Object.fromEntries(
+      Object.entries(config.settings).filter(([key]) => !SECRET_KEYS.has(key)),
+    ),
+  };
+}
+
 function persistToDb(configs: ProviderConfig[]): void {
   // Original payload included the redundant `id` field inside the data blob
   // itself — preserved here for byte-identical stored shape (zero behavior change).
-  void appSettingsRepository.saveAs("comm_configs", { id: "comm_configs", configs });
+  void appSettingsRepository.saveAs("comm_configs", {
+    id: "comm_configs",
+    configs: configs.map(redactProviderSecrets),
+  });
 }
 
 import { WHATSAPP_KEYS } from "./types";
@@ -172,6 +193,9 @@ export const useCommSettings = create<CommSettingsState>()(
         });
       },
     }),
-    { name: "mtj-comm-settings-v1" },
+    {
+      name: "mtj-comm-settings-v1",
+      partialize: (state) => ({ configs: state.configs.map(redactProviderSecrets) }),
+    },
   ),
 );

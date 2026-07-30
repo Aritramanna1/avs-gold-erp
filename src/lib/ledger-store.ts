@@ -50,7 +50,19 @@ export type MovementType =
   | "melt_recovery_received"
   | "melt_loss"
   | "sent_to_polisher"
-  | "received_from_polisher";
+  | "received_from_polisher"
+  /** Metal Conversion (V1.1 Phase 2): source purity leaves the vault, destination purity enters. */
+  | "conversion_deducted"
+  | "conversion_added"
+  /** Shared by the 5 workshop processes (KDM/Meena/Stone Setting/Polish/Cutting)
+   *  added in V1.1 Phase 3 — mirrors the melt_* triad above but process-agnostic,
+   *  since those processes share one framework (see workshop-process-store.ts). */
+  | "workshop_process_gold_issued"
+  | "workshop_process_recovery_received"
+  | "workshop_process_loss"
+  /** Ready Stock (V1.1 Phase 5): finished goods entering inventory without a
+   *  manufacturing job card behind them (bought ready-made, not made in-house). */
+  | "ready_stock_purchase_received";
 
 export type Bucket = "vault" | "karigar" | "finished" | "customer" | "jeweller" | "scrap";
 
@@ -372,4 +384,10 @@ export const MOVEMENT_LABELS: Record<MovementType, string> = {
   melt_loss: "Melt — Loss",
   sent_to_polisher: "Sent to Polisher",
   received_from_polisher: "Received from Polisher",
+  conversion_deducted: "Metal Conversion — Source Deducted",
+  conversion_added: "Metal Conversion — Destination Added",
+  workshop_process_gold_issued: "Workshop Process — Gold Issued",
+  workshop_process_recovery_received: "Workshop Process — Recovery Received",
+  workshop_process_loss: "Workshop Process — Loss",
+  ready_stock_purchase_received: "Ready Stock Purchase Received",
 };

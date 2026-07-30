@@ -44,6 +44,10 @@ const AUDITED_TABLES = new Set([
   "manufacturing_bills",
   "daily_close",
   "stock_movements",
+  "metal_conversions",
+  "workshop_process_transactions",
+  "customer_gold_deposits",
+  "ready_stock_items",
 ]);
 // Deliberately EXCLUDES "app_settings" — despite going through this same
 // repository, app_settings holds configuration/preferences (comm provider

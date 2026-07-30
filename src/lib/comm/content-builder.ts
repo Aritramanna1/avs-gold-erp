@@ -17,7 +17,8 @@ function buildDocumentReference(req: CommRequest): {
   if (typeof window === "undefined") return { text: "", attachmentUrls: [] };
   const route =
     req.linkedType === "order" ? `/orders/print/${req.linkedId}` : `/billing/print/${req.linkedId}`;
-  const url = `${window.location.origin}${route}`;
+  const configured = import.meta.env.VITE_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
+  const url = `${configured || window.location.origin}${route}`;
   return { text: `\nDocument: ${url}`, attachmentUrls: [url] };
 }
 

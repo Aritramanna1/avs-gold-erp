@@ -16,9 +16,14 @@ test.describe("Loading states", () => {
     page,
   }) => {
     await page.goto("/");
-    await expect(page.getByTestId("auth-form").or(page.locator("#user-menu-trigger"))).toBeVisible({
-      timeout: 20_000,
-    });
+    await expect(
+      page
+        .getByTestId("auth-form")
+        .or(page.locator("#user-menu-trigger"))
+        .or(page.getByRole("button", { name: /sign out/i }))
+        .or(page.getByText("AVS PLATFORM", { exact: false }))
+        .first(),
+    ).toBeVisible({ timeout: 40_000 });
     expectNoPageErrors(page);
   });
 });

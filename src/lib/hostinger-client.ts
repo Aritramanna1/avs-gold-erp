@@ -1,7 +1,6 @@
 /**
- * Compatibility adapter for legacy callers. The final Hybrid architecture
- * keeps every file local, so this stores the blob in the local application
- * vault and never contacts Hostinger or Supabase Storage.
+ * Compatibility adapter for legacy callers. Files are stored in Cloudflare R2
+ * through the authenticated storage proxy; Hostinger only serves the website.
  */
 import { uploadToSupabaseStorage, getAttachmentSignedUrl } from "@/lib/supabase-storage";
 

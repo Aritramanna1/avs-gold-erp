@@ -73,7 +73,7 @@ export async function getOrCreateDocumentPdfUrl(req: CommRequest): Promise<strin
       branchId: req.branchId,
       notes: `Auto-generated PDF for WhatsApp sharing`,
       docKey: `pdf_share_${req.template}`,
-      storageProvider: "local",
+      storageProvider: "cloudflare-r2",
     });
 
     return null;

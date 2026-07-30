@@ -76,6 +76,7 @@ import {
 } from "@/lib/supabase-storage";
 import { updateFirmProfile } from "@/lib/supabase-services";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { getAuthRedirectUrl } from "@/lib/auth-redirect";
 import { extractEdgeFunctionError } from "@/lib/edge-function-error";
 import { useDbStatus, getDbStatusLabel } from "@/lib/db-status";
 import { migrateAllToCloud, type MigrationProgress } from "@/lib/cloud-migrate";
@@ -299,6 +300,7 @@ function SettingsPage() {
             <TabsTrigger value="gst">GST</TabsTrigger>
           )}
           <TabsTrigger value="purity">Purity</TabsTrigger>
+          <TabsTrigger value="workshop">Workshop Processes</TabsTrigger>
           <TabsTrigger value="rate">Rates</TabsTrigger>
           <TabsTrigger value="making">Making</TabsTrigger>
           <TabsTrigger value="hardware">Hardware</TabsTrigger>
@@ -355,6 +357,9 @@ function SettingsPage() {
         )}
         <TabsContent value="purity">
           <PurityTab />
+        </TabsContent>
+        <TabsContent value="workshop">
+          <WorkshopProcessTab />
         </TabsContent>
         <TabsContent value="rate">
           <RatesTab />
@@ -1618,7 +1623,7 @@ function UsersTab() {
 
     const code = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
-    const acceptLink = `${window.location.origin}/invite/accept?code=${code}&email=${encodeURIComponent(emailToInvite)}`;
+    const acceptLink = `${getAuthRedirectUrl(`/invite/accept?code=${code}&email=${encodeURIComponent(emailToInvite)}`)}`;
     const firmName = firm?.shopName || "MTJ ERP";
     const branchName = branches.find((b) => b.id === inviteBranchId)?.name ?? inviteBranchId;
 
@@ -1759,7 +1764,7 @@ This invitation expires in 7 days.`,
     if (!generatedCode) return;
     const acceptLink =
       (window as any).__lastInviteLink ||
-      `${window.location.origin}/invite/accept?code=${generatedCode}`;
+      getAuthRedirectUrl(`/invite/accept?code=${generatedCode}`);
     void navigator.clipboard.writeText(acceptLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -2967,6 +2972,205 @@ function PurityTab() {
   );
 }
 
+function WorkshopProcessTab() {
+  const {
+    workshopProcesses,
+    updateWorkshopProcess,
+    alloyFormulas,
+    addAlloyFormula,
+    updateAlloyFormula,
+    removeAlloyFormula,
+    purities,
+  } = useSettings();
+  const [fromP, setFromP] = useState("");
+  const [toP, setToP] = useState("");
+  const [alloyRatio, setAlloyRatio] = useState("");
+  const [expLoss, setExpLoss] = useState("");
+
+  return (
+    <div className="space-y-4 mt-4">
+      <Card className="p-5">
+        <h3 className="text-sm font-semibold mb-3">
+          Workshop Processes — Allowed Loss &amp; Labour
+        </h3>
+        <div className="space-y-3">
+          {workshopProcesses.map((p) => (
+            <div key={p.id} className="flex flex-wrap items-end gap-3 border-b pb-3 last:border-0">
+              <div className="min-w-[140px]">
+                <Label className="text-xs">{p.label}</Label>
+                <div className="flex items-center gap-1 mt-1">
+                  <Switch
+                    checked={p.active}
+                    onCheckedChange={(v) => updateWorkshopProcess(p.id, { active: v })}
+                  />
+                  <span className="text-xs text-muted-foreground">Active</span>
+                </div>
+              </div>
+              <Field label="Allowed Loss %">
+                <Input
+                  className="w-28"
+                  type="number"
+                  step="0.1"
+                  value={p.allowedLossPct}
+                  onChange={(e) =>
+                    updateWorkshopProcess(p.id, {
+                      allowedLossPct: parseFloat(e.target.value || "0"),
+                    })
+                  }
+                />
+              </Field>
+              <Field label="Labour Method">
+                <select
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  value={p.labourCalcMethod}
+                  onChange={(e) =>
+                    updateWorkshopProcess(p.id, { labourCalcMethod: e.target.value as any })
+                  }
+                >
+                  <option value="per_gram">Per Gram</option>
+                  <option value="fixed">Fixed</option>
+                  <option value="per_piece">Per Piece</option>
+                </select>
+              </Field>
+              <Field label="Labour Rate (Rs.)">
+                <Input
+                  className="w-28"
+                  type="number"
+                  value={(p.labourRatePaise / 100).toFixed(2)}
+                  onChange={(e) =>
+                    updateWorkshopProcess(p.id, {
+                      labourRatePaise: Math.round(parseFloat(e.target.value || "0") * 100),
+                    })
+                  }
+                />
+              </Field>
+              <label className="text-xs flex items-center gap-1">
+                <Switch
+                  checked={p.recoveryApplicable}
+                  onCheckedChange={(v) => updateWorkshopProcess(p.id, { recoveryApplicable: v })}
+                />
+                Recovery Applicable
+              </label>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <h3 className="text-sm font-semibold mb-3">Metal Conversion Formulas</h3>
+        <div className="space-y-2">
+          {alloyFormulas.map((f) => (
+            <div key={f.id} className="flex items-center gap-2">
+              <span className="text-xs w-28">
+                {f.fromPurityPermille} → {f.toPurityPermille}
+              </span>
+              <Field label="Alloy mg / 1000mg">
+                <Input
+                  className="w-32"
+                  type="number"
+                  value={f.alloyRatioMgPer1000}
+                  onChange={(e) =>
+                    updateAlloyFormula(f.id, {
+                      alloyRatioMgPer1000: parseInt(e.target.value || "0", 10),
+                    })
+                  }
+                />
+              </Field>
+              <Field label="Expected Loss %">
+                <Input
+                  className="w-28"
+                  type="number"
+                  step="0.1"
+                  value={f.expectedLossPct}
+                  onChange={(e) =>
+                    updateAlloyFormula(f.id, { expectedLossPct: parseFloat(e.target.value || "0") })
+                  }
+                />
+              </Field>
+              <label className="text-xs flex items-center gap-1">
+                <Switch
+                  checked={f.active}
+                  onCheckedChange={(v) => updateAlloyFormula(f.id, { active: v })}
+                />
+                Active
+              </label>
+              <Button variant="ghost" size="sm" onClick={() => removeAlloyFormula(f.id)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2 items-end">
+          <Field label="From Purity">
+            <select
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm w-32"
+              value={fromP}
+              onChange={(e) => setFromP(e.target.value)}
+            >
+              <option value="">Select</option>
+              {purities.map((p) => (
+                <option key={p.id} value={p.permille}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="To Purity">
+            <select
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm w-32"
+              value={toP}
+              onChange={(e) => setToP(e.target.value)}
+            >
+              <option value="">Select</option>
+              {purities.map((p) => (
+                <option key={p.id} value={p.permille}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Alloy mg/1000mg">
+            <Input
+              className="w-32"
+              type="number"
+              value={alloyRatio}
+              onChange={(e) => setAlloyRatio(e.target.value)}
+            />
+          </Field>
+          <Field label="Expected Loss %">
+            <Input
+              className="w-28"
+              type="number"
+              step="0.1"
+              value={expLoss}
+              onChange={(e) => setExpLoss(e.target.value)}
+            />
+          </Field>
+          <Button
+            onClick={() => {
+              if (fromP && toP) {
+                addAlloyFormula({
+                  active: true,
+                  fromPurityPermille: parseInt(fromP, 10),
+                  toPurityPermille: parseInt(toP, 10),
+                  alloyRatioMgPer1000: parseInt(alloyRatio || "0", 10),
+                  expectedLossPct: parseFloat(expLoss || "0"),
+                });
+                setFromP("");
+                setToP("");
+                setAlloyRatio("");
+                setExpLoss("");
+              }
+            }}
+          >
+            <Plus className="h-4 w-4 mr-1" /> Add
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 /** Shows next to a manual rate Field when the live provider's last-fetched
  *  snapshot has a different figure — never auto-applies, "Apply" is always
  *  an explicit click. Rendered as null (not an empty wrapper) when there's
@@ -3984,15 +4188,6 @@ function EmailTab() {
       const { data, error } = await supabase.functions.invoke("send-email", {
         body: {
           to: testEmail,
-          smtp: {
-            host: smtp.host,
-            port: smtp.port,
-            username: smtp.username,
-            password: smtp.passKey,
-            from_email: smtp.fromEmail || smtp.username,
-            from_name: smtp.fromName || "MTJ ERP",
-            use_ssl: String(smtp.useSsl),
-          },
         },
       });
 
@@ -4569,7 +4764,7 @@ function DbStatusPanel() {
           : await supabase.auth.signUp({
               email: authEmail,
               password: authPass,
-              options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+              options: { emailRedirectTo: getAuthRedirectUrl("/auth/callback") },
             });
       if (error) alert(error.message);
     } finally {

@@ -1,14 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ModuleComingSoon } from "@/components/ModuleComingSoon";
-import { ScanLine } from "lucide-react";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 
+/** Compatibility route: scanner diagnostics live in the unified hardware workspace. */
 export const Route = createFileRoute("/coming-soon/barcode-scanner")({
   head: () => ({ meta: [{ title: "Barcode Scanner · AVS Gold ERP" }] }),
-  component: () => (
-    <ModuleComingSoon
-      title="Barcode Scanner (COMING SOON)"
-      message="The manufacturing barcode scanning workspace is planned and will appear here when implementation is complete."
-      icon={ScanLine}
-    />
-  ),
+  component: () => <Navigate to="/hardware" replace />,
 });
