@@ -4234,16 +4234,11 @@ function EmailTab() {
             value={smtp.apiProvider}
             onChange={(e) =>
               setSmtp({
-                apiProvider: e.target.value as
-                  "smtp" | "resend" | "sendgrid" | "supabase" | "mock_api",
+                apiProvider: e.target.value as "smtp",
               })
             }
           >
-            <option value="mock_api">Mock API Gateway / Sandbox Demo (Default)</option>
             <option value="smtp">Standard SMTP Mail Server (SSL/TLS)</option>
-            <option value="resend">Resend API (High deliverability)</option>
-            <option value="sendgrid">SendGrid v3 Web API</option>
-            <option value="supabase">Supabase Identity Auth Gateway</option>
           </select>
         </Field>
 
@@ -4307,17 +4302,6 @@ function EmailTab() {
               <span className="text-sm font-medium">Use Secure Connection (SSL / TLS)</span>
             </div>
           </>
-        ) : smtp.apiProvider !== "mock_api" && smtp.apiProvider !== "supabase" ? (
-          <div className="md:col-span-2">
-            <Field label="Developer API Secret Key">
-              <Input
-                type="password"
-                value={smtp.apiKey}
-                onChange={(e) => setSmtp({ apiKey: e.target.value })}
-                placeholder={smtp.apiProvider === "resend" ? "re_12345..." : "SG.12345..."}
-              />
-            </Field>
-          </div>
         ) : null}
 
         <div className="md:col-span-2 flex justify-end gap-2 pt-3 border-t border-border">

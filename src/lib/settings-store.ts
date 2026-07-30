@@ -612,7 +612,7 @@ export interface SmtpSettings {
   fromEmail: string;
   fromName: string;
   useSsl: boolean;
-  apiProvider: "smtp" | "resend" | "sendgrid" | "supabase" | "mock_api";
+  apiProvider: "smtp";
   apiKey: string;
 }
 
@@ -1517,7 +1517,7 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
     fromEmail: "",
     fromName: "",
     useSsl: false,
-    apiProvider: "mock_api",
+    apiProvider: "smtp",
     apiKey: "",
   },
   dropdowns: DEFAULT_DROPDOWNS,

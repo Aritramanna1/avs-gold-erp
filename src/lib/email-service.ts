@@ -294,7 +294,10 @@ export async function sendGenericEmail(payload: EmailPayload): Promise<EmailDisp
 
   try {
     const configuredApiProvider: string = String(smtp.apiProvider);
-    if (configuredApiProvider === "resend") {
+    if (configuredApiProvider !== "smtp") {
+      throw new Error("Email delivery requires the server-side SMTP relay configuration.");
+    }
+    if ((configuredApiProvider as string) === "resend") {
       if (!smtp.apiKey) throw new Error("Resend API key not configured");
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -318,7 +321,7 @@ export async function sendGenericEmail(payload: EmailPayload): Promise<EmailDisp
         const err = await res.text();
         throw new Error(`Resend API error ${res.status}: ${err}`);
       }
-    } else if (configuredApiProvider === "sendgrid") {
+    } else if ((configuredApiProvider as string) === "sendgrid") {
       if (!smtp.apiKey) throw new Error("SendGrid API key not configured");
       const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method: "POST",

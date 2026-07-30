@@ -171,104 +171,113 @@ export const test = base.extend<Fixtures>({
     // In-memory mock database for Supabase simulation
     const mockDb: Record<string, any[]> = {};
 
-    // Intercept Supabase REST API requests to simulate database operations in-memory
-    await page.route("**/rest/v1/**", async (route) => {
-      const url = route.request().url();
-      const method = route.request().method();
-      const match = url.match(/\/rest\/v1\/([^?#]+)/);
-      const table = match ? match[1] : null;
+    // Legacy unit-style suites may opt into an in-memory REST double. Live
+    // suites must set E2E_LIVE_DATA=true so every table query and mutation
+    // reaches the authenticated target project.
+    if (process.env.E2E_LIVE_DATA !== "true") {
+      await page.route("**/rest/v1/**", async (route) => {
+        const url = route.request().url();
+        const method = route.request().method();
+        const match = url.match(/\/rest\/v1\/([^?#]+)/);
+        const table = match ? match[1] : null;
 
-      if (!table) {
-        await route.continue();
-        return;
-      }
-
-      // Never mock the identity, tenancy, authorization, subscription or
-      // platform-control tables. AuthGate and protected routes must exercise
-      // the real authenticated Supabase session; returning an empty mock row
-      // here incorrectly signs a valid user out as "profile not linked".
-      const liveIdentityTables = new Set([
-        "user_profiles",
-        "user_roles",
-        "organizations",
-        "branches",
-        "organization_subscriptions",
-        "organization_features",
-        "platform_plans",
-        "platform_service_requests",
-        "platform_support_tickets",
-        "platform_conversations",
-        "platform_conversation_messages",
-        "platform_notifications",
-      ]);
-      if (liveIdentityTables.has(table)) {
-        await route.continue();
-        return;
-      }
-
-      if (table.startsWith("rpc/")) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ valid: true, status: "lifetime" }),
-        });
-        return;
-      }
-
-      if (method === "GET") {
-        const data = mockDb[table] || [];
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(data),
-        });
-      } else if (method === "POST" || method === "PUT" || method === "PATCH") {
-        const bodyStr = route.request().postData();
-        let payload: any = [];
-        try {
-          payload = bodyStr ? JSON.parse(bodyStr) : [];
-        } catch {
-          payload = [];
+        if (!table) {
+          await route.continue();
+          return;
         }
 
-        if (!Array.isArray(payload)) {
-          payload = [payload];
+        // Never mock the identity, tenancy, authorization, subscription or
+        // platform-control tables. AuthGate and protected routes must exercise
+        // the real authenticated Supabase session; returning an empty mock row
+        // here incorrectly signs a valid user out as "profile not linked".
+        const liveIdentityTables = new Set([
+          "user_profiles",
+          "user_roles",
+          "organizations",
+          "branches",
+          "organization_subscriptions",
+          "organization_features",
+          "platform_plans",
+          "platform_service_requests",
+          "platform_support_tickets",
+          "platform_conversations",
+          "platform_conversation_messages",
+          "platform_notifications",
+        ]);
+        if (liveIdentityTables.has(table)) {
+          await route.continue();
+          return;
         }
 
-        if (!mockDb[table]) {
-          mockDb[table] = [];
+        if (table.startsWith("rpc/")) {
+          // RPCs are security and licensing boundaries. Never replace their
+          // response with a shape that merely looks successful: validate_license
+          // requires the real entitlement payload, and business RPCs must be
+          // exercised against the target database in live suites.
+          await route.continue();
+          return;
         }
 
-        // Upsert items into mockDb
-        for (const item of payload) {
-          const index = mockDb[table].findIndex((x) => x.id === item.id);
-          if (index !== -1) {
-            mockDb[table][index] = { ...mockDb[table][index], ...item };
-          } else {
-            mockDb[table].push(item);
+        if (method === "GET") {
+          const data = mockDb[table] || [];
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(data),
+          });
+        } else if (method === "POST" || method === "PUT" || method === "PATCH") {
+          const bodyStr = route.request().postData();
+          let payload: any = [];
+          try {
+            payload = bodyStr ? JSON.parse(bodyStr) : [];
+          } catch {
+            payload = [];
           }
-        }
 
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(payload),
-        });
-      } else if (method === "DELETE") {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({}),
-        });
-      }
-    });
+          if (!Array.isArray(payload)) {
+            payload = [payload];
+          }
+
+          if (!mockDb[table]) {
+            mockDb[table] = [];
+          }
+
+          // Upsert items into mockDb
+          for (const item of payload) {
+            const index = mockDb[table].findIndex((x) => x.id === item.id);
+            if (index !== -1) {
+              mockDb[table][index] = { ...mockDb[table][index], ...item };
+            } else {
+              mockDb[table].push(item);
+            }
+          }
+
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(payload),
+          });
+        } else if (method === "DELETE") {
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({}),
+          });
+        }
+      });
+    }
 
     const qaLicense = process.env.E2E_LICENSE_KEY;
     if (qaLicense) {
-      // Keep the authenticated setup's validated entitlement in storage. A
-      // fresh browser context has no IndexedDB license record, and deleting
-      // the serialized key here causes the app to fall back to an expired
-      // local cache before the activation screen can be reached.
+      // Keep the key but clear the per-device cached entitlement. The test
+      // account is intentionally revalidated against the target RPC for each
+      // fresh context; otherwise an old suspended cache wins before the new
+      // QA key can be activated.
+      await page.addInitScript(() => {
+        window.localStorage.removeItem("license-entitlement");
+        const request = window.indexedDB.deleteDatabase("mtj_erp_local_db");
+        request.onerror = () => undefined;
+      });
     }
     await page.goto("/");
     if (qaLicense) {
@@ -289,6 +298,17 @@ export const test = base.extend<Fixtures>({
       }
     }
     await expect(page.getByTestId("auth-form")).toBeHidden({ timeout: 30_000 });
+    // AuthGate resolves profile/entitlement asynchronously. Do not let the
+    // first test navigate while the license gate is still about to mount.
+    await page.waitForTimeout(5_000);
+    if (qaLicense) {
+      const lateLicenseInput = page.getByPlaceholder("XXXX-XXXX-XXXX-XXXX");
+      if (await lateLicenseInput.isVisible().catch(() => false)) {
+        await lateLicenseInput.fill(qaLicense);
+        await page.getByRole("button", { name: /activate \/ verify/i }).click();
+        await expect(lateLicenseInput).toBeHidden({ timeout: 20_000 });
+      }
+    }
 
     // Ensure database is seeded dynamically
     await page
