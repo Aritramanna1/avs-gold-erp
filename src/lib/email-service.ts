@@ -289,14 +289,14 @@ async function dispatchViaSmtpRelay(payload: EmailPayload): Promise<void> {
 export async function sendGenericEmail(payload: EmailPayload): Promise<EmailDispatchResult> {
   const settings = useSettings.getState();
   const smtp = settings.smtp;
-  const fromEmail = smtp.fromEmail || "";
-  const fromName = smtp.fromName;
 
   try {
     const configuredApiProvider: string = String(smtp.apiProvider);
     if (configuredApiProvider !== "smtp") {
       throw new Error("Email delivery requires the server-side SMTP relay configuration.");
     }
+    await dispatchViaSmtpRelay(payload);
+    /* Legacy direct-provider implementation retained below only for migration reference.
     if ((configuredApiProvider as string) === "resend") {
       if (!smtp.apiKey) throw new Error("Resend API key not configured");
       const res = await fetch("https://api.resend.com/emails", {
@@ -351,6 +351,7 @@ export async function sendGenericEmail(payload: EmailPayload): Promise<EmailDisp
       // one of these dispatches through the single Nodemailer SMTP relay.
       await dispatchViaSmtpRelay(payload);
     }
+    */
 
     settings.addSecurityLog(
       "permission changed",
