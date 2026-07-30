@@ -34,13 +34,14 @@ const IS_LOCAL_TARGET = /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(BAS
  * are not set, rather than fabricating credentials or skipping silently.
  */
 const authStatePath = path.resolve(import.meta.dirname, "e2e/.auth/state.json");
+const UNAUTH_ONLY = process.env.PLAYWRIGHT_UNAUTH_ONLY === "1";
 
 export default defineConfig({
   testDir: "./e2e/tests",
   outputDir: "./e2e/test-results",
   // Logs in once and seeds the pilot dataset once (see e2e/global-setup.ts)
   // instead of every test repeating both.
-  globalSetup: "./e2e/global-setup.ts",
+  globalSetup: UNAUTH_ONLY ? undefined : "./e2e/global-setup.ts",
   // Sequential, single worker: every authenticated test reuses one seeded
   // dataset (see e2e/fixtures/base.ts's seededPage) rather than fighting
   // over shared master data or re-logging-in per test.
@@ -73,7 +74,7 @@ export default defineConfig({
     // is read). Tests that need a signed-out view (login/logout/forgot-
     // password specs) clear it via test.use({ storageState: { cookies: [],
     // origins: [] } }).
-    storageState: authStatePath,
+    storageState: UNAUTH_ONLY ? undefined : authStatePath,
   },
 
   projects: [
