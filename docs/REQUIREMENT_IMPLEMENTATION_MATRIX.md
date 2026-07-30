@@ -31,7 +31,7 @@ This matrix is a living audit artifact. `Implemented` means the repository conta
 - Production build: passing (`npm run build`), with chunk-size and ineffective-dynamic-import warnings.
 - ESLint: after formatting the three blocking files, rerun; warnings remain and should be reduced before release.
 - End-to-end suite: not yet proven green against a live, multi-tenant environment.
-- Database lint: attempted with `npx supabase db lint`; local Postgres/Docker is unavailable, so migration execution and RLS validation remain unverified.
+- Database lint: linked Supabase is reachable; lint currently reports the deployed `resolve_document_share` function using an unavailable `digest` signature. A forward fix exists in `supabase/migrations/20260731230000_fix_document_share_digest.sql`, but deployment is blocked by remote-only migration history entries and local Docker is unavailable for shadow-schema pull/push.
 - Client security scan: passing (`npm run security:scan`).
 
 The matrix must not be changed to `Implemented` based solely on a route existing or a build passing.
