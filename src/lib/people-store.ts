@@ -115,11 +115,37 @@ export const usePeople = create<PeopleState>()((set, get) => ({
   people: [],
   refresh: async () => {
     const { currentUserRole, selectedBranchId } = useSettings.getState();
-    const GLOBAL_ROLES = ["Super Owner", "Administrator", "CEO (View Only)"];
+    let resolvedRole = currentUserRole;
+    if (!resolvedRole) {
+      const [{ data: sessionResult }, { data: profileResult }] = await Promise.all([
+        supabase.auth.getSession(),
+        supabase.auth.getUser(),
+      ]).then(async ([session, user]) => {
+        if (!session.data.session?.user.id) return [session, { data: null }] as const;
+        const profile = await supabase
+          .from("user_profiles")
+          .select("role")
+          .eq("auth_id", session.data.session.user.id)
+          .maybeSingle();
+        return [session, profile] as const;
+      });
+      resolvedRole = profileResult?.role ?? null;
+      void sessionResult;
+    }
+    // The persisted Supabase role values are lower-case (`owner`, `admin`,
+    // `saas_admin`) while older local profiles used display labels. Owners
+    // and firm admins are intentionally firm-global; branch staff remain
+    // branch-filtered.
+    const GLOBAL_ROLES = [
+      "Super Owner",
+      "Administrator",
+      "CEO (View Only)",
+      "owner",
+      "admin",
+      "saas_admin",
+    ];
     const bid =
-      !currentUserRole || GLOBAL_ROLES.includes(currentUserRole)
-        ? null
-        : selectedBranchId || "MAIN";
+      !resolvedRole || GLOBAL_ROLES.includes(resolvedRole) ? null : selectedBranchId || "MAIN";
     // The target schema retains indexed person columns alongside the legacy
     // JSON document. Read both shapes: older imports and QA/onboarding rows
     // may have identity fields in columns while newer writes keep the full

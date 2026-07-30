@@ -3659,7 +3659,7 @@ function HardwareTab() {
                   : "bg-muted text-muted-foreground border border-border"
               }`}
             >
-              {d.active ? "Active" : "Coming Soon"}
+              {d.active ? "Active" : "Not configured"}
             </span>
           </div>
         ))}
