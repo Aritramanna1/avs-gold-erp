@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { useSettings } from "@/lib/settings-store";
 import { useModuleStore } from "@/lib/module-store";
-import { isPilotHiddenModule, RETAIL_COMING_SOON_MESSAGE } from "@/lib/pilot-config";
+import { isPilotHiddenModule } from "@/lib/pilot-config";
 import { usePermissions } from "@/lib/use-permissions";
 import { Logo } from "@/components/ui/Logo";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -49,7 +49,7 @@ export const navigationItems = [
     label: "Communications",
     icon: MessageSquare,
   },
-  { to: "/repair", label: RETAIL_COMING_SOON_MESSAGE, icon: ShoppingBag, retailOnly: true },
+  { to: "/repair", label: "Repair Orders", icon: ShoppingBag },
   {
     to: "/attendance",
     label: "Attendance & Payroll",
