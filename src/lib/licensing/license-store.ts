@@ -3,6 +3,7 @@ import { getMetaValue, setMetaValue } from "@/lib/local-db";
 import { getOrCreateDeviceId } from "@/lib/security/device-registry";
 import type { DeploymentMode } from "@/lib/deployment-mode";
 import { ArivahlyApiLicensingProvider, SupabaseLicensingProvider } from "./licensing-provider";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
 /** True when the embedded endpoint is the Arivahly Supabase project's own
  * validate_license() RPC rather than a separate arivahly.in licensing API —
@@ -127,6 +128,15 @@ export function setLicenseConfig(partial: Partial<LicenseConfig>): void {
 
 export function getSupportUrl(): string {
   return LICENSE_SUPPORT_URL;
+}
+
+/** Resolve the active license for the signed-in tenant without exposing the
+ * licenses table to the browser. Platform users have no tenant and resolve
+ * to null; LicenseGate handles their separate control-plane exemption. */
+async function resolveTenantLicenseKey(): Promise<string | null> {
+  const { data } = await supabase.rpc("get_my_tenant_license_key" as never);
+  const key = data as unknown;
+  return typeof key === "string" && key.trim() ? key.trim() : null;
 }
 
 /** There is no developer/lifetime bypass. Lifetime must be server-signed. */
@@ -283,7 +293,14 @@ async function applyCached(
 }
 
 export async function verifyLicense(mode: DeploymentMode | null): Promise<LicenseStatus> {
-  const cfg = getLicenseConfig();
+  let cfg = getLicenseConfig();
+  if (!cfg.key) {
+    const tenantKey = await resolveTenantLicenseKey().catch(() => null);
+    if (tenantKey) {
+      setLicenseConfig({ key: tenantKey });
+      cfg = getLicenseConfig();
+    }
+  }
   const now = Date.now();
 
   // Local development bypass only when no explicit license key is entered
