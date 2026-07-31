@@ -136,7 +136,7 @@ let _initialSyncDone = false;
 // every load, sometimes followed by a near-simultaneous TOKEN_REFRESHED/
 // SIGNED_IN event) so the same account-lookup round trip to `app_settings`
 // isn't fired 2-3x in parallel on every page load/reload.
-let _checkInFlight: Promise<{ allowed: boolean; error?: string }> | null = null;
+let _checkInFlight: Promise<{ allowed: boolean; error?: string; role?: string }> | null = null;
 
 function OnlineAuthGate({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -177,7 +177,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
   const checkUserAllowed = async (
     userEmail: string,
     currentSession: Session,
-  ): Promise<{ allowed: boolean; error?: string }> => {
+  ): Promise<{ allowed: boolean; error?: string; role?: string }> => {
     if (!userEmail) return { allowed: false, error: "Missing email address." };
 
     // The authoritative identity mapping is user_profiles.auth_id. The
@@ -200,7 +200,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
         if (!p.role) {
           return { allowed: false, error: "Your account has no assigned ERP role. Contact admin." };
         }
-        return { allowed: true };
+        return { allowed: true, role: p.role };
       }
     } catch (err) {
       console.error("[AuthGate] user_profiles lookup threw:", err);
@@ -286,7 +286,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
       };
     }
 
-    return { allowed: true };
+    return { allowed: true, role: matched.role };
   };
 
   useEffect(() => {
@@ -308,7 +308,12 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
 
     const finalizeSession = async (s: Session | null, evt: string) => {
       if (!mounted || !s?.user?.email) {
-        if (evt === "SIGNED_OUT" || !s) {
+        // INITIAL_SESSION may briefly carry a null session while Supabase
+        // restores the persisted session during a page reload. Clearing all
+        // business stores in that transient state races the real session
+        // hydration and makes local-first records disappear after refresh.
+        // Only an explicit sign-out is a data-boundary event.
+        if (evt === "SIGNED_OUT") {
           setSession(null);
           setBootError(null);
           setChecking(false);
@@ -318,6 +323,13 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
           // so it can't flash on screen for the next person who logs in on
           // this device before their own fresh pull completes.
           void resetAllBusinessStores();
+        } else {
+          // A null INITIAL_SESSION is still a valid signed-out state. Finish
+          // the auth check without clearing durable/local-first business data;
+          // Supabase may immediately follow it with the restored session.
+          setSession(null);
+          setBootError(null);
+          setChecking(false);
         }
         return;
       }
@@ -372,25 +384,30 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
       setBootError(null);
       setChecking(false);
       _initialSyncDone = true;
+      // user_profiles is authoritative. The local app_settings directory is
+      // only a compatibility fallback and may not contain newly onboarded
+      // users, so never let it erase a valid backend role after login.
       const loggedIn = useSettings
         .getState()
         .users.find((u) => u.email.toLowerCase() === s.user.email!.toLowerCase());
-      useSettings.getState().setCurrentUserRole(loggedIn?.role ?? null);
+      useSettings.getState().setCurrentUserRole(check.role ?? loggedIn?.role ?? null);
       useSettings.getState().addSecurityLog("login", `User signed in successfully`, s.user.email);
       void startCloudSync();
-      void supabase
-        .from("user_roles" as never)
-        .select("role")
-        .eq("user_id", s.user.id)
-        .then(({ data }) => {
-          const roles = ((data ?? []) as Array<{ role?: string }>).map((item) => item.role);
-          if (
-            roles.includes("saas_admin") &&
-            (window.location.pathname === "/" || window.location.pathname === "/saas-admin")
-          ) {
+      void supabase.rpc("get_login_destination" as never).then(({ data }) => {
+        const destination = typeof data === "string" ? data : "/";
+        const currentPath = window.location.pathname;
+        if (currentPath === "/" || currentPath === "/saas-admin" || currentPath === "/platform") {
+          if (destination === "/customer-portal") {
+            void navigate({ to: "/customer-portal", replace: true });
+          } else if (destination === "/platform") {
             void navigate({ to: "/platform", replace: true });
+          } else if (destination === "/retail" || destination === "/wholesale") {
+            // Dedicated retail/wholesale dashboards are future routes. Keep
+            // current tenants on the working home until those screens exist.
+            void navigate({ to: "/", replace: true });
           }
-        });
+        }
+      });
     };
 
     void supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
