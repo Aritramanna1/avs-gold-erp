@@ -37,8 +37,9 @@ import {
   materialKeyFromName,
   type MaterialGroup,
 } from "@/lib/material-vault-store";
-import { mgToGrams, gramsToMg, getCaratLabel, COMMON_PURITIES } from "@/lib/gold";
+import { mgToGrams, gramsToMg, getCaratLabel } from "@/lib/gold";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { useSettings } from "@/lib/settings-store";
 import { toast } from "sonner";
 import { Coins, Wrench, Recycle, Settings2 } from "lucide-react";
 
@@ -64,7 +65,29 @@ export function MaterialVaultPanel() {
   const [manageOpen, setManageOpen] = useState(false);
 
   useEffect(() => {
-    refresh();
+    let cancelled = false;
+    let attempts = 0;
+    const hydrate = async () => {
+      try {
+        await refresh();
+        attempts += 1;
+        // Auth/session hydration can reset in-memory stores after the first
+        // route paint. Retry a few times so a persisted local-first movement
+        // is reloaded after that boundary without polling forever.
+        if (!cancelled && attempts < 3 && useMaterialVault.getState().movements.length === 0) {
+          window.setTimeout(() => void hydrate(), 500);
+        }
+      } catch {
+        if (!cancelled && attempts < 3) {
+          attempts += 1;
+          window.setTimeout(() => void hydrate(), 500);
+        }
+      }
+    };
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
   }, [refresh]);
 
   const balances = useMemo(
@@ -265,6 +288,12 @@ const STOCK_ACTIONS = [
 function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const appendMovement = useMaterialVault((s) => s.append);
   const movements = useMaterialVault((s) => s.movements);
+  const configuredPurities = useSettings((s) => s.purities);
+  const metals = useMemo(
+    () => Array.from(new Set(configuredPurities.map((p) => p.metal ?? "Gold"))).sort(),
+    [configuredPurities],
+  );
+  const [metal, setMetal] = useState("Gold");
   const [category, setCategory] = useState("kdm_balls");
   const [purity, setPurity] = useState("916");
   const [action, setAction] = useState<(typeof STOCK_ACTIONS)[number]["value"]>("purchase");
@@ -276,6 +305,7 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
   useEffect(() => {
     if (open) {
       setCategory("kdm_balls");
+      setMetal("Gold");
       setPurity("916");
       setAction("purchase");
       setWeightG("");
@@ -283,6 +313,18 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
       setError(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    const first = configuredPurities.find((p) => (p.metal ?? "Gold") === metal && p.active);
+    if (
+      first &&
+      !configuredPurities.some(
+        (p) => (p.metal ?? "Gold") === metal && String(p.permille) === purity,
+      )
+    ) {
+      setPurity(String(first.permille));
+    }
+  }, [configuredPurities, metal, purity]);
 
   async function submit() {
     setError(null);
@@ -297,7 +339,12 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
     if (sign < 0) {
       // Stock is tracked per (material × purity) — check this exact stock item.
       const available = movements
-        .filter((m) => m.category === category && (m.purity ?? 0) === purityVal)
+        .filter(
+          (m) =>
+            m.category === category &&
+            (m.metal ?? "Gold") === metal &&
+            (m.purity ?? 0) === purityVal,
+        )
         .reduce((s, m) => s + m.deltaMg, 0);
       if (Math.abs(deltaMg) > available) {
         setError(
@@ -311,6 +358,7 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
       const { data } = await supabase.auth.getSession();
       await appendMovement({
         category,
+        metal,
         type: action,
         deltaMg,
         grossMg: gramsToMg(n),
@@ -339,6 +387,21 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
 
         <div className="space-y-3">
           <div>
+            <Label>Precious metal *</Label>
+            <Select value={metal} onValueChange={setMetal}>
+              <SelectTrigger data-testid="stock-metal">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {metals.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label>Material *</Label>
             <CategorySelect value={category} onChange={setCategory} testId="stock-category" />
           </div>
@@ -350,11 +413,13 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="0">Non-gold / Accessory</SelectItem>
-                {COMMON_PURITIES.map((p) => (
-                  <SelectItem key={p.value} value={String(p.value)}>
-                    {p.label}
-                  </SelectItem>
-                ))}
+                {configuredPurities
+                  .filter((p) => (p.metal ?? "Gold") === metal && p.active)
+                  .map((p) => (
+                    <SelectItem key={p.id} value={String(p.permille)}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             <p className="mt-1 text-[11px] text-muted-foreground">
