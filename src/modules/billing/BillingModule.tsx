@@ -18,6 +18,8 @@ import {
   useBilling,
   computeItemTotals,
   computeInvoiceTotals,
+  computeInvoiceGoldTotals,
+  paiseToFineGoldMg,
   invoiceItemValidationError,
   PAYMENT_MODE_LABELS,
   paiseToRupees,
@@ -102,6 +104,8 @@ interface DraftPayment {
   goldGramsStr: string;
   goldPurityStr: string;
   goldRateStr: string;
+  /** False until the operator explicitly overrides the current main rate. */
+  goldRateManuallyOverridden?: boolean;
 }
 
 // Manufacturing bill MP entry (metal received from karigar)
@@ -249,6 +253,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
   const appendOrderTimeline = useOrders((s) => s.appendTimeline);
   const jobs = useJobCards((s) => s.jobs);
   const people = usePeople((s) => s.people);
+  const currentGoldRatePaise = useSettings((s) => s.goldRatePerGramPaise);
   const appendLedger = useLedger((s) => s.append);
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(orderId || null);
@@ -508,6 +513,48 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     return Array.isArray(rawPayments) ? rawPayments : [];
   }, [rawPayments]);
 
+  const goldPaymentSelected = payments.some(
+    (payment) => payment.mode === "gold_exchange" || payment.mode === "customer_gold_credit",
+  );
+
+  // A gold-payment row follows the main rate until the operator explicitly
+  // overrides it. This keeps a rate change in Settings immediately visible in
+  // an open invoice without destroying a deliberate historical override.
+  useEffect(() => {
+    if (currentGoldRatePaise <= 0) return;
+    const defaultRate = paiseToRupees(currentGoldRatePaise);
+    setPayments((current) => {
+      let changed = false;
+      const next = current.map((payment) => {
+        if (payment.mode !== "gold_exchange" && payment.mode !== "customer_gold_credit") {
+          return payment;
+        }
+        const updated = { ...payment };
+        if (!updated.goldPurityStr) {
+          updated.goldPurityStr = "916";
+          changed = true;
+        }
+        if (!updated.goldRateManuallyOverridden && updated.goldRateStr !== defaultRate) {
+          updated.goldRateStr = defaultRate;
+          changed = true;
+        }
+        if (!updated.goldRateManuallyOverridden && updated.goldGramsStr) {
+          const grossMg = gramsToMg(updated.goldGramsStr);
+          const purity = Math.round(Number(updated.goldPurityStr) || 0);
+          const fineMg = purity > 0 ? fineGoldMg(grossMg, purity) : 0;
+          const valuePaise = fineMg > 0 ? Math.round((fineMg * currentGoldRatePaise) / 1000) : 0;
+          const nextAmount = valuePaise > 0 ? (valuePaise / 100).toString() : "";
+          if (updated.amountStr !== nextAmount) {
+            updated.amountStr = nextAmount;
+            changed = true;
+          }
+        }
+        return updated;
+      });
+      return changed ? next : current;
+    });
+  }, [currentGoldRatePaise, setPayments]);
+
   const filteredCustomers = useMemo(() => {
     if (!customerSearch.trim()) return [];
     const q = customerSearch.toLowerCase();
@@ -741,6 +788,36 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       }));
     return computeInvoiceTotals(items, gst, adjustmentLive, paymentRecords);
   }, [items, gst, adjustmentLive, payments]);
+
+  const goldSettlementRatePaise = useMemo(() => {
+    const selectedGoldPayment = payments.find(
+      (payment) =>
+        (payment.mode === "gold_exchange" || payment.mode === "customer_gold_credit") &&
+        rupeesToPaise(payment.goldRateStr) > 0,
+    );
+    return selectedGoldPayment
+      ? rupeesToPaise(selectedGoldPayment.goldRateStr)
+      : currentGoldRatePaise;
+  }, [payments, currentGoldRatePaise]);
+
+  const goldTotals = useMemo(() => {
+    const paymentRecords: PaymentRecord[] = payments
+      .filter((payment) => payment.mode === "outstanding" || rupeesToPaise(payment.amountStr) > 0)
+      .map((payment) => ({
+        id: payment.id,
+        ts: 0,
+        mode: payment.mode,
+        amountPaise: rupeesToPaise(payment.amountStr),
+        goldFineMg:
+          payment.mode === "gold_exchange" || payment.mode === "customer_gold_credit"
+            ? fineGoldMg(
+                gramsToMg(payment.goldGramsStr),
+                Math.round(Number(payment.goldPurityStr) || 0),
+              )
+            : undefined,
+      }));
+    return computeInvoiceGoldTotals(items, totals, paymentRecords, goldSettlementRatePaise);
+  }, [items, totals, payments, goldSettlementRatePaise]);
 
   // Synchronize state with useBillingStore
   useEffect(() => {
@@ -1004,6 +1081,28 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     );
   }
 
+  function changePaymentMode(idx: number, mode: PaymentMode) {
+    const payment = payments[idx];
+    if (!payment) return;
+    const isGold = mode === "gold_exchange" || mode === "customer_gold_credit";
+    patchPayment(idx, {
+      mode,
+      ...(isGold
+        ? {
+            goldPurityStr: payment.goldPurityStr || "916",
+            goldRateStr: payment.goldRateStr || paiseToRupees(currentGoldRatePaise),
+            goldRateManuallyOverridden: payment.goldRateManuallyOverridden ?? false,
+          }
+        : {}),
+    });
+    if (isGold && payment.goldGramsStr) {
+      autoFillFromGold(idx, {
+        goldPurityStr: payment.goldPurityStr || "916",
+        goldRateStr: payment.goldRateStr || paiseToRupees(currentGoldRatePaise),
+      });
+    }
+  }
+
   function removePaymentRow(idx: number) {
     if (payments.length <= 1) return;
     setPayments(payments.filter((_, i) => i !== idx));
@@ -1030,7 +1129,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       const grossMg = gramsToMg(gramsStr);
       const purity = Math.round(Number(purityStr));
       const fine = fineGoldMg(grossMg, purity);
-      const ratePaise = rupeesToPaise(rateStr);
+      const ratePaise = rupeesToPaise(rateStr) || currentGoldRatePaise;
       const valuePaise = Math.round((fine * ratePaise) / 1000);
       if (valuePaise > 0) patchPayment(idx, { amountStr: (valuePaise / 100).toString() });
     } catch {
@@ -1086,7 +1185,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             const grossMg = gramsToMg(p.goldGramsStr);
             const purity = Math.round(Number(p.goldPurityStr));
             const fine = fineGoldMg(grossMg, purity);
-            const ratePaise = rupeesToPaise(p.goldRateStr);
+            const ratePaise = rupeesToPaise(p.goldRateStr) || currentGoldRatePaise;
             base.goldGrossMg = grossMg;
             base.goldPurity = purity;
             base.goldFineMg = fine;
@@ -2504,7 +2603,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
                 {/* MP Entries table header */}
                 {mfgMpEntries.length > 0 && (
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground grid grid-cols-[1fr_80px_70px_60px_80px_32px] gap-2 px-2">
+                  <div className="hidden sm:grid text-[10px] uppercase tracking-wider text-muted-foreground grid-cols-[1fr_80px_70px_60px_80px_32px] gap-2 px-2">
                     <span>Label / Type</span>
                     <span>G.Wt (g)</span>
                     <span>Tunch%</span>
@@ -2524,7 +2623,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                   return (
                     <div
                       key={e.id}
-                      className={`rounded-xl border ${color} px-3 py-2.5 grid grid-cols-[1fr_80px_70px_60px_80px_32px] gap-2 items-center`}
+                      className={`rounded-xl border ${color} px-3 py-2.5 grid grid-cols-2 sm:grid-cols-[1fr_80px_70px_60px_80px_32px] gap-2 items-center`}
                     >
                       <Input
                         value={e.label}
@@ -2678,6 +2777,9 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             <div className="space-y-3">
               {payments.map((p, idx) => {
                 const isGold = p.mode === "gold_exchange" || p.mode === "customer_gold_credit";
+                const paymentFineMg = isGold
+                  ? fineGoldMg(gramsToMg(p.goldGramsStr), Math.round(Number(p.goldPurityStr) || 0))
+                  : 0;
                 const modeColor = isGold
                   ? "border-gold/30 bg-gold/5"
                   : p.mode === "cash"
@@ -2705,7 +2807,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                           </Label>
                           <Select
                             value={p.mode}
-                            onValueChange={(v) => patchPayment(idx, { mode: v as PaymentMode })}
+                            onValueChange={(v) => changePaymentMode(idx, v as PaymentMode)}
                           >
                             <SelectTrigger className="h-9 text-xs">
                               <SelectValue />
@@ -2766,18 +2868,28 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                             Amount (₹)
                           </Label>
                           <div className="flex gap-1.5">
+                            {isGold && (
+                              <div className="rounded-lg border border-gold/25 bg-gold/10 px-3 py-2 w-full">
+                                <div className="text-[10px] font-semibold text-gold/80">
+                                  Gold Amount
+                                </div>
+                                <div className="font-mono font-bold text-gold text-sm">
+                                  {mgToGrams(paymentFineMg)} g fine
+                                </div>
+                              </div>
+                            )}
                             <Input
                               type="number"
                               value={p.amountStr}
                               onChange={(e) => patchPayment(idx, { amountStr: e.target.value })}
-                              className="h-9 text-sm font-mono font-bold"
+                              className={`h-9 text-sm font-mono font-bold ${isGold ? "hidden" : ""}`}
                               placeholder="0"
                             />
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="h-9 text-[10px] px-2.5 text-gold font-bold bg-gold/5 border border-gold/20 whitespace-nowrap"
+                              className={`h-9 text-[10px] px-2.5 text-gold font-bold bg-gold/5 border border-gold/20 whitespace-nowrap ${isGold ? "hidden" : ""}`}
                               onClick={() => autoFillRemaining(idx)}
                             >
                               Fill Due
@@ -2821,7 +2933,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                             : "Using Customer's Gold Advance"}
                         </div>
                         {/* Input row */}
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <div>
                             <Label className="text-[10px] text-gold/80 font-semibold block mb-1">
                               Gross Wt (g)
@@ -2856,7 +2968,10 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                             <Input
                               value={p.goldRateStr}
                               onChange={(e) => {
-                                patchPayment(idx, { goldRateStr: e.target.value });
+                                patchPayment(idx, {
+                                  goldRateStr: e.target.value,
+                                  goldRateManuallyOverridden: true,
+                                });
                                 autoFillFromGold(idx, { goldRateStr: e.target.value });
                               }}
                               placeholder="Market rate"
@@ -2874,7 +2989,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                             const goldValue =
                               fine > 0 && rateP > 0 ? Math.round((fine * rateP) / 1000) : 0;
                             return (
-                              <div className="grid grid-cols-4 gap-2 text-[10px] font-mono">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono">
                                 <div className="bg-background/60 border border-gold/20 rounded-lg p-2 text-center">
                                   <div className="text-muted-foreground mb-0.5">Gross</div>
                                   <div className="font-bold text-foreground">
@@ -2974,13 +3089,87 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
         {/* Section 4: Invoice Summary Side Panel */}
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-4 space-y-4 sticky top-6">
+          <div className="rounded-2xl border border-border bg-card p-4 space-y-4 lg:sticky lg:top-6">
             <div className="text-xs uppercase tracking-wider font-black text-muted-foreground">
               Invoice Summary
             </div>
 
+            {goldPaymentSelected && (
+              <div className="rounded-xl border border-gold/30 bg-gold/5 p-3 space-y-2 text-xs">
+                <div className="flex items-center justify-between text-gold font-black uppercase tracking-wider">
+                  <span>Gold-first total</span>
+                  <span className="font-mono">₹{paiseToRupees(goldTotals.ratePerGramPaise)}/g</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Gold grams (fine)</span>
+                  <span className="font-mono font-bold">
+                    {mgToGrams(goldTotals.productFineMg)} g
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Physical gold received</span>
+                  <span className="font-mono">
+                    {mgToGrams(goldTotals.physicalGoldReceivedMg)} g
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Net gold value</span>
+                  <span className="font-mono">{mgToGrams(goldTotals.goldValueMg)} g</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Making / labour</span>
+                  <span className="font-mono">{mgToGrams(goldTotals.makingChargesMg)} g</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Stone / other charges</span>
+                  <span className="font-mono">
+                    {mgToGrams(
+                      goldTotals.stoneChargesMg +
+                        goldTotals.hallmarkChargesMg +
+                        goldTotals.otherChargesMg,
+                    )}{" "}
+                    g
+                  </span>
+                </div>
+                {totals.cgstPaise > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">CGST (gold)</span>
+                    <span className="font-mono">
+                      {mgToGrams(paiseToFineGoldMg(totals.cgstPaise, goldTotals.ratePerGramPaise))}{" "}
+                      g
+                    </span>
+                  </div>
+                )}
+                {totals.sgstPaise > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">SGST (gold)</span>
+                    <span className="font-mono">
+                      {mgToGrams(paiseToFineGoldMg(totals.sgstPaise, goldTotals.ratePerGramPaise))}{" "}
+                      g
+                    </span>
+                  </div>
+                )}
+                <div className="border-t border-gold/30 pt-2 flex justify-between font-black text-gold">
+                  <span>Grand total (gold)</span>
+                  <span className="font-mono text-base">
+                    {mgToGrams(goldTotals.grandTotalMg)} g
+                  </span>
+                </div>
+                <div className="flex justify-between text-emerald-600 font-semibold">
+                  <span>Paid (gold equivalent)</span>
+                  <span className="font-mono">{mgToGrams(goldTotals.paidMg)} g</span>
+                </div>
+                <div className="flex justify-between text-rose-500 font-bold">
+                  <span>Outstanding (gold)</span>
+                  <span className="font-mono">{mgToGrams(goldTotals.balanceMg)} g</span>
+                </div>
+              </div>
+            )}
+
             {/* Calculations Panel */}
-            <div className="space-y-2 border-b border-border pb-3">
+            <div
+              className={`${goldPaymentSelected ? "hidden" : ""} space-y-2 border-b border-border pb-3`}
+            >
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Subtotal (Net Value):</span>
                 <span className="font-mono">₹ {paiseToRupees(totals.subtotalPaise)}</span>
@@ -3006,7 +3195,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             </div>
 
             {/* Settlement Panel */}
-            <div className="space-y-2 text-xs">
+            <div className={`${goldPaymentSelected ? "hidden" : ""} space-y-2 text-xs`}>
               {payments
                 .filter((p) => p.mode === "gold_exchange" || p.mode === "customer_gold_credit")
                 .map((p, i) => {
@@ -3045,11 +3234,11 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                   }
                 })}
               <div className="flex justify-between font-semibold text-emerald-600">
-                <span>Paid (Recorded):</span>
+                <span>{goldPaymentSelected ? "Paid (gold equivalent):" : "Paid (Recorded):"}</span>
                 <span className="font-mono">₹ {paiseToRupees(totals.paidPaise)}</span>
               </div>
               <div className="flex justify-between font-bold text-rose-500">
-                <span>Balance Due:</span>
+                <span>{goldPaymentSelected ? "Outstanding (gold):" : "Balance Due:"}</span>
                 <span className="font-mono">₹ {paiseToRupees(totals.balancePaise)}</span>
               </div>
             </div>
@@ -3386,7 +3575,7 @@ function MfgItemRow({
         )}
       </div>
 
-      <div className="grid grid-cols-4 sm:grid-cols-8 divide-x divide-border/40">
+      <div className="grid grid-cols-2 sm:grid-cols-8 sm:divide-x divide-border/40">
         <div className="px-2 py-2">
           <div className="text-[9px] uppercase text-muted-foreground font-bold mb-1">G.Wt (g)</div>
           <Input
@@ -3759,7 +3948,7 @@ function StandardItemRow({
         )}
       </div>
 
-      <div className="grid grid-cols-5 divide-x divide-border/50 bg-background/30 text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-5 sm:divide-x divide-border/50 bg-background/30 text-xs">
         <div className="px-3 py-2.5">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">
             Gross (g)

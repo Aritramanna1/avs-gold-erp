@@ -442,6 +442,96 @@ export function computeInvoiceTotals(
 }
 
 /**
+ * Gold-first presentation/settlement projection for an invoice.
+ *
+ * Money remains the legal posting currency in Invoice, but every amount can
+ * be presented as fine gold using the same rate that the gold payment uses.
+ * Keeping this projection here prevents BillingModule, print views, and
+ * settlement views from each inventing a different gold conversion.
+ */
+export interface InvoiceGoldTotals {
+  ratePerGramPaise: number;
+  productFineMg: number;
+  goldValueMg: number;
+  makingChargesMg: number;
+  stoneChargesMg: number;
+  hallmarkChargesMg: number;
+  otherChargesMg: number;
+  discountMg: number;
+  subtotalMg: number;
+  adjustmentMg: number;
+  gstMg: number;
+  tcsMg: number;
+  grandTotalMg: number;
+  paidMg: number;
+  balanceMg: number;
+  physicalGoldReceivedMg: number;
+}
+
+export function paiseToFineGoldMg(paise: number, ratePerGramPaise: number): number {
+  if (!Number.isFinite(paise) || !Number.isFinite(ratePerGramPaise) || ratePerGramPaise <= 0) {
+    return 0;
+  }
+  return Math.round((paise * 1000) / ratePerGramPaise);
+}
+
+export function computeInvoiceGoldTotals(
+  items: InvoiceItem[],
+  totals: Pick<
+    Invoice,
+    "gstPaise" | "tcsPaise" | "adjustmentPaise" | "grandTotalPaise" | "paidPaise" | "balancePaise"
+  >,
+  payments: PaymentRecord[] = [],
+  ratePerGramPaise: number,
+): InvoiceGoldTotals {
+  const productFineMg = items.reduce((sum, item) => sum + Math.max(0, item.fineMg), 0);
+  const goldValuePaise = items.reduce((sum, item) => sum + Math.max(0, item.goldValuePaise), 0);
+  const makingChargesPaise = items.reduce(
+    (sum, item) => sum + Math.max(0, item.makingChargesPaise),
+    0,
+  );
+  const stoneChargesPaise = items.reduce(
+    (sum, item) => sum + Math.max(0, item.stoneChargesPaise),
+    0,
+  );
+  const hallmarkChargesPaise = items.reduce(
+    (sum, item) => sum + Math.max(0, item.hallmarkChargesPaise ?? 0),
+    0,
+  );
+  const otherChargesPaise = items.reduce(
+    (sum, item) => sum + Math.max(0, item.otherChargesPaise),
+    0,
+  );
+  const discountPaise = items.reduce((sum, item) => sum + Math.max(0, item.discountPaise), 0);
+  const physicalGoldReceivedMg = payments.reduce(
+    (sum, payment) => sum + Math.max(0, payment.goldFineMg ?? 0),
+    0,
+  );
+
+  return {
+    ratePerGramPaise,
+    productFineMg,
+    goldValueMg: paiseToFineGoldMg(goldValuePaise, ratePerGramPaise),
+    makingChargesMg: paiseToFineGoldMg(makingChargesPaise, ratePerGramPaise),
+    stoneChargesMg: paiseToFineGoldMg(stoneChargesPaise, ratePerGramPaise),
+    hallmarkChargesMg: paiseToFineGoldMg(hallmarkChargesPaise, ratePerGramPaise),
+    otherChargesMg: paiseToFineGoldMg(otherChargesPaise, ratePerGramPaise),
+    discountMg: paiseToFineGoldMg(discountPaise, ratePerGramPaise),
+    subtotalMg: paiseToFineGoldMg(
+      totals.grandTotalPaise - totals.gstPaise - totals.tcsPaise + totals.adjustmentPaise,
+      ratePerGramPaise,
+    ),
+    adjustmentMg: paiseToFineGoldMg(totals.adjustmentPaise, ratePerGramPaise),
+    gstMg: paiseToFineGoldMg(totals.gstPaise, ratePerGramPaise),
+    tcsMg: paiseToFineGoldMg(totals.tcsPaise, ratePerGramPaise),
+    grandTotalMg: paiseToFineGoldMg(totals.grandTotalPaise, ratePerGramPaise),
+    paidMg: paiseToFineGoldMg(totals.paidPaise, ratePerGramPaise),
+    balanceMg: paiseToFineGoldMg(totals.balancePaise, ratePerGramPaise),
+    physicalGoldReceivedMg,
+  };
+}
+
+/**
  * Splits an invoice's recorded payments by asset type — the "Payment
  * Engine" summary the Customer Settlement Slip and GST Invoice both read
  * from, rather than each re-deriving it. Every PaymentRecord already
