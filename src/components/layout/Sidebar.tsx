@@ -19,7 +19,6 @@ import {
   Building2,
   TrendingDown,
   Mail,
-  FlameKindling,
   Cpu,
 } from "lucide-react";
 import { useSettings } from "@/lib/settings-store";
@@ -41,7 +40,7 @@ export const navigationItems = [
   { to: "/workshop/gold-book", label: "Worker Gold Book", icon: BookOpen },
   { to: "/workshop", label: "Manufacturing Books", icon: Hammer },
   { to: "/barcode", label: "Barcode & Tagging", icon: ScanLine },
-  { to: "/melt", label: "Melt Account", icon: FlameKindling },
+  { to: "/conversion", label: "Metal Conversion", icon: Scale },
   { to: "/stock", label: "Ready Stock", icon: Package },
   { to: "/billing", label: "Billing", icon: Receipt },
   { to: "/ledger", label: "Gold Stock", icon: BookOpen },
@@ -113,7 +112,7 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
       "/workshop": "job_work",
       "/workshop/gold-book": "payroll",
       "/manufacturing": "manufacturing",
-      "/melt": "melt_account",
+      "/conversion": "melt_account",
       "/stock": "inventory",
       "/barcode": "barcode",
       "/hardware": "hardware_integration",
