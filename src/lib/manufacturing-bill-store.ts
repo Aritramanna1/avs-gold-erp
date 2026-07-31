@@ -749,23 +749,23 @@ export const useMfgBills = create<MfgBillState>()(
         if (wf.finishedStockAutomatic) {
           try {
             const { useStock } = await import("./stock-store");
-            const stockId = crypto.randomUUID();
-            await useStock.getState().add({
-              id: stockId,
-              itemName: bill.itemName,
-              category: bill.category,
-              purity: bill.finishedPurity,
-              grossMg: bill.finishedGrossMg,
-              netMg: bill.finishedGrossMg,
-              fineMg: bill.finishedFineMg,
-              status: "available",
-              location: "safe",
-              linkedOrderId: bill.orderId,
-              linkedJobId: bill.id,
-              linkedCustomerId: bill.customerId,
-              notes: `Auto-created from Manufacturing Bill ${bill.billNo}`,
-            } as any);
-            finishedStockItemId = stockId;
+            const stockItem = await useStock.getState().addReadyStock(
+              {
+                itemName: bill.itemName,
+                category: bill.category,
+                purity: bill.finishedPurity,
+                grossMg: bill.finishedGrossMg,
+                netMg: bill.finishedGrossMg,
+                status: "available",
+                location: "safe",
+                linkedOrderId: bill.orderId,
+                linkedJobId: bill.id,
+                linkedCustomerId: bill.customerId,
+                notes: `Auto-created from Manufacturing Bill ${bill.billNo}`,
+              },
+              "manufactured",
+            );
+            finishedStockItemId = stockItem.id;
             await get().patchBill(id, { finishedStockItemId });
           } catch {
             warnings.push("Could not move item to Finished Stock automatically — add manually");
