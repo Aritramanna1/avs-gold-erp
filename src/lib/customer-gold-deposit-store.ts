@@ -12,12 +12,15 @@
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { useLedger } from "./ledger-store";
+import { useMaterialVault } from "./material-vault-store";
 
 export interface CustomerGoldDeposit {
   id: string;
   createdAt: number;
   customerId: string;
   customerName: string;
+  /** Configurable precious metal; legacy deposits default to Gold. */
+  metal?: string;
   grossMg: number;
   purity: number;
   fineMg: number;
@@ -36,12 +39,13 @@ interface CustomerGoldDepositState {
     grossMg: number;
     purity: number;
     fineMg: number;
+    metal?: string;
     notes?: string;
   }) => Promise<CustomerGoldDeposit>;
   /** Draws down a customer's deposited-gold balance against an order/manufacturing bill. */
   utilize: (customerId: string, fineMg: number, reference: string) => Promise<void>;
   /** Sum of undrawn fine gold this customer still has on deposit. */
-  balanceFor: (customerId: string) => number;
+  balanceFor: (customerId: string, metal?: string) => number;
 }
 
 const depositRepository = createRepository<CustomerGoldDeposit>("customer_gold_deposits");
@@ -58,21 +62,38 @@ export const useCustomerGoldDeposit = create<CustomerGoldDepositState>()((set, g
   },
   deposit: async (input) => {
     const id = makeId();
-    const entry = await useLedger.getState().append({
-      type: "customer_gold_received",
-      netFineMg: input.fineMg,
-      deltas: { vault: input.fineMg },
-      grossMg: input.grossMg,
-      purity: input.purity as any,
-      fineMg: input.fineMg,
-      reference: id,
-      notes: `Gold deposit from ${input.customerName}${input.notes ? `: ${input.notes}` : ""}`,
-    });
+    const metal = input.metal ?? "Gold";
+    const entry =
+      metal === "Gold"
+        ? await useLedger.getState().append({
+            type: "customer_gold_received",
+            netFineMg: input.fineMg,
+            deltas: { vault: input.fineMg },
+            grossMg: input.grossMg,
+            purity: input.purity as any,
+            fineMg: input.fineMg,
+            reference: id,
+            notes: `Gold deposit from ${input.customerName}${input.notes ? `: ${input.notes}` : ""}`,
+          })
+        : await useMaterialVault.getState().append({
+            category: "raw_gold",
+            metal,
+            ownership: "customer",
+            type: "purchase",
+            deltaMg: input.grossMg,
+            grossMg: input.grossMg,
+            purity: input.purity,
+            reference: id,
+            remarks: `Customer ${metal} deposit from ${input.customerName}${input.notes ? `: ${input.notes}` : ""}`,
+            actorId: null,
+            actorEmail: null,
+          });
     const record: CustomerGoldDeposit = {
       id,
       createdAt: Date.now(),
       customerId: input.customerId,
       customerName: input.customerName,
+      metal,
       grossMg: input.grossMg,
       purity: input.purity,
       fineMg: input.fineMg,
@@ -107,9 +128,11 @@ export const useCustomerGoldDeposit = create<CustomerGoldDepositState>()((set, g
     await get().refresh();
     void reference; // kept for future audit-log linkage when this is wired to an order/bill
   },
-  balanceFor: (customerId) => {
+  balanceFor: (customerId, metal) => {
     return get()
-      .deposits.filter((d) => d.customerId === customerId)
+      .deposits.filter(
+        (d) => d.customerId === customerId && (!metal || (d.metal ?? "Gold") === metal),
+      )
       .reduce((sum, d) => sum + (d.fineMg - d.utilizedFineMg), 0);
   },
 }));
