@@ -45,6 +45,10 @@ function safeGramsToMg(val: string): number {
   }
 }
 
+function purityValue(value: string): number {
+  return Number(value.split(":").pop() ?? 0);
+}
+
 function ConversionIndex() {
   const { records, refresh, convert } = useMetalConversion();
   const purities = useSettings((s) => s.purities);
@@ -55,7 +59,6 @@ function ConversionIndex() {
   const [destPurity, setDestPurity] = useState("");
   const [inputGrams, setInputGrams] = useState("");
   const [actualOutputGrams, setActualOutputGrams] = useState("");
-  const [alloyMg, setAlloyMg] = useState("");
   const [operator, setOperator] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -69,8 +72,8 @@ function ConversionIndex() {
       alloyFormulas.find(
         (f) =>
           f.active &&
-          String(f.fromPurityPermille) === sourcePurity &&
-          String(f.toPurityPermille) === destPurity,
+          f.fromPurityPermille === purityValue(sourcePurity) &&
+          f.toPurityPermille === purityValue(destPurity),
       ),
     [alloyFormulas, sourcePurity, destPurity],
   );
@@ -79,13 +82,15 @@ function ConversionIndex() {
   const expectedOutputMg = formula
     ? Math.round(inputFineMg * (1 - formula.expectedLossPct / 100))
     : 0;
+  const calculatedAlloyMg = formula
+    ? Math.max(0, Math.round((inputFineMg * formula.alloyRatioMgPer1000) / 1000))
+    : 0;
 
   function resetForm() {
     setSourcePurity("");
     setDestPurity("");
     setInputGrams("");
     setActualOutputGrams("");
-    setAlloyMg("");
     setOperator("");
     setNotes("");
   }
@@ -98,11 +103,11 @@ function ConversionIndex() {
     setSaving(true);
     try {
       await convert({
-        sourcePurity: parseInt(sourcePurity, 10),
-        destPurity: parseInt(destPurity, 10),
+        sourcePurity: purityValue(sourcePurity),
+        destPurity: purityValue(destPurity),
         inputFineMg,
         actualOutputFineMg: safeGramsToMg(actualOutputGrams),
-        alloyAddedMg: parseInt(alloyMg || "0", 10),
+        alloyAddedMg: calculatedAlloyMg,
         operator,
         notes: notes || undefined,
       });
@@ -228,8 +233,8 @@ function ConversionIndex() {
                   </SelectTrigger>
                   <SelectContent>
                     {purities.map((p) => (
-                      <SelectItem key={p.id} value={String(p.permille)}>
-                        {p.label}
+                      <SelectItem key={p.id} value={`${p.metal ?? "Gold"}:${p.permille}`}>
+                        {p.metal ?? "Gold"} · {p.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -243,8 +248,8 @@ function ConversionIndex() {
                   </SelectTrigger>
                   <SelectContent>
                     {purities.map((p) => (
-                      <SelectItem key={p.id} value={String(p.permille)}>
-                        {p.label}
+                      <SelectItem key={p.id} value={`${p.metal ?? "Gold"}:${p.permille}`}>
+                        {p.metal ?? "Gold"} · {p.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -288,12 +293,11 @@ function ConversionIndex() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs text-muted-foreground">Alloy Added (mg)</label>
-                <Input
-                  placeholder="0"
-                  value={alloyMg}
-                  onChange={(e) => setAlloyMg(e.target.value)}
-                />
+                <label className="text-xs text-muted-foreground">Calculated Alloy (mg)</label>
+                <Input value={calculatedAlloyMg || ""} readOnly aria-readonly="true" />
+                <p className="text-[11px] text-muted-foreground">
+                  From the active Settings formula.
+                </p>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs text-muted-foreground">Operator</label>
