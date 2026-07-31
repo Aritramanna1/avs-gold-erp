@@ -20,7 +20,7 @@
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { append as appendAuditEntry } from "./security/audit-log";
-import { getMetaValue, setMetaValue } from "./local-db";
+import { getMetaValue, getPendingOutbox, setMetaValue } from "./local-db";
 import { fineGoldMg } from "./gold";
 
 // ── Material categories — extensible registry, not a closed enum ──────────
@@ -96,6 +96,10 @@ export interface MaterialMovement {
   id: string;
   ts: number;
   category: string;
+  /** Configurable precious-metal family. Legacy movements default to Gold. */
+  metal?: string;
+  /** Economic owner of the metal, kept on every movement for reconciliation. */
+  ownership?: "company" | "customer" | "karigar" | "supplier";
   type: MaterialMovementType;
   /** Signed mg — positive increases the category balance, negative decreases it. */
   deltaMg: number;
@@ -152,6 +156,28 @@ export interface GroupedBalances {
 }
 
 const movementRepository = createRepository<MaterialMovement>("material_vault_movements");
+
+function pendingMovementRecovery(): MaterialMovement[] {
+  return getPendingOutbox()
+    .filter(
+      (entry) =>
+        entry.table_name === "material_vault_movements" &&
+        (entry.operation === "insert" || entry.operation === "update"),
+    )
+    .map((entry) => {
+      if (typeof entry.payload === "string") {
+        try {
+          return JSON.parse(entry.payload) as MaterialMovement;
+        } catch {
+          return null;
+        }
+      }
+      return entry.payload as MaterialMovement;
+    })
+    .filter((movement): movement is MaterialMovement =>
+      Boolean(movement && typeof movement.id === "string" && movement.category),
+    );
+}
 
 // ── Admin-configurable materials — persisted, nothing hard-coded ────────────
 const CUSTOM_CATEGORIES_KEY = "material_custom_categories";
@@ -213,6 +239,10 @@ export function computeCategoryBalance(movements: MaterialMovement[], category: 
   return movements.filter((m) => m.category === category).reduce((s, m) => s + m.deltaMg, 0);
 }
 
+function movementBalanceKey(m: Pick<MaterialMovement, "category" | "metal" | "purity">): string {
+  return `${m.metal ?? "Gold"}::${m.category}::${m.purity ?? 0}`;
+}
+
 /** Grouped balances across every category that has ever had a movement, plus any registered-but-unused category (shown at 0). */
 export function computeMaterialBalances(
   movements: MaterialMovement[],
@@ -260,7 +290,8 @@ export function computeMaterialBalances(
  * not always fine gold, so each carries its own purity and fine-gold equivalent.
  */
 export interface MaterialStockItem {
-  key: string; // `${category}::${purity}`
+  key: string; // `${metal}::${category}::${purity}`
+  metal: string;
   category: string;
   label: string;
   group: MaterialGroup;
@@ -277,11 +308,13 @@ export function computeMaterialStockItems(
 ): MaterialStockItem[] {
   const map = new Map<string, MaterialStockItem>();
   for (const m of movements) {
+    const metal = m.metal ?? "Gold";
     const purity = m.purity ?? 0;
-    const key = `${m.category}::${purity}`;
+    const key = `${metal}::${m.category}::${purity}`;
     const def = labelFor(categories, m.category);
     const item = map.get(key) ?? {
       key,
+      metal,
       category: m.category,
       label: def.label,
       group: def.group,
@@ -296,7 +329,13 @@ export function computeMaterialStockItems(
     // which silently under-reports fine gold vs. the ledger for every purity
     // below 999. Sign is reapplied after computing on the magnitude, since
     // fineGoldMg() requires a non-negative gross.
-    item.fineMg += purity > 0 ? Math.sign(m.deltaMg) * fineGoldMg(Math.abs(m.deltaMg), purity) : 0;
+    item.fineMg +=
+      purity > 0
+        ? Math.sign(m.deltaMg) *
+          (metal === "Gold"
+            ? fineGoldMg(Math.abs(m.deltaMg), purity)
+            : Math.round((Math.abs(m.deltaMg) * purity) / 1000))
+        : 0;
     map.set(key, item);
   }
   return Array.from(map.values())
@@ -332,13 +371,24 @@ interface MaterialVaultState {
 export const useMaterialVault = create<MaterialVaultState>()((set, get) => ({
   movements: [],
   categories: mergeCategories(readCustomCategories()),
-  refresh: async () =>
+  refresh: async () => {
+    const persisted = await movementRepository.readAll();
+    // A reconnect can race a page reload: the encrypted SQLite row and its
+    // outbox entry are committed independently of the remote push, so the
+    // outbox is the authoritative recovery record until the push is complete.
+    // Merge those payloads into the read model so a crash/reload never hides a
+    // locally accepted accounting movement. Deduplication keeps the normal
+    // persisted-row path unchanged.
+    const byId = new Map(persisted.map((movement) => [movement.id, movement]));
+    for (const movement of pendingMovementRecovery()) byId.set(movement.id, movement);
+    const movements = [...byId.values()];
     set({
-      movements: await movementRepository.readAll(),
+      movements,
       // Custom materials are admin-configurable and persisted — reload them so a
       // material added on another screen/session shows up here too.
       categories: mergeCategories(readCustomCategories()),
-    }),
+    });
+  },
   registerCategory: (def) => {
     // Persist admin-defined materials so they survive reload; built-ins are
     // never written to the custom store (they always come from DEFAULT).
@@ -356,9 +406,15 @@ export const useMaterialVault = create<MaterialVaultState>()((set, get) => ({
     set({ categories: mergeCategories(readCustomCategories()) });
   },
   append: async (input) => {
-    const balanceBefore = computeCategoryBalance(get().movements, input.category);
+    const balanceBefore = get()
+      .movements.filter((m) => movementBalanceKey(m) === movementBalanceKey(input))
+      .reduce((sum, m) => sum + m.deltaMg, 0);
+    if (balanceBefore + input.deltaMg < 0) {
+      throw new Error("This metal, purity, and category balance cannot become negative.");
+    }
     const movement: MaterialMovement = {
       ...input,
+      metal: input.metal ?? "Gold",
       id: makeId(),
       ts: Date.now(),
       balanceAfterMg: balanceBefore + input.deltaMg,
