@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Package, ScanLine, ArrowRightLeft } from "lucide-react";
+import { Package, ScanLine, ArrowRightLeft, Plus } from "lucide-react";
 import { ModuleWorkspace } from "@/components/module-workspace";
 import { useStock, STOCK_STATUS_LABELS } from "@/lib/stock-store";
 export const Route = createFileRoute("/stock/")({ component: StockWorkspace });
@@ -29,6 +29,7 @@ function StockWorkspace() {
         { label: "Movements", value: movements.length },
       ]}
       actions={[
+        { label: "Add ready stock", to: "/stock/entry", icon: Plus },
         { label: "Scan barcode", to: "/workshop/barcode-scanner", icon: ScanLine },
         { label: "Stock verification", to: "/stock/verification", icon: ArrowRightLeft },
       ]}
