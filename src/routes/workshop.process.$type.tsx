@@ -73,6 +73,8 @@ function WorkshopProcessPage() {
   const [karigarId, setKarigarId] = useState("");
   const [weightGrams, setWeightGrams] = useState("");
   const [purity, setPurity] = useState("916");
+  const [stoneCount, setStoneCount] = useState("");
+  const [stoneWeightGrams, setStoneWeightGrams] = useState("");
   const [remarks, setRemarks] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -112,12 +114,22 @@ function WorkshopProcessPage() {
         karigarName: karigar?.fullName ?? "—",
         weightBeforeMg: safeGramsToMg(weightGrams),
         purity: parseInt(purity, 10) || 916,
+        stoneCount:
+          processType === "stone_setting"
+            ? Math.max(0, parseInt(stoneCount || "0", 10))
+            : undefined,
+        stoneWeightMg:
+          processType === "stone_setting" && stoneWeightGrams
+            ? safeGramsToMg(stoneWeightGrams)
+            : undefined,
         remarks: remarks || undefined,
       });
       toast.success(`${processLabel(processType)} gold issued — Gold Vault updated.`);
       setIssueDialogOpen(false);
       setKarigarId("");
       setWeightGrams("");
+      setStoneCount("");
+      setStoneWeightGrams("");
       setRemarks("");
     } catch (e) {
       toast.error(String(e instanceof Error ? e.message : "Issue failed"));
@@ -303,6 +315,26 @@ function WorkshopProcessPage() {
               <label className="text-xs text-muted-foreground">Remarks</label>
               <Input value={remarks} onChange={(e) => setRemarks(e.target.value)} />
             </div>
+            {processType === "stone_setting" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">Stone Count</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={stoneCount}
+                    onChange={(e) => setStoneCount(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">Stone Weight (g)</label>
+                  <Input
+                    value={stoneWeightGrams}
+                    onChange={(e) => setStoneWeightGrams(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter className="mt-4">
             <Button variant="ghost" onClick={() => setIssueDialogOpen(false)} disabled={saving}>

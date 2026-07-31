@@ -33,11 +33,16 @@ export interface WorkshopProcessTransaction {
   /** actualLoss - allowedLoss, floor 0 — flagged, never silently absorbed. */
   excessLossMg: number;
   recoveryMg: number;
+  /** Stone Setting traceability; absent for other processes. */
+  stoneCount?: number;
+  stoneWeightMg?: number;
   labourChargesPaise: number;
   remarks?: string;
   status: "issued" | "completed";
   ledgerRefIssue: string;
   ledgerRefReturn?: string;
+  /** Explicit zero-balance ledger event so loss is visible in Workshop Books. */
+  ledgerRefLoss?: string;
 }
 
 interface WorkshopProcessState {
@@ -51,6 +56,8 @@ interface WorkshopProcessState {
     jobCardId?: string;
     weightBeforeMg: number;
     purity: number;
+    stoneCount?: number;
+    stoneWeightMg?: number;
     remarks?: string;
   }) => Promise<WorkshopProcessTransaction>;
   /** Records the process's completion: what came back, recovery, labour. */
@@ -59,6 +66,8 @@ interface WorkshopProcessState {
     input: {
       weightAfterMg: number;
       recoveryMg?: number;
+      stoneCount?: number;
+      stoneWeightMg?: number;
       labourChargesPaise?: number;
       remarks?: string;
     },
@@ -119,6 +128,8 @@ export const useWorkshopProcess = create<WorkshopProcessState>()((set, get) => (
       allowedLossMg: Math.round((input.weightBeforeMg * cfg.allowedLossPct) / 100),
       excessLossMg: 0,
       recoveryMg: 0,
+      stoneCount: input.stoneCount,
+      stoneWeightMg: input.stoneWeightMg,
       labourChargesPaise: 0,
       remarks: input.remarks,
       status: "issued",
@@ -154,16 +165,32 @@ export const useWorkshopProcess = create<WorkshopProcessState>()((set, get) => (
       notes: `${cfg.label} completed by ${tx.karigarName} — returned ${input.weightAfterMg}mg${recoveryMg ? ` + ${recoveryMg}mg recovery` : ""}${excessLossMg > 0 ? ` (EXCESS LOSS ${excessLossMg}mg beyond allowed ${tx.allowedLossMg}mg)` : ""}`,
     });
 
+    // The return entry carries the physical balance change. This separate
+    // zero-balance event makes the measured loss independently visible in the
+    // running Workshop Books and audit trail without double-counting it.
+    const lossEntry = await useLedger.getState().append({
+      type: "workshop_process_loss",
+      netFineMg: 0,
+      deltas: {},
+      purity: tx.purity as any,
+      fineMg: actualLossMg,
+      reference: id,
+      notes: `${cfg.label} loss: before ${tx.weightBeforeMg}mg, after ${input.weightAfterMg}mg, loss ${actualLossMg}mg, allowed ${tx.allowedLossMg}mg, recovery ${recoveryMg}mg${input.remarks ? ` — ${input.remarks}` : ""}`,
+    });
+
     const updated: WorkshopProcessTransaction = {
       ...tx,
       weightAfterMg: input.weightAfterMg,
       actualLossMg,
       excessLossMg,
       recoveryMg,
+      stoneCount: input.stoneCount ?? tx.stoneCount,
+      stoneWeightMg: input.stoneWeightMg ?? tx.stoneWeightMg,
       labourChargesPaise: input.labourChargesPaise ?? 0,
       remarks: input.remarks ?? tx.remarks,
       status: "completed",
       ledgerRefReturn: returnEntry.id,
+      ledgerRefLoss: lossEntry.id,
     };
     await processRepository.save(updated);
     await get().refresh();
