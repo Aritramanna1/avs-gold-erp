@@ -4,6 +4,7 @@ import { runLocal, upsertRow, softDeleteRow } from "@/lib/local-db";
 
 // Map our entity types to Supabase table structures
 const BRANCH_SUPPORTED_TABLES = [
+  "attachments",
   "people",
   "orders",
   "job_cards",
@@ -14,6 +15,7 @@ const BRANCH_SUPPORTED_TABLES = [
   "repairs",
   "attendance",
   "worker_transactions",
+  "material_vault_movements",
   "worker_settlements",
   "daily_close",
   "print_logs",
@@ -387,14 +389,15 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
     table === "estimates" ||
     table === "delivery_challans"
   ) {
-    // These tables only have {id, data jsonb, created_at, updated_at} — no
-    // structured branch_id/invoice_id/customer_id/status columns exist (see
-    // supabase/migrations/*_add_credit_debit_notes_estimates_challans.sql).
-    // The full domain object (including branchId/invoiceId/customerId/status)
-    // already lives in `data`; nothing filters on top-level columns for these
-    // tables yet, so there is no reason to write ones the schema doesn't have.
+    // Keep the full domain object in `data`, while also writing the live
+    // tenant/branch columns used by RLS. The target schema has firm_id and
+    // branch_id even though older repository comments described a JSON-only
+    // compatibility shape.
     dbRow = {
       id: rawPayload.id,
+      branch_id: rawPayload.branchId ?? null,
+      customer_id: rawPayload.customerId ?? null,
+      status: rawPayload.status ?? null,
       data: rawPayload,
     };
   } else if (table === "order_issues" || table === "worker_returns") {
@@ -461,8 +464,70 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
       dbRow.data = dataCopy;
     }
     // Also set top-level branch_id if column exists
-    if (["attachments", "file_attachments", "gold_settlements"].includes(table)) {
+    if (
+      ["attachments", "file_attachments", "gold_settlements", "material_vault_movements"].includes(
+        table,
+      )
+    ) {
       dbRow.branch_id = bid;
+    }
+  }
+
+  if (["credit_notes", "debit_notes", "estimates", "delivery_challans"].includes(table)) {
+    const { data: userResult } = await supabase.auth.getUser();
+    if (userResult.user?.id) {
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("firm_id,branch_id")
+        .eq("auth_id", userResult.user.id)
+        .maybeSingle();
+      if (profile?.firm_id) dbRow.firm_id = profile.firm_id;
+      if (!dbRow.branch_id) dbRow.branch_id = profile?.branch_id ?? null;
+    }
+  }
+
+  // People is a structured tenant table as well. Its legacy mapper stores
+  // the domain document in `data`, but RLS authorizes the top-level firm_id;
+  // derive it from auth.uid() instead of trusting browser payloads.
+  if (
+    [
+      "people",
+      "gold_ledger",
+      "orders",
+      "job_cards",
+      "whatsapp_inbox",
+      "invoices",
+      "worker_returns",
+      "customer_settlements",
+      "worker_transactions",
+      "worker_settlements",
+      "material_vault_movements",
+    ].includes(table) &&
+    !dbRow.firm_id
+  ) {
+    const { data: userResult } = await supabase.auth.getUser();
+    if (userResult.user?.id) {
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("firm_id")
+        .eq("auth_id", userResult.user.id)
+        .maybeSingle();
+      if (profile?.firm_id) dbRow.firm_id = profile.firm_id;
+    }
+  }
+
+  // Attachment metadata is tenant-owned even when the legacy domain payload
+  // does not carry firm_id. Derive it from the authenticated profile so RLS
+  // can authorize the write without trusting browser input.
+  if (table === "attachments" && !dbRow.firm_id) {
+    const { data: userResult } = await supabase.auth.getUser();
+    if (userResult.user?.id) {
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("firm_id")
+        .eq("auth_id", userResult.user.id)
+        .maybeSingle();
+      if (profile?.firm_id) dbRow.firm_id = profile.firm_id;
     }
   }
 
