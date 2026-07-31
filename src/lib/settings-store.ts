@@ -27,6 +27,7 @@ import {
  * disappear after restart" bug — it was only ever half-fixed, on one write path.)
  */
 let lastLocalSettingsWriteAt = 0;
+let settingsWriteQueue: Promise<void> = Promise.resolve();
 
 /** True if `rowUpdatedAt` predates this tab's most recent settings write. */
 export function isSettingsPullStale(rowUpdatedAt: string | null | undefined): boolean {
@@ -164,7 +165,7 @@ async function deleteWorkshopFromDb(id: string): Promise<void> {
 }
 
 /** Collects the current state snapshot and saves it to app_settings */
-function persistSettings(get: () => any): void {
+function persistSettings(get: () => any, force = false): void {
   const s = get();
 
   // Never write before the stored settings have been read back.
@@ -177,9 +178,9 @@ function persistSettings(get: () => any): void {
   // next app start, which is exactly the "custom fields don't survive a restart"
   // report. Until hydration lands, the in-memory state is not a fact about this
   // workshop and must not be written down.
-  if (!s.settingsHydrated) return;
+  if (!s.settingsHydrated && !force) return;
 
-  void saveAppSettingsToDb({
+  const snapshot = {
     firm: s.firm,
     branding: s.branding,
     print: s.print,
@@ -211,7 +212,13 @@ function persistSettings(get: () => any): void {
     commAutomation: s.commAutomation,
     branchSettings: s.branchSettings,
     emailTemplates: s.emailTemplates,
-  });
+  };
+  // Several related rate fields are updated by one dialog action. Serialize
+  // the snapshots so concurrent upserts cannot finish out of order and leave
+  // the remote row with only one of the edited rates.
+  settingsWriteQueue = settingsWriteQueue
+    .catch(() => undefined)
+    .then(() => saveAppSettingsToDb(snapshot));
 }
 
 export interface EmailTemplate {
@@ -522,6 +529,8 @@ export interface GstSettings {
 
 export interface Purity {
   id: string;
+  /** Defaults to Gold for legacy records created before multi-metal support. */
+  metal?: string;
   label: string;
   permille: number;
   active: boolean;
@@ -567,6 +576,20 @@ export interface AlloyFormula {
   /** Expected process loss for this specific conversion, as a % of input weight. */
   expectedLossPct: number;
   notes?: string;
+}
+
+/** Versioned multi-metal composition rule. Legacy AlloyFormula remains readable for migration. */
+export interface MetalCompositionFormula {
+  id: string;
+  metal: string;
+  targetPurityPermille: number;
+  fineMetalPermille: number;
+  components: Array<{ metal: string; permille: number }>;
+  effectiveFrom: string;
+  version: number;
+  active: boolean;
+  expectedLossPct: number;
+  remarks?: string;
 }
 
 export interface MakingTemplate {
@@ -850,10 +873,12 @@ export interface SettingsState {
 }
 
 const DEFAULT_PURITIES: Purity[] = [
-  { id: "p_999", label: "24K / 999", permille: 999, active: true },
-  { id: "p_916", label: "22K / 916", permille: 916, active: true },
-  { id: "p_750", label: "18K / 750", permille: 750, active: true },
-  { id: "p_585", label: "14K / 585", permille: 585, active: true },
+  { id: "p_au_999", metal: "Gold", label: "24K / 999", permille: 999, active: true },
+  { id: "p_au_916", metal: "Gold", label: "22K / 916", permille: 916, active: true },
+  { id: "p_au_750", metal: "Gold", label: "18K / 750", permille: 750, active: true },
+  { id: "p_au_585", metal: "Gold", label: "14K / 585", permille: 585, active: true },
+  { id: "p_ag_999", metal: "Silver", label: "Fine Silver / 999", permille: 999, active: true },
+  { id: "p_ag_925", metal: "Silver", label: "Sterling / 925", permille: 925, active: true },
 ];
 
 /**
@@ -1807,19 +1832,22 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   },
   setGoldRate: (paise) => {
     set({ goldRatePerGramPaise: paise });
-    persistSettings(get);
+    // A deliberate bullion-rate edit is an explicit operator action. It must
+    // not be dropped merely because the background settings pull is still
+    // completing during the first authenticated page load.
+    persistSettings(get, true);
   },
   setGoldRate24K: (paise) => {
     set({ goldRate24KPerGramPaise: paise });
-    persistSettings(get);
+    persistSettings(get, true);
   },
   setGoldRate18K: (paise) => {
     set({ goldRate18KPerGramPaise: paise });
-    persistSettings(get);
+    persistSettings(get, true);
   },
   setSilverRate: (paise) => {
     set({ silverRatePerGramPaise: paise });
-    persistSettings(get);
+    persistSettings(get, true);
   },
   setBullionRateProvider: (p) => {
     set({

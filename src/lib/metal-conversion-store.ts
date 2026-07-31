@@ -14,12 +14,17 @@ import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { useLedger } from "./ledger-store";
 import { useSettings } from "./settings-store";
+import { calculateLoss } from "./metal-composition-engine";
 
 export interface ConversionRecord {
   id: string;
   batchNo: string;
   createdAt: number;
   operator: string;
+  sourceMetal?: string;
+  destinationMetal?: string;
+  batch?: string;
+  furnace?: string;
   sourcePurity: number; // permille
   destPurity: number; // permille
   inputFineMg: number;
@@ -40,6 +45,8 @@ interface MetalConversionState {
   records: ConversionRecord[];
   refresh: () => Promise<void>;
   convert: (input: {
+    sourceMetal?: string;
+    destinationMetal?: string;
     sourcePurity: number;
     destPurity: number;
     inputFineMg: number;
@@ -47,6 +54,8 @@ interface MetalConversionState {
     alloyAddedMg: number;
     operator: string;
     notes?: string;
+    batch?: string;
+    furnace?: string;
   }) => Promise<ConversionRecord>;
 }
 
@@ -82,7 +91,10 @@ export const useMetalConversion = create<MetalConversionState>()((set, get) => (
     const expectedOutputFineMg = Math.round(
       input.inputFineMg * (1 - formula.expectedLossPct / 100),
     );
-    const conversionLossMg = Math.max(0, input.inputFineMg - input.actualOutputFineMg);
+    const { actualLossMg: conversionLossMg } = calculateLoss(
+      input.inputFineMg,
+      input.actualOutputFineMg,
+    );
     const recoveryMg = Math.max(0, input.actualOutputFineMg - expectedOutputFineMg);
 
     const batchNo = makeBatchNo();
@@ -121,6 +133,10 @@ export const useMetalConversion = create<MetalConversionState>()((set, get) => (
       batchNo,
       createdAt: Date.now(),
       operator: input.operator,
+      sourceMetal: input.sourceMetal ?? "Gold",
+      destinationMetal: input.destinationMetal ?? input.sourceMetal ?? "Gold",
+      batch: input.batch,
+      furnace: input.furnace,
       sourcePurity: input.sourcePurity,
       destPurity: input.destPurity,
       inputFineMg: input.inputFineMg,
