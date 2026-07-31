@@ -499,6 +499,7 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
       "inventory",
       "stock_movements",
       "invoices",
+      "payments",
       "repairs",
       "worker_returns",
       "customer_settlements",
