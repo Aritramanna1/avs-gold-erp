@@ -568,6 +568,8 @@ export interface WorkshopProcessConfig {
  */
 export interface AlloyFormula {
   id: string;
+  /** Metal family this formula applies to; legacy records default to Gold. */
+  metal?: string;
   active: boolean;
   fromPurityPermille: number;
   toPurityPermille: number;
@@ -575,6 +577,9 @@ export interface AlloyFormula {
   alloyRatioMgPer1000: number;
   /** Expected process loss for this specific conversion, as a % of input weight. */
   expectedLossPct: number;
+  version?: number;
+  effectiveFrom?: string;
+  components?: Array<{ metal: string; permille: number }>;
   notes?: string;
 }
 
@@ -963,19 +968,27 @@ const DEFAULT_WORKSHOP_PROCESSES: WorkshopProcessConfig[] = [
 const DEFAULT_ALLOY_FORMULAS: AlloyFormula[] = [
   {
     id: "af_999_916",
+    metal: "Gold",
     active: true,
     fromPurityPermille: 999,
     toPurityPermille: 916,
     alloyRatioMgPer1000: 90,
     expectedLossPct: 1,
+    version: 1,
+    effectiveFrom: "2026-01-01",
+    components: [{ metal: "Alloy", permille: 1000 }],
   },
   {
     id: "af_999_750",
+    metal: "Gold",
     active: true,
     fromPurityPermille: 999,
     toPurityPermille: 750,
     alloyRatioMgPer1000: 332,
     expectedLossPct: 1,
+    version: 1,
+    effectiveFrom: "2026-01-01",
+    components: [{ metal: "Alloy", permille: 1000 }],
   },
 ];
 

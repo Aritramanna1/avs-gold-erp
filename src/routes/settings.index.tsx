@@ -2909,11 +2909,19 @@ function PurityTab() {
   const { purities, addPurity, updatePurity, removePurity } = useSettings();
   const [label, setLabel] = useState("");
   const [pm, setPm] = useState("");
+  const [metal, setMetal] = useState("Gold");
   return (
     <Card className="p-5 mt-4">
       <div className="space-y-2">
         {purities.map((p) => (
           <div key={p.id} className="flex items-center gap-2">
+            <Input
+              className="w-28"
+              value={p.metal ?? "Gold"}
+              aria-label={`${p.label} metal`}
+              onChange={(e) => updatePurity(p.id, { metal: e.target.value })}
+              placeholder="Metal"
+            />
             <Input
               className="max-w-xs"
               value={p.label}
@@ -2948,6 +2956,9 @@ function PurityTab() {
             placeholder="e.g. 20K / 833"
           />
         </Field>
+        <Field label="Metal">
+          <Input value={metal} onChange={(e) => setMetal(e.target.value)} placeholder="Gold" />
+        </Field>
         <Field label="Per-mille">
           <Input
             className="w-32"
@@ -2959,7 +2970,12 @@ function PurityTab() {
         <Button
           onClick={() => {
             if (label && pm) {
-              addPurity({ label, permille: parseInt(pm, 10), active: true });
+              addPurity({
+                label,
+                metal: metal || "Gold",
+                permille: parseInt(pm, 10),
+                active: true,
+              });
               setLabel("");
               setPm("");
             }
@@ -3061,6 +3077,12 @@ function WorkshopProcessTab() {
         <div className="space-y-2">
           {alloyFormulas.map((f) => (
             <div key={f.id} className="flex items-center gap-2">
+              <Input
+                className="w-24"
+                value={f.metal ?? "Gold"}
+                aria-label={`Formula ${f.id} metal`}
+                onChange={(e) => updateAlloyFormula(f.id, { metal: e.target.value })}
+              />
               <span className="text-xs w-28">
                 {f.fromPurityPermille} → {f.toPurityPermille}
               </span>
