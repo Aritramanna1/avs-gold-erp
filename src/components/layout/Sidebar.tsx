@@ -24,11 +24,7 @@ import {
 } from "lucide-react";
 import { useSettings } from "@/lib/settings-store";
 import { useModuleStore } from "@/lib/module-store";
-import {
-  isPilotHiddenModule,
-  RETAIL_COMING_SOON_MESSAGE,
-  ATTENDANCE_COMING_SOON_MESSAGE,
-} from "@/lib/pilot-config";
+import { isPilotHiddenModule, RETAIL_COMING_SOON_MESSAGE } from "@/lib/pilot-config";
 import { usePermissions } from "@/lib/use-permissions";
 import { Logo } from "@/components/ui/Logo";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -57,9 +53,8 @@ export const navigationItems = [
   { to: "/repair", label: RETAIL_COMING_SOON_MESSAGE, icon: ShoppingBag, retailOnly: true },
   {
     to: "/attendance",
-    label: ATTENDANCE_COMING_SOON_MESSAGE,
+    label: "Attendance & Payroll",
     icon: ClipboardCheck,
-    comingSoon: true,
   },
   { to: "/expenses", label: "Expenses", icon: TrendingDown },
   { to: "/dashboard/ceo", label: "CEO Dashboard", icon: Building2 },
@@ -248,9 +243,12 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
                 );
           const Icon = item.icon;
           const translationKey = labelKeys[item.to];
-          const translatedLabel = translationKey ? t(`navigation.${translationKey}`) : item.label;
-          const isComingSoonPlaceholder =
-            ("retailOnly" in item && item.retailOnly) || ("comingSoon" in item && item.comingSoon);
+          const translatedLabel = translationKey
+            ? String(t(`navigation.${translationKey}`))
+            : String(item.label);
+          const isComingSoonPlaceholder = Boolean(
+            ("retailOnly" in item && item.retailOnly) || ("comingSoon" in item && item.comingSoon),
+          );
           return (
             <Link
               key={item.to}
