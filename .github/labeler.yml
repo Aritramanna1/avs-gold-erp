@@ -1,0 +1,57 @@
+governance:
+  - changed-files:
+      - any-glob-to-any-file:
+          - CONTRIBUTING.md
+          - STACKED_PR_WORKFLOW.md
+          - MULTI_AGENT_DEVELOPMENT.md
+          - RELEASE_PROCESS.md
+          - MIGRATION_GOVERNANCE.md
+          - docs/MIGRATION_QUEUE.md
+          - .github/**
+
+database:
+  - changed-files:
+      - any-glob-to-any-file:
+          - supabase/**
+          - src/integrations/supabase/**
+          - src/lib/repositories/**
+          - src/lib/supabase-*
+
+permissions:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/lib/rbac.ts
+          - src/lib/permissions.ts
+          - src/components/role-gate.tsx
+
+billing:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/modules/billing/**
+          - src/routes/billing*
+          - src/lib/billing-store.ts
+          - src/lib/billing-documents-store.ts
+
+reports:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/routes/reports*
+          - src/lib/report-engine.ts
+          - src/lib/reconciliation/**
+
+ui:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/components/**
+          - src/routes/**
+          - src/styles.css
+          - src/index.css
+
+stacked-pr:
+  - head-branch:
+      - "^feature/.+-.+"
+      - "^fix/.+-.+"
+      - "^perf/.+-.+"
+      - "^security/.+-.+"
+      - "^docs/.+-.+"
+      - "^chore/.+-.+"

@@ -1,0 +1,26 @@
+# Default review ownership.
+* @Aritramanna1
+
+# Governance and release controls.
+/CONTRIBUTING.md @Aritramanna1
+/STACKED_PR_WORKFLOW.md @Aritramanna1
+/MULTI_AGENT_DEVELOPMENT.md @Aritramanna1
+/RELEASE_PROCESS.md @Aritramanna1
+/MIGRATION_GOVERNANCE.md @Aritramanna1
+/.github/ @Aritramanna1
+/docs/MIGRATION_QUEUE.md @Aritramanna1
+
+# Database, auth, storage, and permission-sensitive areas.
+/supabase/ @Aritramanna1
+/src/integrations/supabase/ @Aritramanna1
+/src/lib/repositories/ @Aritramanna1
+/src/lib/supabase-* @Aritramanna1
+/src/lib/rbac.ts @Aritramanna1
+/src/lib/permissions.ts @Aritramanna1
+
+# Business-critical ERP areas.
+/src/modules/billing/ @Aritramanna1
+/src/lib/billing-store.ts @Aritramanna1
+/src/lib/ledger-store.ts @Aritramanna1
+/src/lib/gold-*.ts @Aritramanna1
+/src/lib/workflow/ @Aritramanna1

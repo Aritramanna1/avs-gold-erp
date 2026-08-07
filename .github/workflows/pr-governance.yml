@@ -1,0 +1,72 @@
+name: PR Governance
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate-pr-template:
+    name: Validate PR template
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required PR sections
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || "";
+            const required = [
+              "## Goal",
+              "## Module",
+              "## Parent PR / Parent Branch",
+              "## Depends On",
+              "## Stack",
+              "## Files Changed",
+              "## Business Rules Affected",
+              "## Database Impact",
+              "## Migration Impact",
+              "## RLS / Permission Impact",
+              "## Universal Posting Engine Impact",
+              "## UI Impact",
+              "## Desktop / Tablet / Mobile Impact",
+              "## Tests / Checks",
+              "## Risks",
+              "## Rollback Notes",
+              "## Screenshots",
+            ];
+            const missing = required.filter((section) => !body.includes(section));
+            if (missing.length) {
+              core.setFailed(`PR description is missing required sections: ${missing.join(", ")}`);
+            }
+
+  validate-migration-queue:
+    name: Validate migration queue
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require migration queue updates for migration changes
+        shell: bash
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          changed="$(git diff --name-only "$base" "$head")"
+          if echo "$changed" | grep -q '^supabase/migrations/'; then
+            echo "$changed" | grep -q '^docs/MIGRATION_QUEUE.md$' || {
+              echo "Database migrations require a matching docs/MIGRATION_QUEUE.md update."
+              exit 1
+            }
+          fi
+
+  label:
+    name: Apply PR labels
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/labeler@v5

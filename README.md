@@ -13,7 +13,6 @@ npm install
 npm run dev
 ```
 
-
 Production checks and builds:
 
 ```sh
@@ -26,6 +25,7 @@ npm run build:electron
 ## Documentation
 
 To help you get started, we have compiled the following guides:
+
 - [Installation Guide](INSTALLATION.md)
 - [User Guide](USER_GUIDE.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
@@ -44,4 +44,11 @@ Licensing is isolated from customer data: the replaceable client provider calls 
 
 ## Repository safety
 
-This repository is connected to Lovable. Do not rewrite published history with force pushes, rebases, amended pushed commits, or squashed pushed commits.
+This repository is connected to external project editors and uses a stacked PR workflow. GitHub is the source of truth: do not push meaningful changes directly to protected branches, and do not rewrite published protected history with force pushes, rebases, amended pushed commits, or squashed pushed commits.
+
+Start governance work from:
+
+- [Stacked PR Workflow](STACKED_PR_WORKFLOW.md)
+- [Multi-Agent Development](MULTI_AGENT_DEVELOPMENT.md)
+- [Migration Governance](MIGRATION_GOVERNANCE.md)
+- [Release Process](RELEASE_PROCESS.md)
