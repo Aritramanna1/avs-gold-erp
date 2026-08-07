@@ -69,6 +69,8 @@ feature/customer-portal-reports
 
 ## Creating A Stack
 
+Before creating branches for a multi-agent or multi-branch feature, open a "Stacked PR Task" issue with the proposed owner, module, branches, dependencies, migration impact, and cross-module impact.
+
 ```sh
 git fetch origin
 git switch develop

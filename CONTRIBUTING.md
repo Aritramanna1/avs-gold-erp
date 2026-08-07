@@ -12,6 +12,8 @@ GitHub is the source of truth. No meaningful change should go directly to `main`
 6. Never force-push protected shared branches.
 7. Never deploy stacked feature branches directly to production.
 
+For multi-agent or multi-branch work, open a "Stacked PR Task" issue before creating branches so ownership, dependencies, database impact, and cross-module impact are visible early.
+
 Read the full process before opening work:
 
 - [Stacked PR Workflow](STACKED_PR_WORKFLOW.md)

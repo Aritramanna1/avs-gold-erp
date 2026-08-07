@@ -38,6 +38,7 @@ These files are the canonical Version 1 implementation documents. Root-level aud
 
 - [Stacked PR Workflow](../STACKED_PR_WORKFLOW.md)
 - [Multi-Agent Development](../MULTI_AGENT_DEVELOPMENT.md)
+- [Stacked PR Task Issue Template](../.github/ISSUE_TEMPLATE/stack-task.yml)
 - [Migration Governance](../MIGRATION_GOVERNANCE.md)
 - [Migration Queue](MIGRATION_QUEUE.md)
 - [Stacked PR Audit](STACKED_PR_AUDIT.md)
