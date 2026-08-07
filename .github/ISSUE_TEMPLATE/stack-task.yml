@@ -1,0 +1,77 @@
+name: Stacked PR Task
+description: Claim a logical implementation slice before creating stacked branches.
+title: "[Stack]: "
+labels:
+  - stacked-pr
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form before starting multi-agent or multi-branch work. Every meaningful change still needs a branch and PR.
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+      description: Agent, developer, or team responsible for this stack.
+      placeholder: Agent A / @username
+    validations:
+      required: true
+  - type: input
+    id: module
+    attributes:
+      label: Module
+      description: Logical ERP module or area.
+      placeholder: Billing, Customer Portal, Reports, Database, Governance
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should this stack accomplish?
+    validations:
+      required: true
+  - type: textarea
+    id: stack
+    attributes:
+      label: Proposed Stack
+      description: List branches and PR order. Each child must depend only on the item directly below it.
+      value: |
+        1. feature/... - Foundation
+        2. feature/... - Backend
+        3. feature/... - UI
+        4. feature/... - Reports
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Parent PRs, migrations, feature flags, external setup, or N/A.
+    validations:
+      required: true
+  - type: textarea
+    id: database
+    attributes:
+      label: Database / Migration Impact
+      description: Migration ID, affected objects, RLS/grants, rollback/recovery, or None.
+    validations:
+      required: true
+  - type: textarea
+    id: cross_module
+    attributes:
+      label: Cross-Module Impact
+      description: Shared files/contracts, owners notified, dependent stacks that must rebase, or None.
+    validations:
+      required: true
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Workflow Rules
+      options:
+        - label: This work will use branches and PRs, not direct protected-branch pushes.
+          required: true
+        - label: Child PRs will not be merged before their required parent PR.
+          required: true
+        - label: This stack will not be deployed directly to production.
+          required: true

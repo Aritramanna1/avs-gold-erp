@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Production deployment approval
+    url: https://github.com/Aritramanna1/avs-gold-erp/pulls
+    about: Production changes must go through the protected release PR flow.

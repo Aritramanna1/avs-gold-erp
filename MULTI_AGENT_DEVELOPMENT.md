@@ -31,6 +31,8 @@ Agent C
 5. Use stacked PRs for larger features instead of one huge PR.
 6. Keep generated files, migrations, and shared services synchronized with the parent PR.
 
+For new multi-agent work, open a "Stacked PR Task" issue before creating branches. The issue records owner, module, proposed stack, dependencies, database impact, and cross-module impact so two agents do not silently claim the same surface area.
+
 ## Cross-Module Changes
 
 Cross-module work must list:
