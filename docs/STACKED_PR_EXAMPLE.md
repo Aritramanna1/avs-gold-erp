@@ -2,19 +2,25 @@
 
 This example demonstrates the workflow without changing ERP business behavior.
 
+## Live Demonstration
+
+- Tracking issue: [Issue #6](https://github.com/Aritramanna1/avs-gold-erp/issues/6)
+- Owner: `Codex / @Aritramanna1`
+- Scope: documentation-only workflow demonstration.
+
 ## Stack
 
-1. PR TBD - Governance foundation
+1. [PR #2](https://github.com/Aritramanna1/avs-gold-erp/pull/2) - Governance foundation
    - Branch: `docs/example-stack-foundation`
    - Base: `develop`
    - Scope: add a README-only governance note.
 
-2. PR TBD - Governance checklist
+2. [PR #3](https://github.com/Aritramanna1/avs-gold-erp/pull/3) - Governance checklist
    - Branch: `docs/example-stack-checklist`
    - Base: `docs/example-stack-foundation`
    - Scope: add checklist examples that depend on the foundation wording.
 
-3. PR TBD - Governance screenshots
+3. [PR #4](https://github.com/Aritramanna1/avs-gold-erp/pull/4) - Governance screenshots
    - Branch: `docs/example-stack-screenshots`
    - Base: `docs/example-stack-checklist`
    - Scope: add optional screenshot placeholders for documentation-only PRs.
