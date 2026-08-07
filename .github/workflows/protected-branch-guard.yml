@@ -1,0 +1,35 @@
+name: Protected Branch Guard
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - staging
+      - "release/**"
+
+permissions:
+  contents: read
+
+jobs:
+  flag-direct-push:
+    name: Flag direct shared-branch push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail on direct shared-branch pushes
+        shell: bash
+        run: |
+          actor="${{ github.actor }}"
+          ref="${{ github.ref_name }}"
+
+          case "$actor" in
+            github-actions[bot]|dependabot[bot])
+              echo "Automated bot push detected on $ref by $actor."
+              ;;
+            *)
+              echo "::error::Direct pushes to $ref are not allowed by the stacked PR workflow."
+              echo "::error::Open a feature/fix/perf/security branch and use a pull request instead."
+              exit 1
+              ;;
+          esac

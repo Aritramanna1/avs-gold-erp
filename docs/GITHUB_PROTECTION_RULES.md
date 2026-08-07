@@ -14,6 +14,7 @@ Until the repository plan or visibility supports protected branches, the enforce
 - PR governance checks for required sections and migration queue updates.
 - CODEOWNERS routing metadata.
 - Automatic PR labels.
+- Protected Branch Guard workflow visibility for direct pushes to shared branches.
 - Documented protected-flow policy.
 
 When GitHub enables branch protection for this repository, apply the settings below before treating `main`, `master`, `develop`, `staging`, or `release/*` as technically protected.
