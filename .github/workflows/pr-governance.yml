@@ -42,6 +42,49 @@ jobs:
               core.setFailed(`PR description is missing required sections: ${missing.join(", ")}`);
             }
 
+            const placeholders = [
+              "#___",
+              "<!-- What problem does this PR solve? -->",
+              "<!-- Example: Billing, Customer Portal, Reports, Settings, Database, Docs -->",
+              "<!-- #___ or N/A -->",
+              "<!-- develop, feature/..., fix/... -->",
+              "<!-- List parent PRs, migrations, feature flags, or external setup. -->",
+              "<!-- Slice name -->",
+            ];
+            const retained = placeholders.filter((placeholder) =>
+              body.includes(placeholder),
+            );
+            if (retained.length) {
+              core.setFailed(
+                `PR description still contains template placeholders: ${retained.join(", ")}`,
+              );
+            }
+
+            function section(name) {
+              const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              const match = body.match(
+                new RegExp(`## ${escaped}\\s*([\\s\\S]*?)(?=\\n## |$)`, "i"),
+              );
+              return match ? match[1].trim() : "";
+            }
+
+            const parent = section("Parent PR / Parent Branch");
+            const dependsOn = section("Depends On");
+            const stack = section("Stack");
+            if (!/(Parent PR:\s*(N\/A|#\d+)|Parent branch:\s*`?[^`\n]+`?)/i.test(parent)) {
+              core.setFailed(
+                "Parent PR / Parent Branch must identify N/A or a concrete parent PR/branch.",
+              );
+            }
+            if (!/(N\/A|None|#\d+|migration|feature flag|external setup|branch)/i.test(dependsOn)) {
+              core.setFailed(
+                "Depends On must identify N/A/None or concrete parent PRs, migrations, feature flags, branches, or external setup.",
+              );
+            }
+            if (!/(THIS PR|PR #\d+)/i.test(stack)) {
+              core.setFailed("Stack must identify THIS PR and/or concrete PR numbers.");
+            }
+
   validate-migration-queue:
     name: Validate migration queue
     runs-on: ubuntu-latest

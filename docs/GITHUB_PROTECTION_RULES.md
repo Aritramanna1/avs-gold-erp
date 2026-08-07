@@ -11,7 +11,7 @@ As of 2026-08-08, this private repository does not allow branch protection or ru
 Until the repository plan or visibility supports protected branches, the enforceable controls in this PR are:
 
 - Pull request template requirements.
-- PR governance checks for required sections and migration queue updates.
+- PR governance checks for required sections, completed stack metadata, and migration queue updates.
 - CODEOWNERS routing metadata.
 - Automatic PR labels.
 - Protected Branch Guard workflow visibility for direct pushes to shared branches.
