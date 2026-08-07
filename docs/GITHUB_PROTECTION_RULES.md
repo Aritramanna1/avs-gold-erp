@@ -2,6 +2,22 @@
 
 Repository admins should configure these rules in GitHub branch protection or rulesets. This file documents the intended settings; it does not grant production deployment permission.
 
+## Current Enforcement Status
+
+As of 2026-08-08, this private repository does not allow branch protection or ruleset configuration through the GitHub API on the current plan. Attempts to read or write protection for `master` return:
+
+`Upgrade to GitHub Pro or make this repository public to enable this feature.`
+
+Until the repository plan or visibility supports protected branches, the enforceable controls in this PR are:
+
+- Pull request template requirements.
+- PR governance checks for required sections and migration queue updates.
+- CODEOWNERS routing metadata.
+- Automatic PR labels.
+- Documented protected-flow policy.
+
+When GitHub enables branch protection for this repository, apply the settings below before treating `main`, `master`, `develop`, `staging`, or `release/*` as technically protected.
+
 ## Protected Branch Patterns
 
 - `main`

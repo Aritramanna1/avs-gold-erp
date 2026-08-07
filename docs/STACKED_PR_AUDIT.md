@@ -44,8 +44,16 @@ Before this governance update:
 
 - The repository has no remote `develop`, `staging`, or `release/*` branches yet.
 - The local stable rollback and remote `origin/master` are not the same commit.
-- Branch protection and GitHub rulesets must be configured by a repository admin in GitHub.
+- Branch protection and GitHub rulesets require GitHub plan or repository visibility support before they can be enforced.
 - Existing production deployment state must not be changed by stacked PR governance work.
+
+## Protection Configuration Attempt
+
+After the governance branch was pushed, GitHub branch protection was checked for `master` through the GitHub API. GitHub returned HTTP 403 with:
+
+`Upgrade to GitHub Pro or make this repository public to enable this feature.`
+
+This confirms the repository-side governance files and workflow can be reviewed in PR #1, but technical branch protection cannot be enabled on the current private-repository plan. The intended settings are documented in `docs/GITHUB_PROTECTION_RULES.md` and should be applied as soon as the repository plan or visibility supports them.
 
 ## Governance Changes Introduced
 
