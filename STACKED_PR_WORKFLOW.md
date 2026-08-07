@@ -122,6 +122,7 @@ Every PR must include the template in `.github/PULL_REQUEST_TEMPLATE.md`, includ
 
 - Goal
 - Module
+- Owner
 - Parent PR / parent branch
 - Depends on
 - Files changed

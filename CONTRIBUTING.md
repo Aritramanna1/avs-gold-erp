@@ -69,6 +69,7 @@ Every PR must use `.github/PULL_REQUEST_TEMPLATE.md` and include:
 
 - Goal
 - Module
+- Owner
 - Parent PR / parent branch
 - Depends on
 - Stack section

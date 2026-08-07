@@ -24,7 +24,7 @@ Agent C
 
 ## Rules
 
-1. Claim ownership in the PR description.
+1. Claim ownership in the PR description's Owner section.
 2. Keep work inside the claimed stack unless a cross-module change is documented.
 3. Do not edit another stack without coordination in the PR.
 4. Never treat "finish the ERP" as permission to merge or deploy production.

@@ -21,6 +21,7 @@ jobs:
             const required = [
               "## Goal",
               "## Module",
+              "## Owner",
               "## Parent PR / Parent Branch",
               "## Depends On",
               "## Stack",
@@ -46,6 +47,7 @@ jobs:
               "#___",
               "<!-- What problem does this PR solve? -->",
               "<!-- Example: Billing, Customer Portal, Reports, Settings, Database, Docs -->",
+              "<!-- Agent, developer, or team responsible for this PR/stack slice. -->",
               "<!-- #___ or N/A -->",
               "<!-- develop, feature/..., fix/... -->",
               "<!-- List parent PRs, migrations, feature flags, or external setup. -->",
@@ -71,6 +73,10 @@ jobs:
             const parent = section("Parent PR / Parent Branch");
             const dependsOn = section("Depends On");
             const stack = section("Stack");
+            const owner = section("Owner");
+            if (!/(@?[A-Za-z0-9_.-]+|Agent\s+[A-Za-z0-9_.-]+|team\s+[A-Za-z0-9_.-]+)/i.test(owner)) {
+              core.setFailed("Owner must identify the agent, developer, or team responsible for this PR.");
+            }
             if (!/(Parent PR:\s*(N\/A|#\d+)|Parent branch:\s*`?[^`\n]+`?)/i.test(parent)) {
               core.setFailed(
                 "Parent PR / Parent Branch must identify N/A or a concrete parent PR/branch.",
