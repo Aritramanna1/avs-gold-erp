@@ -19,6 +19,14 @@ Until the repository plan or visibility supports protected branches, the enforce
 
 When GitHub enables branch protection for this repository, apply the settings below before treating `main`, `master`, `develop`, `staging`, or `release/*` as technically protected.
 
+To apply the repeatable branch-protection configuration after GitHub enables the feature:
+
+```sh
+npm run github:protect-branches
+```
+
+The script protects `master`, `develop`, and `staging`. Configure `release/*` through a GitHub ruleset when rulesets are available, because classic branch protection applies to concrete branch names.
+
 ## Protected Branch Patterns
 
 - `main`
