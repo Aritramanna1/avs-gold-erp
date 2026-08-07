@@ -59,9 +59,7 @@ At minimum:
 
 - `PR Governance / Validate PR template`
 - `PR Governance / Validate migration queue`
-- `npm run lint`
-- `npx tsc --noEmit`
-- `npm run build`
+- `CI / Verify`
 - Relevant E2E checks for the affected module.
 
 ## Higher-Risk Review Rule

@@ -70,6 +70,7 @@ This audit supports the non-behavioral governance update that adds:
 - `.github/CODEOWNERS`
 - `.github/labeler.yml`
 - `.github/labels.yml`
+- `.github/workflows/ci.yml`
 - `.github/workflows/pr-governance.yml`
 - `.github/workflows/protected-branch-guard.yml`
 - `scripts/apply-branch-protection.mjs`
