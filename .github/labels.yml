@@ -1,0 +1,27 @@
+- name: governance
+  color: "0052cc"
+  description: Repository governance, process, or policy
+
+- name: stacked-pr
+  color: "5319e7"
+  description: Stacked pull request or stack coordination
+
+- name: database
+  color: "b60205"
+  description: Database, migrations, RLS, or persistence
+
+- name: permissions
+  color: "d93f0b"
+  description: Auth, RBAC, roles, or permissions
+
+- name: billing
+  color: "fbca04"
+  description: Billing or posting related work
+
+- name: reports
+  color: "0e8a16"
+  description: Reports or analytics
+
+- name: ui
+  color: "1d76db"
+  description: User interface or route changes

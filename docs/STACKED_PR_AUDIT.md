@@ -69,8 +69,10 @@ This audit supports the non-behavioral governance update that adds:
 - `.github/PULL_REQUEST_TEMPLATE.md`
 - `.github/CODEOWNERS`
 - `.github/labeler.yml`
+- `.github/labels.yml`
 - `.github/workflows/pr-governance.yml`
 - `.github/workflows/protected-branch-guard.yml`
 - `scripts/apply-branch-protection.mjs`
+- `scripts/sync-github-labels.mjs`
 
 These files establish the workflow without changing ERP runtime behavior.

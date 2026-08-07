@@ -13,9 +13,15 @@ Until the repository plan or visibility supports protected branches, the enforce
 - Pull request template requirements.
 - PR governance checks for required sections, completed stack metadata, and migration queue updates.
 - CODEOWNERS routing metadata.
-- Automatic PR labels.
+- Automatic PR labels backed by `.github/labels.yml`.
 - Protected Branch Guard workflow visibility for direct pushes to shared branches.
 - Documented protected-flow policy.
+
+To apply the repository labels used by the PR labeler:
+
+```sh
+npm run github:sync-labels
+```
 
 When GitHub enables branch protection for this repository, apply the settings below before treating `main`, `master`, `develop`, `staging`, or `release/*` as technically protected.
 
