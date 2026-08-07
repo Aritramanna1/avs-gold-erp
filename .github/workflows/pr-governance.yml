@@ -110,6 +110,8 @@ jobs:
               exit 1
             }
           fi
+      - name: Validate migration queue metadata
+        run: npm run validate:migration-queue
 
   label:
     name: Apply PR labels

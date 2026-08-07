@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "validate:migration-queue": "node scripts/validate-migration-queue.mjs",
     "github:protect-branches": "node scripts/apply-branch-protection.mjs",
     "github:sync-labels": "node scripts/sync-github-labels.mjs",
     "format": "prettier --write .",

@@ -75,5 +75,6 @@ This audit supports the non-behavioral governance update that adds:
 - `.github/workflows/protected-branch-guard.yml`
 - `scripts/apply-branch-protection.mjs`
 - `scripts/sync-github-labels.mjs`
+- `scripts/validate-migration-queue.mjs`
 
 These files establish the workflow without changing ERP runtime behavior.
