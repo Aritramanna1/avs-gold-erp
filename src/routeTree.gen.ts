@@ -68,6 +68,7 @@ import { Route as StockStonesRouteImport } from './routes/stock.stones'
 import { Route as StockLotsRouteImport } from './routes/stock.lots'
 import { Route as StockImportRouteImport } from './routes/stock.import'
 import { Route as StockHallmarkRouteImport } from './routes/stock.hallmark'
+import { Route as StockEntryRouteImport } from './routes/stock.entry'
 import { Route as StockIdRouteImport } from './routes/stock.$id'
 import { Route as SettlementNewRouteImport } from './routes/settlement.new'
 import { Route as SettlementIdRouteImport } from './routes/settlement.$id'
@@ -459,6 +460,11 @@ const StockImportRoute = StockImportRouteImport.update({
 const StockHallmarkRoute = StockHallmarkRouteImport.update({
   id: '/hallmark',
   path: '/hallmark',
+  getParentRoute: () => StockRoute,
+} as any)
+const StockEntryRoute = StockEntryRouteImport.update({
+  id: '/entry',
+  path: '/entry',
   getParentRoute: () => StockRoute,
 } as any)
 const StockIdRoute = StockIdRouteImport.update({
@@ -1050,6 +1056,7 @@ export interface FileRoutesByFullPath {
   '/settlement/$id': typeof SettlementIdRoute
   '/settlement/new': typeof SettlementNewRoute
   '/stock/$id': typeof StockIdRoute
+  '/stock/entry': typeof StockEntryRoute
   '/stock/hallmark': typeof StockHallmarkRoute
   '/stock/import': typeof StockImportRoute
   '/stock/lots': typeof StockLotsRoute
@@ -1195,6 +1202,7 @@ export interface FileRoutesByTo {
   '/settlement/$id': typeof SettlementIdRoute
   '/settlement/new': typeof SettlementNewRoute
   '/stock/$id': typeof StockIdRoute
+  '/stock/entry': typeof StockEntryRoute
   '/stock/hallmark': typeof StockHallmarkRoute
   '/stock/import': typeof StockImportRoute
   '/stock/lots': typeof StockLotsRoute
@@ -1353,6 +1361,7 @@ export interface FileRoutesById {
   '/settlement/$id': typeof SettlementIdRoute
   '/settlement/new': typeof SettlementNewRoute
   '/stock/$id': typeof StockIdRoute
+  '/stock/entry': typeof StockEntryRoute
   '/stock/hallmark': typeof StockHallmarkRoute
   '/stock/import': typeof StockImportRoute
   '/stock/lots': typeof StockLotsRoute
@@ -1512,6 +1521,7 @@ export interface FileRouteTypes {
     | '/settlement/$id'
     | '/settlement/new'
     | '/stock/$id'
+    | '/stock/entry'
     | '/stock/hallmark'
     | '/stock/import'
     | '/stock/lots'
@@ -1657,6 +1667,7 @@ export interface FileRouteTypes {
     | '/settlement/$id'
     | '/settlement/new'
     | '/stock/$id'
+    | '/stock/entry'
     | '/stock/hallmark'
     | '/stock/import'
     | '/stock/lots'
@@ -1814,6 +1825,7 @@ export interface FileRouteTypes {
     | '/settlement/$id'
     | '/settlement/new'
     | '/stock/$id'
+    | '/stock/entry'
     | '/stock/hallmark'
     | '/stock/import'
     | '/stock/lots'
@@ -2350,6 +2362,13 @@ declare module '@tanstack/react-router' {
       path: '/hallmark'
       fullPath: '/stock/hallmark'
       preLoaderRoute: typeof StockHallmarkRouteImport
+      parentRoute: typeof StockRoute
+    }
+    '/stock/entry': {
+      id: '/stock/entry'
+      path: '/entry'
+      fullPath: '/stock/entry'
+      preLoaderRoute: typeof StockEntryRouteImport
       parentRoute: typeof StockRoute
     }
     '/stock/$id': {
@@ -3302,6 +3321,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 interface StockRouteChildren {
   StockIdRoute: typeof StockIdRoute
+  StockEntryRoute: typeof StockEntryRoute
   StockHallmarkRoute: typeof StockHallmarkRoute
   StockImportRoute: typeof StockImportRoute
   StockLotsRoute: typeof StockLotsRoute
@@ -3313,6 +3333,7 @@ interface StockRouteChildren {
 
 const StockRouteChildren: StockRouteChildren = {
   StockIdRoute: StockIdRoute,
+  StockEntryRoute: StockEntryRoute,
   StockHallmarkRoute: StockHallmarkRoute,
   StockImportRoute: StockImportRoute,
   StockLotsRoute: StockLotsRoute,

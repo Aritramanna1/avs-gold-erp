@@ -394,7 +394,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
       useSettings.getState().addSecurityLog("login", `User signed in successfully`, s.user.email);
       void startCloudSync();
       void supabase.rpc("get_login_destination" as never).then(({ data }) => {
-          const destination: string = typeof data === "string" ? data : "/";
+        const destination: string = typeof data === "string" ? data : "/";
         const currentPath = window.location.pathname;
         if (currentPath === "/" || currentPath === "/saas-admin" || currentPath === "/platform") {
           if (destination === "/customer-portal") {

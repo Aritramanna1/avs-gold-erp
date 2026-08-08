@@ -57,6 +57,9 @@ build/LICENSE.txt
 # Local test-build distributions and source exports (never committed)
 /AVS Gold ERP*Test Build/
 *-Source-Code-Export.zip
+/avs_hostinger_deploy_*.tar.gz
+/mtj_dist*.zip
+/tokens.css
 
 # Reticle local browser profile (runtime state, not config)
 .reticle-chrome-profile/

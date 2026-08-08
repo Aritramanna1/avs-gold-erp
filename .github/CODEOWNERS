@@ -1,0 +1,5 @@
+# CODEOWNERS is advisory on the current private GitHub Free plan because native
+# branch protection is unavailable. Keep it for review routing and future
+# enforcement if the repository plan changes.
+
+* @Aritramanna1

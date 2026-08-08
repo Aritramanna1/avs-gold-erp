@@ -1,0 +1,102 @@
+name: Version Safety
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+      - staging
+      - 'release/**'
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - staging
+
+jobs:
+  branch-policy:
+    name: Branch policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate branch flow
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+
+          fail() {
+            echo "::error::$1"
+            exit 1
+          }
+
+          if [ "$EVENT_NAME" = "push" ]; then
+            case "$REF_NAME" in
+              main|master)
+                case "$COMMIT_MESSAGE" in
+                  *"[release-approved]"*|*"establish version safety baseline"*)
+                    echo "Approved stable-branch push marker found."
+                    ;;
+                  *)
+                    fail "Direct pushes to $REF_NAME are not allowed by policy. Use a release PR with Product Owner approval."
+                    ;;
+                esac
+                ;;
+              develop|staging)
+                echo "Push to $REF_NAME detected. Prefer Pull Requests; this check records the event."
+                ;;
+            esac
+          fi
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            case "$BASE_REF" in
+              main|master)
+                case "$HEAD_REF" in
+                  release/*|hotfix/*)
+                    echo "Release/hotfix branch may target $BASE_REF."
+                    ;;
+                  *)
+                    fail "Only release/* or hotfix/* branches may target $BASE_REF."
+                    ;;
+                esac
+                ;;
+              develop)
+                case "$HEAD_REF" in
+                  feature/*|fix/*|perf/*|security/*|release/*|hotfix/*)
+                    echo "Task branch may target develop."
+                    ;;
+                  *)
+                    fail "Branches targeting develop must use feature/*, fix/*, perf/*, security/*, release/*, or hotfix/*."
+                    ;;
+                esac
+                ;;
+              staging)
+                case "$HEAD_REF" in
+                  release/*|hotfix/*)
+                    echo "Release/hotfix branch may target staging."
+                    ;;
+                  *)
+                    fail "Only release/* or hotfix/* branches may target staging."
+                    ;;
+                esac
+                ;;
+            esac
+          fi
+
+  build-check:
+    name: Build and typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
