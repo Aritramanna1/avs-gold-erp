@@ -1,0 +1,12 @@
+:root {
+  --avs-radius-md: 0.5rem;
+  --avs-fast: 140ms;
+  --avs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --avs-ivory: #faf8f2;
+  --avs-paper: #fffdf8;
+  --avs-obsidian: #18181b;
+  --avs-titanium: #71717a;
+  --avs-gold: #a88445;
+  --avs-line: #e6decd;
+}
