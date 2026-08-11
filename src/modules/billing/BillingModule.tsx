@@ -38,6 +38,7 @@ import { useJobCards } from "@/lib/jobcards-store";
 import { usePeople } from "@/lib/people-store";
 import { useLedger } from "@/lib/ledger-store";
 import { useSettings } from "@/lib/settings-store";
+import { resolveMakingCharge } from "@/lib/calculation-engine";
 import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useAttachments } from "@/lib/attachments-store";
 import { useBillingStore, type BillingType } from "./billingStore";
@@ -240,6 +241,76 @@ function StockPhotoImg({
 
   if (!resolvedUrl) return <>{fallback ?? null}</>;
   return <img src={resolvedUrl} alt="" className={className} />;
+}
+
+/**
+ * Resolves a stock item's making charge. A stock item's own explicit
+ * makingChargePct/makingChargePerGPaise always wins (unchanged behavior —
+ * every existing stock row and every historically-posted invoice keeps
+ * working exactly as before). Only the old hardcoded "12%" fallback — which
+ * previously had zero configurability — now consults Settings → Making
+ * Charge (category override, then tenant default), which can be any basis.
+ */
+function computeStockMakingCharge(
+  stock: { category: string; makingChargePct?: number; makingChargePerGPaise?: number; grossMg: number; netMg: number; fineMg: number; piecesCount?: number; caratsCount?: number },
+  goldValuePaise: number,
+  makingChargeSettings: import("@/lib/settings-store").MakingChargeSettings,
+): { makingChargesPaise: number; makingChargePct: number; basis: import("@/lib/calculation-engine").MakingChargeBasis; ratePerUnitPaise: number } {
+  if (stock.makingChargePct != null) {
+    const resolved = resolveMakingCharge({
+      basis: "percentage",
+      percent: stock.makingChargePct,
+      goldValuePaise,
+      grossWeightMg: stock.grossMg,
+      netWeightMg: stock.netMg,
+      fineWeightMg: stock.fineMg,
+    });
+    return {
+      makingChargesPaise: resolved.totalChargePaise,
+      makingChargePct: stock.makingChargePct,
+      basis: "percentage",
+      ratePerUnitPaise: stock.makingChargePct,
+    };
+  }
+  if (stock.makingChargePerGPaise) {
+    const pct = goldValuePaise > 0 ? ((stock.makingChargePerGPaise * (stock.grossMg / 1000)) / goldValuePaise) * 100 : 0;
+    const resolved = resolveMakingCharge({
+      basis: "percentage",
+      percent: pct,
+      goldValuePaise,
+      grossWeightMg: stock.grossMg,
+      netWeightMg: stock.netMg,
+      fineWeightMg: stock.fineMg,
+    });
+    return {
+      makingChargesPaise: resolved.totalChargePaise,
+      makingChargePct: pct,
+      basis: "percentage",
+      ratePerUnitPaise: pct,
+    };
+  }
+
+  const override = makingChargeSettings.categoryOverrides[stock.category];
+  const basis = override?.basis ?? makingChargeSettings.defaultBasis;
+  const percent = override?.percent ?? makingChargeSettings.defaultPercent;
+  const ratePerUnitPaise = override?.ratePerUnitPaise ?? makingChargeSettings.defaultRatePerUnitPaise;
+  const resolved = resolveMakingCharge({
+    basis,
+    percent,
+    ratePerUnitPaise,
+    goldValuePaise,
+    grossWeightMg: stock.grossMg,
+    netWeightMg: stock.netMg,
+    fineWeightMg: stock.fineMg,
+    piecesCount: stock.piecesCount,
+    caratsCount: stock.caratsCount,
+  });
+  return {
+    makingChargesPaise: resolved.totalChargePaise,
+    makingChargePct: basis === "percentage" ? percent : 0,
+    basis,
+    ratePerUnitPaise: resolved.resolvedRate,
+  };
 }
 
 export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
@@ -982,17 +1053,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     }
 
     const goldValuePaise = Math.round((stock.fineMg * (getCurrentGoldRatePaise() || 0)) / 1000);
-    // Making charge is always a percentage of gold value — the legacy
-    // per-gram rate on older stock rows is only used as a one-time fallback
-    // to derive an equivalent percentage, never applied as a flat amount.
-    const makingChargePct =
-      stock.makingChargePct ??
-      (stock.makingChargePerGPaise
-        ? goldValuePaise > 0
-          ? ((stock.makingChargePerGPaise * (stock.grossMg / 1000)) / goldValuePaise) * 100
-          : 0
-        : 12);
-    const makingChargesPaise = Math.round((goldValuePaise * makingChargePct) / 100);
+    const resolved = computeStockMakingCharge(stock, goldValuePaise, useSettings.getState().makingCharge);
 
     const invoiceItem: InvoiceItem = {
       id: newItemId(),
@@ -1006,8 +1067,10 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       fineMg: stock.fineMg,
       goldRatePerGramPaise: getCurrentGoldRatePaise() || 0,
       goldValuePaise,
-      makingChargesPaise,
-      makingChargePct,
+      makingChargesPaise: resolved.makingChargesPaise,
+      makingChargePct: resolved.makingChargePct,
+      makingChargeBasis: resolved.basis,
+      makingChargeRatePerUnitPaise: resolved.ratePerUnitPaise,
       stoneChargesPaise: 0,
       hallmarkChargesPaise: 0,
       otherChargesPaise: 0,
@@ -1594,17 +1657,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     if (stock) {
       const ratePaise = currentGoldRate;
       const goldValuePaise2 = Math.round((stock.fineMg * ratePaise) / 1000);
-      // Making charge is always a percentage of gold value — never a flat
-      // per-gram amount. Legacy per-gram stock rows are converted once to
-      // an equivalent percentage rather than applied as a flat rupee sum.
-      const makingChargePct2 =
-        stock.makingChargePct ??
-        (stock.makingChargePerGPaise
-          ? goldValuePaise2 > 0
-            ? ((stock.makingChargePerGPaise * (stock.grossMg / 1000)) / goldValuePaise2) * 100
-            : 0
-          : 12);
-      const makingChargesPaise = Math.round((goldValuePaise2 * makingChargePct2) / 100);
+      const resolved2 = computeStockMakingCharge(stock, goldValuePaise2, useSettings.getState().makingCharge);
 
       const blank: Omit<InvoiceItem, "id" | "goldValuePaise" | "lineTotalPaise"> = {
         stockItemId: stock.id,
@@ -1616,8 +1669,10 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         netMg: stock.netMg,
         fineMg: stock.fineMg,
         goldRatePerGramPaise: ratePaise,
-        makingChargesPaise: makingChargesPaise,
-        makingChargePct: makingChargePct2,
+        makingChargesPaise: resolved2.makingChargesPaise,
+        makingChargePct: resolved2.makingChargePct,
+        makingChargeBasis: resolved2.basis,
+        makingChargeRatePerUnitPaise: resolved2.ratePerUnitPaise,
         stoneChargesPaise: 0,
         hallmarkChargesPaise: 0,
         otherChargesPaise: 0,
@@ -3287,19 +3342,13 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
               const ratePaise = currentGoldRate;
               const previewGoldValuePaise = Math.round((s.fineMg * ratePaise) / 1000);
 
-              // Making charge is always a percentage of gold value, never a
-              // flat per-gram amount — legacy per-gram stock rows are
-              // converted once to an equivalent percentage for preview.
-              const makingChargePct4 =
-                s.makingChargePct ??
-                (s.makingChargePerGPaise
-                  ? previewGoldValuePaise > 0
-                    ? ((s.makingChargePerGPaise * (s.grossMg / 1000)) / previewGoldValuePaise) * 100
-                    : 0
-                  : 12);
-              const makingChargesPaise = Math.round(
-                (previewGoldValuePaise * makingChargePct4) / 100,
+              const resolvedPreview = computeStockMakingCharge(
+                s,
+                previewGoldValuePaise,
+                useSettings.getState().makingCharge,
               );
+              const makingChargePct4 = resolvedPreview.makingChargePct;
+              const makingChargesPaise = resolvedPreview.makingChargesPaise;
 
               const previewItem: InvoiceItem = {
                 id: s.id,

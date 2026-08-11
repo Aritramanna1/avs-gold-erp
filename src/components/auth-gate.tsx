@@ -135,25 +135,39 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
     }
 
     if (!matched) {
-      const newUser = {
-        id: currentSession.user.id || `usr_${Date.now()}`,
-        name: userEmail.split("@")[0] || "ERP Admin",
-        email: userEmail,
-        role: "Super Owner",
-        active: true,
-        createdAt: Date.now(),
-        isSuperOwner: true,
+      stopCloudSync();
+      await supabase.auth.signOut();
+      setSession(null);
+      useSettings
+        .getState()
+        .addSecurityLog("failed login", `Unregistered login blocked: ${userEmail}`, userEmail);
+      return {
+        allowed: false,
+        error: "Your account exists, but MTJ ERP profile is not linked. Contact admin.",
       };
-      useSettings.getState().addUser(newUser);
-      return { allowed: true, role: "Super Owner" };
     }
 
     if (!matched.active) {
-      return { allowed: true, role: matched.role || "Super Owner" };
+      stopCloudSync();
+      await supabase.auth.signOut();
+      setSession(null);
+      useSettings
+        .getState()
+        .addSecurityLog("failed login", `Deactivated login blocked: ${userEmail}`, userEmail);
+      return {
+        allowed: false,
+        error: "Your account is deactivated. Contact admin.",
+      };
     }
 
     if (!matched.role) {
-      return { allowed: true, role: "Super Owner" };
+      stopCloudSync();
+      await supabase.auth.signOut();
+      setSession(null);
+      return {
+        allowed: false,
+        error: "Your account exists, but no role is assigned to it under MTJ ERP. Contact admin.",
+      };
     }
 
     return { allowed: true, role: matched.role };

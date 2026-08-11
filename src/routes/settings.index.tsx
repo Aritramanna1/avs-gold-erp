@@ -2736,7 +2736,34 @@ function SecurityLogsTab() {
 }
 
 function GstTab() {
-  const { gst, setGst } = useSettings();
+  const { gst, setGst, makingCharge, setMakingCharge } = useSettings();
+  const [newOverrideCategory, setNewOverrideCategory] = useState("");
+  const [newOverrideBasis, setNewOverrideBasis] = useState<
+    typeof makingCharge.defaultBasis
+  >("percentage");
+  const [newOverrideValue, setNewOverrideValue] = useState("");
+
+  function addCategoryOverride() {
+    const category = newOverrideCategory.trim();
+    const value = parseFloat(newOverrideValue) || 0;
+    if (!category) return;
+    setMakingCharge({
+      categoryOverrides: {
+        ...makingCharge.categoryOverrides,
+        [category]:
+          newOverrideBasis === "percentage"
+            ? { basis: "percentage", percent: value }
+            : { basis: newOverrideBasis, ratePerUnitPaise: Math.round(value * 100) },
+      },
+    });
+    setNewOverrideCategory("");
+    setNewOverrideValue("");
+  }
+  function removeCategoryOverride(category: string) {
+    const next = { ...makingCharge.categoryOverrides };
+    delete next[category];
+    setMakingCharge({ categoryOverrides: next });
+  }
 
   return (
     <div className="space-y-4 mt-4">
@@ -2859,6 +2886,149 @@ function GstTab() {
               />
             </div>
           </Field>
+        </div>
+      </Card>
+
+      <Card className="p-5 space-y-6">
+        <div className="border-b border-border pb-3 space-y-0.5">
+          <h3 className="text-sm font-bold text-foreground">Making Charge Basis</h3>
+          <p className="text-xs text-muted-foreground">
+            Default calculation basis for new items. A stock item's own explicit % (or an
+            item/category picked at billing time) always overrides this — changing it here never
+            affects invoices already issued.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-4">
+          <Field label="Default basis">
+            <select
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={makingCharge.defaultBasis}
+              onChange={(e) =>
+                setMakingCharge({
+                  defaultBasis: e.target.value as typeof makingCharge.defaultBasis,
+                })
+              }
+            >
+              <option value="percentage">% of gold value</option>
+              <option value="gross">Gross weight (₹/gram)</option>
+              <option value="net">Net weight (₹/gram)</option>
+              <option value="fine">Fine weight (₹/gram)</option>
+              <option value="piece">Per piece</option>
+              <option value="carat">Per carat</option>
+              <option value="flat">Flat amount</option>
+            </select>
+          </Field>
+          {makingCharge.defaultBasis === "percentage" ? (
+            <Field label="Default %">
+              <Input
+                type="number"
+                step="0.01"
+                value={makingCharge.defaultPercent}
+                onChange={(e) =>
+                  setMakingCharge({ defaultPercent: parseFloat(e.target.value) || 0 })
+                }
+              />
+            </Field>
+          ) : (
+            <Field
+              label={
+                makingCharge.defaultBasis === "flat"
+                  ? "Flat amount (₹)"
+                  : makingCharge.defaultBasis === "piece"
+                    ? "Rate per piece (₹)"
+                    : makingCharge.defaultBasis === "carat"
+                      ? "Rate per carat (₹)"
+                      : "Rate per gram (₹)"
+              }
+            >
+              <Input
+                type="number"
+                step="0.01"
+                value={(makingCharge.defaultRatePerUnitPaise ?? 0) / 100}
+                onChange={(e) =>
+                  setMakingCharge({
+                    defaultRatePerUnitPaise: Math.round((parseFloat(e.target.value) || 0) * 100),
+                  })
+                }
+              />
+            </Field>
+          )}
+        </div>
+
+        <div className="space-y-3 pt-2 border-t border-border">
+          <p className="text-xs font-semibold text-foreground">Category overrides</p>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Category must match a stock item's Category field exactly (case-sensitive).
+          </p>
+          {Object.keys(makingCharge.categoryOverrides).length > 0 && (
+            <div className="space-y-1.5">
+              {Object.entries(makingCharge.categoryOverrides).map(([category, override]) => (
+                <div
+                  key={category}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-1.5 text-xs"
+                >
+                  <span className="font-medium">{category}</span>
+                  <span className="text-muted-foreground">
+                    {override.basis === "percentage"
+                      ? `${override.percent ?? 0}%`
+                      : `${override.basis} · ₹${((override.ratePerUnitPaise ?? 0) / 100).toFixed(2)}`}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-xs text-red-500"
+                    onClick={() => removeCategoryOverride(category)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Category</Label>
+              <Input
+                className="w-40"
+                value={newOverrideCategory}
+                onChange={(e) => setNewOverrideCategory(e.target.value)}
+                placeholder="e.g. Bangles"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Basis</Label>
+              <select
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                value={newOverrideBasis}
+                onChange={(e) =>
+                  setNewOverrideBasis(e.target.value as typeof makingCharge.defaultBasis)
+                }
+              >
+                <option value="percentage">% of gold value</option>
+                <option value="gross">Gross (₹/gram)</option>
+                <option value="net">Net (₹/gram)</option>
+                <option value="fine">Fine (₹/gram)</option>
+                <option value="piece">Per piece</option>
+                <option value="carat">Per carat</option>
+                <option value="flat">Flat amount</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">
+                {newOverrideBasis === "percentage" ? "%" : "₹"}
+              </Label>
+              <Input
+                className="w-28"
+                type="number"
+                step="0.01"
+                value={newOverrideValue}
+                onChange={(e) => setNewOverrideValue(e.target.value)}
+              />
+            </div>
+            <Button size="sm" onClick={addCategoryOverride} disabled={!newOverrideCategory.trim()}>
+              Add
+            </Button>
+          </div>
         </div>
       </Card>
 

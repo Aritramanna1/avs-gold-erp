@@ -460,3 +460,81 @@ export function calculateHallmarkCharge(
     explanation: `Hallmark Basis: ${basis}, Rate: ${ratePaise} -> Charge: ₹${totalHallmarkChargeRupees}`,
   };
 }
+
+// ── Configurable making/labour charge resolution ─────────────────────────
+
+export type MakingChargeBasis = "percentage" | "gross" | "net" | "fine" | "piece" | "carat" | "flat";
+
+export interface MakingChargeResolutionInput {
+  basis: MakingChargeBasis;
+  /** Used only when basis is "percentage". */
+  percent?: number;
+  /** Used for every other basis — paise per gram, per piece, per carat, or the flat charge itself. */
+  ratePerUnitPaise?: number;
+  goldValuePaise: number;
+  grossWeightMg: number;
+  netWeightMg: number;
+  fineWeightMg: number;
+  piecesCount?: number;
+  caratsCount?: number;
+}
+
+export interface MakingChargeResolutionResult {
+  basis: MakingChargeBasis;
+  /** The rate actually used — percent for "percentage", paise/unit for everything else, the flat amount for "flat". Snapshot this alongside basis on the invoice item so a historical row is immutable even if settings change later. */
+  resolvedRate: number;
+  totalChargePaise: number;
+  explanation: string;
+}
+
+/**
+ * Resolves a making/labour charge for one item under whichever basis a
+ * tenant (or a category/item-level override) has configured. "percentage"
+ * reproduces the original always-%-of-gold-value behavior exactly; every
+ * other basis delegates to calculateLabourCharge. Callers should snapshot
+ * the returned basis + resolvedRate onto the persisted record (e.g.
+ * InvoiceItem.makingChargeBasis / makingChargeRatePerUnitPaise) so a change
+ * to settings later never alters an already-posted transaction.
+ */
+export function resolveMakingCharge(
+  input: MakingChargeResolutionInput,
+): MakingChargeResolutionResult {
+  const { basis, goldValuePaise } = input;
+
+  if (basis === "percentage") {
+    const percent = input.percent ?? 0;
+    const totalChargePaise = Math.round((goldValuePaise * percent) / 100);
+    return {
+      basis,
+      resolvedRate: percent,
+      totalChargePaise,
+      explanation: `Making Charge: ${percent}% of gold value ₹${(goldValuePaise / 100).toFixed(2)} -> ₹${(totalChargePaise / 100).toFixed(2)}`,
+    };
+  }
+
+  if (basis === "flat") {
+    const flatPaise = input.ratePerUnitPaise ?? 0;
+    return {
+      basis,
+      resolvedRate: flatPaise,
+      totalChargePaise: flatPaise,
+      explanation: `Making Charge: flat ₹${(flatPaise / 100).toFixed(2)}`,
+    };
+  }
+
+  const labour = calculateLabourCharge({
+    basis,
+    ratePerUnitPaise: input.ratePerUnitPaise ?? 0,
+    grossWeightMg: input.grossWeightMg,
+    netWeightMg: input.netWeightMg,
+    fineWeightMg: input.fineWeightMg,
+    piecesCount: input.piecesCount,
+    caratsCount: input.caratsCount,
+  });
+  return {
+    basis,
+    resolvedRate: input.ratePerUnitPaise ?? 0,
+    totalChargePaise: labour.totalLabourChargePaise,
+    explanation: labour.explanation,
+  };
+}

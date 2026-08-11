@@ -1,17 +1,30 @@
-import React, { useState } from "react";
+import { useEffect, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, AlertTriangle, CheckCircle, Clock } from "lucide-react";
-import { generateSampleITC04Records, exportITC04ToCSV, ITC04Record } from "@/lib/itc04-store";
+import { computeITC04Records, exportITC04ToCSV } from "@/lib/itc04-store";
+import { useOutsideWork } from "@/lib/outside-work-store";
+import { usePeople } from "@/lib/people-store";
 
-export const Route = createFileRoute("/reports/itc04" as never)({
+export const Route = createFileRoute("/reports/itc04")({
   component: ITC04ReportPage,
 });
 
 function ITC04ReportPage() {
-  const [records] = useState<ITC04Record[]>(generateSampleITC04Records());
+  const transactions = useOutsideWork((s) => s.transactions);
+  const refreshTransactions = useOutsideWork((s) => s.refresh);
+  const people = usePeople((s) => s.people);
+
+  useEffect(() => {
+    void refreshTransactions();
+  }, [refreshTransactions]);
+
+  const records = useMemo(
+    () => computeITC04Records(transactions, people),
+    [transactions, people],
+  );
 
   const handleExportCSV = () => {
     const csvContent = exportITC04ToCSV(records);

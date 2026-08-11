@@ -23,6 +23,7 @@ import { useLedger } from "./ledger-store";
 import { append as appendAudit } from "./security/audit-log";
 import { nextDocumentNumber } from "./document-numbering";
 import { assertNetNotAboveGross } from "./gold";
+import type { MakingChargeBasis } from "./calculation-engine";
 
 export type PaymentMode =
   | "cash"
@@ -60,6 +61,10 @@ export interface InvoiceItem {
   goldRatePerGramPaise: number; // ₹ per gram, in paise
   goldValuePaise: number; // computed
   makingChargesPaise: number;
+  /** Snapshot of how makingChargesPaise was computed — immutable once posted, even if Settings → Making Charge configuration changes later. Absent on invoices created before this field existed; those remain implicitly "percentage" (their makingChargePct is still authoritative). */
+  makingChargeBasis?: MakingChargeBasis;
+  /** Percent for "percentage" basis, paise/unit for gross/net/fine/piece/carat, the flat amount for "flat". */
+  makingChargeRatePerUnitPaise?: number;
   stoneChargesPaise: number;
   /** BIS hallmarking/certification fee for this item — tracked separately from otherChargesPaise so it's independently visible/reportable, matching stoneChargesPaise's treatment. */
   hallmarkChargesPaise: number;

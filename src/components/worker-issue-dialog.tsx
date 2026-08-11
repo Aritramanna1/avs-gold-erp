@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useLedger, computeBalances } from "@/lib/ledger-store";
 import { useOrders } from "@/lib/orders-store";
-import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
+import { usePeople, PERSON_TYPE_LABELS, validateMetalCreditLimit } from "@/lib/people-store";
 import { useWorkerGoldBook, WORKER_ISSUE_MATERIALS } from "@/lib/worker-gold-book-store";
 import { useMaterialVault } from "@/lib/material-vault-store";
 import { issueMaterialToVaultCategory, ISSUE_VAULT_MOVEMENT_TYPE } from "@/lib/material-vault-sync";
@@ -101,7 +101,24 @@ export function WorkerIssueDialog({
   const fineMg = isGold && purity > 0 ? fineGoldMg(grossMg, purity) : grossMg;
   const willOverdraw = isGold && fineMg > vaultMg;
 
-  const canSubmit = !!workerId && grossMg > 0 && (!isGold || purity > 0) && !saving;
+  const selectedWorker = useMemo(
+    () => people.find((p) => p.id === workerId) ?? null,
+    [people, workerId],
+  );
+  const workerPendingFineMg = useWorkerGoldBook((s) =>
+    workerId ? s.getWorkerBalance(workerId).pendingFine : 0,
+  );
+  const creditCheck = useMemo(
+    () =>
+      selectedWorker && fineMg > 0
+        ? validateMetalCreditLimit(selectedWorker, workerPendingFineMg, fineMg)
+        : null,
+    [selectedWorker, workerPendingFineMg, fineMg],
+  );
+  const creditLimitExceeded = creditCheck?.isExceeded ?? false;
+
+  const canSubmit =
+    !!workerId && grossMg > 0 && (!isGold || purity > 0) && !saving && !creditLimitExceeded;
 
   async function submit() {
     if (!canSubmit) return;
@@ -294,6 +311,11 @@ export function WorkerIssueDialog({
             <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300 flex items-center gap-2">
               <AlertTriangle className="h-3 w-3" /> Vault does not have enough fine gold for this
               issue.
+            </div>
+          )}
+          {creditCheck?.isExceeded && (
+            <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300 flex items-center gap-2">
+              <AlertTriangle className="h-3 w-3" /> {creditCheck.message}
             </div>
           )}
           {error && (

@@ -87,6 +87,7 @@ import { Route as SettingsBackupRecoveryRouteImport } from './routes/settings.ba
 import { Route as SettingsAutomationRouteImport } from './routes/settings.automation'
 import { Route as ReportsWorkerRouteImport } from './routes/reports.worker'
 import { Route as ReportsVaultReconciliationRouteImport } from './routes/reports.vault-reconciliation'
+import { Route as ReportsTallyExportRouteImport } from './routes/reports.tally-export'
 import { Route as ReportsSettlementsRouteImport } from './routes/reports.settlements'
 import { Route as ReportsSettlementReconciliationRouteImport } from './routes/reports.settlement-reconciliation'
 import { Route as ReportsRemindersRouteImport } from './routes/reports.reminders'
@@ -94,7 +95,9 @@ import { Route as ReportsOutsideWorkRouteImport } from './routes/reports.outside
 import { Route as ReportsMonthEndCloseRouteImport } from './routes/reports.month-end-close'
 import { Route as ReportsManufacturingReconciliationRouteImport } from './routes/reports.manufacturing-reconciliation'
 import { Route as ReportsManufacturingRouteImport } from './routes/reports.manufacturing'
+import { Route as ReportsItc04RouteImport } from './routes/reports.itc04'
 import { Route as ReportsInventoryAgeingRouteImport } from './routes/reports.inventory-ageing'
+import { Route as ReportsGstReturnsRouteImport } from './routes/reports.gst-returns'
 import { Route as ReportsGoldSummaryRouteImport } from './routes/reports.gold-summary'
 import { Route as ReportsGoldReconciliationRouteImport } from './routes/reports.gold-reconciliation'
 import { Route as ReportsGoldPositionRouteImport } from './routes/reports.gold-position'
@@ -562,6 +565,11 @@ const ReportsVaultReconciliationRoute =
     path: '/vault-reconciliation',
     getParentRoute: () => ReportsRoute,
   } as any)
+const ReportsTallyExportRoute = ReportsTallyExportRouteImport.update({
+  id: '/tally-export',
+  path: '/tally-export',
+  getParentRoute: () => ReportsRoute,
+} as any)
 const ReportsSettlementsRoute = ReportsSettlementsRouteImport.update({
   id: '/settlements',
   path: '/settlements',
@@ -599,9 +607,19 @@ const ReportsManufacturingRoute = ReportsManufacturingRouteImport.update({
   path: '/manufacturing',
   getParentRoute: () => ReportsRoute,
 } as any)
+const ReportsItc04Route = ReportsItc04RouteImport.update({
+  id: '/itc04',
+  path: '/itc04',
+  getParentRoute: () => ReportsRoute,
+} as any)
 const ReportsInventoryAgeingRoute = ReportsInventoryAgeingRouteImport.update({
   id: '/inventory-ageing',
   path: '/inventory-ageing',
+  getParentRoute: () => ReportsRoute,
+} as any)
+const ReportsGstReturnsRoute = ReportsGstReturnsRouteImport.update({
+  id: '/gst-returns',
+  path: '/gst-returns',
   getParentRoute: () => ReportsRoute,
 } as any)
 const ReportsGoldSummaryRoute = ReportsGoldSummaryRouteImport.update({
@@ -1043,7 +1061,9 @@ export interface FileRoutesByFullPath {
   '/reports/gold-position': typeof ReportsGoldPositionRoute
   '/reports/gold-reconciliation': typeof ReportsGoldReconciliationRoute
   '/reports/gold-summary': typeof ReportsGoldSummaryRoute
+  '/reports/gst-returns': typeof ReportsGstReturnsRoute
   '/reports/inventory-ageing': typeof ReportsInventoryAgeingRoute
+  '/reports/itc04': typeof ReportsItc04Route
   '/reports/manufacturing': typeof ReportsManufacturingRoute
   '/reports/manufacturing-reconciliation': typeof ReportsManufacturingReconciliationRoute
   '/reports/month-end-close': typeof ReportsMonthEndCloseRoute
@@ -1051,6 +1071,7 @@ export interface FileRoutesByFullPath {
   '/reports/reminders': typeof ReportsRemindersRoute
   '/reports/settlement-reconciliation': typeof ReportsSettlementReconciliationRoute
   '/reports/settlements': typeof ReportsSettlementsRoute
+  '/reports/tally-export': typeof ReportsTallyExportRoute
   '/reports/vault-reconciliation': typeof ReportsVaultReconciliationRoute
   '/reports/worker': typeof ReportsWorkerRoute
   '/settings/automation': typeof SettingsAutomationRoute
@@ -1191,7 +1212,9 @@ export interface FileRoutesByTo {
   '/reports/gold-position': typeof ReportsGoldPositionRoute
   '/reports/gold-reconciliation': typeof ReportsGoldReconciliationRoute
   '/reports/gold-summary': typeof ReportsGoldSummaryRoute
+  '/reports/gst-returns': typeof ReportsGstReturnsRoute
   '/reports/inventory-ageing': typeof ReportsInventoryAgeingRoute
+  '/reports/itc04': typeof ReportsItc04Route
   '/reports/manufacturing': typeof ReportsManufacturingRoute
   '/reports/manufacturing-reconciliation': typeof ReportsManufacturingReconciliationRoute
   '/reports/month-end-close': typeof ReportsMonthEndCloseRoute
@@ -1199,6 +1222,7 @@ export interface FileRoutesByTo {
   '/reports/reminders': typeof ReportsRemindersRoute
   '/reports/settlement-reconciliation': typeof ReportsSettlementReconciliationRoute
   '/reports/settlements': typeof ReportsSettlementsRoute
+  '/reports/tally-export': typeof ReportsTallyExportRoute
   '/reports/vault-reconciliation': typeof ReportsVaultReconciliationRoute
   '/reports/worker': typeof ReportsWorkerRoute
   '/settings/automation': typeof SettingsAutomationRoute
@@ -1352,7 +1376,9 @@ export interface FileRoutesById {
   '/reports/gold-position': typeof ReportsGoldPositionRoute
   '/reports/gold-reconciliation': typeof ReportsGoldReconciliationRoute
   '/reports/gold-summary': typeof ReportsGoldSummaryRoute
+  '/reports/gst-returns': typeof ReportsGstReturnsRoute
   '/reports/inventory-ageing': typeof ReportsInventoryAgeingRoute
+  '/reports/itc04': typeof ReportsItc04Route
   '/reports/manufacturing': typeof ReportsManufacturingRoute
   '/reports/manufacturing-reconciliation': typeof ReportsManufacturingReconciliationRoute
   '/reports/month-end-close': typeof ReportsMonthEndCloseRoute
@@ -1360,6 +1386,7 @@ export interface FileRoutesById {
   '/reports/reminders': typeof ReportsRemindersRoute
   '/reports/settlement-reconciliation': typeof ReportsSettlementReconciliationRoute
   '/reports/settlements': typeof ReportsSettlementsRoute
+  '/reports/tally-export': typeof ReportsTallyExportRoute
   '/reports/vault-reconciliation': typeof ReportsVaultReconciliationRoute
   '/reports/worker': typeof ReportsWorkerRoute
   '/settings/automation': typeof SettingsAutomationRoute
@@ -1514,7 +1541,9 @@ export interface FileRouteTypes {
     | '/reports/gold-position'
     | '/reports/gold-reconciliation'
     | '/reports/gold-summary'
+    | '/reports/gst-returns'
     | '/reports/inventory-ageing'
+    | '/reports/itc04'
     | '/reports/manufacturing'
     | '/reports/manufacturing-reconciliation'
     | '/reports/month-end-close'
@@ -1522,6 +1551,7 @@ export interface FileRouteTypes {
     | '/reports/reminders'
     | '/reports/settlement-reconciliation'
     | '/reports/settlements'
+    | '/reports/tally-export'
     | '/reports/vault-reconciliation'
     | '/reports/worker'
     | '/settings/automation'
@@ -1662,7 +1692,9 @@ export interface FileRouteTypes {
     | '/reports/gold-position'
     | '/reports/gold-reconciliation'
     | '/reports/gold-summary'
+    | '/reports/gst-returns'
     | '/reports/inventory-ageing'
+    | '/reports/itc04'
     | '/reports/manufacturing'
     | '/reports/manufacturing-reconciliation'
     | '/reports/month-end-close'
@@ -1670,6 +1702,7 @@ export interface FileRouteTypes {
     | '/reports/reminders'
     | '/reports/settlement-reconciliation'
     | '/reports/settlements'
+    | '/reports/tally-export'
     | '/reports/vault-reconciliation'
     | '/reports/worker'
     | '/settings/automation'
@@ -1822,7 +1855,9 @@ export interface FileRouteTypes {
     | '/reports/gold-position'
     | '/reports/gold-reconciliation'
     | '/reports/gold-summary'
+    | '/reports/gst-returns'
     | '/reports/inventory-ageing'
+    | '/reports/itc04'
     | '/reports/manufacturing'
     | '/reports/manufacturing-reconciliation'
     | '/reports/month-end-close'
@@ -1830,6 +1865,7 @@ export interface FileRouteTypes {
     | '/reports/reminders'
     | '/reports/settlement-reconciliation'
     | '/reports/settlements'
+    | '/reports/tally-export'
     | '/reports/vault-reconciliation'
     | '/reports/worker'
     | '/settings/automation'
@@ -2521,6 +2557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsVaultReconciliationRouteImport
       parentRoute: typeof ReportsRoute
     }
+    '/reports/tally-export': {
+      id: '/reports/tally-export'
+      path: '/tally-export'
+      fullPath: '/reports/tally-export'
+      preLoaderRoute: typeof ReportsTallyExportRouteImport
+      parentRoute: typeof ReportsRoute
+    }
     '/reports/settlements': {
       id: '/reports/settlements'
       path: '/settlements'
@@ -2570,11 +2613,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsManufacturingRouteImport
       parentRoute: typeof ReportsRoute
     }
+    '/reports/itc04': {
+      id: '/reports/itc04'
+      path: '/itc04'
+      fullPath: '/reports/itc04'
+      preLoaderRoute: typeof ReportsItc04RouteImport
+      parentRoute: typeof ReportsRoute
+    }
     '/reports/inventory-ageing': {
       id: '/reports/inventory-ageing'
       path: '/inventory-ageing'
       fullPath: '/reports/inventory-ageing'
       preLoaderRoute: typeof ReportsInventoryAgeingRouteImport
+      parentRoute: typeof ReportsRoute
+    }
+    '/reports/gst-returns': {
+      id: '/reports/gst-returns'
+      path: '/gst-returns'
+      fullPath: '/reports/gst-returns'
+      preLoaderRoute: typeof ReportsGstReturnsRouteImport
       parentRoute: typeof ReportsRoute
     }
     '/reports/gold-summary': {
@@ -3285,7 +3342,9 @@ interface ReportsRouteChildren {
   ReportsGoldPositionRoute: typeof ReportsGoldPositionRoute
   ReportsGoldReconciliationRoute: typeof ReportsGoldReconciliationRoute
   ReportsGoldSummaryRoute: typeof ReportsGoldSummaryRoute
+  ReportsGstReturnsRoute: typeof ReportsGstReturnsRoute
   ReportsInventoryAgeingRoute: typeof ReportsInventoryAgeingRoute
+  ReportsItc04Route: typeof ReportsItc04Route
   ReportsManufacturingRoute: typeof ReportsManufacturingRoute
   ReportsManufacturingReconciliationRoute: typeof ReportsManufacturingReconciliationRoute
   ReportsMonthEndCloseRoute: typeof ReportsMonthEndCloseRoute
@@ -3293,6 +3352,7 @@ interface ReportsRouteChildren {
   ReportsRemindersRoute: typeof ReportsRemindersRoute
   ReportsSettlementReconciliationRoute: typeof ReportsSettlementReconciliationRoute
   ReportsSettlementsRoute: typeof ReportsSettlementsRoute
+  ReportsTallyExportRoute: typeof ReportsTallyExportRoute
   ReportsVaultReconciliationRoute: typeof ReportsVaultReconciliationRoute
   ReportsWorkerRoute: typeof ReportsWorkerRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
@@ -3313,7 +3373,9 @@ const ReportsRouteChildren: ReportsRouteChildren = {
   ReportsGoldPositionRoute: ReportsGoldPositionRoute,
   ReportsGoldReconciliationRoute: ReportsGoldReconciliationRoute,
   ReportsGoldSummaryRoute: ReportsGoldSummaryRoute,
+  ReportsGstReturnsRoute: ReportsGstReturnsRoute,
   ReportsInventoryAgeingRoute: ReportsInventoryAgeingRoute,
+  ReportsItc04Route: ReportsItc04Route,
   ReportsManufacturingRoute: ReportsManufacturingRoute,
   ReportsManufacturingReconciliationRoute:
     ReportsManufacturingReconciliationRoute,
@@ -3322,6 +3384,7 @@ const ReportsRouteChildren: ReportsRouteChildren = {
   ReportsRemindersRoute: ReportsRemindersRoute,
   ReportsSettlementReconciliationRoute: ReportsSettlementReconciliationRoute,
   ReportsSettlementsRoute: ReportsSettlementsRoute,
+  ReportsTallyExportRoute: ReportsTallyExportRoute,
   ReportsVaultReconciliationRoute: ReportsVaultReconciliationRoute,
   ReportsWorkerRoute: ReportsWorkerRoute,
   ReportsIndexRoute: ReportsIndexRoute,

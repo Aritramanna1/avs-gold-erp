@@ -185,6 +185,7 @@ function persistSettings(get: () => any, force = false): void {
     branding: s.branding,
     print: s.print,
     gst: s.gst,
+    makingCharge: s.makingCharge,
     purities: s.purities,
     workshopProcesses: s.workshopProcesses,
     alloyFormulas: s.alloyFormulas,
@@ -527,6 +528,30 @@ export interface GstSettings {
   gstGoldConversionRatePaise: number;
 }
 
+/**
+ * Tenant-wide default for how making/labour charges are calculated, plus
+ * optional per-category overrides. "percentage" (of gold value) is the
+ * long-standing default and stays that way unless an admin explicitly
+ * changes it — existing invoices are never affected, since each InvoiceItem
+ * snapshots its own resolved basis/rate at creation time (see
+ * resolveMakingCharge in calculation-engine.ts) rather than reading this
+ * config live.
+ */
+export interface MakingChargeCategoryOverride {
+  basis: "percentage" | "gross" | "net" | "fine" | "piece" | "carat" | "flat";
+  /** Used when basis is "percentage". */
+  percent?: number;
+  /** Used for every other basis — paise per gram, per piece, per carat, or the flat amount itself. */
+  ratePerUnitPaise?: number;
+}
+export interface MakingChargeSettings {
+  defaultBasis: MakingChargeCategoryOverride["basis"];
+  defaultPercent: number;
+  defaultRatePerUnitPaise: number;
+  /** Keyed by StockItem.category (case-sensitive, as stored). */
+  categoryOverrides: Record<string, MakingChargeCategoryOverride>;
+}
+
 export interface Purity {
   id: string;
   /** Defaults to Gold for legacy records created before multi-metal support. */
@@ -720,6 +745,7 @@ export interface SettingsState {
   branding: Branding;
   print: PrintTemplateSettings;
   gst: GstSettings;
+  makingCharge: MakingChargeSettings;
   purities: Purity[];
   workshopProcesses: WorkshopProcessConfig[];
   alloyFormulas: AlloyFormula[];
@@ -820,6 +846,7 @@ export interface SettingsState {
   setBranding: (p: Partial<Branding>) => void;
   setPrint: (p: Partial<PrintTemplateSettings>) => void;
   setGst: (p: Partial<GstSettings>) => void;
+  setMakingCharge: (p: Partial<MakingChargeSettings>) => void;
   setHardware: (p: Partial<HardwareSettings>) => void;
   setCatalog: (p: Partial<CatalogSettings>) => void;
   setGoldRate: (paise: number) => void;
@@ -1522,6 +1549,12 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
     allowGstPaymentInGold: false,
     gstGoldConversionRatePaise: 0, // 0 = use the live rate the invoice was priced at
   },
+  makingCharge: {
+    defaultBasis: "percentage", // preserves the long-standing "% of gold value" behavior
+    defaultPercent: 12,
+    defaultRatePerUnitPaise: 0,
+    categoryOverrides: {},
+  },
   purities: DEFAULT_PURITIES,
   workshopProcesses: DEFAULT_WORKSHOP_PROCESSES,
   alloyFormulas: DEFAULT_ALLOY_FORMULAS,
@@ -1740,6 +1773,7 @@ type Functions = Pick<
   | "setBranding"
   | "setPrint"
   | "setGst"
+  | "setMakingCharge"
   | "setHardware"
   | "setBullionRateProvider"
   | "setCatalog"
@@ -1832,6 +1866,10 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   },
   setGst: (p) => {
     set({ gst: { ...get().gst, ...p } });
+    persistSettings(get);
+  },
+  setMakingCharge: (p) => {
+    set({ makingCharge: { ...get().makingCharge, ...p } });
     persistSettings(get);
   },
   setHardware: (p) => {

@@ -1,5 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BarChart3, ArrowRight, ClipboardList, Scale, Users, Package } from "lucide-react";
+import {
+  BarChart3,
+  ArrowRight,
+  ClipboardList,
+  Scale,
+  Users,
+  Package,
+  FileSpreadsheet,
+  Receipt,
+} from "lucide-react";
 import { ModuleWorkspace } from "@/components/module-workspace";
 export const Route = createFileRoute("/reports/")({ component: ReportsWorkspace });
 const reports = [
@@ -26,6 +35,18 @@ const reports = [
     description: "Ready stock by age, status, and location.",
     to: "/reports/inventory-ageing",
     icon: Package,
+  },
+  {
+    label: "Tally export",
+    description: "Sales, purchase, and receipt vouchers as a Tally XML import file.",
+    to: "/reports/tally-export",
+    icon: FileSpreadsheet,
+  },
+  {
+    label: "GST returns",
+    description: "GSTR-1 (B2B) and GSTR-3B summary exports for the GST portal.",
+    to: "/reports/gst-returns",
+    icon: Receipt,
   },
 ];
 function ReportsWorkspace() {

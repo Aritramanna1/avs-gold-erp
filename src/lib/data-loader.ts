@@ -337,6 +337,7 @@ export async function pullAppSettings(): Promise<void> {
       },
       print: payload.print ?? useSettings.getState().print,
       gst: payload.gst ?? useSettings.getState().gst,
+      makingCharge: payload.makingCharge ?? useSettings.getState().makingCharge,
       purities: payload.purities ?? useSettings.getState().purities,
       making: payload.making ?? useSettings.getState().making,
       hardware: payload.hardware ?? useSettings.getState().hardware,
@@ -744,12 +745,20 @@ export async function startCloudSync(): Promise<void> {
             duration: 4000,
           });
         }
-        // Auto-seed pilot dataset if database is completely empty so all features are populated
+        // Auto-seed demo data only for self-serve trial tenants — an empty
+        // database is the NORMAL state for a real paying customer's first
+        // login (a brand-new tenant hasn't entered any people/orders/stock
+        // yet), and silently injecting fake demo records into their live
+        // account would be a real data-integrity problem, not a convenience.
+        // Trial status is the only signal available that this is a sandbox
+        // account, not a real one.
         const peopleCount = usePeople.getState().people.length;
         const ordersCount = useOrders.getState().orders.length;
         const stockCount = useStock.getState().items.length;
-        if (peopleCount === 0 && ordersCount === 0 && stockCount === 0) {
-          console.log("[data-loader] Database is empty. Seeding pilot dataset automatically...");
+        const { useLicense } = await import("@/lib/licensing/license-store");
+        const isTrialTenant = useLicense.getState().status === "trial";
+        if (isTrialTenant && peopleCount === 0 && ordersCount === 0 && stockCount === 0) {
+          console.log("[data-loader] Trial database is empty. Seeding pilot dataset automatically...");
           const { seedPilotDataset } = await import("@/lib/test-seed");
           await seedPilotDataset();
         }

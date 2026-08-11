@@ -877,6 +877,7 @@ function SubscriptionsSection({
 }
 
 const MODULE_KEYS = [
+  ["catalog", "Design Catalog & Showcase"],
   ["workshop", "Workshop Operations"],
   ["billing", "Billing & Invoicing"],
   ["inventory", "Inventory & Stock"],

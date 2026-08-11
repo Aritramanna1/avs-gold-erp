@@ -34,6 +34,7 @@ import { useStock } from "./stock-store";
 import { useWhatsapp } from "./whatsapp-store";
 import { useWorkers } from "./workers-store";
 import { useWorkerGoldBook } from "./worker-gold-book-store";
+import { useCatalog } from "./catalog-store";
 
 function makeId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -104,6 +105,45 @@ export async function seedPilotDataset(): Promise<SeedResult> {
   useCommLog.getState().reset?.();
   useWorkerGoldBook.getState().reset();
   useAttachments.setState({ items: {} });
+  useCatalog.setState({ designs: [] });
+
+  // 1b. Seed Catalog Designs
+  useCatalog.getState().add({
+    designNumber: "N-2026-001",
+    designName: "Antique Heritage Bridal Necklace",
+    category: "Necklace",
+    purity: 916,
+    approxGrossMg: 35500,
+    approxNetMg: 35000,
+    difficulty: "hard",
+    tags: ["Bridal", "Antique", "22K"],
+    source: "internal",
+    notes: "Handcrafted bridal heritage choker",
+  });
+  useCatalog.getState().add({
+    designNumber: "R-2026-002",
+    designName: "Solitaire Diamond Engagement Ring",
+    category: "Ring",
+    purity: 750,
+    approxGrossMg: 4200,
+    approxNetMg: 4000,
+    difficulty: "medium",
+    tags: ["Diamond", "Ring", "18K"],
+    source: "internal",
+    notes: "18K White Gold Solitaire Diamond Ring",
+  });
+  useCatalog.getState().add({
+    designNumber: "B-2026-003",
+    designName: "Traditional Kadda Bangle Set",
+    category: "Bangle",
+    purity: 916,
+    approxGrossMg: 48000,
+    approxNetMg: 48000,
+    difficulty: "medium",
+    tags: ["Bangle", "22K", "Traditional"],
+    source: "internal",
+    notes: "Solid 22K 916 Gold Kadda Bangle Set",
+  });
 
   // 2. People
   const customer = await usePeople.getState().add({

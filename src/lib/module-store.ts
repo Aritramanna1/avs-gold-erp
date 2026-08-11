@@ -30,7 +30,8 @@ export type ERPModuleKey =
   | "supplier_management"
   | "reports"
   | "analytics"
-  | "multi_branch";
+  | "multi_branch"
+  | "catalog";
 
 export interface ModuleDefinition {
   key: ERPModuleKey;
@@ -40,6 +41,13 @@ export interface ModuleDefinition {
 }
 
 export const ERP_MODULES: ModuleDefinition[] = [
+  {
+    key: "catalog",
+    label: "Design Catalog & Showcase",
+    description:
+      "Digital design catalog, category tags, purity specs, and design-to-order creation.",
+    dependencies: [],
+  },
   {
     key: "billing",
     label: "Billing & Invoicing",

@@ -45,7 +45,8 @@ import { compileWorkerBooks } from "@/lib/workshop-worker-books";
 import { useJobCards, JOB_STATUS_ACTIVE, normalizeJobStatus } from "@/lib/jobcards-store";
 import { useOrders, normalizeOrderStatus } from "@/lib/orders-store";
 import { usePeople } from "@/lib/people-store";
-import { getPartyGoldBalance } from "@/lib/customer-account-ledger";
+import { getPartyGoldBalance, getPartyCashBalance } from "@/lib/customer-account-ledger";
+import { paiseToRupees } from "@/lib/billing-store";
 
 import { guardRoute } from "@/lib/permissions";
 
@@ -58,6 +59,15 @@ export const Route = createFileRoute("/ledger")({
 function LedgerPage() {
   const entries = useLedger((s) => s.entries);
   const balance = useMemo(() => computeBalances(entries), [entries]);
+  const people = usePeople((s) => s.people);
+  // This dashboard was fine-gold-only — a real dual-currency ERP shows cash
+  // alongside metal, not metal alone (see JWELLY_COMPLETE_ERP_AUDIT.md §9).
+  // Per-party cash/gold already exists on the People detail page; this is
+  // the aggregate across every party for the vault-level summary here.
+  const totalOutstandingCashPaise = useMemo(
+    () => people.reduce((sum, p) => sum + getPartyCashBalance(p.id).outstandingPaise, 0),
+    [people],
+  );
 
   function handleCSV() {
     const header = [
@@ -131,7 +141,7 @@ function LedgerPage() {
         </TabsList>
 
         <TabsContent value="balance">
-          <BalanceSheetView balance={balance} />
+          <BalanceSheetView balance={balance} totalOutstandingCashPaise={totalOutstandingCashPaise} />
         </TabsContent>
 
         <TabsContent value="material-vault">
@@ -228,7 +238,13 @@ function BucketCard({
   );
 }
 
-function BalanceSheetView({ balance }: { balance: ReturnType<typeof computeBalances> }) {
+function BalanceSheetView({
+  balance,
+  totalOutstandingCashPaise,
+}: {
+  balance: ReturnType<typeof computeBalances>;
+  totalOutstandingCashPaise: number;
+}) {
   const [drill, setDrill] = useState<Bucket | null>(null);
   const {
     buckets,
@@ -267,6 +283,16 @@ function BalanceSheetView({ balance }: { balance: ReturnType<typeof computeBalan
             {" · "}
             {entryCount} ledger {entryCount === 1 ? "entry" : "entries"}
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border p-5 flex items-center gap-4">
+        <Store className="h-8 w-8 text-gold shrink-0" />
+        <div>
+          <div className="text-sm text-muted-foreground">
+            Total Outstanding Cash (all customers)
+          </div>
+          <div className="font-serif text-xl">₹{paiseToRupees(totalOutstandingCashPaise)}</div>
         </div>
       </div>
 

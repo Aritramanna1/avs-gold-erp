@@ -108,7 +108,7 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
     const pathModuleMap: Record<string, import("@/lib/module-store").ERPModuleKey> = {
       "/attendance": "attendance",
       "/orders": "orders",
-      "/catalog": "inventory",
+      "/catalog": "catalog",
       "/workshop": "job_work",
       "/workshop/gold-book": "payroll",
       "/manufacturing": "manufacturing",

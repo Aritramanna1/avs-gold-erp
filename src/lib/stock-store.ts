@@ -50,6 +50,10 @@ export interface StockItem {
   makingChargePct?: number;
   /** @deprecated Legacy flat per-gram rate, kept only to render old stock rows that predate makingChargePct. New/edited items should always set makingChargePct instead. */
   makingChargePerGPaise?: number;
+  /** Piece count for "piece"-basis making charges (e.g. loose bangles, findings sold per unit). Defaults to 1 when unset. */
+  piecesCount?: number;
+  /** Total carats for "carat"-basis making charges (stone-set items priced by carat, not weight). */
+  caratsCount?: number;
   pricePaise?: number;
   status: StockStatus;
   location: StockLocation;
