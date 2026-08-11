@@ -293,7 +293,7 @@ export interface MetalCreditCheckResult {
 export function validateMetalCreditLimit(
   person: Person,
   currentBalanceFineGoldMg: number,
-  newRequestedIssueMg: number
+  newRequestedIssueMg: number,
 ): MetalCreditCheckResult {
   const creditLimitMg = person.maxFineGoldCreditMg || 0;
   const projectedBalanceFineGoldMg = currentBalanceFineGoldMg + newRequestedIssueMg;
@@ -314,7 +314,6 @@ export function validateMetalCreditLimit(
     newRequestedIssueMg,
     projectedBalanceFineGoldMg,
     creditLimitMg,
-    message
+    message,
   };
 }
-

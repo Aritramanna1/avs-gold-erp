@@ -19,7 +19,10 @@ function ITC04ReportPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `ITC04_GST_JobWork_Register_${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `ITC04_GST_JobWork_Register_${new Date().toISOString().split("T")[0]}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -36,11 +39,15 @@ function ITC04ReportPage() {
             ITC-04 GST Job-Work Register
           </h1>
           <p className="text-sm text-slate-600">
-            GST Section 143 Compliance Register for Raw Metal Issued & Returned by Job-Workers / Karigars.
+            GST Section 143 Compliance Register for Raw Metal Issued & Returned by Job-Workers /
+            Karigars.
           </p>
         </div>
 
-        <Button onClick={handleExportCSV} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+        <Button
+          onClick={handleExportCSV}
+          className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
           <Download className="h-4 w-4" /> Export GST Portal CSV
         </Button>
       </div>
@@ -50,9 +57,12 @@ function ITC04ReportPage() {
           <CardContent className="p-4 flex items-center gap-3">
             <AlertTriangle className="h-6 w-6 text-red-600 shrink-0" />
             <div>
-              <p className="font-semibold">⚠️ {overdueCount} Job-Work Challan(s) Approaching 1-Year Threshold!</p>
+              <p className="font-semibold">
+                ⚠️ {overdueCount} Job-Work Challan(s) Approaching 1-Year Threshold!
+              </p>
               <p className="text-xs text-red-700">
-                Under CGST Section 143, inputs sent to job-workers must be returned within 1 year. Otherwise, it is treated as a taxable supply from the original challan date.
+                Under CGST Section 143, inputs sent to job-workers must be returned within 1 year.
+                Otherwise, it is treated as a taxable supply from the original challan date.
               </p>
             </div>
           </CardContent>
@@ -61,7 +71,9 @@ function ITC04ReportPage() {
 
       <Card className="shadow-sm border-slate-200">
         <CardHeader className="bg-slate-50 border-b border-slate-200 py-3">
-          <CardTitle className="text-sm font-semibold text-slate-700">Active ITC-04 Job Work Register Entries</CardTitle>
+          <CardTitle className="text-sm font-semibold text-slate-700">
+            Active ITC-04 Job Work Register Entries
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-700">
@@ -92,7 +104,9 @@ function ITC04ReportPage() {
                     {(r.goodsReturnedFineMg / 1000).toFixed(3)}g
                   </td>
                   <td className="p-3 text-right font-mono">
-                    <span className={r.isOverdueOneYear ? "text-red-600 font-bold" : "text-slate-700"}>
+                    <span
+                      className={r.isOverdueOneYear ? "text-red-600 font-bold" : "text-slate-700"}
+                    >
                       {r.daysHeld} days
                     </span>
                   </td>

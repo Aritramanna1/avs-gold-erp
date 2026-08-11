@@ -48,7 +48,7 @@ export function generateSampleITC04Records(): ITC04Record[] {
       lossMg: 5000,
       daysHeld: 45,
       isOverdueOneYear: false,
-      status: "partially_returned"
+      status: "partially_returned",
     },
     {
       id: "itc-2",
@@ -67,8 +67,8 @@ export function generateSampleITC04Records(): ITC04Record[] {
       lossMg: 0,
       daysHeld: 320,
       isOverdueOneYear: true, // Over 300 days threshold!
-      status: "pending_return"
-    }
+      status: "pending_return",
+    },
   ];
 }
 
@@ -87,7 +87,7 @@ export function exportITC04ToCSV(records: ITC04Record[]): string {
     "Quantity Returned (Grams)",
     "Loss/Scrap (Grams)",
     "Days Held",
-    "Status"
+    "Status",
   ];
 
   const rows = records.map((r) => [
@@ -101,7 +101,7 @@ export function exportITC04ToCSV(records: ITC04Record[]): string {
     (r.goodsReturnedGrossMg / 1000).toFixed(3),
     (r.lossMg / 1000).toFixed(3),
     r.daysHeld,
-    r.status
+    r.status,
   ]);
 
   return [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");

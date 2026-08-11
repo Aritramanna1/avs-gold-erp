@@ -285,7 +285,7 @@ export function calculateAlloyBatchRecipe(input: AlloyRecipeInput): AlloyRecipeR
   const explanation = [
     `Target: ${targetWeightGrams}g of ${targetKarat}K Gold`,
     `24K Pure Gold Required: ${pureGold24KGrams}g (${(purityRatio * 100).toFixed(2)}%)`,
-    `Alloy Additions Required: ${totalAlloyGrams}g (Copper: ${copperAlloyGrams}g, Silver: ${silverAlloyGrams}g)`
+    `Alloy Additions Required: ${totalAlloyGrams}g (Copper: ${copperAlloyGrams}g, Silver: ${silverAlloyGrams}g)`,
   ];
 
   return {
@@ -295,7 +295,7 @@ export function calculateAlloyBatchRecipe(input: AlloyRecipeInput): AlloyRecipeR
     copperAlloyGrams,
     silverAlloyGrams,
     totalAlloyGrams,
-    explanation
+    explanation,
   };
 }
 
@@ -325,12 +325,13 @@ export function calculateProcessShrinkage(input: ProcessShrinkageInput): Process
     preProcessGrossMg,
     postProcessGrossMg,
     stoneWeightAddedMg = 0,
-    meenaWeightAddedMg = 0
+    meenaWeightAddedMg = 0,
   } = input;
 
   const expectedGrossMg = preProcessGrossMg + stoneWeightAddedMg + meenaWeightAddedMg;
   const netGoldLossMg = Math.max(0, expectedGrossMg - postProcessGrossMg);
-  const variancePct = preProcessGrossMg > 0 ? Number(((netGoldLossMg / preProcessGrossMg) * 100).toFixed(2)) : 0;
+  const variancePct =
+    preProcessGrossMg > 0 ? Number(((netGoldLossMg / preProcessGrossMg) * 100).toFixed(2)) : 0;
   const isExcessiveLoss = variancePct > 1.0; // Alert if loss > 1.0%
 
   return {
@@ -341,7 +342,7 @@ export function calculateProcessShrinkage(input: ProcessShrinkageInput): Process
     netGoldLossMg,
     variancePct,
     isExcessiveLoss,
-    explanation: `Pre-process: ${preProcessGrossMg}mg, Post-process: ${postProcessGrossMg}mg, Added (Stone/Meena): ${stoneWeightAddedMg + meenaWeightAddedMg}mg -> Net Gold Loss: ${netGoldLossMg}mg (${variancePct}%)`
+    explanation: `Pre-process: ${preProcessGrossMg}mg, Post-process: ${postProcessGrossMg}mg, Added (Stone/Meena): ${stoneWeightAddedMg + meenaWeightAddedMg}mg -> Net Gold Loss: ${netGoldLossMg}mg (${variancePct}%)`,
   };
 }
 
@@ -370,7 +371,15 @@ export interface LabourCalculationResult {
  * Calculates Labour Making Charge across Gross, Net, Fine, Piece, or Carat basis.
  */
 export function calculateLabourCharge(input: LabourCalculationInput): LabourCalculationResult {
-  const { basis, ratePerUnitPaise, grossWeightMg, netWeightMg, fineWeightMg, piecesCount = 1, caratsCount = 0 } = input;
+  const {
+    basis,
+    ratePerUnitPaise,
+    grossWeightMg,
+    netWeightMg,
+    fineWeightMg,
+    piecesCount = 1,
+    caratsCount = 0,
+  } = input;
 
   let effectiveUnits = 0;
   switch (basis) {
@@ -400,7 +409,7 @@ export function calculateLabourCharge(input: LabourCalculationInput): LabourCalc
     effectiveUnits: Number(effectiveUnits.toFixed(3)),
     totalLabourChargePaise,
     totalLabourChargeRupees,
-    explanation: `Labour Basis: ${basis}, Rate: ₹${(ratePerUnitPaise / 100).toFixed(2)}/unit, Units: ${effectiveUnits.toFixed(3)} -> Total Labour: ₹${totalLabourChargeRupees}`
+    explanation: `Labour Basis: ${basis}, Rate: ₹${(ratePerUnitPaise / 100).toFixed(2)}/unit, Units: ${effectiveUnits.toFixed(3)} -> Total Labour: ₹${totalLabourChargeRupees}`,
   };
 }
 
@@ -424,7 +433,9 @@ export interface HallmarkCalculationResult {
 /**
  * Calculates Hallmark Verification Charges (Fixed per piece, Per gram, or Percentage).
  */
-export function calculateHallmarkCharge(input: HallmarkCalculationInput): HallmarkCalculationResult {
+export function calculateHallmarkCharge(
+  input: HallmarkCalculationInput,
+): HallmarkCalculationResult {
   const { basis, ratePaise, grossWeightMg, piecesCount = 1, itemValuePaise = 0 } = input;
 
   let totalHallmarkChargePaise = 0;
@@ -436,7 +447,7 @@ export function calculateHallmarkCharge(input: HallmarkCalculationInput): Hallma
       totalHallmarkChargePaise = Math.round((grossWeightMg / 1000) * ratePaise);
       break;
     case "percentage":
-      totalHallmarkChargePaise = Math.round((itemValuePaise * (ratePaise / 10000))); // ratePaise in basis points
+      totalHallmarkChargePaise = Math.round(itemValuePaise * (ratePaise / 10000)); // ratePaise in basis points
       break;
   }
 
@@ -446,7 +457,6 @@ export function calculateHallmarkCharge(input: HallmarkCalculationInput): Hallma
     basis,
     totalHallmarkChargePaise,
     totalHallmarkChargeRupees,
-    explanation: `Hallmark Basis: ${basis}, Rate: ${ratePaise} -> Charge: ₹${totalHallmarkChargeRupees}`
+    explanation: `Hallmark Basis: ${basis}, Rate: ${ratePaise} -> Charge: ₹${totalHallmarkChargeRupees}`,
   };
 }
-

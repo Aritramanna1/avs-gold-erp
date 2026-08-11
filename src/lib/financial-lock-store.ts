@@ -149,15 +149,17 @@ export function isPeriodLocked(branchId: string, dateIso: string): boolean {
 /**
  * Throws an error if targetDateIso is prior to the system Freeze Date (Section 14/Audit).
  */
-export function assertFreezeDateOpen(freezeDateIso: string | undefined | null, targetDateIso: string): void {
+export function assertFreezeDateOpen(
+  freezeDateIso: string | undefined | null,
+  targetDateIso: string,
+): void {
   if (!freezeDateIso) return;
   const freezeMs = new Date(freezeDateIso).getTime();
   const targetMs = new Date(targetDateIso).getTime();
 
   if (targetMs < freezeMs) {
     throw new Error(
-      `🔒 TRANSACTION BLOCKED: System transactions before ${freezeDateIso} are frozen. Target date ${targetDateIso} is locked.`
+      `🔒 TRANSACTION BLOCKED: System transactions before ${freezeDateIso} are frozen. Target date ${targetDateIso} is locked.`,
     );
   }
 }
-

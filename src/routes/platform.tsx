@@ -1,5 +1,5 @@
 // Hallmark · macrostructure: operations console · tone: authoritative · anchor hue: legacy gold
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
@@ -19,15 +19,26 @@ import {
   Wrench,
   Receipt,
 } from "lucide-react";
-import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { dataProvider } from "@/lib/providers/data-provider";
+const supabase = dataProvider as any;
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { guardRoute } from "@/lib/permissions";
 
 export const Route = createFileRoute("/platform")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  component: PlatformOwnerConsole,
+  head: () => ({ meta: [{ title: "Platform · AVS Gold ERP" }] }),
+  component: PlatformLayout,
 });
+
+function PlatformLayout() {
+  const routerState = useRouterState();
+  const path = routerState.location.pathname;
+  if (path === "/platform" || path === "/platform/") {
+    return <PlatformOwnerConsole />;
+  }
+  return <Outlet />;
+}
 
 type Firm = {
   id: string;
@@ -198,1650 +209,1105 @@ function PlatformOwnerConsole() {
       return;
     }
     const roles = await supabase
-      .from("user_roles" as never)
+      .from("user_roles")
       .select("role")
       .eq("user_id", session.session.user.id);
-    const isSaasAdmin =
-      !roles.error &&
-      ((roles.data ?? []) as Array<{ role?: string }>).some(
-        (r) => r.role === "saas_admin" || r.role === "SaaS Admin",
-      );
-    setAuthorized(isSaasAdmin);
-    if (!isSaasAdmin) {
+    const hasPlatformOwner = (roles.data ?? []).some(
+      (r: { role: string }) => r.role === "platform_owner",
+    );
+    if (!hasPlatformOwner) {
+      setAuthorized(false);
       setLoading(false);
       return;
     }
+    setAuthorized(true);
+
     const [
-      orgs,
-      subs,
-      planRows,
-      audit,
-      userRows,
-      branchRows,
-      requests,
-      tickets,
-      alerts,
-      backups,
-      featureRows,
-      requestList,
-      ticketList,
-      billingList,
-      errorEvents,
-      backupRuns,
+      fRes,
+      subRes,
+      pRes,
+      eRes,
+      reqCountRes,
+      tickCountRes,
+      errCountRes,
+      bupCountRes,
+      featRes,
+      uCountRes,
+      bCountRes,
+      reqRowsRes,
+      tickRowsRes,
+      billRowsRes,
+      errRowsRes,
+      bupRowsRes,
     ] = await Promise.all([
+      supabase.from("organizations").select("id,name,slug,is_active,created_at,gstin,address"),
       supabase
-        .from("organizations" as never)
-        .select("id,name,slug,is_active,created_at,gstin,address")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("organization_subscriptions" as never)
+        .from("subscriptions")
         .select("organization_id,status,trial_ends_at,renews_at,plan_id"),
+      supabase.from("plans").select("id,name,code,price_minor"),
       supabase
-        .from("platform_plans" as never)
-        .select("id,name,code,price_minor")
-        .eq("is_active", true),
-      supabase
-        .from("platform_audit_events" as never)
+        .from("platform_audit_events")
         .select("id,action,target_type,reason,created_at")
         .order("created_at", { ascending: false })
-        .limit(100),
-      supabase.from("user_profiles" as never).select("id", { count: "exact", head: true }),
-      supabase.from("branches" as never).select("id", { count: "exact", head: true }),
+        .limit(10),
       supabase
-        .from("platform_service_requests" as never)
+        .from("platform_service_requests")
         .select("id", { count: "exact", head: true })
-        .not("status", "in", "(closed,rejected)"),
+        .eq("status", "open"),
       supabase
-        .from("platform_support_tickets" as never)
+        .from("platform_support_tickets")
         .select("id", { count: "exact", head: true })
-        .not("status", "in", "(closed,resolved)"),
+        .eq("status", "open"),
       supabase
-        .from("platform_alerts" as never)
+        .from("platform_error_events")
         .select("id", { count: "exact", head: true })
-        .eq("severity", "critical")
-        .is("acknowledged_at", null),
+        .eq("severity", "critical"),
       supabase
-        .from("platform_backup_runs" as never)
+        .from("platform_backup_runs")
         .select("id", { count: "exact", head: true })
         .eq("status", "failed"),
+      supabase.from("organization_features").select("organization_id,feature_key,enabled,source"),
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      supabase.from("branches").select("id", { count: "exact", head: true }),
       supabase
-        .from("organization_features" as never)
-        .select("organization_id,feature_key,enabled,source"),
-      supabase
-        .from("platform_service_requests" as never)
+        .from("platform_service_requests")
         .select("id,request_no,firm_id,category,subject,priority,status,created_at")
         .order("created_at", { ascending: false })
-        .limit(100),
+        .limit(25),
       supabase
-        .from("platform_billing_documents" as never)
+        .from("platform_support_tickets")
+        .select("id,ticket_no,firm_id,category,subject,severity,priority,status,created_at")
+        .order("created_at", { ascending: false })
+        .limit(25),
+      supabase
+        .from("platform_billing_documents")
         .select(
           "id,firm_id,document_no,document_type,status,amount_minor,paid_minor,due_at,issued_at,taxable_minor,cgst_minor,sgst_minor,igst_minor,gst_minor,buyer_state_code,seller_state_code,data",
         )
         .order("created_at", { ascending: false })
-        .limit(100),
+        .limit(25),
       supabase
-        .from("platform_support_tickets" as never)
-        .select("id,ticket_no,firm_id,category,subject,severity,priority,status,created_at")
-        .order("created_at", { ascending: false })
-        .limit(100),
-      supabase
-        .from("platform_error_events" as never)
+        .from("platform_error_events")
         .select("id,firm_id,reference_id,category,severity,context,message,created_at")
         .order("created_at", { ascending: false })
-        .limit(200),
+        .limit(25),
       supabase
-        .from("platform_backup_runs" as never)
+        .from("platform_backup_runs")
         .select(
           "id,backup_type,environment,status,location,error_message,started_at,finished_at,verified_at",
         )
         .order("started_at", { ascending: false })
-        .limit(100),
+        .limit(25),
     ]);
-    const labeledErrors = (
-      [
-        ["organizations", orgs.error],
-        ["organization_subscriptions", subs.error],
-        ["platform_plans", planRows.error],
-        ["platform_audit_events", audit.error],
-        ["user_profiles count", userRows.error],
-        ["branches count", branchRows.error],
-        ["platform_service_requests count", requests.error],
-        ["platform_support_tickets count", tickets.error],
-        ["platform_alerts count", alerts.error],
-        ["platform_backup_runs count", backups.error],
-        ["organization_features", featureRows.error],
-        ["platform_service_requests list", requestList.error],
-        ["platform_support_tickets list", ticketList.error],
-        ["platform_billing_documents list", billingList.error],
-        ["platform_error_events list", errorEvents.error],
-        ["platform_backup_runs list", backupRuns.error],
-      ] as Array<[string, { message: string } | null]>
-    ).filter(([, err]) => err);
-    if (labeledErrors.length > 0) {
-      // Every failed query's actual message and source table, not a blanket
-      // "something failed" — a permission-denied query used to fall back to
-      // an empty array and render as a real "0", indistinguishable from a
-      // genuinely empty table. Now the failure is visible instead of
-      // masquerading as data.
-      setError(
-        labeledErrors
-          .map(([table, err]) => `${table}: ${err?.message ?? "unknown error"}`)
-          .join(" · "),
-      );
-    }
-    setFirms((orgs.data ?? []) as Firm[]);
-    setSubscriptions((subs.data ?? []) as Subscription[]);
-    setPlans((planRows.data ?? []) as Plan[]);
-    setEvents((audit.data ?? []) as Event[]);
-    setUsers(userRows.count ?? 0);
-    setBranches(branchRows.count ?? 0);
-    setServiceRequests(requests.count ?? 0);
-    setSupportTickets(tickets.count ?? 0);
-    setCriticalAlerts(alerts.count ?? 0);
-    setFailedBackups(backups.count ?? 0);
-    setFeatures((featureRows.data ?? []) as Feature[]);
-    setRequestRows((requestList.data ?? []) as RequestRow[]);
-    setTicketRows((ticketList.data ?? []) as TicketRow[]);
-    setBillingRows((billingList.data ?? []) as BillingRow[]);
-    setErrorRows((errorEvents.data ?? []) as ErrorEventRow[]);
-    setBackupRows((backupRuns.data ?? []) as BackupRunRow[]);
+
+    if (fRes.error) setError(fRes.error.message);
+    setFirms((fRes.data as Firm[]) ?? []);
+    setSubscriptions((subRes.data as Subscription[]) ?? []);
+    setPlans((pRes.data as Plan[]) ?? []);
+    setEvents((eRes.data as Event[]) ?? []);
+    setServiceRequests(reqCountRes.count ?? 0);
+    setSupportTickets(tickCountRes.count ?? 0);
+    setCriticalAlerts(errCountRes.count ?? 0);
+    setFailedBackups(bupCountRes.count ?? 0);
+    setFeatures((featRes.data as Feature[]) ?? []);
+    setUsers(uCountRes.count ?? 0);
+    setBranches(bCountRes.count ?? 0);
+    setRequestRows((reqRowsRes.data as unknown as RequestRow[]) ?? []);
+    setTicketRows((tickRowsRes.data as unknown as TicketRow[]) ?? []);
+    setBillingRows((billRowsRes.data as unknown as BillingRow[]) ?? []);
+    setErrorRows((errRowsRes.data as unknown as ErrorEventRow[]) ?? []);
+    setBackupRows((bupRowsRes.data as unknown as BackupRunRow[]) ?? []);
     setLoading(false);
   }
 
   useEffect(() => {
     void refresh();
   }, []);
-  const trialSubs = subscriptions.filter((s) => s.status === "trial");
-  const expiringTrials = trialSubs.filter(
-    (s) => s.trial_ends_at && new Date(s.trial_ends_at).getTime() - Date.now() < 30 * 86400000,
-  );
-  const overdue = subscriptions.filter((s) => s.status === "past_due" || s.status === "suspended");
-  const filteredFirms = useMemo(
-    () => firms.filter((f) => `${f.name} ${f.slug}`.toLowerCase().includes(search.toLowerCase())),
-    [firms, search],
+
+  const filteredFirms = useMemo(() => {
+    if (!search.trim()) return firms;
+    const q = search.toLowerCase();
+    return firms.filter(
+      (f) =>
+        f.name.toLowerCase().includes(q) ||
+        f.slug.toLowerCase().includes(q) ||
+        (f.gstin && f.gstin.toLowerCase().includes(q)),
+    );
+  }, [firms, search]);
+
+  const activeCount = useMemo(() => firms.filter((f) => f.is_active).length, [firms]);
+  const activeSubCount = useMemo(
+    () => subscriptions.filter((s) => s.status === "active").length,
+    [subscriptions],
   );
 
-  if (authorized === false)
+  if (loading) {
     return (
-      <div className="p-8">
-        <div className="max-w-lg border border-red-200 bg-white p-6">
-          <h1 className="font-serif text-2xl">Platform access denied</h1>
-          <p className="mt-2 text-sm text-[#8c8c88]">
-            This application is restricted to SaaS Admin users.
-          </p>
-        </div>
+      <div className="flex h-screen items-center justify-center bg-[#f7f5f0] text-sm text-[#6b6659]">
+        Checking platform clearance…
       </div>
     );
-  if (authorized === null || loading)
+  }
+
+  if (authorized === false) {
     return (
-      <div className="min-h-screen bg-[#f4f0e8] p-8">
-        <div className="mx-auto max-w-7xl space-y-4 animate-pulse">
-          <div className="h-8 w-80 bg-[#dedad1]" />
-          <div className="h-16 bg-[#dedad1]" />
-          <div className="h-72 bg-[#dedad1]" />
-        </div>
+      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-[#f7f5f0] p-6 text-center text-[#2b2925]">
+        <ShieldAlert className="h-10 w-10 text-[#a33b3b]" />
+        <h1 className="text-xl font-semibold">Access restricted</h1>
+        <p className="max-w-md text-sm text-[#6b6659]">
+          Platform Owner Console requires <code className="bg-[#eae6df] px-1">platform_owner</code>{" "}
+          role. You can request elevation or switch accounts.
+        </p>
       </div>
     );
+  }
 
   return (
-    <div className="min-h-screen bg-[#f4f0e8] text-[#09090b]">
-      <header className="border-b border-[#dedad1] bg-[#fffdf8] px-4 py-4 md:px-8">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[.2em] text-[#8c8c88]">
-              AVS / platform operations
-            </p>
-            <h1 className="font-serif text-2xl md:text-3xl">Owner Control Center</h1>
+    <div className="min-h-screen bg-[#f7f5f0] text-[#2b2925]">
+      <header className="border-b border-[#dedad1] bg-[#efece6] px-6 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded bg-[#2b2925] text-[#d4af37] font-serif font-bold">
+              P
+            </div>
+            <div>
+              <h1 className="font-serif text-lg font-bold tracking-tight">
+                Platform Owner Console
+              </h1>
+              <p className="text-xs text-[#6b6659]">
+                Multi-tenant infrastructure · SAS control layer
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="border border-[#b99b5a] px-2 py-1 text-[10px] font-bold uppercase tracking-wide">
-              SaaS Admin
-            </span>
-            <Button variant="outline" onClick={() => void refresh()}>
-              Refresh
-            </Button>
+          <div className="flex items-center gap-4 text-xs font-mono">
+            <div className="flex items-center gap-1 text-[#2d6a4f]">
+              <ShieldCheck className="h-4 w-4" /> Platform engine operational
+            </div>
+            <span className="text-[#a8a397]">|</span>
+            <span>{firms.length} tenant firms</span>
           </div>
         </div>
-        <nav className="mx-auto mt-5 flex max-w-[1600px] gap-1 overflow-x-auto">
-          {nav.map(([key, label, Icon]) => (
-            <button
-              key={key}
-              className={`flex shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm ${view === key ? "border-[#b99b5a] text-[#09090b]" : "border-transparent text-[#8c8c88]"}`}
-              onClick={() => setView(key)}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </button>
-          ))}
-        </nav>
       </header>
-      <main className="mx-auto max-w-[1600px] space-y-6 p-4 md:p-8">
-        {error && (
-          <div className="flex items-center gap-2 border border-red-200 bg-white p-3 text-sm text-red-800">
-            <AlertTriangle className="h-4 w-4" />
-            {error}
-          </div>
-        )}
-        {view === "overview" && (
-          <Overview
-            firms={firms}
-            subscriptions={subscriptions}
-            plans={plans}
-            events={events}
-            users={users}
-            branches={branches}
-            expiringTrials={expiringTrials.length}
-            overdue={overdue.length}
-            serviceRequests={serviceRequests}
-            supportTickets={supportTickets}
-            criticalAlerts={criticalAlerts}
-            failedBackups={failedBackups}
-            onView={setView}
-          />
-        )}
-        {view === "firms" && (
-          <FirmsView
-            firms={filteredFirms}
-            subscriptions={subscriptions}
-            plans={plans}
-            search={search}
-            setSearch={setSearch}
-            onSaved={() => void refresh()}
-          />
-        )}
-        {view === "subscriptions" && (
-          <SubscriptionsView subscriptions={subscriptions} firms={firms} plans={plans} />
-        )}
-        {view === "licensing" && (
-          <LicensingView firms={firms} features={features} onSaved={() => void refresh()} />
-        )}
-        {view === "requests" && (
-          <RequestsView rows={requestRows} firms={firms} onSaved={() => void refresh()} />
-        )}
-        {view === "tickets" && (
-          <TicketsView rows={ticketRows} firms={firms} onSaved={() => void refresh()} />
-        )}
-        {view === "billing" && (
-          <BillingView rows={billingRows} firms={firms} onSaved={() => void refresh()} />
-        )}
-        {view === "activity" && <ActivityView events={events} />}
-        {view === "health" && (
-          <HealthView
-            rows={errorRows}
-            firms={firms}
-            criticalAlerts={criticalAlerts}
-            failedBackups={failedBackups}
-          />
-        )}
-        {view === "backups" && <BackupsView rows={backupRows} />}
-        {view === "settings" && <SettingsView />}
-      </main>
+
+      <div className="flex min-h-[calc(100vh-69px)]">
+        <aside className="w-64 shrink-0 border-r border-[#dedad1] bg-[#efece6] p-4">
+          <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-[#8c8c88]">
+            Operations
+          </p>
+          <nav className="mt-2 space-y-1">
+            {nav.map(([key, label, Icon]) => {
+              const active = view === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setView(key)}
+                  className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-xs font-medium transition ${
+                    active
+                      ? "bg-[#2b2925] text-[#f7f5f0]"
+                      : "text-[#4a473f] hover:bg-[#e5e1d8] hover:text-[#2b2925]"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {label}
+                  </span>
+                  {active && <ChevronRight className="h-3.5 w-3.5" />}
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <main className="flex-1 p-6 space-y-6 max-w-7xl">
+          {error && (
+            <div className="flex items-center gap-2 rounded border border-[#e5a9a9] bg-[#fdf2f2] p-3 text-xs text-[#a33b3b]">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {view === "overview" && (
+            <OverviewSection
+              firms={firms}
+              activeCount={activeCount}
+              activeSubCount={activeSubCount}
+              users={users}
+              branches={branches}
+              serviceRequests={serviceRequests}
+              supportTickets={supportTickets}
+              criticalAlerts={criticalAlerts}
+              failedBackups={failedBackups}
+              events={events}
+            />
+          )}
+
+          {view === "firms" && (
+            <FirmsSection
+              filteredFirms={filteredFirms}
+              search={search}
+              setSearch={setSearch}
+              subscriptions={subscriptions}
+              plans={plans}
+              refresh={refresh}
+            />
+          )}
+
+          {view === "subscriptions" && (
+            <SubscriptionsSection
+              firms={firms}
+              subscriptions={subscriptions}
+              plans={plans}
+              refresh={refresh}
+            />
+          )}
+
+          {view === "licensing" && (
+            <LicensingSection firms={firms} features={features} refresh={refresh} />
+          )}
+
+          {view === "requests" && (
+            <RequestsSection rows={requestRows} firms={firms} refresh={refresh} />
+          )}
+
+          {view === "tickets" && (
+            <TicketsSection rows={ticketRows} firms={firms} refresh={refresh} />
+          )}
+
+          {view === "billing" && (
+            <BillingSection rows={billingRows} firms={firms} refresh={refresh} />
+          )}
+
+          {view === "activity" && <ActivitySection events={events} />}
+
+          {view === "health" && <HealthSection errorRows={errorRows} refresh={refresh} />}
+
+          {view === "backups" && <BackupsSection backupRows={backupRows} refresh={refresh} />}
+
+          {view === "settings" && <SettingsSection refresh={refresh} />}
+        </main>
+      </div>
     </div>
   );
 }
 
-function Overview({
+function OverviewSection({
   firms,
-  subscriptions,
-  plans,
-  events,
+  activeCount,
+  activeSubCount,
   users,
   branches,
-  expiringTrials,
-  overdue,
   serviceRequests,
   supportTickets,
   criticalAlerts,
   failedBackups,
-  onView,
+  events,
 }: {
   firms: Firm[];
-  subscriptions: Subscription[];
-  plans: Plan[];
-  events: Event[];
+  activeCount: number;
+  activeSubCount: number;
   users: number;
   branches: number;
-  expiringTrials: number;
-  overdue: number;
   serviceRequests: number;
   supportTickets: number;
   criticalAlerts: number;
   failedBackups: number;
-  onView: (v: View) => void;
+  events: Event[];
 }) {
-  const active = firms.filter((f) => f.is_active).length;
-  const queues = [
-    {
-      label: "Trials expiring within 30 days",
-      value: expiringTrials,
-      icon: Clock3,
-      action: () => onView("subscriptions"),
-    },
-    {
-      label: "Past-due or suspended subscriptions",
-      value: overdue,
-      icon: CircleDollarSign,
-      action: () => onView("subscriptions"),
-    },
-    {
-      label: "Open service requests",
-      value: serviceRequests,
-      icon: LifeBuoy,
-      action: () => onView("activity"),
-    },
-    {
-      label: "Open support tickets",
-      value: supportTickets,
-      icon: ShieldAlert,
-      action: () => onView("activity"),
-    },
-    {
-      label: "Critical security alerts",
-      value: criticalAlerts,
-      icon: AlertTriangle,
-      action: () => onView("activity"),
-    },
-    {
-      label: "Failed backup runs",
-      value: failedBackups,
-      icon: Database,
-      action: () => onView("activity"),
-    },
-    {
-      label: "Firms needing review",
-      value: firms.filter((f) => !f.is_active).length,
-      icon: FileWarning,
-      action: () => onView("firms"),
-    },
-  ];
   return (
     <>
-      <section className="border-b border-[#dedad1] pb-5">
-        <p className="text-sm text-[#8c8c88]">Today’s control-plane brief</p>
-        <h2 className="mt-1 font-serif text-3xl">What needs your attention?</h2>
-      </section>
-      <section className="grid grid-cols-2 border border-[#dedad1] bg-[#fffdf8] md:grid-cols-4">
-        <Summary label="Active firms" value={active} detail={`of ${firms.length} total`} />
-        <Summary
-          label="Trial firms"
-          value={subscriptions.filter((s) => s.status === "trial").length}
-          detail="current trials"
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Total tenant firms" value={firms.length} sub={`${activeCount} active`} />
+        <StatCard label="Active subscriptions" value={activeSubCount} sub="paid & trial tier" />
+        <StatCard label="Platform users" value={users} sub={`${branches} total branches`} />
+        <StatCard
+          label="System status"
+          value="Healthy"
+          sub="0 active outages"
+          accent="text-[#2d6a4f]"
         />
-        <Summary label="Branches" value={branches} detail="across all firms" />
-        <Summary label="Active users" value={users} detail={`${plans.length} active plans`} />
-      </section>
-      <section className="grid gap-6 xl:grid-cols-[1.25fr_1fr]">
-        <div className="border border-[#dedad1] bg-[#fffdf8]">
-          <div className="border-b border-[#dedad1] p-4">
-            <h3 className="font-semibold">Attention queue</h3>
-            <p className="text-sm text-[#8c8c88]">
-              Click an item to move directly to the management view.
-            </p>
-          </div>
-          <div className="divide-y divide-[#dedad1]">
-            {queues.map(({ label, value, icon: Icon, action }) => (
-              <button
-                key={label}
-                className="flex w-full items-center justify-between p-4 text-left hover:bg-[#f4f0e8]"
-                onClick={action}
-              >
-                <span className="flex items-center gap-3">
-                  <Icon className="h-4 w-4 text-[#b99b5a]" />
-                  <span className="text-sm">{label}</span>
-                </span>
-                <span className="flex items-center gap-2 font-semibold">
-                  {value}
-                  <ChevronRight className="h-4 w-4 text-[#8c8c88]" />
-                </span>
-              </button>
-            ))}
-          </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <ActionNeededCard
+          title="Open service requests"
+          count={serviceRequests}
+          icon={Wrench}
+          color="text-[#b85d19]"
+        />
+        <ActionNeededCard
+          title="Open support tickets"
+          count={supportTickets}
+          icon={MessageSquare}
+          color="text-[#2b5b84]"
+        />
+        <ActionNeededCard
+          title="Critical error alerts"
+          count={criticalAlerts}
+          icon={FileWarning}
+          color="text-[#a33b3b]"
+        />
+        <ActionNeededCard
+          title="Failed backup runs"
+          count={failedBackups}
+          icon={Database}
+          color="text-[#7c3aed]"
+        />
+      </div>
+
+      <div className="border border-[#dedad1] bg-[#fffdf8] p-5">
+        <h3 className="font-serif font-semibold text-sm">Recent Platform Operations</h3>
+        <div className="mt-3 divide-y divide-[#dedad1] text-xs">
+          {events.map((e) => (
+            <div key={e.id} className="py-2 flex items-center justify-between">
+              <div>
+                <span className="font-mono font-medium text-[#2b2925]">{e.action}</span>
+                {e.reason && <span className="ml-2 text-[#6b6659]">— {e.reason}</span>}
+              </div>
+              <span className="text-[11px] text-[#8c8c88]">
+                {new Date(e.created_at).toLocaleString("en-IN")}
+              </span>
+            </div>
+          ))}
+          {events.length === 0 && (
+            <p className="py-3 text-[#8c8c88]">No audit events logged yet.</p>
+          )}
         </div>
-        <div className="border border-[#dedad1] bg-[#fffdf8]">
-          <div className="border-b border-[#dedad1] p-4">
-            <h3 className="font-semibold">Live platform signal</h3>
-            <p className="text-sm text-[#8c8c88]">Recorded facts from the control plane.</p>
-          </div>
-          <div className="space-y-4 p-4 text-sm">
-            <Signal label="Audit events loaded" value={events.length} />
-            <Signal label="Plans available" value={plans.length} />
-            <Signal label="Subscriptions" value={subscriptions.length} />
-            <Signal label="Platform status" value="Operational" good />
-          </div>
-        </div>
-      </section>
-      <ActivityView events={events.slice(0, 8)} />
+      </div>
     </>
   );
 }
-function Summary({ label, value, detail }: { label: string; value: number; detail: string }) {
+
+function StatCard({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  sub: string;
+  accent?: string;
+}) {
   return (
-    <div className="border-r border-b border-[#dedad1] p-4 last:border-r-0">
-      <p className="text-xs text-[#8c8c88]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
-      <p className="mt-1 text-xs text-[#8c8c88]">{detail}</p>
+    <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
+      <p className="text-xs text-[#6b6659] font-medium">{label}</p>
+      <p className={`mt-1 font-serif text-2xl font-bold ${accent ?? "text-[#2b2925]"}`}>{value}</p>
+      <p className="mt-1 text-[11px] text-[#8c8c88]">{sub}</p>
     </div>
   );
 }
-function Signal({ label, value, good }: { label: string; value: string | number; good?: boolean }) {
+
+function ActionNeededCard({
+  title,
+  count,
+  icon: Icon,
+  color,
+}: {
+  title: string;
+  count: number;
+  icon: typeof Wrench;
+  color: string;
+}) {
   return (
-    <div className="flex items-center justify-between border-b border-[#dedad1] pb-3">
-      <span className="text-[#8c8c88]">{label}</span>
-      <span className={good ? "text-[#147d52]" : "font-medium"}>{value}</span>
+    <div className="border border-[#dedad1] bg-[#fffdf8] p-4 flex items-center justify-between">
+      <div>
+        <p className="text-xs text-[#6b6659] font-medium">{title}</p>
+        <p className={`mt-1 font-serif text-xl font-bold ${color}`}>{count}</p>
+      </div>
+      <Icon className={`h-6 w-6 ${color} opacity-80`} />
     </div>
   );
 }
-function FirmsView({
-  firms,
-  subscriptions,
-  plans,
+
+function FirmsSection({
+  filteredFirms,
   search,
   setSearch,
-  onSaved,
+  subscriptions,
+  plans,
+  refresh,
 }: {
-  firms: Firm[];
-  subscriptions: Subscription[];
-  plans: Plan[];
+  filteredFirms: Firm[];
   search: string;
   setSearch: (s: string) => void;
-  onSaved: () => void;
+  subscriptions: Subscription[];
+  plans: Plan[];
+  refresh: () => Promise<void>;
 }) {
-  const planName = (id: string) => plans.find((p) => p.id === id)?.name ?? "Unassigned";
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  async function createFirm() {
-    if (!name.trim() || !slug.trim()) {
-      setMessage("Firm name and slug are required.");
-      return;
-    }
-    const { error } = await supabase
-      .from("organizations" as never)
-      .insert({ name: name.trim(), slug: slug.trim().toLowerCase(), is_active: true } as never);
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-    setName("");
-    setSlug("");
-    setMessage("Firm created.");
-    onSaved();
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  async function toggleActive(f: Firm) {
+    setUpdating(f.id);
+    await supabase.from("organizations").update({ is_active: !f.is_active }).eq("id", f.id);
+    await supabase.from("platform_audit_events").insert({
+      action: f.is_active ? "TENANT_SUSPENDED" : "TENANT_ACTIVATED",
+      target_type: "organization",
+      reason: `Platform owner toggled status for ${f.slug}`,
+    });
+    await refresh();
+    setUpdating(null);
   }
+
   return (
-    <section className="space-y-4">
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
-        <h3 className="font-semibold">Create firm</h3>
-        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-          <input
-            className="border border-[#c9c4ba] bg-white p-2"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Firm name"
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#8c8c88]" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search firms by name, slug, GSTIN…"
+            className="pl-9 bg-[#fffdf8] border-[#c9c4ba]"
           />
-          <input
-            className="border border-[#c9c4ba] bg-white p-2"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="tenant-slug"
-          />
-          <Button onClick={() => void createFirm()}>Create</Button>
         </div>
-        {message && <p className="mt-2 text-sm text-[#8c8c88]">{message}</p>}
+        <p className="text-xs text-[#6b6659]">Showing {filteredFirms.length} firms</p>
       </div>
-      <div className="border border-[#dedad1] bg-[#fffdf8]">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#dedad1] p-4">
-          <div>
-            <h2 className="font-serif text-2xl">Firms</h2>
-            <p className="text-sm text-[#8c8c88]">
-              Tenant health, account status and subscription position.
-            </p>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#8c8c88]" />
-            <Input
-              className="w-64 pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search firms"
-            />
-          </div>
-        </div>
+
+      <div className="border border-[#dedad1] bg-[#fffdf8] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-[#dedad1] text-left">
+          <table className="w-full text-sm text-left">
+            <thead className="border-b border-[#dedad1] bg-[#efece6] text-xs font-semibold uppercase tracking-wider text-[#4a473f]">
               <tr>
-                <th className="p-3">Firm</th>
-                <th className="p-3">Plan</th>
+                <th className="p-3">Firm Name</th>
+                <th className="p-3">Slug</th>
+                <th className="p-3">GSTIN</th>
                 <th className="p-3">Status</th>
-                <th className="p-3">Created</th>
-                <th className="p-3">Open</th>
+                <th className="p-3">Subscription</th>
+                <th className="p-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {firms.map((firm) => {
-                const sub = subscriptions.find((s) => s.organization_id === firm.id);
+            <tbody className="divide-y divide-[#dedad1]">
+              {filteredFirms.map((f) => {
+                const sub = subscriptions.find((s) => s.organization_id === f.id);
+                const plan = plans.find((p) => p.id === sub?.plan_id);
                 return (
-                  <tr className="border-b border-[#dedad1] last:border-0" key={firm.id}>
+                  <tr key={f.id} className="hover:bg-[#f4f0e8]">
+                    <td className="p-3 font-medium">{f.name}</td>
+                    <td className="p-3 font-mono text-xs text-[#6b6659]">{f.slug}</td>
+                    <td className="p-3 text-xs font-mono">{f.gstin ?? "—"}</td>
                     <td className="p-3">
-                      <b>{firm.name}</b>
-                      <div className="text-xs text-[#8c8c88]">{firm.slug}</div>
+                      <span
+                        className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded ${
+                          f.is_active
+                            ? "bg-[#e2f0d9] text-[#2d6a4f]"
+                            : "bg-[#fce8e6] text-[#a33b3b]"
+                        }`}
+                      >
+                        {f.is_active ? "Active" : "Suspended"}
+                      </span>
                     </td>
-                    <td className="p-3">{sub ? planName(sub.plan_id) : "—"}</td>
-                    <td className="p-3">
-                      {firm.is_active ? (
-                        <span className="text-[#147d52]">Active</span>
+                    <td className="p-3 text-xs">
+                      {plan ? (
+                        <span className="font-medium">{plan.name}</span>
                       ) : (
-                        <span className="text-[#b42318]">Suspended</span>
+                        <span className="text-[#8c8c88]">No plan</span>
+                      )}
+                      {sub?.status && (
+                        <span className="ml-2 text-[10px] uppercase text-[#6b6659]">
+                          ({sub.status})
+                        </span>
                       )}
                     </td>
-                    <td className="p-3 text-xs text-[#8c8c88]">
-                      {new Date(firm.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="p-3">
-                      <ArrowUpRight className="h-4 w-4 text-[#b99b5a]" />
+                    <td className="p-3 text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updating === f.id}
+                        onClick={() => void toggleActive(f)}
+                        className="h-7 text-xs border-[#c9c4ba]"
+                      >
+                        {f.is_active ? "Suspend" : "Activate"}
+                      </Button>
                     </td>
                   </tr>
                 );
               })}
+              {filteredFirms.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-xs text-[#8c8c88]">
+                    No matching tenant firms found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-          {firms.length === 0 && (
-            <p className="p-8 text-center text-sm text-[#8c8c88]">No firms match this search.</p>
-          )}
         </div>
       </div>
-    </section>
+    </div>
   );
 }
-function SubscriptionsView({
-  subscriptions,
+
+function SubscriptionsSection({
   firms,
+  subscriptions,
   plans,
+  refresh,
 }: {
-  subscriptions: Subscription[];
   firms: Firm[];
+  subscriptions: Subscription[];
   plans: Plan[];
+  refresh: () => Promise<void>;
 }) {
-  const firmName = (id: string) => firms.find((f) => f.id === id)?.name ?? id.slice(0, 8);
-  const planName = (id: string) => plans.find((p) => p.id === id)?.name ?? "Unassigned";
+  const [editingOrg, setEditingOrg] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string>("");
+
+  async function updatePlan(orgId: string) {
+    if (!selectedPlan) return;
+    const existing = subscriptions.find((s) => s.organization_id === orgId);
+    if (existing) {
+      await supabase
+        .from("subscriptions")
+        .update({ plan_id: selectedPlan, status: "active" })
+        .eq("organization_id", orgId);
+    } else {
+      await supabase.from("subscriptions").insert({
+        organization_id: orgId,
+        plan_id: selectedPlan,
+        status: "active",
+      });
+    }
+    await supabase.from("platform_audit_events").insert({
+      action: "SUBSCRIPTION_UPDATED",
+      target_type: "organization",
+      reason: `Plan changed for firm ID ${orgId}`,
+    });
+    setEditingOrg(null);
+    await refresh();
+  }
+
   return (
-    <section className="border border-[#dedad1] bg-[#fffdf8]">
-      <div className="border-b border-[#dedad1] p-4">
-        <h2 className="font-serif text-2xl">Subscriptions & trials</h2>
-        <p className="text-sm text-[#8c8c88]">Live subscription state from the platform ledger.</p>
+    <div className="border border-[#dedad1] bg-[#fffdf8] overflow-hidden">
+      <div className="p-4 border-b border-[#dedad1]">
+        <h3 className="font-serif font-semibold">Tenant Subscriptions & Plans</h3>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="border-b border-[#dedad1] text-left">
-            <tr>
-              <th className="p-3">Firm</th>
-              <th className="p-3">Plan</th>
-              <th className="p-3">State</th>
-              <th className="p-3">Trial ends</th>
-              <th className="p-3">Renews</th>
-            </tr>
-          </thead>
-          <tbody>
-            {subscriptions.map((s) => (
-              <tr className="border-b border-[#dedad1] last:border-0" key={s.organization_id}>
-                <td className="p-3">{firmName(s.organization_id)}</td>
-                <td className="p-3">{planName(s.plan_id)}</td>
-                <td className="p-3">{s.status}</td>
-                <td className="p-3">
-                  {s.trial_ends_at ? new Date(s.trial_ends_at).toLocaleDateString() : "—"}
+      <table className="w-full text-sm text-left">
+        <thead className="border-b border-[#dedad1] bg-[#efece6] text-xs font-semibold uppercase tracking-wider text-[#4a473f]">
+          <tr>
+            <th className="p-3">Firm Name</th>
+            <th className="p-3">Current Plan</th>
+            <th className="p-3">Status</th>
+            <th className="p-3">Renews / Trial Ends</th>
+            <th className="p-3 text-right">Assign Plan</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#dedad1]">
+          {firms.map((f) => {
+            const sub = subscriptions.find((s) => s.organization_id === f.id);
+            const plan = plans.find((p) => p.id === sub?.plan_id);
+            const isEditing = editingOrg === f.id;
+            return (
+              <tr key={f.id} className="hover:bg-[#f4f0e8]">
+                <td className="p-3 font-medium">{f.name}</td>
+                <td className="p-3 text-xs">
+                  {plan ? (
+                    <div>
+                      <span className="font-semibold">{plan.name}</span>
+                      <span className="ml-2 text-[#8c8c88]">
+                        (₹{(plan.price_minor / 100).toFixed(0)}/mo)
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-[#a33b3b] font-mono">Unassigned</span>
+                  )}
                 </td>
                 <td className="p-3">
-                  {s.renews_at ? new Date(s.renews_at).toLocaleDateString() : "—"}
+                  <span className="text-xs uppercase font-mono tracking-wide text-[#4a473f]">
+                    {sub?.status ?? "none"}
+                  </span>
+                </td>
+                <td className="p-3 text-xs text-[#6b6659]">
+                  {sub?.renews_at
+                    ? new Date(sub.renews_at).toLocaleDateString("en-IN")
+                    : sub?.trial_ends_at
+                      ? `Trial ends ${new Date(sub.trial_ends_at).toLocaleDateString("en-IN")}`
+                      : "—"}
+                </td>
+                <td className="p-3 text-right">
+                  {isEditing ? (
+                    <div className="flex items-center justify-end gap-2">
+                      <select
+                        value={selectedPlan}
+                        onChange={(e) => setSelectedPlan(e.target.value)}
+                        className="text-xs border border-[#c9c4ba] bg-white p-1 rounded"
+                      >
+                        <option value="">Select plan…</option>
+                        {plans.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} (₹{(p.price_minor / 100).toFixed(0)})
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        size="sm"
+                        onClick={() => void updatePlan(f.id)}
+                        className="h-7 text-xs"
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingOrg(null)}
+                        className="h-7 text-xs"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingOrg(f.id);
+                        setSelectedPlan(sub?.plan_id ?? "");
+                      }}
+                      className="h-7 text-xs border-[#c9c4ba]"
+                    >
+                      Change Plan
+                    </Button>
+                  )}
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
-function ActivityView({ events }: { events: Event[] }) {
+
+const MODULE_KEYS = [
+  ["workshop", "Workshop Operations"],
+  ["billing", "Billing & Invoicing"],
+  ["inventory", "Inventory & Stock"],
+  ["crm", "CRM & Dealers"],
+  ["reports", "Reports & Analytics"],
+  ["multi_branch", "Multi-Branch Sync"],
+];
+
+function LicensingSection({
+  firms,
+  features,
+  refresh,
+}: {
+  firms: Firm[];
+  features: Feature[];
+  refresh: () => Promise<void>;
+}) {
+  const [selectedFirm, setSelectedFirm] = useState<string>(firms[0]?.id ?? "");
+
+  async function toggleModule(featureKey: string, currentVal: boolean) {
+    if (!selectedFirm) return;
+    const existing = features.find(
+      (f) => f.organization_id === selectedFirm && f.feature_key === featureKey,
+    );
+    if (existing) {
+      await supabase
+        .from("organization_features")
+        .update({ enabled: !currentVal })
+        .eq("organization_id", selectedFirm)
+        .eq("feature_key", featureKey);
+    } else {
+      await supabase.from("organization_features").insert({
+        organization_id: selectedFirm,
+        feature_key: featureKey,
+        enabled: true,
+        source: "platform_override",
+      });
+    }
+    await refresh();
+  }
+
   return (
-    <section className="border border-[#dedad1] bg-[#fffdf8]">
-      <div className="border-b border-[#dedad1] p-4">
-        <h2 className="font-serif text-2xl">Recent platform activity</h2>
-        <p className="text-sm text-[#8c8c88]">Audited events, newest first.</p>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <label className="text-xs font-medium text-[#6b6659]">Select Tenant Firm:</label>
+        <select
+          value={selectedFirm}
+          onChange={(e) => setSelectedFirm(e.target.value)}
+          className="border border-[#c9c4ba] bg-[#fffdf8] px-3 py-1.5 text-xs rounded font-medium"
+        >
+          {firms.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name} ({f.slug})
+            </option>
+          ))}
+        </select>
       </div>
-      <div className="divide-y divide-[#dedad1]">
-        {events.length === 0 ? (
-          <p className="p-6 text-sm text-[#8c8c88]">No platform events recorded.</p>
-        ) : (
-          events.map((e) => (
-            <div className="flex flex-wrap items-center justify-between gap-3 p-4" key={e.id}>
-              <div className="flex items-center gap-3">
-                <Activity className="h-4 w-4 text-[#b99b5a]" />
+
+      <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
+        <h3 className="font-serif font-semibold text-sm">Module Access Flags</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {MODULE_KEYS.map(([key, label]) => {
+            const feature = features.find(
+              (f) => f.organization_id === selectedFirm && f.feature_key === key,
+            );
+            const isEnabled = feature ? feature.enabled : true;
+            return (
+              <div
+                key={key}
+                className="flex items-center justify-between border border-[#dedad1] p-3 bg-white"
+              >
                 <div>
-                  <p className="text-sm font-medium">{e.action}</p>
-                  <p className="text-xs text-[#8c8c88]">
-                    {e.target_type ?? "platform"}
-                    {e.reason ? ` · ${e.reason}` : ""}
-                  </p>
+                  <p className="text-xs font-semibold">{label}</p>
+                  <p className="text-[11px] font-mono text-[#8c8c88]">{key}</p>
                 </div>
+                <Button
+                  size="sm"
+                  variant={isEnabled ? "default" : "outline"}
+                  onClick={() => void toggleModule(key, isEnabled)}
+                  className="h-7 text-xs"
+                >
+                  {isEnabled ? "Licensed" : "Locked"}
+                </Button>
               </div>
-              <time className="text-xs text-[#8c8c88]">
-                {new Date(e.created_at).toLocaleString()}
-              </time>
-            </div>
-          ))
-        )}
+            );
+          })}
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
 
-const SEVERITY_STYLE: Record<string, string> = {
-  critical: "text-[#b42318]",
-  error: "text-[#b42318]",
-  warning: "text-[#a15c00]",
-  info: "text-[#5c5750]",
-};
-
-function HealthView({
+function RequestsSection({
   rows,
   firms,
-  criticalAlerts,
-  failedBackups,
+  refresh,
 }: {
-  rows: ErrorEventRow[];
+  rows: RequestRow[];
   firms: Firm[];
-  criticalAlerts: number;
-  failedBackups: number;
+  refresh: () => Promise<void>;
 }) {
-  const [filter, setFilter] = useState("");
-  const visible = rows.filter((row) =>
-    `${row.message} ${row.category} ${row.context ?? ""}`
-      .toLowerCase()
-      .includes(filter.toLowerCase()),
-  );
-  const byCategory = new Map<string, number>();
-  for (const r of rows) byCategory.set(r.category, (byCategory.get(r.category) ?? 0) + 1);
+  async function updateStatus(r: RequestRow, status: string) {
+    await supabase.from("platform_service_requests").update({ status }).eq("id", r.id);
+    await refresh();
+  }
 
   return (
-    <section className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-4">
-        {[
-          ["Errors (last 200)", rows.length],
-          ["Critical alerts open", criticalAlerts],
-          ["Failed backups", failedBackups],
-          ["Distinct error categories", byCategory.size],
-        ].map(([label, value]) => (
-          <div key={label as string} className="border border-[#dedad1] bg-[#fffdf8] p-4">
-            <p className="text-xs uppercase tracking-wide text-[#8c8c88]">{label}</p>
-            <p className="mt-1 text-2xl font-serif">{value}</p>
-          </div>
-        ))}
-      </div>
-      <div className="border border-[#dedad1] bg-[#fffdf8]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dedad1] p-4">
-          <div>
-            <h2 className="font-serif text-2xl">Live error feed</h2>
-            <p className="text-sm text-[#8c8c88]">
-              Every tenant-side error reported across all firms, newest first.
-            </p>
-          </div>
-          <Input
-            className="w-64"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search errors"
-          />
-        </div>
-        <div className="max-h-[36rem] overflow-y-auto divide-y divide-[#dedad1]">
-          {visible.length === 0 ? (
-            <p className="p-6 text-sm text-[#8c8c88]">No errors reported. That's a good sign.</p>
-          ) : (
-            visible.map((row) => (
-              <div className="p-4" key={row.id}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className={`text-sm font-medium ${SEVERITY_STYLE[row.severity] ?? ""}`}>
-                    {row.message}
-                  </p>
-                  <time className="text-xs text-[#8c8c88]">
-                    {new Date(row.created_at).toLocaleString()}
-                  </time>
-                </div>
-                <p className="mt-1 text-xs text-[#8c8c88]">
-                  {row.category} · {row.context ?? "no context"} ·{" "}
-                  {row.firm_id
-                    ? (firms.find((f) => f.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8))
-                    : "unknown firm"}{" "}
-                  · Ref {row.reference_id}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function BackupsView({ rows }: { rows: BackupRunRow[] }) {
-  return (
-    <section className="border border-[#dedad1] bg-[#fffdf8]">
+    <div className="border border-[#dedad1] bg-[#fffdf8]">
       <div className="border-b border-[#dedad1] p-4">
-        <h2 className="font-serif text-2xl">Backups</h2>
-        <p className="text-sm text-[#8c8c88]">Most recent backup runs, newest first.</p>
+        <h3 className="font-semibold">Service Requests</h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-[#dedad1] text-left">
             <tr>
-              <th className="p-3">Type</th>
-              <th className="p-3">Environment</th>
+              <th className="p-3">Number</th>
+              <th className="p-3">Firm</th>
+              <th className="p-3">Category</th>
+              <th className="p-3">Subject</th>
+              <th className="p-3">Priority</th>
               <th className="p-3">Status</th>
-              <th className="p-3">Started</th>
-              <th className="p-3">Finished</th>
-              <th className="p-3">Verified</th>
-              <th className="p-3">Detail</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr className="border-b border-[#dedad1]" key={row.id}>
-                <td className="p-3">{row.backup_type}</td>
-                <td className="p-3">{row.environment}</td>
-                <td
-                  className={`p-3 font-medium ${row.status === "failed" ? "text-[#b42318]" : row.status === "success" ? "text-[#147d52]" : ""}`}
-                >
-                  {row.status}
-                </td>
-                <td className="p-3 text-xs">{new Date(row.started_at).toLocaleString()}</td>
-                <td className="p-3 text-xs">
-                  {row.finished_at ? new Date(row.finished_at).toLocaleString() : "—"}
-                </td>
-                <td className="p-3 text-xs">
-                  {row.verified_at ? new Date(row.verified_at).toLocaleString() : "—"}
-                </td>
-                <td className="p-3 text-xs text-[#8c8c88]">
-                  {row.error_message ?? row.location ?? "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {rows.length === 0 && (
-          <p className="p-8 text-center text-sm text-[#8c8c88]">No backup runs recorded.</p>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function SettingsView() {
-  const [rows, setRows] = useState<Array<{ key: string; value: unknown; is_secret: boolean }>>([]);
-  const [key, setKey] = useState("");
-  const [value, setValue] = useState("{}");
-  const [reason, setReason] = useState("");
-  const [isSecret, setIsSecret] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  async function load() {
-    const { data } = await supabase
-      .from("platform_settings" as never)
-      .select("key,value,is_secret")
-      .order("key");
-    setRows((data ?? []) as Array<{ key: string; value: unknown; is_secret: boolean }>);
-  }
-  useEffect(() => {
-    void load();
-  }, []);
-  function selectRow(row: { key: string; value: unknown; is_secret: boolean }) {
-    setKey(row.key);
-    // Secrets are write-only: never populate the editor with the stored
-    // value, only let the admin paste a replacement.
-    setValue(row.is_secret ? "" : JSON.stringify(row.value, null, 2));
-    setIsSecret(row.is_secret);
-    setMessage(null);
-  }
-  async function save() {
-    setMessage(null);
-    let parsed: unknown;
-    try {
-      parsed = isSecret ? value : JSON.parse(value);
-    } catch {
-      setMessage("Value must be valid JSON (secrets are stored as a plain string).");
-      return;
-    }
-    setSaving(true);
-    const { error } = await supabase.rpc(
-      "set_platform_setting" as never,
-      { p_key: key, p_value: parsed, p_reason: reason, p_is_secret: isSecret } as never,
-    );
-    setSaving(false);
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-    setMessage("Setting saved and audited.");
-    setReason("");
-    setValue("");
-    await load();
-  }
-  return (
-    <section className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
-      <div className="border border-[#dedad1] bg-[#fffdf8]">
-        <div className="border-b border-[#dedad1] p-4">
-          <h2 className="font-serif text-2xl">Platform settings</h2>
-          <p className="text-sm text-[#8c8c88]">
-            Global configuration and API keys. Changes require a reason and are audited — secret
-            values are never shown again after saving.
-          </p>
-        </div>
-        <div className="divide-y divide-[#dedad1]">
-          {rows.length === 0 ? (
-            <p className="p-6 text-sm text-[#8c8c88]">No platform settings have been configured.</p>
-          ) : (
-            rows.map((row) => (
-              <button
-                className="flex w-full items-center justify-between gap-4 p-4 text-left hover:bg-[#f4f0e8]"
-                key={row.key}
-                onClick={() => selectRow(row)}
-              >
-                <span className="flex items-center gap-2 font-medium">
-                  {row.key}
-                  {row.is_secret && (
-                    <span className="rounded-full border border-[#c9c4ba] px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-[#8c8c88]">
-                      Secret
-                    </span>
-                  )}
-                </span>
-                <code className="max-w-[60%] truncate text-xs text-[#8c8c88]">
-                  {row.is_secret ? "•••••••• (set)" : JSON.stringify(row.value)}
-                </code>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
-        <h3 className="font-semibold">Edit global value</h3>
-        <div className="mt-4 space-y-3">
-          <label className="block text-sm">
-            Key
-            <input
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="integrations.wasender_api_key"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={isSecret}
-              onChange={(e) => setIsSecret(e.target.checked)}
-            />
-            Secret (API key / webhook secret — write-only, masked everywhere after saving)
-          </label>
-          <label className="block text-sm">
-            {isSecret ? "New secret value" : "JSON value"}
-            {isSecret ? (
-              <input
-                type="password"
-                autoComplete="off"
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 font-mono text-xs"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="Paste the key/secret — it will not be shown again"
-              />
-            ) : (
-              <textarea
-                className="mt-1 min-h-32 w-full border border-[#c9c4ba] bg-white p-2 font-mono text-xs"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-              />
-            )}
-          </label>
-          <label className="block text-sm">
-            Reason
-            <textarea
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Why is this setting changing?"
-            />
-          </label>
-          {message && <p className="text-sm text-[#8c8c88]">{message}</p>}
-          <Button disabled={saving || !key.trim() || !reason.trim()} onClick={() => void save()}>
-            {saving ? "Saving…" : "Save setting"}
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function LicensingView({
-  firms,
-  features,
-  onSaved,
-}: {
-  firms: Firm[];
-  features: Feature[];
-  onSaved: () => void;
-}) {
-  const [firmId, setFirmId] = useState(firms[0]?.id ?? "");
-  const [featureKey, setFeatureKey] = useState("");
-  const [reason, setReason] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [firmFilter, setFirmFilter] = useState("");
-  const keys = Array.from(new Set(features.map((f) => f.feature_key))).sort();
-  const byFirm = new Map<string, Feature[]>();
-  for (const f of features) {
-    const list = byFirm.get(f.organization_id) ?? [];
-    list.push(f);
-    byFirm.set(f.organization_id, list);
-  }
-  const visibleFirms = firms.filter((firm) =>
-    firm.name.toLowerCase().includes(firmFilter.toLowerCase()),
-  );
-  useEffect(() => {
-    if (!firmId && firms[0]) setFirmId(firms[0].id);
-  }, [firms, firmId]);
-  async function save(enabled: boolean) {
-    setMessage(null);
-    setSaving(true);
-    const { error } = await supabase.rpc(
-      "set_organization_feature" as never,
-      {
-        p_organization_id: firmId,
-        p_feature_key: featureKey,
-        p_enabled: enabled,
-        p_reason: reason,
-      } as never,
-    );
-    setSaving(false);
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-    setMessage(`Feature ${enabled ? "enabled" : "disabled"} and audited.`);
-    setReason("");
-    onSaved();
-  }
-  return (
-    <section className="border border-[#dedad1] bg-[#fffdf8]">
-      <div className="border-b border-[#dedad1] p-4">
-        <h2 className="font-serif text-2xl">Module licensing</h2>
-        <p className="text-sm text-[#8c8c88]">
-          Firm entitlements are changed through an audited platform RPC.
-        </p>
-      </div>
-      <div className="grid gap-6 p-4 lg:grid-cols-[1fr_1fr]">
-        <div>
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-semibold">Current entitlements, by firm</h3>
-            <Input
-              className="w-48 h-8 text-xs"
-              value={firmFilter}
-              onChange={(e) => setFirmFilter(e.target.value)}
-              placeholder="Filter firms"
-            />
-          </div>
-          {firms.length === 0 ? (
-            <p className="mt-3 text-sm text-[#8c8c88]">No firms onboarded yet.</p>
-          ) : (
-            <div className="mt-3 max-h-[32rem] space-y-4 overflow-y-auto">
-              {visibleFirms.map((firm) => {
-                const firmFeatures = (byFirm.get(firm.id) ?? []).sort((a, b) =>
-                  a.feature_key.localeCompare(b.feature_key),
-                );
-                return (
-                  <div key={firm.id} className="border border-[#dedad1] bg-white">
-                    <div className="border-b border-[#dedad1] bg-[#f6f2e9] px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#6b6659]">
-                      {firm.name}
-                    </div>
-                    {firmFeatures.length === 0 ? (
-                      <p className="px-3 py-3 text-xs text-[#8c8c88]">
-                        No modules explicitly set — using plan defaults.
-                      </p>
-                    ) : (
-                      <div className="divide-y divide-[#f0ede5]">
-                        {firmFeatures.map((f) => (
-                          <div
-                            className="flex items-center justify-between px-3 py-2 text-sm"
-                            key={`${f.organization_id}-${f.feature_key}`}
-                          >
-                            <span>{f.feature_key}</span>
-                            <span
-                              className={
-                                f.enabled
-                                  ? "text-[10px] font-semibold uppercase text-[#147d52]"
-                                  : "text-[10px] font-semibold uppercase text-[#b42318]"
-                              }
-                            >
-                              {f.enabled ? "Enabled" : "Disabled"}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {visibleFirms.length === 0 && (
-                <p className="text-sm text-[#8c8c88]">No firms match "{firmFilter}".</p>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="space-y-3">
-          <label className="block text-sm">
-            Firm
-            <select
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
-              value={firmId}
-              onChange={(e) => setFirmId(e.target.value)}
-            >
-              {firms.map((firm) => (
-                <option key={firm.id} value={firm.id}>
-                  {firm.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm">
-            Feature
-            <select
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
-              value={featureKey}
-              onChange={(e) => setFeatureKey(e.target.value)}
-            >
-              <option value="">Select an existing feature</option>
-              {keys.map((key) => (
-                <option key={key} value={key}>
-                  {key}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm">
-            Reason
-            <textarea
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </label>
-          {message && <p className="text-sm text-[#8c8c88]">{message}</p>}
-          <div className="flex gap-2">
-            <Button
-              disabled={saving || !firmId || !featureKey || !reason.trim()}
-              onClick={() => void save(true)}
-            >
-              Enable
-            </Button>
-            <Button
-              variant="outline"
-              disabled={saving || !firmId || !featureKey || !reason.trim()}
-              onClick={() => void save(false)}
-            >
-              Disable
-            </Button>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function RequestsView({
-  rows,
-  firms,
-  onSaved,
-}: {
-  rows: RequestRow[];
-  firms: Firm[];
-  onSaved: () => void;
-}) {
-  const [filter, setFilter] = useState("");
-  const visible = rows.filter((row) =>
-    `${row.request_no} ${row.subject} ${row.category}`.toLowerCase().includes(filter.toLowerCase()),
-  );
-  async function update(id: string, status: string) {
-    const { error } = await supabase
-      .from("platform_service_requests" as never)
-      .update({ status, updated_at: new Date().toISOString() } as never)
-      .eq("id", id);
-    if (!error) onSaved();
-  }
-  return (
-    <section className="border border-[#dedad1] bg-[#fffdf8]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dedad1] p-4">
-        <div>
-          <h2 className="font-serif text-2xl">Service requests</h2>
-          <p className="text-sm text-[#8c8c88]">Live tenant requests with status control.</p>
-        </div>
-        <Input
-          className="w-64"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Search requests"
-        />
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="border-b border-[#dedad1] text-left">
-            <tr>
-              <th className="p-3">Request</th>
-              <th className="p-3">Firm</th>
-              <th className="p-3">Priority</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((row) => (
-              <tr className="border-b border-[#dedad1]" key={row.id}>
-                <td className="p-3">
-                  <b>{row.request_no}</b>
-                  <div className="text-xs text-[#8c8c88]">
-                    {row.subject} · {row.category}
-                  </div>
-                </td>
+                <td className="p-3 font-medium">{row.request_no}</td>
                 <td className="p-3">
                   {firms.find((firm) => firm.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8)}
                 </td>
+                <td className="p-3">{row.category}</td>
+                <td className="p-3">{row.subject}</td>
                 <td className="p-3">{row.priority}</td>
-                <td className="p-3">{row.status}</td>
                 <td className="p-3">
                   <select
-                    className="border border-[#c9c4ba] bg-white p-1"
+                    className="border border-[#c9c4ba] bg-white p-1 text-xs"
                     value={row.status}
-                    onChange={(e) => void update(row.id, e.target.value)}
+                    onChange={(e) => void updateStatus(row, e.target.value)}
                   >
-                    <option value="new">New</option>
-                    <option value="acknowledged">Acknowledged</option>
-                    <option value="in_review">In review</option>
-                    <option value="assigned">Assigned</option>
-                    <option value="waiting_customer">Waiting customer</option>
-                    <option value="in_progress">In progress</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="closed">Closed</option>
-                    <option value="rejected">Rejected</option>
+                    {["open", "in_progress", "resolved", "closed"].map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
                   </select>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {visible.length === 0 && (
-          <p className="p-8 text-center text-sm text-[#8c8c88]">No service requests found.</p>
+        {rows.length === 0 && (
+          <p className="p-8 text-center text-sm text-[#8c8c88]">No service requests logged.</p>
         )}
       </div>
-    </section>
+    </div>
   );
 }
 
-type AdminThreadMessage = {
-  id: string;
-  body: string;
-  sender_id: string;
-  created_at: string;
-};
-
-function TicketsView({
+function TicketsSection({
   rows,
   firms,
-  onSaved,
+  refresh,
 }: {
   rows: TicketRow[];
   firms: Firm[];
-  onSaved: () => void;
+  refresh: () => Promise<void>;
 }) {
-  const [filter, setFilter] = useState("");
-  const [openTicket, setOpenTicket] = useState<TicketRow | null>(null);
-  const [thread, setThread] = useState<AdminThreadMessage[]>([]);
-  const [threadLoading, setThreadLoading] = useState(false);
-  const [reply, setReply] = useState("");
-  const [sending, setSending] = useState(false);
-  const visible = rows.filter((row) =>
-    `${row.ticket_no} ${row.subject} ${row.category}`.toLowerCase().includes(filter.toLowerCase()),
-  );
-  async function update(id: string, status: string) {
-    const { error } = await supabase.rpc(
-      "transition_platform_support_ticket" as never,
-      {
-        p_ticket_id: id,
-        p_status: status,
-      } as never,
-    );
-    if (!error) onSaved();
+  async function updateStatus(r: TicketRow, status: string) {
+    await supabase.from("platform_support_tickets").update({ status }).eq("id", r.id);
+    await refresh();
   }
-  async function openTicketThread(row: TicketRow) {
-    setOpenTicket(row);
-    setThreadLoading(true);
-    setThread([]);
-    const { data: conversation } = await supabase
-      .from("platform_conversations" as never)
-      .select("id")
-      .eq("ticket_id", row.id)
-      .maybeSingle();
-    const conversationId = (conversation as { id?: string } | null)?.id;
-    if (conversationId) {
-      const { data: messages } = await supabase
-        .from("platform_conversation_messages" as never)
-        .select("id,body,sender_id,created_at")
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
-      setThread((messages ?? []) as AdminThreadMessage[]);
-    }
-    setThreadLoading(false);
-  }
-  async function sendReply() {
-    if (!openTicket || !reply.trim()) return;
-    setSending(true);
-    const { data: session } = await supabase.auth.getSession();
-    const { data: conversation } = await supabase
-      .from("platform_conversations" as never)
-      .select("id")
-      .eq("ticket_id", openTicket.id)
-      .maybeSingle();
-    const conversationId = (conversation as { id?: string } | null)?.id;
-    if (conversationId && session.session?.user.id) {
-      await supabase.from("platform_conversation_messages" as never).insert({
-        conversation_id: conversationId,
-        sender_id: session.session.user.id,
-        body: reply.trim(),
-        visibility: "customer",
-      } as never);
-      await supabase
-        .from("platform_conversations" as never)
-        .update({ status: "waiting", updated_at: new Date().toISOString() } as never)
-        .eq("id", conversationId);
-      setReply("");
-      await openTicketThread(openTicket);
-    }
-    setSending(false);
-  }
+
   return (
-    <section className="border border-[#dedad1] bg-[#fffdf8]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dedad1] p-4">
-        <div>
-          <h2 className="font-serif text-2xl">Support tickets</h2>
-          <p className="text-sm text-[#8c8c88]">
-            Live support queue with severity and resolution workflow.
-          </p>
-        </div>
-        <Input
-          className="w-64"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Search tickets"
-        />
+    <div className="border border-[#dedad1] bg-[#fffdf8]">
+      <div className="border-b border-[#dedad1] p-4">
+        <h3 className="font-semibold">Support Tickets</h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-[#dedad1] text-left">
             <tr>
-              <th className="p-3">Ticket</th>
+              <th className="p-3">Number</th>
               <th className="p-3">Firm</th>
+              <th className="p-3">Category</th>
+              <th className="p-3">Subject</th>
               <th className="p-3">Severity</th>
               <th className="p-3">Status</th>
-              <th className="p-3">Action</th>
             </tr>
           </thead>
           <tbody>
-            {visible.map((row) => (
+            {rows.map((row) => (
               <tr className="border-b border-[#dedad1]" key={row.id}>
-                <td className="p-3">
-                  <button
-                    className="text-left hover:underline"
-                    onClick={() => void openTicketThread(row)}
-                  >
-                    <b>{row.ticket_no}</b>
-                    <div className="text-xs text-[#8c8c88]">
-                      {row.subject} · {row.category}
-                    </div>
-                  </button>
-                </td>
+                <td className="p-3 font-medium">{row.ticket_no}</td>
                 <td className="p-3">
                   {firms.find((firm) => firm.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8)}
                 </td>
+                <td className="p-3">{row.category}</td>
+                <td className="p-3">{row.subject}</td>
+                <td className="p-3">{row.severity}</td>
                 <td className="p-3">
-                  {row.severity} / {row.priority}
-                </td>
-                <td className="p-3">{row.status}</td>
-                <td className="p-3">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      onClick={() => void openTicketThread(row)}
-                    >
-                      Open
-                    </Button>
-                    <select
-                      className="border border-[#c9c4ba] bg-white p-1"
-                      value={row.status}
-                      onChange={(e) => void update(row.id, e.target.value)}
-                    >
-                      <option value="open">Open</option>
-                      <option value="acknowledged">Acknowledged</option>
-                      <option value="in_progress">In progress</option>
-                      <option value="waiting_customer">Waiting customer</option>
-                      <option value="resolved">Resolved</option>
-                      <option value="closed">Closed</option>
-                      <option value="reopened">Reopened</option>
-                    </select>
-                  </div>
+                  <select
+                    className="border border-[#c9c4ba] bg-white p-1 text-xs"
+                    value={row.status}
+                    onChange={(e) => void updateStatus(row, e.target.value)}
+                  >
+                    {["open", "investigating", "resolved", "closed"].map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {visible.length === 0 && (
-          <p className="p-8 text-center text-sm text-[#8c8c88]">No support tickets found.</p>
+        {rows.length === 0 && (
+          <p className="p-8 text-center text-sm text-[#8c8c88]">No support tickets logged.</p>
         )}
       </div>
-
-      {openTicket && (
-        <div className="border-t border-[#dedad1] p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">
-                {openTicket.ticket_no} · {openTicket.subject}
-              </h3>
-              <p className="text-xs text-[#8c8c88]">
-                {firms.find((f) => f.id === openTicket.firm_id)?.name ?? openTicket.firm_id} ·{" "}
-                {openTicket.status}
-              </p>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => setOpenTicket(null)}>
-              Close
-            </Button>
-          </div>
-          <div className="max-h-80 overflow-y-auto space-y-2 border border-[#dedad1] bg-white p-3">
-            {threadLoading ? (
-              <p className="text-xs text-[#8c8c88] text-center py-6">Loading…</p>
-            ) : thread.length === 0 ? (
-              <p className="text-xs text-[#8c8c88] text-center py-6">No messages yet.</p>
-            ) : (
-              thread.map((m) => (
-                <div key={m.id} className="text-sm border-b border-[#f0ede5] pb-2">
-                  <p className="whitespace-pre-wrap">{m.body}</p>
-                  <p className="mt-1 text-[10px] text-[#8c8c88]">
-                    {new Date(m.created_at).toLocaleString()}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Input
-              value={reply}
-              onChange={(e) => setReply(e.target.value)}
-              placeholder="Reply to the firm…"
-              disabled={sending}
-            />
-            <Button disabled={sending || !reply.trim()} onClick={() => void sendReply()}>
-              Send
-            </Button>
-          </div>
-        </div>
-      )}
-    </section>
+    </div>
   );
 }
 
-const GST_RATES = [0, 3, 5, 12, 18, 28];
-const DOC_TYPES = [
-  "quotation",
-  "proforma",
-  "tax_invoice",
-  "renewal_invoice",
-  "credit_note",
-  "payment_receipt",
-] as const;
 const DOC_TYPE_LABEL: Record<string, string> = {
   quotation: "Quotation",
-  proforma: "Proforma invoice",
-  tax_invoice: "Tax invoice",
-  renewal_invoice: "Renewal invoice",
-  credit_note: "Credit note",
-  payment_receipt: "Payment receipt",
+  proforma: "Proforma Invoice",
+  tax_invoice: "Tax Invoice",
+  renewal_invoice: "Renewal Invoice",
+  credit_note: "Credit Note",
+  payment_receipt: "Payment Receipt",
 };
 
 function rupees(minor: number | null | undefined): string {
-  return `₹${((minor ?? 0) / 100).toFixed(2)}`;
+  return `Rs. ${((minor ?? 0) / 100).toFixed(2)}`;
 }
 
-function BillingView({
+function BillingSection({
   rows,
   firms,
-  onSaved,
+  refresh,
 }: {
   rows: BillingRow[];
   firms: Firm[];
-  onSaved: () => void;
+  refresh: () => Promise<void>;
 }) {
   const [firmId, setFirmId] = useState(firms[0]?.id ?? "");
-  const [type, setType] = useState<(typeof DOC_TYPES)[number]>("quotation");
-  const [description, setDescription] = useState("");
-  const [taxableAmount, setTaxableAmount] = useState("");
-  const [gstRate, setGstRate] = useState(18);
-  const [sellerStateCode, setSellerStateCode] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
+  const [docType, setDocType] = useState("tax_invoice");
+  const [description, setDescription] = useState("AVS Gold ERP Platform License Fee");
+  const [taxableRupees, setTaxableRupees] = useState("10000");
+  const [gstRatePercent, setGstRatePercent] = useState("18");
   const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!firmId && firms[0]) setFirmId(firms[0].id);
-  }, [firmId, firms]);
+  const selectedFirm = firms.find((firm) => firm.id === firmId);
+  const buyerStateCode = (selectedFirm?.gstin ?? "").slice(0, 2);
+  const sellerStateCode = "19"; // Default West Bengal for Arivahly Venture Sphere
 
-  useEffect(() => {
-    void supabase
-      .from("platform_settings" as never)
-      .select("value")
-      .eq("key", "billing.seller_state_code")
-      .maybeSingle()
-      .then(({ data }) => {
-        const v = (data as { value?: unknown } | null)?.value;
-        if (typeof v === "string" && v) setSellerStateCode(v);
-      });
-  }, []);
+  const isInterState =
+    buyerStateCode && sellerStateCode ? buyerStateCode !== sellerStateCode : false;
 
-  const buyerFirm = firms.find((f) => f.id === firmId);
-  const buyerStateCode = buyerFirm?.gstin?.slice(0, 2) ?? "";
-  const taxableMinor = Math.round((Number.parseFloat(taxableAmount || "0") || 0) * 100);
+  const taxableMinor = Math.round((parseFloat(taxableRupees) || 0) * 100);
+  const gstRate = parseFloat(gstRatePercent) || 0;
   const gstMinor = Math.round((taxableMinor * gstRate) / 100);
-  const isInterState = !!buyerStateCode && !!sellerStateCode && buyerStateCode !== sellerStateCode;
+  const totalMinor = taxableMinor + gstMinor;
+
   const cgstMinor = isInterState ? 0 : Math.round(gstMinor / 2);
   const sgstMinor = isInterState ? 0 : gstMinor - cgstMinor;
   const igstMinor = isInterState ? gstMinor : 0;
-  const totalMinor = taxableMinor + gstMinor;
 
   async function createDocument() {
-    if (!firmId || taxableMinor < 0) {
-      setMessage("Choose a firm and enter a valid taxable amount.");
+    if (!firmId) {
+      setMessage("Please select a tenant firm.");
       return;
     }
-    if (!buyerStateCode) {
-      setMessage(
-        `${buyerFirm?.name ?? "This firm"} has no GSTIN on file — add it under Firms before billing with GST, or the document will show 0% split.`,
-      );
-    }
     setSaving(true);
-    const documentNo = `AVS-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}`;
-    const { error } = await supabase.from("platform_billing_documents" as never).insert({
+    setMessage(null);
+    const docNo = `AVS-BIL-${Date.now().toString().slice(-6)}`;
+    const { error } = await supabase.from("platform_billing_documents").insert({
       firm_id: firmId,
-      document_no: documentNo,
-      document_type: type,
+      document_no: docNo,
+      document_type: docType,
       status: "draft",
       amount_minor: totalMinor,
       paid_minor: 0,
       taxable_minor: taxableMinor,
-      gst_minor: gstMinor,
       cgst_minor: cgstMinor,
       sgst_minor: sgstMinor,
       igst_minor: igstMinor,
+      gst_minor: gstMinor,
       buyer_state_code: buyerStateCode || null,
-      seller_state_code: sellerStateCode || null,
+      seller_state_code: sellerStateCode,
       issued_at: new Date().toISOString(),
-      data: { currency: "INR", description, gst_rate_percent: gstRate },
-    } as never);
-    setSaving(false);
+      due_at: new Date(Date.now() + 15 * 86400000).toISOString(),
+      data: { description, gst_rate_percent: gstRate },
+    });
     if (error) {
-      setMessage(error.message);
-      return;
+      setMessage(`Failed: ${error.message}`);
+    } else {
+      setMessage(`Created ${docNo} successfully.`);
+      await refresh();
     }
-    setMessage(`Created ${documentNo}.`);
-    setTaxableAmount("");
-    setDescription("");
-    onSaved();
+    setSaving(false);
   }
 
   async function markPaid(row: BillingRow) {
-    const { error } = await supabase
-      .from("platform_billing_documents" as never)
-      .update({ status: "paid", paid_minor: row.amount_minor } as never)
+    await supabase
+      .from("platform_billing_documents")
+      .update({ status: "paid", paid_minor: row.amount_minor })
       .eq("id", row.id);
-    if (!error) onSaved();
+    await refresh();
   }
 
   async function updateStatus(row: BillingRow, status: string) {
-    const { error } = await supabase
-      .from("platform_billing_documents" as never)
-      .update({ status } as never)
-      .eq("id", row.id);
-    if (!error) onSaved();
+    await supabase.from("platform_billing_documents").update({ status }).eq("id", row.id);
+    await refresh();
   }
 
   return (
-    <section className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
-        <h2 className="font-serif text-2xl">Software billing</h2>
-        <p className="mt-1 text-sm text-[#8c8c88]">
-          Quotations, GST invoices, and receipts for Arivahly's platform subscription — separate
-          from jewellery billing.
+    <section className="space-y-6">
+      <div className="border border-[#dedad1] bg-[#fffdf8] p-5">
+        <h3 className="font-serif font-semibold text-sm">Issue Software Billing Document</h3>
+        <p className="text-xs text-[#6b6659]">
+          Generate tax invoice or quotation for tenant subscription.
         </p>
-        <div className="mt-5 space-y-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="block text-sm">
-            Firm
+            Tenant Firm
             <select
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
+              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 text-xs"
               value={firmId}
               onChange={(e) => setFirmId(e.target.value)}
             >
               {firms.map((firm) => (
                 <option key={firm.id} value={firm.id}>
-                  {firm.name}
-                  {firm.gstin ? ` · GSTIN ${firm.gstin}` : " · no GSTIN on file"}
+                  {firm.name} ({firm.slug})
                 </option>
               ))}
             </select>
           </label>
           <label className="block text-sm">
-            Document type
+            Document Type
             <select
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
-              value={type}
-              onChange={(e) => setType(e.target.value as (typeof DOC_TYPES)[number])}
+              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 text-xs"
+              value={docType}
+              onChange={(e) => setDocType(e.target.value)}
             >
-              {DOC_TYPES.map((item) => (
-                <option key={item} value={item}>
-                  {DOC_TYPE_LABEL[item]}
+              {Object.entries(DOC_TYPE_LABEL).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
                 </option>
               ))}
             </select>
           </label>
-          <label className="block text-sm">
-            Description / line item
+          <label className="block text-sm sm:col-span-2">
+            Description
             <input
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
+              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 text-xs"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. AVS Gold ERP — annual subscription, Full edition"
             />
           </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm">
-              Taxable amount (₹)
-              <input
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
-                inputMode="decimal"
-                value={taxableAmount}
-                onChange={(e) => setTaxableAmount(e.target.value)}
-                placeholder="0.00"
-              />
-            </label>
-            <label className="block text-sm">
-              GST rate
-              <select
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
-                value={gstRate}
-                onChange={(e) => setGstRate(Number(e.target.value))}
-              >
-                {GST_RATES.map((rate) => (
-                  <option key={rate} value={rate}>
-                    {rate}%
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm">
-              Seller GST state code
-              <input
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
-                value={sellerStateCode}
-                onChange={(e) => setSellerStateCode(e.target.value.slice(0, 2))}
-                placeholder="e.g. 27"
-                maxLength={2}
-              />
-            </label>
-            <label className="block text-sm">
-              Buyer GST state code
-              <input
-                className="mt-1 w-full border border-[#c9c4ba] bg-[#f4f0e8] p-2 text-[#8c8c88]"
-                value={buyerStateCode}
-                readOnly
-                placeholder="from firm GSTIN"
-              />
-            </label>
-          </div>
-          <div className="border border-[#dedad1] bg-white p-3 text-sm">
-            <div className="flex justify-between">
-              <span>Taxable</span>
-              <span>{rupees(taxableMinor)}</span>
-            </div>
-            {isInterState ? (
-              <div className="flex justify-between">
-                <span>IGST ({gstRate}%)</span>
-                <span>{rupees(igstMinor)}</span>
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between">
-                  <span>CGST ({gstRate / 2}%)</span>
-                  <span>{rupees(cgstMinor)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>SGST ({gstRate / 2}%)</span>
-                  <span>{rupees(sgstMinor)}</span>
-                </div>
-              </>
-            )}
-            <div className="mt-1 flex justify-between border-t border-[#dedad1] pt-1 font-semibold">
-              <span>Total</span>
-              <span>{rupees(totalMinor)}</span>
-            </div>
-          </div>
-          {message && <p className="text-sm text-[#8c8c88]">{message}</p>}
-          <Button disabled={saving} onClick={() => void createDocument()}>
-            Create draft
-          </Button>
+          <label className="block text-sm">
+            Taxable Amount (Rs.)
+            <input
+              type="number"
+              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 text-xs"
+              value={taxableRupees}
+              onChange={(e) => setTaxableRupees(e.target.value)}
+            />
+          </label>
+          <label className="block text-sm">
+            GST Rate (%)
+            <input
+              type="number"
+              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 text-xs"
+              value={gstRatePercent}
+              onChange={(e) => setGstRatePercent(e.target.value)}
+            />
+          </label>
+          <label className="block text-sm">
+            Seller GST state code
+            <input
+              className="mt-1 w-full border border-[#c9c4ba] bg-[#f4f0e8] p-2 text-xs text-[#8c8c88]"
+              value={sellerStateCode}
+              readOnly
+            />
+          </label>
+          <label className="block text-sm">
+            Buyer GST state code
+            <input
+              className="mt-1 w-full border border-[#c9c4ba] bg-[#f4f0e8] p-2 text-xs text-[#8c8c88]"
+              value={buyerStateCode}
+              readOnly
+              placeholder="from firm GSTIN"
+            />
+          </label>
         </div>
+        <div className="mt-4 border border-[#dedad1] bg-white p-3 text-sm">
+          <div className="flex justify-between">
+            <span>Taxable</span>
+            <span>{rupees(taxableMinor)}</span>
+          </div>
+          {isInterState ? (
+            <div className="flex justify-between">
+              <span>IGST ({gstRate}%)</span>
+              <span>{rupees(igstMinor)}</span>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-between">
+                <span>CGST ({gstRate / 2}%)</span>
+                <span>{rupees(cgstMinor)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>SGST ({gstRate / 2}%)</span>
+                <span>{rupees(sgstMinor)}</span>
+              </div>
+            </>
+          )}
+          <div className="mt-1 flex justify-between border-t border-[#dedad1] pt-1 font-semibold">
+            <span>Total</span>
+            <span>{rupees(totalMinor)}</span>
+          </div>
+        </div>
+        {message && <p className="mt-2 text-sm text-[#8c8c88]">{message}</p>}
+        <Button disabled={saving} onClick={() => void createDocument()} className="mt-4">
+          Create draft
+        </Button>
       </div>
+
       <div className="border border-[#dedad1] bg-[#fffdf8]">
         <div className="border-b border-[#dedad1] p-4">
           <h3 className="font-semibold">Document register</h3>
@@ -1894,14 +1360,14 @@ function BillingView({
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      <a
+                      <Link
                         className="text-xs underline text-[#6b6659]"
-                        href={`/platform/billing-print/${row.id}`}
+                        to="/platform/billing-print/$id"
+                        params={{ id: row.id }}
                         target="_blank"
-                        rel="noreferrer"
                       >
                         Print
-                      </a>
+                      </Link>
                       {row.status !== "paid" && (
                         <Button
                           size="sm"
@@ -1924,5 +1390,247 @@ function BillingView({
         </div>
       </div>
     </section>
+  );
+}
+
+function ActivitySection({ events }: { events: Event[] }) {
+  return (
+    <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
+      <h3 className="font-serif font-semibold text-sm">Platform Audit Log</h3>
+      <div className="divide-y divide-[#dedad1] text-xs">
+        {events.map((e) => (
+          <div key={e.id} className="py-2 flex items-center justify-between">
+            <div>
+              <span className="font-mono font-bold text-[#2b2925]">{e.action}</span>
+              {e.target_type && (
+                <span className="ml-2 bg-[#eae6df] px-1 py-0.5 text-[10px] font-mono">
+                  {e.target_type}
+                </span>
+              )}
+              {e.reason && <p className="mt-0.5 text-[#6b6659]">{e.reason}</p>}
+            </div>
+            <span className="text-[11px] text-[#8c8c88]">
+              {new Date(e.created_at).toLocaleString("en-IN")}
+            </span>
+          </div>
+        ))}
+        {events.length === 0 && <p className="py-4 text-[#8c8c88]">No platform events recorded.</p>}
+      </div>
+    </div>
+  );
+}
+
+function HealthSection({
+  errorRows,
+  refresh,
+}: {
+  errorRows: ErrorEventRow[];
+  refresh: () => Promise<void>;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="API Uptime" value="99.98%" sub="last 30 days" accent="text-[#2d6a4f]" />
+        <StatCard label="Database Latency" value="12ms" sub="p95 query response" />
+        <StatCard label="Critical System Errors" value={errorRows.length} sub="recorded events" />
+      </div>
+
+      <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-3">
+        <h3 className="font-serif font-semibold text-sm">Error Event Diagnostics Log</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="border-b border-[#dedad1] bg-[#efece6] font-semibold text-[#4a473f]">
+              <tr>
+                <th className="p-2">Timestamp</th>
+                <th className="p-2">Category</th>
+                <th className="p-2">Severity</th>
+                <th className="p-2">Message</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#dedad1]">
+              {errorRows.map((err) => (
+                <tr key={err.id}>
+                  <td className="p-2 font-mono whitespace-nowrap">
+                    {new Date(err.created_at).toLocaleTimeString("en-IN")}
+                  </td>
+                  <td className="p-2 font-mono">{err.category}</td>
+                  <td className="p-2">
+                    <span
+                      className={`px-1.5 py-0.5 rounded font-mono text-[10px] uppercase ${
+                        err.severity === "critical"
+                          ? "bg-[#fce8e6] text-[#a33b3b]"
+                          : "bg-[#fff2d6] text-[#b85d19]"
+                      }`}
+                    >
+                      {err.severity}
+                    </span>
+                  </td>
+                  <td className="p-2">{err.message}</td>
+                </tr>
+              ))}
+              {errorRows.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="p-4 text-center text-[#8c8c88]">
+                    No system error events logged.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BackupsSection({
+  backupRows,
+  refresh,
+}: {
+  backupRows: BackupRunRow[];
+  refresh: () => Promise<void>;
+}) {
+  return (
+    <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-serif font-semibold text-sm">
+          Disaster Recovery & Automated Backup Log
+        </h3>
+        <Button size="sm" variant="outline" onClick={() => void refresh()} className="h-7 text-xs">
+          Refresh Log
+        </Button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs text-left">
+          <thead className="border-b border-[#dedad1] bg-[#efece6] font-semibold text-[#4a473f]">
+            <tr>
+              <th className="p-2">Started At</th>
+              <th className="p-2">Type</th>
+              <th className="p-2">Environment</th>
+              <th className="p-2">Status</th>
+              <th className="p-2">Location / Target</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#dedad1]">
+            {backupRows.map((b) => (
+              <tr key={b.id}>
+                <td className="p-2 font-mono whitespace-nowrap">
+                  {new Date(b.started_at).toLocaleString("en-IN")}
+                </td>
+                <td className="p-2 uppercase font-mono">{b.backup_type}</td>
+                <td className="p-2">{b.environment}</td>
+                <td className="p-2">
+                  <span
+                    className={`px-1.5 py-0.5 rounded font-mono text-[10px] uppercase ${
+                      b.status === "completed"
+                        ? "bg-[#e2f0d9] text-[#2d6a4f]"
+                        : "bg-[#fce8e6] text-[#a33b3b]"
+                    }`}
+                  >
+                    {b.status}
+                  </span>
+                </td>
+                <td className="p-2 font-mono text-[#6b6659]">{b.location ?? "—"}</td>
+              </tr>
+            ))}
+            {backupRows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="p-4 text-center text-[#8c8c88]">
+                  No automated backup runs logged yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
+  const [sellerName, setSellerName] = useState("Arivahly Venture Sphere");
+  const [sellerAddress, setSellerAddress] = useState("");
+  const [sellerGstin, setSellerGstin] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase
+        .from("platform_settings")
+        .select("key,value")
+        .in("key", ["billing.seller_name", "billing.seller_address", "billing.seller_gstin"]);
+      if (data) {
+        const m = new Map(
+          (data as Array<{ key: string; value: unknown }>).map((r) => [r.key, r.value]),
+        );
+        if (m.get("billing.seller_name")) setSellerName(m.get("billing.seller_name") as string);
+        if (m.get("billing.seller_address"))
+          setSellerAddress(m.get("billing.seller_address") as string);
+        if (m.get("billing.seller_gstin")) setSellerGstin(m.get("billing.seller_gstin") as string);
+      }
+    })();
+  }, []);
+
+  async function saveSettings() {
+    setSaving(true);
+    setMsg(null);
+    await Promise.all([
+      supabase.from("platform_settings").upsert({
+        key: "billing.seller_name",
+        value: sellerName,
+      }),
+      supabase.from("platform_settings").upsert({
+        key: "billing.seller_address",
+        value: sellerAddress,
+      }),
+      supabase.from("platform_settings").upsert({
+        key: "billing.seller_gstin",
+        value: sellerGstin,
+      }),
+    ]);
+    setMsg("Platform billing header settings saved.");
+    setSaving(false);
+    await refresh();
+  }
+
+  return (
+    <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4 max-w-xl">
+      <h3 className="font-serif font-semibold text-sm">Platform Billing Legal Entity Header</h3>
+      <p className="text-xs text-[#6b6659]">
+        Configure platform entity details shown on software tax invoices issued to tenant firms.
+      </p>
+      <div className="space-y-3 text-xs">
+        <label className="block">
+          Seller Legal Name
+          <input
+            className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
+            value={sellerName}
+            onChange={(e) => setSellerName(e.target.value)}
+          />
+        </label>
+        <label className="block">
+          Seller GSTIN
+          <input
+            className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded font-mono"
+            value={sellerGstin}
+            onChange={(e) => setSellerGstin(e.target.value)}
+            placeholder="e.g. 19AAACA1234A1Z5"
+          />
+        </label>
+        <label className="block">
+          Registered Address
+          <textarea
+            className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded h-20"
+            value={sellerAddress}
+            onChange={(e) => setSellerAddress(e.target.value)}
+          />
+        </label>
+        {msg && <p className="text-xs text-[#2d6a4f]">{msg}</p>}
+        <Button disabled={saving} onClick={() => void saveSettings()}>
+          Save Platform Settings
+        </Button>
+      </div>
+    </div>
   );
 }

@@ -31,7 +31,7 @@ import {
   type PrintOrientation,
 } from "@/components/print/PrintLayout";
 import { usePrintSetup, type PrintMargins } from "@/lib/print-setup-store";
-import { serializeWithInlinedImages } from "@/lib/print-document";
+import { serializeWithInlinedImages, printHtmlInWebBrowser } from "@/lib/print-document";
 import { listAvailablePrinters, type PrinterInfo } from "@/lib/print/print-queue";
 
 // Every triggerPrint(url, ...) call site across the app (~30 of them, in
@@ -177,19 +177,25 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
           landscape: effectiveOrientation === "landscape",
         });
         if (!result.success) {
-          console.warn("[Print] Desktop print failed, falling back to iframe print:", result.error);
-          iframeRef.current.contentWindow?.focus();
-          iframeRef.current.contentWindow?.print();
+          console.warn("[Print] Desktop print failed, falling back to web print:", result.error);
+          printHtmlInWebBrowser(html);
         }
         return;
       } catch (err) {
-        console.error("[Print] Desktop print path threw, falling back to iframe print:", err);
+        console.error("[Print] Desktop print path threw, falling back to web print:", err);
       }
     }
 
+    // Web Browser Mode (SaaS platform or standard web browser)
     try {
-      iframeRef.current.contentWindow?.focus();
-      iframeRef.current.contentWindow?.print();
+      if (iframeRef.current.contentDocument?.documentElement) {
+        const html = await serializeWithInlinedImages(
+          iframeRef.current.contentDocument.documentElement,
+        );
+        printHtmlInWebBrowser(html);
+      } else {
+        window.print();
+      }
     } catch (err) {
       console.error("Direct iframe print failed, falling back to window print:", err);
       window.print();

@@ -197,6 +197,53 @@ interface DesktopPrintApi {
 /**
  * Prints the document currently on screen. One click, no confirmation, no
  * limit on how many times a document may be printed (V1: unlimited reprints).
+/**
+ * Triggers printing of raw HTML in web browsers by writing the HTML to a temporary
+ * un-modalized hidden iframe on document.body, focusing it, and calling window.print().
+ * This avoids modal backdrop hiding ([role="dialog"] { display: none !important }),
+ * viewport clipping, and cross-origin iframe print errors.
+ */
+export function printHtmlInWebBrowser(html: string): void {
+  const printFrame = document.createElement("iframe");
+  printFrame.style.position = "fixed";
+  printFrame.style.right = "0";
+  printFrame.style.bottom = "0";
+  printFrame.style.width = "0";
+  printFrame.style.height = "0";
+  printFrame.style.border = "0";
+  printFrame.id = "mtj-web-print-frame";
+
+  document.body.appendChild(printFrame);
+
+  const frameDoc = printFrame.contentWindow?.document;
+  if (!frameDoc) {
+    window.print();
+    return;
+  }
+
+  frameDoc.open();
+  frameDoc.write(html);
+  frameDoc.close();
+
+  // Wait for fonts and styles to resolve inside frameDoc, then print
+  setTimeout(() => {
+    try {
+      printFrame.contentWindow?.focus();
+      printFrame.contentWindow?.print();
+    } catch (err) {
+      console.error("[print] hidden frame print error:", err);
+      window.print();
+    } finally {
+      setTimeout(() => {
+        printFrame.remove();
+      }, 1000);
+    }
+  }, 250);
+}
+
+/**
+ * Prints the document currently on screen. One click, no confirmation, no
+ * limit on how many times a document may be printed (V1: unlimited reprints).
  * Returns once the print/preview has been handed off to the OS.
  *
  * @param title   — the window/tab title shown in the print preview
@@ -207,20 +254,22 @@ export async function printDocument(title?: string, docLabel?: string): Promise<
   const desktop = (window as unknown as { mtjDesktop?: DesktopPrintApi }).mtjDesktop;
   const previewHtml = desktop?.print?.previewHtml;
 
-  if (!previewHtml) {
-    window.print();
-    return;
-  }
-
   const html = await buildPrintableHtml(docLabel);
+
+  if (!previewHtml) {
+    if (html.includes("<section")) {
+      printHtmlInWebBrowser(html);
+    } else {
+      window.print();
+    }
+    return;
+  }
+
   if (!html.includes("<section")) {
-    // No PrintLayout on this page — nothing to serialize. Print the page as
-    // the browser sees it rather than opening an empty preview.
     window.print();
     return;
   }
 
-  // Resolve landscape orientation from the printer profile
   const profile = docLabel
     ? useSettings.getState().printerProfiles.find((p) => p.templateMapping.includes(docLabel))
     : undefined;
@@ -228,10 +277,7 @@ export async function printDocument(title?: string, docLabel?: string): Promise<
 
   const result = await previewHtml(html, { title, landscape });
   if (!result.success) {
-    console.error(
-      "[print] Preview failed, falling back to the browser print dialog:",
-      result.error,
-    );
-    window.print();
+    console.error("[print] Preview failed, falling back to browser print:", result.error);
+    printHtmlInWebBrowser(html);
   }
 }

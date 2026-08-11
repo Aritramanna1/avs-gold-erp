@@ -16,7 +16,10 @@ export interface TallyVoucher {
 /**
  * Encodes vouchers into Tally XML Import Payload.
  */
-export function generateTallyXML(vouchers: TallyVoucher[], companyName = "Ornexa Jewellery"): string {
+export function generateTallyXML(
+  vouchers: TallyVoucher[],
+  companyName = "Ornexa Jewellery",
+): string {
   const xmlVouchers = vouchers
     .map((v) => {
       const amountRupees = (v.amountPaise / 100).toFixed(2);

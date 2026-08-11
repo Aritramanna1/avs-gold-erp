@@ -7,7 +7,7 @@ import {
   calculateAlloyBatchRecipe,
   calculateProcessShrinkage,
   calculateLabourCharge,
-  calculateHallmarkCharge
+  calculateHallmarkCharge,
 } from "../../src/lib/calculation-engine";
 import { ReplaceableAssistantBrain } from "../../src/lib/avs-assistant-brain";
 import { calculateLiveGoldExposure } from "../../src/lib/ledger-store";
@@ -29,7 +29,7 @@ test.describe("AVS Master Architecture Unit & E2E Validation", () => {
       ratePerUnitPaise: 5000, // ₹50/g
       grossWeightMg: 10000, // 10g
       netWeightMg: 9500,
-      fineWeightMg: 8702
+      fineWeightMg: 8702,
     });
     expect(grossRes.totalLabourChargeRupees).toBe(500);
 
@@ -39,13 +39,18 @@ test.describe("AVS Master Architecture Unit & E2E Validation", () => {
       grossWeightMg: 5000,
       netWeightMg: 5000,
       fineWeightMg: 4580,
-      piecesCount: 5
+      piecesCount: 5,
     });
     expect(pieceRes.totalLabourChargeRupees).toBe(750);
   });
 
   test("calculateHallmarkCharge should calculate fixed and per-gram hallmark fees", () => {
-    const fixedRes = calculateHallmarkCharge({ basis: "fixed_per_piece", ratePaise: 4500, grossWeightMg: 10000, piecesCount: 2 }); // ₹45/piece
+    const fixedRes = calculateHallmarkCharge({
+      basis: "fixed_per_piece",
+      ratePaise: 4500,
+      grossWeightMg: 10000,
+      piecesCount: 2,
+    }); // ₹45/piece
     expect(fixedRes.totalHallmarkChargeRupees).toBe(90);
   });
 
@@ -58,7 +63,7 @@ test.describe("AVS Master Architecture Unit & E2E Validation", () => {
       active: true,
       fullName: "Raju Karigar",
       phone: "9876543210",
-      maxFineGoldCreditMg: 100000 // 100g max credit limit
+      maxFineGoldCreditMg: 100000, // 100g max credit limit
     };
 
     const validCheck = validateMetalCreditLimit(mockPerson, 50000, 30000); // 50g + 30g = 80g <= 100g
@@ -77,10 +82,10 @@ test.describe("AVS Master Architecture Unit & E2E Validation", () => {
         partyName: "Swarna Jewellers",
         amountPaise: 1500000, // ₹15,000
         fineGoldMg: 10000,
-        narration: "Sale of 22K Gold Bangle"
-      }
+        narration: "Sale of 22K Gold Bangle",
+      },
     ]);
-    expect(xml).toContain("<VOUCHER VCHTYPE=\"Sales\" ACTION=\"Create\">");
+    expect(xml).toContain('<VOUCHER VCHTYPE="Sales" ACTION="Create">');
     expect(xml).toContain("<VOUCHERNUMBER>INV-001</VOUCHERNUMBER>");
   });
 
@@ -88,7 +93,6 @@ test.describe("AVS Master Architecture Unit & E2E Validation", () => {
     expect(() => assertFreezeDateOpen("2026-04-01", "2026-03-15")).toThrow("TRANSACTION BLOCKED");
     expect(() => assertFreezeDateOpen("2026-04-01", "2026-05-01")).not.toThrow();
   });
-
 
   test("calculateFineGold should compute exact fine gold milligrams and grams", () => {
     const res = calculateFineGold({ netWeightMg: 50000, purityPerMille: 916 }); // 50g 22K
@@ -107,13 +111,12 @@ test.describe("AVS Master Architecture Unit & E2E Validation", () => {
       preProcessGrossMg: 50000,
       postProcessGrossMg: 49500,
       stoneWeightAddedMg: 0,
-      meenaWeightAddedMg: 0
+      meenaWeightAddedMg: 0,
     });
     expect(res.netGoldLossMg).toBe(500);
     expect(res.variancePct).toBe(1.0);
     expect(res.isExcessiveLoss).toBe(false);
   });
-
 
   test("calculateKarigarWastage should exclude chain category before computing 1.5% wastage", () => {
     const res = calculateKarigarWastage({

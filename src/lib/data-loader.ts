@@ -736,13 +736,22 @@ export async function startCloudSync(): Promise<void> {
     markCriticalLoadDone();
     // Background load starts after critical — don't await so UI unblocks immediately
     void pullBackground()
-      .then((bg) => {
+      .then(async (bg) => {
         markInitialLoadDone();
         if (!bg.ok) {
           toast.error("Some data failed to load in background", {
             description: bg.errors.slice(0, 2).join("; "),
             duration: 4000,
           });
+        }
+        // Auto-seed pilot dataset if database is completely empty so all features are populated
+        const peopleCount = usePeople.getState().people.length;
+        const ordersCount = useOrders.getState().orders.length;
+        const stockCount = useStock.getState().items.length;
+        if (peopleCount === 0 && ordersCount === 0 && stockCount === 0) {
+          console.log("[data-loader] Database is empty. Seeding pilot dataset automatically...");
+          const { seedPilotDataset } = await import("@/lib/test-seed");
+          await seedPilotDataset();
         }
       })
       .catch((error) => {
