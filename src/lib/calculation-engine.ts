@@ -252,3 +252,95 @@ export function convertWeightUnits(grams: number): UnitConversionResult {
     tolas,
   };
 }
+
+export interface AlloyRecipeInput {
+  targetWeightGrams: number;
+  targetKarat: 22 | 18 | 14 | 10;
+}
+
+export interface AlloyRecipeResult {
+  targetWeightGrams: number;
+  targetKarat: number;
+  pureGold24KGrams: number;
+  copperAlloyGrams: number;
+  silverAlloyGrams: number;
+  totalAlloyGrams: number;
+  explanation: string[];
+}
+
+/**
+ * Calculates exact 24K pure gold, copper, and silver weights required to alloy a target karat batch. (Section 53)
+ */
+export function calculateAlloyBatchRecipe(input: AlloyRecipeInput): AlloyRecipeResult {
+  const { targetWeightGrams, targetKarat } = input;
+  const purityRatio = targetKarat / 24;
+
+  const pureGold24KGrams = Number((targetWeightGrams * purityRatio).toFixed(3));
+  const totalAlloyGrams = Number((targetWeightGrams - pureGold24KGrams).toFixed(3));
+
+  // Default alloy mix: 75% Copper, 25% Silver for 22K/18K gold color balance
+  const copperAlloyGrams = Number((totalAlloyGrams * 0.75).toFixed(3));
+  const silverAlloyGrams = Number((totalAlloyGrams * 0.25).toFixed(3));
+
+  const explanation = [
+    `Target: ${targetWeightGrams}g of ${targetKarat}K Gold`,
+    `24K Pure Gold Required: ${pureGold24KGrams}g (${(purityRatio * 100).toFixed(2)}%)`,
+    `Alloy Additions Required: ${totalAlloyGrams}g (Copper: ${copperAlloyGrams}g, Silver: ${silverAlloyGrams}g)`
+  ];
+
+  return {
+    targetWeightGrams,
+    targetKarat,
+    pureGold24KGrams,
+    copperAlloyGrams,
+    silverAlloyGrams,
+    totalAlloyGrams,
+    explanation
+  };
+}
+
+export interface ProcessShrinkageInput {
+  preProcessGrossMg: number;
+  postProcessGrossMg: number;
+  stoneWeightAddedMg?: number;
+  meenaWeightAddedMg?: number;
+}
+
+export interface ProcessShrinkageResult {
+  preProcessGrossMg: number;
+  postProcessGrossMg: number;
+  stoneWeightAddedMg: number;
+  meenaWeightAddedMg: number;
+  netGoldLossMg: number;
+  variancePct: number;
+  isExcessiveLoss: boolean;
+  explanation: string;
+}
+
+/**
+ * Calculates Net Gold Shrinkage/Loss during Meena, Enameling, and Stone Setting. (Section 49)
+ */
+export function calculateProcessShrinkage(input: ProcessShrinkageInput): ProcessShrinkageResult {
+  const {
+    preProcessGrossMg,
+    postProcessGrossMg,
+    stoneWeightAddedMg = 0,
+    meenaWeightAddedMg = 0
+  } = input;
+
+  const expectedGrossMg = preProcessGrossMg + stoneWeightAddedMg + meenaWeightAddedMg;
+  const netGoldLossMg = Math.max(0, expectedGrossMg - postProcessGrossMg);
+  const variancePct = preProcessGrossMg > 0 ? Number(((netGoldLossMg / preProcessGrossMg) * 100).toFixed(2)) : 0;
+  const isExcessiveLoss = variancePct > 1.0; // Alert if loss > 1.0%
+
+  return {
+    preProcessGrossMg,
+    postProcessGrossMg,
+    stoneWeightAddedMg,
+    meenaWeightAddedMg,
+    netGoldLossMg,
+    variancePct,
+    isExcessiveLoss,
+    explanation: `Pre-process: ${preProcessGrossMg}mg, Post-process: ${postProcessGrossMg}mg, Added (Stone/Meena): ${stoneWeightAddedMg + meenaWeightAddedMg}mg -> Net Gold Loss: ${netGoldLossMg}mg (${variancePct}%)`
+  };
+}

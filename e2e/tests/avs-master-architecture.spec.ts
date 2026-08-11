@@ -4,6 +4,8 @@ import {
   calculateKarigarWastage,
   calculateDualCurrencyBilling,
   convertWeightUnits,
+  calculateAlloyBatchRecipe,
+  calculateProcessShrinkage,
 } from "../../src/lib/calculation-engine";
 import { ReplaceableAssistantBrain } from "../../src/lib/avs-assistant-brain";
 import { calculateLiveGoldExposure } from "../../src/lib/ledger-store";
@@ -21,6 +23,25 @@ test.describe("AVS Master Architecture Unit & E2E Validation", () => {
     expect(res.fineGoldMg).toBe(45800);
     expect(res.fineGoldGrams).toBe(45.8);
   });
+
+  test("calculateAlloyBatchRecipe should compute required 24K gold, copper, and silver for 22K batch", () => {
+    const res = calculateAlloyBatchRecipe({ targetWeightGrams: 100, targetKarat: 22 });
+    expect(res.pureGold24KGrams).toBe(91.667); // 100 * (22/24)
+    expect(res.totalAlloyGrams).toBe(8.333);
+  });
+
+  test("calculateProcessShrinkage should calculate Net Gold Loss during Meena enameling", () => {
+    const res = calculateProcessShrinkage({
+      preProcessGrossMg: 50000,
+      postProcessGrossMg: 49500,
+      stoneWeightAddedMg: 0,
+      meenaWeightAddedMg: 0
+    });
+    expect(res.netGoldLossMg).toBe(500);
+    expect(res.variancePct).toBe(1.0);
+    expect(res.isExcessiveLoss).toBe(false);
+  });
+
 
   test("calculateKarigarWastage should exclude chain category before computing 1.5% wastage", () => {
     const res = calculateKarigarWastage({
