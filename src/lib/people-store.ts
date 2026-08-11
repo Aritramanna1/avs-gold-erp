@@ -58,6 +58,8 @@ export interface Person {
   workType?: string;
   joiningDate?: string; // YYYY-MM-DD
 
+  maxFineGoldCreditMg?: number; // Fine Gold Metal Credit Limit in mg (Section 42/Audit)
+
   emergencyName?: string;
   emergencyPhone?: string;
   referenceName?: string;
@@ -275,3 +277,44 @@ export function tabsForType(type: PersonType): string {
   if (type === "employee") return "employees";
   return "vendors"; // vendor or outside_worker
 }
+
+export interface MetalCreditCheckResult {
+  isExceeded: boolean;
+  currentBalanceFineGoldMg: number;
+  newRequestedIssueMg: number;
+  projectedBalanceFineGoldMg: number;
+  creditLimitMg: number;
+  message: string;
+}
+
+/**
+ * Validates if issuing new fine gold will exceed the Karigar or Party's assigned metal credit limit.
+ */
+export function validateMetalCreditLimit(
+  person: Person,
+  currentBalanceFineGoldMg: number,
+  newRequestedIssueMg: number
+): MetalCreditCheckResult {
+  const creditLimitMg = person.maxFineGoldCreditMg || 0;
+  const projectedBalanceFineGoldMg = currentBalanceFineGoldMg + newRequestedIssueMg;
+  const isExceeded = creditLimitMg > 0 && projectedBalanceFineGoldMg > creditLimitMg;
+
+  const currentGrams = (currentBalanceFineGoldMg / 1000).toFixed(3);
+  const requestedGrams = (newRequestedIssueMg / 1000).toFixed(3);
+  const projectedGrams = (projectedBalanceFineGoldMg / 1000).toFixed(3);
+  const limitGrams = (creditLimitMg / 1000).toFixed(3);
+
+  const message = isExceeded
+    ? `⚠️ METAL CREDIT LIMIT EXCEEDED: ${person.fullName} has limit ${limitGrams}g. Current: ${currentGrams}g + Issue: ${requestedGrams}g = Projected: ${projectedGrams}g.`
+    : `OK: Projected balance ${projectedGrams}g is within limit ${limitGrams}g.`;
+
+  return {
+    isExceeded,
+    currentBalanceFineGoldMg,
+    newRequestedIssueMg,
+    projectedBalanceFineGoldMg,
+    creditLimitMg,
+    message
+  };
+}
+

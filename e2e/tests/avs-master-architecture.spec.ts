@@ -6,10 +6,15 @@ import {
   convertWeightUnits,
   calculateAlloyBatchRecipe,
   calculateProcessShrinkage,
+  calculateLabourCharge,
+  calculateHallmarkCharge
 } from "../../src/lib/calculation-engine";
 import { ReplaceableAssistantBrain } from "../../src/lib/avs-assistant-brain";
 import { calculateLiveGoldExposure } from "../../src/lib/ledger-store";
 import { validateEnvironment } from "../../src/lib/db-status";
+import { validateMetalCreditLimit, Person } from "../../src/lib/people-store";
+import { generateTallyXML } from "../../src/lib/tally-export-engine";
+import { assertFreezeDateOpen } from "../../src/lib/financial-lock-store";
 
 test.describe("AVS Master Architecture Unit & E2E Validation", () => {
   test("validateEnvironment should confirm development environment status", () => {
@@ -17,6 +22,73 @@ test.describe("AVS Master Architecture Unit & E2E Validation", () => {
     expect(envStatus.isValid).toBe(true);
     expect(envStatus.env).toBe("development");
   });
+
+  test("calculateLabourCharge should compute gross, net, fine, and piece-based labour charges", () => {
+    const grossRes = calculateLabourCharge({
+      basis: "gross",
+      ratePerUnitPaise: 5000, // ₹50/g
+      grossWeightMg: 10000, // 10g
+      netWeightMg: 9500,
+      fineWeightMg: 8702
+    });
+    expect(grossRes.totalLabourChargeRupees).toBe(500);
+
+    const pieceRes = calculateLabourCharge({
+      basis: "piece",
+      ratePerUnitPaise: 15000, // ₹150/piece
+      grossWeightMg: 5000,
+      netWeightMg: 5000,
+      fineWeightMg: 4580,
+      piecesCount: 5
+    });
+    expect(pieceRes.totalLabourChargeRupees).toBe(750);
+  });
+
+  test("calculateHallmarkCharge should calculate fixed and per-gram hallmark fees", () => {
+    const fixedRes = calculateHallmarkCharge({ basis: "fixed_per_piece", ratePaise: 4500, grossWeightMg: 10000, piecesCount: 2 }); // ₹45/piece
+    expect(fixedRes.totalHallmarkChargeRupees).toBe(90);
+  });
+
+  test("validateMetalCreditLimit should flag when Karigar exceeds assigned fine gold credit limit", () => {
+    const mockPerson: Person = {
+      id: "p1",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      type: "karigar",
+      active: true,
+      fullName: "Raju Karigar",
+      phone: "9876543210",
+      maxFineGoldCreditMg: 100000 // 100g max credit limit
+    };
+
+    const validCheck = validateMetalCreditLimit(mockPerson, 50000, 30000); // 50g + 30g = 80g <= 100g
+    expect(validCheck.isExceeded).toBe(false);
+
+    const exceedCheck = validateMetalCreditLimit(mockPerson, 80000, 30000); // 80g + 30g = 110g > 100g
+    expect(exceedCheck.isExceeded).toBe(true);
+  });
+
+  test("generateTallyXML should output valid Tally ERP XML payload", () => {
+    const xml = generateTallyXML([
+      {
+        voucherNumber: "INV-001",
+        dateStr: "20260812",
+        voucherType: "Sales",
+        partyName: "Swarna Jewellers",
+        amountPaise: 1500000, // ₹15,000
+        fineGoldMg: 10000,
+        narration: "Sale of 22K Gold Bangle"
+      }
+    ]);
+    expect(xml).toContain("<VOUCHER VCHTYPE=\"Sales\" ACTION=\"Create\">");
+    expect(xml).toContain("<VOUCHERNUMBER>INV-001</VOUCHERNUMBER>");
+  });
+
+  test("assertFreezeDateOpen should throw error when target date is prior to system freeze date", () => {
+    expect(() => assertFreezeDateOpen("2026-04-01", "2026-03-15")).toThrow("TRANSACTION BLOCKED");
+    expect(() => assertFreezeDateOpen("2026-04-01", "2026-05-01")).not.toThrow();
+  });
+
 
   test("calculateFineGold should compute exact fine gold milligrams and grams", () => {
     const res = calculateFineGold({ netWeightMg: 50000, purityPerMille: 916 }); // 50g 22K

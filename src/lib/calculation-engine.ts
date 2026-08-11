@@ -344,3 +344,109 @@ export function calculateProcessShrinkage(input: ProcessShrinkageInput): Process
     explanation: `Pre-process: ${preProcessGrossMg}mg, Post-process: ${postProcessGrossMg}mg, Added (Stone/Meena): ${stoneWeightAddedMg + meenaWeightAddedMg}mg -> Net Gold Loss: ${netGoldLossMg}mg (${variancePct}%)`
   };
 }
+
+export type LabourBasis = "gross" | "net" | "fine" | "piece" | "carat";
+
+export interface LabourCalculationInput {
+  basis: LabourBasis;
+  ratePerUnitPaise: number;
+  grossWeightMg: number;
+  netWeightMg: number;
+  fineWeightMg: number;
+  piecesCount?: number;
+  caratsCount?: number;
+}
+
+export interface LabourCalculationResult {
+  basis: LabourBasis;
+  ratePerUnitPaise: number;
+  effectiveUnits: number;
+  totalLabourChargePaise: number;
+  totalLabourChargeRupees: number;
+  explanation: string;
+}
+
+/**
+ * Calculates Labour Making Charge across Gross, Net, Fine, Piece, or Carat basis.
+ */
+export function calculateLabourCharge(input: LabourCalculationInput): LabourCalculationResult {
+  const { basis, ratePerUnitPaise, grossWeightMg, netWeightMg, fineWeightMg, piecesCount = 1, caratsCount = 0 } = input;
+
+  let effectiveUnits = 0;
+  switch (basis) {
+    case "gross":
+      effectiveUnits = grossWeightMg / 1000; // grams
+      break;
+    case "net":
+      effectiveUnits = netWeightMg / 1000; // grams
+      break;
+    case "fine":
+      effectiveUnits = fineWeightMg / 1000; // grams
+      break;
+    case "piece":
+      effectiveUnits = piecesCount;
+      break;
+    case "carat":
+      effectiveUnits = caratsCount;
+      break;
+  }
+
+  const totalLabourChargePaise = Math.round(effectiveUnits * ratePerUnitPaise);
+  const totalLabourChargeRupees = Number((totalLabourChargePaise / 100).toFixed(2));
+
+  return {
+    basis,
+    ratePerUnitPaise,
+    effectiveUnits: Number(effectiveUnits.toFixed(3)),
+    totalLabourChargePaise,
+    totalLabourChargeRupees,
+    explanation: `Labour Basis: ${basis}, Rate: ₹${(ratePerUnitPaise / 100).toFixed(2)}/unit, Units: ${effectiveUnits.toFixed(3)} -> Total Labour: ₹${totalLabourChargeRupees}`
+  };
+}
+
+export type HallmarkBasis = "fixed_per_piece" | "per_gram" | "percentage";
+
+export interface HallmarkCalculationInput {
+  basis: HallmarkBasis;
+  ratePaise: number;
+  grossWeightMg: number;
+  piecesCount?: number;
+  itemValuePaise?: number;
+}
+
+export interface HallmarkCalculationResult {
+  basis: HallmarkBasis;
+  totalHallmarkChargePaise: number;
+  totalHallmarkChargeRupees: number;
+  explanation: string;
+}
+
+/**
+ * Calculates Hallmark Verification Charges (Fixed per piece, Per gram, or Percentage).
+ */
+export function calculateHallmarkCharge(input: HallmarkCalculationInput): HallmarkCalculationResult {
+  const { basis, ratePaise, grossWeightMg, piecesCount = 1, itemValuePaise = 0 } = input;
+
+  let totalHallmarkChargePaise = 0;
+  switch (basis) {
+    case "fixed_per_piece":
+      totalHallmarkChargePaise = ratePaise * piecesCount;
+      break;
+    case "per_gram":
+      totalHallmarkChargePaise = Math.round((grossWeightMg / 1000) * ratePaise);
+      break;
+    case "percentage":
+      totalHallmarkChargePaise = Math.round((itemValuePaise * (ratePaise / 10000))); // ratePaise in basis points
+      break;
+  }
+
+  const totalHallmarkChargeRupees = Number((totalHallmarkChargePaise / 100).toFixed(2));
+
+  return {
+    basis,
+    totalHallmarkChargePaise,
+    totalHallmarkChargeRupees,
+    explanation: `Hallmark Basis: ${basis}, Rate: ${ratePaise} -> Charge: ₹${totalHallmarkChargeRupees}`
+  };
+}
+
