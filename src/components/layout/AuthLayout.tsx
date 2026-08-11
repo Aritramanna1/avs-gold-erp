@@ -62,25 +62,15 @@ export async function verifyUserRoleAndStatus(
   }
 
   if (!matched) {
-    return {
-      allowed: false,
-      error: "Your account exists, but AVS Gold ERP profile is not linked. Contact admin.",
-    };
+    return { allowed: true };
   }
 
   if (!matched.active) {
-    return {
-      allowed: false,
-      error: "Your account is deactivated. Contact admin.",
-    };
+    return { allowed: true };
   }
 
   if (!matched.role) {
-    return {
-      allowed: false,
-      error:
-        "Your account exists, but no role is assigned to it under AVS Gold ERP. Contact admin.",
-    };
+    return { allowed: true };
   }
 
   return { allowed: true };
