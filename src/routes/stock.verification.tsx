@@ -67,6 +67,8 @@ function StockVerificationPage() {
       const who = await actor();
       const session = usePhysicalStockCounts.getState().start(selectedBranchId || "MAIN", who);
       toast.success(`Count started — ${session.lines.length} items expected on hand.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not start stock count.");
     } finally {
       setBusy(false);
     }
@@ -94,6 +96,8 @@ function StockVerificationPage() {
             : "Count completed. No shortage detected.",
         );
       }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not complete stock count.");
     } finally {
       setBusy(false);
     }

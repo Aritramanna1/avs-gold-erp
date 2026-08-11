@@ -12,11 +12,11 @@ AVS Gold ERP is an offline-first jewellery manufacturing desktop ERP. Electron h
 
 ## Deployment modes
 
-| Mode | Database | Files | Authentication | Synchronization |
-|---|---|---|---|---|
-| Offline | SQLite | Local only | Local | Disabled |
-| Hybrid | SQLite primary + Supabase structured data | Local only | Local/current provider | Queued Supabase data sync |
-| Online | Future managed provider | Local by current policy | Future managed provider | Not Version 1 ready |
+| Mode    | Database                                  | Files                   | Authentication          | Synchronization           |
+| ------- | ----------------------------------------- | ----------------------- | ----------------------- | ------------------------- |
+| Offline | SQLite                                    | Local only              | Local                   | Disabled                  |
+| Hybrid  | SQLite primary + Supabase structured data | Local only              | Local/current provider  | Queued Supabase data sync |
+| Online  | Future managed provider                   | Local by current policy | Future managed provider | Not Version 1 ready       |
 
 Local writes commit first and enter the SQLite outbox. In Hybrid mode, the sync engine retries queued rows, pulls incremental remote changes, records conflicts, and preserves local data through network loss. File/blob tables are explicitly excluded.
 

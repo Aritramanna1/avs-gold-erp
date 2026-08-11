@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { KeyRound, ShieldAlert, ShieldCheck, Loader2 } from "lucide-react";
+import { KeyRound, LogOut, ShieldAlert, ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
@@ -43,7 +43,11 @@ export function LicenseGate({ children }: { children: ReactNode }) {
   const trialEndsAt = useLicense((state) => state.trialEndsAt);
   const branding = useSettings((state) => state.branding);
   const config = getLicenseConfig();
-  const [isSaasAdmin, setIsSaasAdmin] = useState(false);
+  // null = not yet resolved. Starting at false (instead of null) was the bug:
+  // a saas_admin whose license status resolves to expired/suspended before
+  // this async role lookup finishes would flash the tenant LicenseBlock
+  // ("Contact Support", renewal prompt) even though they're not a tenant.
+  const [isSaasAdmin, setIsSaasAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!mode) return;
@@ -60,12 +64,20 @@ export function LicenseGate({ children }: { children: ReactNode }) {
     let cancelled = false;
     void supabase.auth.getSession().then(async ({ data }) => {
       const userId = data.session?.user.id;
-      if (!userId) return;
-      const { data: roles } = await supabase
+      if (!userId) {
+        if (!cancelled) setIsSaasAdmin(false);
+        return;
+      }
+      const { data: roles, error } = await supabase
         .from("user_roles" as never)
         .select("role")
         .eq("user_id", userId);
       if (!cancelled) {
+        if (error) {
+          console.error("[LicenseGate] user_roles lookup failed:", error);
+          setIsSaasAdmin(false);
+          return;
+        }
         setIsSaasAdmin(
           ((roles ?? []) as Array<{ role?: string }>).some((entry) => entry.role === "saas_admin"),
         );
@@ -76,7 +88,7 @@ export function LicenseGate({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  if (!mode || status === "checking") return <AppBootSkeleton />;
+  if (!mode || status === "checking" || isSaasAdmin === null) return <AppBootSkeleton />;
 
   if ((status === "expired" || status === "suspended") && !isSaasAdmin) {
     return (
@@ -200,6 +212,13 @@ function LicenseBlock({
             Renew / Contact
           </Button>
         ) : null}
+        <Button
+          variant="outline"
+          className="w-full gap-1.5"
+          onClick={() => void supabase.auth.signOut()}
+        >
+          <LogOut className="h-4 w-4" /> Log Out / Switch Account
+        </Button>
         <LicensePanel />
       </div>
     </div>

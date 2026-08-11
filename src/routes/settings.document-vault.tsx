@@ -42,6 +42,13 @@ function DocumentVaultPage() {
     try {
       await initLocalDb();
       setEntries(listCurrentFiles());
+    } catch (error) {
+      setEntries([]);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not load the document vault. Retry shortly.",
+      );
     } finally {
       setLoading(false);
     }
@@ -107,6 +114,8 @@ function DocumentVaultPage() {
       if (result.ok) toast.success(`${entry.file_name ?? entry.attachment_id} verified OK.`);
       else toast.error(`Integrity check FAILED: ${result.error ?? "unknown"}`);
       await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not verify file integrity.");
     } finally {
       setBusyId(null);
     }
@@ -119,6 +128,8 @@ function DocumentVaultPage() {
       if (result.repaired) toast.success(`Repaired: ${result.reason}`);
       else toast.error(`Not repaired: ${result.reason}`);
       await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not repair file.");
     } finally {
       setBusyId(null);
     }

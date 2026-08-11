@@ -103,6 +103,8 @@ export function WhatsAppIntegrationPage({ embedded = false }: { embedded?: boole
     setBusy(key);
     try {
       await fn();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Action failed.");
     } finally {
       setBusy(null);
     }

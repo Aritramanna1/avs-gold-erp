@@ -160,7 +160,7 @@ function SettingsPage() {
           <div className="flex-1">
             <div className="font-medium text-sm">License &amp; Activation</div>
             <div className="text-xs text-muted-foreground">
-              Online activation server, license key, offline grace window.
+              Online activation server, license key, and entitlement policies.
             </div>
           </div>
         </Link>
@@ -234,6 +234,20 @@ function SettingsPage() {
             <div className="font-medium text-sm font-semibold">Security Center</div>
             <div className="text-xs text-muted-foreground">
               Registered devices, trust status, and encryption key rotation.
+            </div>
+          </div>
+        </Link>
+        <Link
+          to="/settings/support"
+          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+        >
+          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
+            🛟
+          </span>
+          <div className="flex-1">
+            <div className="font-medium text-sm font-semibold">Support</div>
+            <div className="text-xs text-muted-foreground">
+              Raise a ticket and chat live with Arivahly support.
             </div>
           </div>
         </Link>
@@ -4367,8 +4381,6 @@ function EmailTab() {
 }
 
 function BackupTab() {
-  const deploymentMode = useDeploymentMode((state) => state.mode);
-  const offline = deploymentMode === "offline";
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<string>("");
   const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(null);
@@ -4427,12 +4439,8 @@ function BackupTab() {
   return (
     <Card className="p-5 mt-4 space-y-4">
       <div className="text-sm">
-        {offline
-          ? "This device's local SQLite database is the source of truth for business data. "
-          : "Local data supports offline-first operation and is synchronized by the configured provider. "}
-        Take a local backup at least once a day in case this device is lost or damaged. For
-        verified, drill-tested backup/restore (recommended for anything beyond a quick local safety
-        copy), use{" "}
+        Local cache exports are available for troubleshooting and quick safety copies. For verified,
+        drill-tested backup/restore (recommended for anything beyond a quick local safety copy), use{" "}
         <Link to="/settings/backup-recovery" className="underline text-gold">
           Backup &amp; Disaster Recovery
         </Link>
@@ -4463,10 +4471,6 @@ function BackupTab() {
           <Button
             variant="destructive"
             onClick={() => {
-              if (offline) {
-                setClearConfirmOpen(true);
-                return;
-              }
               setClearPassword("");
               setClearPasswordError("");
               setPasswordGateOpen(true);
@@ -4488,8 +4492,7 @@ function BackupTab() {
             <AlertDialogDescription>
               This will overwrite every local store on this device with the contents of{" "}
               <strong>{pendingRestoreFile?.name}</strong>. Any local changes made since that backup
-              was taken will be lost.
-              {offline ? " Continue?" : " Synchronized cloud data is not affected. Continue?"}
+              was taken will be lost. Synchronized cloud data is not affected. Continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -4565,12 +4568,8 @@ function BackupTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>Clear local pilot data?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete all local data on this device — cached settings AND the
-              local encrypted database (orders, ledger, stock, invoices, etc. cached for offline
-              use).
-              {offline
-                ? " This is the only business-data copy on this installation and cannot be undone. Continue?"
-                : " Synchronized cloud data is not affected. This cannot be undone. Continue?"}
+              This will permanently delete cached settings and the local encrypted data cache on
+              this device. Synchronized cloud data is not affected. This cannot be undone. Continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -4691,45 +4690,11 @@ function ConnectedDatabaseSummary() {
 }
 
 function DbTab() {
-  const deploymentMode = useDeploymentMode((state) => state.mode);
-  return deploymentMode === "offline" ? <OfflineDbStatusPanel /> : <DbStatusPanel />;
-}
-
-function OfflineDbStatusPanel() {
-  return (
-    <div data-testid="database-status-root" className="space-y-4 mt-4">
-      <Card className="p-5 space-y-3 text-sm">
-        <div className="flex items-center gap-2 font-medium">
-          <Database className="h-4 w-4" /> Database Status
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 text-xs">
-          <div className="rounded-lg border border-border bg-muted/20 p-3">
-            <div className="text-muted-foreground mb-1">Local SQLite</div>
-            <Badge
-              variant="outline"
-              className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
-            >
-              Connected
-            </Badge>
-          </div>
-          <div className="rounded-lg border border-border bg-muted/20 p-3">
-            <div className="text-muted-foreground mb-1">Data Source</div>
-            <div className="font-medium">Gold Vault / Local Database</div>
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Offline Mode is fully local. No cloud account or connection is required for normal ERP
-          operation.
-        </p>
-      </Card>
-    </div>
-  );
+  return <DbStatusPanel />;
 }
 
 function DbStatusPanel() {
   const { status, email, userId, lastMigrationAt, sourceOfTruth } = useDbStatus();
-  const deploymentMode = useDeploymentMode((state) => state.mode);
-  const offline = deploymentMode === "offline";
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authEmail, setAuthEmail] = useState("");
   const [authPass, setAuthPass] = useState("");
@@ -4740,10 +4705,6 @@ function DbStatusPanel() {
 
   // Load this user's roles when signed in
   useEffect(() => {
-    if (offline) {
-      setRoles([]);
-      return;
-    }
     if (!userId) {
       setRoles([]);
       return;
@@ -4759,7 +4720,7 @@ function DbStatusPanel() {
     return () => {
       cancelled = true;
     };
-  }, [offline, userId]);
+  }, [userId]);
 
   async function handleAuth() {
     setBusy(true);
@@ -4773,6 +4734,8 @@ function DbStatusPanel() {
               options: { emailRedirectTo: getAuthRedirectUrl("/auth/callback") },
             });
       if (error) alert(error.message);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Sign-in/sign-up failed.");
     } finally {
       setBusy(false);
     }
@@ -4798,37 +4761,6 @@ function DbStatusPanel() {
       res.ok
         ? "Migration complete. Cloud is now the live source of truth."
         : `Completed with errors:\n${res.errors.join("\n")}`,
-    );
-  }
-
-  if (offline) {
-    return (
-      <div data-testid="database-status-root" className="space-y-4 mt-4">
-        <Card className="p-5 space-y-3 text-sm">
-          <div className="flex items-center gap-2 font-medium">
-            <Database className="h-4 w-4" /> Database Status
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 text-xs">
-            <div className="rounded-lg border border-border bg-muted/20 p-3">
-              <div className="text-muted-foreground mb-1">Local SQLite</div>
-              <Badge
-                variant="outline"
-                className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
-              >
-                Connected
-              </Badge>
-            </div>
-            <div className="rounded-lg border border-border bg-muted/20 p-3">
-              <div className="text-muted-foreground mb-1">Data Source</div>
-              <div className="font-medium">Gold Vault / Local Database</div>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Offline Mode is fully local. No cloud account or connection is required for normal ERP
-            operation.
-          </p>
-        </Card>
-      </div>
     );
   }
 
@@ -4887,7 +4819,7 @@ function DbStatusPanel() {
             </Badge>
             <div className="mt-1 text-muted-foreground">
               {sourceOfTruth === "cloud"
-                ? "Local storage continues as offline cache / fallback."
+                ? "Local storage is used only as a device cache."
                 : "Run migration to make Cloud the live source of truth."}
             </div>
           </div>

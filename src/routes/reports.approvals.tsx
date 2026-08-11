@@ -43,6 +43,11 @@ function ApprovalsPage() {
     setLoading(true);
     try {
       setRequests(await getPendingApprovals());
+    } catch (error) {
+      setRequests([]);
+      toast.error(
+        error instanceof Error ? error.message : "Could not load pending approvals. Retry shortly.",
+      );
     } finally {
       setLoading(false);
     }

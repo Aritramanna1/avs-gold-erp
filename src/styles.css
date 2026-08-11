@@ -422,7 +422,8 @@ a,
 input,
 select,
 textarea {
-  transition: border-color var(--avs-fast) var(--avs-ease),
+  transition:
+    border-color var(--avs-fast) var(--avs-ease),
     background-color var(--avs-fast) var(--avs-ease),
     color var(--avs-fast) var(--avs-ease),
     box-shadow var(--avs-fast) var(--avs-ease),

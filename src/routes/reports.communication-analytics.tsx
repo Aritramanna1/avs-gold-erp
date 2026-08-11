@@ -12,6 +12,7 @@ import {
 import { COMM_KIND_LABELS, type CommEvent } from "@/lib/comm-log-store";
 import { exportToCSV, triggerPrint } from "@/lib/report-engine";
 import { RefreshCw, Loader2, MessageSquare, Download, Printer } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports/communication-analytics")({
   head: () => ({ meta: [{ title: "Communication Analytics · AVS Gold ERP" }] }),
@@ -28,6 +29,10 @@ function CommunicationAnalyticsPage() {
     setLoading(true);
     try {
       setAnalytics(await getCommunicationAnalytics(windowDays));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not load communication analytics.",
+      );
     } finally {
       setLoading(false);
     }

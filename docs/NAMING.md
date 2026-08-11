@@ -20,16 +20,16 @@ Weights end in `Mg` (`fineMg`, `grossMg`, `netMg`, `deltaMg`); money ends in `Pa
 
 ## Domain vocabulary
 
-| Term | Meaning |
-|---|---|
-| Karigar / Worker | Bench worker holding gold in custody |
-| Jeweller | Wholesale client placing manufacturing orders |
-| Gold Held / Vault | Raw gold owned by the firm (source of truth) |
-| Custody balance | Gold currently physically with a worker |
-| Fine / fine gold | Pure-gold equivalent = gross × purity ÷ 1000 |
-| Touch | Purity in per-mille |
-| Slip | Consolidated daily material document (`MTS-…`) |
-| Jama / Naam | Credit / debit in party ledgers |
+| Term              | Meaning                                        |
+| ----------------- | ---------------------------------------------- |
+| Karigar / Worker  | Bench worker holding gold in custody           |
+| Jeweller          | Wholesale client placing manufacturing orders  |
+| Gold Held / Vault | Raw gold owned by the firm (source of truth)   |
+| Custody balance   | Gold currently physically with a worker        |
+| Fine / fine gold  | Pure-gold equivalent = gross × purity ÷ 1000   |
+| Touch             | Purity in per-mille                            |
+| Slip              | Consolidated daily material document (`MTS-…`) |
+| Jama / Naam       | Credit / debit in party ledgers                |
 
 ## Document numbers
 

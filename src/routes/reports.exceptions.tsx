@@ -10,6 +10,7 @@ import {
 } from "@/lib/exception-report";
 import { exportToCSV, triggerPrint } from "@/lib/report-engine";
 import { RefreshCw, AlertTriangle, Loader2, Download, Printer } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports/exceptions")({
   head: () => ({ meta: [{ title: "Exception Report · AVS Gold ERP" }] }),
@@ -34,6 +35,8 @@ function ExceptionReportPage() {
     try {
       const items = await collectExceptions();
       setExceptions(items);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load exceptions.");
     } finally {
       setLoading(false);
     }

@@ -104,6 +104,48 @@ export interface BucketBalances {
   scrap: number;
 }
 
+export interface GoldExposureSummary {
+  totalVaultGoldMg: number;
+  totalKarigarGoldMg: number;
+  totalFinishedGoldMg: number;
+  totalCustomerUnlinkedGoldMg: number;
+  totalPendingOrdersGoldMg: number;
+  netPhysicalGoldMg: number;
+  netUnhedgedGoldExposureMg: number;
+  isRiskOverdraft: boolean;
+  explanation: string[];
+}
+
+export function calculateLiveGoldExposure(
+  balances: BucketBalances,
+  pendingOrdersFineMg: number = 0,
+): GoldExposureSummary {
+  const netPhysicalGoldMg = balances.vault + balances.karigar + balances.finished;
+  const netLiabilityMg = balances.customer + pendingOrdersFineMg;
+  const netUnhedgedGoldExposureMg = netPhysicalGoldMg - netLiabilityMg;
+  const isRiskOverdraft = netUnhedgedGoldExposureMg < 0;
+
+  const explanation = [
+    `Total Physical Gold Assets: ${netPhysicalGoldMg / 1000}g (Vault: ${balances.vault / 1000}g, Karigar Custody: ${balances.karigar / 1000}g, Finished: ${balances.finished / 1000}g)`,
+    `Total Gold Liabilities: ${netLiabilityMg / 1000}g (Customer Deposits: ${balances.customer / 1000}g, Open Orders: ${pendingOrdersFineMg / 1000}g)`,
+    isRiskOverdraft
+      ? `UNHEDGED GOLD DEFICIT DETECTED: -${Math.abs(netUnhedgedGoldExposureMg) / 1000}g. Rate increase risk!`
+      : `Net Gold Exposure Balance: +${netUnhedgedGoldExposureMg / 1000}g (Fully Hedged)`,
+  ];
+
+  return {
+    totalVaultGoldMg: balances.vault,
+    totalKarigarGoldMg: balances.karigar,
+    totalFinishedGoldMg: balances.finished,
+    totalCustomerUnlinkedGoldMg: balances.customer,
+    totalPendingOrdersGoldMg: pendingOrdersFineMg,
+    netPhysicalGoldMg,
+    netUnhedgedGoldExposureMg,
+    isRiskOverdraft,
+    explanation,
+  };
+}
+
 export interface PurityHolding {
   purity: number;
   grossMg: number;

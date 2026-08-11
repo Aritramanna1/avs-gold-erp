@@ -1,4 +1,4 @@
-import { getDeploymentMode, type DeploymentMode } from "@/lib/deployment-mode";
+import { type DeploymentMode } from "@/lib/deployment-mode";
 
 export interface DatabaseProvider {
   kind: "sqlite" | "sqlite-supabase" | "managed";
@@ -29,35 +29,17 @@ export interface RuntimeProviders {
 
 export function resolveRuntimeProviders(mode: DeploymentMode): RuntimeProviders {
   const storage: StorageProvider = { kind: "local-filesystem", synchronizesFiles: false };
-  if (mode === "hybrid") {
-    return {
-      mode,
-      database: { kind: "sqlite-supabase", localPrimary: true },
-      storage,
-      authentication: { kind: "local" },
-      synchronization: { kind: "supabase-database", enabled: true },
-    };
-  }
-  if (mode === "online") {
-    return {
-      mode,
-      database: { kind: "managed", localPrimary: false },
-      storage,
-      authentication: { kind: "managed" },
-      synchronization: { kind: "managed", enabled: false },
-    };
-  }
   return {
-    mode: "offline",
-    database: { kind: "sqlite", localPrimary: true },
+    mode,
+    database: { kind: "managed", localPrimary: false },
     storage,
-    authentication: { kind: "local" },
-    synchronization: { kind: "disabled", enabled: false },
+    authentication: { kind: "managed" },
+    synchronization: { kind: "managed", enabled: false },
   };
 }
 
 export async function getRuntimeProviders(): Promise<RuntimeProviders> {
-  return resolveRuntimeProviders((await getDeploymentMode()) ?? "offline");
+  return resolveRuntimeProviders("online");
 }
 
 export const LOCAL_ONLY_TABLES = new Set([

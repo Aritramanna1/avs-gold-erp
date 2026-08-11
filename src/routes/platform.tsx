@@ -29,7 +29,15 @@ export const Route = createFileRoute("/platform")({
   component: PlatformOwnerConsole,
 });
 
-type Firm = { id: string; name: string; slug: string; is_active: boolean; created_at: string };
+type Firm = {
+  id: string;
+  name: string;
+  slug: string;
+  is_active: boolean;
+  created_at: string;
+  gstin: string | null;
+  address: string | null;
+};
 type Subscription = {
   organization_id: string;
   status: string;
@@ -82,6 +90,35 @@ type BillingRow = {
   paid_minor: number;
   due_at: string | null;
   issued_at: string | null;
+  taxable_minor: number | null;
+  cgst_minor: number | null;
+  sgst_minor: number | null;
+  igst_minor: number | null;
+  gst_minor: number | null;
+  buyer_state_code: string | null;
+  seller_state_code: string | null;
+  data: { description?: string; gst_rate_percent?: number } | null;
+};
+type ErrorEventRow = {
+  id: string;
+  firm_id: string | null;
+  reference_id: string;
+  category: string;
+  severity: string;
+  context: string | null;
+  message: string;
+  created_at: string;
+};
+type BackupRunRow = {
+  id: string;
+  backup_type: string;
+  environment: string;
+  status: string;
+  location: string | null;
+  error_message: string | null;
+  started_at: string;
+  finished_at: string | null;
+  verified_at: string | null;
 };
 type View =
   | "overview"
@@ -92,6 +129,8 @@ type View =
   | "tickets"
   | "billing"
   | "activity"
+  | "health"
+  | "backups"
   | "settings";
 
 const nav: Array<[View, string, typeof Activity]> = [
@@ -103,6 +142,8 @@ const nav: Array<[View, string, typeof Activity]> = [
   ["tickets", "Support tickets", MessageSquare],
   ["billing", "Software billing", Receipt],
   ["activity", "Activity & audit", ShieldAlert],
+  ["health", "Health & monitoring", Activity],
+  ["backups", "Backups", Database],
   ["settings", "Platform settings", Database],
 ];
 
@@ -119,6 +160,8 @@ function PlatformOwnerConsole() {
         "tickets",
         "billing",
         "activity",
+        "health",
+        "backups",
         "settings",
       ].includes(initialView)
       ? initialView
@@ -142,6 +185,8 @@ function PlatformOwnerConsole() {
   const [requestRows, setRequestRows] = useState<RequestRow[]>([]);
   const [ticketRows, setTicketRows] = useState<TicketRow[]>([]);
   const [billingRows, setBillingRows] = useState<BillingRow[]>([]);
+  const [errorRows, setErrorRows] = useState<ErrorEventRow[]>([]);
+  const [backupRows, setBackupRows] = useState<BackupRunRow[]>([]);
 
   async function refresh() {
     setLoading(true);
@@ -181,10 +226,12 @@ function PlatformOwnerConsole() {
       requestList,
       ticketList,
       billingList,
+      errorEvents,
+      backupRuns,
     ] = await Promise.all([
       supabase
         .from("organizations" as never)
-        .select("id,name,slug,is_active,created_at")
+        .select("id,name,slug,is_active,created_at,gstin,address")
         .order("created_at", { ascending: false }),
       supabase
         .from("organization_subscriptions" as never)
@@ -228,7 +275,7 @@ function PlatformOwnerConsole() {
       supabase
         .from("platform_billing_documents" as never)
         .select(
-          "id,firm_id,document_no,document_type,status,amount_minor,paid_minor,due_at,issued_at",
+          "id,firm_id,document_no,document_type,status,amount_minor,paid_minor,due_at,issued_at,taxable_minor,cgst_minor,sgst_minor,igst_minor,gst_minor,buyer_state_code,seller_state_code,data",
         )
         .order("created_at", { ascending: false })
         .limit(100),
@@ -237,21 +284,51 @@ function PlatformOwnerConsole() {
         .select("id,ticket_no,firm_id,category,subject,severity,priority,status,created_at")
         .order("created_at", { ascending: false })
         .limit(100),
+      supabase
+        .from("platform_error_events" as never)
+        .select("id,firm_id,reference_id,category,severity,context,message,created_at")
+        .order("created_at", { ascending: false })
+        .limit(200),
+      supabase
+        .from("platform_backup_runs" as never)
+        .select(
+          "id,backup_type,environment,status,location,error_message,started_at,finished_at,verified_at",
+        )
+        .order("started_at", { ascending: false })
+        .limit(100),
     ]);
-    const firstError =
-      orgs.error ||
-      subs.error ||
-      planRows.error ||
-      audit.error ||
-      userRows.error ||
-      branchRows.error ||
-      requests.error ||
-      tickets.error ||
-      alerts.error ||
-      backups.error ||
-      featureRows.error;
-    if (firstError || requestList.error || ticketList.error || billingList.error)
-      setError("One or more control-plane queries failed. Retry or inspect platform RLS.");
+    const labeledErrors = (
+      [
+        ["organizations", orgs.error],
+        ["organization_subscriptions", subs.error],
+        ["platform_plans", planRows.error],
+        ["platform_audit_events", audit.error],
+        ["user_profiles count", userRows.error],
+        ["branches count", branchRows.error],
+        ["platform_service_requests count", requests.error],
+        ["platform_support_tickets count", tickets.error],
+        ["platform_alerts count", alerts.error],
+        ["platform_backup_runs count", backups.error],
+        ["organization_features", featureRows.error],
+        ["platform_service_requests list", requestList.error],
+        ["platform_support_tickets list", ticketList.error],
+        ["platform_billing_documents list", billingList.error],
+        ["platform_error_events list", errorEvents.error],
+        ["platform_backup_runs list", backupRuns.error],
+      ] as Array<[string, { message: string } | null]>
+    ).filter(([, err]) => err);
+    if (labeledErrors.length > 0) {
+      // Every failed query's actual message and source table, not a blanket
+      // "something failed" — a permission-denied query used to fall back to
+      // an empty array and render as a real "0", indistinguishable from a
+      // genuinely empty table. Now the failure is visible instead of
+      // masquerading as data.
+      setError(
+        labeledErrors
+          .map(([table, err]) => `${table}: ${err?.message ?? "unknown error"}`)
+          .join(" · "),
+      );
+    }
     setFirms((orgs.data ?? []) as Firm[]);
     setSubscriptions((subs.data ?? []) as Subscription[]);
     setPlans((planRows.data ?? []) as Plan[]);
@@ -266,6 +343,8 @@ function PlatformOwnerConsole() {
     setRequestRows((requestList.data ?? []) as RequestRow[]);
     setTicketRows((ticketList.data ?? []) as TicketRow[]);
     setBillingRows((billingList.data ?? []) as BillingRow[]);
+    setErrorRows((errorEvents.data ?? []) as ErrorEventRow[]);
+    setBackupRows((backupRuns.data ?? []) as BackupRunRow[]);
     setLoading(false);
   }
 
@@ -386,6 +465,15 @@ function PlatformOwnerConsole() {
           <BillingView rows={billingRows} firms={firms} onSaved={() => void refresh()} />
         )}
         {view === "activity" && <ActivityView events={events} />}
+        {view === "health" && (
+          <HealthView
+            rows={errorRows}
+            firms={firms}
+            criticalAlerts={criticalAlerts}
+            failedBackups={failedBackups}
+          />
+        )}
+        {view === "backups" && <BackupsView rows={backupRows} />}
         {view === "settings" && <SettingsView />}
       </main>
     </div>
@@ -746,41 +834,185 @@ function ActivityView({ events }: { events: Event[] }) {
     </section>
   );
 }
+
+const SEVERITY_STYLE: Record<string, string> = {
+  critical: "text-[#b42318]",
+  error: "text-[#b42318]",
+  warning: "text-[#a15c00]",
+  info: "text-[#5c5750]",
+};
+
+function HealthView({
+  rows,
+  firms,
+  criticalAlerts,
+  failedBackups,
+}: {
+  rows: ErrorEventRow[];
+  firms: Firm[];
+  criticalAlerts: number;
+  failedBackups: number;
+}) {
+  const [filter, setFilter] = useState("");
+  const visible = rows.filter((row) =>
+    `${row.message} ${row.category} ${row.context ?? ""}`
+      .toLowerCase()
+      .includes(filter.toLowerCase()),
+  );
+  const byCategory = new Map<string, number>();
+  for (const r of rows) byCategory.set(r.category, (byCategory.get(r.category) ?? 0) + 1);
+
+  return (
+    <section className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-4">
+        {[
+          ["Errors (last 200)", rows.length],
+          ["Critical alerts open", criticalAlerts],
+          ["Failed backups", failedBackups],
+          ["Distinct error categories", byCategory.size],
+        ].map(([label, value]) => (
+          <div key={label as string} className="border border-[#dedad1] bg-[#fffdf8] p-4">
+            <p className="text-xs uppercase tracking-wide text-[#8c8c88]">{label}</p>
+            <p className="mt-1 text-2xl font-serif">{value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="border border-[#dedad1] bg-[#fffdf8]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dedad1] p-4">
+          <div>
+            <h2 className="font-serif text-2xl">Live error feed</h2>
+            <p className="text-sm text-[#8c8c88]">
+              Every tenant-side error reported across all firms, newest first.
+            </p>
+          </div>
+          <Input
+            className="w-64"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Search errors"
+          />
+        </div>
+        <div className="max-h-[36rem] overflow-y-auto divide-y divide-[#dedad1]">
+          {visible.length === 0 ? (
+            <p className="p-6 text-sm text-[#8c8c88]">No errors reported. That's a good sign.</p>
+          ) : (
+            visible.map((row) => (
+              <div className="p-4" key={row.id}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className={`text-sm font-medium ${SEVERITY_STYLE[row.severity] ?? ""}`}>
+                    {row.message}
+                  </p>
+                  <time className="text-xs text-[#8c8c88]">
+                    {new Date(row.created_at).toLocaleString()}
+                  </time>
+                </div>
+                <p className="mt-1 text-xs text-[#8c8c88]">
+                  {row.category} · {row.context ?? "no context"} ·{" "}
+                  {row.firm_id
+                    ? (firms.find((f) => f.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8))
+                    : "unknown firm"}{" "}
+                  · Ref {row.reference_id}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BackupsView({ rows }: { rows: BackupRunRow[] }) {
+  return (
+    <section className="border border-[#dedad1] bg-[#fffdf8]">
+      <div className="border-b border-[#dedad1] p-4">
+        <h2 className="font-serif text-2xl">Backups</h2>
+        <p className="text-sm text-[#8c8c88]">Most recent backup runs, newest first.</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b border-[#dedad1] text-left">
+            <tr>
+              <th className="p-3">Type</th>
+              <th className="p-3">Environment</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Started</th>
+              <th className="p-3">Finished</th>
+              <th className="p-3">Verified</th>
+              <th className="p-3">Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr className="border-b border-[#dedad1]" key={row.id}>
+                <td className="p-3">{row.backup_type}</td>
+                <td className="p-3">{row.environment}</td>
+                <td
+                  className={`p-3 font-medium ${row.status === "failed" ? "text-[#b42318]" : row.status === "success" ? "text-[#147d52]" : ""}`}
+                >
+                  {row.status}
+                </td>
+                <td className="p-3 text-xs">{new Date(row.started_at).toLocaleString()}</td>
+                <td className="p-3 text-xs">
+                  {row.finished_at ? new Date(row.finished_at).toLocaleString() : "—"}
+                </td>
+                <td className="p-3 text-xs">
+                  {row.verified_at ? new Date(row.verified_at).toLocaleString() : "—"}
+                </td>
+                <td className="p-3 text-xs text-[#8c8c88]">
+                  {row.error_message ?? row.location ?? "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {rows.length === 0 && (
+          <p className="p-8 text-center text-sm text-[#8c8c88]">No backup runs recorded.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function SettingsView() {
-  const [rows, setRows] = useState<Array<{ key: string; value: unknown }>>([]);
+  const [rows, setRows] = useState<Array<{ key: string; value: unknown; is_secret: boolean }>>([]);
   const [key, setKey] = useState("");
   const [value, setValue] = useState("{}");
   const [reason, setReason] = useState("");
+  const [isSecret, setIsSecret] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   async function load() {
     const { data } = await supabase
       .from("platform_settings" as never)
-      .select("key,value")
+      .select("key,value,is_secret")
       .order("key");
-    setRows((data ?? []) as Array<{ key: string; value: unknown }>);
+    setRows((data ?? []) as Array<{ key: string; value: unknown; is_secret: boolean }>);
   }
   useEffect(() => {
     void load();
   }, []);
-  function selectRow(row: { key: string; value: unknown }) {
+  function selectRow(row: { key: string; value: unknown; is_secret: boolean }) {
     setKey(row.key);
-    setValue(JSON.stringify(row.value, null, 2));
+    // Secrets are write-only: never populate the editor with the stored
+    // value, only let the admin paste a replacement.
+    setValue(row.is_secret ? "" : JSON.stringify(row.value, null, 2));
+    setIsSecret(row.is_secret);
     setMessage(null);
   }
   async function save() {
     setMessage(null);
     let parsed: unknown;
     try {
-      parsed = JSON.parse(value);
+      parsed = isSecret ? value : JSON.parse(value);
     } catch {
-      setMessage("Value must be valid JSON.");
+      setMessage("Value must be valid JSON (secrets are stored as a plain string).");
       return;
     }
     setSaving(true);
     const { error } = await supabase.rpc(
       "set_platform_setting" as never,
-      { p_key: key, p_value: parsed, p_reason: reason } as never,
+      { p_key: key, p_value: parsed, p_reason: reason, p_is_secret: isSecret } as never,
     );
     setSaving(false);
     if (error) {
@@ -789,6 +1021,7 @@ function SettingsView() {
     }
     setMessage("Setting saved and audited.");
     setReason("");
+    setValue("");
     await load();
   }
   return (
@@ -797,7 +1030,8 @@ function SettingsView() {
         <div className="border-b border-[#dedad1] p-4">
           <h2 className="font-serif text-2xl">Platform settings</h2>
           <p className="text-sm text-[#8c8c88]">
-            Global configuration records. Changes require a reason and are audited.
+            Global configuration and API keys. Changes require a reason and are audited — secret
+            values are never shown again after saving.
           </p>
         </div>
         <div className="divide-y divide-[#dedad1]">
@@ -810,9 +1044,16 @@ function SettingsView() {
                 key={row.key}
                 onClick={() => selectRow(row)}
               >
-                <span className="font-medium">{row.key}</span>
+                <span className="flex items-center gap-2 font-medium">
+                  {row.key}
+                  {row.is_secret && (
+                    <span className="rounded-full border border-[#c9c4ba] px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-[#8c8c88]">
+                      Secret
+                    </span>
+                  )}
+                </span>
                 <code className="max-w-[60%] truncate text-xs text-[#8c8c88]">
-                  {JSON.stringify(row.value)}
+                  {row.is_secret ? "•••••••• (set)" : JSON.stringify(row.value)}
                 </code>
               </button>
             ))
@@ -828,16 +1069,35 @@ function SettingsView() {
               className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
               value={key}
               onChange={(e) => setKey(e.target.value)}
-              placeholder="platform.trial_days"
+              placeholder="integrations.wasender_api_key"
             />
           </label>
-          <label className="block text-sm">
-            JSON value
-            <textarea
-              className="mt-1 min-h-32 w-full border border-[#c9c4ba] bg-white p-2 font-mono text-xs"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={isSecret}
+              onChange={(e) => setIsSecret(e.target.checked)}
             />
+            Secret (API key / webhook secret — write-only, masked everywhere after saving)
+          </label>
+          <label className="block text-sm">
+            {isSecret ? "New secret value" : "JSON value"}
+            {isSecret ? (
+              <input
+                type="password"
+                autoComplete="off"
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 font-mono text-xs"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="Paste the key/secret — it will not be shown again"
+              />
+            ) : (
+              <textarea
+                className="mt-1 min-h-32 w-full border border-[#c9c4ba] bg-white p-2 font-mono text-xs"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+              />
+            )}
           </label>
           <label className="block text-sm">
             Reason
@@ -872,7 +1132,17 @@ function LicensingView({
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [firmFilter, setFirmFilter] = useState("");
   const keys = Array.from(new Set(features.map((f) => f.feature_key))).sort();
+  const byFirm = new Map<string, Feature[]>();
+  for (const f of features) {
+    const list = byFirm.get(f.organization_id) ?? [];
+    list.push(f);
+    byFirm.set(f.organization_id, list);
+  }
+  const visibleFirms = firms.filter((firm) =>
+    firm.name.toLowerCase().includes(firmFilter.toLowerCase()),
+  );
   useEffect(() => {
     if (!firmId && firms[0]) setFirmId(firms[0].id);
   }, [firms, firmId]);
@@ -907,26 +1177,59 @@ function LicensingView({
       </div>
       <div className="grid gap-6 p-4 lg:grid-cols-[1fr_1fr]">
         <div>
-          <h3 className="font-semibold">Current entitlements</h3>
-          {features.length === 0 ? (
-            <p className="mt-3 text-sm text-[#8c8c88]">No feature entitlements are configured.</p>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold">Current entitlements, by firm</h3>
+            <Input
+              className="w-48 h-8 text-xs"
+              value={firmFilter}
+              onChange={(e) => setFirmFilter(e.target.value)}
+              placeholder="Filter firms"
+            />
+          </div>
+          {firms.length === 0 ? (
+            <p className="mt-3 text-sm text-[#8c8c88]">No firms onboarded yet.</p>
           ) : (
-            <div className="mt-3 divide-y divide-[#dedad1]">
-              {features.map((f) => (
-                <div
-                  className="flex items-center justify-between py-3 text-sm"
-                  key={`${f.organization_id}-${f.feature_key}`}
-                >
-                  <span>
-                    {firms.find((firm) => firm.id === f.organization_id)?.name ??
-                      f.organization_id.slice(0, 8)}{" "}
-                    · {f.feature_key}
-                  </span>
-                  <span className={f.enabled ? "text-[#147d52]" : "text-[#b42318]"}>
-                    {f.enabled ? "Enabled" : "Disabled"}
-                  </span>
-                </div>
-              ))}
+            <div className="mt-3 max-h-[32rem] space-y-4 overflow-y-auto">
+              {visibleFirms.map((firm) => {
+                const firmFeatures = (byFirm.get(firm.id) ?? []).sort((a, b) =>
+                  a.feature_key.localeCompare(b.feature_key),
+                );
+                return (
+                  <div key={firm.id} className="border border-[#dedad1] bg-white">
+                    <div className="border-b border-[#dedad1] bg-[#f6f2e9] px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#6b6659]">
+                      {firm.name}
+                    </div>
+                    {firmFeatures.length === 0 ? (
+                      <p className="px-3 py-3 text-xs text-[#8c8c88]">
+                        No modules explicitly set — using plan defaults.
+                      </p>
+                    ) : (
+                      <div className="divide-y divide-[#f0ede5]">
+                        {firmFeatures.map((f) => (
+                          <div
+                            className="flex items-center justify-between px-3 py-2 text-sm"
+                            key={`${f.organization_id}-${f.feature_key}`}
+                          >
+                            <span>{f.feature_key}</span>
+                            <span
+                              className={
+                                f.enabled
+                                  ? "text-[10px] font-semibold uppercase text-[#147d52]"
+                                  : "text-[10px] font-semibold uppercase text-[#b42318]"
+                              }
+                            >
+                              {f.enabled ? "Enabled" : "Disabled"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {visibleFirms.length === 0 && (
+                <p className="text-sm text-[#8c8c88]">No firms match "{firmFilter}".</p>
+              )}
             </div>
           )}
         </div>
@@ -1078,6 +1381,13 @@ function RequestsView({
   );
 }
 
+type AdminThreadMessage = {
+  id: string;
+  body: string;
+  sender_id: string;
+  created_at: string;
+};
+
 function TicketsView({
   rows,
   firms,
@@ -1088,6 +1398,11 @@ function TicketsView({
   onSaved: () => void;
 }) {
   const [filter, setFilter] = useState("");
+  const [openTicket, setOpenTicket] = useState<TicketRow | null>(null);
+  const [thread, setThread] = useState<AdminThreadMessage[]>([]);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
   const visible = rows.filter((row) =>
     `${row.ticket_no} ${row.subject} ${row.category}`.toLowerCase().includes(filter.toLowerCase()),
   );
@@ -1100,6 +1415,52 @@ function TicketsView({
       } as never,
     );
     if (!error) onSaved();
+  }
+  async function openTicketThread(row: TicketRow) {
+    setOpenTicket(row);
+    setThreadLoading(true);
+    setThread([]);
+    const { data: conversation } = await supabase
+      .from("platform_conversations" as never)
+      .select("id")
+      .eq("ticket_id", row.id)
+      .maybeSingle();
+    const conversationId = (conversation as { id?: string } | null)?.id;
+    if (conversationId) {
+      const { data: messages } = await supabase
+        .from("platform_conversation_messages" as never)
+        .select("id,body,sender_id,created_at")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true });
+      setThread((messages ?? []) as AdminThreadMessage[]);
+    }
+    setThreadLoading(false);
+  }
+  async function sendReply() {
+    if (!openTicket || !reply.trim()) return;
+    setSending(true);
+    const { data: session } = await supabase.auth.getSession();
+    const { data: conversation } = await supabase
+      .from("platform_conversations" as never)
+      .select("id")
+      .eq("ticket_id", openTicket.id)
+      .maybeSingle();
+    const conversationId = (conversation as { id?: string } | null)?.id;
+    if (conversationId && session.session?.user.id) {
+      await supabase.from("platform_conversation_messages" as never).insert({
+        conversation_id: conversationId,
+        sender_id: session.session.user.id,
+        body: reply.trim(),
+        visibility: "customer",
+      } as never);
+      await supabase
+        .from("platform_conversations" as never)
+        .update({ status: "waiting", updated_at: new Date().toISOString() } as never)
+        .eq("id", conversationId);
+      setReply("");
+      await openTicketThread(openTicket);
+    }
+    setSending(false);
   }
   return (
     <section className="border border-[#dedad1] bg-[#fffdf8]">
@@ -1132,10 +1493,15 @@ function TicketsView({
             {visible.map((row) => (
               <tr className="border-b border-[#dedad1]" key={row.id}>
                 <td className="p-3">
-                  <b>{row.ticket_no}</b>
-                  <div className="text-xs text-[#8c8c88]">
-                    {row.subject} · {row.category}
-                  </div>
+                  <button
+                    className="text-left hover:underline"
+                    onClick={() => void openTicketThread(row)}
+                  >
+                    <b>{row.ticket_no}</b>
+                    <div className="text-xs text-[#8c8c88]">
+                      {row.subject} · {row.category}
+                    </div>
+                  </button>
                 </td>
                 <td className="p-3">
                   {firms.find((firm) => firm.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8)}
@@ -1145,19 +1511,29 @@ function TicketsView({
                 </td>
                 <td className="p-3">{row.status}</td>
                 <td className="p-3">
-                  <select
-                    className="border border-[#c9c4ba] bg-white p-1"
-                    value={row.status}
-                    onChange={(e) => void update(row.id, e.target.value)}
-                  >
-                    <option value="open">Open</option>
-                    <option value="acknowledged">Acknowledged</option>
-                    <option value="in_progress">In progress</option>
-                    <option value="waiting_customer">Waiting customer</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="closed">Closed</option>
-                    <option value="reopened">Reopened</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => void openTicketThread(row)}
+                    >
+                      Open
+                    </Button>
+                    <select
+                      className="border border-[#c9c4ba] bg-white p-1"
+                      value={row.status}
+                      onChange={(e) => void update(row.id, e.target.value)}
+                    >
+                      <option value="open">Open</option>
+                      <option value="acknowledged">Acknowledged</option>
+                      <option value="in_progress">In progress</option>
+                      <option value="waiting_customer">Waiting customer</option>
+                      <option value="resolved">Resolved</option>
+                      <option value="closed">Closed</option>
+                      <option value="reopened">Reopened</option>
+                    </select>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -1167,8 +1543,76 @@ function TicketsView({
           <p className="p-8 text-center text-sm text-[#8c8c88]">No support tickets found.</p>
         )}
       </div>
+
+      {openTicket && (
+        <div className="border-t border-[#dedad1] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">
+                {openTicket.ticket_no} · {openTicket.subject}
+              </h3>
+              <p className="text-xs text-[#8c8c88]">
+                {firms.find((f) => f.id === openTicket.firm_id)?.name ?? openTicket.firm_id} ·{" "}
+                {openTicket.status}
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setOpenTicket(null)}>
+              Close
+            </Button>
+          </div>
+          <div className="max-h-80 overflow-y-auto space-y-2 border border-[#dedad1] bg-white p-3">
+            {threadLoading ? (
+              <p className="text-xs text-[#8c8c88] text-center py-6">Loading…</p>
+            ) : thread.length === 0 ? (
+              <p className="text-xs text-[#8c8c88] text-center py-6">No messages yet.</p>
+            ) : (
+              thread.map((m) => (
+                <div key={m.id} className="text-sm border-b border-[#f0ede5] pb-2">
+                  <p className="whitespace-pre-wrap">{m.body}</p>
+                  <p className="mt-1 text-[10px] text-[#8c8c88]">
+                    {new Date(m.created_at).toLocaleString()}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+              placeholder="Reply to the firm…"
+              disabled={sending}
+            />
+            <Button disabled={sending || !reply.trim()} onClick={() => void sendReply()}>
+              Send
+            </Button>
+          </div>
+        </div>
+      )}
     </section>
   );
+}
+
+const GST_RATES = [0, 3, 5, 12, 18, 28];
+const DOC_TYPES = [
+  "quotation",
+  "proforma",
+  "tax_invoice",
+  "renewal_invoice",
+  "credit_note",
+  "payment_receipt",
+] as const;
+const DOC_TYPE_LABEL: Record<string, string> = {
+  quotation: "Quotation",
+  proforma: "Proforma invoice",
+  tax_invoice: "Tax invoice",
+  renewal_invoice: "Renewal invoice",
+  credit_note: "Credit note",
+  payment_receipt: "Payment receipt",
+};
+
+function rupees(minor: number | null | undefined): string {
+  return `₹${((minor ?? 0) / 100).toFixed(2)}`;
 }
 
 function BillingView({
@@ -1181,42 +1625,103 @@ function BillingView({
   onSaved: () => void;
 }) {
   const [firmId, setFirmId] = useState(firms[0]?.id ?? "");
-  const [type, setType] = useState("tax_invoice");
-  const [amount, setAmount] = useState("");
+  const [type, setType] = useState<(typeof DOC_TYPES)[number]>("quotation");
+  const [description, setDescription] = useState("");
+  const [taxableAmount, setTaxableAmount] = useState("");
+  const [gstRate, setGstRate] = useState(18);
+  const [sellerStateCode, setSellerStateCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     if (!firmId && firms[0]) setFirmId(firms[0].id);
   }, [firmId, firms]);
+
+  useEffect(() => {
+    void supabase
+      .from("platform_settings" as never)
+      .select("value")
+      .eq("key", "billing.seller_state_code")
+      .maybeSingle()
+      .then(({ data }) => {
+        const v = (data as { value?: unknown } | null)?.value;
+        if (typeof v === "string" && v) setSellerStateCode(v);
+      });
+  }, []);
+
+  const buyerFirm = firms.find((f) => f.id === firmId);
+  const buyerStateCode = buyerFirm?.gstin?.slice(0, 2) ?? "";
+  const taxableMinor = Math.round((Number.parseFloat(taxableAmount || "0") || 0) * 100);
+  const gstMinor = Math.round((taxableMinor * gstRate) / 100);
+  const isInterState = !!buyerStateCode && !!sellerStateCode && buyerStateCode !== sellerStateCode;
+  const cgstMinor = isInterState ? 0 : Math.round(gstMinor / 2);
+  const sgstMinor = isInterState ? 0 : gstMinor - cgstMinor;
+  const igstMinor = isInterState ? gstMinor : 0;
+  const totalMinor = taxableMinor + gstMinor;
+
   async function createDocument() {
-    const minor = Number.parseInt(amount, 10);
-    if (!firmId || !Number.isInteger(minor) || minor < 0) {
-      setMessage("Choose a firm and enter a valid amount in minor currency units.");
+    if (!firmId || taxableMinor < 0) {
+      setMessage("Choose a firm and enter a valid taxable amount.");
       return;
     }
+    if (!buyerStateCode) {
+      setMessage(
+        `${buyerFirm?.name ?? "This firm"} has no GSTIN on file — add it under Firms before billing with GST, or the document will show 0% split.`,
+      );
+    }
+    setSaving(true);
     const documentNo = `AVS-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}`;
     const { error } = await supabase.from("platform_billing_documents" as never).insert({
       firm_id: firmId,
       document_no: documentNo,
       document_type: type,
-      amount_minor: minor,
-      paid_minor: 0,
       status: "draft",
-      data: { currency: "INR" },
+      amount_minor: totalMinor,
+      paid_minor: 0,
+      taxable_minor: taxableMinor,
+      gst_minor: gstMinor,
+      cgst_minor: cgstMinor,
+      sgst_minor: sgstMinor,
+      igst_minor: igstMinor,
+      buyer_state_code: buyerStateCode || null,
+      seller_state_code: sellerStateCode || null,
+      issued_at: new Date().toISOString(),
+      data: { currency: "INR", description, gst_rate_percent: gstRate },
     } as never);
+    setSaving(false);
     if (error) {
       setMessage(error.message);
       return;
     }
     setMessage(`Created ${documentNo}.`);
-    setAmount("");
+    setTaxableAmount("");
+    setDescription("");
     onSaved();
   }
+
+  async function markPaid(row: BillingRow) {
+    const { error } = await supabase
+      .from("platform_billing_documents" as never)
+      .update({ status: "paid", paid_minor: row.amount_minor } as never)
+      .eq("id", row.id);
+    if (!error) onSaved();
+  }
+
+  async function updateStatus(row: BillingRow, status: string) {
+    const { error } = await supabase
+      .from("platform_billing_documents" as never)
+      .update({ status } as never)
+      .eq("id", row.id);
+    if (!error) onSaved();
+  }
+
   return (
-    <section className="grid gap-6 xl:grid-cols-[1fr_1.3fr]">
+    <section className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
       <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
         <h2 className="font-serif text-2xl">Software billing</h2>
         <p className="mt-1 text-sm text-[#8c8c88]">
-          Platform invoices and receipts are separate from jewellery billing.
+          Quotations, GST invoices, and receipts for Arivahly's platform subscription — separate
+          from jewellery billing.
         </p>
         <div className="mt-5 space-y-3">
           <label className="block text-sm">
@@ -1229,6 +1734,7 @@ function BillingView({
               {firms.map((firm) => (
                 <option key={firm.id} value={firm.id}>
                   {firm.name}
+                  {firm.gstin ? ` · GSTIN ${firm.gstin}` : " · no GSTIN on file"}
                 </option>
               ))}
             </select>
@@ -1238,34 +1744,102 @@ function BillingView({
             <select
               className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
               value={type}
-              onChange={(e) => setType(e.target.value)}
+              onChange={(e) => setType(e.target.value as (typeof DOC_TYPES)[number])}
             >
-              {[
-                "quotation",
-                "proforma",
-                "tax_invoice",
-                "renewal_invoice",
-                "credit_note",
-                "payment_receipt",
-              ].map((item) => (
+              {DOC_TYPES.map((item) => (
                 <option key={item} value={item}>
-                  {item}
+                  {DOC_TYPE_LABEL[item]}
                 </option>
               ))}
             </select>
           </label>
           <label className="block text-sm">
-            Amount in minor units
+            Description / line item
             <input
               className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
-              inputMode="numeric"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g. AVS Gold ERP — annual subscription, Full edition"
             />
           </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              Taxable amount (₹)
+              <input
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
+                inputMode="decimal"
+                value={taxableAmount}
+                onChange={(e) => setTaxableAmount(e.target.value)}
+                placeholder="0.00"
+              />
+            </label>
+            <label className="block text-sm">
+              GST rate
+              <select
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
+                value={gstRate}
+                onChange={(e) => setGstRate(Number(e.target.value))}
+              >
+                {GST_RATES.map((rate) => (
+                  <option key={rate} value={rate}>
+                    {rate}%
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              Seller GST state code
+              <input
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2"
+                value={sellerStateCode}
+                onChange={(e) => setSellerStateCode(e.target.value.slice(0, 2))}
+                placeholder="e.g. 27"
+                maxLength={2}
+              />
+            </label>
+            <label className="block text-sm">
+              Buyer GST state code
+              <input
+                className="mt-1 w-full border border-[#c9c4ba] bg-[#f4f0e8] p-2 text-[#8c8c88]"
+                value={buyerStateCode}
+                readOnly
+                placeholder="from firm GSTIN"
+              />
+            </label>
+          </div>
+          <div className="border border-[#dedad1] bg-white p-3 text-sm">
+            <div className="flex justify-between">
+              <span>Taxable</span>
+              <span>{rupees(taxableMinor)}</span>
+            </div>
+            {isInterState ? (
+              <div className="flex justify-between">
+                <span>IGST ({gstRate}%)</span>
+                <span>{rupees(igstMinor)}</span>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between">
+                  <span>CGST ({gstRate / 2}%)</span>
+                  <span>{rupees(cgstMinor)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>SGST ({gstRate / 2}%)</span>
+                  <span>{rupees(sgstMinor)}</span>
+                </div>
+              </>
+            )}
+            <div className="mt-1 flex justify-between border-t border-[#dedad1] pt-1 font-semibold">
+              <span>Total</span>
+              <span>{rupees(totalMinor)}</span>
+            </div>
+          </div>
           {message && <p className="text-sm text-[#8c8c88]">{message}</p>}
-          <Button onClick={() => void createDocument()}>Create draft</Button>
+          <Button disabled={saving} onClick={() => void createDocument()}>
+            Create draft
+          </Button>
         </div>
       </div>
       <div className="border border-[#dedad1] bg-[#fffdf8]">
@@ -1280,20 +1854,65 @@ function BillingView({
                 <th className="p-3">Firm</th>
                 <th className="p-3">Type</th>
                 <th className="p-3">Status</th>
-                <th className="p-3">Amount</th>
+                <th className="p-3">Amount (incl. GST)</th>
+                <th className="p-3">Action</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
                 <tr className="border-b border-[#dedad1]" key={row.id}>
-                  <td className="p-3">{row.document_no}</td>
+                  <td className="p-3">
+                    <b>{row.document_no}</b>
+                    {row.data?.description && (
+                      <div className="text-xs text-[#8c8c88]">{row.data.description}</div>
+                    )}
+                  </td>
                   <td className="p-3">
                     {firms.find((firm) => firm.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8)}
                   </td>
-                  <td className="p-3">{row.document_type}</td>
-                  <td className="p-3">{row.status}</td>
+                  <td className="p-3">{DOC_TYPE_LABEL[row.document_type] ?? row.document_type}</td>
                   <td className="p-3">
-                    ₹{(row.amount_minor / 100).toFixed(2)} / ₹{(row.paid_minor / 100).toFixed(2)}
+                    <select
+                      className="border border-[#c9c4ba] bg-white p-1 text-xs"
+                      value={row.status}
+                      onChange={(e) => void updateStatus(row, e.target.value)}
+                    >
+                      {["draft", "sent", "paid", "overdue", "void"].map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-3">
+                    {rupees(row.amount_minor)}
+                    {row.status !== "paid" && (
+                      <span className="ml-1 text-[10px] text-[#8c8c88]">
+                        (paid {rupees(row.paid_minor)})
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <a
+                        className="text-xs underline text-[#6b6659]"
+                        href={`/platform/billing-print/${row.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Print
+                      </a>
+                      {row.status !== "paid" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => void markPaid(row)}
+                        >
+                          Mark paid
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

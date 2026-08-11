@@ -46,7 +46,12 @@ export interface MeltJob {
 
   // Recovery
   fineGoldRecoveredMg: number; // actual fine gold received from refinery
+  fineSilverRecoveredMg?: number; // actual fine silver received from refinery (Section 46)
+  copperAlloyResidueMg?: number; // copper/alloy residue (mg)
   scrapReturnedMg: number; // non-recoverable scrap returned (gross)
+
+  // XRF Machine Integration (Section 43)
+  xrfTouchScanId?: string;
 
   // Calculations
   recoveryPct: number; // basis points e.g. 9850 = 98.50%

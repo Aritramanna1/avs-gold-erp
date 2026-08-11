@@ -31,6 +31,7 @@ npm run build:electron
 ## Documentation
 
 To help you get started, we have compiled the following guides:
+
 - [Installation Guide](INSTALLATION.md)
 - [User Guide](USER_GUIDE.md)
 - [Contributing Guidelines](CONTRIBUTING.md)
@@ -50,4 +51,3 @@ Licensing is isolated from customer data: the replaceable client provider calls 
 ## Repository safety
 
 This repository is connected to Lovable. Do not rewrite published history with force pushes, rebases, amended pushed commits, or squashed pushed commits.
-

@@ -30,6 +30,10 @@ function GoldReconciliationPage() {
     setLoading(true);
     try {
       setHistory(await getReconciliationHistory(20));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not load reconciliation history.",
+      );
     } finally {
       setLoading(false);
     }
@@ -49,6 +53,8 @@ function GoldReconciliationPage() {
           : `Checked ${report.totalChecked} bills — ${report.exceptionCount} discrepancy/discrepancies found.`,
       );
       await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Reconciliation run failed.");
     } finally {
       setRunning(false);
     }

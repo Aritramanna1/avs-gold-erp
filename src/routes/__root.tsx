@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { PlatformShell } from "@/components/platform-shell";
 import { AuthGate } from "@/components/auth-gate";
 import { LicenseGate } from "@/components/license-gate";
+import { WhatsNewDialog } from "@/components/whats-new-dialog";
 import { BackendGate } from "@/components/backend-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteErrorFallback } from "@/components/app-error-boundary";
@@ -366,6 +367,7 @@ function RootComponent() {
           <AuthGate>
             <LicenseGate>
               <BackendGate>
+                <WhatsNewDialog />
                 {currentPath.startsWith("/platform") ? (
                   <PlatformShell>
                     <CatchBoundary

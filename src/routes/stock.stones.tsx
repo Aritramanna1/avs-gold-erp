@@ -210,6 +210,8 @@ function AddStoneDialog({
       setCertifyingLab("");
       setCostR("");
       onClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not add stone record.");
     } finally {
       setSaving(false);
     }

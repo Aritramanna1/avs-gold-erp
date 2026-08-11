@@ -37,11 +37,11 @@ the tree.
 
 ### Deleted — zero references, verified before removal
 
-| Item | Evidence | Notes |
-|---|---|---|
-| 25 shadcn UI primitives (`accordion`, `alert`, `aspect-ratio`, `avatar`, `breadcrumb`, `calendar`, `carousel`, `chart`, `collapsible`, `context-menu`, `drawer`, `form`, `hover-card`, `input-otp`, `menubar`, `navigation-menu`, `pagination`, `popover`, `progress`, `radio-group`, `resizable`, `scroll-area`, `sidebar`, `slider`, `toggle-group` — all in `src/components/ui/`) | Batch import-graph diff, zero importers each | Vendor boilerplate, never adopted. `ui/sidebar.tsx` confirmed distinct from the real, used `components/layout/Sidebar.tsx`. |
-| `src/components/print/SignatureBlock.tsx` | Zero importers; old `PrintLayout.tsx` never referenced it | Superseded by the new print-engine's inline `SignatureBlockSection` |
-| 22 npm dependencies (14 `@radix-ui/*` + `react-day-picker`, `embla-carousel-react`, `vaul`, `input-otp`, `react-resizable-panels`, `react-hook-form`, `@hookform/resolvers`, `vite-tsconfig-paths`) | Each verified used *only* by the deleted UI files above, confirmed via cross-check (`recharts`/`date-fns` kept — used directly by real report/reference-notes code; `@radix-ui/react-slot`/`react-label` kept — used by kept `button.tsx`/`label.tsx`) | `npm install` removed 31 packages total (incl. transitive); package-lock.json regenerated |
+| Item                                                                                                                                                                                                                                                                                                                                                                                 | Evidence                                                                                                                                                                                                                                               | Notes                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| 25 shadcn UI primitives (`accordion`, `alert`, `aspect-ratio`, `avatar`, `breadcrumb`, `calendar`, `carousel`, `chart`, `collapsible`, `context-menu`, `drawer`, `form`, `hover-card`, `input-otp`, `menubar`, `navigation-menu`, `pagination`, `popover`, `progress`, `radio-group`, `resizable`, `scroll-area`, `sidebar`, `slider`, `toggle-group` — all in `src/components/ui/`) | Batch import-graph diff, zero importers each                                                                                                                                                                                                           | Vendor boilerplate, never adopted. `ui/sidebar.tsx` confirmed distinct from the real, used `components/layout/Sidebar.tsx`. |
+| `src/components/print/SignatureBlock.tsx`                                                                                                                                                                                                                                                                                                                                            | Zero importers; old `PrintLayout.tsx` never referenced it                                                                                                                                                                                              | Superseded by the new print-engine's inline `SignatureBlockSection`                                                         |
+| 22 npm dependencies (14 `@radix-ui/*` + `react-day-picker`, `embla-carousel-react`, `vaul`, `input-otp`, `react-resizable-panels`, `react-hook-form`, `@hookform/resolvers`, `vite-tsconfig-paths`)                                                                                                                                                                                  | Each verified used _only_ by the deleted UI files above, confirmed via cross-check (`recharts`/`date-fns` kept — used directly by real report/reference-notes code; `@radix-ui/react-slot`/`react-label` kept — used by kept `button.tsx`/`label.tsx`) | `npm install` removed 31 packages total (incl. transitive); package-lock.json regenerated                                   |
 
 Already deleted in earlier rounds this session (listed here for the
 complete log): `image-compress.ts`, `image-optimisation.ts`, `query-cache.ts`,
@@ -53,7 +53,7 @@ complete log): `image-compress.ts`, `image-optimisation.ts`, `query-cache.ts`,
 
 - **`eslint.config.js`** hang root cause: `.reticle-chrome-profile/` (50k+
   files, a local browser-automation profile) wasn't in the ignore list —
-  `eslint .` was hanging on the directory *walk*, not linting. Added it and
+  `eslint .` was hanging on the directory _walk_, not linting. Added it and
   `node_modules`/`.scratch-verify` to `ignores`.
 - **`settings-store.ts`**: `setBullionRateProvider` was implemented but
   missing from the `Functions` Pick-list `DEFAULTS` is typed against — a
@@ -93,7 +93,7 @@ complete log): `image-compress.ts`, `image-optimisation.ts`, `query-cache.ts`,
   - `lib/sequence-manager.ts` ↔ `lib/dailyclose-store.ts`
   - `lib/sequence-manager.ts` ↔ `lib/people-store.ts`
   - `lib/comm/comm-queue.ts` ↔ `lib/comm/service.ts`
-  Not fixed this round — untangling document-numbering's shared dependency on daily-close/people state is real design work on financial-numbering code, not a quick edit. Flagging with high confidence in the finding, low confidence that a fast fix wouldn't introduce a regression.
+    Not fixed this round — untangling document-numbering's shared dependency on daily-close/people state is real design work on financial-numbering code, not a quick edit. Flagging with high confidence in the finding, low confidence that a fast fix wouldn't introduce a regression.
 - **Large files** (candidates for future modularization, not touched): `settings.index.tsx` (5,876 lines), `BillingModule.tsx` (3,819), `attendance.index.tsx` (1,863), `settings-store.ts` (1,844), `local-db.ts` (1,740), `people.index.tsx` (1,735), `communications.index.tsx` (1,687), `GoldSettlementTab.tsx` (1,543).
 - **Bundle size**: production build flags several chunks over 500KB (`vendor-xlsx`, `jspdf`, `vendor-charts`, `index-*`) and a handful of "ineffective dynamic import" warnings (modules both statically and dynamically imported, so code-splitting isn't achieving anything for them) — pre-existing, unrelated to this round's changes, worth a dedicated look later.
 - **Security spot-check**: no `eval`, no unsafe `.innerHTML =`, one `dangerouslySetInnerHTML` (confirmed static CSS string, no user input, safe). `@typescript-eslint/no-explicit-any` and `no-unused-vars` are both intentionally disabled project-wide in `eslint.config.js` — worth knowing if you ever want stricter type-safety enforcement, not something I changed.
@@ -136,12 +136,13 @@ complete log): `image-compress.ts`, `image-optimisation.ts`, `query-cache.ts`,
 ## Round 4 — component integration per approved decisions
 
 **Verification status: all green.**
+
 - TypeScript: 0 errors.
 - ESLint: 0 errors, 38 pre-existing warnings (unchanged from before this round).
 - Production build: clean, 7.7s, only pre-existing bundler notices.
 - Electron build: clean.
 - **Runtime smoke test** (Playwright, reused the existing `e2e/.auth/state.json` session against the already-running dev server — script at `.scratch-verify/smoke-cleanup-round4.mjs`):
-  - Stock → Add Stock Item dialog: `WeightInput` renders correctly in both Gross/Net weight fields (screenshot confirmed — shows its actual "Weight in grams" placeholder; no "Enter Manually"/"Use Scale" buttons is *correct*, since those only appear opposite a connected scale, and none is connected in this environment).
+  - Stock → Add Stock Item dialog: `WeightInput` renders correctly in both Gross/Net weight fields (screenshot confirmed — shows its actual "Weight in grams" placeholder; no "Enter Manually"/"Use Scale" buttons is _correct_, since those only appear opposite a connected scale, and none is connected in this environment).
   - Settings → Hardware → Cash Drawer: full section confirmed by screenshot — enable toggle, auto-open toggle, ESC/POS command field (prefilled `1B 70 00 19 FA`), and the test/manual button, all present and the enable toggle is interactive (confirmed by toggling and watching the sub-fields appear).
   - Billing → New Invoice: page loads cleanly, no console errors, no crashes.
   - Zero console/page errors traceable to app code in any of the three screens — the only console noise was a benign Vite HMR websocket warning from running headless Playwright against an already-live dev server, unrelated to this round's changes.
@@ -215,6 +216,7 @@ billing row UI" instruction.
 ## Round 3 — executed per approved decisions
 
 **Verification status: all green.**
+
 - TypeScript: 0 errors.
 - ESLint: 0 errors, 38 pre-existing warnings (react-hooks/exhaustive-deps,
   react-refresh/only-export-components) — none in files touched this round.
@@ -231,12 +233,13 @@ billing row UI" instruction.
 ### 1. Hardware — verified and removed
 
 Final verification before deletion, as required:
+
 - **Zero renderer references**: confirmed again post-audit — no `src` file,
   no `e2e` test references `mtjDesktop.hardware`, `HardwareRegistry`, or any
   `HARDWARE_*` channel.
 - **Zero future dependency**: `todo.md`'s own Phase 6 Hardware section
   (weighing scale, barcode scanner, cash drawer, RFID) describes the
-  *browser-native* path — "USB serial integration (RS-232)", "USB HID
+  _browser-native_ path — "USB serial integration (RS-232)", "USB HID
   (keyboard wedge already works)", ESC/POS via the printer connection — the
   same architecture `hardware-service.ts` already implements. Nothing on the
   roadmap points at the Electron IPC bridge.
@@ -315,7 +318,6 @@ your Supabase dashboard (Edge Functions tab) for project `kjfjsfhftytezsjyegmb`
 directly, or grant this session access to that project, and I'll finish the
 verification and remove it if confirmed unused.
 
-
 Read-only sweep for duplicated implementations, unfinished modules, legacy
 code, inconsistent workflows, and competing architectures. No architectural
 code deleted — only the pre-approved zero-risk cleanup below has been
@@ -337,6 +339,7 @@ applied. Everything else is reported for a decision.
 
 Zero references anywhere in `src`, confirmed by import-graph search before
 deletion:
+
 - Deleted `src/lib/image-compress.ts`, `src/lib/image-optimisation.ts` (superseded by `image-compression.ts`).
 - Deleted `src/lib/query-cache.ts` (in-memory TTL cache, never imported).
 - Deleted `src/hooks/useAuth.ts` and the unused `useAuthCheck()`/`AuthState` in `src/lib/supabase.ts` — both were unused reimplementations of session-check logic; the live implementation is `src/components/auth-gate.tsx`.
@@ -349,6 +352,7 @@ deletion:
 ### 1. Hardware Architecture — two implementations, one is scaffold-only
 
 **Canonical: browser-native WebSerial/WebUSB (`src/lib/hardware-service.ts` + `src/lib/thermal-printer.ts`).** Fully implemented and live:
+
 - Barcode scanner: HID keyboard-wedge emulation listener, real and working.
 - Weighing scale: `navigator.serial`, real connect/read/parse loop for
   common scale protocols (`ST,GS,+0012.350g` format family), with a manual
@@ -360,21 +364,22 @@ deletion:
   Zero references to `mtjDesktop` anywhere in this code.
 
 **Scaffold-only: Electron IPC hardware bridge** (`electron/hardware/{registry.ts,types.ts,drivers/mock-driver.ts}` + 5 of the 14 IPC channels: `HARDWARE_LIST_DEVICES/CONNECT/DISCONNECT/SEND_COMMAND/EVENT`). Its own header
-comment is explicit: *"The concrete drivers for real hardware... are NOT
+comment is explicit: _"The concrete drivers for real hardware... are NOT
 implemented here — they cannot be honestly validated without the physical
 devices... Each real driver should be added, one at a time, against real
-hardware."* `main.ts` only ever registers `MockDriver` instances. **No
+hardware."_ `main.ts` only ever registers `MockDriver` instances. **No
 renderer code calls any of this — zero references to `mtjDesktop.hardware.*`
 anywhere in `src`.**
 
 **Recommendation: browser-native is canonical; do not migrate toward
 Electron IPC.** Reasoning, not just "it's what's used today":
+
 - Electron's renderer is Chromium — WebSerial/WebUSB work natively in the
   Electron window exactly as they do in a browser tab. There is no technical
   need for a main-process IPC bridge to reach USB/serial devices here.
 - This app ships to **two targets** (Electron desktop + web, per
   `docs/DEPLOY_CLOUDFLARE_PAGES.md`/`DEPLOY_WEB.md`). The browser-API path is
-  the *only* one that works unmodified on both — an IPC-based path would
+  the _only_ one that works unmodified on both — an IPC-based path would
   still need this exact WebSerial fallback for the web build, so building it
   out would mean maintaining two parallel hardware layers permanently, not
   replacing one.
@@ -402,7 +407,7 @@ approval rather than acting alone.
 
 ### 2. Deep Link — not broken, not critical: it's disconnected infrastructure for a feature that doesn't exist
 
-Traced end-to-end. Two *unrelated* things share the name "deep link" in this
+Traced end-to-end. Two _unrelated_ things share the name "deep link" in this
 codebase — worth being precise about which one you meant:
 
 - **"WhatsApp deep-link"** (`wa-link.ts`, `waMobileUrl()`) — `wa.me/` URLs
@@ -443,13 +448,13 @@ thing worth confirming.
 All three do the same job (receive a file, validate, store under
 `uploads/{module}/{yyyy-mm}/`, return a URL) but differ in every dimension:
 
-| | `/hostinger-upload.php` (root) | `/public/api/hostinger-upload.php` | `/public/api/upload.php` |
-|---|---|---|---|
-| CORS | Hardcoded to `maatarajewellers.shop` origins only | Placeholder `localhost:3000` only (template, needs editing per-deploy) | `Access-Control-Allow-Origin: *` (any origin) |
-| Allowed extensions | jpg/jpeg/png/webp/pdf/doc/docx/xls/xlsx/txt/csv | jpg/jpeg/png/webp/pdf/doc/docx | jpg/jpeg/png/webp/pdf/doc/docx (+ MIME cross-check against extension) |
-| Module allow-list | None — any `module` string accepted | None | Explicit 10-item allow-list (`firm-logos`, `catalog`, etc.) — rejects anything else |
-| MIME sniffing | Blocks `text/html`/`application/x-php` in content | None | Full allow-list of MIME types, cross-checked against extension |
-| **Response shape (success)** | `{"success": true, "file_url", "file_path", ...}` | `{'file_url', 'file_path', ...}` — **no `success`/`status` field** | `{"status": "success", "file_url", ...}` |
+|                              | `/hostinger-upload.php` (root)                    | `/public/api/hostinger-upload.php`                                     | `/public/api/upload.php`                                                            |
+| ---------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| CORS                         | Hardcoded to `maatarajewellers.shop` origins only | Placeholder `localhost:3000` only (template, needs editing per-deploy) | `Access-Control-Allow-Origin: *` (any origin)                                       |
+| Allowed extensions           | jpg/jpeg/png/webp/pdf/doc/docx/xls/xlsx/txt/csv   | jpg/jpeg/png/webp/pdf/doc/docx                                         | jpg/jpeg/png/webp/pdf/doc/docx (+ MIME cross-check against extension)               |
+| Module allow-list            | None — any `module` string accepted               | None                                                                   | Explicit 10-item allow-list (`firm-logos`, `catalog`, etc.) — rejects anything else |
+| MIME sniffing                | Blocks `text/html`/`application/x-php` in content | None                                                                   | Full allow-list of MIME types, cross-checked against extension                      |
+| **Response shape (success)** | `{"success": true, "file_url", "file_path", ...}` | `{'file_url', 'file_path', ...}` — **no `success`/`status` field**     | `{"status": "success", "file_url", ...}`                                            |
 
 **The client code that actually calls this (`src/lib/hostinger-client.ts` →
 `uploadToHostingerServer()`, wired live through `document-pdf-service.ts` →
@@ -457,6 +462,7 @@ All three do the same job (receive a file, validate, store under
 `json.success` as a boolean.**
 
 That means:
+
 - Only the **root `/hostinger-upload.php`** actually satisfies the client's
   response contract.
 - The other two would make the client treat every successful upload as a
@@ -498,12 +504,12 @@ Hostinger account from the repo alone.
 All four are complete, working, from the same `v0.8.0` sprint, zero
 importers anywhere in `src`/`e2e`/`electron`.
 
-| Component | What it does | Classification | Reason |
-|---|---|---|---|
-| **`WeightInput.tsx`** | Reusable weight-entry field: live reading from `hardwareService` scale connection, with a manual-entry fallback | **Integrate** | Real, working feature with no redundant equivalent. Billing/stock/manufacturing forms that need a gross-weight field currently use plain `<Input>` — this is strictly better and already built. Lowest-risk of the four to wire in. |
-| **`CashDrawerButton.tsx`** | Triggers `thermalPrinterService.openCashDrawer()` (ESC/POS kick pulse via receipt printer) | **Integrate** | `openCashDrawer()` has *no other caller in the codebase* — there's currently no UI path to open the cash drawer at all. This isn't redundant scaffolding, it's a genuine missing control on the billing/checkout screen. |
-| **`data-table-virtual.tsx`** | `@tanstack/react-virtual`-backed table, drop-in replacement for plain HTML tables | **Archive (don't wire in speculatively)** | 73 route files render plain `<table>` today; virtualizing all of them is a real, scoped performance project, not a quick integration — needs someone to identify which specific lists are actually large enough to need it (stock, ledger, orders are candidates; most aren't). Keep the file (it's correct, tested-shape code), don't delete it, but don't wire it in opportunistically either — that's a deliberate follow-up task, not cleanup. |
-| **`AttachmentUploader.tsx`** | Generic file/photo uploader hitting the Hostinger PHP endpoint (`fileUpload.ts`) | **Delete** | Redundant, not missing. `attachments-section.tsx` + `attachment-placeholder-modal.tsx` + `attachments-store.ts` is the live, fully-wired attachment system (17 importers, Supabase-storage backed) already covering every record type that needs file attachments. This component duplicates that capability via a different (and per finding #3, partially broken) storage path. Its only sibling dependency, `fileUpload.ts`, is still used by one route (`people.print.$id.tsx`, read-only `listAttachments()` call) — so delete the component, keep `fileUpload.ts` until that one remaining read-path is confirmed/migrated separately. |
+| Component                    | What it does                                                                                                    | Classification                            | Reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`WeightInput.tsx`**        | Reusable weight-entry field: live reading from `hardwareService` scale connection, with a manual-entry fallback | **Integrate**                             | Real, working feature with no redundant equivalent. Billing/stock/manufacturing forms that need a gross-weight field currently use plain `<Input>` — this is strictly better and already built. Lowest-risk of the four to wire in.                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **`CashDrawerButton.tsx`**   | Triggers `thermalPrinterService.openCashDrawer()` (ESC/POS kick pulse via receipt printer)                      | **Integrate**                             | `openCashDrawer()` has _no other caller in the codebase_ — there's currently no UI path to open the cash drawer at all. This isn't redundant scaffolding, it's a genuine missing control on the billing/checkout screen.                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **`data-table-virtual.tsx`** | `@tanstack/react-virtual`-backed table, drop-in replacement for plain HTML tables                               | **Archive (don't wire in speculatively)** | 73 route files render plain `<table>` today; virtualizing all of them is a real, scoped performance project, not a quick integration — needs someone to identify which specific lists are actually large enough to need it (stock, ledger, orders are candidates; most aren't). Keep the file (it's correct, tested-shape code), don't delete it, but don't wire it in opportunistically either — that's a deliberate follow-up task, not cleanup.                                                                                                                                                                                           |
+| **`AttachmentUploader.tsx`** | Generic file/photo uploader hitting the Hostinger PHP endpoint (`fileUpload.ts`)                                | **Delete**                                | Redundant, not missing. `attachments-section.tsx` + `attachment-placeholder-modal.tsx` + `attachments-store.ts` is the live, fully-wired attachment system (17 importers, Supabase-storage backed) already covering every record type that needs file attachments. This component duplicates that capability via a different (and per finding #3, partially broken) storage path. Its only sibling dependency, `fileUpload.ts`, is still used by one route (`people.print.$id.tsx`, read-only `listAttachments()` call) — so delete the component, keep `fileUpload.ts` until that one remaining read-path is confirmed/migrated separately. |
 
 Not deleting any of these without your go-ahead since they're feature-level,
 not dead-code-level — but `AttachmentUploader.tsx` is the one candidate here
@@ -535,7 +541,7 @@ the other approved deletions.
 - **Unused stores/lib files**: same technique as the first pass (batch
   import-graph diff) applied across all of `src/lib` top-level, `src/hooks`,
   `src/contexts`, and `src/components/{files,forms,hardware,layout,
-  reference-notes,security}` — already covered in the completed cleanup
+reference-notes,security}` — already covered in the completed cleanup
   above and the four components in §4. No further orphans found in these
   directories beyond what's already listed.
 - **Unused DB tables**: attempted via grepping `CREATE TABLE` across the 29

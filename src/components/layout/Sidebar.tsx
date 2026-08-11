@@ -166,28 +166,36 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
       className={`flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground ${className}`}
       id="app-sidebar-main"
     >
-      {/* Branding Header */}
-      <div
-        className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border"
-        id="sidebar-branding"
-      >
-        <Logo variant="svg" className="h-11 w-11 object-contain animate-fade-in" />
-        <div className="min-w-0">
-          <div className="font-serif text-lg leading-tight text-gold truncate">
-            {branding.shortName || `${shopInitials} ERP`}
+      {/* Branding Header & Environment Badge */}
+      <div className="flex flex-col border-b border-sidebar-border px-5 py-4" id="sidebar-branding">
+        <div className="flex items-center gap-3">
+          <Logo variant="svg" className="h-10 w-10 object-contain animate-fade-in" />
+          <div className="min-w-0">
+            <div className="font-serif text-lg leading-tight text-gold truncate">
+              {branding.shortName || `${shopInitials} ERP`}
+            </div>
+            <div
+              className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold truncate"
+              title={firm?.shopName}
+            >
+              {firm?.shopName}
+            </div>
           </div>
-          <div
-            className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold truncate"
-            title={firm?.shopName}
-          >
-            {firm?.shopName}
+        </div>
+
+        {/* Persistent DEVELOPMENT Environment Indicator */}
+        <div className="mt-2.5 flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold text-amber-500">
+          <div className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
+            <span className="uppercase tracking-wider">DEVELOPMENT</span>
           </div>
+          <span className="text-[9px] opacity-75 font-mono">dqgrrafuoxaorvyrcuuh</span>
         </div>
       </div>
 
       {/* Gold Rate Widget */}
       <div
-        className="px-4 py-3 mx-3 mt-3.5 rounded-xl bg-sidebar-accent/40 border border-sidebar-border/60 hover:border-gold/30 transition-all group"
+        className="px-4 py-3 mx-3 mt-3 rounded-xl bg-sidebar-accent/40 border border-sidebar-border/60 hover:border-gold/30 transition-all group"
         id="sidebar-gold-widget"
       >
         <div className="flex items-center justify-between mb-1.5">

@@ -79,8 +79,8 @@ pattern for what the challan version should eventually look like — see
 `DeliveryChallanItem` has no pricing fields at all — no gold rate, no
 making charge, no stone charge, no computed value. It only carries
 `itemName`, `category`, `grossMg`, `purity`, `fineMg`, `qty` — enough to
-describe *what physically left the shop*, nothing about *what it should be
-billed at*.
+describe _what physically left the shop_, nothing about _what it should be
+billed at_.
 
 `Estimate`'s items, by contrast, are already full `InvoiceItem` records
 (rate, making charge, GST-ready totals) — converting an estimate is

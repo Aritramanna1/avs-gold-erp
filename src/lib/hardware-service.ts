@@ -32,7 +32,25 @@ export interface ScaleReading {
   rawString: string;
 }
 
+export interface XrfTouchReading {
+  goldPct: number;
+  silverPct: number;
+  copperPct: number;
+  zincPct: number;
+  rawPurityKarat: number;
+  rawString: string;
+}
+
+export interface RfidTrayScanResult {
+  trayId: string;
+  totalTagsFound: number;
+  tagRfids: string[];
+  scannedAt: string;
+}
+
 export type ScaleCallback = (reading: ScaleReading) => void;
+export type XrfCallback = (reading: XrfTouchReading) => void;
+export type RfidCallback = (result: RfidTrayScanResult) => void;
 
 class HardwareService {
   private scalePort: any | null = null;

@@ -48,3 +48,30 @@ export const MARKETING_CAMPAIGNS_COMING_SOON_DETAIL =
 export const EMAIL_AUTOMATION_COMING_SOON_MESSAGE = "Email Automation — Coming in Next Version";
 export const EMAIL_AUTOMATION_COMING_SOON_DETAIL =
   "Email delivery remains in the codebase and will return in a future version. WhatsApp (Deep Link + OpenWA) is fully available.";
+
+export interface TrialTenantConfig {
+  tenantId: string;
+  tenantName: string;
+  plan: "trial_14_day" | "standard" | "premium";
+  trialStartsAt: string;
+  trialEndsAt: string;
+  daysRemaining: number;
+  isExpired: boolean;
+  sampleDataLoaded: boolean;
+}
+
+export function createTrialConfig(tenantId: string, tenantName: string): TrialTenantConfig {
+  const startsAt = new Date();
+  const endsAt = new Date(startsAt.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days
+
+  return {
+    tenantId,
+    tenantName,
+    plan: "trial_14_day",
+    trialStartsAt: startsAt.toISOString(),
+    trialEndsAt: endsAt.toISOString(),
+    daysRemaining: 14,
+    isExpired: false,
+    sampleDataLoaded: false,
+  };
+}

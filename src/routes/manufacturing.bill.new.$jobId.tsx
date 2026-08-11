@@ -298,6 +298,8 @@ export default function NewMfgBill() {
     try {
       await saveBill(bill);
       toast.success("Draft saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save draft.");
     } finally {
       setSaving(false);
     }
@@ -322,6 +324,8 @@ export default function NewMfgBill() {
       } else {
         toast.error(result.errors.join(" · "));
       }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not finalise bill.");
     } finally {
       setSaving(false);
     }

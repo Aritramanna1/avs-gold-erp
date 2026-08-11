@@ -59,6 +59,8 @@ build/LICENSE.txt
 *-Source-Code-Export.zip
 /avs_hostinger_deploy_*.tar.gz
 /mtj_dist*.zip
+/mtj_online_dist*.zip
+/testing-credentials*.local.json
 
 # Reticle local browser profile (runtime state, not config)
 .reticle-chrome-profile/

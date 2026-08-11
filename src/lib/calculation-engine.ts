@@ -1,0 +1,254 @@
+/**
+ * AVS / ORNEXA ERP — Universal Formula & Calculation Engine
+ *
+ * Centralized, explainable calculation registry for Fine Gold, Karigar Wastage
+ * with Category Exclusions (e.g. Chains 0%), Over-Loss Purity Retention,
+ * GST Dual-Currency calculations, and Multi-Unit Weight conversions.
+ */
+
+export interface FineGoldCalculationInput {
+  netWeightMg: number;
+  purityPerMille: number; // e.g. 916 for 22K, 750 for 18K, 1000 for 24K
+}
+
+export interface FineGoldCalculationResult {
+  netWeightMg: number;
+  purityPerMille: number;
+  fineGoldMg: number;
+  fineGoldGrams: number;
+  explanation: string;
+}
+
+export interface CategoryWeightItem {
+  categoryId: string;
+  categoryName: string;
+  weightMg: number;
+  isWastageExcluded?: boolean; // e.g. true for Chains, Machine items
+}
+
+export interface KarigarWastageInput {
+  totalSubmittedNetWeightMg: number;
+  karigarWastagePct: number; // e.g. 1.5%
+  items: CategoryWeightItem[];
+  issuedFineGoldMg: number;
+  targetPurityPerMille: number; // e.g. 916
+}
+
+export interface KarigarWastageResult {
+  totalSubmittedMg: number;
+  excludedWeightMg: number;
+  eligibleWeightMg: number;
+  allowedWastageMg: number;
+  allowedWastageFineMg: number;
+  submittedFineMg: number;
+  netDueFineMg: number;
+  isOverLoss: boolean;
+  overLossPenaltyFineMg: number;
+  refundFineMgInOriginalPurity: {
+    purityPerMille: number;
+    metalWeightMg: number;
+  };
+  explanation: string[];
+}
+
+export interface DualCurrencyBillingInput {
+  netWeightGrams: number;
+  goldRatePerGram: number;
+  makingChargePct: number;
+  stoneChargesRs: number;
+  discountRs: number;
+  isInterstate?: boolean;
+}
+
+export interface DualCurrencyBillingResult {
+  netWeightGrams: number;
+  goldRatePerGram: number;
+  goldValueRs: number;
+  makingChargesRs: number;
+  stoneChargesRs: number;
+  discountRs: number;
+  subtotalRs: number;
+  cgstRs: number;
+  sgstRs: number;
+  igstRs: number;
+  totalGstRs: number;
+  grandTotalRs: number;
+  fineGoldGramsEquivalent: number;
+  explanation: string[];
+}
+
+export interface UnitConversionResult {
+  grams: number;
+  milligrams: number;
+  troyOunces: number;
+  tolas: number;
+}
+
+/**
+ * Calculates Fine Gold weight from Net Weight and Purity (Per Mille).
+ */
+export function calculateFineGold(input: FineGoldCalculationInput): FineGoldCalculationResult {
+  const { netWeightMg, purityPerMille } = input;
+  const fineGoldMg = Math.round(netWeightMg * (purityPerMille / 1000));
+  const fineGoldGrams = Number((fineGoldMg / 1000).toFixed(3));
+
+  return {
+    netWeightMg,
+    purityPerMille,
+    fineGoldMg,
+    fineGoldGrams,
+    explanation: `${netWeightMg}mg Net Wt * (${purityPerMille}/1000 Purity) = ${fineGoldMg}mg Fine Gold (${fineGoldGrams}g)`,
+  };
+}
+
+/**
+ * Calculates Karigar Wastage with Category Exclusion (e.g., 0% wastage allowance on chains)
+ * and returns net due fine gold and refund in exact original purity.
+ */
+export function calculateKarigarWastage(input: KarigarWastageInput): KarigarWastageResult {
+  const {
+    totalSubmittedNetWeightMg,
+    karigarWastagePct,
+    items,
+    issuedFineGoldMg,
+    targetPurityPerMille,
+  } = input;
+
+  const explanation: string[] = [];
+
+  // 1. Calculate Excluded Weight (e.g. Chains)
+  const excludedWeightMg = items
+    .filter((item) => item.isWastageExcluded)
+    .reduce((sum, item) => sum + item.weightMg, 0);
+
+  const eligibleWeightMg = Math.max(0, totalSubmittedNetWeightMg - excludedWeightMg);
+  explanation.push(
+    `Total Submitted: ${totalSubmittedNetWeightMg}mg, Excluded Categories (Chains): ${excludedWeightMg}mg -> Eligible Weight: ${eligibleWeightMg}mg`,
+  );
+
+  // 2. Allowed Wastage Calculation
+  const allowedWastageMg = Math.round(eligibleWeightMg * (karigarWastagePct / 100));
+  const allowedWastageFineMg = Math.round(allowedWastageMg * (targetPurityPerMille / 1000));
+  explanation.push(
+    `Allowed Wastage (${karigarWastagePct}% on ${eligibleWeightMg}mg): ${allowedWastageMg}mg (${allowedWastageFineMg}mg Fine)`,
+  );
+
+  // 3. Submitted Fine Weight
+  const submittedFineMg = Math.round(totalSubmittedNetWeightMg * (targetPurityPerMille / 1000));
+  explanation.push(`Submitted Fine Gold: ${submittedFineMg}mg`);
+
+  // 4. Net Due Fine Calculation
+  const totalAccountedFineMg = submittedFineMg + allowedWastageFineMg;
+  const netDueFineMg = issuedFineGoldMg - totalAccountedFineMg;
+  const isOverLoss = netDueFineMg < 0;
+
+  const overLossPenaltyFineMg = isOverLoss ? Math.abs(netDueFineMg) : 0;
+
+  // 5. Refund in Original Purity
+  const refundMetalWeightMg = Math.round((Math.abs(netDueFineMg) * 1000) / targetPurityPerMille);
+  explanation.push(
+    isOverLoss
+      ? `Karigar Over-Loss detected: ${overLossPenaltyFineMg}mg Fine (${refundMetalWeightMg}mg in ${targetPurityPerMille / 10}K purity)`
+      : `Remaining Karigar Due Balance: ${netDueFineMg}mg Fine Gold`,
+  );
+
+  return {
+    totalSubmittedMg: totalSubmittedNetWeightMg,
+    excludedWeightMg,
+    eligibleWeightMg,
+    allowedWastageMg,
+    allowedWastageFineMg,
+    submittedFineMg,
+    netDueFineMg,
+    isOverLoss,
+    overLossPenaltyFineMg,
+    refundFineMgInOriginalPurity: {
+      purityPerMille: targetPurityPerMille,
+      metalWeightMg: refundMetalWeightMg,
+    },
+    explanation,
+  };
+}
+
+/**
+ * Calculates GST Dual-Currency Billing (Fine Gold Weight + Cash Amount).
+ */
+export function calculateDualCurrencyBilling(
+  input: DualCurrencyBillingInput,
+): DualCurrencyBillingResult {
+  const {
+    netWeightGrams,
+    goldRatePerGram,
+    makingChargePct,
+    stoneChargesRs,
+    discountRs,
+    isInterstate = false,
+  } = input;
+
+  const explanation: string[] = [];
+
+  // Gold Value
+  const goldValueRs = Math.round(netWeightGrams * goldRatePerGram);
+  explanation.push(`Gold Value: ${netWeightGrams}g * ₹${goldRatePerGram}/g = ₹${goldValueRs}`);
+
+  // Making Charges
+  const makingChargesRs = Math.round(goldValueRs * (makingChargePct / 100));
+  explanation.push(`Making Charges (${makingChargePct}%): ₹${makingChargesRs}`);
+
+  // Subtotal
+  const subtotalRs = Math.max(0, goldValueRs + makingChargesRs + stoneChargesRs - discountRs);
+  explanation.push(
+    `Subtotal: ₹${goldValueRs} + ₹${makingChargesRs} + ₹${stoneChargesRs} - ₹${discountRs} = ₹${subtotalRs}`,
+  );
+
+  // GST (3%)
+  let cgstRs = 0;
+  let sgstRs = 0;
+  let igstRs = 0;
+
+  if (isInterstate) {
+    igstRs = Math.round(subtotalRs * 0.03);
+    explanation.push(`IGST (3.0%): ₹${igstRs}`);
+  } else {
+    cgstRs = Math.round(subtotalRs * 0.015);
+    sgstRs = Math.round(subtotalRs * 0.015);
+    explanation.push(`CGST (1.5%): ₹${cgstRs}, SGST (1.5%): ₹${sgstRs}`);
+  }
+
+  const totalGstRs = cgstRs + sgstRs + igstRs;
+  const grandTotalRs = subtotalRs + totalGstRs;
+  const fineGoldGramsEquivalent = Number((netWeightGrams * 0.916).toFixed(3)); // 22K reference
+
+  return {
+    netWeightGrams,
+    goldRatePerGram,
+    goldValueRs,
+    makingChargesRs,
+    stoneChargesRs,
+    discountRs,
+    subtotalRs,
+    cgstRs,
+    sgstRs,
+    igstRs,
+    totalGstRs,
+    grandTotalRs,
+    fineGoldGramsEquivalent,
+    explanation,
+  };
+}
+
+/**
+ * Converts Grams to Troy Ounces and Tolas.
+ */
+export function convertWeightUnits(grams: number): UnitConversionResult {
+  const milligrams = Math.round(grams * 1000);
+  const troyOunces = Number((grams / 31.1034768).toFixed(4));
+  const tolas = Number((grams / 11.6638038).toFixed(4));
+
+  return {
+    grams,
+    milligrams,
+    troyOunces,
+    tolas,
+  };
+}

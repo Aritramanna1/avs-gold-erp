@@ -10,18 +10,18 @@ The old project was not modified. No target migration was successfully applied.
 
 ## Evidence summary
 
-| Area | Old project | Target project | Classification |
-|---|---:|---:|---|
-| Public base tables | 77 | 60 | conflicting partial baseline |
-| Public routines | 25 | 3 | target missing 22 routines |
-| Public RLS policies | 210 | 90 | target policy set is incompatible/unsafe |
-| Policies with `true` predicate | 1 | 85 | target requires corrective RLS work |
-| Storage buckets | 8 private buckets | 0 buckets | target storage missing |
-| Migration history | populated | empty | schema baseline is undocumented |
-| Organizations | present in schema, no rows observed | missing | missing |
-| User profiles | present in schema, no rows observed | missing | missing |
-| Onboarding function | present | missing | missing |
-| SaaS control-plane tables | present | missing | missing |
+| Area                           |                         Old project | Target project | Classification                           |
+| ------------------------------ | ----------------------------------: | -------------: | ---------------------------------------- |
+| Public base tables             |                                  77 |             60 | conflicting partial baseline             |
+| Public routines                |                                  25 |              3 | target missing 22 routines               |
+| Public RLS policies            |                                 210 |             90 | target policy set is incompatible/unsafe |
+| Policies with `true` predicate |                                   1 |             85 | target requires corrective RLS work      |
+| Storage buckets                |                   8 private buckets |      0 buckets | target storage missing                   |
+| Migration history              |                           populated |          empty | schema baseline is undocumented          |
+| Organizations                  | present in schema, no rows observed |        missing | missing                                  |
+| User profiles                  | present in schema, no rows observed |        missing | missing                                  |
+| Onboarding function            |                             present |        missing | missing                                  |
+| SaaS control-plane tables      |                             present |        missing | missing                                  |
 
 Queries were executed through the Supabase CLI against each linked project. The
 target query confirmed that `public.organizations` does not exist. The target

@@ -15,8 +15,8 @@ Each module is a set of routes (`src/routes`) backed by services/stores (`src/li
 | Communications                   | Active                 | WasenderAPI + email + weekly statements                                                          |
 | Settings                         | Active                 | Runtime Brand Settings + consolidated WhatsApp providers/Wasender/templates/automation + License |
 | Notifications                    | Active                 | Operational alerts from licensing, sync, communications, approvals, and gold-rate configuration  |
-| Catalog                          | Active                 | Configurable design library, encrypted references, customer links, localized UI, CSV export       |
-| Translations                     | Active                 | Lazy Hindi/Marathi/Bengali dictionaries with English fallback and coverage reporting              |
+| Catalog                          | Active                 | Configurable design library, encrypted references, customer links, localized UI, CSV export      |
+| Translations                     | Active                 | Lazy Hindi/Marathi/Bengali dictionaries with English fallback and coverage reporting             |
 | Manufacturing                    | Coming Soon            | Bill store/routes intact                                                                         |
 | Barcode & Tagging                | Coming Soon            | Label/thermal paths intact                                                                       |
 | Ready Stock (was Stock)          | Coming Soon            | Stock store/routes intact                                                                        |

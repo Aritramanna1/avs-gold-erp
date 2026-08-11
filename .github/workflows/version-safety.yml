@@ -7,7 +7,7 @@ on:
       - master
       - develop
       - staging
-      - 'release/**'
+      - "release/**"
   push:
     branches:
       - main

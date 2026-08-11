@@ -655,10 +655,8 @@ function createTables(): void {
     `CREATE TABLE IF NOT EXISTS customer_settlements (id TEXT PRIMARY KEY, data TEXT, updated_at TEXT);`,
   );
 
-  // Local Authentication (Deployment Modes — Offline Mode): credentials for
-  // logging in with zero network dependency, entirely separate from Supabase
-  // auth.users. Only populated when deployment mode is "offline"/"hybrid" —
-  // see src/lib/local-auth.ts and src/lib/deployment-mode.ts.
+  // Legacy auth/user tables remain in the local schema for old backup compatibility.
+  // Online builds authenticate against Supabase and ignore these records.
   db.run(`CREATE TABLE IF NOT EXISTS local_users (
     id TEXT PRIMARY KEY,
     name TEXT,

@@ -269,6 +269,32 @@ export function logAppError(error: NormalizedAppError): void {
   });
   const desktop = (window as unknown as { mtjDesktop?: DesktopDiagnosticsApi }).mtjDesktop;
   void desktop?.diagnostics?.reportError?.(error).catch(() => {});
+  void reportErrorToPlatform(error);
+}
+
+// Best-effort telemetry so the platform owner's Health view has real data —
+// previously an error only reached the browser console, invisible from the
+// admin side entirely. Never lets a reporting failure become user-visible.
+async function reportErrorToPlatform(error: NormalizedAppError): Promise<void> {
+  try {
+    const [{ dataProvider: supabase }] = await Promise.all([
+      import("@/lib/providers/data-provider"),
+    ]);
+    const { data } = await supabase.auth.getSession();
+    const userId = data.session?.user.id;
+    if (!userId) return;
+    await supabase.from("platform_error_events" as never).insert({
+      actor_id: userId,
+      reference_id: error.id,
+      category: error.category,
+      severity: error.severity,
+      context: error.context ?? null,
+      message: error.message,
+      technical_message: error.technicalMessage,
+    } as never);
+  } catch {
+    // Telemetry must never become a second failure on top of the first.
+  }
 }
 
 export function reportUnexpectedError(error: unknown, context?: string): NormalizedAppError {

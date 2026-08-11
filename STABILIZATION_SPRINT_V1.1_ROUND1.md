@@ -9,6 +9,7 @@ Living tracking document. Updated after every fix with root cause, files modifie
 ## Priority 0 – Workflow Corrections
 
 ### P0-1. Remove separate Create Job Card page/dialog; auto-generate from Order
+
 **Status:** Open
 
 **Clarified with user:** Job Card is created fully automatically the moment an Order reaches its production-ready status (no button, no dialog). Karigar/priority/dates remain editable afterward from the Job Card itself.
@@ -20,6 +21,7 @@ Living tracking document. Updated after every fix with root cause, files modifie
 ---
 
 ### P0-2. Remove separate Worker Issue page; gold issue only through Worker Gold Book
+
 **Status:** Open
 
 **Clarified with user:** One entry point only — Worker Gold Book page. Keep all 3 underlying writes (Gold Ledger + Material Vault + Worker Gold Book) unchanged; they're independent reports, not duplicates.
@@ -31,6 +33,7 @@ Living tracking document. Updated after every fix with root cause, files modifie
 ---
 
 ## Priority 1 – Critical Bugs
+
 1. Multiple items per order — Open
 2. Gold Received purity field — Open
 3. Automatic Catalog entry from uploaded design — Open
@@ -43,6 +46,7 @@ Living tracking document. Updated after every fix with root cause, files modifie
 10. Catalog integration failure — Open
 
 ## Priority 2 – High Priority
+
 1. Logo missing in downloaded PDFs — Open
 2. Universal print interface — Open
 3. Table overflow — Open
@@ -50,6 +54,7 @@ Living tracking document. Updated after every fix with root cause, files modifie
 5. Margins ignored — Open
 
 ## Priority 3 – Medium Priority
+
 1. Multiple paper sizes — Open
 2. Optional Order selection in Worker Gold Book — Open
 3. Ledger PDF/Export — Open
@@ -58,4 +63,5 @@ Living tracking document. Updated after every fix with root cause, files modifie
 ---
 
 ## Completion Report
+
 _To be filled in once all items are addressed._

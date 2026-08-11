@@ -251,6 +251,8 @@ function SendBatchDialog({
       setAssayCenterName("");
       setNotes("");
       onClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not send hallmark batch.");
     } finally {
       setSaving(false);
     }

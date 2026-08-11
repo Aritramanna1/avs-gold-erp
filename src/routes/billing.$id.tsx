@@ -82,6 +82,8 @@ function InvoiceDetailPage() {
       } else {
         toast.error("Invoice was not cancelled — it may already be cancelled.");
       }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not cancel invoice.");
     } finally {
       setCancelling(false);
     }

@@ -3,6 +3,7 @@
 We welcome contributions to AVS Gold ERP! To maintain a clean and reliable codebase, please adhere to the following contribution workflow.
 
 ## Development Standards
+
 - **Clean Architecture**: Follow the established offline-first database repositories and store patterns.
 - **Strict Linting & Formatting**: Ensure code adheres to ESLint rules and Prettier formats:
   ```bash
@@ -12,6 +13,7 @@ We welcome contributions to AVS Gold ERP! To maintain a clean and reliable codeb
 - **Type Safety**: Maintain TypeScript type coverage. Run `tsc` to verify compilation.
 
 ## Pull Request Workflow
+
 1. **Branch Naming**: Use descriptive branch names:
    - `feature/your-feature-name`
    - `fix/bug-description`

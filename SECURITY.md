@@ -15,7 +15,9 @@ If you discover a potential security vulnerability within this project, **do not
 We will acknowledge receipt of your report within 48 hours and work with you to release a security patch in a timely manner.
 
 ## Secure Defaults
+
 This application runs with secure-by-default options:
+
 - Local storage and local passwords are encrypted/hashed.
 - Network API sessions employ JWT tokens with strict expiry.
 - License validity checks are performed cryptographically via signatures.

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-11 — Session and license-gate fixes
+
+### Fixed
+
+- Supabase auth session was persisted in `localStorage`, so a user stayed logged in after closing the browser/tab. Switched to `sessionStorage` (`src/integrations/supabase/client.ts`) — closing the tab now clears the session and the next visit requires login again.
+- Expired/suspended license screen (`LicenseGate` → `LicenseBlock`) had no way out for a locked-out user. Added a "Log Out / Switch Account" button so a user blocked by an expired license can sign out and log in with a different account instead of being stuck.
+
+### Added
+
+- N/A this release — see Fixed above.
+
 ## 2026-07-18 — Production and licensing hardening
 
 - Added a replaceable Arivahly Licensing Provider; customer ERP databases are never used for licensing.

@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSessionLock } from "@/lib/security/session-lock";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { isOfflineMode } from "@/lib/deployment-mode";
-import { getLocalSessionUser } from "@/lib/local-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Lock } from "lucide-react";
@@ -34,10 +32,8 @@ export function SessionLockOverlay() {
    * `handleUnlock` returned early at `if (!email)`, making the Unlock button
    * permanently dead. The user was locked out of their own offline install.
    *
-   * Offline reads the local session (the same store `verifyLocalLogin` checks);
-   * cloud/hybrid reads Supabase. Neither path can hang the overlay now: on any
-   * failure `email` resolves to "" and the form falls back to asking for it,
-   * rather than silently disabling itself.
+   * Online mode reads Supabase. On any failure `email` resolves to "" and the
+   * form falls back to asking for it, rather than silently disabling itself.
    */
   useEffect(() => {
     if (!locked) return;
@@ -45,11 +41,6 @@ export function SessionLockOverlay() {
 
     void (async () => {
       try {
-        if (isOfflineMode()) {
-          const user = await getLocalSessionUser();
-          if (!cancelled) setEmail(user?.email ?? "");
-          return;
-        }
         const { data } = await supabase.auth.getSession();
         if (!cancelled) setEmail(data.session?.user.email ?? "");
       } catch (err) {

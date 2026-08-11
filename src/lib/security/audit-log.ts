@@ -19,14 +19,9 @@
  * detectable via signature mismatch even in the hash-only-tampered case.
  * True multi-party non-repudiation is a documented follow-up, not built here.
  */
-import {
-  runLocal,
-  getDb,
-  queryTable,
-  sha256Hex,
-  getOrCreateSigningKey,
-  initLocalDb,
-} from "@/lib/local-db";
+import { sha256Hex, getOrCreateSigningKey } from "@/lib/local-db";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { getOrCreateDeviceId } from "@/lib/security/device-registry";
 
 export interface AuditEntryInput {
   actorId: string | null;
@@ -124,11 +119,15 @@ function parseRow(row: Record<string, unknown>): AuditEntry {
   };
 }
 
-function getLastEntry(): Record<string, unknown> | null {
-  const rows = queryTable("audit_log", "", []) as Record<string, unknown>[];
-  if (rows.length === 0) return null;
-  // queryTable has no implicit order guarantee — sort by seq explicitly.
-  return rows.reduce((max, r) => (Number(r.seq) > Number(max.seq) ? r : max));
+async function getLastEntry(): Promise<Record<string, unknown> | null> {
+  const { data, error } = await supabase
+    .from("audit_log" as never)
+    .select("*")
+    .order("seq", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`Could not read audit log tail: ${error.message}`);
+  return (data as Record<string, unknown> | null) ?? null;
 }
 
 /**
@@ -139,10 +138,17 @@ function getLastEntry(): Record<string, unknown> | null {
  * so append() DOES throw on failure. Callers recording a financial action
  * should treat an append() failure as "the action itself did not complete
  * an auditable state" and surface it, not swallow it.
+ *
+ * ponytail: read-then-insert of prevHash is not atomic against concurrent
+ * writers now that this table is shared (Supabase) instead of per-device
+ * local sql.js — two simultaneous append() calls can theoretically both read
+ * the same tail and produce a fork the chain-walk would flag as broken.
+ * Upgrade path if that's ever observed: a SECURITY DEFINER RPC (like
+ * validate_license) that takes an advisory lock, re-reads the tail, and
+ * inserts server-side in one transaction.
  */
 export async function append(input: AuditEntryInput): Promise<AuditEntry> {
-  await initLocalDb();
-  const prev = getLastEntry();
+  const prev = await getLastEntry();
   const prevHash = prev ? (prev.hash as string) : GENESIS_HASH;
 
   const id = makeId();
@@ -174,27 +180,22 @@ export async function append(input: AuditEntryInput): Promise<AuditEntry> {
   );
   const signature = toHex(signatureBuf);
 
-  await runLocal(() => {
-    getDb().run(
-      `INSERT INTO audit_log (id, ts, actor_id, actor_email, action, entity_type, entity_id, before_json, after_json, device_id, prev_hash, hash, signature)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      [
-        id,
-        ts,
-        input.actorId,
-        input.actorEmail,
-        input.action,
-        input.entityType,
-        input.entityId,
-        beforeJson,
-        afterJson,
-        input.deviceId ?? null,
-        prevHash,
-        hash,
-        signature,
-      ],
-    );
-  });
+  const { error: insertError } = await supabase.from("audit_log" as never).insert({
+    id,
+    ts,
+    actor_id: input.actorId,
+    actor_email: input.actorEmail,
+    action: input.action,
+    entity_type: input.entityType,
+    entity_id: input.entityId,
+    before_json: beforeJson,
+    after_json: afterJson,
+    device_id: input.deviceId ?? null,
+    prev_hash: prevHash,
+    hash,
+    signature,
+  } as never);
+  if (insertError) throw new Error(`Could not append audit entry: ${insertError.message}`);
 
   return {
     seq: -1, // unknown until re-read; callers needing seq should re-query
@@ -231,8 +232,12 @@ export interface ChainVerificationResult {
  * re-verifies each entry's HMAC signature against the current signing key.
  */
 export async function verifyAuditChain(): Promise<ChainVerificationResult> {
-  await initLocalDb();
-  const rows = (queryTable("audit_log", "", []) as Record<string, unknown>[]).sort(
+  const { data, error } = await supabase
+    .from("audit_log" as never)
+    .select("*")
+    .order("seq", { ascending: true });
+  if (error) throw new Error(`Could not read audit log: ${error.message}`);
+  const rows = ((data ?? []) as Record<string, unknown>[]).sort(
     (a, b) => Number(a.seq) - Number(b.seq),
   );
 
@@ -240,6 +245,10 @@ export async function verifyAuditChain(): Promise<ChainVerificationResult> {
   let brokenAtSeq: number | null = null;
   let expectedPrevHash = GENESIS_HASH;
   const signingKey = await getOrCreateSigningKey();
+  // Signature is a device-local HMAC — only entries written by *this* device
+  // can be signature-verified here. Other devices' entries still get the
+  // hash-chain check above/below (see migration note on audit_log).
+  const currentDeviceId = await getOrCreateDeviceId().catch(() => null);
 
   for (const row of rows) {
     const seq = Number(row.seq);
@@ -276,17 +285,20 @@ export async function verifyAuditChain(): Promise<ChainVerificationResult> {
       if (brokenAtSeq === null) brokenAtSeq = seq;
     }
 
-    const signatureValid = await window.crypto.subtle.verify(
-      "HMAC",
-      signingKey,
-      hexToBytes(signature) as unknown as BufferSource,
-      new TextEncoder().encode(storedHash) as unknown as BufferSource,
-    );
-    if (!signatureValid) {
-      issues.push(
-        `seq ${seq}: HMAC signature invalid — entry hash was rewritten without the device signing key.`,
+    const rowDeviceId = (row.device_id as string) ?? null;
+    if (currentDeviceId && rowDeviceId === currentDeviceId) {
+      const signatureValid = await window.crypto.subtle.verify(
+        "HMAC",
+        signingKey,
+        hexToBytes(signature) as unknown as BufferSource,
+        new TextEncoder().encode(storedHash) as unknown as BufferSource,
       );
-      if (brokenAtSeq === null) brokenAtSeq = seq;
+      if (!signatureValid) {
+        issues.push(
+          `seq ${seq}: HMAC signature invalid — entry hash was rewritten without the device signing key.`,
+        );
+        if (brokenAtSeq === null) brokenAtSeq = seq;
+      }
     }
 
     expectedPrevHash = storedHash;
@@ -300,17 +312,13 @@ export async function getAuditEntries(filter?: {
   entityId?: string;
   actorId?: string;
 }): Promise<AuditEntry[]> {
-  await initLocalDb();
-  let rows: Record<string, unknown>[];
+  let query = supabase.from("audit_log" as never).select("*");
   if (filter?.entityType && filter?.entityId) {
-    rows = queryTable("audit_log", "entity_type = ? AND entity_id = ?", [
-      filter.entityType,
-      filter.entityId,
-    ]);
+    query = query.eq("entity_type", filter.entityType).eq("entity_id", filter.entityId);
   } else if (filter?.actorId) {
-    rows = queryTable("audit_log", "actor_id = ?", [filter.actorId]);
-  } else {
-    rows = queryTable("audit_log", "", []);
+    query = query.eq("actor_id", filter.actorId);
   }
-  return rows.map(parseRow).sort((a, b) => a.seq - b.seq);
+  const { data, error } = await query;
+  if (error) throw new Error(`Could not read audit log: ${error.message}`);
+  return ((data ?? []) as Record<string, unknown>[]).map(parseRow).sort((a, b) => a.seq - b.seq);
 }

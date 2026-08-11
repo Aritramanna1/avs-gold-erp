@@ -81,10 +81,10 @@ _Last updated: 2026-06-28 · v0.4.0 Workshop Trial Export_
 ### Billing Documents
 
 - [ ] Delivery Challan → Invoice conversion — status value and link field
-  already scaffolded (`converted_to_invoice`, `convertedToInvoiceId`) but
-  no conversion action exists; full spec in
-  `FEATURE_BACKLOG_delivery-challan-conversion.md`. Not approved for
-  work yet.
+      already scaffolded (`converted_to_invoice`, `convertedToInvoiceId`) but
+      no conversion action exists; full spec in
+      `FEATURE_BACKLOG_delivery-challan-conversion.md`. Not approved for
+      work yet.
 
 ### Bullion Trading
 

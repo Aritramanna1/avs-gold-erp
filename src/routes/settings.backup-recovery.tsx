@@ -2,8 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,8 +13,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { runDisasterRecoveryDrill, type DrillResult } from "@/lib/security/disaster-recovery";
-import { useDeploymentMode, setDeploymentMode, type DeploymentMode } from "@/lib/deployment-mode";
-import { isSupabaseConfigured, SUPABASE_RUNTIME_KEYS } from "@/lib/providers/data-provider";
 import { pushPendingOutbox, getSyncStatus, type SyncStatus } from "@/lib/sync-engine";
 import {
   createBackupSnapshot,
@@ -30,7 +26,6 @@ import {
   Upload,
   Loader2,
   Cloud,
-  HardDrive,
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,7 +36,6 @@ export const Route = createFileRoute("/settings/backup-recovery")({
 });
 
 function BackupRecoveryPage() {
-  const deploymentMode = useDeploymentMode((s) => s.mode);
   const [drilling, setDrilling] = useState(false);
   const [lastDrill, setLastDrill] = useState<DrillResult | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -51,41 +45,15 @@ function BackupRecoveryPage() {
   const [restoring, setRestoring] = useState(false);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
 
-  // Runtime deployment-mode switch (Offline ↔ Hybrid) + manual cloud sync.
-  const [pendingMode, setPendingMode] = useState<DeploymentMode | null>(null);
-  const [switching, setSwitching] = useState(false);
+  // Manual cloud sync for the online build.
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
-  const [hybridSetupOpen, setHybridSetupOpen] = useState(false);
-  const [projectUrl, setProjectUrl] = useState("");
-  const [anonKey, setAnonKey] = useState("");
-  const [setupError, setSetupError] = useState("");
-
-  async function handleHybridSetup() {
-    setSetupError(
-      "Hybrid setup requires a deployment-managed server validation endpoint. No privileged key may be entered in the browser.",
-    );
-  }
 
   function refreshSyncStatus() {
     try {
       setSyncStatus(getSyncStatus());
     } catch {
       setSyncStatus(null);
-    }
-  }
-
-  async function handleConfirmModeSwitch() {
-    if (!pendingMode) return;
-    setSwitching(true);
-    try {
-      await setDeploymentMode(pendingMode);
-      toast.success(`Switched to ${pendingMode} mode. Reloading…`);
-      setTimeout(() => window.location.reload(), 900);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to switch mode");
-      setSwitching(false);
-      setPendingMode(null);
     }
   }
 
@@ -110,11 +78,9 @@ function BackupRecoveryPage() {
     }
   }
 
-  const canHybrid = isSupabaseConfigured();
-
   useEffect(() => {
-    if (deploymentMode && deploymentMode !== "offline") refreshSyncStatus();
-  }, [deploymentMode]);
+    refreshSyncStatus();
+  }, []);
 
   function handleRestoreFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -168,6 +134,8 @@ function BackupRecoveryPage() {
       setLastDrill(result);
       if (result.ok) toast.success("Drill passed — backup is genuinely restorable.");
       else toast.error(`Drill FAILED: ${result.issues.join("; ") || "unknown issue"}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Drill could not run. Retry shortly.");
     } finally {
       setDrilling(false);
     }
@@ -209,84 +177,54 @@ function BackupRecoveryPage() {
       />
 
       <div className="grid gap-4">
-        {/* ── Deployment mode: Offline (local only) ↔ Hybrid (local + cloud) ─ */}
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="font-semibold flex items-center gap-2">
-                {deploymentMode === "offline" ? (
-                  <HardDrive className="h-4 w-4" />
-                ) : (
-                  <Cloud className="h-4 w-4" />
-                )}
-                Deployment Mode —{" "}
-                <span className="capitalize text-gold">{deploymentMode ?? "…"}</span>
+                <Cloud className="h-4 w-4" />
+                Online Mode
               </div>
               <div className="text-sm text-muted-foreground mt-1">
-                Daily operations always run on the local database. Offline uses only local storage.
-                Hybrid additionally synchronizes structured business data to the owner-managed
-                Supabase project. Files remain local. Switching reloads the app.
+                Authentication, roles, licensing, and cloud data access use the configured Supabase
+                project for this installation.
               </div>
             </div>
-            {deploymentMode === "offline" ? (
-              <Button
-                onClick={() => (canHybrid ? setPendingMode("hybrid") : setHybridSetupOpen(true))}
-                disabled={switching}
-                variant="outline"
-                className="gap-2 shrink-0"
-                title={canHybrid ? undefined : "Configure the owner-managed Supabase project."}
-              >
-                <Cloud className="h-4 w-4" /> Enable Hybrid / Cloud
-              </Button>
-            ) : (
-              <Button
-                onClick={() => setPendingMode("offline")}
-                disabled={switching}
-                variant="outline"
-                className="gap-2 shrink-0"
-              >
-                <HardDrive className="h-4 w-4" /> Switch to Offline
-              </Button>
-            )}
           </div>
         </div>
 
-        {/* ── Manual cloud backup / sync (Hybrid & Online only) ───────────── */}
-        {deploymentMode && deploymentMode !== "offline" && (
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="font-semibold">Backup / Sync to Cloud</div>
-                <div className="text-sm text-muted-foreground">
-                  Pushes locally-recorded changes up to the cloud (Supabase) for backup and
-                  cross-device sync. Runs automatically in the background; use this to force it now.
-                </div>
-                {syncStatus && (
-                  <div className="text-xs text-muted-foreground mt-2 font-mono">
-                    Pending: {syncStatus.pending} · Synced: {syncStatus.synced}
-                    {syncStatus.conflicts > 0 ? ` · Conflicts: ${syncStatus.conflicts}` : ""}
-                    {syncStatus.lastPushedAt
-                      ? ` · Last push: ${new Date(syncStatus.lastPushedAt).toLocaleString()}`
-                      : ""}
-                  </div>
-                )}
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="font-semibold">Cloud Sync</div>
+              <div className="text-sm text-muted-foreground">
+                Pushes queued business changes to Supabase. Runs automatically in the background;
+                use this to force it now.
               </div>
-              <Button
-                onClick={handleCloudSync}
-                disabled={syncing}
-                variant="outline"
-                className="gap-2 shrink-0"
-              >
-                {syncing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                Sync to Cloud Now
-              </Button>
+              {syncStatus && (
+                <div className="text-xs text-muted-foreground mt-2 font-mono">
+                  Pending: {syncStatus.pending} · Synced: {syncStatus.synced}
+                  {syncStatus.conflicts > 0 ? ` · Conflicts: ${syncStatus.conflicts}` : ""}
+                  {syncStatus.lastPushedAt
+                    ? ` · Last push: ${new Date(syncStatus.lastPushedAt).toLocaleString()}`
+                    : ""}
+                </div>
+              )}
             </div>
+            <Button
+              onClick={handleCloudSync}
+              disabled={syncing}
+              variant="outline"
+              className="gap-2 shrink-0"
+            >
+              {syncing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Sync to Cloud Now
+            </Button>
           </div>
-        )}
+        </div>
 
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between">
@@ -409,70 +347,6 @@ function BackupRecoveryPage() {
           there.
         </div>
       </div>
-
-      <AlertDialog
-        open={pendingMode !== null}
-        onOpenChange={(open) => {
-          if (!open && !switching) setPendingMode(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Switch to {pendingMode === "offline" ? "Offline" : "Hybrid / Cloud"} mode?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingMode === "offline"
-                ? "The app will stop authenticating and syncing to the cloud and run entirely on the local database. Your local data is untouched. The app reloads."
-                : "The app will synchronize structured business data to the configured Supabase project. Authentication, daily operations and every file remain local."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={switching}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmModeSwitch} disabled={switching}>
-              {switching ? "Switching…" : "Switch & Reload"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={hybridSetupOpen} onOpenChange={setHybridSetupOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Enable owner-managed Hybrid sync</AlertDialogTitle>
-            <AlertDialogDescription>
-              Run the master SQL migration in the customer project first. Validation must be
-              completed by the deployment-managed server; privileged keys are never entered here.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="hybrid-project-url">Project URL</Label>
-              <Input
-                id="hybrid-project-url"
-                value={projectUrl}
-                onChange={(event) => setProjectUrl(event.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="hybrid-anon-key">Anon Key</Label>
-              <Input
-                id="hybrid-anon-key"
-                type="password"
-                value={anonKey}
-                onChange={(event) => setAnonKey(event.target.value)}
-              />
-            </div>
-            {setupError && <p className="text-xs text-destructive">{setupError}</p>}
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={switching}>Cancel</AlertDialogCancel>
-            <Button onClick={handleHybridSetup} disabled={switching || !projectUrl || !anonKey}>
-              {switching ? "Validating…" : "Validate & Continue"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AlertDialog open={restoreConfirmOpen} onOpenChange={setRestoreConfirmOpen}>
         <AlertDialogContent>

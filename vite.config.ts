@@ -1,8 +1,18 @@
-import { defineConfig } from "vite";
+import { defineConfig, type ServerOptions } from "vite";
 import path from "node:path";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+
+const hmrConfig: ServerOptions["hmr"] =
+  process.env.VITE_HMR_PROTOCOL || process.env.VITE_HMR_CLIENT_PORT
+    ? {
+        protocol: process.env.VITE_HMR_PROTOCOL as "ws" | "wss" | undefined,
+        clientPort: process.env.VITE_HMR_CLIENT_PORT
+          ? Number(process.env.VITE_HMR_CLIENT_PORT)
+          : undefined,
+      }
+    : undefined;
 
 export default defineConfig({
   // Absolute base. "./" (relative) was required for Electron's file://
@@ -32,10 +42,7 @@ export default defineConfig({
     port: Number(process.env.PORT) || 3000,
     strictPort: true,
     allowedHosts: true,
-    hmr: {
-      clientPort: 443,
-      protocol: "wss",
-    },
+    hmr: hmrConfig,
   },
   preview: {
     host: "0.0.0.0",

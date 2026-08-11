@@ -19,9 +19,9 @@ const items = [
   ["Firms", "/platform?view=firms", Building2],
   ["Users", "/platform?view=firms", Users],
   ["Support", "/platform?view=tickets", LifeBuoy],
-  ["Health", "/platform?view=activity", Activity],
+  ["Health", "/platform?view=health", Activity],
   ["Audit", "/platform?view=activity", ShieldCheck],
-  ["Backups", "/platform?view=activity", Database],
+  ["Backups", "/platform?view=backups", Database],
   ["Settings", "/platform?view=settings", Settings2],
 ] as const;
 
@@ -34,7 +34,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f4f0e8] text-[#09090b]">
       <div className="flex min-h-screen">
-        <aside className="hidden w-60 shrink-0 flex-col border-r border-[#2f2f33] bg-[#09090b] text-white lg:flex">
+        <aside className="hidden w-60 shrink-0 flex-col border-r border-[#2f2f33] bg-[#09090b] text-white lg:flex print:hidden">
           <div className="border-b border-white/10 px-5 py-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#b99b5a]">
               AVS Platform
@@ -65,7 +65,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
         <div className="min-w-0 flex-1">
-          <header className="border-b border-[#dedad1] bg-[#fffdf8] px-4 py-3 lg:px-8">
+          <header className="border-b border-[#dedad1] bg-[#fffdf8] px-4 py-3 lg:px-8 print:hidden">
             <div className="mx-auto flex max-w-[1600px] items-center justify-between">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8c8c88]">

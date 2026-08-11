@@ -3,7 +3,7 @@
  *
  * Reports live cloud + auth + migration status to the UI.
  * Cloud is the source of truth once a user is signed in.
- * Local pilot storage remains as offline cache / fallback.
+ * Local pilot storage remains only as a device-side cache.
  */
 import { useEffect, useState } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
@@ -15,6 +15,25 @@ const SOURCE_OF_TRUTH_KEY = "mtj_source_of_truth";
 const MIGRATED_SNAPSHOT_KEY = "mtj_migrated_snapshot_hash";
 
 export type SourceOfTruth = "cloud" | "local";
+
+export function validateEnvironment(): { env: string; projectId: string; isValid: boolean } {
+  const env = (import.meta.env.VITE_APP_ENV || "development").toLowerCase();
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || "";
+
+  const DEV_PROJECT_ID = "dqgrrafuoxaorvyrcuuh";
+  const PROD_PROJECT_ID = "kjfjsfhftytezsjyegmb";
+
+  if (env === "development" && projectId === PROD_PROJECT_ID) {
+    console.error(
+      "CRITICAL SECURITY VIOLATION: Development environment mapped to Production Supabase Project ID!",
+    );
+    throw new Error(
+      "CRITICAL SECURITY ERROR: Development build configured with Production Supabase Project ID! Application locked.",
+    );
+  }
+
+  return { env, projectId, isValid: true };
+}
 
 export function getDbStatusLabel(s: DbStatus): string {
   switch (s) {

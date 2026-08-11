@@ -65,6 +65,8 @@ export function WhatsAppDocMenu({
       } else {
         toast.warning(`${item.label}: caption sent, PDF could not be attached.`, { id: t });
       }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "WhatsApp send failed.", { id: t });
     } finally {
       setBusy(false);
     }

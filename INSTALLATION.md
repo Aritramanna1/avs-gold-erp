@@ -21,21 +21,26 @@ This guide details the installation process for the production-ready **AVS Gold 
 If you wish to run the project from source or compile the package manually, follow these steps:
 
 ### Prerequisites
+
 - Node.js (v20 or higher recommended)
 - npm (v10 or higher)
 
 ### Setup Instructions
+
 1. Clone the repository and install all dependencies:
+
    ```bash
    npm install
    ```
 
 2. Start the local Vite development server:
+
    ```bash
    npm run dev
    ```
 
 3. Build the production assets:
+
    ```bash
    npm run build
    npm run build:electron

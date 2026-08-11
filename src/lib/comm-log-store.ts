@@ -79,3 +79,24 @@ export function eventsFor(linkedType: CommLinkedType, linkedId: string): CommEve
     .getState()
     .events.filter((e) => e.linkedType === linkedType && e.linkedId === linkedId);
 }
+
+export type WaitingOnParty =
+  "internal" | "customer" | "supplier" | "karigar" | "carrier" | "approval" | "other";
+
+export interface CommitmentRecord {
+  id: string;
+  partyName: string;
+  partyType: "customer" | "supplier" | "karigar" | "carrier";
+  linkedType: CommLinkedType;
+  linkedId: string;
+  commitmentPromise: string;
+  dueAt: string;
+  waitingOn: WaitingOnParty;
+  isOverdue: boolean;
+  status: "pending" | "fulfilled" | "breached";
+  createdAt: string;
+}
+
+export function isCommitmentOverdue(dueAtIso: string): boolean {
+  return new Date(dueAtIso).getTime() < Date.now();
+}

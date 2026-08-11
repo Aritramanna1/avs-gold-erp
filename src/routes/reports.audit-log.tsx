@@ -31,6 +31,10 @@ function AuditLogPage() {
     try {
       const all = await getAuditEntries();
       setEntries(all.sort((a, b) => b.seq - a.seq).slice(0, 500));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not load the audit log. Retry shortly.",
+      );
     } finally {
       setLoading(false);
     }
@@ -44,6 +48,10 @@ function AuditLogPage() {
       if (result.ok)
         toast.success(`Chain verified — ${result.entriesChecked} entries, no tampering detected.`);
       else toast.error(`Chain integrity FAILED at seq ${result.brokenAtSeq} — see details below.`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not verify the audit chain. Retry shortly.",
+      );
     } finally {
       setVerifying(false);
     }

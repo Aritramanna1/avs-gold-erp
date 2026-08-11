@@ -47,13 +47,13 @@ No obvious duplication, but review `outside-work-*-dialog`, `worker-issue`/`work
 
 ## Summary
 
-| Area | Status | Priority |
-|---|---|---|
-| Legacy PDF generators | duplicate of Print Engine | High |
-| `window.print` doc routes | pre-engine | Medium (phased) |
-| WhatsApp link building | partial centralization | Medium |
-| Export engine | single ✓ | — |
-| Gold/money helpers | single ✓ | — |
-| Supabase direct access | audit needed | Medium |
+| Area                      | Status                    | Priority        |
+| ------------------------- | ------------------------- | --------------- |
+| Legacy PDF generators     | duplicate of Print Engine | High            |
+| `window.print` doc routes | pre-engine                | Medium (phased) |
+| WhatsApp link building    | partial centralization    | Medium          |
+| Export engine             | single ✓                  | —               |
+| Gold/money helpers        | single ✓                  | —               |
+| Supabase direct access    | audit needed              | Medium          |
 
 No changes applied. Each item is a scoped, individually-verifiable migration.

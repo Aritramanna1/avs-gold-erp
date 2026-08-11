@@ -31,7 +31,6 @@ export type BusinessRuleKey =
   | "enable_automatic_reports"
   | "enable_automatic_backups"
   | "enable_automatic_sync"
-  | "enable_offline_mode"
   | "enable_customer_portal"
   | "enable_dealer_portal"
   | "enable_karigar_portal"
@@ -225,15 +224,6 @@ export const BUSINESS_RULE_REGISTRY: Record<BusinessRuleKey, BusinessRuleDefinit
     name: "Enable Automatic Sync",
     description:
       "Automatically syncs local changes to Supabase in the background as connectivity allows.",
-    defaultValue: true,
-    permissionRequired: "owner_or_admin",
-    category: "automation",
-  },
-  enable_offline_mode: {
-    key: "enable_offline_mode",
-    name: "Enable Offline Mode",
-    description:
-      "Allows the app to read and write locally (SQLite) when the network is unavailable, syncing once reconnected.",
     defaultValue: true,
     permissionRequired: "owner_or_admin",
     category: "automation",

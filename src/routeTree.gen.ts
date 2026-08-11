@@ -75,6 +75,7 @@ import { Route as SettlementIdRouteImport } from './routes/settlement.$id'
 import { Route as SettingsWorkflowRouteImport } from './routes/settings.workflow'
 import { Route as SettingsWhatsappTemplatesRouteImport } from './routes/settings.whatsapp-templates'
 import { Route as SettingsWhatsappRouteImport } from './routes/settings.whatsapp'
+import { Route as SettingsSupportRouteImport } from './routes/settings.support'
 import { Route as SettingsStorageDiagnosticsRouteImport } from './routes/settings.storage-diagnostics'
 import { Route as SettingsSecurityCenterRouteImport } from './routes/settings.security-center'
 import { Route as SettingsPrintTemplatesRouteImport } from './routes/settings.print-templates'
@@ -142,6 +143,7 @@ import { Route as SettlementDraftPrintIdRouteImport } from './routes/settlement.
 import { Route as SettingsIntegrationsWhatsappRouteImport } from './routes/settings.integrations.whatsapp'
 import { Route as ReportsDailyclosePrintIdRouteImport } from './routes/reports.dailyclose-print.$id'
 import { Route as RepairPolishingNewRouteImport } from './routes/repair.polishing.new'
+import { Route as PlatformBillingPrintIdRouteImport } from './routes/platform.billing-print.$id'
 import { Route as PeoplePrintIdRouteImport } from './routes/people.print.$id'
 import { Route as PeopleLedgerPrintIdRouteImport } from './routes/people.ledger-print.$id'
 import { Route as ManufacturingBillIdRouteImport } from './routes/manufacturing.bill.$id'
@@ -498,6 +500,11 @@ const SettingsWhatsappRoute = SettingsWhatsappRouteImport.update({
   path: '/whatsapp',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsSupportRoute = SettingsSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsStorageDiagnosticsRoute =
   SettingsStorageDiagnosticsRouteImport.update({
     id: '/storage-diagnostics',
@@ -848,6 +855,11 @@ const RepairPolishingNewRoute = RepairPolishingNewRouteImport.update({
   path: '/polishing/new',
   getParentRoute: () => RepairRoute,
 } as any)
+const PlatformBillingPrintIdRoute = PlatformBillingPrintIdRouteImport.update({
+  id: '/billing-print/$id',
+  path: '/billing-print/$id',
+  getParentRoute: () => PlatformRoute,
+} as any)
 const PeoplePrintIdRoute = PeoplePrintIdRouteImport.update({
   id: '/people/print/$id',
   path: '/people/print/$id',
@@ -990,7 +1002,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
-  '/platform': typeof PlatformRoute
+  '/platform': typeof PlatformRouteWithChildren
   '/repair': typeof RepairRouteWithChildren
   '/reports': typeof ReportsRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -1050,6 +1062,7 @@ export interface FileRoutesByFullPath {
   '/settings/print-templates': typeof SettingsPrintTemplatesRoute
   '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
+  '/settings/support': typeof SettingsSupportRoute
   '/settings/whatsapp': typeof SettingsWhatsappRoute
   '/settings/whatsapp-templates': typeof SettingsWhatsappTemplatesRoute
   '/settings/workflow': typeof SettingsWorkflowRoute
@@ -1104,6 +1117,7 @@ export interface FileRoutesByFullPath {
   '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
+  '/platform/billing-print/$id': typeof PlatformBillingPrintIdRoute
   '/repair/polishing/new': typeof RepairPolishingNewRoute
   '/reports/dailyclose-print/$id': typeof ReportsDailyclosePrintIdRoute
   '/settings/integrations/whatsapp': typeof SettingsIntegrationsWhatsappRoute
@@ -1141,7 +1155,7 @@ export interface FileRoutesByTo {
   '/ledger': typeof LedgerRoute
   '/notifications': typeof NotificationsRoute
   '/otp-login': typeof OtpLoginRoute
-  '/platform': typeof PlatformRoute
+  '/platform': typeof PlatformRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/saas-admin': typeof SaasAdminRoute
   '/setup': typeof SetupRoute
@@ -1196,6 +1210,7 @@ export interface FileRoutesByTo {
   '/settings/print-templates': typeof SettingsPrintTemplatesRoute
   '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
+  '/settings/support': typeof SettingsSupportRoute
   '/settings/whatsapp': typeof SettingsWhatsappRoute
   '/settings/whatsapp-templates': typeof SettingsWhatsappTemplatesRoute
   '/settings/workflow': typeof SettingsWorkflowRoute
@@ -1250,6 +1265,7 @@ export interface FileRoutesByTo {
   '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
+  '/platform/billing-print/$id': typeof PlatformBillingPrintIdRoute
   '/repair/polishing/new': typeof RepairPolishingNewRoute
   '/reports/dailyclose-print/$id': typeof ReportsDailyclosePrintIdRoute
   '/settings/integrations/whatsapp': typeof SettingsIntegrationsWhatsappRoute
@@ -1295,7 +1311,7 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
-  '/platform': typeof PlatformRoute
+  '/platform': typeof PlatformRouteWithChildren
   '/repair': typeof RepairRouteWithChildren
   '/reports': typeof ReportsRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -1355,6 +1371,7 @@ export interface FileRoutesById {
   '/settings/print-templates': typeof SettingsPrintTemplatesRoute
   '/settings/security-center': typeof SettingsSecurityCenterRoute
   '/settings/storage-diagnostics': typeof SettingsStorageDiagnosticsRoute
+  '/settings/support': typeof SettingsSupportRoute
   '/settings/whatsapp': typeof SettingsWhatsappRoute
   '/settings/whatsapp-templates': typeof SettingsWhatsappTemplatesRoute
   '/settings/workflow': typeof SettingsWorkflowRoute
@@ -1409,6 +1426,7 @@ export interface FileRoutesById {
   '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
+  '/platform/billing-print/$id': typeof PlatformBillingPrintIdRoute
   '/repair/polishing/new': typeof RepairPolishingNewRoute
   '/reports/dailyclose-print/$id': typeof ReportsDailyclosePrintIdRoute
   '/settings/integrations/whatsapp': typeof SettingsIntegrationsWhatsappRoute
@@ -1515,6 +1533,7 @@ export interface FileRouteTypes {
     | '/settings/print-templates'
     | '/settings/security-center'
     | '/settings/storage-diagnostics'
+    | '/settings/support'
     | '/settings/whatsapp'
     | '/settings/whatsapp-templates'
     | '/settings/workflow'
@@ -1569,6 +1588,7 @@ export interface FileRouteTypes {
     | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
+    | '/platform/billing-print/$id'
     | '/repair/polishing/new'
     | '/reports/dailyclose-print/$id'
     | '/settings/integrations/whatsapp'
@@ -1661,6 +1681,7 @@ export interface FileRouteTypes {
     | '/settings/print-templates'
     | '/settings/security-center'
     | '/settings/storage-diagnostics'
+    | '/settings/support'
     | '/settings/whatsapp'
     | '/settings/whatsapp-templates'
     | '/settings/workflow'
@@ -1715,6 +1736,7 @@ export interface FileRouteTypes {
     | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
+    | '/platform/billing-print/$id'
     | '/repair/polishing/new'
     | '/reports/dailyclose-print/$id'
     | '/settings/integrations/whatsapp'
@@ -1819,6 +1841,7 @@ export interface FileRouteTypes {
     | '/settings/print-templates'
     | '/settings/security-center'
     | '/settings/storage-diagnostics'
+    | '/settings/support'
     | '/settings/whatsapp'
     | '/settings/whatsapp-templates'
     | '/settings/workflow'
@@ -1873,6 +1896,7 @@ export interface FileRouteTypes {
     | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
+    | '/platform/billing-print/$id'
     | '/repair/polishing/new'
     | '/reports/dailyclose-print/$id'
     | '/settings/integrations/whatsapp'
@@ -1918,7 +1942,7 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   OrdersRoute: typeof OrdersRouteWithChildren
   OtpLoginRoute: typeof OtpLoginRoute
-  PlatformRoute: typeof PlatformRoute
+  PlatformRoute: typeof PlatformRouteWithChildren
   RepairRoute: typeof RepairRouteWithChildren
   ReportsRoute: typeof ReportsRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -2413,6 +2437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsWhatsappRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/support': {
+      id: '/settings/support'
+      path: '/support'
+      fullPath: '/settings/support'
+      preLoaderRoute: typeof SettingsSupportRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/storage-diagnostics': {
       id: '/settings/storage-diagnostics'
       path: '/storage-diagnostics'
@@ -2882,6 +2913,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RepairPolishingNewRouteImport
       parentRoute: typeof RepairRoute
     }
+    '/platform/billing-print/$id': {
+      id: '/platform/billing-print/$id'
+      path: '/billing-print/$id'
+      fullPath: '/platform/billing-print/$id'
+      preLoaderRoute: typeof PlatformBillingPrintIdRouteImport
+      parentRoute: typeof PlatformRoute
+    }
     '/people/print/$id': {
       id: '/people/print/$id'
       path: '/people/print/$id'
@@ -3202,6 +3240,18 @@ const OrdersRouteChildren: OrdersRouteChildren = {
 const OrdersRouteWithChildren =
   OrdersRoute._addFileChildren(OrdersRouteChildren)
 
+interface PlatformRouteChildren {
+  PlatformBillingPrintIdRoute: typeof PlatformBillingPrintIdRoute
+}
+
+const PlatformRouteChildren: PlatformRouteChildren = {
+  PlatformBillingPrintIdRoute: PlatformBillingPrintIdRoute,
+}
+
+const PlatformRouteWithChildren = PlatformRoute._addFileChildren(
+  PlatformRouteChildren,
+)
+
 interface RepairRouteChildren {
   RepairIdRoute: typeof RepairIdRoute
   RepairNewRoute: typeof RepairNewRoute
@@ -3291,6 +3341,7 @@ interface SettingsRouteChildren {
   SettingsPrintTemplatesRoute: typeof SettingsPrintTemplatesRoute
   SettingsSecurityCenterRoute: typeof SettingsSecurityCenterRoute
   SettingsStorageDiagnosticsRoute: typeof SettingsStorageDiagnosticsRoute
+  SettingsSupportRoute: typeof SettingsSupportRoute
   SettingsWhatsappRoute: typeof SettingsWhatsappRoute
   SettingsWhatsappTemplatesRoute: typeof SettingsWhatsappTemplatesRoute
   SettingsWorkflowRoute: typeof SettingsWorkflowRoute
@@ -3308,6 +3359,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsPrintTemplatesRoute: SettingsPrintTemplatesRoute,
   SettingsSecurityCenterRoute: SettingsSecurityCenterRoute,
   SettingsStorageDiagnosticsRoute: SettingsStorageDiagnosticsRoute,
+  SettingsSupportRoute: SettingsSupportRoute,
   SettingsWhatsappRoute: SettingsWhatsappRoute,
   SettingsWhatsappTemplatesRoute: SettingsWhatsappTemplatesRoute,
   SettingsWorkflowRoute: SettingsWorkflowRoute,
@@ -3414,7 +3466,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   OrdersRoute: OrdersRouteWithChildren,
   OtpLoginRoute: OtpLoginRoute,
-  PlatformRoute: PlatformRoute,
+  PlatformRoute: PlatformRouteWithChildren,
   RepairRoute: RepairRouteWithChildren,
   ReportsRoute: ReportsRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,

@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
-import { recoverLocalUsernames } from "@/lib/local-auth";
 import { getAuthRedirectUrl } from "@/lib/auth-redirect";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -109,8 +108,7 @@ function ForgotPasswordPage() {
     setBusy(true);
     setErr(null);
     try {
-      const emails = await recoverLocalUsernames(searchQuery);
-      setRecoveredUsernames(emails);
+      setRecoveredUsernames([]);
       setUsernameSearchDone(true);
     } catch (ex: any) {
       setErr(ex.message || "Could not complete username recovery.");

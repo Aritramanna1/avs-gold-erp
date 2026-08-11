@@ -73,8 +73,8 @@ queue, schedulers, hardware) and defer the second group.
   (attempted 3x, including after explicit user approval; classifier still
   blocked it, it's a hard policy not a phrasing issue). Run manually via
   the Supabase SQL editor: `REVOKE EXECUTE ON FUNCTION public.<fn> FROM
-  PUBLIC, anon; GRANT EXECUTE ON FUNCTION public.<fn> TO authenticated,
-  service_role;` for each of the 14 SECURITY DEFINER functions.
+PUBLIC, anon; GRANT EXECUTE ON FUNCTION public.<fn> TO authenticated,
+service_role;` for each of the 14 SECURITY DEFINER functions.
 - Full manual end-to-end verification (every module: orders, workshop,
   billing, inventory, reports, printing, barcode, permissions) has not
   been performed — build/typecheck/lint are clean and the login screen is

@@ -91,3 +91,36 @@ export const useCatalog = create<CatalogState>()((set, get) => ({
     return `${head}${String(next).padStart(3, "0")}`;
   },
 }));
+
+export type WeightRangeFilter = "under_1g" | "1g_to_2g" | "2g_to_5g" | "above_5g" | "all";
+
+export interface ShareableCatalogueConfig {
+  id: string;
+  title: string;
+  publicToken: string;
+  designIds: string[];
+  weightFilter: WeightRangeFilter;
+  purityFilter?: number;
+  customerId?: string;
+  r2MediaFolder?: string;
+  viewCount: number;
+  shortlistedDesignIds: string[];
+  expiresAt?: string;
+  createdAt: string;
+}
+
+export function filterDesignsByWeightRange(designs: Design[], filter: WeightRangeFilter): Design[] {
+  switch (filter) {
+    case "under_1g":
+      return designs.filter((d) => d.approxNetMg < 1000);
+    case "1g_to_2g":
+      return designs.filter((d) => d.approxNetMg >= 1000 && d.approxNetMg <= 2000);
+    case "2g_to_5g":
+      return designs.filter((d) => d.approxNetMg > 2000 && d.approxNetMg <= 5000);
+    case "above_5g":
+      return designs.filter((d) => d.approxNetMg > 5000);
+    case "all":
+    default:
+      return designs;
+  }
+}

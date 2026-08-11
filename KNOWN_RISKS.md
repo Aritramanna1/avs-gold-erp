@@ -29,13 +29,13 @@ Re-running the same test multiple times after the fix still showed intermittent 
 
 A one-off verification script launched the **actual packaged Electron production build** (`dist/` + `dist-electron/main.js`, `VITE_DEV_SERVER_URL` unset — i.e. `win.loadFile()`, not `win.loadURL()` against a dev server) via Playwright's Electron launcher, and drove the identical operation: create a settlement, then hard-reload the draft-print route.
 
-| Step | Time |
-|---|---|
-| App window ready | 7160ms (one-time Electron process startup) |
-| Login | 300ms |
-| Settlement created | 442ms |
-| Draft-print via SPA navigation | 58ms |
-| **Draft-print via hard reload** | **283ms** |
+| Step                            | Time                                       |
+| ------------------------------- | ------------------------------------------ |
+| App window ready                | 7160ms (one-time Electron process startup) |
+| Login                           | 300ms                                      |
+| Settlement created              | 442ms                                      |
+| Draft-print via SPA navigation  | 58ms                                       |
+| **Draft-print via hard reload** | **283ms**                                  |
 
 The hard-reload case — the exact operation that took 10–30+ seconds intermittently under `vite dev` — completed in **283ms** in the packaged build. This is conclusive: the residual timing risk is a development/test-environment artifact (dev-server compile overhead stacked on a large, cumulative shared test database), not a defect in the application or in the local-cache-mirroring fix.
 

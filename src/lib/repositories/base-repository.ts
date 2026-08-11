@@ -1,4 +1,4 @@
-import { saveDirect, deleteDirect } from "@/lib/supabase-write";
+﻿import { saveDirect, deleteDirect } from "@/lib/supabase-write";
 import { getCloudDataClient as getRawSupabaseClient } from "@/lib/providers/data-provider";
 import {
   runLocal,
@@ -23,7 +23,7 @@ async function activeMode() {
 /**
  * Tables whose writes represent a financial or gold-accounting action and
  * therefore get an automatic, best-effort audit log entry (Plan 1 Step 8) on
- * every save/delete — in addition to whatever explicit audit calls a
+ * every save/delete â€” in addition to whatever explicit audit calls a
  * specific business flow already makes. Deliberately best-effort (caught,
  * logged to console, never thrown) here: this generic repository layer is
  * shared by 28 tables with years of validated behavior behind it, and this
@@ -49,14 +49,14 @@ const AUDITED_TABLES = new Set([
   "customer_gold_deposits",
   "ready_stock_items",
 ]);
-// Deliberately EXCLUDES "app_settings" — despite going through this same
+// Deliberately EXCLUDES "app_settings" â€” despite going through this same
 // repository, app_settings holds configuration/preferences (comm provider
 // config, WhatsApp templates, automation rules, expenses-store scratch
 // state), not a financial/gold/inventory/permission action, and it is
 // written far more frequently (branch selection, default-settings
 // bootstrapping on nearly every login) than the genuinely audited tables
 // above. Including it forced a full local SQLite/WASM initialization as a
-// side effect of routine app boot on every session — a real, measured
+// side effect of routine app boot on every session â€” a real, measured
 // performance regression (see local-db.ts's initLocalDb() timing) that
 // showed up as widespread Playwright timeouts unrelated to any of the
 // tables actually being tested. Removing it fixes that without weakening
@@ -67,7 +67,7 @@ const AUDITED_TABLES = new Set([
  * rather than requiring callers to pre-fetch it, so a local-db access error
  * (e.g. not yet initialized in a session that never touched local storage
  * before) can never propagate into the actual save()/delete() call it's
- * documenting — it's caught here and logged, same as every other failure
+ * documenting â€” it's caught here and logged, same as every other failure
  * mode in this function.
  */
 async function recordAuditBestEffort(
@@ -89,24 +89,12 @@ async function recordAuditBestEffort(
       await initLocalDb();
       before = fromLocalRow(selectById(table, entityId));
     } catch {
-      // Local DB unavailable — audit entry is still recorded, just without
+      // Local DB unavailable â€” audit entry is still recorded, just without
       // a "before" snapshot.
     }
-    // Offline mode has no Supabase session — the actor is the local user
-    // (SAD §11: every audited action must name a user).
-    const mode = await activeMode();
-    let actorId: string | null = null;
-    let actorEmail: string | null = null;
-    if (mode !== "online") {
-      const { getLocalSessionUser } = await import("@/lib/local-auth");
-      const localUser = await getLocalSessionUser();
-      actorId = localUser?.id ?? null;
-      actorEmail = localUser?.email ?? null;
-    } else {
-      const { data } = await supabase.auth.getSession();
-      actorId = data.session?.user.id ?? null;
-      actorEmail = data.session?.user.email ?? null;
-    }
+    const { data } = await supabase.auth.getSession();
+    const actorId = data.session?.user.id ?? null;
+    const actorEmail = data.session?.user.email ?? null;
     await append({
       actorId,
       actorEmail,
@@ -123,30 +111,30 @@ async function recordAuditBestEffort(
 }
 
 /**
- * Repository Layer — Plan 1, Step 1 (offline-first migration).
+ * Repository Layer â€” Plan 1, Step 1 (offline-first migration).
  *
  * Every Zustand store's mutation handlers call a repository's save()/delete()
  * instead of saveDirect()/deleteDirect() directly. Today this is a pure
  * pass-through wrapper with zero behavior change (still writes straight to
- * Supabase) — it exists so the storage engine underneath can be swapped for
+ * Supabase) â€” it exists so the storage engine underneath can be swapped for
  * local SQLite + a sync outbox later without touching any store's call sites
  * again. See C:\Users\aritr\.claude\plans\hashed-churning-rocket.md (Plan 1).
  *
  * Plan 1 Step 3 (Local Write Engine) adds the *Local methods below. They are
- * NOT called by any store yet — stores still exclusively use save()/delete()/
+ * NOT called by any store yet â€” stores still exclusively use save()/delete()/
  * saveAs(), which remain Supabase-only. The *Local methods exist so Step 4's
  * sync engine (and later, Step 5's read-switch) have a tested, atomic local
  * write path to build on, without touching store call sites again.
  *
  * Local row shape: every local-db table has at minimum `id` + `data` columns
- * (see local-db.ts's createTables()) — the repository stores the FULL domain
+ * (see local-db.ts's createTables()) â€” the repository stores the FULL domain
  * object as `data` (JSON) uniformly across all tables, rather than trying to
  * populate each table's extra structured/indexed columns from here. Those
  * structured columns exist for Step 5's local reads (fast filtered/indexed
  * queries) and get populated when that read path is built; until then they
  * simply stay empty, which is harmless since nothing reads them yet.
  * Critically, the OUTBOX always carries the plain, unwrapped domain object
- * (never the {id, data} local-row wrapper) — so when Step 4's sync engine
+ * (never the {id, data} local-row wrapper) â€” so when Step 4's sync engine
  * pushes it via saveDirect(), that function's existing per-table mapping
  * (see supabase-write.ts) applies exactly once, matching what a direct
  * save() call would have produced.
@@ -157,7 +145,7 @@ export interface Repository<T extends { id: string }> {
   /**
    * For tables keyed by a fixed/external id where the payload itself has no
    * `id` field (e.g. a single settings-blob row like app_settings' scoped
-   * config rows) — saves `payload` under `id` without injecting an `id`
+   * config rows) â€” saves `payload` under `id` without injecting an `id`
    * property into the stored payload, so the row shape matches exactly what
    * direct saveDirect(table, id, payload) calls wrote before this repository
    * layer existed.
@@ -175,7 +163,7 @@ export interface Repository<T extends { id: string }> {
   /** Reverses a not-yet-synced local soft delete. */
   undeleteLocal(id: string): Promise<void>;
   /**
-   * Saves every row in `payloads` inside ONE transaction — either all rows
+   * Saves every row in `payloads` inside ONE transaction â€” either all rows
    * commit or none do (rollback on any failure), and one outbox entry is
    * enqueued per row. Use for multi-row operations (e.g. bulk import) where
    * partial application would leave inconsistent state.
@@ -192,7 +180,7 @@ export interface Repository<T extends { id: string }> {
    * Reads a single row local-first: if a local copy exists, returns it
    * immediately (works fully offline). If nothing local exists yet AND the
    * network is reachable, falls back to a direct Supabase fetch and
-   * opportunistically caches the result locally for next time — so a
+   * opportunistically caches the result locally for next time â€” so a
    * genuinely offline app never blocks on a network call it can't complete,
    * while a fresh/never-synced table still resolves online. Returns null if
    * absent both locally and remotely (or offline with nothing cached).
@@ -203,28 +191,28 @@ export interface Repository<T extends { id: string }> {
    * table (e.g. first run before any sync) and the network is reachable,
    * pulls once from Supabase and serves from the now-populated local cache.
    * Offline with an empty local cache returns an empty array rather than
-   * throwing — callers should treat that as "nothing synced yet", not
+   * throwing â€” callers should treat that as "nothing synced yet", not
    * "table is empty", and the UI is responsible for surfacing that
    * distinction if needed.
    */
   readAll(): Promise<T[]>;
 
-  // ---- Portal/API readiness (future online ecosystem — Customer/Dealer/
+  // ---- Portal/API readiness (future online ecosystem â€” Customer/Dealer/
   // Karigar portals, Internal Management portal, future mobile apps) ----
 
   /**
    * Every non-deleted local row updated strictly after `sinceIso` (an ISO
    * timestamp), sorted oldest-first. This is the exact `getChangedSince`
-   * shape Plan 1's architecture doc calls for on every repository — the
+   * shape Plan 1's architecture doc calls for on every repository â€” the
    * same incremental-delta mechanism sync-engine.ts already uses
    * internally (pullChangesSince) to keep local SQLite in sync with
    * Supabase, now exposed on the repository itself so a FUTURE consumer
    * (a portal's own sync job, a mobile app, an HTTP API wrapper) can ask
    * "what changed since I last checked" through the same interface the
-   * desktop app already relies on — one implementation, multiple
+   * desktop app already relies on â€” one implementation, multiple
    * transports, no portal-specific sync logic to build or maintain
    * separately. Falls back to an empty array (not a throw) if the local
-   * table has never been populated — "nothing synced yet" is the same
+   * table has never been populated â€” "nothing synced yet" is the same
    * shape as "nothing changed," and callers already have to handle both.
    */
   getChangedSince(sinceIso: string): Promise<T[]>;
@@ -238,7 +226,7 @@ function toLocalRow<T extends { id: string }>(payload: T): Record<string, unknow
 /**
  * Unwraps a local-row record back into its domain object shape. local-db.ts's
  * selectById/selectAllLive (via normalizeRow) already JSON.parse the `data`
- * column for us, so `row.data` is typically already an object here — only
+ * column for us, so `row.data` is typically already an object here â€” only
  * parse it ourselves if it somehow arrives as a raw string.
  */
 function fromLocalRow<T>(row: Record<string, unknown> | null): T | null {
@@ -409,17 +397,27 @@ export function createRepository<T extends { id: string }>(table: string): Repos
     },
 
     async getLocalById(id: string): Promise<T | null> {
-      return fromLocalRow<T>(selectById(table, id));
+      try {
+        return fromLocalRow<T>(selectById(table, id));
+      } catch {
+        // Local sql.js cache unavailable (e.g. online-mode session that
+        // never initialized it) â€” same as "not cached locally".
+        return null;
+      }
     },
 
     async getAllLocal(): Promise<T[]> {
-      return selectAllLive(table)
-        .map((row) => fromLocalRow<T>(row))
-        .filter((row): row is T => row !== null);
+      try {
+        return selectAllLive(table)
+          .map((row) => fromLocalRow<T>(row))
+          .filter((row): row is T => row !== null);
+      } catch {
+        return [];
+      }
     },
 
     async read(id: string): Promise<T | null> {
-      const local = fromLocalRow<T>(selectById(table, id));
+      const local = await this.getLocalById(id);
       if (local) return local;
       if ((await activeMode()) === "offline") return null;
       if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
@@ -436,7 +434,7 @@ export function createRepository<T extends { id: string }>(table: string): Repos
         return remote;
       } catch {
         // Network unreachable despite navigator.onLine === true (a common
-        // false-positive) — treat exactly like the offline-with-nothing-
+        // false-positive) â€” treat exactly like the offline-with-nothing-
         // cached case rather than throwing and breaking the caller's UI.
         return null;
       }

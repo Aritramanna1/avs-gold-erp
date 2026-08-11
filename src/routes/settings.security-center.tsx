@@ -28,6 +28,13 @@ function SecurityCenterPage() {
     setLoading(true);
     try {
       setDevices(await listRegisteredDevices());
+    } catch (error) {
+      setDevices([]);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not load registered devices. Retry shortly.",
+      );
     } finally {
       setLoading(false);
     }
@@ -43,6 +50,8 @@ function SecurityCenterPage() {
       await setDeviceTrust(d.deviceId, !d.trusted);
       toast.success(`${d.label} marked ${!d.trusted ? "trusted" : "untrusted"}.`);
       await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update device trust.");
     } finally {
       setBusyDeviceId(null);
     }

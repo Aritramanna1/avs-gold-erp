@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -368,6 +369,8 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
     try {
       await markArrived(workerId, notesMap[workerId] || undefined);
       setNotesMap((m) => ({ ...m, [workerId]: "" }));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not mark worker arrived.");
     } finally {
       setBusy((b) => ({ ...b, [workerId]: false }));
     }
@@ -378,6 +381,8 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
     try {
       await markGoneHome(workerId, notesMap[workerId] || undefined);
       setNotesMap((m) => ({ ...m, [workerId]: "" }));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not mark worker gone home.");
     } finally {
       setBusy((b) => ({ ...b, [workerId]: false }));
     }
