@@ -22,15 +22,15 @@ const items = [
   ["Overview", "overview", LayoutDashboard],
   ["Firms", "firms", Building2],
   ["Users", "users", Users],
-  ["Subscriptions", "subscriptions", CircleDollarSign],
-  ["Licensing", "licensing", ShieldCheck],
-  ["Requests", "requests", Wrench],
-  ["Tickets", "tickets", MessageSquare],
-  ["Billing", "billing", Receipt],
-  ["Health", "health", Activity],
-  ["Audit", "activity", LifeBuoy],
+  ["Subscriptions & trials", "subscriptions", CircleDollarSign],
+  ["Module licensing", "licensing", ShieldCheck],
+  ["Service requests", "requests", Wrench],
+  ["Support tickets", "tickets", MessageSquare],
+  ["Software billing", "billing", Receipt],
+  ["Activity & audit", "activity", LifeBuoy],
+  ["Health & monitoring", "health", Activity],
   ["Backups", "backups", Database],
-  ["Settings", "settings", Settings2],
+  ["Platform settings", "settings", Settings2],
 ] as const;
 
 export function PlatformShell({ children }: { children: ReactNode }) {
@@ -44,78 +44,62 @@ export function PlatformShell({ children }: { children: ReactNode }) {
   }
   return (
     <div className="min-h-screen bg-[#f4f0e8] text-[#09090b]">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-60 shrink-0 flex-col border-r border-[#2f2f33] bg-[#09090b] text-white lg:flex print:hidden">
-          <div className="border-b border-white/10 px-5 py-5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#b99b5a]">
+      <header className="border-b border-[#c9c4ba] bg-[#fffdf8] px-4 py-3 lg:px-14 print:hidden">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8c8c88]">
               AVS Platform
             </p>
-            <h1 className="mt-1 font-serif text-xl">Owner Control</h1>
+            <p className="font-serif text-lg">Owner Control Center</p>
           </div>
-          <nav className="flex-1 space-y-1 p-3">
-            {items.map(([label, view, Icon]) => (
-              <Link
-                key={view}
-                to="/platform"
-                search={{ view } as never}
-                className={`flex items-center gap-3 px-3 py-2.5 text-sm ${pathname === "/platform" && activeView === view ? "bg-white/15 text-white" : "text-white/65 hover:bg-white/10 hover:text-white"}`}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </Link>
-            ))}
-          </nav>
-          <div className="border-t border-white/10 p-3">
+          <div className="flex items-center gap-2">
+            <span className="border border-[#b99b5a]/50 bg-[#f7f2e6] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#806738]">
+              SaaS Admin
+            </span>
             <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-white/70 hover:bg-white/10 hover:text-white"
+              variant="outline"
+              className="gap-2 border-[#b99b5a] px-3 text-xs"
               onClick={() => void signOut()}
+              aria-label="Sign out"
             >
               <LogOut className="h-4 w-4" />
-              Sign out
+              <span className="hidden sm:inline">Sign out</span>
             </Button>
           </div>
-        </aside>
-        <div className="min-w-0 flex-1">
-          <header className="border-b border-[#dedad1] bg-[#fffdf8] px-4 py-3 lg:px-8 print:hidden">
-            <div className="mx-auto flex max-w-[1600px] items-center justify-between">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8c8c88]">
-                  AVS platform
-                </p>
-                <p className="font-serif text-lg">Owner Control Center</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="border border-[#b99b5a]/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#806738]">
-                  SaaS Admin
-                </span>
-                <Button
-                  variant="outline"
-                  className="gap-2 border-[#b99b5a] px-3 text-xs"
-                  onClick={() => void signOut()}
-                  aria-label="Sign out"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span className="hidden sm:inline">Sign out</span>
-                </Button>
-              </div>
-            </div>
-            <nav className="mt-3 flex gap-1 overflow-x-auto lg:hidden">
-              {items.slice(0, 5).map(([label, view]) => (
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-[1600px] px-4 py-4 lg:px-14 print:hidden">
+        <div className="border border-[#dedad1] bg-[#efece6] px-7 py-5 shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#6b6659]">
+            AVS / Platform Operations
+          </p>
+          <h1 className="mt-1 font-serif text-2xl leading-tight">Owner Control Center</h1>
+          <nav className="mt-5 flex items-center gap-2 overflow-x-auto border-b border-[#c9c4ba] pb-2">
+            {items.map(([label, view, Icon]) => {
+              const active = pathname === "/platform" && activeView === view;
+              return (
                 <Link
                   key={view}
                   to="/platform"
                   search={{ view } as never}
-                  className={`whitespace-nowrap border px-3 py-2 text-xs ${pathname === "/platform" && activeView === view ? "border-[#b99b5a] bg-[#eee5d2]" : "border-[#dedad1]"}`}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex shrink-0 items-center gap-2 border-b-2 px-2 py-1.5 text-xs transition-colors ${
+                    active
+                      ? "border-[#8a6a22] text-[#09090b]"
+                      : "border-transparent text-[#6b6659] hover:border-[#c9c4ba] hover:text-[#09090b]"
+                  }`}
                 >
+                  <Icon className="h-4 w-4" />
                   {label}
                 </Link>
-              ))}
-            </nav>
-          </header>
-          <main className="mx-auto max-w-[1600px]">{children}</main>
+              );
+            })}
+          </nav>
         </div>
       </div>
+
+      <main className="mx-auto max-w-[1600px] px-4 pb-8 lg:px-14">{children}</main>
     </div>
   );
 }
