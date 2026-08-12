@@ -143,7 +143,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
         .addSecurityLog("failed login", `Unregistered login blocked: ${userEmail}`, userEmail);
       return {
         allowed: false,
-        error: "Your account exists, but MTJ ERP profile is not linked. Contact admin.",
+        error: "Your account exists, but no AVS Gold ERP profile is linked. Contact admin.",
       };
     }
 
@@ -166,7 +166,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
       setSession(null);
       return {
         allowed: false,
-        error: "Your account exists, but no role is assigned to it under MTJ ERP. Contact admin.",
+        error: "Your account exists, but no role is assigned under AVS Gold ERP. Contact admin.",
       };
     }
 

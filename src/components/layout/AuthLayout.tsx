@@ -18,7 +18,7 @@ interface AuthLayoutProps {
 }
 
 /**
- * Secures individual user authorization state inside the MTJ ERP system.
+ * Secures individual user authorization state inside the AVS Gold ERP platform.
  * Returns { allowed: true } if active directory matches, or descriptive error string otherwise.
  */
 // Kept exported for the auth flow's legacy compatibility surface; moving it
