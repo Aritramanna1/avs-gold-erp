@@ -141,7 +141,10 @@ function LedgerPage() {
         </TabsList>
 
         <TabsContent value="balance">
-          <BalanceSheetView balance={balance} totalOutstandingCashPaise={totalOutstandingCashPaise} />
+          <BalanceSheetView
+            balance={balance}
+            totalOutstandingCashPaise={totalOutstandingCashPaise}
+          />
         </TabsContent>
 
         <TabsContent value="material-vault">

@@ -758,7 +758,9 @@ export async function startCloudSync(): Promise<void> {
         const { useLicense } = await import("@/lib/licensing/license-store");
         const isTrialTenant = useLicense.getState().status === "trial";
         if (isTrialTenant && peopleCount === 0 && ordersCount === 0 && stockCount === 0) {
-          console.log("[data-loader] Trial database is empty. Seeding pilot dataset automatically...");
+          console.log(
+            "[data-loader] Trial database is empty. Seeding pilot dataset automatically...",
+          );
           const { seedPilotDataset } = await import("@/lib/test-seed");
           await seedPilotDataset();
         }

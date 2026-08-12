@@ -1,5 +1,5 @@
 /**
- * AVS / ORNEXA ERP — ITC-04 GST Job-Work Register & Tax Compliance Engine
+ * AVS Gold ERP — ITC-04 GST Job-Work Register & Tax Compliance Engine
  * Tracks raw materials sent to Karigars/Job-Workers under Section 143 of CGST Act.
  */
 
@@ -123,7 +123,8 @@ export function computeITC04Records(
         goodsReturnedGrossMg: open.returnedGrossMg,
         goodsReturnedFineMg: open.returnedFineMg,
         scrapReturnedMg: 0,
-        lossMg: status === "fully_returned" ? Math.max(0, open.txn.grossMg - open.returnedGrossMg) : 0,
+        lossMg:
+          status === "fully_returned" ? Math.max(0, open.txn.grossMg - open.returnedGrossMg) : 0,
         daysHeld,
         isOverdueOneYear: daysHeld > 300,
         status,

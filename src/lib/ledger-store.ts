@@ -108,7 +108,6 @@ export interface BucketBalances {
   scrap: number;
 }
 
-
 export interface GoldExposureSummary {
   totalVaultGoldMg: number;
   totalKarigarGoldMg: number;
@@ -256,11 +255,19 @@ export const useLedger = create<LedgerState>()((set, get) => ({
     if (entry.type === "issue_to_karigar" && entry.karigarId) {
       try {
         const peopleStore = await import("./people-store");
-        const person = peopleStore.usePeople.getState().people.find((p) => p.id === entry.karigarId);
+        const person = peopleStore.usePeople
+          .getState()
+          .people.find((p) => p.id === entry.karigarId);
         if (person && person.maxFineGoldCreditMg && person.maxFineGoldCreditMg > 0) {
           const workerGoldBookStore = await import("./worker-gold-book-store");
-          const pendingFine = workerGoldBookStore.useWorkerGoldBook.getState().getWorkerBalance(entry.karigarId).pendingFine;
-          const result = peopleStore.validateMetalCreditLimit(person, pendingFine, entry.fineMg || 0);
+          const pendingFine = workerGoldBookStore.useWorkerGoldBook
+            .getState()
+            .getWorkerBalance(entry.karigarId).pendingFine;
+          const result = peopleStore.validateMetalCreditLimit(
+            person,
+            pendingFine,
+            entry.fineMg || 0,
+          );
           if (result.isExceeded) {
             throw new Error(result.message);
           }

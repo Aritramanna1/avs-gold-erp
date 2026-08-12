@@ -47,7 +47,8 @@ export function generateGSTR1CSV(invoices: Invoice[]): string {
       // cgstPaise alongside a non-zero gstPaise is how an inter-state
       // invoice is represented on a posted Invoice row.
       const isInterState = inv.gstPaise > 0 && inv.cgstPaise === 0;
-      const rate = inv.subtotalPaise > 0 ? ((inv.gstPaise / inv.subtotalPaise) * 100).toFixed(2) : "0";
+      const rate =
+        inv.subtotalPaise > 0 ? ((inv.gstPaise / inv.subtotalPaise) * 100).toFixed(2) : "0";
       return csvRow([
         inv.customerGstin!,
         inv.customerName,

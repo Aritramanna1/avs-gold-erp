@@ -1,5 +1,5 @@
 /**
- * AVS / ORNEXA ERP — Tally-Compatible XML & CSV Accounting Export Engine
+ * AVS Gold ERP — Tally-Compatible XML & CSV Accounting Export Engine
  * Generates valid Tally ERP 9 / Tally Prime XML import payloads.
  */
 
@@ -16,10 +16,7 @@ export interface TallyVoucher {
 /**
  * Encodes vouchers into Tally XML Import Payload.
  */
-export function generateTallyXML(
-  vouchers: TallyVoucher[],
-  companyName = "Ornexa Jewellery",
-): string {
+export function generateTallyXML(vouchers: TallyVoucher[], companyName = "AVS Gold ERP"): string {
   /**
    * Second ledger name and which side (party vs. counter-ledger) is debited,
    * per voucher type — a Sale debits the party and credits Sales; a Purchase
@@ -29,9 +26,10 @@ export function generateTallyXML(
    * every purchase/receipt as a mirror-image sale, which is worse than not
    * exporting it at all.
    */
-  function counterLedgerAndDebitSide(
-    voucherType: TallyVoucher["voucherType"],
-  ): { counterLedger: string; partyIsDebit: boolean } {
+  function counterLedgerAndDebitSide(voucherType: TallyVoucher["voucherType"]): {
+    counterLedger: string;
+    partyIsDebit: boolean;
+  } {
     switch (voucherType) {
       case "Sales":
         return { counterLedger: "Sales Account", partyIsDebit: true };

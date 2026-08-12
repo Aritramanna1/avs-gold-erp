@@ -68,7 +68,9 @@ function CustomerLoginPage() {
             </div>
             <div>
               <h1 className="font-serif text-2xl font-bold text-amber-900">Customer Portal</h1>
-              <p className="text-xs text-amber-700 mt-0.5">View your orders, invoices &amp; repairs</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                View your orders, invoices &amp; repairs
+              </p>
             </div>
           </div>
 
@@ -94,9 +96,7 @@ function CustomerLoginPage() {
                 </div>
               </div>
 
-              {err && (
-                <p className="text-xs text-red-600 font-medium leading-relaxed">{err}</p>
-              )}
+              {err && <p className="text-xs text-red-600 font-medium leading-relaxed">{err}</p>}
 
               <button
                 type="submit"
@@ -112,8 +112,8 @@ function CustomerLoginPage() {
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex gap-3 text-sm">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div className="text-emerald-800">
-                  A 6-digit code was sent to <strong className="break-all">{email}</strong>.
-                  Check your inbox or spam folder.
+                  A 6-digit code was sent to <strong className="break-all">{email}</strong>. Check
+                  your inbox or spam folder.
                 </div>
               </div>
 
@@ -134,9 +134,7 @@ function CustomerLoginPage() {
                   />
                 </div>
 
-                {err && (
-                  <p className="text-xs text-red-600 font-medium leading-relaxed">{err}</p>
-                )}
+                {err && <p className="text-xs text-red-600 font-medium leading-relaxed">{err}</p>}
 
                 <button
                   type="submit"
@@ -150,7 +148,11 @@ function CustomerLoginPage() {
 
               <button
                 type="button"
-                onClick={() => { setSent(false); setOtp(""); setErr(null); }}
+                onClick={() => {
+                  setSent(false);
+                  setOtp("");
+                  setErr(null);
+                }}
                 className="w-full flex items-center justify-center gap-1 text-xs text-gray-500 hover:text-gray-700"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />

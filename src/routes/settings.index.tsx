@@ -2738,9 +2738,8 @@ function SecurityLogsTab() {
 function GstTab() {
   const { gst, setGst, makingCharge, setMakingCharge } = useSettings();
   const [newOverrideCategory, setNewOverrideCategory] = useState("");
-  const [newOverrideBasis, setNewOverrideBasis] = useState<
-    typeof makingCharge.defaultBasis
-  >("percentage");
+  const [newOverrideBasis, setNewOverrideBasis] =
+    useState<typeof makingCharge.defaultBasis>("percentage");
   const [newOverrideValue, setNewOverrideValue] = useState("");
 
   function addCategoryOverride() {
@@ -3014,9 +3013,7 @@ function GstTab() {
               </select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">
-                {newOverrideBasis === "percentage" ? "%" : "₹"}
-              </Label>
+              <Label className="text-xs">{newOverrideBasis === "percentage" ? "%" : "₹"}</Label>
               <Input
                 className="w-28"
                 type="number"

@@ -200,20 +200,29 @@ export async function closeFinancialYear(
   const buckets = balances.buckets;
 
   // 2. Lock all 12 months of this FY
-  const months = [
-    "04", "05", "06", "07", "08", "09", "10", "11", "12",
-    "01", "02", "03"
-  ];
+  const months = ["04", "05", "06", "07", "08", "09", "10", "11", "12", "01", "02", "03"];
   const lockStore = useFinancialLocks.getState();
 
   for (const m of months) {
     const yr = m === "01" || m === "02" || m === "03" ? startYear + 1 : startYear;
     const period = `${yr}-${m}`;
-    await lockStore.lock(branchId, period, actor, `Financial Year ${startYear}-${(startYear + 1) % 100} Close`);
+    await lockStore.lock(
+      branchId,
+      period,
+      actor,
+      `Financial Year ${startYear}-${(startYear + 1) % 100} Close`,
+    );
   }
 
   // 3. Post closing stock for old year and opening stock for new year in Gold Ledger
-  const bucketKeys: (keyof typeof buckets)[] = ["vault", "karigar", "finished", "customer", "jeweller", "scrap"];
+  const bucketKeys: (keyof typeof buckets)[] = [
+    "vault",
+    "karigar",
+    "finished",
+    "customer",
+    "jeweller",
+    "scrap",
+  ];
   const carriedForward: Record<string, number> = {};
 
   for (const bucket of bucketKeys) {

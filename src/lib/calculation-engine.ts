@@ -1,5 +1,5 @@
 /**
- * AVS / ORNEXA ERP — Universal Formula & Calculation Engine
+ * AVS Gold ERP — Universal Formula & Calculation Engine
  *
  * Centralized, explainable calculation registry for Fine Gold, Karigar Wastage
  * with Category Exclusions (e.g. Chains 0%), Over-Loss Purity Retention,
@@ -463,7 +463,8 @@ export function calculateHallmarkCharge(
 
 // ── Configurable making/labour charge resolution ─────────────────────────
 
-export type MakingChargeBasis = "percentage" | "gross" | "net" | "fine" | "piece" | "carat" | "flat";
+export type MakingChargeBasis =
+  "percentage" | "gross" | "net" | "fine" | "piece" | "carat" | "flat";
 
 export interface MakingChargeResolutionInput {
   basis: MakingChargeBasis;

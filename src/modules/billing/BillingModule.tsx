@@ -252,10 +252,24 @@ function StockPhotoImg({
  * Charge (category override, then tenant default), which can be any basis.
  */
 function computeStockMakingCharge(
-  stock: { category: string; makingChargePct?: number; makingChargePerGPaise?: number; grossMg: number; netMg: number; fineMg: number; piecesCount?: number; caratsCount?: number },
+  stock: {
+    category: string;
+    makingChargePct?: number;
+    makingChargePerGPaise?: number;
+    grossMg: number;
+    netMg: number;
+    fineMg: number;
+    piecesCount?: number;
+    caratsCount?: number;
+  },
   goldValuePaise: number,
   makingChargeSettings: import("@/lib/settings-store").MakingChargeSettings,
-): { makingChargesPaise: number; makingChargePct: number; basis: import("@/lib/calculation-engine").MakingChargeBasis; ratePerUnitPaise: number } {
+): {
+  makingChargesPaise: number;
+  makingChargePct: number;
+  basis: import("@/lib/calculation-engine").MakingChargeBasis;
+  ratePerUnitPaise: number;
+} {
   if (stock.makingChargePct != null) {
     const resolved = resolveMakingCharge({
       basis: "percentage",
@@ -273,7 +287,10 @@ function computeStockMakingCharge(
     };
   }
   if (stock.makingChargePerGPaise) {
-    const pct = goldValuePaise > 0 ? ((stock.makingChargePerGPaise * (stock.grossMg / 1000)) / goldValuePaise) * 100 : 0;
+    const pct =
+      goldValuePaise > 0
+        ? ((stock.makingChargePerGPaise * (stock.grossMg / 1000)) / goldValuePaise) * 100
+        : 0;
     const resolved = resolveMakingCharge({
       basis: "percentage",
       percent: pct,
@@ -293,7 +310,8 @@ function computeStockMakingCharge(
   const override = makingChargeSettings.categoryOverrides[stock.category];
   const basis = override?.basis ?? makingChargeSettings.defaultBasis;
   const percent = override?.percent ?? makingChargeSettings.defaultPercent;
-  const ratePerUnitPaise = override?.ratePerUnitPaise ?? makingChargeSettings.defaultRatePerUnitPaise;
+  const ratePerUnitPaise =
+    override?.ratePerUnitPaise ?? makingChargeSettings.defaultRatePerUnitPaise;
   const resolved = resolveMakingCharge({
     basis,
     percent,
@@ -1053,7 +1071,11 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     }
 
     const goldValuePaise = Math.round((stock.fineMg * (getCurrentGoldRatePaise() || 0)) / 1000);
-    const resolved = computeStockMakingCharge(stock, goldValuePaise, useSettings.getState().makingCharge);
+    const resolved = computeStockMakingCharge(
+      stock,
+      goldValuePaise,
+      useSettings.getState().makingCharge,
+    );
 
     const invoiceItem: InvoiceItem = {
       id: newItemId(),
@@ -1657,7 +1679,11 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     if (stock) {
       const ratePaise = currentGoldRate;
       const goldValuePaise2 = Math.round((stock.fineMg * ratePaise) / 1000);
-      const resolved2 = computeStockMakingCharge(stock, goldValuePaise2, useSettings.getState().makingCharge);
+      const resolved2 = computeStockMakingCharge(
+        stock,
+        goldValuePaise2,
+        useSettings.getState().makingCharge,
+      );
 
       const blank: Omit<InvoiceItem, "id" | "goldValuePaise" | "lineTotalPaise"> = {
         stockItemId: stock.id,

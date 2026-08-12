@@ -42,7 +42,6 @@ import { useSettings } from "@/lib/settings-store";
 import { closeFinancialYear } from "@/lib/financial-lock-store";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
-
 export const Route = createFileRoute("/settings/workflow")({
   head: () => ({ meta: [{ title: "Workflow Engine · AVS Gold ERP" }] }),
   component: WorkflowSettings,
@@ -91,7 +90,11 @@ export default function WorkflowSettings() {
   const [closing, setClosing] = useState(false);
 
   async function handleCloseYear() {
-    if (!window.confirm(`Are you absolutely sure you want to close Financial Year ${fyYear}-${(fyYear + 1) % 100}? This will lock all months in this FY and carry forward metal balances to April 1st, ${fyYear + 1}.`)) {
+    if (
+      !window.confirm(
+        `Are you absolutely sure you want to close Financial Year ${fyYear}-${(fyYear + 1) % 100}? This will lock all months in this FY and carry forward metal balances to April 1st, ${fyYear + 1}.`,
+      )
+    ) {
       return;
     }
     setClosing(true);
@@ -498,17 +501,23 @@ export default function WorkflowSettings() {
       <section className="rounded-2xl border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-gold" />
-          <h3 className="font-bold text-sm uppercase tracking-wider">Financial Year Close &amp; Rollover</h3>
+          <h3 className="font-bold text-sm uppercase tracking-wider">
+            Financial Year Close &amp; Rollover
+          </h3>
         </div>
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Closing a financial year is a permanent action. It automatically locks all 12 months in the selected year
-            (preventing modifications to old invoices, payments, and settlements), posts closing metal records,
-            and rolls over the derived gold weights as opening balances on April 1st of the next year.
+            Closing a financial year is a permanent action. It automatically locks all 12 months in
+            the selected year (preventing modifications to old invoices, payments, and settlements),
+            posts closing metal records, and rolls over the derived gold weights as opening balances
+            on April 1st of the next year.
           </p>
           <div className="flex items-end gap-3 flex-wrap">
             <div className="space-y-1">
-              <label htmlFor="fy-start-year" className="text-xs font-semibold text-muted-foreground">
+              <label
+                htmlFor="fy-start-year"
+                className="text-xs font-semibold text-muted-foreground"
+              >
                 FY Start Year
               </label>
               <Input

@@ -74,7 +74,7 @@ export class ReplaceableAssistantBrain {
   }
 
   public getSystemPrompt(): string {
-    return `You are the AVS / Ornexa ERP Assistant — a friendly, knowledgeable, and proactive pair programmer and business co-pilot for high-volume jewelers.
+    return `You are the AVS Gold ERP Assistant — a friendly, knowledgeable, and proactive pair programmer and business co-pilot for high-volume jewelers.
 
 CRITICAL BEHAVIOR RULES:
 1. Always greet naturally and casually (e.g. "Hey! 👋 What are we working on today?").

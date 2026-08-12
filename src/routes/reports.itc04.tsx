@@ -21,10 +21,7 @@ function ITC04ReportPage() {
     void refreshTransactions();
   }, [refreshTransactions]);
 
-  const records = useMemo(
-    () => computeITC04Records(transactions, people),
-    [transactions, people],
-  );
+  const records = useMemo(() => computeITC04Records(transactions, people), [transactions, people]);
 
   const handleExportCSV = () => {
     const csvContent = exportITC04ToCSV(records);

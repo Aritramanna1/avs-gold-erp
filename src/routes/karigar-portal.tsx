@@ -154,7 +154,9 @@ function KarigarPortal() {
         setData(result as KarigarData);
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [navigate]);
 
   function handleSignOut() {
@@ -316,7 +318,9 @@ function KarigarPortal() {
         {tab === "wages" && (
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-800">Wages &amp; Payments (Last 90 Days)</h3>
+              <h3 className="text-sm font-semibold text-gray-800">
+                Wages &amp; Payments (Last 90 Days)
+              </h3>
             </div>
             {data.wages.length === 0 ? (
               <div className="p-8 text-center text-sm text-gray-400">No wage records found.</div>
@@ -351,7 +355,9 @@ function KarigarPortal() {
               <h3 className="text-sm font-semibold text-gray-800">Attendance (Last 30 Days)</h3>
             </div>
             {data.attendance.length === 0 ? (
-              <div className="p-8 text-center text-sm text-gray-400">No attendance records found.</div>
+              <div className="p-8 text-center text-sm text-gray-400">
+                No attendance records found.
+              </div>
             ) : (
               <div className="divide-y divide-gray-50">
                 {data.attendance.map((a, i) => (
@@ -372,10 +378,10 @@ function KarigarPortal() {
                         a.status === "present"
                           ? "bg-emerald-100 text-emerald-700"
                           : a.status === "absent"
-                          ? "bg-rose-100 text-rose-700"
-                          : a.status === "half_day"
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-gray-100 text-gray-500"
+                            ? "bg-rose-100 text-rose-700"
+                            : a.status === "half_day"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-gray-100 text-gray-500"
                       }`}
                     >
                       {a.status?.replace(/_/g, " ") ?? "—"}

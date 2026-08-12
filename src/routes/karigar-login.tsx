@@ -97,14 +97,10 @@ function KarigarLoginPage() {
                     className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
-                <p className="text-xs text-gray-400">
-                  Use the email registered by your firm
-                </p>
+                <p className="text-xs text-gray-400">Use the email registered by your firm</p>
               </div>
 
-              {err && (
-                <p className="text-xs text-red-600 font-medium leading-relaxed">{err}</p>
-              )}
+              {err && <p className="text-xs text-red-600 font-medium leading-relaxed">{err}</p>}
 
               <button
                 type="submit"
@@ -120,8 +116,8 @@ function KarigarLoginPage() {
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex gap-3 text-sm">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div className="text-emerald-800">
-                  A 6-digit code was sent to <strong className="break-all">{email}</strong>.
-                  Check your inbox.
+                  A 6-digit code was sent to <strong className="break-all">{email}</strong>. Check
+                  your inbox.
                 </div>
               </div>
 
@@ -142,9 +138,7 @@ function KarigarLoginPage() {
                   />
                 </div>
 
-                {err && (
-                  <p className="text-xs text-red-600 font-medium leading-relaxed">{err}</p>
-                )}
+                {err && <p className="text-xs text-red-600 font-medium leading-relaxed">{err}</p>}
 
                 <button
                   type="submit"
@@ -158,7 +152,11 @@ function KarigarLoginPage() {
 
               <button
                 type="button"
-                onClick={() => { setSent(false); setOtp(""); setErr(null); }}
+                onClick={() => {
+                  setSent(false);
+                  setOtp("");
+                  setErr(null);
+                }}
                 className="w-full flex items-center justify-center gap-1 text-xs text-gray-500 hover:text-gray-700"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
