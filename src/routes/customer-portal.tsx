@@ -1,8 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { FileText, Loader2, MessageCircle, Package, Wrench } from "lucide-react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { guardRoute } from "@/lib/permissions";
 
 type PortalData = {
   profile: { id: string; full_name: string; phone: string | null; email: string | null };
@@ -12,14 +11,16 @@ type PortalData = {
   support_tickets: Array<{ id: string; ticket_no?: string; status?: string; subject?: string }>;
 };
 
+// Public route — authenticated via customer email OTP (not ERP staff session).
 export const Route = createFileRoute("/customer-portal")({
-  beforeLoad: ({ location }) => guardRoute(location.pathname),
   component: CustomerPortal,
 });
 
 function CustomerPortal() {
+  const navigate = useNavigate();
   const [data, setData] = useState<PortalData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -31,18 +32,28 @@ function CustomerPortal() {
   useEffect(() => {
     let active = true;
     void (async () => {
+      // 1. Check Supabase session — redirect to customer login if not authenticated
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!active) return;
+      if (!sessionData.session) {
+        void navigate({ to: "/customer-login" });
+        return;
+      }
+      setAuthChecked(true);
+
+      // 2. Fetch portal data via RPC (uses caller's JWT to scope results)
       const { data: result, error: queryError } = await (supabase as any).rpc(
         "get_customer_portal",
       );
       if (!active) return;
       if (queryError)
-        setError("Your customer portal is not configured yet. Please contact the firm.");
+        setError("Your customer portal is not yet configured. Please contact the firm.");
       else setData(result as PortalData);
     })();
     return () => {
       active = false;
     };
-  }, []);
+  }, [navigate]);
 
   if (error) {
     return (
@@ -121,12 +132,25 @@ function CustomerPortal() {
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
-      <header>
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">My account</p>
-        <h1 className="mt-2 text-2xl font-semibold">Welcome, {data.profile.full_name}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your invoices, orders, and repairs in one place.
-        </p>
+      <header className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">My account</p>
+          <h1 className="mt-2 text-2xl font-semibold">Welcome, {data.profile.full_name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your invoices, orders, and repairs in one place.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="text-xs text-muted-foreground hover:text-foreground underline"
+          onClick={() => {
+            void supabase.auth.signOut().then(() => {
+              window.location.href = "/customer-login";
+            });
+          }}
+        >
+          Sign out
+        </button>
       </header>
       <div className="grid gap-4 sm:grid-cols-3">
         {[

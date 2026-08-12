@@ -26,11 +26,14 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MeltRouteImport } from './routes/melt'
 import { Route as ManufacturingRouteImport } from './routes/manufacturing'
 import { Route as LedgerRouteImport } from './routes/ledger'
+import { Route as KarigarPortalRouteImport } from './routes/karigar-portal'
+import { Route as KarigarLoginRouteImport } from './routes/karigar-login'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomerPortalRouteImport } from './routes/customer-portal'
+import { Route as CustomerLoginRouteImport } from './routes/customer-login'
 import { Route as CompanyAdminRouteImport } from './routes/company-admin'
 import { Route as CommunicationsRouteImport } from './routes/communications'
 import { Route as CatalogRouteImport } from './routes/catalog'
@@ -256,6 +259,16 @@ const LedgerRoute = LedgerRouteImport.update({
   path: '/ledger',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KarigarPortalRoute = KarigarPortalRouteImport.update({
+  id: '/karigar-portal',
+  path: '/karigar-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KarigarLoginRoute = KarigarLoginRouteImport.update({
+  id: '/karigar-login',
+  path: '/karigar-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InviteRoute = InviteRouteImport.update({
   id: '/invite',
   path: '/invite',
@@ -279,6 +292,11 @@ const DashboardRoute = DashboardRouteImport.update({
 const CustomerPortalRoute = CustomerPortalRouteImport.update({
   id: '/customer-portal',
   path: '/customer-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomerLoginRoute = CustomerLoginRouteImport.update({
+  id: '/customer-login',
+  path: '/customer-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompanyAdminRoute = CompanyAdminRouteImport.update({
@@ -1009,11 +1027,14 @@ export interface FileRoutesByFullPath {
   '/catalog': typeof CatalogRouteWithChildren
   '/communications': typeof CommunicationsRouteWithChildren
   '/company-admin': typeof CompanyAdminRoute
+  '/customer-login': typeof CustomerLoginRoute
   '/customer-portal': typeof CustomerPortalRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/invite': typeof InviteRouteWithChildren
+  '/karigar-login': typeof KarigarLoginRoute
+  '/karigar-portal': typeof KarigarPortalRoute
   '/ledger': typeof LedgerRoute
   '/manufacturing': typeof ManufacturingRouteWithChildren
   '/melt': typeof MeltRouteWithChildren
@@ -1168,11 +1189,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/barcode': typeof BarcodeRoute
   '/company-admin': typeof CompanyAdminRoute
+  '/customer-login': typeof CustomerLoginRoute
   '/customer-portal': typeof CustomerPortalRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/invite': typeof InviteRouteWithChildren
+  '/karigar-login': typeof KarigarLoginRoute
+  '/karigar-portal': typeof KarigarPortalRoute
   '/ledger': typeof LedgerRoute
   '/notifications': typeof NotificationsRoute
   '/otp-login': typeof OtpLoginRoute
@@ -1324,11 +1348,14 @@ export interface FileRoutesById {
   '/catalog': typeof CatalogRouteWithChildren
   '/communications': typeof CommunicationsRouteWithChildren
   '/company-admin': typeof CompanyAdminRoute
+  '/customer-login': typeof CustomerLoginRoute
   '/customer-portal': typeof CustomerPortalRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/invite': typeof InviteRouteWithChildren
+  '/karigar-login': typeof KarigarLoginRoute
+  '/karigar-portal': typeof KarigarPortalRoute
   '/ledger': typeof LedgerRoute
   '/manufacturing': typeof ManufacturingRouteWithChildren
   '/melt': typeof MeltRouteWithChildren
@@ -1489,11 +1516,14 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/communications'
     | '/company-admin'
+    | '/customer-login'
     | '/customer-portal'
     | '/dashboard'
     | '/forgot-password'
     | '/help'
     | '/invite'
+    | '/karigar-login'
+    | '/karigar-portal'
     | '/ledger'
     | '/manufacturing'
     | '/melt'
@@ -1648,11 +1678,14 @@ export interface FileRouteTypes {
     | '/'
     | '/barcode'
     | '/company-admin'
+    | '/customer-login'
     | '/customer-portal'
     | '/dashboard'
     | '/forgot-password'
     | '/help'
     | '/invite'
+    | '/karigar-login'
+    | '/karigar-portal'
     | '/ledger'
     | '/notifications'
     | '/otp-login'
@@ -1803,11 +1836,14 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/communications'
     | '/company-admin'
+    | '/customer-login'
     | '/customer-portal'
     | '/dashboard'
     | '/forgot-password'
     | '/help'
     | '/invite'
+    | '/karigar-login'
+    | '/karigar-portal'
     | '/ledger'
     | '/manufacturing'
     | '/melt'
@@ -1967,11 +2003,14 @@ export interface RootRouteChildren {
   CatalogRoute: typeof CatalogRouteWithChildren
   CommunicationsRoute: typeof CommunicationsRouteWithChildren
   CompanyAdminRoute: typeof CompanyAdminRoute
+  CustomerLoginRoute: typeof CustomerLoginRoute
   CustomerPortalRoute: typeof CustomerPortalRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HelpRoute: typeof HelpRoute
   InviteRoute: typeof InviteRouteWithChildren
+  KarigarLoginRoute: typeof KarigarLoginRoute
+  KarigarPortalRoute: typeof KarigarPortalRoute
   LedgerRoute: typeof LedgerRoute
   ManufacturingRoute: typeof ManufacturingRouteWithChildren
   MeltRoute: typeof MeltRouteWithChildren
@@ -2130,6 +2169,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LedgerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/karigar-portal': {
+      id: '/karigar-portal'
+      path: '/karigar-portal'
+      fullPath: '/karigar-portal'
+      preLoaderRoute: typeof KarigarPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/karigar-login': {
+      id: '/karigar-login'
+      path: '/karigar-login'
+      fullPath: '/karigar-login'
+      preLoaderRoute: typeof KarigarLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/invite': {
       id: '/invite'
       path: '/invite'
@@ -2163,6 +2216,13 @@ declare module '@tanstack/react-router' {
       path: '/customer-portal'
       fullPath: '/customer-portal'
       preLoaderRoute: typeof CustomerPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer-login': {
+      id: '/customer-login'
+      path: '/customer-login'
+      fullPath: '/customer-login'
+      preLoaderRoute: typeof CustomerLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/company-admin': {
@@ -3518,11 +3578,14 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogRoute: CatalogRouteWithChildren,
   CommunicationsRoute: CommunicationsRouteWithChildren,
   CompanyAdminRoute: CompanyAdminRoute,
+  CustomerLoginRoute: CustomerLoginRoute,
   CustomerPortalRoute: CustomerPortalRoute,
   DashboardRoute: DashboardRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HelpRoute: HelpRoute,
   InviteRoute: InviteRouteWithChildren,
+  KarigarLoginRoute: KarigarLoginRoute,
+  KarigarPortalRoute: KarigarPortalRoute,
   LedgerRoute: LedgerRoute,
   ManufacturingRoute: ManufacturingRouteWithChildren,
   MeltRoute: MeltRouteWithChildren,

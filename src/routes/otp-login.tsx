@@ -83,7 +83,7 @@ function OtpLoginPage() {
           <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gold/10 text-gold">
             <Mail className="h-5 w-5" />
           </div>
-          <h1 className="font-serif text-2xl text-gold">MTJ ERP</h1>
+          <h1 className="font-serif text-2xl text-gold">AVS Gold ERP</h1>
           <p className="text-xs text-muted-foreground">Sign in with a one-time code</p>
         </div>
 
