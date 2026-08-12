@@ -93,6 +93,10 @@ export interface LedgerEntry {
   notes?: string;
   /** Optional human reference, e.g. opening vault notes, slip number later. */
   reference?: string;
+  karigarId?: string;
+  customerId?: string;
+  cashDeltas?: Partial<Record<Bucket, number>>; // signed paise change per bucket
+  netCashPaise?: number; // total net cash change for this entry in paise
 }
 
 export interface BucketBalances {
@@ -103,6 +107,7 @@ export interface BucketBalances {
   jeweller: number;
   scrap: number;
 }
+
 
 export interface GoldExposureSummary {
   totalVaultGoldMg: number;
@@ -156,6 +161,7 @@ export interface BucketBreakdown {
   fineMg: number;
   grossMg: number;
   purities: Record<number, PurityHolding>;
+  cashPaise: number; // Cash balance in paise tracked side-by-side
 }
 
 export interface BalanceSheet {
@@ -167,6 +173,8 @@ export interface BalanceSheet {
   discrepancyMg: number;
   balanced: boolean;
   entryCount: number;
+  cashBuckets: Record<Bucket, number>; // Cash balances per bucket in paise
+  totalCashPaise: number; // total cash under management in paise
 }
 
 interface LedgerState {
@@ -244,6 +252,28 @@ export const useLedger = create<LedgerState>()((set, get) => ({
         new Date(entry.createdAt).toISOString(),
       );
     }
+    // Enforce metal credit limit validation on Karigar issues if enabled in rules
+    if (entry.type === "issue_to_karigar" && entry.karigarId) {
+      try {
+        const peopleStore = await import("./people-store");
+        const person = peopleStore.usePeople.getState().people.find((p) => p.id === entry.karigarId);
+        if (person && person.maxFineGoldCreditMg && person.maxFineGoldCreditMg > 0) {
+          const workerGoldBookStore = await import("./worker-gold-book-store");
+          const pendingFine = workerGoldBookStore.useWorkerGoldBook.getState().getWorkerBalance(entry.karigarId).pendingFine;
+          const result = peopleStore.validateMetalCreditLimit(person, pendingFine, entry.fineMg || 0);
+          if (result.isExceeded) {
+            throw new Error(result.message);
+          }
+        }
+      } catch (err: any) {
+        // Re-throw credit limit errors, log other import/runtime failures
+        if (err.message && err.message.includes("METAL CREDIT LIMIT EXCEEDED")) {
+          throw err;
+        }
+        console.error("[LedgerStore] Credit limit validation check failed to execute:", err);
+      }
+    }
+
     await ledgerRepository.save(entry);
     await get().refresh();
     // Every Gold Ledger posting is audited — best-effort so a logging
@@ -330,15 +360,25 @@ export function computeBalances(entries: LedgerEntry[]): BalanceSheet {
   };
 
   const bucketBreakdowns: Record<Bucket, BucketBreakdown> = {
-    vault: { fineMg: 0, grossMg: 0, purities: {} },
-    karigar: { fineMg: 0, grossMg: 0, purities: {} },
-    finished: { fineMg: 0, grossMg: 0, purities: {} },
-    customer: { fineMg: 0, grossMg: 0, purities: {} },
-    jeweller: { fineMg: 0, grossMg: 0, purities: {} },
-    scrap: { fineMg: 0, grossMg: 0, purities: {} },
+    vault: { fineMg: 0, grossMg: 0, purities: {}, cashPaise: 0 },
+    karigar: { fineMg: 0, grossMg: 0, purities: {}, cashPaise: 0 },
+    finished: { fineMg: 0, grossMg: 0, purities: {}, cashPaise: 0 },
+    customer: { fineMg: 0, grossMg: 0, purities: {}, cashPaise: 0 },
+    jeweller: { fineMg: 0, grossMg: 0, purities: {}, cashPaise: 0 },
+    scrap: { fineMg: 0, grossMg: 0, purities: {}, cashPaise: 0 },
+  };
+
+  const cashBuckets: Record<Bucket, number> = {
+    vault: 0,
+    karigar: 0,
+    finished: 0,
+    customer: 0,
+    jeweller: 0,
+    scrap: 0,
   };
 
   let ledgerTotal = 0;
+  let totalCashPaise = 0;
 
   for (const e of entries) {
     ledgerTotal += e.netFineMg;
@@ -368,6 +408,13 @@ export function computeBalances(entries: LedgerEntry[]): BalanceSheet {
         breakdown.purities[purity].fineMg += deltaFine;
         breakdown.purities[purity].grossMg += deltaGross;
       }
+
+      const deltaCash = e.cashDeltas?.[b] ?? 0;
+      if (deltaCash !== 0) {
+        cashBuckets[b] += deltaCash;
+        bucketBreakdowns[b].cashPaise += deltaCash;
+        totalCashPaise += deltaCash;
+      }
     }
   }
 
@@ -395,6 +442,8 @@ export function computeBalances(entries: LedgerEntry[]): BalanceSheet {
     discrepancyMg,
     balanced: discrepancyMg === 0,
     entryCount: entries.length,
+    cashBuckets,
+    totalCashPaise,
   };
 }
 

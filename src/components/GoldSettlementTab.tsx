@@ -620,7 +620,9 @@ export function GoldSettlementTab() {
           form: linkUse === "old_gold" && isJama ? "old_gold" : "other",
           reference: voucherNo,
           notes: `${it.description} [Voucher No: ${voucherNo}] [Party: ${resolvedPartyName}] (${linkUseLabel(linkUse)})`,
-        });
+          karigarId: partyType === "worker" && !isJama ? finalPartyId : undefined,
+          customerId: partyType === "customer" ? finalPartyId : undefined,
+        } as any);
       }
 
       toast.success(`Government-traceable voucher ${voucherNo} stored successfully.`);

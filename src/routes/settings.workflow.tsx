@@ -3,6 +3,7 @@
  * Lets the admin configure how the manufacturing lifecycle works,
  * without changing any code. Makes the ERP adaptable to any jeweller.
  */
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -33,8 +34,14 @@ import {
   CheckCircle,
   AlertTriangle,
   RotateCcw,
+  Calendar,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSettings } from "@/lib/settings-store";
+import { closeFinancialYear } from "@/lib/financial-lock-store";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
+
 
 export const Route = createFileRoute("/settings/workflow")({
   head: () => ({ meta: [{ title: "Workflow Engine · AVS Gold ERP" }] }),
@@ -79,6 +86,33 @@ function ToggleRow({ label, description, checked, onCheckedChange, disabled }: T
 
 export default function WorkflowSettings() {
   const { config, patch, applyPreset, reset } = useWorkflowEngine();
+  const selectedBranchId = useSettings((s) => s.selectedBranchId || "MAIN");
+  const [fyYear, setFyYear] = useState(new Date().getFullYear() - 1);
+  const [closing, setClosing] = useState(false);
+
+  async function handleCloseYear() {
+    if (!window.confirm(`Are you absolutely sure you want to close Financial Year ${fyYear}-${(fyYear + 1) % 100}? This will lock all months in this FY and carry forward metal balances to April 1st, ${fyYear + 1}.`)) {
+      return;
+    }
+    setClosing(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const actor = {
+        id: sessionData.session?.user.id ?? null,
+        email: sessionData.session?.user.email ?? null,
+      };
+      const result = await closeFinancialYear(selectedBranchId, fyYear, actor);
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error("Year closing failed");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to close financial year");
+    } finally {
+      setClosing(false);
+    }
+  }
 
   function applyAndToast(key: keyof typeof WORKFLOW_PRESETS) {
     applyPreset(key);
@@ -457,6 +491,58 @@ export default function WorkflowSettings() {
           <strong>Provider fallback:</strong> If WhatsApp Business API is not configured, the system
           falls back to WhatsApp Deep Link (manual sharing). Email requires SMTP or API credentials
           in Communication Settings. Billing logic never needs to know which provider is active.
+        </div>
+      </section>
+
+      {/* Financial Year Close */}
+      <section className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-gold" />
+          <h3 className="font-bold text-sm uppercase tracking-wider">Financial Year Close &amp; Rollover</h3>
+        </div>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Closing a financial year is a permanent action. It automatically locks all 12 months in the selected year
+            (preventing modifications to old invoices, payments, and settlements), posts closing metal records,
+            and rolls over the derived gold weights as opening balances on April 1st of the next year.
+          </p>
+          <div className="flex items-end gap-3 flex-wrap">
+            <div className="space-y-1">
+              <label htmlFor="fy-start-year" className="text-xs font-semibold text-muted-foreground">
+                FY Start Year
+              </label>
+              <Input
+                id="fy-start-year"
+                type="number"
+                min={2000}
+                max={2100}
+                value={fyYear}
+                onChange={(e) => setFyYear(Number(e.target.value))}
+                className="w-36 h-9"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="fy-branch-id" className="text-xs font-semibold text-muted-foreground">
+                Branch ID
+              </label>
+              <Input
+                id="fy-branch-id"
+                type="text"
+                value={selectedBranchId}
+                disabled
+                className="w-36 h-9 bg-muted"
+              />
+            </div>
+            <Button
+              type="button"
+              disabled={closing}
+              onClick={handleCloseYear}
+              className="h-9 gap-1.5 bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              <Lock className="h-3.5 w-3.5" />
+              {closing ? "Closing Year..." : "Run Year-End Close"}
+            </Button>
+          </div>
         </div>
       </section>
 

@@ -139,7 +139,8 @@ export function WorkerIssueDialog({
         fineMg,
         reference: orderNo,
         notes: `Issue of ${material} to ${worker.fullName} · Order ${orderNo}${remarks.trim() ? ` · ${remarks.trim()}` : ""}`,
-      });
+        karigarId: workerId,
+      } as any);
 
       await useWorkerGoldBook.getState().addEntry({
         workerId,

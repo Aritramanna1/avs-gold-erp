@@ -120,7 +120,8 @@ export function OutsideWorkIssueDialog({
         fineMg,
         reference: order?.orderNo ?? jeweller.fullName,
         notes: `Issue of ${materialType} to outside jeweller ${jeweller.fullName}${order ? ` · Order ${order.orderNo}` : ""}${remarks.trim() ? ` · ${remarks.trim()}` : ""}`,
-      });
+        karigarId: jewellerId,
+      } as any);
 
       const txn = await addOutsideWork({
         type: "issue",
