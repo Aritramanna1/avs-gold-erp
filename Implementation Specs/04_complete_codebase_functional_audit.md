@@ -61,7 +61,30 @@ This document provides a function-by-function and route-by-route audit of the ex
 
 ---
 
-## 2. Active Routing Audits (`src/routes/`)
+## 2. Analytical & POS Billing Engines
+
+### 2.1. Recharts Dashboard Charts: [`dashboard.ceo.tsx`](file:///c:/avs-test-install/emergent-mtj-V1/src/routes/dashboard.ceo.tsx)
+*   **Purpose**: Renders visual analytics for metal stocks, sales pipelines, and Karigar work loads.
+*   **Charts Audited**:
+    - **`GoldTrendChart`**: An `AreaChart` mapping running fine gold grams over a 30-day window (`computeBalances`).
+    - **`ProductionPipelineChart`**: A `BarChart` showing active Job Cards counts grouped by status stage (`JOB_STATUS_FLOW`).
+
+### 2.2. Stock Aging Calculation: [`reports.inventory-ageing.tsx`](file:///c:/avs-test-install/emergent-mtj-V1/src/routes/reports.inventory-ageing.tsx)
+*   **Purpose**: Evaluates how many days items have been sitting in vault stock.
+*   **Rules & Buckets**:
+    - Calculates age: `ageDays(createdAt) = Math.floor((Date.now() - createdAt) / (1000 * 60 * 60 * 24))`
+    - Buckets: `0-30 days`, `31-60 days`, `61-90 days`, `91-180 days`, `181-365 days`, `365+ days`.
+
+### 2.3. POS Checkout Discount Rules: [`BillingModule.tsx`](file:///c:/avs-test-install/emergent-mtj-V1/src/modules/billing/BillingModule.tsx)
+*   **Purpose**: Form interface for managing transaction discounts and adjustments.
+*   **Logic**:
+    - Calculates discounts on a flat rate or percentage basis.
+    - Discount values are constrained by user roles (e.g. Sales Executive max 2%). Overrides trigger warning checks and manager approvals.
+
+---
+
+## 3. Active Routing Audits (`src/routes/`)
+
 
 ### 2.1. Customer Portal: [`customer-portal.tsx`](file:///c:/avs-test-install/emergent-mtj-V1/src/routes/customer-portal.tsx)
 *   **Purpose**: Customer facing dashboard for checking order statuses and savings schemes.
