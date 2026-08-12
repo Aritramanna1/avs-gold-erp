@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-08-12 — Branch gold-rate overrides, old-gold melt-loss deduction, metal ledger indexes
+
+### Database
+
+- Re-verified all tables in the live Supabase project (`dqgrrafuoxaorvyrcuuh`). `gold_ledger` and `material_vault_movements` had no index covering `firm_id`, the column every RLS policy on both tables filters by — every multi-tenant read was a full table scan filtered in memory. Added composite indexes (`firm_id, ts DESC` / `firm_id, created_at DESC`) plus partial indexes on `responsible_person_id` and `branch_id` (`supabase/migrations/20260812134630_metal_ledger_missing_indexes.sql`).
+- Follow-up performance-advisor scan found 11 more unindexed foreign keys on metal/vault-adjacent tables (`melt_jobs`, `precious_metal_purities`, `metal_composition_formulas`, `metal_conversions`, `customer_gold_deposits`) — all `firm_id`/`branch_id`/lookup columns. Indexed (`supabase/migrations/20260812134933_metal_ledger_fk_indexes.sql`).
+- Not done: the advisor also flagged 188 RLS `auth.uid()` per-row re-evaluations and ~80 more unindexed FKs across unrelated (non-metal) tables — out of scope for this pass, needs its own review.
+
+### Added
+
+- Per-branch gold/silver rate overrides (`BranchSettings.goldRate24KOverridePaise` / `goldRate22KOverridePaise` / `goldRate18KOverridePaise` / `silverRateOverridePaise`, `src/lib/settings-store.ts`). Blank/unset falls back to the firm-wide rate. Editable per selected branch under Settings → Rates (only shown when more than one branch exists).
+- Melt-loss deduction (%) on old-gold received on new orders (`src/routes/orders.new.tsx`) — refining/testing loss is deducted from the appraised fine weight before it's credited to the customer's account and the gold ledger. Optional, defaults to 0%, so existing behavior is unchanged when left blank.
+
+### Fixed
+
+- `src/lib/bullion-rate-service.ts`'s rate accessors (`useCurrentGoldRatePaise`, `useCurrentBullionRates`, `getCurrentGoldRatePaise`) — the single choke point every module is supposed to read the current rate through — now resolve the selected branch's override before falling back to the firm-wide rate, so POS billing (`BillingModule.tsx`) and everywhere else already routed through this service picks up branch overrides automatically.
+
 ## 2026-08-11 — Session and license-gate fixes
 
 ### Fixed

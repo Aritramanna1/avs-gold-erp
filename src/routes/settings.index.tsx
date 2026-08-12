@@ -126,7 +126,7 @@ function SettingsPage() {
 
       <Card className="p-4 mb-5 border-gold/40 bg-gold/5 text-sm">
         <strong>Pilot Notice — </strong>
-        MTJ ERP v1 pilot is for controlled six-month testing. Maintain manual / physical registers
+        AVS ERP pilot is for controlled six-month testing. Maintain manual / physical registers
         in parallel until final production approval. See{" "}
         <Link to="/help" className="text-gold underline">
           Help &amp; Pilot Guide
@@ -176,6 +176,48 @@ function SettingsPage() {
             <div className="font-medium text-sm">WhatsApp Settings</div>
             <div className="text-xs text-muted-foreground">
               Providers, WasenderAPI, templates, automation, retries, and fallback behavior.
+            </div>
+          </div>
+        </Link>
+        <Link
+          to="/settings/print-templates"
+          className="rounded-xl border border-border bg-gold/5 border-gold/20 hover:border-gold/40 transition p-4 flex items-center gap-3"
+        >
+          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
+            🖨️
+          </span>
+          <div className="flex-1">
+            <div className="font-medium text-sm text-gold font-semibold">Printing Module</div>
+            <div className="text-xs text-muted-foreground">
+              Unified templates, paper sizes, PDF output, reprint audit, and document coverage.
+            </div>
+          </div>
+        </Link>
+        <Link
+          to="/karigar-login"
+          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+        >
+          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
+            🔨
+          </span>
+          <div className="flex-1">
+            <div className="font-medium text-sm font-semibold">Karigar Portal</div>
+            <div className="text-xs text-muted-foreground">
+              Worker OTP login for gold balance, issue/return ledger, wages, and attendance.
+            </div>
+          </div>
+        </Link>
+        <Link
+          to="/customer-login"
+          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+        >
+          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
+            👤
+          </span>
+          <div className="flex-1">
+            <div className="font-medium text-sm font-semibold">Customer Portal</div>
+            <div className="text-xs text-muted-foreground">
+              Customer OTP login for orders, invoices, repairs, documents, and support threads.
             </div>
           </div>
         </Link>
@@ -1040,7 +1082,7 @@ function AppearanceTab() {
       <div>
         <h3 className="text-lg font-serif text-primary">Theme &amp; Appearance</h3>
         <p className="text-sm text-muted-foreground">
-          Customize the visual interface of MTJ ERP. The light theme maintains corporate branding,
+          Customize the visual interface of AVS ERP. The light theme maintains corporate branding,
           while the dark theme provides a sophisticated night layout.
         </p>
       </div>
@@ -1638,7 +1680,7 @@ function UsersTab() {
     const code = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
     const acceptLink = `${getAuthRedirectUrl(`/invite/accept?code=${code}&email=${encodeURIComponent(emailToInvite)}`)}`;
-    const firmName = firm?.shopName || "MTJ ERP";
+    const firmName = firm?.shopName || "AVS ERP";
     const branchName = branches.find((b) => b.id === inviteBranchId)?.name ?? inviteBranchId;
 
     const newInvite: import("@/lib/settings-store").InvitationItem = {
@@ -3414,13 +3456,17 @@ function RatesTab() {
     setSilverRate,
     selectedBranchId,
     getBranchSettings,
+    setBranchSettings,
+    branches,
     bullionRateProvider,
     setBullionRateProvider,
   } = useSettings();
   const { roles, ready } = useRoles();
   const isAuthorized = ready && (roles.includes("owner") || roles.includes("manager"));
 
-  const rateSource = getBranchSettings(selectedBranchId || "MAIN").goldRateSource ?? "manual";
+  const activeBranchId = selectedBranchId || "MAIN";
+  const rateSource = getBranchSettings(activeBranchId).goldRateSource ?? "manual";
+  const branchOverride = getBranchSettings(activeBranchId);
   const { snapshot, status, lastError, fetchNow, applyFetchedRates } = useBullionRate();
 
   const autoFillFrom24K = (val24: number) => {
@@ -3645,6 +3691,45 @@ function RatesTab() {
           </p>
         )}
       </Card>
+
+      {branches.length > 1 && (
+        <Card className="p-5 grid md:grid-cols-2 gap-4">
+          <div className="col-span-2 text-xs uppercase tracking-wider text-muted-foreground font-semibold -mb-2">
+            Branch Rate Override —{" "}
+            {branches.find((b) => b.id === activeBranchId)?.name ?? activeBranchId}
+          </div>
+          <p className="col-span-2 text-[11px] text-muted-foreground -mt-2">
+            Leave blank to use the firm-wide rate above for this branch.
+          </p>
+          {(
+            [
+              ["24K / 999", "goldRate24KOverridePaise"],
+              ["22K / 916", "goldRate22KOverridePaise"],
+              ["18K / 750", "goldRate18KOverridePaise"],
+              ["Silver", "silverRateOverridePaise"],
+            ] as const
+          ).map(([label, field]) => (
+            <Field key={field} label={`${label} Override ₹ / gram`}>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={
+                  branchOverride[field] && branchOverride[field]! > 0
+                    ? (branchOverride[field]! / 100).toString()
+                    : ""
+                }
+                onChange={(e) => {
+                  const raw = e.target.value.trim();
+                  const val = raw === "" ? undefined : Math.round(parseFloat(raw) * 100);
+                  setBranchSettings(activeBranchId, { [field]: val && val > 0 ? val : undefined });
+                }}
+                disabled={!isAuthorized}
+              />
+            </Field>
+          ))}
+        </Card>
+      )}
     </div>
   );
 }

@@ -62,15 +62,24 @@ export async function verifyUserRoleAndStatus(
   }
 
   if (!matched) {
-    return { allowed: true };
+    return {
+      allowed: false,
+      error: "Your account exists, but AVS ERP profile is not linked. Contact admin.",
+    };
   }
 
   if (!matched.active) {
-    return { allowed: true };
+    return {
+      allowed: false,
+      error: "Your account is deactivated. Contact admin.",
+    };
   }
 
   if (!matched.role) {
-    return { allowed: true };
+    return {
+      allowed: false,
+      error: "Your account exists, but no role is assigned to it under AVS ERP. Contact admin.",
+    };
   }
 
   return { allowed: true };
@@ -334,7 +343,7 @@ export function AuthLayout({ prefilledError, onClearError, onSuccess }: AuthLayo
             <Lock className="h-5 w-5" />
           </div>
           <h1 className="font-serif text-2xl font-semibold tracking-wide text-gold mt-1.5">
-            {(firm.shopName || branding.applicationName || APP_NAME).toUpperCase()}
+            {(branding.applicationName || APP_NAME || firm.shopName).toUpperCase()}
           </h1>
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
             {t("auth.productionPortal")}

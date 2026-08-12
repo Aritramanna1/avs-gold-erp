@@ -109,6 +109,8 @@ interface FormState {
   lines: LineForm[];
   goldReceivedG: string;
   goldReceivedPurity: string; // per-mille — the customer's OLD gold is often a different purity than the item ordered
+  /** Appraisal melt-loss deduction (%) applied to old gold received — refining/testing loss the shop won't credit back. Optional, defaults to 0. */
+  goldReceivedMeltLossPct: string;
   expectedDelivery: string;
   remarks: string;
 }
@@ -168,6 +170,7 @@ const EMPTY: FormState = {
   lines: [],
   goldReceivedG: "",
   goldReceivedPurity: "",
+  goldReceivedMeltLossPct: "",
   expectedDelivery: "",
   remarks: "",
 };
@@ -273,9 +276,22 @@ function NewOrderPage() {
     // are actually denominated in, and a guessed purity is a wrong ledger entry,
     // not a missing one.
     const goldReceivedPurity = safePurity(form.goldReceivedPurity);
-    const goldReceivedFineMg = fineGoldMg(goldReceivedMg, goldReceivedPurity);
-    return { grossMg, fineMg, goldReceivedMg, goldReceivedPurity, goldReceivedFineMg };
-  }, [lineCalcs, form.goldReceivedG, form.goldReceivedPurity]);
+    const goldReceivedGrossFineMg = fineGoldMg(goldReceivedMg, goldReceivedPurity);
+    // Melt-loss (refining/testing loss) is deducted from the appraised fine weight
+    // before it's credited to the customer — the shop doesn't pay for gold that
+    // burns off in the melt. Clamped so a typo can't credit negative or >100%.
+    const meltLossPct = Math.min(100, Math.max(0, Number(form.goldReceivedMeltLossPct) || 0));
+    const goldReceivedFineMg = Math.round(goldReceivedGrossFineMg * (1 - meltLossPct / 100));
+    return {
+      grossMg,
+      fineMg,
+      goldReceivedMg,
+      goldReceivedPurity,
+      goldReceivedGrossFineMg,
+      meltLossPct,
+      goldReceivedFineMg,
+    };
+  }, [lineCalcs, form.goldReceivedG, form.goldReceivedPurity, form.goldReceivedMeltLossPct]);
 
   const isPastDate =
     !!form.expectedDelivery && form.expectedDelivery < new Date().toISOString().split("T")[0];
@@ -813,6 +829,17 @@ function NewOrderPage() {
                 }
               />
             </Field>
+            <Field label="Melt-Loss Deduction (%)">
+              <Input
+                value={form.goldReceivedMeltLossPct}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, goldReceivedMeltLossPct: e.target.value }))
+                }
+                placeholder="0 — refining/testing loss not credited back"
+                inputMode="decimal"
+                disabled={calc.goldReceivedMg <= 0}
+              />
+            </Field>
           </div>
           {goldReceivedNeedsPurity && (
             <p className="text-xs text-red-500 font-medium">
@@ -822,8 +849,9 @@ function NewOrderPage() {
           )}
           {calc.goldReceivedMg > 0 && calc.goldReceivedPurity > 0 && (
             <p className="text-xs text-muted-foreground">
-              Fine gold received: {(calc.goldReceivedFineMg / 1000).toFixed(3)} g — posted to the
-              gold ledger on save.
+              Appraised fine gold: {(calc.goldReceivedGrossFineMg / 1000).toFixed(3)} g
+              {calc.meltLossPct > 0 && <> − {calc.meltLossPct}% melt loss</>} ={" "}
+              {(calc.goldReceivedFineMg / 1000).toFixed(3)} g — posted to the gold ledger on save.
             </p>
           )}
         </Section>

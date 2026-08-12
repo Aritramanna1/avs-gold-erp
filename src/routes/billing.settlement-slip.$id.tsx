@@ -13,7 +13,7 @@ import { printDocument } from "@/lib/print-document";
 export const Route = createFileRoute("/billing/settlement-slip/$id")({
   head: () => {
     const shopName = useSettings.getState().firm?.shopName;
-    return { meta: [{ title: `Customer Settlement Slip · ${shopName ?? "MTJ ERP"}` }] };
+    return { meta: [{ title: `Customer Settlement Slip · ${shopName ?? "AVS ERP"}` }] };
   },
   component: SettlementSlipPrint,
 });

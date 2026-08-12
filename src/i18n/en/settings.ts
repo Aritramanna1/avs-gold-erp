@@ -3,7 +3,7 @@ const translations = {
   subtitle: "Firm profile, masters, GST, hardware, backup and pilot controls.",
   pilotNoticeStrong: "Pilot Notice — ",
   pilotNoticeDesc:
-    "MTJ ERP v1 pilot is for controlled testing. Maintain manual registers in parallel until final production approval.",
+    "AVS ERP pilot is for controlled testing. Maintain manual registers in parallel until final production approval.",
   // Tabs
   tab_firm: "Firm Profile",
   tab_language: "Language",

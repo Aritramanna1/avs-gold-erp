@@ -228,7 +228,7 @@ function AcceptInvitationPage() {
     }
   }
 
-  const shopName = firm?.shopName || "MTJ ERP";
+  const shopName = firm?.shopName || "AVS ERP";
   const branchName = resolvedInvite?.branchId
     ? (branches.find((b) => b.id === resolvedInvite.branchId)?.name ?? resolvedInvite.branchId)
     : "";

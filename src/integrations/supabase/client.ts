@@ -50,9 +50,10 @@ function createSupabaseClient() {
 
   return createClient<Database>(supabaseUrl, supabasePublishableKey, {
     auth: {
-      storage: typeof window !== "undefined" ? sessionStorage : undefined,
+      storage: typeof window !== "undefined" ? localStorage : undefined,
       persistSession: true,
       autoRefreshToken: true,
+      detectSessionInUrl: true,
     },
     global: {
       fetch: (input, init) => {

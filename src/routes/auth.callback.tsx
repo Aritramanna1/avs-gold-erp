@@ -136,7 +136,7 @@ function AuthCallbackPage() {
         {status === "loading" && (
           <div className="space-y-3">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-gold" />
-            <h1 className="font-serif text-lg text-gold">MTJ Security Gateway</h1>
+            <h1 className="font-serif text-lg text-gold">AVS Security Gateway</h1>
             <p className="text-xs text-muted-foreground">{msg}</p>
           </div>
         )}

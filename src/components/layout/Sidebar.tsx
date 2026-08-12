@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+﻿import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Home,
   Users,
@@ -22,15 +22,12 @@ import {
   Cpu,
 } from "lucide-react";
 import { useSettings } from "@/lib/settings-store";
-import { useModuleStore } from "@/lib/module-store";
-import { isPilotHiddenModule } from "@/lib/pilot-config";
-import { usePermissions } from "@/lib/use-permissions";
 import { Logo } from "@/components/ui/Logo";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useMemo } from "react";
 
 // Manufacturing Mode pilot: ordered to follow the production workflow
-// (intake → job execution → finished goods → materials/gold → money →
+// (intake â†’ job execution â†’ finished goods â†’ materials/gold â†’ money â†’
 // supporting/admin) rather than the prior alphabetical-ish grouping.
 export const navigationItems = [
   { to: "/", label: "Home", icon: Home },
@@ -94,53 +91,21 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
   const { t } = useLanguage();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Narrow selectors: the sidebar must not re-render on every unrelated
-  // setState the startup pull storm fires — only these three slices matter.
+  // setState the startup pull storm fires - only these three slices matter.
   const goldRatePerGramPaise = useSettings((s) => s.goldRatePerGramPaise);
   const goldRate24KPerGramPaise = useSettings((s) => s.goldRate24KPerGramPaise);
   const firm = useSettings((s) => s.firm);
   const branding = useSettings((s) => s.branding);
-  const moduleStates = useModuleStore((s) => s.moduleStates);
-  const permissions = usePermissions();
-
   const filteredItems = useMemo(() => {
-    const mStore = useModuleStore.getState();
-
-    const pathModuleMap: Record<string, import("@/lib/module-store").ERPModuleKey> = {
-      "/attendance": "attendance",
-      "/orders": "orders",
-      "/catalog": "catalog",
-      "/workshop": "job_work",
-      "/workshop/gold-book": "payroll",
-      "/manufacturing": "manufacturing",
-      "/conversion": "melt_account",
-      "/stock": "inventory",
-      "/barcode": "barcode",
-      "/hardware": "hardware_integration",
-      "/billing": "billing",
-      "/ledger": "billing",
-      "/expenses": "billing",
-      "/reports": "reports",
-      "/dashboard/ceo": "analytics",
-      "/communications": "crm_communications",
-      "/repair": "repairs",
-    };
-
-    const isAllowed = (path: string) => {
-      const key = pathModuleMap[path];
-      if (!key) return true;
-      if (isPilotHiddenModule(key)) return true; // still shown as a disabled placeholder, not filtered out
-      return mStore.isModuleEnabled(key);
-    };
-
-    const allowed = navigationItems.filter(
-      (item) => isAllowed(item.to) && permissions.can(item.to),
-    );
     const isDeferred = (item: (typeof navigationItems)[number]) =>
       ("comingSoon" in item && item.comingSoon) || ("retailOnly" in item && item.retailOnly);
     // Stable partition: deferred/placeholder modules sink to the bottom,
     // active modules keep their production-workflow order above them.
-    return [...allowed.filter((i) => !isDeferred(i)), ...allowed.filter(isDeferred)];
-  }, [moduleStates, permissions]);
+    return [
+      ...navigationItems.filter((i) => !isDeferred(i)),
+      ...navigationItems.filter(isDeferred),
+    ];
+  }, []);
 
   const shopInitials = firm?.shopName
     ? firm.shopName
@@ -153,12 +118,12 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
 
   const formattedGoldRate =
     goldRatePerGramPaise > 0
-      ? `₹ ${(goldRatePerGramPaise / 100).toLocaleString("en-IN")}/g`
+      ? `Rs. ${(goldRatePerGramPaise / 100).toLocaleString("en-IN")}/g`
       : "NOT SET";
 
   const formattedGoldRate24 =
     goldRate24KPerGramPaise > 0
-      ? `₹ ${(goldRate24KPerGramPaise / 100).toLocaleString("en-IN")}/g`
+      ? `Rs. ${(goldRate24KPerGramPaise / 100).toLocaleString("en-IN")}/g`
       : "NOT SET";
 
   return (
@@ -181,15 +146,6 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
               {firm?.shopName}
             </div>
           </div>
-        </div>
-
-        {/* Persistent DEVELOPMENT Environment Indicator */}
-        <div className="mt-2.5 flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold text-amber-500">
-          <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
-            <span className="uppercase tracking-wider">DEVELOPMENT</span>
-          </div>
-          <span className="text-[9px] opacity-75 font-mono">dqgrrafuoxaorvyrcuuh</span>
         </div>
       </div>
 
@@ -288,7 +244,7 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
         className="px-5 py-3 border-t border-sidebar-border text-[11px] text-muted-foreground/75 flex items-center justify-between"
         id="sidebar-info-footer"
       >
-        <span>v1.0 · pilot</span>
+        <span>v1.0 | pilot</span>
         <div className="flex items-center gap-1.5 text-[10px] text-success font-medium">
           <span className="h-1.5 w-1.5 rounded-full bg-success inline-block animate-ping" />
           <span>{t("navigation.secureLogs")}</span>
@@ -297,3 +253,4 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
     </aside>
   );
 }
+

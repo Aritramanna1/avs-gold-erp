@@ -360,6 +360,12 @@
   transform: translateY(1px);
 }
 
+@media (min-width: 1024px) {
+  .mobile-bottom-nav {
+    display: none;
+  }
+}
+
 @media (max-width: 639px) {
   /* Dense operational UI: keep dialogs and surfaces easy to scan on phones. */
   .rounded-2xl,

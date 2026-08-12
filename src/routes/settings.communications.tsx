@@ -109,7 +109,7 @@ const BSP_FIELDS = [
 
 const EMAIL_SMTP_FIELDS = [
   { key: "from_email", label: "From Email", placeholder: "no-reply@example.com" },
-  { key: "from_name", label: "From Name", placeholder: "MTJ ERP" },
+  { key: "from_name", label: "From Name", placeholder: "AVS ERP" },
   { key: "reply_to", label: "Reply-To (optional)", placeholder: "support@example.com" },
   { key: "host", label: "SMTP Host", placeholder: "smtp.hostinger.com" },
   { key: "port", label: "Port", placeholder: "465" },
@@ -120,12 +120,12 @@ const EMAIL_SMTP_FIELDS = [
 
 const EMAIL_API_FIELDS = [
   { key: "from_email", label: "From Email", placeholder: "no-reply@example.com" },
-  { key: "from_name", label: "From Name", placeholder: "MTJ ERP" },
+  { key: "from_name", label: "From Name", placeholder: "AVS ERP" },
   { key: "api_key", label: "API Key", placeholder: "your_api_key", type: "password" },
 ];
 
 const SMS_FIELDS = [
-  { key: "sender_id", label: "Sender ID", placeholder: "MTJERP" },
+  { key: "sender_id", label: "Sender ID", placeholder: "AVSERP" },
   { key: "account_sid", label: "Twilio Account SID", placeholder: "AC..." },
   { key: "auth_token", label: "Provider Auth Token", placeholder: "••••••••", type: "password" },
   { key: "api_url", label: "API URL (optional)", placeholder: "https://" },
@@ -453,11 +453,11 @@ function ProviderCard({
         linkedType: "invoice",
       };
       const content: ResolvedContent = {
-        subject: "MTJ ERP — Test Email",
+        subject: "AVS ERP - Test Email",
         htmlBody:
-          "<div style='font-family:sans-serif'><h2>MTJ ERP</h2><p>This is a <strong>test email</strong> sent from Settings → Communications to verify your provider configuration.</p><p>If you received this, your email provider is working correctly.</p></div>",
+          "<div style='font-family:sans-serif'><h2>AVS ERP</h2><p>This is a <strong>test email</strong> sent from Settings → Communications to verify your provider configuration.</p><p>If you received this, your email provider is working correctly.</p></div>",
         textBody:
-          "MTJ ERP — This is a test email sent from Settings → Communications to verify your provider configuration.",
+          "AVS ERP - This is a test email sent from Settings → Communications to verify your provider configuration.",
       };
       const result = await provider.send(req, content);
       if (result.success) {

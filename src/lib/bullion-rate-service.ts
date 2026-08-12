@@ -96,12 +96,22 @@ export const useBullionRate = create<BullionRateState>()((set, get) => ({
 // through one named API instead of five files each poking useSettings'
 // rate fields directly.
 
-/** Reactive hook — re-renders the caller when the current 22K/916 reference rate changes. */
-export function useCurrentGoldRatePaise(): number {
-  return useSettings((s) => s.goldRatePerGramPaise);
+/** override falls back to the firm-wide rate when unset or zero. */
+function withOverride(overridePaise: number | undefined, firmWidePaise: number): number {
+  return overridePaise && overridePaise > 0 ? overridePaise : firmWidePaise;
 }
 
-/** Reactive hook for all four current rates at once. */
+/** Reactive hook — re-renders the caller when the current 22K/916 reference rate (or the selected branch's override) changes. */
+export function useCurrentGoldRatePaise(): number {
+  return useSettings((s) =>
+    withOverride(
+      s.getBranchSettings(s.selectedBranchId).goldRate22KOverridePaise,
+      s.goldRatePerGramPaise,
+    ),
+  );
+}
+
+/** Reactive hook for all four current rates at once, applying the selected branch's overrides. */
 export function useCurrentBullionRates(): {
   gold24KPerGramPaise: number;
   gold22KPerGramPaise: number;
@@ -109,18 +119,31 @@ export function useCurrentBullionRates(): {
   silverPerGramPaise: number;
 } {
   return useSettings(
-    useShallow((s) => ({
-      gold24KPerGramPaise: s.goldRate24KPerGramPaise,
-      gold22KPerGramPaise: s.goldRatePerGramPaise,
-      gold18KPerGramPaise: s.goldRate18KPerGramPaise,
-      silverPerGramPaise: s.silverRatePerGramPaise,
-    })),
+    useShallow((s) => {
+      const branch = s.getBranchSettings(s.selectedBranchId);
+      return {
+        gold24KPerGramPaise: withOverride(
+          branch.goldRate24KOverridePaise,
+          s.goldRate24KPerGramPaise,
+        ),
+        gold22KPerGramPaise: withOverride(branch.goldRate22KOverridePaise, s.goldRatePerGramPaise),
+        gold18KPerGramPaise: withOverride(
+          branch.goldRate18KOverridePaise,
+          s.goldRate18KPerGramPaise,
+        ),
+        silverPerGramPaise: withOverride(branch.silverRateOverridePaise, s.silverRatePerGramPaise),
+      };
+    }),
   );
 }
 
 /** Imperative accessor for non-reactive call sites (mirrors useSettings.getState() usage already common in this codebase). */
 export function getCurrentGoldRatePaise(): number {
-  return useSettings.getState().goldRatePerGramPaise;
+  const s = useSettings.getState();
+  return withOverride(
+    s.getBranchSettings(s.selectedBranchId).goldRate22KOverridePaise,
+    s.goldRatePerGramPaise,
+  );
 }
 
 // ── Scheduled refresh — mirrors sync-engine.ts's startSyncOutboxScheduler() pattern ──

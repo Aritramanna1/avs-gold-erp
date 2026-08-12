@@ -459,7 +459,7 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
               src={toIframeSrc(printUrl)}
               onLoad={handleIframeLoad}
               className={`border-0 bg-white shadow-lg transition-all duration-300 ${PREVIEW_CONTAINER_CLASS[effectiveSize]}`}
-              title="MTJ ERP Print Frame"
+              title="AVS ERP Print Frame"
             />
           </div>
         </div>

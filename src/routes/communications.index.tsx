@@ -171,7 +171,7 @@ const BSP_FIELDS = [
 
 const EMAIL_SMTP_FIELDS = [
   { key: "from_email", label: "From Email", placeholder: "no-reply@example.com" },
-  { key: "from_name", label: "From Name", placeholder: "MTJ ERP" },
+  { key: "from_name", label: "From Name", placeholder: "AVS ERP" },
   { key: "host", label: "SMTP Host", placeholder: "smtp.hostinger.com" },
   { key: "port", label: "Port", placeholder: "465" },
   { key: "username", label: "Username / Email", placeholder: "smtp user" },
@@ -181,7 +181,7 @@ const EMAIL_SMTP_FIELDS = [
 
 const EMAIL_API_FIELDS = [
   { key: "from_email", label: "From Email", placeholder: "no-reply@example.com" },
-  { key: "from_name", label: "From Name", placeholder: "MTJ ERP" },
+  { key: "from_name", label: "From Name", placeholder: "AVS ERP" },
   { key: "api_key", label: "API Key", placeholder: "your_api_key", type: "password" },
 ];
 

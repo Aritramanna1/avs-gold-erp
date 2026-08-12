@@ -1,10 +1,11 @@
-import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+﻿import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   Menu,
   Sun,
   Moon,
   Languages,
   LogOut,
+  Repeat,
   User as UserIcon,
   Settings,
   ChevronDown,
@@ -62,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Gate the boot skeleton on the CRITICAL load (settings/branch), not the full
-  // background pull — so the shell + route appear as soon as the layout's own
+  // background pull - so the shell + route appear as soon as the layout's own
   // data is in, and operational modules fill in progressively underneath.
   const criticalLoadDone = useAppLoading((s) => s.criticalLoadDone);
 
@@ -94,7 +95,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       toast.success("Signed out successfully");
       navigate({ to: "/" });
     } catch {
-      toast.error("Sign out failed — please try again");
+      toast.error("Sign out failed - please try again");
+    }
+  }
+
+  async function handleSwitchAccount() {
+    try {
+      await supabase.auth.signOut();
+      toast.success("Ready to sign in with another account");
+      navigate({ to: "/" });
+    } catch {
+      toast.error("Account switch failed - please try again");
     }
   }
 
@@ -107,7 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   // The mobile hamburger Sheet has no close-on-navigate behavior of its
-  // own — its Sidebar's nav <Link>s don't call onOpenChange, so a route
+  // own - its Sidebar's nav <Link>s don't call onOpenChange, so a route
   // change from a link clicked inside it would otherwise leave the drawer
   // sitting open over the new page. Reset on every pathname change instead.
   useEffect(() => {
@@ -116,10 +127,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const formattedGoldRate =
     goldRatePerGramPaise > 0
-      ? `₹ ${(goldRatePerGramPaise / 100).toLocaleString("en-IN")}/g`
-      : "₹ NOT SET";
+      ? `Rs. ${(goldRatePerGramPaise / 100).toLocaleString("en-IN")}/g`
+      : "Rs. NOT SET";
 
-  const goldRateStatus = goldRatePerGramPaise > 0 ? "22K · Active" : "22K · awaiting setup";
+  const goldRateStatus = goldRatePerGramPaise > 0 ? "22K | Active" : "22K | awaiting setup";
 
   const shortName =
     branding.shortName ||
@@ -291,6 +302,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSwitchAccount} className="gap-2 cursor-pointer">
+                  <Repeat className="h-3.5 w-3.5" /> Switch Account
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleSignOut}
                   className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 cursor-pointer"
@@ -404,3 +418,4 @@ export function PhasePlaceholder({
     </div>
   );
 }
+

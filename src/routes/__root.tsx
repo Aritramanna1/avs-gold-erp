@@ -34,7 +34,7 @@ function NotFoundComponent() {
         <h1 className="font-serif text-7xl text-gold">404</h1>
         <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          This screen doesn't exist yet in MTJ ERP.
+          This screen doesn't exist yet in AVS ERP.
         </p>
         <div className="mt-6">
           <Link

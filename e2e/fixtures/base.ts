@@ -9,6 +9,7 @@ import {
 import fs from "node:fs";
 import path from "node:path";
 import { collectPageErrors } from "../utils/console";
+import { requireEnv } from "../data/test-data";
 
 // Opt-in single-shared-browser mode: when E2E_CDP_URL is set, attach to an
 // externally-launched Chrome (the same instance Reticle drives via
@@ -154,20 +155,20 @@ export const test = base.extend<Fixtures>({
   },
 
   authedPage: async ({ page }, use, testInfo) => {
-    // The browser context already carries the session global-setup.ts
-    // established (see use.storageState in playwright.config.ts) — just
-    // confirm we land in the authenticated shell, no login form fill here.
+    // The browser context is SUPPOSED to already carry the session
+    // global-setup.ts established (see use.storageState in
+    // playwright.config.ts). It doesn't, as of the 2026-08-11 auth change
+    // (docs/CHANGELOG.md — src/integrations/supabase/client.ts switched
+    // session persistence from localStorage to sessionStorage): a fresh
+    // context restored from storageState.json reproducibly starts on
+    // auth-form=visible, because that file's "origins[].sessionStorage"
+    // never gets populated by this Playwright version's
+    // browserContext.storageState() call — only localStorage is captured.
+    // Confirmed empirically, not assumed. Self-healing with a real login
+    // here (same fields/testids global-setup.ts already uses) is simpler
+    // and more honest than chasing the exact storageState/session-storage
+    // API gap — it exercises the real signInWithPassword() path anyway.
     //
-    // KNOWN APP DEFECT (not a test issue): restoring a session from
-    // pre-existing localStorage (rather than a live signInWithPassword()
-    // call in the same page lifetime) reproducibly takes ~20-25s before
-    // AuthGate's account-lookup check resolves — matching src/components/
-    // auth-gate.tsx's own 24s _checkInFlight timeout race almost exactly,
-    // meaning that fallback is what's rescuing the UI every time, not a
-    // fast path. Verified directly: supabase.auth.getSession() called
-    // manually resolves immediately with a valid session, but AuthGate's
-    // own internal check still takes ~25s wall-clock to reflect it. This
-    // timeout is widened to match observed reality rather than masking it.
     // In-memory mock database for Supabase simulation
     const mockDb: Record<string, any[]> = {};
 
@@ -297,7 +298,13 @@ export const test = base.extend<Fixtures>({
         await page.waitForTimeout(1_000);
       }
     }
-    await expect(page.getByTestId("auth-form")).toBeHidden({ timeout: 30_000 });
+    const authForm = page.getByTestId("auth-form");
+    if (await authForm.isVisible().catch(() => false)) {
+      await page.getByTestId("auth-email").fill(requireEnv("E2E_EMAIL"), { timeout: 15_000 });
+      await page.getByTestId("auth-password").fill(requireEnv("E2E_PASSWORD"), { timeout: 15_000 });
+      await page.getByTestId("auth-submit").click({ timeout: 15_000 });
+    }
+    await expect(authForm).toBeHidden({ timeout: 30_000 });
     // AuthGate resolves profile/entitlement asynchronously. Do not let the
     // first test navigate while the license gate is still about to mount.
     await page.waitForTimeout(5_000);

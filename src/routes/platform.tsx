@@ -1,5 +1,5 @@
-// Hallmark · macrostructure: operations console · tone: authoritative · anchor hue: legacy gold
-import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+// Hallmark: macrostructure: operations console; tone: authoritative; anchor hue: legacy gold
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
@@ -12,6 +12,7 @@ import {
   Database,
   FileWarning,
   LifeBuoy,
+  Users,
   Search,
   ShieldAlert,
   ShieldCheck,
@@ -27,7 +28,7 @@ import { guardRoute } from "@/lib/permissions";
 
 export const Route = createFileRoute("/platform")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  head: () => ({ meta: [{ title: "Platform · AVS Gold ERP" }] }),
+  head: () => ({ meta: [{ title: "Platform | AVS Gold ERP" }] }),
   component: PlatformLayout,
 });
 
@@ -50,13 +51,25 @@ type Firm = {
   address: string | null;
 };
 type Subscription = {
+  id: string;
   organization_id: string;
   status: string;
   trial_ends_at: string | null;
   renews_at: string | null;
   plan_id: string;
+  billing_cycle?: string | null;
 };
-type Plan = { id: string; name: string; code: string; price_minor: number };
+type Plan = {
+  id: string;
+  name: string;
+  code: string;
+  price_minor: number;
+  billing_cycle: string;
+  is_active: boolean;
+  branch_limit: number | null;
+  user_limit: number | null;
+  workshop_limit?: number | null;
+};
 type Event = {
   id: string;
   action: string;
@@ -69,6 +82,19 @@ type Feature = {
   feature_key: string;
   enabled: boolean;
   source: string | null;
+};
+type LicenseRow = {
+  id: string;
+  license_id: string;
+  organization_id: string | null;
+  customer_name: string;
+  company_name: string;
+  status: string;
+  edition: string;
+  seats: number;
+  expiry_date: string | null;
+  created_at: string;
+  updated_at: string | null;
 };
 type RequestRow = {
   id: string;
@@ -131,9 +157,32 @@ type BackupRunRow = {
   finished_at: string | null;
   verified_at: string | null;
 };
+type UserRow = {
+  id: string;
+  auth_id: string;
+  firm_id: string | null;
+  branch_id: string | null;
+  full_name: string;
+  phone: string | null;
+  status: string;
+  active: boolean;
+  role: string | null;
+  last_login: string | null;
+};
+type FirmStats = {
+  firm_id: string;
+  invoices: number;
+  invoiceValueMinor: number;
+  orders: number;
+  openOrders: number;
+  jobCards: number;
+  users: number;
+  platformBills: number;
+};
 type View =
   | "overview"
   | "firms"
+  | "users"
   | "subscriptions"
   | "licensing"
   | "requests"
@@ -147,6 +196,7 @@ type View =
 const nav: Array<[View, string, typeof Activity]> = [
   ["overview", "Overview", Activity],
   ["firms", "Firms", Building2],
+  ["users", "Users", Users],
   ["subscriptions", "Subscriptions & trials", CircleDollarSign],
   ["licensing", "Module licensing", ShieldCheck],
   ["requests", "Service requests", Wrench],
@@ -159,22 +209,25 @@ const nav: Array<[View, string, typeof Activity]> = [
 ];
 
 function PlatformOwnerConsole() {
-  const initialView = new URLSearchParams(window.location.search).get("view") as View | null;
+  const routerState = useRouterState();
+  const routeView = (routerState.location.search as { view?: string }).view as View | undefined;
+  const validViews: View[] = [
+    "overview",
+    "firms",
+    "users",
+    "subscriptions",
+    "licensing",
+    "requests",
+    "tickets",
+    "billing",
+    "activity",
+    "health",
+    "backups",
+    "settings",
+  ];
+  const initialView = routeView ?? (new URLSearchParams(window.location.search).get("view") as View | null);
   const [view, setView] = useState<View>(
-    initialView &&
-      [
-        "overview",
-        "firms",
-        "subscriptions",
-        "licensing",
-        "requests",
-        "tickets",
-        "billing",
-        "activity",
-        "health",
-        "backups",
-        "settings",
-      ].includes(initialView)
+    initialView && validViews.includes(initialView)
       ? initialView
       : "overview",
   );
@@ -190,7 +243,10 @@ function PlatformOwnerConsole() {
   const [criticalAlerts, setCriticalAlerts] = useState(0);
   const [failedBackups, setFailedBackups] = useState(0);
   const [features, setFeatures] = useState<Feature[]>([]);
+  const [licenses, setLicenses] = useState<LicenseRow[]>([]);
   const [users, setUsers] = useState(0);
+  const [userRows, setUserRows] = useState<UserRow[]>([]);
+  const [firmStats, setFirmStats] = useState<FirmStats[]>([]);
   const [branches, setBranches] = useState(0);
   const [search, setSearch] = useState("");
   const [requestRows, setRequestRows] = useState<RequestRow[]>([]);
@@ -198,6 +254,10 @@ function PlatformOwnerConsole() {
   const [billingRows, setBillingRows] = useState<BillingRow[]>([]);
   const [errorRows, setErrorRows] = useState<ErrorEventRow[]>([]);
   const [backupRows, setBackupRows] = useState<BackupRunRow[]>([]);
+
+  useEffect(() => {
+    if (routeView && validViews.includes(routeView) && routeView !== view) setView(routeView);
+  }, [routeView, view]);
 
   async function refresh() {
     setLoading(true);
@@ -212,8 +272,8 @@ function PlatformOwnerConsole() {
       .from("user_roles")
       .select("role")
       .eq("user_id", session.session.user.id);
-    const hasPlatformOwner = (roles.data ?? []).some(
-      (r: { role: string }) => r.role === "platform_owner",
+    const hasPlatformOwner = (roles.data ?? []).some((r: { role: string }) =>
+      ["saas_admin", "SaaS Admin", "platform_owner", "Platform Owner"].includes(r.role),
     );
     if (!hasPlatformOwner) {
       setAuthorized(false);
@@ -239,12 +299,20 @@ function PlatformOwnerConsole() {
       billRowsRes,
       errRowsRes,
       bupRowsRes,
+      userRowsRes,
+      invoiceRowsRes,
+      orderRowsRes,
+      jobCardRowsRes,
+      licenseRowsRes,
     ] = await Promise.all([
       supabase.from("organizations").select("id,name,slug,is_active,created_at,gstin,address"),
       supabase
-        .from("subscriptions")
-        .select("organization_id,status,trial_ends_at,renews_at,plan_id"),
-      supabase.from("plans").select("id,name,code,price_minor"),
+        .from("organization_subscriptions")
+        .select("id,organization_id,status,trial_ends_at,renews_at,plan_id,billing_cycle"),
+      supabase
+        .from("platform_plans")
+        .select("id,name,code,price_minor,billing_cycle,is_active,branch_limit,user_limit,workshop_limit")
+        .order("created_at", { ascending: false }),
       supabase
         .from("platform_audit_events")
         .select("id,action,target_type,reason,created_at")
@@ -267,7 +335,7 @@ function PlatformOwnerConsole() {
         .select("id", { count: "exact", head: true })
         .eq("status", "failed"),
       supabase.from("organization_features").select("organization_id,feature_key,enabled,source"),
-      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      supabase.from("user_profiles").select("id", { count: "exact", head: true }),
       supabase.from("branches").select("id", { count: "exact", head: true }),
       supabase
         .from("platform_service_requests")
@@ -298,6 +366,27 @@ function PlatformOwnerConsole() {
         )
         .order("started_at", { ascending: false })
         .limit(25),
+      supabase
+        .from("user_profiles")
+        .select("id,auth_id,firm_id,branch_id,full_name,phone,status,active,role,last_login")
+        .order("created_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("invoices")
+        .select("firm_id,status,grand_total_paise")
+        .limit(10000),
+      supabase
+        .from("orders")
+        .select("firm_id,status")
+        .limit(10000),
+      supabase
+        .from("job_cards")
+        .select("firm_id,status")
+        .limit(10000),
+      supabase
+        .from("licenses")
+        .select("id,license_id,organization_id,customer_name,company_name,status,edition,seats,expiry_date,created_at,updated_at")
+        .order("expiry_date", { ascending: true, nullsFirst: false }),
     ]);
 
     if (fRes.error) setError(fRes.error.message);
@@ -310,13 +399,64 @@ function PlatformOwnerConsole() {
     setCriticalAlerts(errCountRes.count ?? 0);
     setFailedBackups(bupCountRes.count ?? 0);
     setFeatures((featRes.data as Feature[]) ?? []);
+    setLicenses((licenseRowsRes.data as unknown as LicenseRow[]) ?? []);
     setUsers(uCountRes.count ?? 0);
+    const loadedUsers = (userRowsRes.data as unknown as UserRow[]) ?? [];
+    setUserRows(loadedUsers);
     setBranches(bCountRes.count ?? 0);
     setRequestRows((reqRowsRes.data as unknown as RequestRow[]) ?? []);
     setTicketRows((tickRowsRes.data as unknown as TicketRow[]) ?? []);
     setBillingRows((billRowsRes.data as unknown as BillingRow[]) ?? []);
     setErrorRows((errRowsRes.data as unknown as ErrorEventRow[]) ?? []);
     setBackupRows((bupRowsRes.data as unknown as BackupRunRow[]) ?? []);
+    const statsMap = new Map<string, FirmStats>();
+    const getStats = (firmId: string | null | undefined) => {
+      const id = firmId ?? "";
+      if (!id) return null;
+      const existing = statsMap.get(id);
+      if (existing) return existing;
+      const next: FirmStats = {
+        firm_id: id,
+        invoices: 0,
+        invoiceValueMinor: 0,
+        orders: 0,
+        openOrders: 0,
+        jobCards: 0,
+        users: 0,
+        platformBills: 0,
+      };
+      statsMap.set(id, next);
+      return next;
+    };
+    for (const row of ((invoiceRowsRes.data as Array<{ firm_id: string | null; grand_total_paise: number | null }>) ?? [])) {
+      const stats = getStats(row.firm_id);
+      if (stats) {
+        stats.invoices += 1;
+        stats.invoiceValueMinor += Number(row.grand_total_paise ?? 0);
+      }
+    }
+    for (const row of ((orderRowsRes.data as Array<{ firm_id: string | null; status: string | null }>) ?? [])) {
+      const stats = getStats(row.firm_id);
+      if (stats) {
+        stats.orders += 1;
+        if (!["completed", "cancelled", "delivered", "closed"].includes(String(row.status ?? "").toLowerCase())) {
+          stats.openOrders += 1;
+        }
+      }
+    }
+    for (const row of ((jobCardRowsRes.data as Array<{ firm_id: string | null }>) ?? [])) {
+      const stats = getStats(row.firm_id);
+      if (stats) stats.jobCards += 1;
+    }
+    for (const row of loadedUsers) {
+      const stats = getStats(row.firm_id);
+      if (stats) stats.users += 1;
+    }
+    for (const row of ((billRowsRes.data as Array<{ firm_id: string | null }>) ?? [])) {
+      const stats = getStats(row.firm_id);
+      if (stats) stats.platformBills += 1;
+    }
+    setFirmStats(Array.from(statsMap.values()));
     setLoading(false);
   }
 
@@ -344,7 +484,7 @@ function PlatformOwnerConsole() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#f7f5f0] text-sm text-[#6b6659]">
-        Checking platform clearance…
+        Checking platform clearance...
       </div>
     );
   }
@@ -355,8 +495,8 @@ function PlatformOwnerConsole() {
         <ShieldAlert className="h-10 w-10 text-[#a33b3b]" />
         <h1 className="text-xl font-semibold">Access restricted</h1>
         <p className="max-w-md text-sm text-[#6b6659]">
-          Platform Owner Console requires <code className="bg-[#eae6df] px-1">platform_owner</code>{" "}
-          role. You can request elevation or switch accounts.
+          Platform Owner Console requires <code className="bg-[#eae6df] px-1">saas_admin</code>{" "}
+          platform access. You can request elevation or switch accounts.
         </p>
       </div>
     );
@@ -364,61 +504,23 @@ function PlatformOwnerConsole() {
 
   return (
     <div className="min-h-screen bg-[#f7f5f0] text-[#2b2925]">
-      <header className="border-b border-[#dedad1] bg-[#efece6] px-6 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded bg-[#2b2925] text-[#d4af37] font-serif font-bold">
-              P
-            </div>
-            <div>
-              <h1 className="font-serif text-lg font-bold tracking-tight">
-                Platform Owner Console
-              </h1>
-              <p className="text-xs text-[#6b6659]">
-                Multi-tenant infrastructure · SAS control layer
-              </p>
-            </div>
+      <div className="border-b border-[#dedad1] bg-[#efece6] px-4 py-3 lg:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="font-serif text-lg font-bold tracking-tight">
+              {nav.find(([key]) => key === view)?.[1] ?? "Platform Owner Console"}
+            </h1>
+            <p className="text-xs text-[#6b6659]">
+              Platform engine operational - {firms.length} tenant firms
+            </p>
           </div>
-          <div className="flex items-center gap-4 text-xs font-mono">
-            <div className="flex items-center gap-1 text-[#2d6a4f]">
-              <ShieldCheck className="h-4 w-4" /> Platform engine operational
-            </div>
-            <span className="text-[#a8a397]">|</span>
-            <span>{firms.length} tenant firms</span>
+          <div className="flex items-center gap-1 text-xs text-[#2d6a4f]">
+            <ShieldCheck className="h-4 w-4" /> Live control plane
           </div>
         </div>
-      </header>
+      </div>
 
-      <div className="flex min-h-[calc(100vh-69px)]">
-        <aside className="w-64 shrink-0 border-r border-[#dedad1] bg-[#efece6] p-4">
-          <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-[#8c8c88]">
-            Operations
-          </p>
-          <nav className="mt-2 space-y-1">
-            {nav.map(([key, label, Icon]) => {
-              const active = view === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => setView(key)}
-                  className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-xs font-medium transition ${
-                    active
-                      ? "bg-[#2b2925] text-[#f7f5f0]"
-                      : "text-[#4a473f] hover:bg-[#e5e1d8] hover:text-[#2b2925]"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {label}
-                  </span>
-                  {active && <ChevronRight className="h-3.5 w-3.5" />}
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
-
-        <main className="flex-1 p-6 space-y-6 max-w-7xl">
+      <main className="p-4 space-y-6 lg:p-6">
           {error && (
             <div className="flex items-center gap-2 rounded border border-[#e5a9a9] bg-[#fdf2f2] p-3 text-xs text-[#a33b3b]">
               <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -448,9 +550,12 @@ function PlatformOwnerConsole() {
               setSearch={setSearch}
               subscriptions={subscriptions}
               plans={plans}
+              firmStats={firmStats}
               refresh={refresh}
             />
           )}
+
+          {view === "users" && <UsersSection users={userRows} firms={firms} refresh={refresh} />}
 
           {view === "subscriptions" && (
             <SubscriptionsSection
@@ -462,7 +567,12 @@ function PlatformOwnerConsole() {
           )}
 
           {view === "licensing" && (
-            <LicensingSection firms={firms} features={features} refresh={refresh} />
+            <LicensingSection
+              firms={firms}
+              features={features}
+              licenses={licenses}
+              refresh={refresh}
+            />
           )}
 
           {view === "requests" && (
@@ -486,7 +596,6 @@ function PlatformOwnerConsole() {
           {view === "settings" && <SettingsSection refresh={refresh} />}
         </main>
       </div>
-    </div>
   );
 }
 
@@ -561,7 +670,7 @@ function OverviewSection({
             <div key={e.id} className="py-2 flex items-center justify-between">
               <div>
                 <span className="font-mono font-medium text-[#2b2925]">{e.action}</span>
-                {e.reason && <span className="ml-2 text-[#6b6659]">— {e.reason}</span>}
+                {e.reason && <span className="ml-2 text-[#6b6659]">- {e.reason}</span>}
               </div>
               <span className="text-[11px] text-[#8c8c88]">
                 {new Date(e.created_at).toLocaleString("en-IN")}
@@ -625,6 +734,7 @@ function FirmsSection({
   setSearch,
   subscriptions,
   plans,
+  firmStats,
   refresh,
 }: {
   filteredFirms: Firm[];
@@ -632,9 +742,11 @@ function FirmsSection({
   setSearch: (s: string) => void;
   subscriptions: Subscription[];
   plans: Plan[];
+  firmStats: FirmStats[];
   refresh: () => Promise<void>;
 }) {
   const [updating, setUpdating] = useState<string | null>(null);
+  const [selectedFirmId, setSelectedFirmId] = useState<string | null>(null);
 
   async function toggleActive(f: Firm) {
     setUpdating(f.id);
@@ -656,7 +768,7 @@ function FirmsSection({
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search firms by name, slug, GSTIN…"
+            placeholder="Search firms by name, slug, GSTIN..."
             className="pl-9 bg-[#fffdf8] border-[#c9c4ba]"
           />
         </div>
@@ -680,11 +792,25 @@ function FirmsSection({
               {filteredFirms.map((f) => {
                 const sub = subscriptions.find((s) => s.organization_id === f.id);
                 const plan = plans.find((p) => p.id === sub?.plan_id);
+                const stats = firmStats.find((s) => s.firm_id === f.id);
+                const isSelected = selectedFirmId === f.id;
                 return (
-                  <tr key={f.id} className="hover:bg-[#f4f0e8]">
-                    <td className="p-3 font-medium">{f.name}</td>
+                  <tr key={f.id} className={isSelected ? "bg-[#f4f0e8]" : "hover:bg-[#f4f0e8]"}>
+                    <td className="p-3">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFirmId(isSelected ? null : f.id)}
+                        className="text-left font-medium text-[#2b2925] underline-offset-4 hover:underline"
+                      >
+                        {f.name}
+                      </button>
+                      <div className="mt-1 text-[11px] text-[#6b6659]">
+                        {stats?.invoices ?? 0} invoices | {stats?.orders ?? 0} orders |{" "}
+                        {stats?.jobCards ?? 0} job cards
+                      </div>
+                    </td>
                     <td className="p-3 font-mono text-xs text-[#6b6659]">{f.slug}</td>
-                    <td className="p-3 text-xs font-mono">{f.gstin ?? "—"}</td>
+                    <td className="p-3 text-xs font-mono">{f.gstin ?? "-"}</td>
                     <td className="p-3">
                       <span
                         className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded ${
@@ -733,6 +859,161 @@ function FirmsSection({
           </table>
         </div>
       </div>
+      {selectedFirmId && (
+        <FirmDetailPanel
+          firm={filteredFirms.find((f) => f.id === selectedFirmId)}
+          subscription={subscriptions.find((s) => s.organization_id === selectedFirmId)}
+          plan={plans.find(
+            (p) => p.id === subscriptions.find((s) => s.organization_id === selectedFirmId)?.plan_id,
+          )}
+          stats={firmStats.find((s) => s.firm_id === selectedFirmId)}
+        />
+      )}
+    </div>
+  );
+}
+
+function FirmDetailPanel({
+  firm,
+  subscription,
+  plan,
+  stats,
+}: {
+  firm: Firm | undefined;
+  subscription: Subscription | undefined;
+  plan: Plan | undefined;
+  stats: FirmStats | undefined;
+}) {
+  if (!firm) return null;
+  return (
+    <div className="border border-[#dedad1] bg-[#fffdf8] p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="font-serif text-lg font-semibold">{firm.name}</h3>
+          <p className="text-xs text-[#6b6659]">
+            {firm.slug} | {firm.gstin ?? "GSTIN not recorded"}
+          </p>
+        </div>
+        <span className="border border-[#c9c4ba] px-2 py-1 text-[11px] uppercase text-[#4a473f]">
+          {plan?.name ?? "No plan assigned"} | {subscription?.status ?? "none"}
+        </span>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <StatMini label="Invoices" value={stats?.invoices ?? 0} />
+        <StatMini label="Invoice value" value={rupees(stats?.invoiceValueMinor ?? 0)} />
+        <StatMini label="Orders" value={stats?.orders ?? 0} />
+        <StatMini label="Open orders" value={stats?.openOrders ?? 0} />
+        <StatMini label="Job cards" value={stats?.jobCards ?? 0} />
+        <StatMini label="Users" value={stats?.users ?? 0} />
+      </div>
+      <div className="mt-4 grid gap-3 text-xs text-[#4a473f] sm:grid-cols-3">
+        <div>
+          <p className="font-semibold">Trial / renewal</p>
+          <p>
+            {subscription?.trial_ends_at
+              ? `Trial ends ${new Date(subscription.trial_ends_at).toLocaleDateString("en-IN")}`
+              : subscription?.renews_at
+                ? `Renews ${new Date(subscription.renews_at).toLocaleDateString("en-IN")}`
+                : "No renewal date set"}
+          </p>
+        </div>
+        <div>
+          <p className="font-semibold">Limits</p>
+          <p>
+            Branches {plan?.branch_limit ?? "unlimited"} | Users {plan?.user_limit ?? "unlimited"}
+          </p>
+        </div>
+        <div>
+          <p className="font-semibold">Platform billing docs</p>
+          <p>{stats?.platformBills ?? 0} documents issued</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatMini({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="border border-[#dedad1] bg-white p-3">
+      <p className="text-[11px] uppercase tracking-wide text-[#6b6659]">{label}</p>
+      <p className="mt-1 font-serif text-lg font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function UsersSection({
+  users,
+  firms,
+  refresh,
+}: {
+  users: UserRow[];
+  firms: Firm[];
+  refresh: () => Promise<void>;
+}) {
+  async function toggleUser(user: UserRow) {
+    await supabase
+      .from("user_profiles")
+      .update({ active: !user.active, status: user.active ? "suspended" : "active" })
+      .eq("id", user.id);
+    await refresh();
+  }
+
+  return (
+    <div className="border border-[#dedad1] bg-[#fffdf8]">
+      <div className="border-b border-[#dedad1] p-4">
+        <h3 className="font-serif font-semibold">Tenant Users</h3>
+        <p className="mt-1 text-xs text-[#6b6659]">
+          Platform owner visibility across firm staff, owners, branch users, and portal identities.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-[#dedad1] bg-[#efece6] text-xs uppercase tracking-wide text-[#4a473f]">
+            <tr>
+              <th className="p-3">Name</th>
+              <th className="p-3">Firm</th>
+              <th className="p-3">Role</th>
+              <th className="p-3">Phone</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Last login</th>
+              <th className="p-3 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#dedad1]">
+            {users.map((user) => (
+              <tr key={user.id} className="hover:bg-[#f4f0e8]">
+                <td className="p-3 font-medium">{user.full_name}</td>
+                <td className="p-3 text-xs">
+                  {firms.find((firm) => firm.id === user.firm_id)?.name ?? "Platform"}
+                </td>
+                <td className="p-3 text-xs">{user.role ?? "user"}</td>
+                <td className="p-3 text-xs">{user.phone ?? "-"}</td>
+                <td className="p-3 text-xs">{user.active ? "active" : user.status}</td>
+                <td className="p-3 text-xs">
+                  {user.last_login ? new Date(user.last_login).toLocaleString("en-IN") : "-"}
+                </td>
+                <td className="p-3 text-right">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 border-[#c9c4ba] text-xs"
+                    onClick={() => void toggleUser(user)}
+                  >
+                    {user.active ? "Suspend" : "Activate"}
+                  </Button>
+                </td>
+              </tr>
+            ))}
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={7} className="p-8 text-center text-xs text-[#8c8c88]">
+                  No tenant users found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -756,16 +1037,22 @@ function SubscriptionsSection({
     const existing = subscriptions.find((s) => s.organization_id === orgId);
     if (existing) {
       await supabase
-        .from("subscriptions")
+        .from("organization_subscriptions")
         .update({ plan_id: selectedPlan, status: "active" })
         .eq("organization_id", orgId);
     } else {
-      await supabase.from("subscriptions").insert({
+      await supabase.from("organization_subscriptions").insert({
         organization_id: orgId,
         plan_id: selectedPlan,
         status: "active",
+        starts_at: new Date().toISOString(),
       });
     }
+    await supabase.rpc("apply_plan_entitlements", {
+      p_organization_id: orgId,
+      p_plan_id: selectedPlan,
+      p_reason: "Platform owner changed tenant plan",
+    });
     await supabase.from("platform_audit_events").insert({
       action: "SUBSCRIPTION_UPDATED",
       target_type: "organization",
@@ -803,7 +1090,7 @@ function SubscriptionsSection({
                     <div>
                       <span className="font-semibold">{plan.name}</span>
                       <span className="ml-2 text-[#8c8c88]">
-                        (₹{(plan.price_minor / 100).toFixed(0)}/mo)
+                        (Rs. {(plan.price_minor / 100).toFixed(0)}/mo)
                       </span>
                     </div>
                   ) : (
@@ -820,7 +1107,7 @@ function SubscriptionsSection({
                     ? new Date(sub.renews_at).toLocaleDateString("en-IN")
                     : sub?.trial_ends_at
                       ? `Trial ends ${new Date(sub.trial_ends_at).toLocaleDateString("en-IN")}`
-                      : "—"}
+                      : "-"}
                 </td>
                 <td className="p-3 text-right">
                   {isEditing ? (
@@ -830,10 +1117,10 @@ function SubscriptionsSection({
                         onChange={(e) => setSelectedPlan(e.target.value)}
                         className="text-xs border border-[#c9c4ba] bg-white p-1 rounded"
                       >
-                        <option value="">Select plan…</option>
+                        <option value="">Select plan...</option>
                         {plans.map((p) => (
                           <option key={p.id} value={p.id}>
-                            {p.name} (₹{(p.price_minor / 100).toFixed(0)})
+                            {p.name} (Rs. {(p.price_minor / 100).toFixed(0)})
                           </option>
                         ))}
                       </select>
@@ -889,13 +1176,28 @@ const MODULE_KEYS = [
 function LicensingSection({
   firms,
   features,
+  licenses,
   refresh,
 }: {
   firms: Firm[];
   features: Feature[];
+  licenses: LicenseRow[];
   refresh: () => Promise<void>;
 }) {
   const [selectedFirm, setSelectedFirm] = useState<string>(firms[0]?.id ?? "");
+  const [licenseId, setLicenseId] = useState("");
+  const [edition, setEdition] = useState("Manufacturing Essential");
+  const [seats, setSeats] = useState("5");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [reason, setReason] = useState("Platform owner license update");
+  const [renewDays, setRenewDays] = useState("30");
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const selectedFirmRow = firms.find((f) => f.id === selectedFirm);
+  const firmLicenses = licenses.filter((license) => license.organization_id === selectedFirm);
+  const activeLicense =
+    firmLicenses.find((license) => license.status === "active") ?? firmLicenses[0] ?? null;
 
   async function toggleModule(featureKey: string, currentVal: boolean) {
     if (!selectedFirm) return;
@@ -919,10 +1221,88 @@ function LicensingSection({
     await refresh();
   }
 
+  function generateLicenseId() {
+    const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const suffix =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()
+        : Math.random().toString(36).slice(2, 10).toUpperCase();
+    setLicenseId(`AVS-${stamp}-${suffix}`);
+  }
+
+  async function issueLicense() {
+    if (!selectedFirmRow) return;
+    const finalLicenseId = licenseId.trim() || `AVS-${Date.now().toString(36).toUpperCase()}`;
+    const expiry = expiryDate ? new Date(`${expiryDate}T23:59:59`).toISOString() : null;
+    setSaving(true);
+    setNotice(null);
+    const enabledFeatures = MODULE_KEYS.filter(([key]) => {
+      const feature = features.find(
+        (f) => f.organization_id === selectedFirm && f.feature_key === key,
+      );
+      return feature ? feature.enabled : true;
+    }).map(([key]) => key);
+    const { error: rpcError } = await supabase.rpc("issue_platform_license" as never, {
+      p_license_id: finalLicenseId,
+      p_customer_name: selectedFirmRow.name,
+      p_company_name: selectedFirmRow.name,
+      p_edition: edition.trim() || "Manufacturing Essential",
+      p_seats: Math.max(1, Number(seats) || 1),
+      p_expiry: expiry,
+      p_features: enabledFeatures,
+      p_reason: reason,
+      p_organization_id: selectedFirm,
+    } as never);
+    if (rpcError) {
+      setNotice(rpcError.message);
+    } else {
+      setLicenseId(finalLicenseId);
+      setNotice(`License ${finalLicenseId} issued for ${selectedFirmRow.name}.`);
+      await refresh();
+    }
+    setSaving(false);
+  }
+
+  async function renewLicense(row: LicenseRow) {
+    const days = Math.max(1, Number(renewDays) || 30);
+    const base = row.expiry_date && new Date(row.expiry_date) > new Date()
+      ? new Date(row.expiry_date)
+      : new Date();
+    base.setDate(base.getDate() + days);
+    setSaving(true);
+    setNotice(null);
+    const { error: rpcError } = await supabase.rpc("renew_platform_license" as never, {
+      p_license_id: row.license_id,
+      p_new_expiry: base.toISOString(),
+      p_reason: reason || `Renewed by ${days} days from Platform Owner`,
+    } as never);
+    if (rpcError) setNotice(rpcError.message);
+    else {
+      setNotice(`License ${row.license_id} renewed by ${days} days.`);
+      await refresh();
+    }
+    setSaving(false);
+  }
+
+  async function suspendLicense(row: LicenseRow) {
+    setSaving(true);
+    setNotice(null);
+    const { error: rpcError } = await supabase.rpc("suspend_platform_license" as never, {
+      p_license_id: row.license_id,
+      p_reason: reason || "Suspended from Platform Owner",
+    } as never);
+    if (rpcError) setNotice(rpcError.message);
+    else {
+      setNotice(`License ${row.license_id} suspended.`);
+      await refresh();
+    }
+    setSaving(false);
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <label className="text-xs font-medium text-[#6b6659]">Select Tenant Firm:</label>
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-xs font-medium text-[#6b6659]">Select Tenant Firm</label>
         <select
           value={selectedFirm}
           onChange={(e) => setSelectedFirm(e.target.value)}
@@ -934,6 +1314,168 @@ function LicensingSection({
             </option>
           ))}
         </select>
+        {activeLicense && <LicenseHealthBadge license={activeLicense} />}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="border border-[#dedad1] bg-[#fffdf8] p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="font-serif font-semibold text-sm">License Management</h3>
+              <p className="mt-1 text-xs text-[#6b6659]">
+                Issue, renew, suspend, and monitor tenant production licenses.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <label className="text-[#6b6659]">Renew by days</label>
+              <input
+                type="number"
+                min="1"
+                value={renewDays}
+                onChange={(e) => setRenewDays(e.target.value)}
+                className="w-20 rounded border border-[#c9c4ba] bg-white px-2 py-1"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-[#dedad1] bg-[#efece6] text-xs uppercase tracking-wide text-[#4a473f]">
+                <tr>
+                  <th className="p-3">License Key</th>
+                  <th className="p-3">Edition</th>
+                  <th className="p-3">Seats</th>
+                  <th className="p-3">Expiry</th>
+                  <th className="p-3">Reminder</th>
+                  <th className="p-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#dedad1]">
+                {firmLicenses.map((license) => {
+                  const daysLeft = daysUntil(license.expiry_date);
+                  return (
+                    <tr key={license.id} className="hover:bg-[#f4f0e8]">
+                      <td className="p-3">
+                        <div className="font-mono text-xs font-semibold">{license.license_id}</div>
+                        <div className="mt-1 text-[11px] uppercase text-[#6b6659]">
+                          {license.status}
+                        </div>
+                      </td>
+                      <td className="p-3 text-xs">{license.edition}</td>
+                      <td className="p-3 text-xs">{license.seats}</td>
+                      <td className="p-3 text-xs">
+                        {license.expiry_date
+                          ? new Date(license.expiry_date).toLocaleDateString("en-IN")
+                          : "Lifetime"}
+                      </td>
+                      <td className="p-3 text-xs">
+                        {license.expiry_date ? reminderLabel(daysLeft) : "No renewal reminder"}
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={saving}
+                            onClick={() => void renewLicense(license)}
+                            className="h-7 border-[#c9c4ba] text-xs"
+                          >
+                            Renew
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={saving || license.status === "suspended"}
+                            onClick={() => void suspendLicense(license)}
+                            className="h-7 border-[#c9c4ba] text-xs"
+                          >
+                            Suspend
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {firmLicenses.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-xs text-[#8c8c88]">
+                      No license issued for this tenant yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="border border-[#dedad1] bg-[#fffdf8] p-5">
+          <h3 className="font-serif font-semibold text-sm">Create License</h3>
+          <div className="mt-4 space-y-3 text-xs">
+            <label className="block">
+              License key
+              <div className="mt-1 flex gap-2">
+                <input
+                  value={licenseId}
+                  onChange={(e) => setLicenseId(e.target.value)}
+                  placeholder="AVS-YYYYMMDD-XXXXXXXX"
+                  className="min-w-0 flex-1 rounded border border-[#c9c4ba] bg-white px-2 py-2 font-mono"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={generateLicenseId}
+                  className="h-9 border-[#c9c4ba] text-xs"
+                >
+                  Generate
+                </Button>
+              </div>
+            </label>
+            <label className="block">
+              Edition
+              <select
+                value={edition}
+                onChange={(e) => setEdition(e.target.value)}
+                className="mt-1 w-full rounded border border-[#c9c4ba] bg-white px-2 py-2"
+              >
+                <option>Manufacturing Starter</option>
+                <option>Manufacturing Essential</option>
+                <option>Manufacturing Growth</option>
+                <option>Manufacturing Enterprise</option>
+              </select>
+            </label>
+            <label className="block">
+              Seats
+              <input
+                type="number"
+                min="1"
+                value={seats}
+                onChange={(e) => setSeats(e.target.value)}
+                className="mt-1 w-full rounded border border-[#c9c4ba] bg-white px-2 py-2"
+              />
+            </label>
+            <label className="block">
+              Expiry date
+              <input
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                className="mt-1 w-full rounded border border-[#c9c4ba] bg-white px-2 py-2"
+              />
+            </label>
+            <label className="block">
+              Reason / note
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                className="mt-1 min-h-20 w-full rounded border border-[#c9c4ba] bg-white px-2 py-2"
+              />
+            </label>
+            <Button disabled={saving || !selectedFirm} onClick={() => void issueLicense()} className="w-full">
+              {saving ? "Saving..." : "Issue License"}
+            </Button>
+            {notice && <p className="rounded border border-[#dedad1] bg-[#f7f5f0] p-2 text-[#4a473f]">{notice}</p>}
+          </div>
+        </div>
       </div>
 
       <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
@@ -970,6 +1512,39 @@ function LicensingSection({
   );
 }
 
+function daysUntil(value: string | null) {
+  if (!value) return null;
+  return Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000);
+}
+
+function reminderLabel(daysLeft: number | null) {
+  if (daysLeft === null) return "No expiry";
+  if (daysLeft < 0) return `Expired ${Math.abs(daysLeft)} days ago`;
+  if (daysLeft === 0) return "Expires today";
+  if (daysLeft <= 7) return `${daysLeft} days left - urgent`;
+  if (daysLeft <= 30) return `${daysLeft} days left - reminder due`;
+  return `${daysLeft} days left`;
+}
+
+function LicenseHealthBadge({ license }: { license: LicenseRow }) {
+  const daysLeft = daysUntil(license.expiry_date);
+  const isBad = license.status !== "active" || (daysLeft !== null && daysLeft < 0);
+  const isWarning = !isBad && daysLeft !== null && daysLeft <= 30;
+  return (
+    <span
+      className={`rounded px-2 py-1 text-[11px] font-semibold uppercase ${
+        isBad
+          ? "bg-[#fce8e6] text-[#a33b3b]"
+          : isWarning
+            ? "bg-[#fff4d6] text-[#8a5a00]"
+            : "bg-[#e2f0d9] text-[#2d6a4f]"
+      }`}
+    >
+      {license.status} | {reminderLabel(daysLeft)}
+    </span>
+  );
+}
+
 function RequestsSection({
   rows,
   firms,
@@ -979,17 +1554,57 @@ function RequestsSection({
   firms: Firm[];
   refresh: () => Promise<void>;
 }) {
+  const [firmId, setFirmId] = useState(firms[0]?.id ?? "");
+  const [subject, setSubject] = useState("");
+  const [category, setCategory] = useState("implementation");
+  const [priority, setPriority] = useState("medium");
+
+  useEffect(() => {
+    if (!firmId && firms[0]?.id) setFirmId(firms[0].id);
+  }, [firms, firmId]);
+
   async function updateStatus(r: RequestRow, status: string) {
     await supabase.from("platform_service_requests").update({ status }).eq("id", r.id);
     await refresh();
   }
 
+  async function createRequest() {
+    const { data } = await supabase.auth.getSession();
+    const requester = data.session?.user.id;
+    if (!firmId || !subject.trim() || !requester) return;
+    await supabase.from("platform_service_requests").insert({
+      request_no: `SR-${Date.now().toString().slice(-8)}`,
+      firm_id: firmId,
+      requester_id: requester,
+      category,
+      subject: subject.trim(),
+      description: subject.trim(),
+      priority,
+      status: "open",
+    });
+    setSubject("");
+    await refresh();
+  }
+
   return (
-    <div className="border border-[#dedad1] bg-[#fffdf8]">
-      <div className="border-b border-[#dedad1] p-4">
-        <h3 className="font-semibold">Service Requests</h3>
+    <div className="space-y-4">
+      <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
+        <h3 className="font-semibold">Create Service Request</h3>
+        <div className="mt-3 grid gap-2 text-xs md:grid-cols-[1.2fr_1fr_1fr_2fr_auto]">
+          <select className="border border-[#c9c4ba] bg-white p-2" value={firmId} onChange={(e) => setFirmId(e.target.value)}>
+            {firms.map((firm) => <option key={firm.id} value={firm.id}>{firm.name}</option>)}
+          </select>
+          <select className="border border-[#c9c4ba] bg-white p-2" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {["implementation", "training", "data_migration", "printing", "whatsapp", "billing"].map((key) => <option key={key} value={key}>{key}</option>)}
+          </select>
+          <select className="border border-[#c9c4ba] bg-white p-2" value={priority} onChange={(e) => setPriority(e.target.value)}>
+            {["low", "medium", "high", "urgent"].map((key) => <option key={key} value={key}>{key}</option>)}
+          </select>
+          <input className="border border-[#c9c4ba] bg-white p-2" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject / work requested" />
+          <Button size="sm" disabled={!subject.trim()} onClick={() => void createRequest()}>Create</Button>
+        </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto border border-[#dedad1] bg-[#fffdf8]">
         <table className="w-full text-sm">
           <thead className="border-b border-[#dedad1] text-left">
             <tr>
@@ -1051,11 +1666,15 @@ function TicketsSection({
   }
 
   return (
-    <div className="border border-[#dedad1] bg-[#fffdf8]">
-      <div className="border-b border-[#dedad1] p-4">
-        <h3 className="font-semibold">Support Tickets</h3>
+    <div className="space-y-4">
+      <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
+        <h3 className="font-serif font-semibold">Customer-Raised Support Queue</h3>
+        <p className="mt-1 max-w-3xl text-xs text-[#6b6659]">
+          Tickets are created from the tenant/customer side through the firm support flow. The
+          platform owner console is for triage, monitoring, and status management only.
+        </p>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto border border-[#dedad1] bg-[#fffdf8]">
         <table className="w-full text-sm">
           <thead className="border-b border-[#dedad1] text-left">
             <tr>
@@ -1131,6 +1750,7 @@ function BillingSection({
   const [gstRatePercent, setGstRatePercent] = useState("18");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [printRow, setPrintRow] = useState<BillingRow | null>(null);
 
   const selectedFirm = firms.find((firm) => firm.id === firmId);
   const buyerStateCode = (selectedFirm?.gstin ?? "").slice(0, 2);
@@ -1361,14 +1981,13 @@ function BillingSection({
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      <Link
+                      <button
+                        type="button"
                         className="text-xs underline text-[#6b6659]"
-                        to="/platform/billing-print/$id"
-                        params={{ id: row.id }}
-                        target="_blank"
+                        onClick={() => setPrintRow(row)}
                       >
                         Print
-                      </Link>
+                      </button>
                       {row.status !== "paid" && (
                         <Button
                           size="sm"
@@ -1390,7 +2009,132 @@ function BillingSection({
           )}
         </div>
       </div>
+      {printRow && (
+        <PlatformBillingPrintPreview
+          row={printRow}
+          firm={firms.find((firm) => firm.id === printRow.firm_id)}
+          onClose={() => setPrintRow(null)}
+        />
+      )}
     </section>
+  );
+}
+
+function PlatformBillingPrintPreview({
+  row,
+  firm,
+  onClose,
+}: {
+  row: BillingRow;
+  firm: Firm | undefined;
+  onClose: () => void;
+}) {
+  const description = row.data?.description ?? "AVS Gold ERP Platform Billing";
+  const gstRate = row.data?.gst_rate_percent ?? 18;
+  const taxable = row.taxable_minor ?? Math.max(0, row.amount_minor - (row.gst_minor ?? 0));
+  const gst = row.gst_minor ?? (row.cgst_minor ?? 0) + (row.sgst_minor ?? 0) + (row.igst_minor ?? 0);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 p-4 print:static print:bg-white print:p-0">
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          .platform-print-sheet, .platform-print-sheet * { visibility: visible !important; }
+          .platform-print-sheet {
+            position: absolute !important;
+            inset: 0 !important;
+            width: 100% !important;
+            border: 0 !important;
+            box-shadow: none !important;
+          }
+          .platform-print-actions { display: none !important; }
+        }
+      `}</style>
+      <div className="mx-auto max-w-3xl bg-[#fffdf8] shadow-xl print:shadow-none">
+        <div className="platform-print-actions flex items-center justify-between border-b border-[#dedad1] p-3">
+          <h3 className="font-serif font-semibold">Print Preview</h3>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => window.print()}>
+              Print
+            </Button>
+            <Button size="sm" variant="outline" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </div>
+        <div className="platform-print-sheet bg-white p-8 text-[#1f1d1a]">
+          <div className="border-b-2 border-[#1f1d1a] pb-4">
+            <p className="text-xs uppercase tracking-[0.24em] text-[#8a6a22]">
+              Arivahly Venture Sphere
+            </p>
+            <div className="mt-2 flex items-start justify-between gap-4">
+              <div>
+                <h1 className="font-serif text-2xl font-bold">AVS GOLD ERP</h1>
+                <p className="text-sm text-[#5f5a50]">Platform Billing Document</p>
+              </div>
+              <div className="text-right text-sm">
+                <p className="font-semibold">{DOC_TYPE_LABEL[row.document_type] ?? row.document_type}</p>
+                <p className="font-mono">{row.document_no}</p>
+                <p>{row.issued_at ? new Date(row.issued_at).toLocaleDateString("en-IN") : ""}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-6 sm:grid-cols-2">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-[#6b6659]">Bill To</p>
+              <p className="mt-1 font-semibold">{firm?.name ?? row.firm_id}</p>
+              <p className="text-sm text-[#5f5a50]">{firm?.address ?? "Tenant address not recorded"}</p>
+              <p className="text-sm text-[#5f5a50]">GSTIN: {firm?.gstin ?? "Not recorded"}</p>
+            </div>
+            <div className="text-sm">
+              <p>Status: <span className="font-semibold uppercase">{row.status}</span></p>
+              <p>Due date: {row.due_at ? new Date(row.due_at).toLocaleDateString("en-IN") : "-"}</p>
+              <p>Seller state: {row.seller_state_code ?? "-"}</p>
+              <p>Buyer state: {row.buyer_state_code ?? "-"}</p>
+            </div>
+          </div>
+
+          <table className="mt-8 w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-y border-[#1f1d1a]">
+                <th className="py-2 text-left">Description</th>
+                <th className="py-2 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-[#dedad1]">
+                <td className="py-3">{description}</td>
+                <td className="py-3 text-right">{rupees(taxable)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div className="mt-6 ml-auto w-full max-w-sm space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>Taxable</span>
+              <span>{rupees(taxable)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>GST ({gstRate}%)</span>
+              <span>{rupees(gst)}</span>
+            </div>
+            <div className="flex justify-between border-t border-[#1f1d1a] pt-2 font-bold">
+              <span>Total</span>
+              <span>{rupees(row.amount_minor)}</span>
+            </div>
+            <div className="flex justify-between text-[#6b6659]">
+              <span>Paid</span>
+              <span>{rupees(row.paid_minor)}</span>
+            </div>
+          </div>
+
+          <p className="mt-10 text-xs text-[#6b6659]">
+            This document was generated from AVS Platform Owner Control Center.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1531,7 +2275,7 @@ function BackupsSection({
                     {b.status}
                   </span>
                 </td>
-                <td className="p-2 font-mono text-[#6b6659]">{b.location ?? "—"}</td>
+                <td className="p-2 font-mono text-[#6b6659]">{b.location ?? "-"}</td>
               </tr>
             ))}
             {backupRows.length === 0 && (
@@ -1552,6 +2296,31 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
   const [sellerName, setSellerName] = useState("Arivahly Venture Sphere");
   const [sellerAddress, setSellerAddress] = useState("");
   const [sellerGstin, setSellerGstin] = useState("");
+  const [appName, setAppName] = useState("AVS Gold ERP");
+  const [brandTagline, setBrandTagline] = useState("Jewellery ERP - Production Portal");
+  const [supportEmail, setSupportEmail] = useState("");
+  const [supportPhone, setSupportPhone] = useState("");
+  const [whatsappProvider, setWhatsappProvider] = useState("wasenderapi");
+  const [whatsappEnabled, setWhatsappEnabled] = useState("true");
+  const [trialDays, setTrialDays] = useState("180");
+  const [renewalReminderDays, setRenewalReminderDays] = useState("30,15,7,1");
+  const [invoiceDueDays, setInvoiceDueDays] = useState("15");
+  const [defaultGstRate, setDefaultGstRate] = useState("18");
+  const [sellerStateCodeSetting, setSellerStateCodeSetting] = useState("19");
+  const [ticketSlaHours, setTicketSlaHours] = useState("24");
+  const [criticalSlaHours, setCriticalSlaHours] = useState("4");
+  const [backupFrequency, setBackupFrequency] = useState("daily");
+  const [backupRetentionDays, setBackupRetentionDays] = useState("30");
+  const [maxBranchesDefault, setMaxBranchesDefault] = useState("");
+  const [maxUsersDefault, setMaxUsersDefault] = useState("");
+  const [sessionPolicy, setSessionPolicy] = useState("browser_session");
+  const [maintenanceMode, setMaintenanceMode] = useState("false");
+  const [planName, setPlanName] = useState("Manufacturing Growth");
+  const [planCode, setPlanCode] = useState("manufacturing_growth");
+  const [planPrice, setPlanPrice] = useState("9999");
+  const [planCycle, setPlanCycle] = useState("monthly");
+  const [branchLimit, setBranchLimit] = useState("");
+  const [userLimit, setUserLimit] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -1560,7 +2329,30 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
       const { data } = await supabase
         .from("platform_settings")
         .select("key,value")
-        .in("key", ["billing.seller_name", "billing.seller_address", "billing.seller_gstin"]);
+        .in("key", [
+          "branding.app_name",
+          "branding.tagline",
+          "billing.seller_name",
+          "billing.seller_address",
+          "billing.seller_gstin",
+          "billing.seller_state_code",
+          "billing.default_gst_rate",
+          "billing.invoice_due_days",
+          "support.email",
+          "support.phone",
+          "support.ticket_sla_hours",
+          "support.critical_sla_hours",
+          "integrations.whatsapp_provider",
+          "integrations.whatsapp_enabled",
+          "licensing.trial_days",
+          "licensing.renewal_reminder_days",
+          "operations.backup_frequency",
+          "operations.backup_retention_days",
+          "operations.max_branches_default",
+          "operations.max_users_default",
+          "security.session_policy",
+          "security.maintenance_mode",
+        ]);
       if (data) {
         const m = new Map(
           (data as Array<{ key: string; value: unknown }>).map((r) => [r.key, r.value]),
@@ -1569,6 +2361,25 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
         if (m.get("billing.seller_address"))
           setSellerAddress(m.get("billing.seller_address") as string);
         if (m.get("billing.seller_gstin")) setSellerGstin(m.get("billing.seller_gstin") as string);
+        if (m.get("branding.app_name")) setAppName(m.get("branding.app_name") as string);
+        if (m.get("branding.tagline")) setBrandTagline(m.get("branding.tagline") as string);
+        if (m.get("billing.seller_state_code")) setSellerStateCodeSetting(m.get("billing.seller_state_code") as string);
+        if (m.get("billing.default_gst_rate")) setDefaultGstRate(String(m.get("billing.default_gst_rate")));
+        if (m.get("billing.invoice_due_days")) setInvoiceDueDays(String(m.get("billing.invoice_due_days")));
+        if (m.get("support.email")) setSupportEmail(m.get("support.email") as string);
+        if (m.get("support.phone")) setSupportPhone(m.get("support.phone") as string);
+        if (m.get("support.ticket_sla_hours")) setTicketSlaHours(String(m.get("support.ticket_sla_hours")));
+        if (m.get("support.critical_sla_hours")) setCriticalSlaHours(String(m.get("support.critical_sla_hours")));
+        if (m.get("integrations.whatsapp_provider")) setWhatsappProvider(m.get("integrations.whatsapp_provider") as string);
+        if (m.get("integrations.whatsapp_enabled")) setWhatsappEnabled(String(m.get("integrations.whatsapp_enabled")));
+        if (m.get("licensing.trial_days")) setTrialDays(String(m.get("licensing.trial_days")));
+        if (m.get("licensing.renewal_reminder_days")) setRenewalReminderDays(String(m.get("licensing.renewal_reminder_days")));
+        if (m.get("operations.backup_frequency")) setBackupFrequency(m.get("operations.backup_frequency") as string);
+        if (m.get("operations.backup_retention_days")) setBackupRetentionDays(String(m.get("operations.backup_retention_days")));
+        if (m.get("operations.max_branches_default")) setMaxBranchesDefault(String(m.get("operations.max_branches_default")));
+        if (m.get("operations.max_users_default")) setMaxUsersDefault(String(m.get("operations.max_users_default")));
+        if (m.get("security.session_policy")) setSessionPolicy(m.get("security.session_policy") as string);
+        if (m.get("security.maintenance_mode")) setMaintenanceMode(String(m.get("security.maintenance_mode")));
       }
     })();
   }, []);
@@ -1577,6 +2388,8 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
     setSaving(true);
     setMsg(null);
     await Promise.all([
+      supabase.from("platform_settings").upsert({ key: "branding.app_name", value: appName }),
+      supabase.from("platform_settings").upsert({ key: "branding.tagline", value: brandTagline }),
       supabase.from("platform_settings").upsert({
         key: "billing.seller_name",
         value: sellerName,
@@ -1589,49 +2402,294 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
         key: "billing.seller_gstin",
         value: sellerGstin,
       }),
+      supabase.from("platform_settings").upsert({ key: "billing.seller_state_code", value: sellerStateCodeSetting }),
+      supabase.from("platform_settings").upsert({ key: "billing.default_gst_rate", value: Number(defaultGstRate) || 0 }),
+      supabase.from("platform_settings").upsert({ key: "billing.invoice_due_days", value: Number(invoiceDueDays) || 0 }),
+      supabase.from("platform_settings").upsert({ key: "support.email", value: supportEmail }),
+      supabase.from("platform_settings").upsert({ key: "support.phone", value: supportPhone }),
+      supabase.from("platform_settings").upsert({ key: "support.ticket_sla_hours", value: Number(ticketSlaHours) || 0 }),
+      supabase.from("platform_settings").upsert({ key: "support.critical_sla_hours", value: Number(criticalSlaHours) || 0 }),
+      supabase.from("platform_settings").upsert({ key: "integrations.whatsapp_provider", value: whatsappProvider }),
+      supabase.from("platform_settings").upsert({ key: "integrations.whatsapp_enabled", value: whatsappEnabled === "true" }),
+      supabase.from("platform_settings").upsert({ key: "licensing.trial_days", value: Number(trialDays) || 0 }),
+      supabase.from("platform_settings").upsert({ key: "licensing.renewal_reminder_days", value: renewalReminderDays }),
+      supabase.from("platform_settings").upsert({ key: "operations.backup_frequency", value: backupFrequency }),
+      supabase.from("platform_settings").upsert({ key: "operations.backup_retention_days", value: Number(backupRetentionDays) || 0 }),
+      supabase.from("platform_settings").upsert({ key: "operations.max_branches_default", value: maxBranchesDefault ? Number(maxBranchesDefault) : null }),
+      supabase.from("platform_settings").upsert({ key: "operations.max_users_default", value: maxUsersDefault ? Number(maxUsersDefault) : null }),
+      supabase.from("platform_settings").upsert({ key: "security.session_policy", value: sessionPolicy }),
+      supabase.from("platform_settings").upsert({ key: "security.maintenance_mode", value: maintenanceMode === "true" }),
     ]);
-    setMsg("Platform billing header settings saved.");
+    setMsg("Platform settings saved.");
+    setSaving(false);
+    await refresh();
+  }
+
+  async function createPlan() {
+    setSaving(true);
+    setMsg(null);
+    const cleanCode = planCode.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+    const { error } = await supabase.from("platform_plans").upsert(
+      {
+        code: cleanCode,
+        edition_code: cleanCode,
+        name: planName.trim(),
+        description: "Manufacturing-heavy AVS ERP plan managed from Platform Owner.",
+        billing_cycle: planCycle,
+        price_minor: Math.round((parseFloat(planPrice) || 0) * 100),
+        branch_limit: branchLimit ? Number(branchLimit) : null,
+        user_limit: userLimit ? Number(userLimit) : null,
+        workshop_limit: null,
+        storage_limit_bytes: null,
+        feature_limits: {
+          manufacturing: true,
+          workshop: true,
+          job_cards: true,
+          orders: true,
+          billing: true,
+          inventory: true,
+          customer_portal: true,
+          karigar_portal: true,
+          whatsapp: true,
+          print_templates: true,
+          reports: true,
+          export: true,
+        },
+        commercial_config: {},
+        is_active: true,
+      },
+      { onConflict: "code" },
+    );
+    setMsg(error ? error.message : "Plan saved. It is now available in Change Plan.");
     setSaving(false);
     await refresh();
   }
 
   return (
-    <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4 max-w-xl">
-      <h3 className="font-serif font-semibold text-sm">Platform Billing Legal Entity Header</h3>
-      <p className="text-xs text-[#6b6659]">
-        Configure platform entity details shown on software tax invoices issued to tenant firms.
-      </p>
-      <div className="space-y-3 text-xs">
-        <label className="block">
-          Seller Legal Name
-          <input
-            className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
-            value={sellerName}
-            onChange={(e) => setSellerName(e.target.value)}
-          />
-        </label>
-        <label className="block">
-          Seller GSTIN
-          <input
-            className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded font-mono"
-            value={sellerGstin}
-            onChange={(e) => setSellerGstin(e.target.value)}
-            placeholder="e.g. 19AAACA1234A1Z5"
-          />
-        </label>
-        <label className="block">
-          Registered Address
-          <textarea
-            className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded h-20"
-            value={sellerAddress}
-            onChange={(e) => setSellerAddress(e.target.value)}
-          />
-        </label>
+    <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
+          <h3 className="font-serif font-semibold text-sm">Branding & Portal Identity</h3>
+          <div className="space-y-3 text-xs">
+            <SettingsText label="Application Name" value={appName} onChange={setAppName} />
+            <SettingsText label="Portal Tagline" value={brandTagline} onChange={setBrandTagline} />
+            <SettingsSelect
+              label="Session Policy"
+              value={sessionPolicy}
+              onChange={setSessionPolicy}
+              options={["browser_session", "persistent_until_logout", "strict_reauth"]}
+            />
+            <SettingsSelect
+              label="Maintenance Mode"
+              value={maintenanceMode}
+              onChange={setMaintenanceMode}
+              options={["false", "true"]}
+            />
+          </div>
+        </div>
+
+        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
+          <h3 className="font-serif font-semibold text-sm">Support & SLA Defaults</h3>
+          <div className="space-y-3 text-xs">
+            <SettingsText label="Support Email" value={supportEmail} onChange={setSupportEmail} />
+            <SettingsText label="Support Phone / WhatsApp" value={supportPhone} onChange={setSupportPhone} />
+            <SettingsText label="Normal Ticket SLA Hours" value={ticketSlaHours} onChange={setTicketSlaHours} />
+            <SettingsText label="Critical Ticket SLA Hours" value={criticalSlaHours} onChange={setCriticalSlaHours} />
+          </div>
+        </div>
+
+        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
+          <h3 className="font-serif font-semibold text-sm">Integrations & Operations</h3>
+          <div className="space-y-3 text-xs">
+            <SettingsSelect
+              label="WhatsApp Provider"
+              value={whatsappProvider}
+              onChange={setWhatsappProvider}
+              options={["wasenderapi", "wa_deeplink", "disabled"]}
+            />
+            <SettingsSelect
+              label="WhatsApp Enabled"
+              value={whatsappEnabled}
+              onChange={setWhatsappEnabled}
+              options={["true", "false"]}
+            />
+            <SettingsSelect
+              label="Backup Frequency"
+              value={backupFrequency}
+              onChange={setBackupFrequency}
+              options={["hourly", "daily", "weekly", "monthly"]}
+            />
+            <SettingsText label="Backup Retention Days" value={backupRetentionDays} onChange={setBackupRetentionDays} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
+          <h3 className="font-serif font-semibold text-sm">Licensing & Subscription Defaults</h3>
+          <div className="space-y-3 text-xs">
+            <SettingsText label="Default Trial Days" value={trialDays} onChange={setTrialDays} />
+            <SettingsText label="Renewal Reminder Days" value={renewalReminderDays} onChange={setRenewalReminderDays} />
+            <SettingsText label="Default Branch Limit" value={maxBranchesDefault} onChange={setMaxBranchesDefault} placeholder="Unlimited" />
+            <SettingsText label="Default User Limit" value={maxUsersDefault} onChange={setMaxUsersDefault} placeholder="Unlimited" />
+          </div>
+        </div>
+
+        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4 lg:col-span-2">
+          <h3 className="font-serif font-semibold text-sm">Billing & Tax Defaults</h3>
+          <div className="grid gap-3 text-xs sm:grid-cols-3">
+            <SettingsText label="Default GST Rate (%)" value={defaultGstRate} onChange={setDefaultGstRate} />
+            <SettingsText label="Invoice Due Days" value={invoiceDueDays} onChange={setInvoiceDueDays} />
+            <SettingsText label="Seller GST State Code" value={sellerStateCodeSetting} onChange={setSellerStateCodeSetting} />
+          </div>
+          <p className="text-xs text-[#6b6659]">
+            These values are stored for billing defaults and downstream platform workflows.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
+        <h3 className="font-serif font-semibold text-sm">Platform Billing Legal Entity Header</h3>
+        <p className="text-xs text-[#6b6659]">
+          Configure platform entity details shown on software tax invoices issued to tenant firms.
+        </p>
+        <div className="space-y-3 text-xs">
+          <label className="block">
+            Seller Legal Name
+            <input
+              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
+              value={sellerName}
+              onChange={(e) => setSellerName(e.target.value)}
+            />
+          </label>
+          <label className="block">
+            Seller GSTIN
+            <input
+              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded font-mono"
+              value={sellerGstin}
+              onChange={(e) => setSellerGstin(e.target.value)}
+              placeholder="e.g. 19AAACA1234A1Z5"
+            />
+          </label>
+          <label className="block">
+            Registered Address
+            <textarea
+              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded h-20"
+              value={sellerAddress}
+              onChange={(e) => setSellerAddress(e.target.value)}
+            />
+          </label>
+          <Button disabled={saving} onClick={() => void saveSettings()}>
+            Save Platform Settings
+          </Button>
+        </div>
+      </div>
+      <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
+        <h3 className="font-serif font-semibold text-sm">Create / Update Manufacturing Plan</h3>
+        <div className="grid gap-3 text-xs sm:grid-cols-2">
+          <label className="block">
+            Plan Name
+            <input className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded" value={planName} onChange={(e) => setPlanName(e.target.value)} />
+          </label>
+          <label className="block">
+            Plan Code
+            <input className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded font-mono" value={planCode} onChange={(e) => setPlanCode(e.target.value)} />
+          </label>
+          <label className="block">
+            Price
+            <input className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} />
+          </label>
+          <label className="block">
+            Billing Cycle
+            <select className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded" value={planCycle} onChange={(e) => setPlanCycle(e.target.value)}>
+              <option value="monthly">Monthly</option>
+              <option value="annual">Annual</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <label className="block">
+            Branch Limit
+            <input className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded" value={branchLimit} onChange={(e) => setBranchLimit(e.target.value)} placeholder="Unlimited" />
+          </label>
+          <label className="block">
+            User Limit
+            <input className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded" value={userLimit} onChange={(e) => setUserLimit(e.target.value)} placeholder="Unlimited" />
+          </label>
+        </div>
         {msg && <p className="text-xs text-[#2d6a4f]">{msg}</p>}
-        <Button disabled={saving} onClick={() => void saveSettings()}>
-          Save Platform Settings
+        <Button disabled={saving || !planName.trim() || !planCode.trim()} onClick={() => void createPlan()}>
+          Save Plan
         </Button>
       </div>
+      </div>
+      <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="font-serif font-semibold text-sm">Save All Platform Defaults</h3>
+            <p className="mt-1 text-xs text-[#6b6659]">
+              Saves branding, billing, support, licensing, integration, operation, and security defaults.
+            </p>
+          </div>
+          <Button disabled={saving} onClick={() => void saveSettings()}>
+            Save All Settings
+          </Button>
+        </div>
+        {msg && <p className="mt-2 text-xs text-[#2d6a4f]">{msg}</p>}
+      </div>
     </div>
+  );
+}
+
+function SettingsText({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="block">
+      {label}
+      <input
+        className="mt-1 w-full rounded border border-[#c9c4ba] bg-white p-2"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </label>
+  );
+}
+
+function SettingsSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <label className="block">
+      {label}
+      <select
+        className="mt-1 w-full rounded border border-[#c9c4ba] bg-white p-2"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option.replace(/_/g, " ")}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

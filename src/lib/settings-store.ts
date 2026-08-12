@@ -302,6 +302,11 @@ export interface BranchSettings {
   // Gold rate preferences
   defaultKarat?: 22 | 24 | 18;
   goldRateSource?: "manual" | "api";
+  /** Per-branch rate overrides. Unset/0 = fall back to the firm-wide rate. */
+  goldRate24KOverridePaise?: number;
+  goldRate22KOverridePaise?: number;
+  goldRate18KOverridePaise?: number;
+  silverRateOverridePaise?: number;
   // Print templates
   invoiceTemplateId?: string;
   receiptTemplateId?: string;

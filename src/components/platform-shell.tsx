@@ -3,30 +3,41 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
   Building2,
+  CircleDollarSign,
   Database,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
+  MessageSquare,
+  Receipt,
   Settings2,
   ShieldCheck,
   Users,
+  Wrench,
 } from "lucide-react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Button } from "@/components/ui/button";
 
 const items = [
-  ["Overview", "/platform?view=overview", LayoutDashboard],
-  ["Firms", "/platform?view=firms", Building2],
-  ["Users", "/platform?view=firms", Users],
-  ["Support", "/platform?view=tickets", LifeBuoy],
-  ["Health", "/platform?view=health", Activity],
-  ["Audit", "/platform?view=activity", ShieldCheck],
-  ["Backups", "/platform?view=backups", Database],
-  ["Settings", "/platform?view=settings", Settings2],
+  ["Overview", "overview", LayoutDashboard],
+  ["Firms", "firms", Building2],
+  ["Users", "users", Users],
+  ["Subscriptions", "subscriptions", CircleDollarSign],
+  ["Licensing", "licensing", ShieldCheck],
+  ["Requests", "requests", Wrench],
+  ["Tickets", "tickets", MessageSquare],
+  ["Billing", "billing", Receipt],
+  ["Health", "health", Activity],
+  ["Audit", "activity", LifeBuoy],
+  ["Backups", "backups", Database],
+  ["Settings", "settings", Settings2],
 ] as const;
 
 export function PlatformShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const activeView = useRouterState({
+    select: (state) => (state.location.search as { view?: string }).view ?? "overview",
+  });
   async function signOut() {
     await supabase.auth.signOut();
     window.location.assign("/");
@@ -42,11 +53,12 @@ export function PlatformShell({ children }: { children: ReactNode }) {
             <h1 className="mt-1 font-serif text-xl">Owner Control</h1>
           </div>
           <nav className="flex-1 space-y-1 p-3">
-            {items.map(([label, href, Icon]) => (
+            {items.map(([label, view, Icon]) => (
               <Link
-                key={href}
-                to={href as never}
-                className={`flex items-center gap-3 px-3 py-2.5 text-sm ${pathname === "/platform" && window.location.search === href.slice(href.indexOf("?")) ? "bg-white/15 text-white" : "text-white/65 hover:bg-white/10 hover:text-white"}`}
+                key={view}
+                to="/platform"
+                search={{ view } as never}
+                className={`flex items-center gap-3 px-3 py-2.5 text-sm ${pathname === "/platform" && activeView === view ? "bg-white/15 text-white" : "text-white/65 hover:bg-white/10 hover:text-white"}`}
               >
                 <Icon className="h-4 w-4" />
                 {label}
@@ -89,11 +101,12 @@ export function PlatformShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <nav className="mt-3 flex gap-1 overflow-x-auto lg:hidden">
-              {items.slice(0, 5).map(([label, href]) => (
+              {items.slice(0, 5).map(([label, view]) => (
                 <Link
-                  key={href}
-                  to={href as never}
-                  className={`whitespace-nowrap border px-3 py-2 text-xs ${pathname === "/platform" && window.location.search === href.slice(href.indexOf("?")) ? "border-[#b99b5a] bg-[#eee5d2]" : "border-[#dedad1]"}`}
+                  key={view}
+                  to="/platform"
+                  search={{ view } as never}
+                  className={`whitespace-nowrap border px-3 py-2 text-xs ${pathname === "/platform" && activeView === view ? "border-[#b99b5a] bg-[#eee5d2]" : "border-[#dedad1]"}`}
                 >
                   {label}
                 </Link>

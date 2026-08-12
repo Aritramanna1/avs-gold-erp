@@ -34,12 +34,15 @@ export function BranchSelector() {
       </span>
       {canSwitch && activeBranches.length > 1 ? (
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background/60 hover:border-gold/40 hover:bg-gold/5 transition-all text-xs cursor-pointer focus:outline-none select-none">
+          <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-background/80 hover:border-gold/40 hover:bg-gold/5 transition-all text-xs cursor-pointer focus:outline-none select-none">
             <MapPin className="h-3.5 w-3.5 text-gold" />
-            <span className="font-semibold text-slate-200">{currentBranch.name}</span>
+            <span className="font-semibold text-foreground">{currentBranch.name}</span>
             <ChevronDown className="h-3 w-3 text-muted-foreground" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 bg-slate-950 border-border">
+          <DropdownMenuContent
+            align="end"
+            className="w-56 bg-popover text-popover-foreground border-border"
+          >
             <div className="px-2 py-1.5 text-[10px] uppercase font-semibold text-muted-foreground border-b border-border/40 mb-1">
               Switch Branch Location
             </div>
@@ -49,7 +52,9 @@ export function BranchSelector() {
                 id={`branch-select-item-${b.id}`}
                 onClick={() => setSelectedBranchId(b.id)}
                 className={`text-xs cursor-pointer flex items-center justify-between ${
-                  b.id === selectedBranchId ? "text-gold font-semibold bg-gold/5" : "text-slate-300"
+                  b.id === selectedBranchId
+                    ? "text-gold font-semibold bg-gold/5"
+                    : "text-popover-foreground"
                 }`}
               >
                 <span>

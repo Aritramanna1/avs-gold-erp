@@ -229,7 +229,7 @@ export function PrintToolbar({
                 </span>
               </div>
               <p className="text-[10px] text-muted-foreground mt-0.5 hidden sm:block">
-                MTJ ERP High-Fidelity Printing System. Inkjet copies are optimized for legal
+                AVS ERP High-Fidelity Printing System. Inkjet copies are optimized for legal
                 archives.
               </p>
             </div>

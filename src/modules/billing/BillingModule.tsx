@@ -39,7 +39,7 @@ import { usePeople } from "@/lib/people-store";
 import { useLedger } from "@/lib/ledger-store";
 import { useSettings } from "@/lib/settings-store";
 import { resolveMakingCharge } from "@/lib/calculation-engine";
-import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
+import { getCurrentGoldRatePaise, useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useAttachments } from "@/lib/attachments-store";
 import { useBillingStore, type BillingType } from "./billingStore";
 import { useModuleStore } from "@/lib/module-store";
@@ -342,7 +342,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
   const appendOrderTimeline = useOrders((s) => s.appendTimeline);
   const jobs = useJobCards((s) => s.jobs);
   const people = usePeople((s) => s.people);
-  const currentGoldRatePaise = useSettings((s) => s.goldRatePerGramPaise);
+  const currentGoldRatePaise = useCurrentGoldRatePaise();
   const appendLedger = useLedger((s) => s.append);
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(orderId || null);

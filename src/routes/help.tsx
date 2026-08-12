@@ -36,7 +36,7 @@ function HelpPage() {
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2 pb-2">
         <PageHeader
-          title="MTJ ERP Pilot Operating Guide"
+          title="AVS ERP Pilot Operating Guide"
           subtitle={`Reference manual for this ${deploymentLabel.toLowerCase()} jewellery manufacturing deployment.`}
         />
         <Badge variant="outline" className="bg-gold/10 text-gold border-gold/40 py-1 px-3">
@@ -77,7 +77,7 @@ function HelpPage() {
           <ul className="list-disc pl-4 mt-2 space-y-1 text-xs text-muted-foreground">
             <li>
               <strong>Active Profile Required:</strong> If you try to log in and see{" "}
-              <em>&quot;MTJ ERP profile is not linked&quot;</em>, your email is not registered in
+              <em>&quot;AVS ERP profile is not linked&quot;</em>, your email is not registered in
               the User Directory. Contact Admin to add your email.
             </li>
             <li>
