@@ -43,22 +43,22 @@ import { closeFinancialYear } from "@/lib/financial-lock-store";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
 export const Route = createFileRoute("/settings/workflow")({
-  head: () => ({ meta: [{ title: "Workflow Engine · AVS Gold ERP" }] }),
+  head: () => ({ meta: [{ title: "Workflow Engine - AVS Gold ERP" }] }),
   component: WorkflowSettings,
 });
 
 const MODE_LABELS: Record<BusinessMode, { label: string; description: string }> = {
   retail_only: {
     label: "Retail Only",
-    description: "No manufacturing — sell ready-made stock only. Manufacturing Bill disabled.",
+    description: "No manufacturing - sell ready-made stock only. Manufacturing Bill disabled.",
   },
   manufacturing_only: {
     label: "Manufacturing Only",
-    description: "Pure manufacturer — all items made to order. Retail billing disabled.",
+    description: "Pure manufacturer - all items made to order. Retail billing disabled.",
   },
-  hybrid: {
-    label: "Hybrid (Retail + Manufacturing)",
-    description: "Both modes active. MTJ default — retail stock sales and custom manufacturing.",
+  combined_commerce_manufacturing: {
+    label: "Combined Commerce + Manufacturing",
+    description: "Both business workflows active: ready-stock sales and custom manufacturing.",
   },
 };
 
@@ -83,7 +83,7 @@ function ToggleRow({ label, description, checked, onCheckedChange, disabled }: T
   );
 }
 
-export default function WorkflowSettings() {
+function WorkflowSettings() {
   const { config, patch, applyPreset, reset } = useWorkflowEngine();
   const selectedBranchId = useSettings((s) => s.selectedBranchId || "MAIN");
   const [fyYear, setFyYear] = useState(new Date().getFullYear() - 1);
@@ -143,7 +143,7 @@ export default function WorkflowSettings() {
       toast.success("Financial lock enforcement re-enabled.");
     } else {
       toast.warning(
-        "Financial lock enforcement disabled — locked periods will no longer block postings.",
+        "Financial lock enforcement disabled - locked periods will no longer block postings.",
       );
     }
   }
@@ -163,10 +163,10 @@ export default function WorkflowSettings() {
           className="gap-1.5"
           onClick={() => {
             reset();
-            toast.success("Reset to MTJ defaults");
+            toast.success("Reset to AVS manufacturing defaults");
           }}
         >
-          <RotateCcw className="h-3.5 w-3.5" /> Reset to MTJ Default
+          <RotateCcw className="h-3.5 w-3.5" /> Reset to AVS Default
         </Button>
       </div>
 
@@ -190,7 +190,7 @@ export default function WorkflowSettings() {
             >
               <div className="text-xs font-bold mb-1">{key.replace(/_/g, " ").toUpperCase()}</div>
               <div className="text-[10px] text-muted-foreground leading-relaxed">
-                {key === "mtj_default" && "MTJ hybrid: manufacturing-first, outstanding allowed"}
+                {key === "mtj_default" && "AVS manufacturing-first mode, outstanding allowed"}
                 {key === "retail_only" && "No manufacturing. Sell from ready stock only."}
                 {key === "manufacturing_strict" && "Full payment required before delivery."}
               </div>
@@ -224,10 +224,10 @@ export default function WorkflowSettings() {
         </Select>
         <p className="text-xs text-muted-foreground">{MODE_LABELS[config.mode].description}</p>
 
-        {config.mode === "hybrid" && (
+        {config.mode === "combined_commerce_manufacturing" && (
           <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 rounded-xl p-3">
             <CheckCircle className="h-4 w-4 shrink-0" />
-            MTJ uses Hybrid mode — manufacturing and retail billing are both active.
+            Combined business mode keeps manufacturing and ready-stock billing workflows active.
           </div>
         )}
       </section>
@@ -272,14 +272,14 @@ export default function WorkflowSettings() {
         />
         <ToggleRow
           label="Charge for Hallmark / BIS"
-          description="Show the Hallmark charge line on Manufacturing Bills. When off, it's hidden and forced to ₹0 in cost calculations."
+          description="Show the Hallmark charge line on Manufacturing Bills. When off, it is hidden and forced to Rs. 0 in cost calculations."
           checked={config.mfgChargeHallmarkEnabled}
           onCheckedChange={(v) => patch({ mfgChargeHallmarkEnabled: v })}
           disabled={!mfgEnabled}
         />
         <ToggleRow
           label="Charge for HUID Registration"
-          description="Show the HUID charge line on Manufacturing Bills. When off, it's hidden and forced to ₹0."
+          description="Show the HUID charge line on Manufacturing Bills. When off, it is hidden and forced to Rs. 0."
           checked={config.mfgChargeHuidEnabled}
           onCheckedChange={(v) => patch({ mfgChargeHuidEnabled: v })}
           disabled={!mfgEnabled}
@@ -333,7 +333,7 @@ export default function WorkflowSettings() {
         <h2 className="font-serif text-lg text-gold">Financial Controls</h2>
         <ToggleRow
           label="Enforce Month-End Financial Locks"
-          description="Blocks new gold ledger, worker gold book, and expense postings dated inside a locked month (see Reports → Month-End Close). Defaults ON — only turn off for a deliberate one-off data migration/backfill."
+          description="Blocks new gold ledger, worker gold book, and expense postings dated inside a locked month (see Reports > Month-End Close). Defaults ON - only turn off for a deliberate one-off data migration/backfill."
           checked={config.financialLockEnforcementEnabled}
           onCheckedChange={handleFinancialLockToggle}
         />
@@ -349,7 +349,7 @@ export default function WorkflowSettings() {
           <div className="flex-1">
             <div className="text-sm font-medium">Default Labour Calculation Method</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              Pre-fills a new Labour Charge's method — always changeable per-charge.
+              Pre-fills a new Labour Charge method - always changeable per charge.
             </div>
           </div>
           <Select
@@ -398,7 +398,7 @@ export default function WorkflowSettings() {
         />
         <ToggleRow
           label="Allow Advance Payments"
-          description="When off, a Payment cannot exceed the current Labour Outstanding — prevents recording advances against an outside jeweller."
+          description="When off, a Payment cannot exceed the current Labour Outstanding - prevents recording advances against an outside jeweller."
           checked={config.outsideWorkAllowAdvancePayments}
           onCheckedChange={(v) => patch({ outsideWorkAllowAdvancePayments: v })}
         />
@@ -423,7 +423,7 @@ export default function WorkflowSettings() {
         />
         <ToggleRow
           label="Allow Outstanding Delivery"
-          description="Allow the customer to take delivery with a partial or zero payment — creates an outstanding balance."
+          description="Allow the customer to take delivery with a partial or zero payment - creates an outstanding balance."
           checked={config.outstandingDeliveryAllowed}
           onCheckedChange={(v) => patch({ outstandingDeliveryAllowed: v })}
           disabled={config.deliveryRequiresFullPayment}

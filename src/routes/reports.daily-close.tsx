@@ -7,29 +7,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { useLedger, computeBalances } from "@/lib/ledger-store";
-import { useOrders } from "@/lib/orders-store";
-import { useJobCards, karigarCustodySummaries } from "@/lib/jobcards-store";
-import { useStock } from "@/lib/stock-store";
-import { useBilling, paiseToRupees, rupeesToPaise } from "@/lib/billing-store";
-import { useRepairs } from "@/lib/repair-store";
-import { useWorkers } from "@/lib/workers-store";
+import { paiseToRupees, rupeesToPaise } from "@/lib/billing-store";
 import { useDailyCloses, type DailyCloseSnapshot } from "@/lib/dailyclose-store";
+import { fetchDailyCloseSnapshot } from "@/lib/daily-close-query";
 import { useFinancialLocks, loadFinancialLocks, isPeriodLocked } from "@/lib/financial-lock-store";
 import { useSettings } from "@/lib/settings-store";
 import { mgToGrams } from "@/lib/gold";
 import { exportToCSV } from "@/lib/report-engine";
-import { migrateAllToCloud } from "@/lib/cloud-migrate";
-import { hasLocalDiverged, getLastMigrationAt } from "@/lib/db-status";
 import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
-  CloudOff,
   Download,
   Loader2,
   Printer,
-  RefreshCw,
   Save,
   XCircle,
 } from "lucide-react";
@@ -45,15 +36,35 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+const EMPTY_SNAPSHOT: DailyCloseSnapshot = {
+  openingVaultMg: 0,
+  goldIssuedMg: 0,
+  goldReceivedMg: 0,
+  finishedCreatedMg: 0,
+  scrapReturnedMg: 0,
+  soldFineMg: 0,
+  closingVaultMg: 0,
+  karigarOutstandingMg: 0,
+  balanceSheetBalanced: true,
+  discrepancyMg: 0,
+  invoiceCount: 0,
+  salesTotalPaise: 0,
+  cashTotalPaise: 0,
+  upiTotalPaise: 0,
+  bankTotalPaise: 0,
+  cardTotalPaise: 0,
+  outstandingTotalPaise: 0,
+  repairPaymentsPaise: 0,
+  workerWithdrawalsPaise: 0,
+  gstCollectedPaise: 0,
+  jobCardsCreated: 0,
+  jobCardsClosed: 0,
+  repairsCreated: 0,
+  repairsDelivered: 0,
+};
+
 function DailyClosePage() {
   const navigate = useNavigate();
-  const ledger = useLedger((s) => s.entries);
-  const orders = useOrders((s) => s.orders);
-  const jobs = useJobCards((s) => s.jobs);
-  const stockItems = useStock((s) => s.items);
-  const invoices = useBilling((s) => s.invoices);
-  const repairs = useRepairs((s) => s.repairs);
-  const workers = useWorkers((s) => s);
   const addClose = useDailyCloses((s) => s.add);
   const closes = useDailyCloses((s) => s.closes);
   const selectedBranchId = useSettings((s) => s.selectedBranchId);
@@ -75,133 +86,45 @@ function DailyClosePage() {
   const [syncState, setSyncState] = useState<"idle" | "running" | "ok" | "error">("idle");
   const [syncMsg, setSyncMsg] = useState<string>("");
   const [lastSavedId, setLastSavedId] = useState<string | null>(null);
-  const diverged = hasLocalDiverged();
-  const lastMig = getLastMigrationAt();
+  const [snapshot, setSnapshot] = useState<DailyCloseSnapshot | null>(null);
+  const [ordersToday, setOrdersToday] = useState(0);
+  const [stockItemsTotal, setStockItemsTotal] = useState(0);
+  const [snapshotCapped, setSnapshotCapped] = useState(false);
+  const [snapshotLoading, setSnapshotLoading] = useState(true);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
 
-  const dayStart = new Date(date + "T00:00:00").getTime();
-  const dayEnd = new Date(date + "T23:59:59").getTime();
-  const isToday = (ts: number) => ts >= dayStart && ts <= dayEnd;
-
-  const snapshot: DailyCloseSnapshot = useMemo(() => {
-    const balance = computeBalances(ledger);
-    const balanceBefore = computeBalances(ledger.filter((e) => e.createdAt < dayStart));
-    const todaysLedger = ledger.filter((e) => isToday(e.createdAt));
-    const sum = (pred: (t: string) => boolean) =>
-      todaysLedger
-        .filter((e) => pred(e.type))
-        .reduce((s, e) => s + (e.fineMg ?? Math.abs(e.netFineMg)), 0);
-
-    const goldIssuedMg = todaysLedger
-      .filter((e) => e.type === "issue_to_karigar")
-      .reduce((s, e) => s + (e.deltas.karigar ?? 0), 0);
-    const goldReceivedMg = todaysLedger
-      .filter((e) => e.type === "receive_from_karigar" || e.type === "finished_item_created")
-      .reduce((s, e) => s + Math.max(0, -(e.deltas.karigar ?? 0)), 0);
-    const finishedCreatedMg = todaysLedger
-      .filter((e) => e.type === "finished_item_created")
-      .reduce((s, e) => s + (e.deltas.finished ?? 0), 0);
-    const scrapReturnedMg = todaysLedger
-      .filter((e) => e.type === "scrap_returned")
-      .reduce((s, e) => s + (e.deltas.scrap ?? 0), 0);
-    const soldFineMg = -todaysLedger
-      .filter((e) => e.type === "sale")
-      .reduce((s, e) => s + (e.deltas.finished ?? 0), 0);
-    const custody = karigarCustodySummaries(jobs).reduce((s, c) => s + c.outstandingMg, 0);
-
-    const invToday = invoices.filter((i) => isToday(i.createdAt) && i.status !== "cancelled");
-    let cash = 0,
-      upi = 0,
-      bank = 0,
-      card = 0,
-      outstanding = 0,
-      gstTotal = 0,
-      salesTotal = 0;
-    for (const inv of invToday) {
-      salesTotal += inv.subtotalPaise + inv.gstPaise;
-      gstTotal += inv.gstPaise;
-      for (const p of inv.payments) {
-        if (!isToday(p.ts)) continue;
-        if (p.mode === "cash") cash += p.amountPaise;
-        else if (p.mode === "upi") upi += p.amountPaise;
-        else if (p.mode === "bank") bank += p.amountPaise;
-        else if (p.mode === "card") card += p.amountPaise;
-        else if (p.mode === "outstanding") outstanding += p.amountPaise;
-      }
-    }
-    // include repair payments
-    let repairPay = 0;
-    for (const r of repairs) {
-      if (isToday(r.createdAt)) repairPay += r.advancePaise;
-      for (const p of r.payments) {
-        if (isToday(p.ts) && p.mode !== "outstanding") {
-          repairPay += p.amountPaise;
-          if (p.mode === "cash") cash += p.amountPaise;
-          else if (p.mode === "upi") upi += p.amountPaise;
-          else if (p.mode === "bank") bank += p.amountPaise;
-          else if (p.mode === "card") card += p.amountPaise;
-        }
-      }
-    }
-    const workerWithdrawals = workers.withdrawals
-      .filter((w) => w.date === date)
-      .reduce((s, w) => s + w.amountPaise, 0);
-
-    return {
-      openingVaultMg: balanceBefore.buckets.vault,
-      goldIssuedMg: Math.abs(goldIssuedMg),
-      goldReceivedMg,
-      finishedCreatedMg,
-      scrapReturnedMg,
-      soldFineMg,
-      closingVaultMg: balance.buckets.vault,
-      karigarOutstandingMg: custody,
-      balanceSheetBalanced: balance.balanced,
-      discrepancyMg: balance.discrepancyMg,
-      invoiceCount: invToday.length,
-      salesTotalPaise: salesTotal,
-      cashTotalPaise: cash,
-      upiTotalPaise: upi,
-      bankTotalPaise: bank,
-      cardTotalPaise: card,
-      outstandingTotalPaise: outstanding,
-      repairPaymentsPaise: repairPay,
-      workerWithdrawalsPaise: workerWithdrawals,
-      gstCollectedPaise: gstTotal,
-      jobCardsCreated: jobs.filter((j) => isToday(j.createdAt)).length,
-      jobCardsClosed: jobs.filter((j) => isToday(j.updatedAt) && j.status === "closed").length,
-      repairsCreated: repairs.filter((r) => isToday(r.createdAt)).length,
-      repairsDelivered: repairs.filter((r) => r.deliveredAt && isToday(r.deliveredAt)).length,
+  useEffect(() => {
+    let live = true;
+    setSnapshotLoading(true);
+    setSnapshotError(null);
+    fetchDailyCloseSnapshot(date, selectedBranchId || "MAIN")
+      .then((result) => {
+        if (!live) return;
+        setSnapshot(result.snapshot);
+        setOrdersToday(result.ordersToday);
+        setStockItemsTotal(result.stockItemsTotal);
+        setSnapshotCapped(result.capped);
+      })
+      .catch((error: any) => {
+        if (live) setSnapshotError(error?.message ?? "Could not load daily close snapshot.");
+      })
+      .finally(() => {
+        if (live) setSnapshotLoading(false);
+      });
+    return () => {
+      live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ledger, invoices, jobs, repairs, workers.withdrawals, date]);
+  }, [date, selectedBranchId]);
+  const closeSnapshot = snapshot ?? EMPTY_SNAPSHOT;
 
   const physCash = rupeesToPaise(physCashStr || 0);
-  const expectedCash = snapshot.cashTotalPaise;
+  const expectedCash = closeSnapshot.cashTotalPaise;
   const cashVariance = physCash - expectedCash;
 
   const runSyncAndPrint = async (closeId: string) => {
-    setSyncState("running");
-    setSyncMsg("Pushing today's data to Lovable Cloud…");
-    try {
-      const res = await migrateAllToCloud((p) => {
-        if (!p.ok) return;
-        setSyncMsg(`Syncing ${p.table} (${p.inserted}/${p.total})…`);
-      });
-      if (res.ok) {
-        setSyncState("ok");
-        setSyncMsg("Daily Close synced to cloud.");
-        navigate({ to: "/reports/dailyclose-print/$id", params: { id: closeId } });
-      } else {
-        setSyncState("error");
-        setSyncMsg("Cloud sync failed — printable close blocked. " + res.errors.join("; "));
-      }
-    } catch (e) {
-      setSyncState("error");
-      setSyncMsg(
-        "Cloud sync error — printable close blocked. " +
-          (e instanceof Error ? e.message : String(e)),
-      );
-    }
+    setSyncState("ok");
+    setSyncMsg("Daily Close saved in Supabase. Opening print view.");
+    navigate({ to: "/reports/dailyclose-print/$id", params: { id: closeId } });
   };
 
   const onSave = async () => {
@@ -213,7 +136,7 @@ function DailyClosePage() {
     }
     const c = addClose({
       date,
-      snapshot,
+      snapshot: closeSnapshot,
       checklist: {
         cashCounted,
         goldChecked,
@@ -229,17 +152,10 @@ function DailyClosePage() {
       ownerSignature: owner,
     });
     setLastSavedId(c.id);
-    // Auto-push pilot data to Lovable Cloud at end of day so nothing is missed.
     await runSyncAndPrint(c.id);
   };
 
   const onReprint = async (id: string) => {
-    // If local diverges from last cloud snapshot, force a re-sync before allowing print.
-    if (hasLocalDiverged()) {
-      setLastSavedId(id);
-      await runSyncAndPrint(id);
-      return;
-    }
     navigate({ to: "/reports/dailyclose-print/$id", params: { id } });
   };
 
@@ -288,12 +204,37 @@ function DailyClosePage() {
         }
       />
 
-      {!snapshot.balanceSheetBalanced && (
+      {snapshotLoading && (
+        <div className="rounded-xl border border-border bg-card p-4 mb-4 text-sm text-muted-foreground">
+          Loading Daily Close snapshot from Supabase...
+        </div>
+      )}
+
+      {snapshotError && (
+        <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 mb-4 flex items-start gap-3 text-sm">
+          <AlertTriangle className="h-5 w-5 text-red-400 shrink-0" />
+          <div>
+            <b>Daily Close snapshot could not load.</b> {snapshotError}
+          </div>
+        </div>
+      )}
+
+      {snapshotCapped && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 mb-4 flex items-start gap-3 text-sm">
+          <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+          <div>
+            This close is showing a capped Supabase preview. Full-history aggregate RPC evidence is
+            still required before Daily Close can be release PASS.
+          </div>
+        </div>
+      )}
+
+      {!closeSnapshot.balanceSheetBalanced && (
         <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 mb-4 flex items-start gap-3 text-sm">
           <AlertTriangle className="h-5 w-5 text-red-400 shrink-0" />
           <div>
             <b>Gold difference found.</b> Please reconcile before closing. Discrepancy:{" "}
-            {mgToGrams(snapshot.discrepancyMg)} g.
+            {mgToGrams(closeSnapshot.discrepancyMg)} g.
           </div>
         </div>
       )}
@@ -329,50 +270,53 @@ function DailyClosePage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         <Section title="Gold Summary">
-          <Row k="Opening Vault" v={`${mgToGrams(snapshot.openingVaultMg)} g`} />
-          <Row k="Gold Issued Today" v={`${mgToGrams(snapshot.goldIssuedMg)} g`} />
-          <Row k="Gold Received Today" v={`${mgToGrams(snapshot.goldReceivedMg)} g`} />
-          <Row k="Finished Created" v={`${mgToGrams(snapshot.finishedCreatedMg)} g`} />
-          <Row k="Scrap Returned" v={`${mgToGrams(snapshot.scrapReturnedMg)} g`} />
-          <Row k="Sold (fine)" v={`${mgToGrams(snapshot.soldFineMg)} g`} />
-          <Row k="Closing Vault" v={`${mgToGrams(snapshot.closingVaultMg)} g`} bold />
-          <Row k="Karigar Outstanding" v={`${mgToGrams(snapshot.karigarOutstandingMg)} g`} />
+          <Row k="Opening Vault" v={`${mgToGrams(closeSnapshot.openingVaultMg)} g`} />
+          <Row k="Gold Issued Today" v={`${mgToGrams(closeSnapshot.goldIssuedMg)} g`} />
+          <Row k="Gold Received Today" v={`${mgToGrams(closeSnapshot.goldReceivedMg)} g`} />
+          <Row k="Finished Created" v={`${mgToGrams(closeSnapshot.finishedCreatedMg)} g`} />
+          <Row k="Scrap Returned" v={`${mgToGrams(closeSnapshot.scrapReturnedMg)} g`} />
+          <Row k="Sold (fine)" v={`${mgToGrams(closeSnapshot.soldFineMg)} g`} />
+          <Row k="Closing Vault" v={`${mgToGrams(closeSnapshot.closingVaultMg)} g`} bold />
+          <Row k="Karigar Outstanding" v={`${mgToGrams(closeSnapshot.karigarOutstandingMg)} g`} />
           <div className="mt-2">
             <Badge
               variant="outline"
               className={
-                snapshot.balanceSheetBalanced
+                closeSnapshot.balanceSheetBalanced
                   ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
                   : "bg-red-500/15 text-red-300 border-red-500/30"
               }
             >
-              {snapshot.balanceSheetBalanced
+              {closeSnapshot.balanceSheetBalanced
                 ? "BALANCED"
-                : `DIFFERENCE ${mgToGrams(snapshot.discrepancyMg)} g`}
+                : `DIFFERENCE ${mgToGrams(closeSnapshot.discrepancyMg)} g`}
             </Badge>
           </div>
         </Section>
 
         <Section title="Cash / Payments">
-          <Row k="Invoices" v={String(snapshot.invoiceCount)} />
-          <Row k="Sales Total" v={`₹ ${paiseToRupees(snapshot.salesTotalPaise)}`} />
-          <Row k="Cash" v={`₹ ${paiseToRupees(snapshot.cashTotalPaise)}`} />
-          <Row k="UPI" v={`₹ ${paiseToRupees(snapshot.upiTotalPaise)}`} />
-          <Row k="Bank" v={`₹ ${paiseToRupees(snapshot.bankTotalPaise)}`} />
-          <Row k="Card" v={`₹ ${paiseToRupees(snapshot.cardTotalPaise)}`} />
-          <Row k="Outstanding" v={`₹ ${paiseToRupees(snapshot.outstandingTotalPaise)}`} />
-          <Row k="GST Collected" v={`₹ ${paiseToRupees(snapshot.gstCollectedPaise)}`} />
-          <Row k="Repair Payments" v={`₹ ${paiseToRupees(snapshot.repairPaymentsPaise)}`} />
-          <Row k="Worker Withdrawals" v={`₹ ${paiseToRupees(snapshot.workerWithdrawalsPaise)}`} />
+          <Row k="Invoices" v={String(closeSnapshot.invoiceCount)} />
+          <Row k="Sales Total" v={`₹ ${paiseToRupees(closeSnapshot.salesTotalPaise)}`} />
+          <Row k="Cash" v={`₹ ${paiseToRupees(closeSnapshot.cashTotalPaise)}`} />
+          <Row k="UPI" v={`₹ ${paiseToRupees(closeSnapshot.upiTotalPaise)}`} />
+          <Row k="Bank" v={`₹ ${paiseToRupees(closeSnapshot.bankTotalPaise)}`} />
+          <Row k="Card" v={`₹ ${paiseToRupees(closeSnapshot.cardTotalPaise)}`} />
+          <Row k="Outstanding" v={`₹ ${paiseToRupees(closeSnapshot.outstandingTotalPaise)}`} />
+          <Row k="GST Collected" v={`₹ ${paiseToRupees(closeSnapshot.gstCollectedPaise)}`} />
+          <Row k="Repair Payments" v={`₹ ${paiseToRupees(closeSnapshot.repairPaymentsPaise)}`} />
+          <Row
+            k="Worker Withdrawals"
+            v={`₹ ${paiseToRupees(closeSnapshot.workerWithdrawalsPaise)}`}
+          />
         </Section>
 
         <Section title="Workshop / Orders / Repair">
-          <Row k="Job Cards Created" v={String(snapshot.jobCardsCreated)} />
-          <Row k="Job Cards Closed" v={String(snapshot.jobCardsClosed)} />
-          <Row k="Orders Today" v={String(orders.filter((o) => isToday(o.createdAt)).length)} />
-          <Row k="Repairs Created" v={String(snapshot.repairsCreated)} />
-          <Row k="Repairs Delivered" v={String(snapshot.repairsDelivered)} />
-          <Row k="Stock Items (total)" v={String(stockItems.length)} />
+          <Row k="Job Cards Created" v={String(closeSnapshot.jobCardsCreated)} />
+          <Row k="Job Cards Closed" v={String(closeSnapshot.jobCardsClosed)} />
+          <Row k="Orders Today" v={String(ordersToday)} />
+          <Row k="Repairs Created" v={String(closeSnapshot.repairsCreated)} />
+          <Row k="Repairs Delivered" v={String(closeSnapshot.repairsDelivered)} />
+          <Row k="Stock Items (total)" v={String(stockItemsTotal)} />
         </Section>
 
         <Section title="Checklist">
@@ -437,16 +381,6 @@ function DailyClosePage() {
         </Section>
       </div>
 
-      {(diverged || !lastMig) && (
-        <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 flex items-start gap-2 text-xs text-amber-200">
-          <CloudOff className="h-4 w-4 shrink-0 mt-0.5" />
-          <div>
-            <b>Local data differs from cloud.</b> Saving the Daily Close will auto-migrate
-            everything to Lovable Cloud first. The printable close opens only after sync succeeds.
-          </div>
-        </div>
-      )}
-
       <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
         {syncState !== "idle" && (
           <div
@@ -463,11 +397,6 @@ function DailyClosePage() {
             {syncState === "error" && <XCircle className="h-3.5 w-3.5" />}
             <span>{syncMsg}</span>
           </div>
-        )}
-        {syncState === "error" && lastSavedId && (
-          <Button variant="outline" onClick={() => runSyncAndPrint(lastSavedId)} className="gap-2">
-            <RefreshCw className="h-4 w-4" /> Retry Sync
-          </Button>
         )}
         <Link to="/reports">
           <Button variant="outline">Cancel</Button>

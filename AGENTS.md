@@ -23,3 +23,15 @@ a new version to enter `main`.
 Before any materially risky Git operation, record the current commit SHA,
 verify the branch, verify the remote, inspect the working tree, and create a
 recovery branch or tag where appropriate. If there is uncertainty, stop and ask.
+
+## Ornexa / AVS Product Memory Rule
+
+Before modifying Ornexa / AVS Jewellery Manufacturing ERP, read
+`/docs/MASTER/ORNEXA_PRODUCT_CONSTITUTION.md` and the relevant master
+specifications in `/docs/MASTER`.
+
+Do not make architectural or business-rule assumptions from the current UI
+alone. Do not silently change established business behavior. Whenever an
+approved architectural, product, workflow, calculation, security, schema, or
+configuration decision changes, update the corresponding master document in
+the same PR.

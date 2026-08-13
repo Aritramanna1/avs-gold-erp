@@ -7,7 +7,7 @@ interface ModuleComingSoonProps {
   icon?: LucideIcon;
 }
 
-/** Generic placeholder for any Workshop V1.1 deferred module/section — see src/lib/pilot-config.ts. */
+/** Generic planned-workflow notice for scoped modules not yet enabled in this tenant. */
 export function ModuleComingSoon({ title, message, icon: Icon = Sparkles }: ModuleComingSoonProps) {
   const titleId = useId();
 
@@ -22,15 +22,15 @@ export function ModuleComingSoon({ title, message, icon: Icon = Sparkles }: Modu
         </div>
         <div className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
-          Coming soon
+          Planned workflow
         </div>
         <h2 id={titleId} className="mt-4 font-serif text-2xl font-semibold text-gold">
           {title}
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{message}</p>
         <p className="mx-auto mt-5 max-w-xl border-t border-border/70 pt-4 text-xs text-muted-foreground/80">
-          This workspace will become available in a future ERP update. Your current records and
-          workflows are unaffected.
+          This workspace is not enabled for the current production scope. Existing Supabase records
+          and active workflows are unaffected.
         </p>
       </div>
     </section>

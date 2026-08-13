@@ -1,16 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useSettlements, previewSettlementTotals, type Settlement } from "@/lib/settlement-store";
-import { useBilling, paiseToRupees, type Invoice } from "@/lib/billing-store";
+import { previewSettlementTotals, type Settlement } from "@/lib/settlement-store";
+import { paiseToRupees, type Invoice } from "@/lib/billing-store";
+import { fetchDeliverySummaryData } from "@/lib/delivery-summary-query";
 import { mgToGrams } from "@/lib/gold";
 import { exportToCSV } from "@/lib/report-engine";
 import { printDocument } from "@/lib/print-document";
-import { Printer, Truck, Download } from "lucide-react";
+import { AlertTriangle, Download, Loader2, Printer, RotateCcw, Truck } from "lucide-react";
 
 export const Route = createFileRoute("/reports/delivery-summary")({
   head: () => ({ meta: [{ title: "Daily Delivery Summary · AVS Gold ERP" }] }),
@@ -201,9 +202,41 @@ function todayStr(): string {
 }
 
 function DeliverySummaryPage() {
-  const settlements = useSettlements((s) => s.settlements);
-  const invoices = useBilling((s) => s.invoices);
   const [date, setDate] = useState(todayStr());
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [capped, setCapped] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    fetchDeliverySummaryData(date)
+      .then((data) => {
+        if (cancelled) return;
+        setSettlements(data.settlements);
+        setInvoices(data.invoices);
+        setCapped(data.capped);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSettlements([]);
+        setInvoices([]);
+        setCapped(false);
+        setError(err instanceof Error ? err.message : "Could not load delivery summary.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [date, reloadKey]);
 
   const dealerRows = useMemo(
     () => computeDailyDeliverySummary(settlements, date, invoices),
@@ -308,6 +341,40 @@ function DeliverySummaryPage() {
       <Badge variant="outline" className="border-amber-500/40 text-amber-500">
         Internal document — not for customer distribution
       </Badge>
+
+      {loading ? (
+        <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+          <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+          Loading delivered settlements for this date...
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium text-destructive">Delivery summary could not load</p>
+              <p className="mt-1 text-muted-foreground">{error}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setReloadKey((value) => value + 1)}
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Retry
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {capped ? (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-700">
+          <AlertTriangle className="mr-2 inline h-4 w-4" />
+          Showing the first 1000 matching rows. Promote delivered_at to an indexed report column
+          before using this report for unusually high-volume delivery days.
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center gap-2 mb-3">

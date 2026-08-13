@@ -300,6 +300,7 @@ function makeId() {
 }
 
 const jobCardRepository = createRepository<JobCard>("job_cards");
+const JOB_CARD_COMPAT_CACHE_LIMIT = 500;
 
 async function makeJobNo(): Promise<string> {
   const d = new Date();
@@ -317,7 +318,13 @@ export const useJobCards = create<JobCardsState>()((set, get) => ({
       !currentUserRole || GLOBAL_ROLES.includes(currentUserRole)
         ? null
         : selectedBranchId || "MAIN";
-    let q = supabase.from("job_cards").select("data").limit(10000);
+    // Compatibility cache for side panels/detail handoff. Large job registers
+    // must use route-level pagination or server aggregates.
+    let q = supabase
+      .from("job_cards")
+      .select("data")
+      .order("updated_at", { ascending: false })
+      .limit(JOB_CARD_COMPAT_CACHE_LIMIT);
     if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
     const { data, error } = await q;
     if (error) {

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { usePrintEngine } from "@/lib/print-engine";
 import { useDraft } from "@/lib/drafts-store";
@@ -56,6 +56,7 @@ import {
   Camera,
   BookOpen,
   ArrowLeft,
+  ArrowRight,
   Coins,
   Clock,
   Trash2,
@@ -66,13 +67,12 @@ import { AttachmentButton } from "@/components/attachment-placeholder-modal";
 import { useAttachments, useAttachmentUrl } from "@/lib/attachments-store";
 import { useSettings } from "@/lib/settings-store";
 import { DynamicFormRenderer } from "@/components/forms/DynamicFormRenderer";
-import {
-  DynamicFields,
-  peopleForms,
-  customFormsSearchText,
-} from "@/components/forms/DynamicFields";
+import { DynamicFields, peopleForms } from "@/components/forms/DynamicFields";
 import { ReferenceNotesPanel } from "@/components/reference-notes/ReferenceNotesPanel";
 import { CustomerPersonalLedgerView } from "@/components/customer-personal-ledger-view";
+import { findPersonIdForCentralParty } from "@/lib/central-foundation";
+import { fetchPeoplePage, fetchPeopleTabCounts, type PeopleTabCounts } from "@/lib/people-query";
+import { EmptyState, InlineSavingState, WebAppState } from "@/components/web-app-state";
 
 import { guardRoute } from "@/lib/permissions";
 
@@ -105,9 +105,32 @@ type TabKey = (typeof TABS)[number]["key"];
 
 function PeoplePage() {
   const { t } = useLanguage();
+  const navigate = useNavigate({ from: "/people/" });
+  const search = useSearch({ from: "/people/" }) as {
+    selected?: string;
+    central?: string;
+    tab?: TabKey;
+    q?: string;
+    page?: number;
+  };
   const people = usePeople((s) => s.people);
-  const [tab, setTab] = useState<TabKey>("customers");
-  const [query, setQuery] = useState("");
+  const selectedBranchId = useSettings((s) => s.selectedBranchId);
+  const currentUserRole = useSettings((s) => s.currentUserRole);
+  const tab = search.tab && TABS.some((item) => item.key === search.tab) ? search.tab : "customers";
+  const query = search.q ?? "";
+  const page = Math.max(1, Number(search.page) || 1);
+  const pageSize = 25;
+  const [pagedPeople, setPagedPeople] = useState<Person[]>([]);
+  const [pageTotalCount, setPageTotalCount] = useState(0);
+  const [peopleLoading, setPeopleLoading] = useState(true);
+  const [peopleError, setPeopleError] = useState<string | null>(null);
+  const [tabCounts, setTabCounts] = useState<PeopleTabCounts>({
+    customers: 0,
+    firms: 0,
+    karigars: 0,
+    employees: 0,
+    vendors: 0,
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewingLedgerId, setViewingLedgerId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Person | null>(null);
@@ -116,11 +139,125 @@ function PeoplePage() {
 
   const { triggerPrint } = usePrintEngine();
   const selected = useMemo(
-    () => people.find((p) => p.id === selectedId) ?? null,
-    [people, selectedId],
+    () =>
+      people.find((p) => p.id === selectedId) ??
+      pagedPeople.find((p) => p.id === selectedId) ??
+      null,
+    [pagedPeople, people, selectedId],
   );
 
-  const filteredForTab = useMemo(() => {
+  const updateSearch = (patch: Partial<{ tab: TabKey; q: string; page: number }>) => {
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        ...patch,
+        page: patch.page ?? 1,
+      }),
+      replace: true,
+    });
+  };
+
+  const visibleBranchId = useMemo(() => {
+    const globalRoles = [
+      "Super Owner",
+      "Administrator",
+      "CEO (View Only)",
+      "owner",
+      "admin",
+      "saas_admin",
+    ];
+    return currentUserRole && !globalRoles.includes(currentUserRole)
+      ? selectedBranchId || "MAIN"
+      : null;
+  }, [currentUserRole, selectedBranchId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPeopleTabCounts(visibleBranchId)
+      .then((counts) => {
+        if (!cancelled) setTabCounts(counts);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTabCounts({ customers: 0, firms: 0, karigars: 0, employees: 0, vendors: 0 });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visibleBranchId]);
+
+  useEffect(() => {
+    const tabSpec = TABS.find((item) => item.key === tab);
+    if (!tabSpec || tabSpec.key === "kyc") {
+      setPagedPeople([]);
+      setPageTotalCount(0);
+      setPeopleLoading(false);
+      setPeopleError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setPeopleLoading(true);
+    setPeopleError(null);
+    void fetchPeoplePage({
+      page,
+      pageSize,
+      query,
+      types: tabSpec.types,
+      branchId: visibleBranchId,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        setPagedPeople(result.people);
+        setPageTotalCount(result.totalCount);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setPeopleError(error instanceof Error ? error.message : "Could not load people.");
+        setPagedPeople([]);
+        setPageTotalCount(0);
+      })
+      .finally(() => {
+        if (!cancelled) setPeopleLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [page, pageSize, query, tab, visibleBranchId]);
+
+  useEffect(() => {
+    const selected = search.selected ?? null;
+    if (!selected) return;
+    const person = people.find((p) => p.id === selected);
+    if (!person) return;
+    setSelectedId(person.id);
+    updateSearch({ tab: tabsForType(person.type) as TabKey });
+    setViewingLedgerId(null);
+  }, [people, search.selected]);
+
+  useEffect(() => {
+    if (!search.central) return;
+    let cancelled = false;
+    void findPersonIdForCentralParty(search.central)
+      .then((personId) => {
+        if (cancelled || !personId) return;
+        const person = people.find((p) => p.id === personId);
+        if (!person) return;
+        setSelectedId(person.id);
+        updateSearch({ tab: tabsForType(person.type) as TabKey });
+        setViewingLedgerId(null);
+      })
+      .catch((error) => {
+        console.warn("Unable to open central party deep link", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [people, search.central]);
+
+  const legacyFilteredForTab = useMemo(() => {
     const t = TABS.find((x) => x.key === tab)!;
     const q = query.trim().toLowerCase();
     let list = people;
@@ -135,7 +272,7 @@ function PeoplePage() {
           (p.workType ?? "").toLowerCase().includes(q) ||
           // Custom fields are searchable too — a value the workshop chose to
           // capture is worthless if it can't be found again.
-          customFormsSearchText(p.customForms).includes(q),
+          false,
       );
     }
     return list;
@@ -171,14 +308,14 @@ function PeoplePage() {
         }
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+      <Tabs value={tab} onValueChange={(v) => updateSearch({ tab: v as TabKey })}>
         <TabsList className="flex flex-wrap h-auto bg-card border border-border p-1">
           {TABS.map((tItem) => {
             const Icon = tItem.icon;
             const count =
               tItem.key === "kyc"
                 ? people.filter((p) => !kycComplete(p)).length
-                : people.filter((p) => tItem.types.includes(p.type)).length;
+                : (tabCounts[tItem.key as keyof PeopleTabCounts] ?? 0);
             return (
               <TabsTrigger
                 key={tItem.key}
@@ -207,7 +344,7 @@ function PeoplePage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => updateSearch({ q: e.target.value })}
                     placeholder={t("people.searchPlaceholder")}
                     className="pl-9"
                   />
@@ -226,13 +363,20 @@ function PeoplePage() {
                       />
                     ) : (
                       <PeopleList
-                        list={filteredForTab}
+                        list={pagedPeople}
+                        totalCount={pageTotalCount}
+                        query={query}
+                        loading={peopleLoading}
+                        error={peopleError}
+                        page={page}
+                        pageSize={pageSize}
                         selectedId={selectedId}
                         onSelect={(id) => {
                           setSelectedId(id);
                           setViewingLedgerId(null);
                         }}
                         onEdit={(p) => setEditing(p)}
+                        onPageChange={(nextPage) => updateSearch({ page: nextPage })}
                       />
                     )}
                   </TabsContent>
@@ -283,8 +427,8 @@ function PeoplePage() {
 
 function PersonAvatar({ person, className }: { person: Person; className: string }) {
   const [broken, setBroken] = useState(false);
-  // Resolves from the local encrypted vault (thumbnail first, full bytes when
-  // decrypted); falls back to legacy inlined base64 for pre-vault records.
+  // Resolves from Supabase-backed storage; falls back to legacy inlined base64
+  // for older records.
   const photoUrl = useAttachmentUrl("person", person.id, "photo");
   if (photoUrl && !broken) {
     return (
@@ -313,29 +457,76 @@ function PersonAvatar({ person, className }: { person: Person; className: string
 
 function PeopleList({
   list,
+  totalCount,
+  query,
+  loading,
+  error,
+  page,
+  pageSize,
   selectedId,
   onSelect,
   onEdit,
+  onPageChange,
 }: {
   list: Person[];
+  totalCount: number;
+  query: string;
+  loading: boolean;
+  error: string | null;
+  page: number;
+  pageSize: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onEdit: (p: Person) => void;
+  onPageChange: (page: number) => void;
 }) {
   const { t } = useLanguage();
   const setActive = usePeople((s) => s.setActive);
   const remove = usePeople((s) => s.remove);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const cachePagedPerson = (person: Person) => {
+    usePeople.setState((state) =>
+      state.people.some((existing) => existing.id === person.id)
+        ? state
+        : { people: [person, ...state.people].slice(0, 250) },
+    );
+  };
   const handleDelete = (p: Person) => {
     if (!window.confirm(`Delete ${p.fullName}? This cannot be undone.`)) return;
+    cachePagedPerson(p);
     remove(p.id)
       .then(() => toast.success(`${p.fullName} deleted.`))
       .catch(() => toast.error(`Failed to delete ${p.fullName}.`));
   };
-  if (list.length === 0) {
+  if (loading) {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-card/40 p-10 text-center text-muted-foreground">
-        {t("people.no_records")}
-      </div>
+      <WebAppState
+        title="Loading people"
+        description="Fetching the current party page from Supabase."
+      />
+    );
+  }
+  if (error) {
+    return (
+      <WebAppState
+        tone="danger"
+        title="People could not load"
+        description={error}
+        action={{ label: "Try again", onClick: () => onPageChange(page) }}
+      />
+    );
+  }
+  if (list.length === 0) {
+    const filtered = totalCount > 0 && query.trim().length > 0;
+    return (
+      <EmptyState
+        title={filtered ? "No people match this search" : t("people.no_records")}
+        description={
+          filtered
+            ? "Clear or change the search text to see the rest of this party group."
+            : "Create the first party from the buttons above. Customers, karigars, workers, employees, vendors, and firm customers all sync into the central Party system."
+        }
+      />
     );
   }
   return (
@@ -401,7 +592,14 @@ function PeopleList({
                   <Pencil className="h-3.5 w-3.5 mr-1" />
                   {t("people.edit")}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setActive(p.id, !p.active)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    cachePagedPerson(p);
+                    void setActive(p.id, !p.active);
+                  }}
+                >
                   <Power className="h-3.5 w-3.5 mr-1" />
                   {p.active ? t("people.mark_inactive") : t("people.mark_active")}
                 </Button>
@@ -420,6 +618,32 @@ function PeopleList({
           </div>
         );
       })}
+      <div className="flex flex-col gap-2 pt-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <span>
+          Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalCount)} of{" "}
+          {totalCount}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+          >
+            <ArrowLeft className="mr-1.5 h-4 w-4" />
+            Previous
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+          >
+            Next
+            <ArrowRight className="ml-1.5 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -437,9 +661,10 @@ function KycList({
   const toggleDoc = usePeople((s) => s.toggleDoc);
   if (people.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-card/40 p-10 text-center text-muted-foreground">
-        {t("people.add_person_first")}
-      </div>
+      <EmptyState
+        title={t("people.add_person_first")}
+        description="KYC documents attach to central People records. Add a customer, karigar, worker, employee, or vendor first."
+      />
     );
   }
   const docKeys: KycDocKey[] = [
@@ -531,10 +756,10 @@ function SelectedPersonCard({
   const [notesOpen, setNotesOpen] = useState(false);
   if (!person) {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-card/40 p-6 text-sm text-muted-foreground">
-        <div className="font-serif text-gold text-lg mb-1">{t("people.selected_title")}</div>
-        {t("people.selected_placeholder")}
-      </div>
+      <WebAppState
+        title={t("people.selected_title")}
+        description={t("people.selected_placeholder")}
+      />
     );
   }
   const isCustomerLike = person.type === "customer" || person.type === "firm_customer";
@@ -1332,7 +1557,7 @@ function PersonFormDialog({
             Cancel
           </Button>
           <Button data-testid="people-save" onClick={save} disabled={submitting}>
-            {submitting ? "Saving..." : initial ? "Save changes" : "Add person"}
+            {submitting ? <InlineSavingState /> : initial ? "Save changes" : "Add person"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldError, FormStatus, InlineSavingState } from "@/components/web-app-state";
 import {
   useStock,
   STOCK_LOCATIONS,
@@ -16,7 +17,7 @@ import { toast } from "sonner";
 import { ArrowLeft, PackagePlus } from "lucide-react";
 
 export const Route = createFileRoute("/stock/entry")({
-  head: () => ({ meta: [{ title: "Ready Stock Entry · AVS Gold ERP" }] }),
+  head: () => ({ meta: [{ title: "Ready Stock Entry - AVS Gold ERP" }] }),
   component: ReadyStockEntry,
 });
 
@@ -33,20 +34,41 @@ function ReadyStockEntry() {
   const [source, setSource] = useState<"manufactured" | "purchased">("manufactured");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState("");
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  function clearFieldError(field: string) {
+    setErrors((current) => ({ ...current, [field]: "" }));
+    setServerError("");
+  }
+
+  function validate(): { grossMg: number; netMg: number; purityValue: number; ok: boolean } {
+    const nextErrors: Record<string, string> = {};
     const grossMg = gramsToMg(grossG);
     const netMg = gramsToMg(netG);
     const purityValue = Number(purity);
-    if (!itemName.trim() || !category.trim() || grossMg <= 0 || netMg <= 0 || netMg > grossMg) {
-      toast.error("Enter item, category, and valid gross/net weights.");
-      return;
-    }
+
+    if (!itemName.trim()) nextErrors.itemName = "Enter the finished item name.";
+    if (!category.trim()) nextErrors.category = "Enter the item category.";
     if (!Number.isInteger(purityValue) || purityValue <= 0 || purityValue > 1000) {
-      toast.error("Select a valid configured purity.");
-      return;
+      nextErrors.purity = "Select a configured purity.";
     }
+    if (grossMg <= 0) nextErrors.grossG = "Enter gross weight in grams.";
+    if (netMg <= 0) nextErrors.netG = "Enter net metal weight in grams.";
+    if (grossMg > 0 && netMg > grossMg) {
+      nextErrors.netG = "Net metal weight cannot be more than gross weight.";
+    }
+
+    setErrors(nextErrors);
+    return { grossMg, netMg, purityValue, ok: Object.keys(nextErrors).length === 0 };
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setServerError("");
+    const { grossMg, netMg, purityValue, ok } = validate();
+    if (!ok) return;
+
     setSaving(true);
     try {
       const item = await addReadyStock(
@@ -65,7 +87,9 @@ function ReadyStockEntry() {
       toast.success(`Ready stock saved. Barcode ${item.barcode} generated.`);
       void navigate({ to: "/stock" });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save ready stock.");
+      const message = error instanceof Error ? error.message : "Could not save ready stock.";
+      setServerError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -83,26 +107,48 @@ function ReadyStockEntry() {
         }
       />
       <form onSubmit={submit} className="erp-surface space-y-4 rounded-xl p-4 md:p-6">
+        <FormStatus
+          status={saving ? "saving" : serverError ? "error" : "idle"}
+          title={saving ? "Saving ready stock" : "Ready stock was not saved"}
+          description={
+            saving
+              ? "Creating the stock item, barcode, and connected vault movement through the online data path."
+              : serverError
+          }
+        />
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="ready-item-name">Item name *</Label>
             <Input
               id="ready-item-name"
               value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
+              onChange={(e) => {
+                setItemName(e.target.value);
+                clearFieldError("itemName");
+              }}
               placeholder="22K gold ring"
               autoFocus
+              aria-invalid={!!errors.itemName}
             />
+            <FieldError message={errors.itemName} />
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="ready-category">Category *</Label>
             <Input
               id="ready-category"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                clearFieldError("category");
+              }}
               placeholder="Ring, chain, bangle"
+              aria-invalid={!!errors.category}
             />
+            <FieldError message={errors.category} />
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="ready-source">Source *</Label>
             <select
@@ -115,23 +161,30 @@ function ReadyStockEntry() {
               <option value="purchased">Purchased finished goods</option>
             </select>
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="ready-purity">Purity *</Label>
             <select
               id="ready-purity"
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               value={purity}
-              onChange={(e) => setPurity(e.target.value)}
+              onChange={(e) => {
+                setPurity(e.target.value);
+                clearFieldError("purity");
+              }}
+              aria-invalid={!!errors.purity}
             >
               {purities
                 .filter((p) => p.active)
                 .map((p) => (
                   <option key={p.id} value={p.permille}>
-                    {p.metal ?? "Gold"} · {p.label}
+                    {p.metal ?? "Gold"} - {p.label}
                   </option>
                 ))}
             </select>
+            <FieldError message={errors.purity} />
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="ready-location">Location *</Label>
             <select
@@ -147,26 +200,39 @@ function ReadyStockEntry() {
               ))}
             </select>
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="ready-gross">Gross weight (g) *</Label>
             <Input
               id="ready-gross"
               inputMode="decimal"
               value={grossG}
-              onChange={(e) => setGrossG(e.target.value)}
+              onChange={(e) => {
+                setGrossG(e.target.value);
+                clearFieldError("grossG");
+              }}
               placeholder="0.000"
+              aria-invalid={!!errors.grossG}
             />
+            <FieldError message={errors.grossG} />
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="ready-net">Net metal weight (g) *</Label>
             <Input
               id="ready-net"
               inputMode="decimal"
               value={netG}
-              onChange={(e) => setNetG(e.target.value)}
+              onChange={(e) => {
+                setNetG(e.target.value);
+                clearFieldError("netG");
+              }}
               placeholder="0.000"
+              aria-invalid={!!errors.netG}
             />
+            <FieldError message={errors.netG} />
           </div>
+
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="ready-notes">Reference / notes</Label>
             <Input
@@ -177,8 +243,10 @@ function ReadyStockEntry() {
             />
           </div>
         </div>
+
         <Button type="submit" className="h-11 w-full gap-2" disabled={saving}>
-          <PackagePlus className="h-4 w-4" /> {saving ? "Saving…" : "Save Ready Stock"}
+          <PackagePlus className="h-4 w-4" />
+          {saving ? <InlineSavingState label="Saving..." /> : "Save Ready Stock"}
         </Button>
       </form>
     </div>

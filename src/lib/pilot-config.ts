@@ -1,10 +1,9 @@
 /**
- * Pilot Phase 1 — Manufacturing Mode only.
+ * Manufacturing-first module scope.
  *
  * This is a single, explicit switch for which ERP_MODULES (see module-store.ts)
- * are forced off for the pilot regardless of per-branch module_states in
- * Supabase — so the pilot doesn't depend on seeding every branch's DB row
- * correctly, and reverting for the next version is a one-line change here
+ * are forced off for the current production scope regardless of per-branch
+ * module_states in Supabase, so release scope is explicit and reversible
  * instead of hunting down every gate. Nothing behind these keys is deleted;
  * see RETAIL_ONLY_MODULE_KEYS' consumers (Sidebar, repair.tsx) for where the
  * gate is actually enforced.
@@ -14,10 +13,8 @@ import type { ERPModuleKey } from "./module-store";
 export const RETAIL_ONLY_MODULE_KEYS: ERPModuleKey[] = ["loyalty_program"];
 
 /**
- * Workshop V1.1 scope — first production release. Attendance & Payroll
- * (daily tracking, salary rules, settlement, loans, wastage) isn't ready for
- * production; gated the same way as RETAIL_ONLY_MODULE_KEYS above so it's a
- * one-line revert for V1.2 instead of hunting down every gate.
+ * Scoped module gates. Keep this empty for active modules; add only modules
+ * explicitly deferred by Product Owner decision.
  */
 export const V1_1_COMING_SOON_MODULE_KEYS: ERPModuleKey[] = [];
 
@@ -25,29 +22,28 @@ export function isPilotHiddenModule(key: ERPModuleKey): boolean {
   return RETAIL_ONLY_MODULE_KEYS.includes(key) || V1_1_COMING_SOON_MODULE_KEYS.includes(key);
 }
 
-export const RETAIL_COMING_SOON_MESSAGE = "Retail Module — Coming in Next Version";
-export const ATTENDANCE_COMING_SOON_MESSAGE = "Attendance & Payroll — Coming in Next Version";
+export const RETAIL_COMING_SOON_MESSAGE = "Retail Module Not Enabled";
+export const ATTENDANCE_COMING_SOON_MESSAGE = "Attendance & Payroll Not Enabled";
 export const ATTENDANCE_COMING_SOON_DETAIL =
-  "This ERP is running Workshop V1.1 for the current release. Attendance, salary rules, settlement, and wastage tracking remain in the codebase and will return in a future version.";
+  "Attendance, salary rules, settlement, and wastage tracking must be enabled only after the configured release gate passes.";
 
-export const CRM_PIPELINE_COMING_SOON_MESSAGE = "Sales Pipeline — Coming in Next Version";
+export const CRM_PIPELINE_COMING_SOON_MESSAGE = "Sales Pipeline Not Enabled";
 export const CRM_PIPELINE_COMING_SOON_DETAIL =
-  "Lead/opportunity pipeline tracking remains in the codebase and will return in a future version.";
+  "Lead/opportunity pipeline tracking is outside the current manufacturing ERP release scope.";
 
-export const MARKETING_CAMPAIGNS_COMING_SOON_MESSAGE = "Bulk Campaigns — Coming in Next Version";
+export const MARKETING_CAMPAIGNS_COMING_SOON_MESSAGE = "Bulk Campaigns Not Enabled";
 export const MARKETING_CAMPAIGNS_COMING_SOON_DETAIL =
-  "Bulk marketing campaign tools remain in the codebase and will return in a future version.";
+  "Bulk marketing campaign tooling is outside the current manufacturing ERP release scope.";
 
 /**
  * Workshop V1.1 ships WhatsApp (Deep Link + self-hosted OpenWA) as the
- * production communication channel. Email delivery — provider config,
- * per-event automation, bulk campaigns — stays in the codebase intact but
- * off in the UI until a future version; nothing here deletes the Email
- * provider, service.ts path, or send-email edge function.
+ * production communication channel. Email delivery stays in the codebase but
+ * must pass provider, audit, retry, attachment, and security gates before
+ * being enabled in tenant production UI.
  */
-export const EMAIL_AUTOMATION_COMING_SOON_MESSAGE = "Email Automation — Coming in Next Version";
+export const EMAIL_AUTOMATION_COMING_SOON_MESSAGE = "Email Automation Not Enabled";
 export const EMAIL_AUTOMATION_COMING_SOON_DETAIL =
-  "Email delivery remains in the codebase and will return in a future version. WhatsApp (Deep Link + OpenWA) is fully available.";
+  "Email delivery requires provider configuration, retry, attachment, and audit verification before production enablement.";
 
 export interface TrialTenantConfig {
   tenantId: string;

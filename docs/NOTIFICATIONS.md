@@ -8,16 +8,14 @@ The center derives actionable notifications from existing sources of truth; it d
 
 - missing current gold rate;
 - license state requiring attention;
-- SQLite outbox changes and unresolved synchronization conflicts;
+- Supabase connectivity, retry, and operational delivery failures;
 - pending or permanently failed communication-queue entries;
 - pending approval-workflow requests.
 
-Opening an item marks it read and navigates to the module that owns the underlying state. Read state is local UI metadata only. Notifications never mutate gold, communication, approval, or synchronization records.
+Opening an item marks it read and navigates to the module that owns the underlying state. Platform notification read state is stored in Supabase where available; computed operational alerts may use browser UI metadata only for dismiss/read presentation. Notifications never mutate gold, communication, approval, or business records.
 
-## Deployment modes
+## Supabase-online operation
 
-- **Offline:** local configuration, queue, and cached operational conditions remain visible.
-- **Hybrid:** local conditions plus cloud synchronization status are shown.
-- **Online:** cloud-backed approvals and operational status are shown where available.
+Ornexa production uses the Supabase-online architecture. The notification center shows Supabase-backed approvals, support events, communication delivery status, and operational attention items where available.
 
-The center degrades safely when a remote service cannot be reached.
+The center degrades safely when Supabase or a configured communication provider cannot be reached, with clear retry/support paths instead of silently creating local business records.

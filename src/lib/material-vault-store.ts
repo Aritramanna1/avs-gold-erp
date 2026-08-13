@@ -20,7 +20,6 @@
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { append as appendAuditEntry } from "./security/audit-log";
-import { getMetaValue, getPendingOutbox, setMetaValue } from "./local-db";
 import { fineGoldMg } from "./gold";
 
 // ── Material categories — extensible registry, not a closed enum ──────────
@@ -156,45 +155,29 @@ export interface GroupedBalances {
 }
 
 const movementRepository = createRepository<MaterialMovement>("material_vault_movements");
-
-function pendingMovementRecovery(): MaterialMovement[] {
-  return getPendingOutbox()
-    .filter(
-      (entry) =>
-        entry.table_name === "material_vault_movements" &&
-        (entry.operation === "insert" || entry.operation === "update"),
-    )
-    .map((entry) => {
-      if (typeof entry.payload === "string") {
-        try {
-          return JSON.parse(entry.payload) as MaterialMovement;
-        } catch {
-          return null;
-        }
-      }
-      return entry.payload as MaterialMovement;
-    })
-    .filter((movement): movement is MaterialMovement =>
-      Boolean(movement && typeof movement.id === "string" && movement.category),
-    );
-}
+const materialConfigRepository = createRepository<{ id: string; key: string; value?: unknown }>(
+  "platform_settings",
+);
 
 // ── Admin-configurable materials — persisted, nothing hard-coded ────────────
 const CUSTOM_CATEGORIES_KEY = "material_custom_categories";
 
-/** Admin-defined materials (persisted). Built-ins live in DEFAULT_MATERIAL_CATEGORIES. */
+/** Compatibility helper. Admin-defined materials hydrate from Supabase in `refresh()`. */
 export function readCustomCategories(): MaterialCategoryDef[] {
-  try {
-    const raw = getMetaValue(CUSTOM_CATEGORIES_KEY);
-    const arr = raw ? (JSON.parse(raw) as MaterialCategoryDef[]) : [];
-    return Array.isArray(arr) ? arr.filter((c) => c && c.key && c.label && c.group) : [];
-  } catch {
-    return [];
-  }
+  return [];
 }
 
-function writeCustomCategories(list: MaterialCategoryDef[]): void {
-  setMetaValue(CUSTOM_CATEGORIES_KEY, JSON.stringify(list));
+async function writeCustomCategories(list: MaterialCategoryDef[]): Promise<void> {
+  await materialConfigRepository.save({
+    id: CUSTOM_CATEGORIES_KEY,
+    key: CUSTOM_CATEGORIES_KEY,
+    value: list,
+  });
+}
+
+function customCategoriesFrom(categories: MaterialCategoryDef[]): MaterialCategoryDef[] {
+  const builtIns = new Set(DEFAULT_MATERIAL_CATEGORIES.map((c) => c.key));
+  return categories.filter((c) => !builtIns.has(c.key));
 }
 
 /** Built-ins + admin-defined materials, deduped by key (custom overrides on clash). */
@@ -373,20 +356,15 @@ export const useMaterialVault = create<MaterialVaultState>()((set, get) => ({
   categories: mergeCategories(readCustomCategories()),
   refresh: async () => {
     const persisted = await movementRepository.readAll();
-    // A reconnect can race a page reload: the encrypted SQLite row and its
-    // outbox entry are committed independently of the remote push, so the
-    // outbox is the authoritative recovery record until the push is complete.
-    // Merge those payloads into the read model so a crash/reload never hides a
-    // locally accepted accounting movement. Deduplication keeps the normal
-    // persisted-row path unchanged.
-    const byId = new Map(persisted.map((movement) => [movement.id, movement]));
-    for (const movement of pendingMovementRecovery()) byId.set(movement.id, movement);
-    const movements = [...byId.values()];
+    const settings = await materialConfigRepository.read(CUSTOM_CATEGORIES_KEY).catch(() => null);
+    const remoteCustom = Array.isArray(settings?.value)
+      ? (settings.value as MaterialCategoryDef[]).filter((c) => c && c.key && c.label && c.group)
+      : [];
     set({
-      movements,
+      movements: persisted,
       // Custom materials are admin-configurable and persisted — reload them so a
       // material added on another screen/session shows up here too.
-      categories: mergeCategories(readCustomCategories()),
+      categories: mergeCategories(remoteCustom),
     });
   },
   registerCategory: (def) => {
@@ -394,16 +372,19 @@ export const useMaterialVault = create<MaterialVaultState>()((set, get) => ({
     // never written to the custom store (they always come from DEFAULT).
     const isDefault = DEFAULT_MATERIAL_CATEGORIES.some((c) => c.key === def.key);
     if (!isDefault) {
-      const custom = readCustomCategories().filter((c) => c.key !== def.key);
-      writeCustomCategories([...custom, def]);
+      const custom = customCategoriesFrom(get().categories).filter((c) => c.key !== def.key);
+      void writeCustomCategories([...custom, def]);
+      set({ categories: mergeCategories([...custom, def]) });
+      return;
     }
-    set({ categories: mergeCategories(readCustomCategories()) });
+    set({ categories: mergeCategories(customCategoriesFrom(get().categories)) });
   },
   removeCategory: (key) => {
     // Only admin-defined materials can be removed; built-ins are permanent.
     if (DEFAULT_MATERIAL_CATEGORIES.some((c) => c.key === key)) return;
-    writeCustomCategories(readCustomCategories().filter((c) => c.key !== key));
-    set({ categories: mergeCategories(readCustomCategories()) });
+    const custom = customCategoriesFrom(get().categories).filter((c) => c.key !== key);
+    void writeCustomCategories(custom);
+    set({ categories: mergeCategories(custom) });
   },
   append: async (input) => {
     const balanceBefore = get()
@@ -419,17 +400,7 @@ export const useMaterialVault = create<MaterialVaultState>()((set, get) => ({
       ts: Date.now(),
       balanceAfterMg: balanceBefore + input.deltaMg,
     };
-    // Offline-first pilot (Priority 4.5): writes locally + enqueues the
-    // outbox entry immediately (works with no internet), rather than
-    // blocking on a direct Supabase round trip. The background scheduler
-    // (sync-engine.ts's startSyncOutboxScheduler(), started in __root.tsx)
-    // pushes it to Supabase within ~15s, on reconnect, or on next app boot.
-    // material_vault_movements was chosen as the first repository to migrate
-    // because it's append-only (no cross-row sequence dependency like
-    // invoice/order numbering) and already the most heavily
-    // sync-integration-tested table this sprint (order-workflow-integration
-    // e2e exercises it end to end).
-    await movementRepository.saveLocal(movement);
+    await movementRepository.save(movement);
     set((s) => ({ movements: [movement, ...s.movements] }));
     await appendAuditEntry({
       actorId: movement.actorId ?? null,
@@ -478,7 +449,7 @@ export const useMaterialVault = create<MaterialVaultState>()((set, get) => ({
     const mv = get().movements.find((m) => m.id === id);
     if (!mv || mv.manufacturingBillId) return;
     const updated: MaterialMovement = { ...mv, manufacturingBillId: billId };
-    await movementRepository.updateLocal(id, { manufacturingBillId: billId });
+    await movementRepository.save(updated);
     set((s) => ({ movements: s.movements.map((m) => (m.id === id ? updated : m)) }));
   },
   reset: () => set({ movements: [], categories: DEFAULT_MATERIAL_CATEGORIES }),

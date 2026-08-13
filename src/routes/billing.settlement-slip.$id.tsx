@@ -1,5 +1,6 @@
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
-import { useBilling, paiseToRupees } from "@/lib/billing-store";
+import { paiseToRupees } from "@/lib/billing-store";
+import { useBillingInvoiceById } from "@/lib/use-billing-invoice";
 import { buildCustomerSettlementSlipData } from "@/lib/customer-settlement-slip";
 import { mgToGrams } from "@/lib/gold";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { PrintQR } from "@/components/print-qr";
 import { useSettings } from "@/lib/settings-store";
 import { AvsPrintFooter } from "@/components/AvsPrintFooter";
 import { Logo } from "@/components/ui/Logo";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Loader2, Printer, RotateCcw } from "lucide-react";
 import { printDocument } from "@/lib/print-document";
 
 export const Route = createFileRoute("/billing/settlement-slip/$id")({
@@ -28,9 +29,29 @@ export const Route = createFileRoute("/billing/settlement-slip/$id")({
 function SettlementSlipPrint() {
   const { firm } = useSettings();
   const { id } = useParams({ from: "/billing/settlement-slip/$id" });
-  const inv = useBilling((s) => s.invoices.find((i) => i.id === id));
+  const { invoice: inv, loading, error, retry } = useBillingInvoiceById(id);
 
-  if (!inv) return <div className="p-8">Invoice not found.</div>;
+  if (loading && !inv) {
+    return (
+      <div className="p-8 text-sm text-muted-foreground">
+        <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+        Loading settlement slip...
+      </div>
+    );
+  }
+
+  if (!inv) {
+    return (
+      <div className="p-8 space-y-3">
+        <p>{error ?? "Invoice not found."}</p>
+        {error ? (
+          <Button variant="outline" className="gap-1.5" onClick={retry}>
+            <RotateCcw className="h-4 w-4" /> Retry
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
   const slip = buildCustomerSettlementSlipData(inv);
 
   return (

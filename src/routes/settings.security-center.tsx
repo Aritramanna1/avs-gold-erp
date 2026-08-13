@@ -60,7 +60,7 @@ function SecurityCenterPage() {
   async function handleRotateKey() {
     if (
       !window.confirm(
-        "Rotate the local database encryption key now? This re-encrypts the entire local database in place.",
+        "Run the Supabase security key check now? Browser-local database key rotation is retired in this online build.",
       )
     ) {
       return;
@@ -69,9 +69,7 @@ function SecurityCenterPage() {
     try {
       const { data } = await supabase.auth.getSession();
       const result = await rotateEncryptionKey(data.session?.user.email ?? null);
-      toast.success(
-        `Encryption key rotated successfully — ${result.filesReencrypted} attachment file(s) re-encrypted.`,
-      );
+      toast.success(result.message);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Key rotation failed");
     } finally {
@@ -83,7 +81,7 @@ function SecurityCenterPage() {
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <PageHeader
         title="Security Center"
-        subtitle="Devices that have written to this install's database, and encryption key rotation."
+        subtitle="Registered devices, trust controls, and Supabase-online security checks."
         actions={
           <Button variant="outline" onClick={refresh} disabled={loading} className="gap-2">
             {loading ? (
@@ -99,11 +97,11 @@ function SecurityCenterPage() {
       <div className="rounded-2xl border border-border bg-card p-5 mb-6 flex items-center justify-between">
         <div>
           <div className="font-semibold flex items-center gap-2">
-            <KeyRound className="h-4 w-4" /> Database Encryption Key
+            <KeyRound className="h-4 w-4" /> Supabase Security Key Check
           </div>
           <div className="text-sm text-muted-foreground">
-            Decrypts with the current key, re-encrypts with a freshly generated one, in place. Every
-            rotation is recorded in the Audit Log.
+            Browser-local database key rotation is retired. This check records that Supabase
+            platform secrets and RLS remain the active security layer.
           </div>
         </div>
         <Button onClick={handleRotateKey} disabled={rotating} className="gap-2 shrink-0">
@@ -112,7 +110,7 @@ function SecurityCenterPage() {
           ) : (
             <KeyRound className="h-4 w-4" />
           )}
-          Rotate Key Now
+          Run Key Check
         </Button>
       </div>
 

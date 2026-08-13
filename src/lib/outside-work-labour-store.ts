@@ -125,15 +125,15 @@ export const useOutsideWorkLabour = create<OutsideWorkLabourState>()((set, get) 
     ]);
     set({ charges, payments });
   },
-  // Offline-first (Priority 4.5, second migrated repository): no
+  // Supabase append log: no
   // document-numbering RPC dependency (unlike outside-work-store.ts's own
   // transactions, which call nextDocumentNumber() and so aren't safe to
-  // migrate yet), so saveLocal()/updateLocal() work the same fully-offline
+  // migrate yet), so writes surface Supabase failures instead of queueing locally.
   // way material_vault_movements already does — write completes locally,
-  // the background outbox scheduler pushes it on its own schedule.
+  // The caller updates UI only after the Supabase write succeeds.
   addCharge: async (input) => {
     const charge: OutsideWorkLabourCharge = { ...input, id: makeId("owlc"), ts: Date.now() };
-    await labourChargeRepository.saveLocal(charge);
+    await labourChargeRepository.save(charge);
     set((s) => ({ charges: [charge, ...s.charges] }));
     return charge;
   },
@@ -141,15 +141,12 @@ export const useOutsideWorkLabour = create<OutsideWorkLabourState>()((set, get) 
     const charge = get().charges.find((c) => c.id === id);
     if (!charge || charge.approved) return;
     const updated: OutsideWorkLabourCharge = { ...charge, approved: true, approvedAt: Date.now() };
-    await labourChargeRepository.updateLocal(id, {
-      approved: true,
-      approvedAt: updated.approvedAt,
-    });
+    await labourChargeRepository.save(updated);
     set((s) => ({ charges: s.charges.map((c) => (c.id === id ? updated : c)) }));
   },
   addPayment: async (input) => {
     const payment: OutsideWorkPayment = { ...input, id: makeId("owpay"), ts: Date.now() };
-    await paymentRepository.saveLocal(payment);
+    await paymentRepository.save(payment);
     set((s) => ({ payments: [payment, ...s.payments] }));
     return payment;
   },
@@ -166,7 +163,7 @@ export const useOutsideWorkLabour = create<OutsideWorkLabourState>()((set, get) 
     const charge = get().charges.find((c) => c.id === id);
     if (!charge || charge.manufacturingBillId) return;
     const updated: OutsideWorkLabourCharge = { ...charge, manufacturingBillId: billId };
-    await labourChargeRepository.updateLocal(id, { manufacturingBillId: billId });
+    await labourChargeRepository.save(updated);
     set((s) => ({ charges: s.charges.map((c) => (c.id === id ? updated : c)) }));
   },
   reset: () => set({ charges: [], payments: [] }),

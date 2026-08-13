@@ -12,6 +12,7 @@ import {
   Database,
   FileWarning,
   LifeBuoy,
+  Loader2,
   Users,
   Search,
   ShieldAlert,
@@ -19,12 +20,14 @@ import {
   MessageSquare,
   Wrench,
   Receipt,
+  Send,
 } from "lucide-react";
 import { dataProvider } from "@/lib/providers/data-provider";
 const supabase = dataProvider as any;
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { guardRoute } from "@/lib/permissions";
+import { fetchPlatformFirmStats, type PlatformFirmStats } from "@/lib/platform-stats-query";
 
 export const Route = createFileRoute("/platform")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
@@ -169,16 +172,6 @@ type UserRow = {
   role: string | null;
   last_login: string | null;
 };
-type FirmStats = {
-  firm_id: string;
-  invoices: number;
-  invoiceValueMinor: number;
-  orders: number;
-  openOrders: number;
-  jobCards: number;
-  users: number;
-  platformBills: number;
-};
 type View =
   | "overview"
   | "firms"
@@ -225,11 +218,10 @@ function PlatformOwnerConsole() {
     "backups",
     "settings",
   ];
-  const initialView = routeView ?? (new URLSearchParams(window.location.search).get("view") as View | null);
+  const initialView =
+    routeView ?? (new URLSearchParams(window.location.search).get("view") as View | null);
   const [view, setView] = useState<View>(
-    initialView && validViews.includes(initialView)
-      ? initialView
-      : "overview",
+    initialView && validViews.includes(initialView) ? initialView : "overview",
   );
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -246,7 +238,7 @@ function PlatformOwnerConsole() {
   const [licenses, setLicenses] = useState<LicenseRow[]>([]);
   const [users, setUsers] = useState(0);
   const [userRows, setUserRows] = useState<UserRow[]>([]);
-  const [firmStats, setFirmStats] = useState<FirmStats[]>([]);
+  const [firmStats, setFirmStats] = useState<PlatformFirmStats[]>([]);
   const [branches, setBranches] = useState(0);
   const [search, setSearch] = useState("");
   const [requestRows, setRequestRows] = useState<RequestRow[]>([]);
@@ -300,9 +292,6 @@ function PlatformOwnerConsole() {
       errRowsRes,
       bupRowsRes,
       userRowsRes,
-      invoiceRowsRes,
-      orderRowsRes,
-      jobCardRowsRes,
       licenseRowsRes,
     ] = await Promise.all([
       supabase.from("organizations").select("id,name,slug,is_active,created_at,gstin,address"),
@@ -311,7 +300,9 @@ function PlatformOwnerConsole() {
         .select("id,organization_id,status,trial_ends_at,renews_at,plan_id,billing_cycle"),
       supabase
         .from("platform_plans")
-        .select("id,name,code,price_minor,billing_cycle,is_active,branch_limit,user_limit,workshop_limit")
+        .select(
+          "id,name,code,price_minor,billing_cycle,is_active,branch_limit,user_limit,workshop_limit",
+        )
         .order("created_at", { ascending: false }),
       supabase
         .from("platform_audit_events")
@@ -372,25 +363,16 @@ function PlatformOwnerConsole() {
         .order("created_at", { ascending: false })
         .limit(500),
       supabase
-        .from("invoices")
-        .select("firm_id,status,grand_total_paise")
-        .limit(10000),
-      supabase
-        .from("orders")
-        .select("firm_id,status")
-        .limit(10000),
-      supabase
-        .from("job_cards")
-        .select("firm_id,status")
-        .limit(10000),
-      supabase
         .from("licenses")
-        .select("id,license_id,organization_id,customer_name,company_name,status,edition,seats,expiry_date,created_at,updated_at")
+        .select(
+          "id,license_id,organization_id,customer_name,company_name,status,edition,seats,expiry_date,created_at,updated_at",
+        )
         .order("expiry_date", { ascending: true, nullsFirst: false }),
     ]);
 
     if (fRes.error) setError(fRes.error.message);
-    setFirms((fRes.data as Firm[]) ?? []);
+    const loadedFirms = (fRes.data as Firm[]) ?? [];
+    setFirms(loadedFirms);
     setSubscriptions((subRes.data as Subscription[]) ?? []);
     setPlans((pRes.data as Plan[]) ?? []);
     setEvents((eRes.data as Event[]) ?? []);
@@ -409,54 +391,8 @@ function PlatformOwnerConsole() {
     setBillingRows((billRowsRes.data as unknown as BillingRow[]) ?? []);
     setErrorRows((errRowsRes.data as unknown as ErrorEventRow[]) ?? []);
     setBackupRows((bupRowsRes.data as unknown as BackupRunRow[]) ?? []);
-    const statsMap = new Map<string, FirmStats>();
-    const getStats = (firmId: string | null | undefined) => {
-      const id = firmId ?? "";
-      if (!id) return null;
-      const existing = statsMap.get(id);
-      if (existing) return existing;
-      const next: FirmStats = {
-        firm_id: id,
-        invoices: 0,
-        invoiceValueMinor: 0,
-        orders: 0,
-        openOrders: 0,
-        jobCards: 0,
-        users: 0,
-        platformBills: 0,
-      };
-      statsMap.set(id, next);
-      return next;
-    };
-    for (const row of ((invoiceRowsRes.data as Array<{ firm_id: string | null; grand_total_paise: number | null }>) ?? [])) {
-      const stats = getStats(row.firm_id);
-      if (stats) {
-        stats.invoices += 1;
-        stats.invoiceValueMinor += Number(row.grand_total_paise ?? 0);
-      }
-    }
-    for (const row of ((orderRowsRes.data as Array<{ firm_id: string | null; status: string | null }>) ?? [])) {
-      const stats = getStats(row.firm_id);
-      if (stats) {
-        stats.orders += 1;
-        if (!["completed", "cancelled", "delivered", "closed"].includes(String(row.status ?? "").toLowerCase())) {
-          stats.openOrders += 1;
-        }
-      }
-    }
-    for (const row of ((jobCardRowsRes.data as Array<{ firm_id: string | null }>) ?? [])) {
-      const stats = getStats(row.firm_id);
-      if (stats) stats.jobCards += 1;
-    }
-    for (const row of loadedUsers) {
-      const stats = getStats(row.firm_id);
-      if (stats) stats.users += 1;
-    }
-    for (const row of ((billRowsRes.data as Array<{ firm_id: string | null }>) ?? [])) {
-      const stats = getStats(row.firm_id);
-      if (stats) stats.platformBills += 1;
-    }
-    setFirmStats(Array.from(statsMap.values()));
+    const statsRows = await fetchPlatformFirmStats(loadedFirms);
+    setFirmStats(statsRows);
     setLoading(false);
   }
 
@@ -521,81 +457,79 @@ function PlatformOwnerConsole() {
       </div>
 
       <main className="p-4 space-y-6 lg:p-6">
-          {error && (
-            <div className="flex items-center gap-2 rounded border border-[#e5a9a9] bg-[#fdf2f2] p-3 text-xs text-[#a33b3b]">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+        {error && (
+          <div className="flex items-center gap-2 rounded border border-[#e5a9a9] bg-[#fdf2f2] p-3 text-xs text-[#a33b3b]">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
-          {view === "overview" && (
-            <OverviewSection
-              firms={firms}
-              activeCount={activeCount}
-              activeSubCount={activeSubCount}
-              users={users}
-              branches={branches}
-              serviceRequests={serviceRequests}
-              supportTickets={supportTickets}
-              criticalAlerts={criticalAlerts}
-              failedBackups={failedBackups}
-              events={events}
-            />
-          )}
+        {view === "overview" && (
+          <OverviewSection
+            firms={firms}
+            activeCount={activeCount}
+            activeSubCount={activeSubCount}
+            users={users}
+            branches={branches}
+            serviceRequests={serviceRequests}
+            supportTickets={supportTickets}
+            criticalAlerts={criticalAlerts}
+            failedBackups={failedBackups}
+            events={events}
+          />
+        )}
 
-          {view === "firms" && (
-            <FirmsSection
-              filteredFirms={filteredFirms}
-              search={search}
-              setSearch={setSearch}
-              subscriptions={subscriptions}
-              plans={plans}
-              firmStats={firmStats}
-              refresh={refresh}
-            />
-          )}
+        {view === "firms" && (
+          <FirmsSection
+            filteredFirms={filteredFirms}
+            search={search}
+            setSearch={setSearch}
+            subscriptions={subscriptions}
+            plans={plans}
+            firmStats={firmStats}
+            refresh={refresh}
+          />
+        )}
 
-          {view === "users" && <UsersSection users={userRows} firms={firms} refresh={refresh} />}
+        {view === "users" && <UsersSection users={userRows} firms={firms} refresh={refresh} />}
 
-          {view === "subscriptions" && (
-            <SubscriptionsSection
-              firms={firms}
-              subscriptions={subscriptions}
-              plans={plans}
-              refresh={refresh}
-            />
-          )}
+        {view === "subscriptions" && (
+          <SubscriptionsSection
+            firms={firms}
+            subscriptions={subscriptions}
+            plans={plans}
+            refresh={refresh}
+          />
+        )}
 
-          {view === "licensing" && (
-            <LicensingSection
-              firms={firms}
-              features={features}
-              licenses={licenses}
-              refresh={refresh}
-            />
-          )}
+        {view === "licensing" && (
+          <LicensingSection
+            firms={firms}
+            features={features}
+            licenses={licenses}
+            refresh={refresh}
+          />
+        )}
 
-          {view === "requests" && (
-            <RequestsSection rows={requestRows} firms={firms} refresh={refresh} />
-          )}
+        {view === "requests" && (
+          <RequestsSection rows={requestRows} firms={firms} refresh={refresh} />
+        )}
 
-          {view === "tickets" && (
-            <TicketsSection rows={ticketRows} firms={firms} refresh={refresh} />
-          )}
+        {view === "tickets" && <TicketsSection rows={ticketRows} firms={firms} refresh={refresh} />}
 
-          {view === "billing" && (
-            <BillingSection rows={billingRows} firms={firms} refresh={refresh} />
-          )}
+        {view === "billing" && (
+          <BillingSection rows={billingRows} firms={firms} refresh={refresh} />
+        )}
 
-          {view === "activity" && <ActivitySection events={events} />}
+        {view === "activity" && <ActivitySection events={events} />}
 
-          {view === "health" && <HealthSection errorRows={errorRows} refresh={refresh} />}
+        {view === "health" && <HealthSection errorRows={errorRows} refresh={refresh} />}
 
-          {view === "backups" && <BackupsSection backupRows={backupRows} refresh={refresh} />}
+        {view === "backups" && <BackupsSection backupRows={backupRows} refresh={refresh} />}
 
-          {view === "settings" && <SettingsSection refresh={refresh} />}
-        </main>
-      </div>
+        {view === "settings" && <SettingsSection refresh={refresh} />}
+      </main>
+    </div>
   );
 }
 
@@ -742,7 +676,7 @@ function FirmsSection({
   setSearch: (s: string) => void;
   subscriptions: Subscription[];
   plans: Plan[];
-  firmStats: FirmStats[];
+  firmStats: PlatformFirmStats[];
   refresh: () => Promise<void>;
 }) {
   const [updating, setUpdating] = useState<string | null>(null);
@@ -864,7 +798,8 @@ function FirmsSection({
           firm={filteredFirms.find((f) => f.id === selectedFirmId)}
           subscription={subscriptions.find((s) => s.organization_id === selectedFirmId)}
           plan={plans.find(
-            (p) => p.id === subscriptions.find((s) => s.organization_id === selectedFirmId)?.plan_id,
+            (p) =>
+              p.id === subscriptions.find((s) => s.organization_id === selectedFirmId)?.plan_id,
           )}
           stats={firmStats.find((s) => s.firm_id === selectedFirmId)}
         />
@@ -882,7 +817,7 @@ function FirmDetailPanel({
   firm: Firm | undefined;
   subscription: Subscription | undefined;
   plan: Plan | undefined;
-  stats: FirmStats | undefined;
+  stats: PlatformFirmStats | undefined;
 }) {
   if (!firm) return null;
   return (
@@ -1242,17 +1177,20 @@ function LicensingSection({
       );
       return feature ? feature.enabled : true;
     }).map(([key]) => key);
-    const { error: rpcError } = await supabase.rpc("issue_platform_license" as never, {
-      p_license_id: finalLicenseId,
-      p_customer_name: selectedFirmRow.name,
-      p_company_name: selectedFirmRow.name,
-      p_edition: edition.trim() || "Manufacturing Essential",
-      p_seats: Math.max(1, Number(seats) || 1),
-      p_expiry: expiry,
-      p_features: enabledFeatures,
-      p_reason: reason,
-      p_organization_id: selectedFirm,
-    } as never);
+    const { error: rpcError } = await supabase.rpc(
+      "issue_platform_license" as never,
+      {
+        p_license_id: finalLicenseId,
+        p_customer_name: selectedFirmRow.name,
+        p_company_name: selectedFirmRow.name,
+        p_edition: edition.trim() || "Manufacturing Essential",
+        p_seats: Math.max(1, Number(seats) || 1),
+        p_expiry: expiry,
+        p_features: enabledFeatures,
+        p_reason: reason,
+        p_organization_id: selectedFirm,
+      } as never,
+    );
     if (rpcError) {
       setNotice(rpcError.message);
     } else {
@@ -1265,17 +1203,21 @@ function LicensingSection({
 
   async function renewLicense(row: LicenseRow) {
     const days = Math.max(1, Number(renewDays) || 30);
-    const base = row.expiry_date && new Date(row.expiry_date) > new Date()
-      ? new Date(row.expiry_date)
-      : new Date();
+    const base =
+      row.expiry_date && new Date(row.expiry_date) > new Date()
+        ? new Date(row.expiry_date)
+        : new Date();
     base.setDate(base.getDate() + days);
     setSaving(true);
     setNotice(null);
-    const { error: rpcError } = await supabase.rpc("renew_platform_license" as never, {
-      p_license_id: row.license_id,
-      p_new_expiry: base.toISOString(),
-      p_reason: reason || `Renewed by ${days} days from Platform Owner`,
-    } as never);
+    const { error: rpcError } = await supabase.rpc(
+      "renew_platform_license" as never,
+      {
+        p_license_id: row.license_id,
+        p_new_expiry: base.toISOString(),
+        p_reason: reason || `Renewed by ${days} days from Platform Owner`,
+      } as never,
+    );
     if (rpcError) setNotice(rpcError.message);
     else {
       setNotice(`License ${row.license_id} renewed by ${days} days.`);
@@ -1287,10 +1229,13 @@ function LicensingSection({
   async function suspendLicense(row: LicenseRow) {
     setSaving(true);
     setNotice(null);
-    const { error: rpcError } = await supabase.rpc("suspend_platform_license" as never, {
-      p_license_id: row.license_id,
-      p_reason: reason || "Suspended from Platform Owner",
-    } as never);
+    const { error: rpcError } = await supabase.rpc(
+      "suspend_platform_license" as never,
+      {
+        p_license_id: row.license_id,
+        p_reason: reason || "Suspended from Platform Owner",
+      } as never,
+    );
     if (rpcError) setNotice(rpcError.message);
     else {
       setNotice(`License ${row.license_id} suspended.`);
@@ -1470,10 +1415,18 @@ function LicensingSection({
                 className="mt-1 min-h-20 w-full rounded border border-[#c9c4ba] bg-white px-2 py-2"
               />
             </label>
-            <Button disabled={saving || !selectedFirm} onClick={() => void issueLicense()} className="w-full">
+            <Button
+              disabled={saving || !selectedFirm}
+              onClick={() => void issueLicense()}
+              className="w-full"
+            >
               {saving ? "Saving..." : "Issue License"}
             </Button>
-            {notice && <p className="rounded border border-[#dedad1] bg-[#f7f5f0] p-2 text-[#4a473f]">{notice}</p>}
+            {notice && (
+              <p className="rounded border border-[#dedad1] bg-[#f7f5f0] p-2 text-[#4a473f]">
+                {notice}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -1591,17 +1544,55 @@ function RequestsSection({
       <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
         <h3 className="font-semibold">Create Service Request</h3>
         <div className="mt-3 grid gap-2 text-xs md:grid-cols-[1.2fr_1fr_1fr_2fr_auto]">
-          <select className="border border-[#c9c4ba] bg-white p-2" value={firmId} onChange={(e) => setFirmId(e.target.value)}>
-            {firms.map((firm) => <option key={firm.id} value={firm.id}>{firm.name}</option>)}
+          <select
+            className="border border-[#c9c4ba] bg-white p-2"
+            value={firmId}
+            onChange={(e) => setFirmId(e.target.value)}
+          >
+            {firms.map((firm) => (
+              <option key={firm.id} value={firm.id}>
+                {firm.name}
+              </option>
+            ))}
           </select>
-          <select className="border border-[#c9c4ba] bg-white p-2" value={category} onChange={(e) => setCategory(e.target.value)}>
-            {["implementation", "training", "data_migration", "printing", "whatsapp", "billing"].map((key) => <option key={key} value={key}>{key}</option>)}
+          <select
+            className="border border-[#c9c4ba] bg-white p-2"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            {[
+              "implementation",
+              "training",
+              "data_migration",
+              "printing",
+              "whatsapp",
+              "billing",
+            ].map((key) => (
+              <option key={key} value={key}>
+                {key}
+              </option>
+            ))}
           </select>
-          <select className="border border-[#c9c4ba] bg-white p-2" value={priority} onChange={(e) => setPriority(e.target.value)}>
-            {["low", "medium", "high", "urgent"].map((key) => <option key={key} value={key}>{key}</option>)}
+          <select
+            className="border border-[#c9c4ba] bg-white p-2"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+          >
+            {["low", "medium", "high", "urgent"].map((key) => (
+              <option key={key} value={key}>
+                {key}
+              </option>
+            ))}
           </select>
-          <input className="border border-[#c9c4ba] bg-white p-2" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject / work requested" />
-          <Button size="sm" disabled={!subject.trim()} onClick={() => void createRequest()}>Create</Button>
+          <input
+            className="border border-[#c9c4ba] bg-white p-2"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="Subject / work requested"
+          />
+          <Button size="sm" disabled={!subject.trim()} onClick={() => void createRequest()}>
+            Create
+          </Button>
         </div>
       </div>
       <div className="overflow-x-auto border border-[#dedad1] bg-[#fffdf8]">
@@ -1660,9 +1651,102 @@ function TicketsSection({
   firms: Firm[];
   refresh: () => Promise<void>;
 }) {
+  const [selectedTicket, setSelectedTicket] = useState<TicketRow | null>(rows[0] ?? null);
+  const [messages, setMessages] = useState<
+    Array<{ id: string; body: string; created_at: string; sender_id: string }>
+  >([]);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [reply, setReply] = useState("");
+
+  useEffect(() => {
+    if (!selectedTicket && rows[0]) setSelectedTicket(rows[0]);
+  }, [rows, selectedTicket]);
+
   async function updateStatus(r: TicketRow, status: string) {
     await supabase.from("platform_support_tickets").update({ status }).eq("id", r.id);
     await refresh();
+  }
+
+  async function openThread(row: TicketRow) {
+    setSelectedTicket(row);
+    setThreadLoading(true);
+    const conversation = await supabase
+      .from("platform_conversations")
+      .select("id")
+      .eq("ticket_id", row.id)
+      .maybeSingle();
+    if (conversation.error) {
+      setMessages([]);
+      setThreadLoading(false);
+      return;
+    }
+    let conversationId = conversation.data?.id as string | undefined;
+    if (!conversationId) {
+      const created = await supabase
+        .from("platform_conversations")
+        .insert({ ticket_id: row.id, firm_id: row.firm_id, status: "open" })
+        .select("id")
+        .single();
+      conversationId = created.data?.id as string | undefined;
+    }
+    if (!conversationId) {
+      setMessages([]);
+      setThreadLoading(false);
+      return;
+    }
+    const thread = await supabase
+      .from("platform_conversation_messages")
+      .select("id,body,created_at,sender_id")
+      .eq("conversation_id", conversationId)
+      .eq("visibility", "customer")
+      .order("created_at", { ascending: true });
+    setMessages(
+      (thread.data ?? []) as Array<{
+        id: string;
+        body: string;
+        created_at: string;
+        sender_id: string;
+      }>,
+    );
+    setThreadLoading(false);
+  }
+
+  async function sendReply() {
+    if (!selectedTicket || !reply.trim()) return;
+    setThreadLoading(true);
+    const { data: authData } = await supabase.auth.getSession();
+    const userId = authData?.session?.user?.id;
+    const conversation = await supabase
+      .from("platform_conversations")
+      .select("id")
+      .eq("ticket_id", selectedTicket.id)
+      .maybeSingle();
+    let conversationId = conversation.data?.id as string | undefined;
+    if (!conversationId) {
+      const created = await supabase
+        .from("platform_conversations")
+        .insert({ ticket_id: selectedTicket.id, firm_id: selectedTicket.firm_id, status: "open" })
+        .select("id")
+        .single();
+      conversationId = created.data?.id as string | undefined;
+    }
+    if (userId && conversationId) {
+      await supabase.from("platform_conversation_messages").insert({
+        conversation_id: conversationId,
+        sender_id: userId,
+        body: reply.trim(),
+        visibility: "customer",
+      });
+      await supabase
+        .from("platform_support_tickets")
+        .update({ status: "waiting_customer" })
+        .eq("id", selectedTicket.id)
+        .in("status", ["open", "acknowledged", "in_progress", "reopened"]);
+      setReply("");
+      await openThread(selectedTicket);
+      await refresh();
+    }
+    setThreadLoading(false);
   }
 
   return (
@@ -1689,7 +1773,15 @@ function TicketsSection({
           <tbody>
             {rows.map((row) => (
               <tr className="border-b border-[#dedad1]" key={row.id}>
-                <td className="p-3 font-medium">{row.ticket_no}</td>
+                <td className="p-3 font-medium">
+                  <button
+                    type="button"
+                    className="underline-offset-2 hover:underline"
+                    onClick={() => void openThread(row)}
+                  >
+                    {row.ticket_no}
+                  </button>
+                </td>
                 <td className="p-3">
                   {firms.find((firm) => firm.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8)}
                 </td>
@@ -1702,7 +1794,15 @@ function TicketsSection({
                     value={row.status}
                     onChange={(e) => void updateStatus(row, e.target.value)}
                   >
-                    {["open", "investigating", "resolved", "closed"].map((s) => (
+                    {[
+                      "open",
+                      "acknowledged",
+                      "in_progress",
+                      "waiting_customer",
+                      "resolved",
+                      "closed",
+                      "reopened",
+                    ].map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
@@ -1717,6 +1817,81 @@ function TicketsSection({
           <p className="p-8 text-center text-sm text-[#8c8c88]">No support tickets logged.</p>
         )}
       </div>
+      {selectedTicket ? (
+        <div className="grid gap-4 border border-[#dedad1] bg-[#fffdf8] p-4 md:grid-cols-[320px_1fr]">
+          <div>
+            <h3 className="font-serif font-semibold">Ticket workspace</h3>
+            <p className="mt-1 text-xs text-[#6b6659]">{selectedTicket.ticket_no}</p>
+            <p className="mt-3 text-sm font-medium">{selectedTicket.subject}</p>
+            <dl className="mt-4 grid grid-cols-2 gap-2 text-xs">
+              <dt className="text-[#6b6659]">Firm</dt>
+              <dd>{firms.find((firm) => firm.id === selectedTicket.firm_id)?.name ?? "Unknown"}</dd>
+              <dt className="text-[#6b6659]">Category</dt>
+              <dd>{selectedTicket.category}</dd>
+              <dt className="text-[#6b6659]">Severity</dt>
+              <dd>{selectedTicket.severity}</dd>
+              <dt className="text-[#6b6659]">Status</dt>
+              <dd>{selectedTicket.status}</dd>
+            </dl>
+            <Button
+              className="mt-4 gap-2"
+              size="sm"
+              onClick={() => void openThread(selectedTicket)}
+            >
+              {threadLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MessageSquare className="h-4 w-4" />
+              )}
+              Open live thread
+            </Button>
+          </div>
+          <div className="space-y-3">
+            <div className="max-h-80 overflow-y-auto border border-[#dedad1] bg-white p-3">
+              {threadLoading ? (
+                <div className="flex justify-center py-8 text-xs text-[#6b6659]">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading thread...
+                </div>
+              ) : messages.length === 0 ? (
+                <p className="py-8 text-center text-xs text-[#8c8c88]">
+                  No live-chat messages yet. Reply here to start the thread.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className="rounded border border-[#dedad1] bg-[#f8f5ee] p-3 text-sm"
+                    >
+                      <p className="whitespace-pre-wrap">{message.body}</p>
+                      <p className="mt-2 text-[10px] text-[#6b6659]">
+                        {new Date(message.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={reply}
+                onChange={(event) => setReply(event.target.value)}
+                placeholder="Reply to customer..."
+                disabled={threadLoading || selectedTicket.status === "closed"}
+              />
+              <Button
+                className="gap-2"
+                disabled={threadLoading || !reply.trim() || selectedTicket.status === "closed"}
+                onClick={() => void sendReply()}
+              >
+                <Send className="h-4 w-4" />
+                Send
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2032,7 +2207,8 @@ function PlatformBillingPrintPreview({
   const description = row.data?.description ?? "AVS Gold ERP Platform Billing";
   const gstRate = row.data?.gst_rate_percent ?? 18;
   const taxable = row.taxable_minor ?? Math.max(0, row.amount_minor - (row.gst_minor ?? 0));
-  const gst = row.gst_minor ?? (row.cgst_minor ?? 0) + (row.sgst_minor ?? 0) + (row.igst_minor ?? 0);
+  const gst =
+    row.gst_minor ?? (row.cgst_minor ?? 0) + (row.sgst_minor ?? 0) + (row.igst_minor ?? 0);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 p-4 print:static print:bg-white print:p-0">
@@ -2073,7 +2249,9 @@ function PlatformBillingPrintPreview({
                 <p className="text-sm text-[#5f5a50]">Platform Billing Document</p>
               </div>
               <div className="text-right text-sm">
-                <p className="font-semibold">{DOC_TYPE_LABEL[row.document_type] ?? row.document_type}</p>
+                <p className="font-semibold">
+                  {DOC_TYPE_LABEL[row.document_type] ?? row.document_type}
+                </p>
                 <p className="font-mono">{row.document_no}</p>
                 <p>{row.issued_at ? new Date(row.issued_at).toLocaleDateString("en-IN") : ""}</p>
               </div>
@@ -2084,11 +2262,15 @@ function PlatformBillingPrintPreview({
             <div>
               <p className="text-xs uppercase tracking-wide text-[#6b6659]">Bill To</p>
               <p className="mt-1 font-semibold">{firm?.name ?? row.firm_id}</p>
-              <p className="text-sm text-[#5f5a50]">{firm?.address ?? "Tenant address not recorded"}</p>
+              <p className="text-sm text-[#5f5a50]">
+                {firm?.address ?? "Tenant address not recorded"}
+              </p>
               <p className="text-sm text-[#5f5a50]">GSTIN: {firm?.gstin ?? "Not recorded"}</p>
             </div>
             <div className="text-sm">
-              <p>Status: <span className="font-semibold uppercase">{row.status}</span></p>
+              <p>
+                Status: <span className="font-semibold uppercase">{row.status}</span>
+              </p>
               <p>Due date: {row.due_at ? new Date(row.due_at).toLocaleDateString("en-IN") : "-"}</p>
               <p>Seller state: {row.seller_state_code ?? "-"}</p>
               <p>Buyer state: {row.buyer_state_code ?? "-"}</p>
@@ -2363,23 +2545,37 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
         if (m.get("billing.seller_gstin")) setSellerGstin(m.get("billing.seller_gstin") as string);
         if (m.get("branding.app_name")) setAppName(m.get("branding.app_name") as string);
         if (m.get("branding.tagline")) setBrandTagline(m.get("branding.tagline") as string);
-        if (m.get("billing.seller_state_code")) setSellerStateCodeSetting(m.get("billing.seller_state_code") as string);
-        if (m.get("billing.default_gst_rate")) setDefaultGstRate(String(m.get("billing.default_gst_rate")));
-        if (m.get("billing.invoice_due_days")) setInvoiceDueDays(String(m.get("billing.invoice_due_days")));
+        if (m.get("billing.seller_state_code"))
+          setSellerStateCodeSetting(m.get("billing.seller_state_code") as string);
+        if (m.get("billing.default_gst_rate"))
+          setDefaultGstRate(String(m.get("billing.default_gst_rate")));
+        if (m.get("billing.invoice_due_days"))
+          setInvoiceDueDays(String(m.get("billing.invoice_due_days")));
         if (m.get("support.email")) setSupportEmail(m.get("support.email") as string);
         if (m.get("support.phone")) setSupportPhone(m.get("support.phone") as string);
-        if (m.get("support.ticket_sla_hours")) setTicketSlaHours(String(m.get("support.ticket_sla_hours")));
-        if (m.get("support.critical_sla_hours")) setCriticalSlaHours(String(m.get("support.critical_sla_hours")));
-        if (m.get("integrations.whatsapp_provider")) setWhatsappProvider(m.get("integrations.whatsapp_provider") as string);
-        if (m.get("integrations.whatsapp_enabled")) setWhatsappEnabled(String(m.get("integrations.whatsapp_enabled")));
+        if (m.get("support.ticket_sla_hours"))
+          setTicketSlaHours(String(m.get("support.ticket_sla_hours")));
+        if (m.get("support.critical_sla_hours"))
+          setCriticalSlaHours(String(m.get("support.critical_sla_hours")));
+        if (m.get("integrations.whatsapp_provider"))
+          setWhatsappProvider(m.get("integrations.whatsapp_provider") as string);
+        if (m.get("integrations.whatsapp_enabled"))
+          setWhatsappEnabled(String(m.get("integrations.whatsapp_enabled")));
         if (m.get("licensing.trial_days")) setTrialDays(String(m.get("licensing.trial_days")));
-        if (m.get("licensing.renewal_reminder_days")) setRenewalReminderDays(String(m.get("licensing.renewal_reminder_days")));
-        if (m.get("operations.backup_frequency")) setBackupFrequency(m.get("operations.backup_frequency") as string);
-        if (m.get("operations.backup_retention_days")) setBackupRetentionDays(String(m.get("operations.backup_retention_days")));
-        if (m.get("operations.max_branches_default")) setMaxBranchesDefault(String(m.get("operations.max_branches_default")));
-        if (m.get("operations.max_users_default")) setMaxUsersDefault(String(m.get("operations.max_users_default")));
-        if (m.get("security.session_policy")) setSessionPolicy(m.get("security.session_policy") as string);
-        if (m.get("security.maintenance_mode")) setMaintenanceMode(String(m.get("security.maintenance_mode")));
+        if (m.get("licensing.renewal_reminder_days"))
+          setRenewalReminderDays(String(m.get("licensing.renewal_reminder_days")));
+        if (m.get("operations.backup_frequency"))
+          setBackupFrequency(m.get("operations.backup_frequency") as string);
+        if (m.get("operations.backup_retention_days"))
+          setBackupRetentionDays(String(m.get("operations.backup_retention_days")));
+        if (m.get("operations.max_branches_default"))
+          setMaxBranchesDefault(String(m.get("operations.max_branches_default")));
+        if (m.get("operations.max_users_default"))
+          setMaxUsersDefault(String(m.get("operations.max_users_default")));
+        if (m.get("security.session_policy"))
+          setSessionPolicy(m.get("security.session_policy") as string);
+        if (m.get("security.maintenance_mode"))
+          setMaintenanceMode(String(m.get("security.maintenance_mode")));
       }
     })();
   }, []);
@@ -2402,23 +2598,56 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
         key: "billing.seller_gstin",
         value: sellerGstin,
       }),
-      supabase.from("platform_settings").upsert({ key: "billing.seller_state_code", value: sellerStateCodeSetting }),
-      supabase.from("platform_settings").upsert({ key: "billing.default_gst_rate", value: Number(defaultGstRate) || 0 }),
-      supabase.from("platform_settings").upsert({ key: "billing.invoice_due_days", value: Number(invoiceDueDays) || 0 }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "billing.seller_state_code", value: sellerStateCodeSetting }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "billing.default_gst_rate", value: Number(defaultGstRate) || 0 }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "billing.invoice_due_days", value: Number(invoiceDueDays) || 0 }),
       supabase.from("platform_settings").upsert({ key: "support.email", value: supportEmail }),
       supabase.from("platform_settings").upsert({ key: "support.phone", value: supportPhone }),
-      supabase.from("platform_settings").upsert({ key: "support.ticket_sla_hours", value: Number(ticketSlaHours) || 0 }),
-      supabase.from("platform_settings").upsert({ key: "support.critical_sla_hours", value: Number(criticalSlaHours) || 0 }),
-      supabase.from("platform_settings").upsert({ key: "integrations.whatsapp_provider", value: whatsappProvider }),
-      supabase.from("platform_settings").upsert({ key: "integrations.whatsapp_enabled", value: whatsappEnabled === "true" }),
-      supabase.from("platform_settings").upsert({ key: "licensing.trial_days", value: Number(trialDays) || 0 }),
-      supabase.from("platform_settings").upsert({ key: "licensing.renewal_reminder_days", value: renewalReminderDays }),
-      supabase.from("platform_settings").upsert({ key: "operations.backup_frequency", value: backupFrequency }),
-      supabase.from("platform_settings").upsert({ key: "operations.backup_retention_days", value: Number(backupRetentionDays) || 0 }),
-      supabase.from("platform_settings").upsert({ key: "operations.max_branches_default", value: maxBranchesDefault ? Number(maxBranchesDefault) : null }),
-      supabase.from("platform_settings").upsert({ key: "operations.max_users_default", value: maxUsersDefault ? Number(maxUsersDefault) : null }),
-      supabase.from("platform_settings").upsert({ key: "security.session_policy", value: sessionPolicy }),
-      supabase.from("platform_settings").upsert({ key: "security.maintenance_mode", value: maintenanceMode === "true" }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "support.ticket_sla_hours", value: Number(ticketSlaHours) || 0 }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "support.critical_sla_hours", value: Number(criticalSlaHours) || 0 }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "integrations.whatsapp_provider", value: whatsappProvider }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "integrations.whatsapp_enabled", value: whatsappEnabled === "true" }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "licensing.trial_days", value: Number(trialDays) || 0 }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "licensing.renewal_reminder_days", value: renewalReminderDays }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "operations.backup_frequency", value: backupFrequency }),
+      supabase.from("platform_settings").upsert({
+        key: "operations.backup_retention_days",
+        value: Number(backupRetentionDays) || 0,
+      }),
+      supabase.from("platform_settings").upsert({
+        key: "operations.max_branches_default",
+        value: maxBranchesDefault ? Number(maxBranchesDefault) : null,
+      }),
+      supabase.from("platform_settings").upsert({
+        key: "operations.max_users_default",
+        value: maxUsersDefault ? Number(maxUsersDefault) : null,
+      }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "security.session_policy", value: sessionPolicy }),
+      supabase
+        .from("platform_settings")
+        .upsert({ key: "security.maintenance_mode", value: maintenanceMode === "true" }),
     ]);
     setMsg("Platform settings saved.");
     setSaving(false);
@@ -2428,7 +2657,10 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
   async function createPlan() {
     setSaving(true);
     setMsg(null);
-    const cleanCode = planCode.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+    const cleanCode = planCode
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_]+/g, "_");
     const { error } = await supabase.from("platform_plans").upsert(
       {
         code: cleanCode,
@@ -2492,9 +2724,21 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
           <h3 className="font-serif font-semibold text-sm">Support & SLA Defaults</h3>
           <div className="space-y-3 text-xs">
             <SettingsText label="Support Email" value={supportEmail} onChange={setSupportEmail} />
-            <SettingsText label="Support Phone / WhatsApp" value={supportPhone} onChange={setSupportPhone} />
-            <SettingsText label="Normal Ticket SLA Hours" value={ticketSlaHours} onChange={setTicketSlaHours} />
-            <SettingsText label="Critical Ticket SLA Hours" value={criticalSlaHours} onChange={setCriticalSlaHours} />
+            <SettingsText
+              label="Support Phone / WhatsApp"
+              value={supportPhone}
+              onChange={setSupportPhone}
+            />
+            <SettingsText
+              label="Normal Ticket SLA Hours"
+              value={ticketSlaHours}
+              onChange={setTicketSlaHours}
+            />
+            <SettingsText
+              label="Critical Ticket SLA Hours"
+              value={criticalSlaHours}
+              onChange={setCriticalSlaHours}
+            />
           </div>
         </div>
 
@@ -2519,7 +2763,11 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
               onChange={setBackupFrequency}
               options={["hourly", "daily", "weekly", "monthly"]}
             />
-            <SettingsText label="Backup Retention Days" value={backupRetentionDays} onChange={setBackupRetentionDays} />
+            <SettingsText
+              label="Backup Retention Days"
+              value={backupRetentionDays}
+              onChange={setBackupRetentionDays}
+            />
           </div>
         </div>
       </div>
@@ -2529,18 +2777,44 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
           <h3 className="font-serif font-semibold text-sm">Licensing & Subscription Defaults</h3>
           <div className="space-y-3 text-xs">
             <SettingsText label="Default Trial Days" value={trialDays} onChange={setTrialDays} />
-            <SettingsText label="Renewal Reminder Days" value={renewalReminderDays} onChange={setRenewalReminderDays} />
-            <SettingsText label="Default Branch Limit" value={maxBranchesDefault} onChange={setMaxBranchesDefault} placeholder="Unlimited" />
-            <SettingsText label="Default User Limit" value={maxUsersDefault} onChange={setMaxUsersDefault} placeholder="Unlimited" />
+            <SettingsText
+              label="Renewal Reminder Days"
+              value={renewalReminderDays}
+              onChange={setRenewalReminderDays}
+            />
+            <SettingsText
+              label="Default Branch Limit"
+              value={maxBranchesDefault}
+              onChange={setMaxBranchesDefault}
+              placeholder="Unlimited"
+            />
+            <SettingsText
+              label="Default User Limit"
+              value={maxUsersDefault}
+              onChange={setMaxUsersDefault}
+              placeholder="Unlimited"
+            />
           </div>
         </div>
 
         <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4 lg:col-span-2">
           <h3 className="font-serif font-semibold text-sm">Billing & Tax Defaults</h3>
           <div className="grid gap-3 text-xs sm:grid-cols-3">
-            <SettingsText label="Default GST Rate (%)" value={defaultGstRate} onChange={setDefaultGstRate} />
-            <SettingsText label="Invoice Due Days" value={invoiceDueDays} onChange={setInvoiceDueDays} />
-            <SettingsText label="Seller GST State Code" value={sellerStateCodeSetting} onChange={setSellerStateCodeSetting} />
+            <SettingsText
+              label="Default GST Rate (%)"
+              value={defaultGstRate}
+              onChange={setDefaultGstRate}
+            />
+            <SettingsText
+              label="Invoice Due Days"
+              value={invoiceDueDays}
+              onChange={setInvoiceDueDays}
+            />
+            <SettingsText
+              label="Seller GST State Code"
+              value={sellerStateCodeSetting}
+              onChange={setSellerStateCodeSetting}
+            />
           </div>
           <p className="text-xs text-[#6b6659]">
             These values are stored for billing defaults and downstream platform workflows.
@@ -2549,86 +2823,116 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
-        <h3 className="font-serif font-semibold text-sm">Platform Billing Legal Entity Header</h3>
-        <p className="text-xs text-[#6b6659]">
-          Configure platform entity details shown on software tax invoices issued to tenant firms.
-        </p>
-        <div className="space-y-3 text-xs">
-          <label className="block">
-            Seller Legal Name
-            <input
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
-              value={sellerName}
-              onChange={(e) => setSellerName(e.target.value)}
-            />
-          </label>
-          <label className="block">
-            Seller GSTIN
-            <input
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded font-mono"
-              value={sellerGstin}
-              onChange={(e) => setSellerGstin(e.target.value)}
-              placeholder="e.g. 19AAACA1234A1Z5"
-            />
-          </label>
-          <label className="block">
-            Registered Address
-            <textarea
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded h-20"
-              value={sellerAddress}
-              onChange={(e) => setSellerAddress(e.target.value)}
-            />
-          </label>
-          <Button disabled={saving} onClick={() => void saveSettings()}>
-            Save Platform Settings
+        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
+          <h3 className="font-serif font-semibold text-sm">Platform Billing Legal Entity Header</h3>
+          <p className="text-xs text-[#6b6659]">
+            Configure platform entity details shown on software tax invoices issued to tenant firms.
+          </p>
+          <div className="space-y-3 text-xs">
+            <label className="block">
+              Seller Legal Name
+              <input
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
+                value={sellerName}
+                onChange={(e) => setSellerName(e.target.value)}
+              />
+            </label>
+            <label className="block">
+              Seller GSTIN
+              <input
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded font-mono"
+                value={sellerGstin}
+                onChange={(e) => setSellerGstin(e.target.value)}
+                placeholder="e.g. 19AAACA1234A1Z5"
+              />
+            </label>
+            <label className="block">
+              Registered Address
+              <textarea
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded h-20"
+                value={sellerAddress}
+                onChange={(e) => setSellerAddress(e.target.value)}
+              />
+            </label>
+            <Button disabled={saving} onClick={() => void saveSettings()}>
+              Save Platform Settings
+            </Button>
+          </div>
+        </div>
+        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
+          <h3 className="font-serif font-semibold text-sm">Create / Update Manufacturing Plan</h3>
+          <div className="grid gap-3 text-xs sm:grid-cols-2">
+            <label className="block">
+              Plan Name
+              <input
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
+                value={planName}
+                onChange={(e) => setPlanName(e.target.value)}
+              />
+            </label>
+            <label className="block">
+              Plan Code
+              <input
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded font-mono"
+                value={planCode}
+                onChange={(e) => setPlanCode(e.target.value)}
+              />
+            </label>
+            <label className="block">
+              Price
+              <input
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
+                value={planPrice}
+                onChange={(e) => setPlanPrice(e.target.value)}
+              />
+            </label>
+            <label className="block">
+              Billing Cycle
+              <select
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
+                value={planCycle}
+                onChange={(e) => setPlanCycle(e.target.value)}
+              >
+                <option value="monthly">Monthly</option>
+                <option value="annual">Annual</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <label className="block">
+              Branch Limit
+              <input
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
+                value={branchLimit}
+                onChange={(e) => setBranchLimit(e.target.value)}
+                placeholder="Unlimited"
+              />
+            </label>
+            <label className="block">
+              User Limit
+              <input
+                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
+                value={userLimit}
+                onChange={(e) => setUserLimit(e.target.value)}
+                placeholder="Unlimited"
+              />
+            </label>
+          </div>
+          {msg && <p className="text-xs text-[#2d6a4f]">{msg}</p>}
+          <Button
+            disabled={saving || !planName.trim() || !planCode.trim()}
+            onClick={() => void createPlan()}
+          >
+            Save Plan
           </Button>
         </div>
-      </div>
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
-        <h3 className="font-serif font-semibold text-sm">Create / Update Manufacturing Plan</h3>
-        <div className="grid gap-3 text-xs sm:grid-cols-2">
-          <label className="block">
-            Plan Name
-            <input className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded" value={planName} onChange={(e) => setPlanName(e.target.value)} />
-          </label>
-          <label className="block">
-            Plan Code
-            <input className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded font-mono" value={planCode} onChange={(e) => setPlanCode(e.target.value)} />
-          </label>
-          <label className="block">
-            Price
-            <input className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} />
-          </label>
-          <label className="block">
-            Billing Cycle
-            <select className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded" value={planCycle} onChange={(e) => setPlanCycle(e.target.value)}>
-              <option value="monthly">Monthly</option>
-              <option value="annual">Annual</option>
-              <option value="custom">Custom</option>
-            </select>
-          </label>
-          <label className="block">
-            Branch Limit
-            <input className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded" value={branchLimit} onChange={(e) => setBranchLimit(e.target.value)} placeholder="Unlimited" />
-          </label>
-          <label className="block">
-            User Limit
-            <input className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded" value={userLimit} onChange={(e) => setUserLimit(e.target.value)} placeholder="Unlimited" />
-          </label>
-        </div>
-        {msg && <p className="text-xs text-[#2d6a4f]">{msg}</p>}
-        <Button disabled={saving || !planName.trim() || !planCode.trim()} onClick={() => void createPlan()}>
-          Save Plan
-        </Button>
-      </div>
       </div>
       <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="font-serif font-semibold text-sm">Save All Platform Defaults</h3>
             <p className="mt-1 text-xs text-[#6b6659]">
-              Saves branding, billing, support, licensing, integration, operation, and security defaults.
+              Saves branding, billing, support, licensing, integration, operation, and security
+              defaults.
             </p>
           </div>
           <Button disabled={saving} onClick={() => void saveSettings()}>

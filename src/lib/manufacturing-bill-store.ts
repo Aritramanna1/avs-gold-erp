@@ -23,7 +23,6 @@
  */
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import type { JobCard, WorkReceiptRecord } from "./jobcards-store";
 import { useWorkflowEngine } from "./workflow-engine";
@@ -571,278 +570,270 @@ export interface FinaliseResult {
   warnings: string[];
 }
 
-export const useMfgBills = create<MfgBillState>()(
-  persist(
-    (set, get) => ({
-      bills: [],
+export const useMfgBills = create<MfgBillState>()((set, get) => ({
+  bills: [],
 
-      refresh: async () => {
-        try {
-          const { currentUserRole, selectedBranchId } = useSettings.getState();
-          const GLOBAL_ROLES = ["Super Owner", "Administrator", "CEO (View Only)"];
-          const bid =
-            !currentUserRole || GLOBAL_ROLES.includes(currentUserRole)
-              ? null
-              : selectedBranchId || "MAIN";
+  refresh: async () => {
+    try {
+      const { currentUserRole, selectedBranchId } = useSettings.getState();
+      const GLOBAL_ROLES = ["Super Owner", "Administrator", "CEO (View Only)"];
+      const bid =
+        !currentUserRole || GLOBAL_ROLES.includes(currentUserRole)
+          ? null
+          : selectedBranchId || "MAIN";
 
-          let q = (supabase as any)
-            .from("manufacturing_bills")
-            .select("*")
-            .order("created_at", { ascending: false });
-          if (bid) q = q.eq("branch_id", bid);
+      let q = (supabase as any)
+        .from("manufacturing_bills")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (bid) q = q.eq("branch_id", bid);
 
-          const { data, error } = await q;
-          if (error) throw error;
-          if (data) {
-            // Map snake_case DB columns back to camelCase
-            const mapped = data.map(dbRowToBill);
-            set({ bills: mapped });
-          }
-        } catch {
-          // Graceful degradation — table may not exist yet (pre-migration)
-        }
-      },
+      const { data, error } = await q;
+      if (error) throw error;
+      if (data) {
+        // Map snake_case DB columns back to camelCase
+        const mapped = data.map(dbRowToBill);
+        set({ bills: mapped });
+      }
+    } catch {
+      // Graceful degradation — table may not exist yet (pre-migration)
+    }
+  },
 
-      saveBill: async (bill) => {
-        await manufacturingBillRepository.save(billToDbRow(bill));
-        set((s) => {
-          const existing = s.bills.findIndex((b) => b.id === bill.id);
-          if (existing >= 0) {
-            const next = [...s.bills];
-            next[existing] = bill;
-            return { bills: next };
-          }
-          return { bills: [bill, ...s.bills] };
+  saveBill: async (bill) => {
+    await manufacturingBillRepository.save(billToDbRow(bill));
+    set((s) => {
+      const existing = s.bills.findIndex((b) => b.id === bill.id);
+      if (existing >= 0) {
+        const next = [...s.bills];
+        next[existing] = bill;
+        return { bills: next };
+      }
+      return { bills: [bill, ...s.bills] };
+    });
+  },
+
+  patchBill: async (id, diff) => {
+    set((s) => ({
+      bills: s.bills.map((b) => {
+        if (b.id !== id) return b;
+        const merged = { ...b, ...diff, updatedAt: Date.now() };
+        // Recompute derived fields whenever relevant inputs change
+        const totalPFine = merged.pEntries.reduce((s, e) => s + e.fineMg, 0);
+        const totalMpFine = merged.mpEntries.reduce((s, e) => s + e.fineMg, 0);
+        merged.totalGoldIssuedFineMg = merged.goldIssuedFineMg + totalPFine;
+        merged.totalGoldReturnedFineMg =
+          merged.finishedFineMg + merged.scrapFineMg + merged.filingsFineMg + merged.dustFineMg;
+        merged.actualWastageFineMg = Math.max(
+          0,
+          merged.totalGoldIssuedFineMg - merged.totalGoldReturnedFineMg,
+        );
+        merged.actualWastagePct =
+          merged.totalGoldIssuedFineMg > 0
+            ? Math.round((merged.actualWastageFineMg / merged.totalGoldIssuedFineMg) * 10000) / 100
+            : 0;
+        merged.bhavGoldMg = calcBhavGoldMg(merged.cashPaymentPaise, merged.goldBhavRatePaise);
+        merged.closingBalanceMg =
+          merged.openingBalanceMg - totalPFine + totalMpFine + merged.bhavGoldMg;
+
+        // Gold-first outstanding: every fine-gold-out figure minus every
+        // fine-gold-back figure, across BOTH the Job-Card P/MP model and
+        // the Order-level auto-collected model — whichever (or both) a
+        // given bill actually used.
+        const totalOutMg =
+          merged.totalGoldIssuedFineMg + merged.orderIssuedFineMg + merged.outsideWorkIssuedFineMg;
+        const totalBackMg =
+          merged.totalGoldReturnedFineMg +
+          merged.orderReturnedFineMg +
+          merged.outsideWorkReturnedFineMg;
+        merged.goldOutstandingFineMg = Math.max(0, totalOutMg - totalBackMg);
+        return merged;
+      }),
+    }));
+    const bill = get().bills.find((b) => b.id === id);
+    if (bill) {
+      await manufacturingBillRepository.save(billToDbRow(bill));
+    }
+  },
+
+  deleteBill: async (id) => {
+    await manufacturingBillRepository.delete(id);
+    set((s) => ({ bills: s.bills.filter((b) => b.id !== id) }));
+  },
+
+  finaliseBill: async (id, opts = {}) => {
+    const bill = get().bills.find((b) => b.id === id);
+    if (!bill) return { ok: false, errors: ["Bill not found"], warnings: [] };
+    if (bill.status !== "draft") {
+      return { ok: false, errors: ["Bill is already finalised"], warnings: [] };
+    }
+
+    const wf = useWorkflowEngine.getState().config;
+    if (wf.mfgApprovalRequired && !bill.approved) {
+      return {
+        ok: false,
+        errors: ["Bill must be marked Approved before it can be finalised."],
+        warnings: [],
+      };
+    }
+
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // ── 1. Update Bill status ─────────────────────────────────────────
+    const now = Date.now();
+    const updated: ManufacturingBill = {
+      ...bill,
+      status: "finalised",
+      finalisedAt: now,
+      updatedAt: now,
+    };
+    await get().saveBill(updated);
+
+    // Event-driven communication automation (Plan 1 Step 9) — no-op
+    // unless "manufacturing_update" is enabled; never blocks finalisation.
+    import("@/lib/comm/comm-automation")
+      .then(({ emitBusinessEvent }) =>
+        emitBusinessEvent("manufacturing_update", {
+          branchId: updated.branchId,
+          recipient: {
+            name: updated.customerName,
+            phone: updated.customerPhone,
+            email: updated.customerEmail,
+          },
+          linkedId: updated.id,
+          linkedType: "job",
+        }),
+      )
+      .catch((err) =>
+        console.error("[ManufacturingBill] manufacturing_update automation failed:", err),
+      );
+
+    // ── 2. Close Job Card ─────────────────────────────────────────────
+    if (wf.autoCloseJobCard) {
+      try {
+        const { useJobCards } = await import("./jobcards-store");
+        await useJobCards.getState().update(bill.jobCardId, {
+          status: "closed",
         });
-      },
+        await useJobCards.getState().appendTimeline(bill.jobCardId, {
+          ts: now,
+          label: "Manufacturing Bill Finalised",
+          note: `Bill No: ${bill.billNo}`,
+        });
+      } catch (e) {
+        warnings.push("Could not close Job Card automatically");
+      }
+    }
 
-      patchBill: async (id, diff) => {
-        set((s) => ({
-          bills: s.bills.map((b) => {
-            if (b.id !== id) return b;
-            const merged = { ...b, ...diff, updatedAt: Date.now() };
-            // Recompute derived fields whenever relevant inputs change
-            const totalPFine = merged.pEntries.reduce((s, e) => s + e.fineMg, 0);
-            const totalMpFine = merged.mpEntries.reduce((s, e) => s + e.fineMg, 0);
-            merged.totalGoldIssuedFineMg = merged.goldIssuedFineMg + totalPFine;
-            merged.totalGoldReturnedFineMg =
-              merged.finishedFineMg + merged.scrapFineMg + merged.filingsFineMg + merged.dustFineMg;
-            merged.actualWastageFineMg = Math.max(
-              0,
-              merged.totalGoldIssuedFineMg - merged.totalGoldReturnedFineMg,
-            );
-            merged.actualWastagePct =
-              merged.totalGoldIssuedFineMg > 0
-                ? Math.round((merged.actualWastageFineMg / merged.totalGoldIssuedFineMg) * 10000) /
-                  100
-                : 0;
-            merged.bhavGoldMg = calcBhavGoldMg(merged.cashPaymentPaise, merged.goldBhavRatePaise);
-            merged.closingBalanceMg =
-              merged.openingBalanceMg - totalPFine + totalMpFine + merged.bhavGoldMg;
+    // ── 3. Update Order status ────────────────────────────────────────
+    if (wf.autoUpdateOrderStatus) {
+      try {
+        const { useOrders } = await import("./orders-store");
+        await useOrders.getState().update(bill.orderId, {
+          status: "ready_for_delivery",
+        });
+      } catch {
+        warnings.push("Could not update Order status automatically");
+      }
+    }
 
-            // Gold-first outstanding: every fine-gold-out figure minus every
-            // fine-gold-back figure, across BOTH the Job-Card P/MP model and
-            // the Order-level auto-collected model — whichever (or both) a
-            // given bill actually used.
-            const totalOutMg =
-              merged.totalGoldIssuedFineMg +
-              merged.orderIssuedFineMg +
-              merged.outsideWorkIssuedFineMg;
-            const totalBackMg =
-              merged.totalGoldReturnedFineMg +
-              merged.orderReturnedFineMg +
-              merged.outsideWorkReturnedFineMg;
-            merged.goldOutstandingFineMg = Math.max(0, totalOutMg - totalBackMg);
-            return merged;
-          }),
-        }));
-        const bill = get().bills.find((b) => b.id === id);
-        if (bill) {
-          await manufacturingBillRepository.save(billToDbRow(bill));
-        }
-      },
+    // ── 4. Move to Finished Stock ─────────────────────────────────────
+    let finishedStockItemId: string | undefined;
+    if (wf.finishedStockAutomatic) {
+      try {
+        const { useStock } = await import("./stock-store");
+        const stockItem = await useStock.getState().addReadyStock(
+          {
+            itemName: bill.itemName,
+            category: bill.category,
+            purity: bill.finishedPurity,
+            grossMg: bill.finishedGrossMg,
+            netMg: bill.finishedGrossMg,
+            status: "available",
+            location: "safe",
+            linkedOrderId: bill.orderId,
+            linkedJobId: bill.id,
+            linkedCustomerId: bill.customerId,
+            notes: `Auto-created from Manufacturing Bill ${bill.billNo}`,
+          },
+          "manufactured",
+        );
+        finishedStockItemId = stockItem.id;
+        await get().patchBill(id, { finishedStockItemId });
+      } catch {
+        warnings.push("Could not move item to Finished Stock automatically — add manually");
+      }
+    }
 
-      deleteBill: async (id) => {
-        await manufacturingBillRepository.delete(id);
-        set((s) => ({ bills: s.bills.filter((b) => b.id !== id) }));
-      },
+    // ── 5. Post Gold Ledger entries ───────────────────────────────────
+    if (wf.autoPostGoldLedger) {
+      try {
+        await postMfgGoldLedger(updated);
+      } catch {
+        warnings.push("Gold ledger posting failed — post manually");
+      }
+    }
 
-      finaliseBill: async (id, opts = {}) => {
-        const bill = get().bills.find((b) => b.id === id);
-        if (!bill) return { ok: false, errors: ["Bill not found"], warnings: [] };
-        if (bill.status !== "draft") {
-          return { ok: false, errors: ["Bill is already finalised"], warnings: [] };
-        }
+    // ── 6. Worker Gold Book settlement note ────────────────────────────
+    // NOTE: this does NOT post a new Worker Gold Book weight entry. The
+    // actual gold movement (finished/scrap/filings/dust or the Order-
+    // level equivalents) was already recorded at the moment it happened
+    // — by receive-work-dialog.tsx for the Job-Card flow, or by
+    // worker-return-dialog.tsx for the Order-level flow. Posting it
+    // again here would double-count against both the Worker Gold Book
+    // and, transitively, the Gold Ledger. `autoPostWorkerGoldBook`
+    // instead now gates a closing-balance note on the Order Timeline —
+    // the correct place for "this karigar's account is now settled",
+    // per the Production Order Timeline integration requirement.
+    if (wf.autoPostWorkerGoldBook && bill.karigarId) {
+      try {
+        const { useOrders } = await import("./orders-store");
+        await useOrders.getState().appendTimeline(bill.orderId, {
+          ts: now,
+          label: "Jeweller Account Settled",
+          note: `${bill.karigarName ?? "Karigar"} — closing balance ${(bill.closingBalanceMg / 1000).toFixed(3)}g · Bill ${bill.billNo}`,
+        });
+      } catch {
+        warnings.push("Could not record karigar settlement note on Order timeline");
+      }
+    }
 
-        const wf = useWorkflowEngine.getState().config;
-        if (wf.mfgApprovalRequired && !bill.approved) {
-          return {
-            ok: false,
-            errors: ["Bill must be marked Approved before it can be finalised."],
-            warnings: [],
-          };
-        }
+    // ── 6b. Stamp auto-collected source records as consumed ────────────
+    try {
+      await linkAutoCollectedSources(bill.id, updated);
+    } catch {
+      warnings.push("Could not mark all auto-collected source records as linked");
+    }
 
-        const errors: string[] = [];
-        const warnings: string[] = [];
+    // ── 6c. Production Order Timeline — bill finalised ─────────────────
+    try {
+      const { useOrders } = await import("./orders-store");
+      await useOrders.getState().appendTimeline(bill.orderId, {
+        ts: now,
+        label: "Manufacturing Bill Finalised",
+        note: `Bill No: ${bill.billNo} · Net cost ₹${(bill.netMfgCostPaise / 100).toFixed(2)}`,
+      });
+    } catch {
+      warnings.push("Could not record bill finalisation on Order timeline");
+    }
 
-        // ── 1. Update Bill status ─────────────────────────────────────────
-        const now = Date.now();
-        const updated: ManufacturingBill = {
-          ...bill,
-          status: "finalised",
-          finalisedAt: now,
-          updatedAt: now,
-        };
-        await get().saveBill(updated);
+    // ── 7. Send Communication ─────────────────────────────────────────
+    const branchId = opts.branchId ?? bill.branchId;
+    if ((opts.sendComm ?? wf.autoSendMfgBillComm) && bill.customerPhone) {
+      try {
+        await commService.sendInvoice(bill.id, branchId, "whatsapp", bill.customerName, {
+          phone: bill.customerPhone,
+          email: bill.customerEmail ?? undefined,
+        });
+      } catch {
+        warnings.push("Communication send failed — send manually");
+      }
+    }
 
-        // Event-driven communication automation (Plan 1 Step 9) — no-op
-        // unless "manufacturing_update" is enabled; never blocks finalisation.
-        import("@/lib/comm/comm-automation")
-          .then(({ emitBusinessEvent }) =>
-            emitBusinessEvent("manufacturing_update", {
-              branchId: updated.branchId,
-              recipient: {
-                name: updated.customerName,
-                phone: updated.customerPhone,
-                email: updated.customerEmail,
-              },
-              linkedId: updated.id,
-              linkedType: "job",
-            }),
-          )
-          .catch((err) =>
-            console.error("[ManufacturingBill] manufacturing_update automation failed:", err),
-          );
-
-        // ── 2. Close Job Card ─────────────────────────────────────────────
-        if (wf.autoCloseJobCard) {
-          try {
-            const { useJobCards } = await import("./jobcards-store");
-            await useJobCards.getState().update(bill.jobCardId, {
-              status: "closed",
-            });
-            await useJobCards.getState().appendTimeline(bill.jobCardId, {
-              ts: now,
-              label: "Manufacturing Bill Finalised",
-              note: `Bill No: ${bill.billNo}`,
-            });
-          } catch (e) {
-            warnings.push("Could not close Job Card automatically");
-          }
-        }
-
-        // ── 3. Update Order status ────────────────────────────────────────
-        if (wf.autoUpdateOrderStatus) {
-          try {
-            const { useOrders } = await import("./orders-store");
-            await useOrders.getState().update(bill.orderId, {
-              status: "ready_for_delivery",
-            });
-          } catch {
-            warnings.push("Could not update Order status automatically");
-          }
-        }
-
-        // ── 4. Move to Finished Stock ─────────────────────────────────────
-        let finishedStockItemId: string | undefined;
-        if (wf.finishedStockAutomatic) {
-          try {
-            const { useStock } = await import("./stock-store");
-            const stockItem = await useStock.getState().addReadyStock(
-              {
-                itemName: bill.itemName,
-                category: bill.category,
-                purity: bill.finishedPurity,
-                grossMg: bill.finishedGrossMg,
-                netMg: bill.finishedGrossMg,
-                status: "available",
-                location: "safe",
-                linkedOrderId: bill.orderId,
-                linkedJobId: bill.id,
-                linkedCustomerId: bill.customerId,
-                notes: `Auto-created from Manufacturing Bill ${bill.billNo}`,
-              },
-              "manufactured",
-            );
-            finishedStockItemId = stockItem.id;
-            await get().patchBill(id, { finishedStockItemId });
-          } catch {
-            warnings.push("Could not move item to Finished Stock automatically — add manually");
-          }
-        }
-
-        // ── 5. Post Gold Ledger entries ───────────────────────────────────
-        if (wf.autoPostGoldLedger) {
-          try {
-            await postMfgGoldLedger(updated);
-          } catch {
-            warnings.push("Gold ledger posting failed — post manually");
-          }
-        }
-
-        // ── 6. Worker Gold Book settlement note ────────────────────────────
-        // NOTE: this does NOT post a new Worker Gold Book weight entry. The
-        // actual gold movement (finished/scrap/filings/dust or the Order-
-        // level equivalents) was already recorded at the moment it happened
-        // — by receive-work-dialog.tsx for the Job-Card flow, or by
-        // worker-return-dialog.tsx for the Order-level flow. Posting it
-        // again here would double-count against both the Worker Gold Book
-        // and, transitively, the Gold Ledger. `autoPostWorkerGoldBook`
-        // instead now gates a closing-balance note on the Order Timeline —
-        // the correct place for "this karigar's account is now settled",
-        // per the Production Order Timeline integration requirement.
-        if (wf.autoPostWorkerGoldBook && bill.karigarId) {
-          try {
-            const { useOrders } = await import("./orders-store");
-            await useOrders.getState().appendTimeline(bill.orderId, {
-              ts: now,
-              label: "Jeweller Account Settled",
-              note: `${bill.karigarName ?? "Karigar"} — closing balance ${(bill.closingBalanceMg / 1000).toFixed(3)}g · Bill ${bill.billNo}`,
-            });
-          } catch {
-            warnings.push("Could not record karigar settlement note on Order timeline");
-          }
-        }
-
-        // ── 6b. Stamp auto-collected source records as consumed ────────────
-        try {
-          await linkAutoCollectedSources(bill.id, updated);
-        } catch {
-          warnings.push("Could not mark all auto-collected source records as linked");
-        }
-
-        // ── 6c. Production Order Timeline — bill finalised ─────────────────
-        try {
-          const { useOrders } = await import("./orders-store");
-          await useOrders.getState().appendTimeline(bill.orderId, {
-            ts: now,
-            label: "Manufacturing Bill Finalised",
-            note: `Bill No: ${bill.billNo} · Net cost ₹${(bill.netMfgCostPaise / 100).toFixed(2)}`,
-          });
-        } catch {
-          warnings.push("Could not record bill finalisation on Order timeline");
-        }
-
-        // ── 7. Send Communication ─────────────────────────────────────────
-        const branchId = opts.branchId ?? bill.branchId;
-        if ((opts.sendComm ?? wf.autoSendMfgBillComm) && bill.customerPhone) {
-          try {
-            await commService.sendInvoice(bill.id, branchId, "whatsapp", bill.customerName, {
-              phone: bill.customerPhone,
-              email: bill.customerEmail ?? undefined,
-            });
-          } catch {
-            warnings.push("Communication send failed — send manually");
-          }
-        }
-
-        return { ok: true, finishedStockItemId, errors, warnings };
-      },
-    }),
-    { name: "mtj-mfg-bills-v1" },
-  ),
-);
+    return { ok: true, finishedStockItemId, errors, warnings };
+  },
+}));
 
 // ── Gold Ledger Posting ───────────────────────────────────────────────────────
 

@@ -10,7 +10,6 @@ import {
   type LicenseStatus,
 } from "@/lib/licensing/license-store";
 import { useSettings } from "@/lib/settings-store";
-import { AppBootSkeleton } from "@/components/app-boot-skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,7 +51,6 @@ export function LicenseGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!mode) return;
     void verifyLicense(mode);
-    if (mode === "offline") return;
     const id = window.setInterval(() => void verifyLicense(mode), RECHECK_MS);
     return () => window.clearInterval(id);
   }, [mode]);
@@ -88,9 +86,9 @@ export function LicenseGate({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  if (!mode || status === "checking" || isSaasAdmin === null) return <AppBootSkeleton />;
+  const verifying = !mode || status === "checking" || isSaasAdmin === null;
 
-  if ((status === "expired" || status === "suspended") && !isSaasAdmin) {
+  if (!verifying && (status === "expired" || status === "suspended") && !isSaasAdmin) {
     return (
       <LicenseBlock
         status={status}
@@ -118,6 +116,7 @@ export function LicenseGate({ children }: { children: ReactNode }) {
         </div>
       ) : null}
       {children}
+      {verifying ? <LicenseVerificationBadge /> : null}
       <RenewalNotice
         status={status}
         daysRemaining={daysRemaining}
@@ -127,6 +126,15 @@ export function LicenseGate({ children }: { children: ReactNode }) {
         companyName={branding.companyName}
       />
     </>
+  );
+}
+
+function LicenseVerificationBadge() {
+  return (
+    <div className="pointer-events-none fixed bottom-3 right-3 z-50 hidden items-center gap-2 rounded-md border border-border bg-card/95 px-3 py-2 text-xs text-muted-foreground shadow-elegant backdrop-blur md:flex">
+      <Loader2 className="h-3.5 w-3.5 animate-spin text-gold" />
+      Verifying license
+    </div>
   );
 }
 

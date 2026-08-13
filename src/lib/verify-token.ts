@@ -1,9 +1,9 @@
 /**
- * MTJ ERP — Print Verification token.
+ * AVS ERP print verification token.
  *
  * Each printed document carries a short payload of the form
  *
- *     MTJ|<DOC_TYPE>|<DOC_NUMBER>|<RECORD_ID>|<CHECKSUM>
+ *     AVS|<DOC_TYPE>|<DOC_NUMBER>|<RECORD_ID>|<CHECKSUM>
  *
  * The checksum is the first 8 hex chars of a deterministic non-crypto hash
  * over (docType, docNumber, recordId, createdAtISO). This is NOT a
@@ -13,6 +13,9 @@
  * ERP login) and never hydrates useSettings, so including firm.shopName
  * here made every checksum unrecomputable on the verify side — the token
  * would never match, ever, even for a genuine unmodified document.
+ *
+ * Legacy `MTJ|...` payloads are still accepted so old printed documents remain
+ * verifiable after the AVS brand cleanup.
  */
 import type { PrintDocType } from "@/lib/printlog-store";
 import { useOrders } from "@/lib/orders-store";
@@ -25,6 +28,9 @@ import { usePeople } from "@/lib/people-store";
 import { useStock } from "@/lib/stock-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { useWorkers } from "@/lib/workers-store";
+
+const CURRENT_VERIFY_APP = "AVS";
+const LEGACY_VERIFY_APP = "MTJ";
 
 function simpleHash(s: string): string {
   let h1 = 0xdeadbeef ^ 0;
@@ -52,11 +58,11 @@ export interface PayloadInput {
 export function payloadFor(d: PayloadInput): string {
   const iso = d.createdAt ? new Date(d.createdAt).toISOString().slice(0, 10) : "";
   const checksum = simpleHash([d.docType, d.docNumber, d.recordId, iso].join("|"));
-  return `MTJ|${d.docType}|${d.docNumber}|${d.recordId}|${checksum}`;
+  return `${CURRENT_VERIFY_APP}|${d.docType}|${d.docNumber}|${d.recordId}|${checksum}`;
 }
 
 export interface ParsedPayload {
-  app: "MTJ";
+  app: "AVS" | "MTJ";
   docType: PrintDocType;
   docNumber: string;
   recordId: string;
@@ -64,14 +70,14 @@ export interface ParsedPayload {
 }
 
 export function parsePayload(raw: string): ParsedPayload | null {
-  const m = raw.trim().match(/^MTJ\|([a-z_]+)\|([^|]+)\|([^|]+)\|([0-9a-f]{8})$/i);
+  const m = raw.trim().match(/^(AVS|MTJ)\|([a-z_]+)\|([^|]+)\|([^|]+)\|([0-9a-f]{8})$/i);
   if (!m) return null;
   return {
-    app: "MTJ",
-    docType: m[1] as PrintDocType,
-    docNumber: m[2],
-    recordId: m[3],
-    checksum: m[4].toLowerCase(),
+    app: m[1].toUpperCase() === LEGACY_VERIFY_APP ? LEGACY_VERIFY_APP : CURRENT_VERIFY_APP,
+    docType: m[2] as PrintDocType,
+    docNumber: m[3],
+    recordId: m[4],
+    checksum: m[5].toLowerCase(),
   };
 }
 

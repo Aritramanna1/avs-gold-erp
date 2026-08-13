@@ -1,7 +1,9 @@
 # Backup & Restore Guide
 
-Use Settings → Backup & Recovery. Create a backup before upgrades, imports, Hybrid activation, bulk changes, and at the end of each working day. Keep at least one protected copy away from the workstation.
+Use Settings -> Backup & Recovery. Create a Supabase-controlled backup before upgrades, imports, bulk changes, and at the end of each working day. Keep at least one protected copy away from the workstation/account and document who created it.
 
-Before restore: stop posting, record the current time, create an additional backup, and confirm the selected file belongs to this installation/customer. Restore only through the application. After restore, verify firm identity, users, latest documents, Gold Vault totals, attachment availability, and—in Hybrid mode—sync/conflict status.
+Before restore: stop posting, record the current time, create an additional backup if the database is reachable, confirm the selected recovery point belongs to this project/firm, and capture the reason for restore. Restore only through authorized Supabase recovery procedures.
 
-Do not edit encrypted backup files, copy IndexedDB folders manually, or assume Supabase is a file backup. Hybrid never uploads local documents.
+After restore, verify firm identity, users, branch access, latest documents, Gold Vault totals, attachment availability, audit logs, and representative customer/karigar/account ledgers.
+
+Do not edit database dumps manually, copy browser profile folders, restore IndexedDB/localStorage, or use retired browser-local pilot exports as production backups. Supabase database, storage, auth, and edge/runtime configuration each need explicit recovery evidence.

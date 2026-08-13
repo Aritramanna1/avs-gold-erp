@@ -238,7 +238,7 @@ const generationInFlight = new Set<string>();
 
 export const useManufacturingBarcodes = create<ManufacturingBarcodeState>()((set, get) => ({
   barcodes: [],
-  // Deliberately bypasses barcodeRepository.readAll()'s local-first cache:
+  // Deliberately bypasses barcodeRepository.readAll()'s cached read path:
   // that helper only re-pulls from Supabase when the local cache is
   // completely empty, so a barcode generated moments ago (written straight
   // to Supabase by generate(), never through the local write path) stays

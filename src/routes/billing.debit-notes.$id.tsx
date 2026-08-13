@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useDebitNotes } from "@/lib/billing-documents-store";
+import { useBillingDocumentById } from "@/lib/use-billing-document";
 import { paiseToRupees } from "@/lib/billing-store";
 import { useSettings } from "@/lib/settings-store";
 import { usePrintEngine } from "@/lib/print-engine";
@@ -18,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Printer, Ban } from "lucide-react";
+import { ArrowLeft, Ban, Loader2, Printer, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/billing/debit-notes/$id")({
@@ -28,25 +29,33 @@ export const Route = createFileRoute("/billing/debit-notes/$id")({
 
 function DebitNoteDetail() {
   const { id } = useParams({ from: "/billing/debit-notes/$id" });
-  const notes = useDebitNotes((s) => s.notes);
-  const refresh = useDebitNotes((s) => s.refresh);
   const cancel = useDebitNotes((s) => s.cancel);
   const { firm } = useSettings();
   const { triggerPrint } = usePrintEngine();
   const { can, email } = useCan();
-  const note = notes.find((n) => n.id === id);
-
-  useEffect(() => {
-    if (notes.length === 0) refresh();
-  }, [notes.length, refresh]);
+  const { document: note, loading, error, retry } = useBillingDocumentById("debit_note", id);
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+
+  if (loading && !note) {
+    return (
+      <div className="p-8 max-w-3xl mx-auto text-sm text-muted-foreground">
+        <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+        Loading debit note...
+      </div>
+    );
+  }
 
   if (!note) {
     return (
       <div className="p-8 max-w-3xl mx-auto text-center">
         <h1 className="font-serif text-2xl text-gold">Debit note not found</h1>
+        {error ? (
+          <Button variant="outline" className="gap-1.5 mt-4" onClick={retry}>
+            <RotateCcw className="h-4 w-4" /> Retry
+          </Button>
+        ) : null}
         <Link to="/billing/debit-notes" className="text-gold underline mt-4 inline-block">
           Back to Debit Notes
         </Link>

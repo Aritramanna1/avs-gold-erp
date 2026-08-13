@@ -1,14 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
-import { usePeople } from "@/lib/people-store";
-import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
-import { useGoldSettlement } from "@/lib/gold-settlement-store";
+import { fetchWorkerReportRows, type WorkerReportRow } from "@/lib/party-report-query";
 import { mgToGrams } from "@/lib/gold";
 import { exportToCSV, triggerPrint } from "@/lib/report-engine";
 import { Button } from "@/components/ui/button";
-import { Download, Printer } from "lucide-react";
+import { AlertTriangle, Download, Loader2, Printer, RotateCcw } from "lucide-react";
 
 export const Route = createFileRoute("/reports/worker")({
   head: () => ({ meta: [{ title: "Worker Report · AVS Gold ERP" }] }),
@@ -22,42 +20,35 @@ export const Route = createFileRoute("/reports/worker")({
  * Worker Gold Book or Settlement screens themselves.
  */
 function WorkerReportPage() {
-  const people = usePeople((s) => s.people);
-  const refreshPeople = usePeople((s) => s.refresh);
-  const getWorkerBalance = useWorkerGoldBook((s) => s.getWorkerBalance);
-  const refreshGoldBook = useWorkerGoldBook((s) => s.refresh);
-  const goldSettlements = useGoldSettlement((s) => s.settlements);
-  const refreshGoldSettlements = useGoldSettlement((s) => s.refresh);
+  const [rows, setRows] = useState<WorkerReportRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [capped, setCapped] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    refreshPeople();
-    refreshGoldBook();
-    refreshGoldSettlements();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const workers = useMemo(
-    () => people.filter((p) => p.type === "karigar" || p.type === "worker"),
-    [people],
-  );
-
-  const rows = useMemo(
-    () =>
-      workers.map((w) => {
-        const balance = getWorkerBalance(w.id);
-        const workerSettlements = goldSettlements
-          .filter((s) => s.party_type === "worker" && s.party_id === w.id)
-          .sort((a, b) => (a.settlement_date < b.settlement_date ? 1 : -1));
-        return {
-          id: w.id,
-          name: w.fullName,
-          pendingFineMg: balance.pendingFine,
-          pendingQty: balance.pendingQty,
-          lastSettlementDate: workerSettlements[0]?.settlement_date ?? null,
-        };
-      }),
-    [workers, getWorkerBalance, goldSettlements],
-  );
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetchWorkerReportRows()
+      .then((data) => {
+        if (cancelled) return;
+        setRows(data.rows);
+        setCapped(data.capped);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setRows([]);
+        setCapped(false);
+        setError(err instanceof Error ? err.message : "Could not load worker report.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
 
   function handleCSV() {
     const header = ["Worker", "Pending Gold (g)", "Pending Qty", "Last Settlement"];
@@ -86,6 +77,40 @@ function WorkerReportPage() {
           </div>
         }
       />
+
+      {loading ? (
+        <div className="mt-4 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+          <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+          Loading worker balances...
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="mt-4 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium text-destructive">Worker report could not load</p>
+              <p className="mt-1 text-muted-foreground">{error}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setReloadKey((value) => value + 1)}
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Retry
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {capped ? (
+        <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-700">
+          <AlertTriangle className="mr-2 inline h-4 w-4" />
+          Showing a bounded Supabase report preview. Add full-history worker-balance aggregate/RPC
+          before high-volume audit sign-off.
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-border bg-card overflow-hidden mt-4">
         <div className="overflow-x-auto">

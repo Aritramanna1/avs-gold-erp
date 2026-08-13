@@ -35,13 +35,14 @@ import {
 
 /**
  * Material Book hub — Worker Gold Book remains inline; Outside Work opens its
- * dedicated real workflow. Other material ledgers remain explicitly deferred.
+ * dedicated real workflow. Other material ledgers remain explicitly deferred
+ * until their posting, audit, and document gates pass.
  */
 const MATERIAL_BOOKS = [
   { key: "worker", label: "Worker Gold Book", icon: Users, available: true },
   { key: "outside", label: "Outside Work", icon: Truck, available: true },
-  { key: "meena", label: "Meena Book", icon: Gem, available: true },
-  { key: "polishing", label: "Polishing Book", icon: Sparkles, available: true },
+  { key: "meena", label: "Meena Book", icon: Gem, available: false },
+  { key: "polishing", label: "Polishing Book", icon: Sparkles, available: false },
 ] as const;
 type MaterialBookKey = (typeof MATERIAL_BOOKS)[number]["key"];
 
@@ -431,7 +432,7 @@ function WorkerGoldBookPage() {
                 {b.label}
                 {!b.available && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                    <Lock className="h-2.5 w-2.5" /> Soon
+                    <Lock className="h-2.5 w-2.5" /> Planned
                   </span>
                 )}
               </button>
@@ -1270,7 +1271,7 @@ function WorkerGoldBookPage() {
   );
 }
 
-/** Professional placeholder for the material books not yet built. */
+/** Release-gate notice for material books not enabled for transactions yet. */
 function ComingSoonBook({ bookKey }: { bookKey: MaterialBookKey }) {
   const book = MATERIAL_BOOKS.find((b) => b.key === bookKey);
   const Icon = book?.icon ?? BookOpen;
@@ -1282,11 +1283,11 @@ function ComingSoonBook({ bookKey }: { bookKey: MaterialBookKey }) {
         </div>
         <h2 className="font-serif text-2xl text-gold">{book?.label}</h2>
         <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          <Lock className="h-3 w-3" /> Coming Soon
+          <Lock className="h-3 w-3" /> Not enabled
         </div>
         <p className="text-sm text-muted-foreground">
-          This material-movement ledger is part of the Material Book and will follow the same Daily
-          Material Slip workflow as the Worker Gold Book. It is not yet available for transactions.
+          This material-movement ledger is part of the Material Book and must pass posting, audit,
+          document, and mobile workflow gates before transactions are enabled.
         </p>
       </div>
     </div>

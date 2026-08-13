@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { guardRoute } from "@/lib/permissions";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { useDraft } from "@/lib/drafts-store";
 import { z } from "zod";
 import { PageHeader } from "@/components/app-shell";
@@ -34,8 +34,7 @@ import {
   DROPDOWN_LABELS,
   exportPilotData,
   importPilotData,
-  clearPilotData,
-  clearAllLocalData,
+  clearBrowserSessionResidue,
   PILOT_STORAGE_KEYS,
   type DropdownKey,
   type PrinterProfile,
@@ -79,18 +78,16 @@ import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { getAuthRedirectUrl } from "@/lib/auth-redirect";
 import { extractEdgeFunctionError } from "@/lib/edge-function-error";
 import { useDbStatus, getDbStatusLabel } from "@/lib/db-status";
-import { migrateAllToCloud, type MigrationProgress } from "@/lib/cloud-migrate";
 import { useRoles } from "@/lib/rbac";
 import { Logo } from "@/components/ui/Logo";
 import { APP_NAME, APP_DESCRIPTION, APP_VERSION, COMPANY_NAME, APP_TAGLINE } from "@/lib/app-info";
 import { ALL_LANGUAGES, LANGUAGE_INFO, type LanguageCode } from "@/i18n";
-import { useDeploymentMode } from "@/lib/deployment-mode";
 
 import { FactoryResetDialog } from "@/components/security/FactoryResetDialog";
 import { useBullionRate } from "@/lib/bullion-rate-service";
-import { WhatsAppIntegrationPage } from "@/routes/settings.integrations.whatsapp";
-import { WhatsAppSettingsPage } from "@/routes/settings.whatsapp";
-import { WaTemplatesPage } from "@/routes/settings.whatsapp-templates";
+import { Route as WhatsAppIntegrationRoute } from "@/routes/settings.integrations.whatsapp";
+import { Route as WhatsAppSettingsRoute } from "@/routes/settings.whatsapp";
+import { Route as WaTemplatesRoute } from "@/routes/settings.whatsapp-templates";
 
 const SearchSchema = z.object({
   tab: z.string().optional(),
@@ -104,9 +101,14 @@ export const Route = createFileRoute("/settings/")({
   component: SettingsPage,
 });
 
+type EmbeddedWhatsAppPage = ComponentType<{ embedded?: boolean }>;
+
+const WhatsAppSettingsPage = WhatsAppSettingsRoute.options.component as EmbeddedWhatsAppPage;
+const WhatsAppIntegrationPage = WhatsAppIntegrationRoute.options.component as EmbeddedWhatsAppPage;
+const WaTemplatesPage = WaTemplatesRoute.options.component as EmbeddedWhatsAppPage;
+
 function SettingsPage() {
   const s = useSettings();
-  const deploymentMode = useDeploymentMode((state) => state.mode);
   const { tab, waSection } = useSearch({ from: "/settings/" });
   const [activeTab, setActiveTab] = useState(tab || "firm");
   const [isFactoryResetOpen, setIsFactoryResetOpen] = useState(false);
@@ -126,8 +128,8 @@ function SettingsPage() {
 
       <Card className="p-4 mb-5 border-gold/40 bg-gold/5 text-sm">
         <strong>Pilot Notice — </strong>
-        AVS ERP pilot is for controlled six-month testing. Maintain manual / physical registers
-        in parallel until final production approval. See{" "}
+        AVS ERP pilot is for controlled six-month testing. Maintain manual / physical registers in
+        parallel until final production approval. See{" "}
         <Link to="/help" className="text-gold underline">
           Help &amp; Pilot Guide
         </Link>
@@ -245,9 +247,7 @@ function SettingsPage() {
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Storage &amp; File Diagnostics</div>
             <div className="text-xs text-muted-foreground">
-              {deploymentMode === "offline"
-                ? "Verify the encrypted local vault and SQLite attachment records."
-                : "Verify configured storage connectivity and synchronized attachment records."}
+              Verify configured Supabase storage connectivity and synchronized attachment records.
             </div>
           </div>
         </Link>
@@ -261,7 +261,7 @@ function SettingsPage() {
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Document Vault</div>
             <div className="text-xs text-muted-foreground">
-              Encrypted, versioned, checksum-verified local file storage.
+              Supabase-backed document storage and central document engine readiness.
             </div>
           </div>
         </Link>
@@ -457,7 +457,8 @@ function SettingsPage() {
           <AlertTriangle className="h-5 w-5" /> Danger Zone
         </h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Irreversible and destructive actions for this device's local data.
+          Session cleanup and guarded troubleshooting actions for this browser. Supabase production
+          data is managed through authorized online workflows.
         </p>
         <div className="flex gap-4">
           <Button
@@ -465,7 +466,7 @@ function SettingsPage() {
             onClick={() => setIsFactoryResetOpen(true)}
             className="bg-red-600 hover:bg-red-700"
           >
-            Factory Reset App
+            Clear Browser Session
           </Button>
           <Button
             size="sm"
@@ -504,7 +505,6 @@ interface LogoUploaderProps {
 function LogoUploader({ logoUrl, logoStoragePath, onLogoChange, onClearLogo }: LogoUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const deploymentMode = useDeploymentMode((state) => state.mode);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -512,7 +512,6 @@ function LogoUploader({ logoUrl, logoStoragePath, onLogoChange, onClearLogo }: L
 
     setUploading(true);
     try {
-      // Files remain in the encrypted local vault in every deployment mode.
       const { filePath, signedUrl } = await uploadFileToSupabase(
         "firm-assets",
         file,
@@ -521,9 +520,7 @@ function LogoUploader({ logoUrl, logoStoragePath, onLogoChange, onClearLogo }: L
       );
 
       onLogoChange(signedUrl, filePath);
-      toast.success(
-        "Firm logo saved to the local application vault. Click 'Save Changes' to apply.",
-      );
+      toast.success("Firm logo uploaded. Click 'Save Changes' to apply.");
     } catch (err: any) {
       console.error("Logo upload error:", err);
       toast.error(err.message || "Failed to save the firm logo");
@@ -570,11 +567,7 @@ function LogoUploader({ logoUrl, logoStoragePath, onLogoChange, onClearLogo }: L
           ) : (
             <Upload className="h-3.5 w-3.5" />
           )}
-          {uploading
-            ? deploymentMode === "offline"
-              ? "Saving..."
-              : "Uploading..."
-            : "Upload Logo"}
+          {uploading ? "Uploading..." : "Upload Logo"}
         </Button>
         <input
           ref={fileInputRef}
@@ -612,7 +605,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function FirmTab() {
   const { firm, setFirm } = useSettings();
-  const deploymentMode = useDeploymentMode((state) => state.mode);
 
   // Local state drafts
   const [shopName, setShopName, clearShopName] = useDraft(
@@ -783,23 +775,14 @@ function FirmTab() {
         hostingerUploadUrl,
       };
 
-      // Offline profiles are persisted by the settings store and must never
-      // depend on a cloud session. Connected modes retain the existing cloud
-      // persistence path.
-      if (deploymentMode !== "offline") {
-        const success = await updateFirmProfile(updatedProfile);
-        if (!success) {
-          throw new Error("The connected profile service could not save these changes.");
-        }
+      const success = await updateFirmProfile(updatedProfile);
+      if (!success) {
+        throw new Error("The connected profile service could not save these changes.");
       }
 
-      // Commit to local store configuration (causes immediate layout/sidebar sync).
+      // Commit to runtime store configuration for immediate layout/sidebar sync.
       setFirm(updatedProfile);
-      toast.success(
-        deploymentMode === "offline"
-          ? "Firm profile and settings saved locally."
-          : "Firm profile and settings saved successfully.",
-      );
+      toast.success("Firm profile and settings saved successfully.");
 
       // Clear draft states
       clearShopName();
@@ -4666,22 +4649,15 @@ function BackupTab() {
   };
 
   const handleExport = () => {
-    const json = exportPilotData();
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `mtj-pilot-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setMsg(`Exported ${PILOT_STORAGE_KEYS.length} local stores.`);
+    void exportPilotData();
+    setMsg("Browser-local ERP backup has been retired. Use Supabase Backup & Disaster Recovery.");
   };
 
   const runRestore = async (file: File) => {
     const text = await file.text();
     const res = importPilotData(text);
     if (res.ok) {
-      setMsg(`Restored ${res.restored.length} stores. Reloading…`);
+      setMsg(`Restored ${res.restored.length} stores. Reloading...`);
       setTimeout(() => window.location.reload(), 800);
     } else {
       setMsg(`Import failed: ${res.error}`);
@@ -4691,22 +4667,22 @@ function BackupTab() {
   return (
     <Card className="p-5 mt-4 space-y-4">
       <div className="text-sm">
-        Local cache exports are available for troubleshooting and quick safety copies. For verified,
-        drill-tested backup/restore (recommended for anything beyond a quick local safety copy), use{" "}
+        Production backup and restore must run through Supabase-controlled recovery workflows.
+        Browser-local ERP backup/import is retired; this page only keeps local cache cleanup tools
+        for troubleshooting. Use{" "}
         <Link to="/settings/backup-recovery" className="underline text-gold">
           Backup &amp; Disaster Recovery
         </Link>
         .
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button data-testid="settings-export-backup" onClick={handleExport}>
-          <Download className="h-4 w-4 mr-1.5" /> Export Local Pilot Data (JSON)
+        <Button data-testid="settings-export-backup" variant="outline" onClick={handleExport}>
+          <Download className="h-4 w-4 mr-1.5" /> Browser Export Retired
         </Button>
-        <Button variant="outline" onClick={handleExport}>
-          <Download className="h-4 w-4 mr-1.5" /> Download Pilot Backup
-        </Button>
-        <Button variant="outline" onClick={() => fileRef.current?.click()}>
-          <Upload className="h-4 w-4 mr-1.5" /> Import Local Pilot Data
+        <Button variant="outline" asChild>
+          <Link to="/settings/backup-recovery">
+            <Upload className="h-4 w-4 mr-1.5" /> Open Supabase Recovery
+          </Link>
         </Button>
         <input
           ref={fileRef}
@@ -4728,7 +4704,7 @@ function BackupTab() {
               setPasswordGateOpen(true);
             }}
           >
-            <Lock className="h-4 w-4 mr-1.5" /> Clear Local Pilot Data (Dev)
+            <Lock className="h-4 w-4 mr-1.5" /> Clear Browser Cache
           </Button>
         )}
       </div>
@@ -4740,11 +4716,11 @@ function BackupTab() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Restore from backup?</AlertDialogTitle>
+            <AlertDialogTitle>Browser import retired</AlertDialogTitle>
             <AlertDialogDescription>
-              This will overwrite every local store on this device with the contents of{" "}
-              <strong>{pendingRestoreFile?.name}</strong>. Any local changes made since that backup
-              was taken will be lost. Synchronized cloud data is not affected. Continue?
+              Browser-local ERP restore is retired. The selected file{" "}
+              <strong>{pendingRestoreFile?.name}</strong> will only be checked so the screen can
+              explain the supported Supabase recovery path.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -4755,7 +4731,7 @@ function BackupTab() {
                 setPendingRestoreFile(null);
               }}
             >
-              Restore
+              Check file
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -4818,10 +4794,10 @@ function BackupTab() {
       <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear local pilot data?</AlertDialogTitle>
+            <AlertDialogTitle>Clear browser cache?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete cached settings and the local encrypted data cache on
-              this device. Synchronized cloud data is not affected. This cannot be undone. Continue?
+              This will permanently delete obsolete local cache residue on this device. Supabase
+              production data is not affected. This cannot be undone. Continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -4829,9 +4805,9 @@ function BackupTab() {
             <AlertDialogAction
               onClick={() => {
                 setClearConfirmOpen(false);
-                setMsg("Clearing local data (including local database)…");
-                void clearAllLocalData().then(() => {
-                  setMsg("Local data cleared. Reloading…");
+                setMsg("Clearing browser cache residue...");
+                void clearBrowserSessionResidue().then(() => {
+                  setMsg("Browser cache cleared. Reloading...");
                   setTimeout(() => window.location.reload(), 500);
                 });
               }}
@@ -4846,7 +4822,6 @@ function BackupTab() {
 }
 
 function AboutTab() {
-  const deploymentMode = useDeploymentMode((state) => state.mode);
   const branding = useSettings((s) => s.branding);
   const branches = useSettings((s) => s.branches);
   const selectedBranchId = useSettings((s) => s.selectedBranchId);
@@ -4899,18 +4874,7 @@ function AboutTab() {
 
         <div className="text-muted-foreground">Website</div>
         <div className="text-right">{branding.website || "—"}</div>
-
-        {deploymentMode === "offline" ? (
-          <>
-            <div className="text-muted-foreground">Database Status</div>
-            <div className="text-right">Local SQLite · Connected</div>
-
-            <div className="text-muted-foreground">Data Source</div>
-            <div className="text-right">Gold Vault / Local Database</div>
-          </>
-        ) : (
-          <ConnectedDatabaseSummary />
-        )}
+        <ConnectedDatabaseSummary />
 
         <div className="text-muted-foreground">Current Branch</div>
         <div className="text-right">{currentBranch?.name ?? selectedBranchId ?? "—"}</div>
@@ -4929,14 +4893,14 @@ function AboutTab() {
 }
 
 function ConnectedDatabaseSummary() {
-  const { status, sourceOfTruth } = useDbStatus();
+  const { status } = useDbStatus();
   return (
     <>
       <div className="text-muted-foreground">Database Status</div>
       <div className="text-right">{getDbStatusLabel(status)}</div>
 
       <div className="text-muted-foreground">Data Source</div>
-      <div className="text-right capitalize">{sourceOfTruth}</div>
+      <div className="text-right">Supabase Online</div>
     </>
   );
 }
@@ -4946,13 +4910,11 @@ function DbTab() {
 }
 
 function DbStatusPanel() {
-  const { status, email, userId, lastMigrationAt, sourceOfTruth } = useDbStatus();
+  const { status, email, userId, lastMigrationAt } = useDbStatus();
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authEmail, setAuthEmail] = useState("");
   const [authPass, setAuthPass] = useState("");
   const [busy, setBusy] = useState(false);
-  const [migBusy, setMigBusy] = useState(false);
-  const [progress, setProgress] = useState<MigrationProgress[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
 
   // Load this user's roles when signed in
@@ -4998,21 +4960,8 @@ function DbStatusPanel() {
   }
 
   async function handleMigrate() {
-    if (!confirm("Push all local pilot data to Lovable Cloud? Safe to run multiple times.")) return;
-    setMigBusy(true);
-    setProgress([]);
-    const accum: MigrationProgress[] = [];
-    const res = await migrateAllToCloud((p) => {
-      const idx = accum.findIndex((x) => x.table === p.table);
-      if (idx >= 0) accum[idx] = p;
-      else accum.push(p);
-      setProgress([...accum]);
-    });
-    setMigBusy(false);
     alert(
-      res.ok
-        ? "Migration complete. Cloud is now the live source of truth."
-        : `Completed with errors:\n${res.errors.join("\n")}`,
+      "Local pilot migration is retired. Supabase is already the production source of truth; use Backup & Disaster Recovery for restore operations.",
     );
   }
 
@@ -5058,21 +5007,15 @@ function DbStatusPanel() {
             </div>
           </div>
           <div>
-            <div className="text-muted-foreground mb-1">Current Source of Truth</div>
+            <div className="text-muted-foreground mb-1">Production Source of Truth</div>
             <Badge
               variant="outline"
-              className={
-                sourceOfTruth === "cloud"
-                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                  : "bg-amber-500/15 text-amber-300 border-amber-500/30"
-              }
+              className={"bg-emerald-500/15 text-emerald-300 border-emerald-500/30"}
             >
-              {sourceOfTruth === "cloud" ? "Lovable Cloud (live)" : "Local Pilot Storage"}
+              Supabase Online
             </Badge>
             <div className="mt-1 text-muted-foreground">
-              {sourceOfTruth === "cloud"
-                ? "Local storage is used only as a device cache."
-                : "Run migration to make Cloud the live source of truth."}
+              Local browser storage is limited to UI/session cache and retired residue cleanup.
             </div>
           </div>
         </div>
@@ -5080,7 +5023,7 @@ function DbStatusPanel() {
 
       {status !== "connected_authed" ? (
         <Card className="p-5 space-y-3 text-sm">
-          <div className="font-medium">Sign in to enable cloud migration</div>
+          <div className="font-medium">Sign in to verify Supabase status</div>
           <div className="flex gap-2">
             <Button
               size="sm"
@@ -5109,45 +5052,36 @@ function DbStatusPanel() {
             onChange={(e) => setAuthPass(e.target.value)}
           />
           <Button onClick={handleAuth} disabled={busy || !authEmail || !authPass}>
-            {busy ? "Working…" : authMode === "signin" ? "Sign in" : "Create account"}
+            {busy ? "Working..." : authMode === "signin" ? "Sign in" : "Create account"}
           </Button>
           <div className="text-xs text-muted-foreground">
-            Pilot uses email/password. Add Google sign-in later from Cloud settings.
+            Supabase Auth uses email/password here. Add Google sign-in later from Cloud settings.
           </div>
         </Card>
       ) : (
         <Card className="p-5 space-y-3 text-sm">
-          <div className="font-medium">Migrate Local Pilot Data to Cloud</div>
+          <div className="font-medium">Supabase Online Data</div>
           <div className="text-xs text-muted-foreground">
-            Pushes people, KYC, gold ledger, attendance, workers, orders, job cards, catalog,
-            inventory, stock movements, invoices, payments, rate-cuts, repairs, daily close, print
-            logs, WhatsApp inbox and settings to Lovable Cloud. Uses upsert on stable IDs so
-            duplicates are avoided.
+            Production data is already managed through Supabase. Browser-local pilot migration is
+            retired; use authorized backup, disaster recovery, import, and support workflows
+            instead.
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleMigrate} disabled={migBusy}>
-              {migBusy ? "Migrating…" : "Migrate Local Pilot Data to Cloud"}
+            <Button onClick={handleMigrate} variant="outline">
+              Migration Retired
             </Button>
             <Button variant="ghost" onClick={handleSignOut}>
               Sign out
             </Button>
           </div>
-          {progress.length > 0 && (
-            <div className="text-xs space-y-1 max-h-56 overflow-y-auto border border-border rounded p-2">
-              {progress.map((p) => (
-                <div key={p.table} className={p.ok ? "text-foreground" : "text-red-400"}>
-                  {p.ok ? "✔" : "✗"} {p.table}: {p.inserted}/{p.total}
-                  {p.error ? ` — ${p.error}` : ""}
-                </div>
-              ))}
-            </div>
-          )}
         </Card>
       )}
 
       <Card className="p-4 text-xs text-muted-foreground">
-        Stores tracked locally: {PILOT_STORAGE_KEYS.length}
-        <div className="mt-1 font-mono break-all">{PILOT_STORAGE_KEYS.join(", ")}</div>
+        Retired browser-local ERP stores tracked for cleanup: {PILOT_STORAGE_KEYS.length}
+        <div className="mt-1 font-mono break-all">
+          {PILOT_STORAGE_KEYS.length ? PILOT_STORAGE_KEYS.join(", ") : "none"}
+        </div>
       </Card>
     </div>
   );

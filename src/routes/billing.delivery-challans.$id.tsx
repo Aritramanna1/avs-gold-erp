@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useDeliveryChallans } from "@/lib/billing-documents-store";
+import { useBillingDocumentById } from "@/lib/use-billing-document";
 import { useSettings } from "@/lib/settings-store";
 import { usePrintEngine } from "@/lib/print-engine";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
@@ -8,7 +9,7 @@ import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useCan } from "@/lib/rbac";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Printer, Ban, CheckCircle } from "lucide-react";
+import { ArrowLeft, Ban, CheckCircle, Loader2, Printer, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/billing/delivery-challans/$id")({
@@ -18,25 +19,33 @@ export const Route = createFileRoute("/billing/delivery-challans/$id")({
 
 function DeliveryChallanDetail() {
   const { id } = useParams({ from: "/billing/delivery-challans/$id" });
-  const challans = useDeliveryChallans((s) => s.challans);
-  const refresh = useDeliveryChallans((s) => s.refresh);
   const markReturned = useDeliveryChallans((s) => s.markReturned);
   const cancel = useDeliveryChallans((s) => s.cancel);
   const { firm } = useSettings();
   const { triggerPrint } = usePrintEngine();
   const { can } = useCan();
-  const c = challans.find((x) => x.id === id);
-
-  useEffect(() => {
-    if (challans.length === 0) refresh();
-  }, [challans.length, refresh]);
+  const { document: c, loading, error, retry } = useBillingDocumentById("delivery_challan", id);
 
   const [busy, setBusy] = useState(false);
+
+  if (loading && !c) {
+    return (
+      <div className="p-8 max-w-3xl mx-auto text-sm text-muted-foreground">
+        <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+        Loading delivery challan...
+      </div>
+    );
+  }
 
   if (!c) {
     return (
       <div className="p-8 max-w-3xl mx-auto text-center">
         <h1 className="font-serif text-2xl text-gold">Delivery challan not found</h1>
+        {error ? (
+          <Button variant="outline" className="gap-1.5 mt-4" onClick={retry}>
+            <RotateCcw className="h-4 w-4" /> Retry
+          </Button>
+        ) : null}
         <Link to="/billing/delivery-challans" className="text-gold underline mt-4 inline-block">
           Back to Delivery Challans
         </Link>

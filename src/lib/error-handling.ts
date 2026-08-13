@@ -70,10 +70,10 @@ function classifyError(
     text.includes("corrupt")
   ) {
     return {
-      title: "Local database needs attention",
-      message: "The local offline database could not be opened safely.",
+      title: "Database needs attention",
+      message: "The Supabase-backed database operation could not be completed safely.",
       guidance:
-        "Use Retry once. If it fails again, restore a verified backup or reset the local database after confirming cloud data is synced.",
+        "Use Retry once. If it fails again, create a support ticket and ask the administrator to verify the latest Supabase migration and project health.",
       category: "database",
       severity: "critical",
       recoverable: true,
@@ -118,7 +118,7 @@ function classifyError(
       title: "Connection problem",
       message: "The app could not reach an online service.",
       guidance:
-        "Continue in Offline Mode where available, then retry when internet or the service connection is restored.",
+        "Wait for the online connection to recover, then retry. If it repeats, create a support ticket with the Error Reference ID.",
       category: "network",
       severity: "warning",
       recoverable: true,
@@ -251,9 +251,9 @@ export function formatErrorDetails(error: NormalizedAppError): string {
 
 function storeLog(error: NormalizedAppError): void {
   try {
-    const logs = JSON.parse(localStorage.getItem(LOG_KEY) ?? "[]") as NormalizedAppError[];
+    const logs = JSON.parse(sessionStorage.getItem(LOG_KEY) ?? "[]") as NormalizedAppError[];
     logs.unshift(error);
-    localStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(0, MAX_LOGS)));
+    sessionStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(0, MAX_LOGS)));
   } catch {
     // Diagnostics must never become a user-facing failure.
   }
@@ -272,7 +272,7 @@ export function logAppError(error: NormalizedAppError): void {
   void reportErrorToPlatform(error);
 }
 
-// Best-effort telemetry so the platform owner's Health view has real data —
+// Best-effort telemetry so the platform owner's Health view has real data -
 // previously an error only reached the browser console, invisible from the
 // admin side entirely. Never lets a reporting failure become user-visible.
 async function reportErrorToPlatform(error: NormalizedAppError): Promise<void> {
@@ -337,7 +337,7 @@ export function installGlobalRendererErrorHandlers(): void {
   window.addEventListener("unhandledrejection", (event) => {
     event.preventDefault();
     // Vite's own dev-server HMR client throws this when its websocket drops
-    // (e.g. the dev server restarting) — dev/test tooling noise, never a real
+    // (e.g. the dev server restarting) - dev/test tooling noise, never a real
     // app error, and never present in a production build. Surfacing it as a
     // user-facing "Something went wrong" toast trained users to ignore real
     // errors and, worse, fired even on a clean first load.

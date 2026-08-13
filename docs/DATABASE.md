@@ -1,29 +1,31 @@
 # Database Guide
 
-## Local database
+## Production Database
 
-`src/lib/local-db.ts` runs SQLite through `sql.js`. The encrypted database snapshot is persisted in IndexedDB with AES-256-GCM and a SHA-256 plaintext integrity checksum. SQLite is primary in Offline and Hybrid modes.
+Supabase Postgres is the production database for Ornexa / AVS Gold ERP.
+Supabase Auth identities, tenant profiles, roles, branches, transactions,
+documents, support, communication, operational state, and audit records must be
+stored and protected through Supabase-backed tables, RPCs, RLS, and storage
+policies.
 
-Domain writes go through repositories/services, commit locally, and enqueue an outbox row. Do not add frontend direct-Supabase writes. Gold is stored in integer milligrams, purity in integer per-mille, and money in integer paise.
+The retired browser-local SQLite/IndexedDB database and Hybrid sync model are
+not production architecture. Any older SQL or docs that mention Offline or
+Hybrid mode are legacy references for business-rule recovery only.
 
-## Hybrid database
+## Rules
 
-Supabase stores structured business records only. The canonical new-customer schema is [AVS_GOLD_ERP_HYBRID_MASTER.sql](../supabase/AVS_GOLD_ERP_HYBRID_MASTER.sql). It contains tables, constraints, indexes, functions, metadata, explicit Data API grants, RLS, and policies.
+- Keep RLS enabled on every exposed public table.
+- Do not expose service-role keys, database passwords, private signing keys, or
+  privileged API secrets to the browser.
+- Do not add browser-local business backup/import/restore workflows.
+- Do not add local SQLite/IndexedDB/local-file-vault authoritative storage.
+- Prefer tenant-scoped Supabase services, typed stores, and audited RPCs for
+  business writes.
+- Use migrations under `supabase/migrations` for database changes and record
+  evidence in the master docs.
 
-Owner setup:
+## Backup And Recovery
 
-1. Create a separate Supabase project for the customer.
-2. Run the complete master SQL in Supabase SQL Editor.
-3. In ERP Hybrid setup, enter Project URL, anon key, and the setup-only service-role key.
-4. Allow validation to check the setup guard/schema. The service-role key is discarded and never stored.
-5. Confirm an initial sync and inspect unresolved conflicts before normal use.
-
-Supabase Storage is never used. Logos, photos, KYC files, attachments, reports, PDFs, exports, barcodes, and backups remain local and are excluded from synchronization.
-
-## Backup and migration rules
-
-- Back up before mode changes, imports, restoration, or upgrades.
-- Never delete the local database after enabling Hybrid.
-- Preserve stable record IDs and `updated_at` values.
-- Update the master SQL whenever a synchronized local table or mapping changes.
-- Test schema changes against a disposable fresh Supabase project before customer rollout.
+Production backup/restore is a Supabase-controlled operational workflow. Local
+browser cache cleanup is not a data restore path and must not be presented to
+users as a business backup.

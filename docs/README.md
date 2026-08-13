@@ -1,20 +1,19 @@
 # AVS Gold ERP Documentation
 
-These files are the canonical Version 1 implementation documents. Root-level audit/demo notes are historical evidence, not operator instructions.
+These files are the current operator and implementation documents for the Supabase-online AVS/Ornexa build. Root-level audit/demo notes and retired Offline/Hybrid documents are historical evidence, not operator instructions.
 
-## Install and operate
+## Install And Operate
 
 - [Installation Guide](INSTALLATION_GUIDE.md)
 - [Setup Guide](SETUP_GUIDE.md)
-- [Offline Mode Guide](OFFLINE_MODE_GUIDE.md)
-- [Hybrid Mode Guide](HYBRID_SETUP.md)
 - [Administrator Guide](ADMINISTRATOR_GUIDE.md)
 - [User Guide](USER_GUIDE.md)
 - [Backup & Restore Guide](BACKUP_RESTORE_GUIDE.md)
 - [Troubleshooting Guide](TROUBLESHOOTING_GUIDE.md)
 - [ERP Gold Pilot Guide](PILOT_GUIDE.md)
+- Historical only: [Retired Offline Mode Guide](OFFLINE_MODE_GUIDE.md), [Retired Hybrid Mode Guide](HYBRID_SETUP.md)
 
-## Architecture and subsystems
+## Architecture And Subsystems
 
 - [Architecture](ARCHITECTURE.md)
 - [Database Guide](DATABASE.md)

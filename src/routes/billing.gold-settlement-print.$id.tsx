@@ -1,17 +1,17 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { useGoldSettlement } from "@/lib/gold-settlement-store";
-import { usePeople } from "@/lib/people-store";
 import { useSettings } from "@/lib/settings-store";
 import { mgToGrams } from "@/lib/gold";
 import { paiseToRupees } from "@/lib/billing-store";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
+import { useGoldSettlementRecord } from "@/lib/use-gold-settlement-record";
 import {
   generateGoldSettlementPdf,
   goldSettlementPdfFileName,
 } from "@/lib/pdf/gold-settlement-pdf";
+import { Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/billing/gold-settlement-print/$id")({
@@ -46,14 +46,13 @@ const linkUseLabel = (val: string) => {
 function GoldSettlementPrintComponent() {
   const { id } = useParams({ from: "/billing/gold-settlement-print/$id" });
   const { firm } = useSettings();
-  const people = usePeople((s) => s.people);
+  const { party, loading: directLoading, error: directError, retry } = useGoldSettlementRecord(id);
 
   const [layoutSize, setLayoutSize] = useState<"a4" | "a5" | "thermal" | "thermal58" | "tag">("a4");
   const [downloading, setDownloading] = useState(false);
 
   const {
     record: settlement,
-    loading,
     error,
     docNumber,
     isReprint,
@@ -64,22 +63,31 @@ function GoldSettlementPrintComponent() {
     recordReprint,
   } = usePrintRecord("gold_settlement", id);
 
-  if (loading) {
+  if (directLoading && !settlement) {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-background text-foreground">
-        <span className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
         <p className="mt-2 text-xs font-mono text-muted-foreground">Loading Print Record...</p>
       </div>
     );
   }
 
-  if (error || !settlement) {
+  if (directError || error || !settlement) {
     return (
       <div className="p-8 text-rose-500 bg-background max-w-md mx-auto my-12 border border-rose-500/20 rounded-xl text-center space-y-3">
         <h2 className="text-lg font-serif font-semibold">Voucher Loading Failure</h2>
         <p className="text-xs text-muted-foreground">
-          {error || "The requested Gold Settlement Voucher could not be found."}
+          {directError || error || "The requested Gold Settlement Voucher could not be found."}
         </p>
+        {directError ? (
+          <button
+            type="button"
+            onClick={retry}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-amber-900 bg-amber-100 rounded-lg hover:bg-amber-200 transition-colors"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Retry
+          </button>
+        ) : null}
         <Link to="/billing">
           <button className="px-4 py-2 mt-4 text-xs font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors">
             Back to Billing
@@ -89,7 +97,6 @@ function GoldSettlementPrintComponent() {
     );
   }
 
-  const party = people.find((p) => p.id === settlement.party_id);
   const partyName = party ? party.fullName : "Internal App Account";
   const partyPhone = party?.phone || "";
   const partyAddress = party?.currentAddress || "";

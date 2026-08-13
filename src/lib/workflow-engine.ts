@@ -1,16 +1,17 @@
 /**
- * MTJ ERP — Workflow Engine
+ * AVS ERP — Workflow Engine
  *
  * Every jewellery business works differently. This store lets the admin configure
  * the ERP to match their process without changing code.
  *
- * MTJ default: manufacturing_first (mfg bill mandatory, stock automatic, outstanding allowed)
+ * AVS default: manufacturing-first (mfg bill mandatory, stock automatic, outstanding allowed)
  */
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createRepository } from "./repositories/base-repository";
 
-export type BusinessMode = "retail_only" | "manufacturing_only" | "hybrid";
+export type BusinessMode = "retail_only" | "manufacturing_only" | "combined_commerce_manufacturing";
+type PersistedBusinessMode = BusinessMode | "hybrid";
 
 export interface WorkflowConfig {
   /** Which business model this branch follows */
@@ -100,7 +101,7 @@ export interface WorkflowConfig {
 }
 
 export const DEFAULT_WORKFLOW_MTJ: WorkflowConfig = {
-  mode: "hybrid",
+  mode: "manufacturing_only",
   mfgBillEnabled: true,
   mfgBillMandatoryBeforeDelivery: true,
   autoCloseJobCard: true,
@@ -155,6 +156,7 @@ export const WORKFLOW_PRESETS: Record<string, WorkflowConfig> = {
 
 interface WorkflowEngineState {
   config: WorkflowConfig;
+  refresh: () => Promise<void>;
   /** Update one or many config fields */
   patch: (diff: Partial<WorkflowConfig>) => void;
   /** Apply a preset wholesale */
@@ -162,14 +164,56 @@ interface WorkflowEngineState {
   reset: () => void;
 }
 
-export const useWorkflowEngine = create<WorkflowEngineState>()(
-  persist(
-    (set) => ({
-      config: DEFAULT_WORKFLOW_MTJ,
-      patch: (diff) => set((s) => ({ config: { ...s.config, ...diff } })),
-      applyPreset: (key) => set({ config: { ...WORKFLOW_PRESETS[key] } }),
-      reset: () => set({ config: DEFAULT_WORKFLOW_MTJ }),
-    }),
-    { name: "mtj-workflow-engine-v1" },
-  ),
+const workflowSettingsRepository = createRepository<{ id: string; config: WorkflowConfig }>(
+  "app_settings",
 );
+
+type PersistedWorkflowConfig = Omit<WorkflowConfig, "mode"> & {
+  mode: PersistedBusinessMode;
+};
+
+function normalizeWorkflowConfig(config: WorkflowConfig | PersistedWorkflowConfig): WorkflowConfig {
+  return {
+    ...config,
+    mode: config.mode === "hybrid" ? "combined_commerce_manufacturing" : config.mode,
+  };
+}
+
+function persistWorkflow(config: WorkflowConfig): void {
+  const normalized = normalizeWorkflowConfig(config);
+  void workflowSettingsRepository.saveAs("workflow_engine", {
+    id: "workflow_engine",
+    config: normalized,
+  });
+}
+
+export const useWorkflowEngine = create<WorkflowEngineState>()((set) => ({
+  config: DEFAULT_WORKFLOW_MTJ,
+  async refresh() {
+    const saved = await workflowSettingsRepository.read("workflow_engine").catch(() => null);
+    if (saved?.config) {
+      set({
+        config: normalizeWorkflowConfig({
+          ...DEFAULT_WORKFLOW_MTJ,
+          ...(saved.config as WorkflowConfig | PersistedWorkflowConfig),
+        }),
+      });
+    }
+  },
+  patch: (diff) =>
+    set((s) => {
+      const config = normalizeWorkflowConfig({ ...s.config, ...diff });
+      persistWorkflow(config);
+      return { config };
+    }),
+  applyPreset: (key) =>
+    set(() => {
+      const config = { ...WORKFLOW_PRESETS[key] };
+      persistWorkflow(config);
+      return { config };
+    }),
+  reset: () => {
+    persistWorkflow(DEFAULT_WORKFLOW_MTJ);
+    set({ config: DEFAULT_WORKFLOW_MTJ });
+  },
+}));

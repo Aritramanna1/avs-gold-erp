@@ -103,7 +103,7 @@ export async function uploadToHostinger(
   };
 }
 
-/** Stores attachment metadata locally; it never enters Supabase sync. */
+/** Stores attachment metadata through the shared Supabase-backed attachment store. */
 export async function saveAttachmentMetadata(params: {
   filePath: string;
   fileUrl: string;

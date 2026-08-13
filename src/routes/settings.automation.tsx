@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,11 @@ function AutomationSettingsPage() {
   const reportRecipientEmail = useAutomationSettings((s) => s.reportRecipientEmail);
   const setRule = useAutomationSettings((s) => s.setRule);
   const setReportRecipientEmail = useAutomationSettings((s) => s.setReportRecipientEmail);
+  const refresh = useAutomationSettings((s) => s.refresh);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">

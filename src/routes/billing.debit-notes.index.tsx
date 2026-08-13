@@ -13,9 +13,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useDebitNotes } from "@/lib/billing-documents-store";
-import { useBilling, paiseToRupees, rupeesToPaise } from "@/lib/billing-store";
-import { usePeople } from "@/lib/people-store";
+import { type DebitNote, useDebitNotes } from "@/lib/billing-documents-store";
+import { paiseToRupees, rupeesToPaise, type Invoice } from "@/lib/billing-store";
+import type { Person } from "@/lib/people-store";
+import {
+  fetchActiveCustomerOptions,
+  fetchDebitNotes,
+  fetchRecentInvoiceOptions,
+} from "@/lib/billing-documents-query";
 import { useCan } from "@/lib/rbac";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { ArrowLeft, Plus, Search } from "lucide-react";
@@ -27,24 +32,44 @@ export const Route = createFileRoute("/billing/debit-notes/")({
 });
 
 function DebitNotesIndex() {
-  const notes = useDebitNotes((s) => s.notes);
-  const refresh = useDebitNotes((s) => s.refresh);
   const issue = useDebitNotes((s) => s.issue);
-  const invoices = useBilling((s) => s.invoices);
-  const people = usePeople((s) => s.people);
   const { can, email } = useCan();
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
   const [q, setQ] = useState("");
+  const [notes, setNotes] = useState<DebitNote[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [invoiceId, setInvoiceId] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    setLoadError(null);
+    Promise.all([fetchDebitNotes(q), fetchRecentInvoiceOptions(), fetchActiveCustomerOptions()])
+      .then(([nextNotes, nextInvoices, nextPeople]) => {
+        if (!live) return;
+        setNotes(nextNotes);
+        setInvoices(nextInvoices);
+        setPeople(nextPeople);
+      })
+      .catch((error: any) => {
+        if (!live) return;
+        setLoadError(error?.message ?? "Could not load debit notes.");
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [q]);
 
   const list = useMemo(() => {
     const t = q.toLowerCase();
@@ -83,7 +108,7 @@ function DebitNotesIndex() {
     setSaving(true);
     try {
       const { data } = await supabase.auth.getSession();
-      await issue(
+      const created = await issue(
         {
           invoiceId: selectedInvoice?.id,
           invoiceNo: selectedInvoice?.invoiceNo,
@@ -98,6 +123,7 @@ function DebitNotesIndex() {
           email: data.session?.user.email ?? email ?? null,
         },
       );
+      setNotes((current) => [created, ...current.filter((note) => note.id !== created.id)]);
       toast.success("Debit note issued.");
       setOpen(false);
       setInvoiceId("");
@@ -140,8 +166,25 @@ function DebitNotesIndex() {
             className="pl-9"
           />
         </div>
-        {list.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">No debit notes yet.</p>
+        {loadError ? (
+          <div className="py-6 text-center text-sm">
+            <p className="text-destructive">{loadError}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => {
+                setQ((value) => value.trim());
+                void fetchDebitNotes(q).then(setNotes);
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : loading ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">Loading debit notes...</p>
+        ) : list.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">No debit notes found.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

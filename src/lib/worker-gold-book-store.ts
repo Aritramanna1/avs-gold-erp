@@ -90,6 +90,8 @@ function makeId(prefix = "wgb") {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+const WORKER_GOLD_BOOK_COMPAT_CACHE_LIMIT = 1000;
+
 export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
   entries: [],
 
@@ -97,7 +99,8 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
     const { data, error } = await supabase
       .from("worker_transactions")
       .select("data, kind")
-      .limit(20000);
+      .order("created_at", { ascending: false })
+      .limit(WORKER_GOLD_BOOK_COMPAT_CACHE_LIMIT);
     if (error) {
       console.error("Error fetching worker transactions:", error);
       return;

@@ -1,17 +1,15 @@
 /**
- * Page setup for the print pipeline — paper size, orientation, margins,
- * scale and fit-to-page.
+ * Page setup for the print pipeline: paper size, orientation, margins,
+ * scale, and fit-to-page.
  *
- * One store, read by PrintLayout (which emits the real `@page` rule and sizes
- * the on-screen sheet from it) and written by PrintToolbar / PrintPreviewModal.
- * Because the SAME values produce both the preview and the `@page` rule that
- * printDocument()/printToPDF honour (preferCSSPageSize), the preview and the
- * paper cannot disagree.
+ * One store, read by PrintLayout and written by PrintToolbar /
+ * PrintPreviewModal. The same values produce both the preview and the @page
+ * rule that printDocument()/printToPDF honor, so preview and paper cannot
+ * disagree.
  *
- * Persisted: a workshop that prints job cards on half-A4 sets it once.
+ * Runtime-only: this is per-device print preference, not ERP authority.
  */
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { PrintSize, PrintOrientation } from "@/components/print/PrintLayout";
 
 export interface PrintMargins {
@@ -48,18 +46,13 @@ const DEFAULTS = {
   fitToPage: true,
 } as const;
 
-export const usePrintSetup = create<PrintSetupState>()(
-  persist(
-    (set) => ({
-      ...DEFAULTS,
-      setSizeOverride: (sizeOverride) => set({ sizeOverride }),
-      setOrientation: (orientation) => set({ orientation }),
-      setMargins: (margins) => set({ margins }),
-      // Clamped: a 0% or 900% scale is never a print the user meant.
-      setScalePct: (scalePct) => set({ scalePct: Math.min(200, Math.max(25, scalePct || 100)) }),
-      setFitToPage: (fitToPage) => set({ fitToPage }),
-      reset: () => set({ ...DEFAULTS }),
-    }),
-    { name: "mtj-print-setup-v1" },
-  ),
-);
+export const usePrintSetup = create<PrintSetupState>()((set) => ({
+  ...DEFAULTS,
+  setSizeOverride: (sizeOverride) => set({ sizeOverride }),
+  setOrientation: (orientation) => set({ orientation }),
+  setMargins: (margins) => set({ margins }),
+  // Clamped: a 0% or 900% scale is never a print the user meant.
+  setScalePct: (scalePct) => set({ scalePct: Math.min(200, Math.max(25, scalePct || 100)) }),
+  setFitToPage: (fitToPage) => set({ fitToPage }),
+  reset: () => set({ ...DEFAULTS }),
+}));

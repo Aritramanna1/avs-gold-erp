@@ -13,6 +13,7 @@ import {
   ShoppingBag,
   Receipt,
   BookOpen,
+  AlertTriangle,
 } from "lucide-react";
 import { type ReactNode, useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -72,7 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // always wins well before this.
   useEffect(() => {
     if (criticalLoadDone) return;
-    const t = setTimeout(() => markInitialLoadDone(), 8_000);
+    const t = setTimeout(() => markInitialLoadDone(), 2_500);
     return () => clearTimeout(t);
   }, [criticalLoadDone]);
 
@@ -319,6 +320,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="flex-1 overflow-y-auto relative page-enter pb-16 lg:pb-0"
           id="main-view-scroll-container"
         >
+          <MaintenanceNotice />
           <div className="min-h-full">{children}</div>
           {!criticalLoadDone && (
             <div className="absolute inset-0 z-20 bg-background overflow-y-auto" aria-hidden="true">
@@ -358,6 +360,89 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </nav>
         <GoldRateEditor open={goldRateOpen} onOpenChange={setGoldRateOpen} />
+      </div>
+    </div>
+  );
+}
+
+interface MaintenanceWindowNotice {
+  id: string;
+  title: string;
+  message: string;
+  status: "scheduled" | "active" | "resolved" | "cancelled";
+  severity: "info" | "warning" | "critical";
+  starts_at: string;
+  ends_at: string | null;
+}
+
+function MaintenanceNotice() {
+  const [notice, setNotice] = useState<MaintenanceWindowNotice | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMaintenanceWindow() {
+      const now = new Date();
+      const soon = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const { data, error } = await (supabase as any)
+        .from("platform_maintenance_windows")
+        .select("id,title,message,status,severity,starts_at,ends_at")
+        .in("status", ["active", "scheduled"])
+        .lte("starts_at", soon.toISOString())
+        .or(`ends_at.is.null,ends_at.gte.${now.toISOString()}`)
+        .order("starts_at", { ascending: true })
+        .limit(1);
+
+      if (cancelled) return;
+      if (error) {
+        console.warn("[maintenance] Could not load maintenance window", error.message);
+        return;
+      }
+      setNotice((data?.[0] as MaintenanceWindowNotice | undefined) ?? null);
+    }
+
+    loadMaintenanceWindow();
+    const timer = window.setInterval(loadMaintenanceWindow, 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  if (!notice) return null;
+
+  const starts = new Date(notice.starts_at).toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  const ends = notice.ends_at
+    ? new Date(notice.ends_at).toLocaleString("en-IN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : null;
+  const active = notice.status === "active";
+  const tone =
+    notice.severity === "critical"
+      ? "border-red-500/60 bg-red-500/10 text-red-700 dark:text-red-300"
+      : notice.severity === "warning"
+        ? "border-amber-500/60 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+        : "border-gold/40 bg-gold/10 text-foreground";
+
+  return (
+    <div className={`m-3 rounded-md border px-4 py-3 text-sm ${tone}`} role="status">
+      <div className="flex gap-3">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="min-w-0">
+          <div className="font-semibold">
+            {active ? "Maintenance in progress" : "Scheduled maintenance"}: {notice.title}
+          </div>
+          <div className="mt-1 text-xs opacity-90">{notice.message}</div>
+          <div className="mt-1 text-xs opacity-80">
+            Starts {starts}
+            {ends ? ` - Ends ${ends}` : ""}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -418,4 +503,3 @@ export function PhasePlaceholder({
     </div>
   );
 }
-

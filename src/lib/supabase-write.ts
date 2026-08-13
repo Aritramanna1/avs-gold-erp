@@ -1,6 +1,5 @@
 import { getCloudDataClient as getRawSupabaseClient } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
-import { runLocal, upsertRow, softDeleteRow } from "@/lib/local-db";
 
 // Map our entity types to Supabase table structures
 const BRANCH_SUPPORTED_TABLES = [
@@ -317,7 +316,7 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
     };
   } else if (table === "manufacturing_bills") {
     // The bill row is already fully serialised by billToDbRow() in mfg store.
-    // Pass it straight through — the function has already mapped camelCase → snake_case.
+    // Pass it straight through - the function has already mapped camelCase to snake_case.
     dbRow = rawPayload;
   } else if (table === "melt_jobs") {
     // Melt job row is already serialised by melt-store's jobToDbRow helper.
@@ -557,24 +556,20 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
     throw new Error(`Database save failed for ${table}: ${error.message}`);
   }
 
-  // readAll()/read() in base-repository.ts are local-first: readAll() only
+  // readAll()/read() in base-repository.ts use an in-memory Supabase-backed cache: readAll() only
   // re-pulls from Supabase when the local cache for this table is
   // completely EMPTY, so once any row has ever been cached locally, a
   // brand-new row saved here (direct-to-Supabase only, nothing written
-  // locally) stayed invisible to every local-first read until some other
-  // sync pass happened to pull it down — on a fresh reload right after
+  // in cache) stayed invisible to every cached read until some other
+  // sync pass happened to pull it down - on a fresh reload right after
   // creating a record (e.g. navigating straight to a print/preview route)
   // this read back as "not found" even though the save had fully
   // succeeded. Mirroring the just-written row into the local cache here
-  // keeps local-first reads immediately consistent with what was just
+  // keeps cached reads immediately consistent with what was just
   // saved. Best-effort: the remote save already succeeded and must not be
   // undone by a local-cache hiccup, so a failure here is only logged.
-  try {
-    if (table === "branch_settings") return;
-    await runLocal(() => upsertRow(table, { id, data: JSON.stringify(rawPayload) }));
-  } catch (err) {
-    console.error(`[supabase-write] Failed to mirror ${table}/${id} to local cache:`, err);
-  }
+  // Supabase is the production source of truth. No local SQLite/IndexedDB
+  // mirroring is performed in the online-only architecture.
 }
 
 export async function deleteDirect(table: string, id: string): Promise<void> {
@@ -593,15 +588,9 @@ export async function deleteDirect(table: string, id: string): Promise<void> {
     throw new Error(`Database delete failed for ${table}: ${error.message}`);
   }
 
-  // Same local-cache mirroring as saveDirect above — without this, a
-  // deleted row kept showing up in local-first reads until an unrelated
+  // Same in-memory cache update as saveDirect above - without this, a
+  // deleted row kept showing up in cached reads until an unrelated
   // full resync happened to catch up.
-  try {
-    await runLocal(() => softDeleteRow(table, id));
-  } catch (err) {
-    console.error(
-      `[supabase-write] Failed to mirror delete of ${table}/${id} to local cache:`,
-      err,
-    );
-  }
+  // Supabase is the production source of truth. No local SQLite/IndexedDB
+  // mirroring is performed in the online-only architecture.
 }

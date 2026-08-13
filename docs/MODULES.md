@@ -7,7 +7,7 @@ Each module is a set of routes (`src/routes`) backed by services/stores (`src/li
 | Module                           | Status                 | Notes                                                                                            |
 | -------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------ |
 | Our Gold Stock (`/ledger`)       | Active                 | Overview dashboard; drill-downs; configurable materials                                          |
-| Worker Gold Book / Material Book | Active                 | Daily Material Slip workflow; Outside/Polishing/Meena = Coming Soon                              |
+| Worker Gold Book / Material Book | Partial                | Daily Material Slip and outside-work flows are active; polishing/meena still need completion evidence |
 | Orders                           | Active                 | WhatsApp doc send wired                                                                          |
 | Billing                          | Active                 | Jeweller Account; gold-first settlement                                                          |
 | Manufacturing Books              | Active                 | Read-only ledgers                                                                                |
@@ -17,14 +17,14 @@ Each module is a set of routes (`src/routes`) backed by services/stores (`src/li
 | Notifications                    | Active                 | Operational alerts from licensing, sync, communications, approvals, and gold-rate configuration  |
 | Catalog                          | Active                 | Configurable design library, encrypted references, customer links, localized UI, CSV export      |
 | Translations                     | Active                 | Lazy Hindi/Marathi/Bengali dictionaries with English fallback and coverage reporting             |
-| Manufacturing                    | Coming Soon            | Bill store/routes intact                                                                         |
-| Barcode & Tagging                | Coming Soon            | Label/thermal paths intact                                                                       |
-| Ready Stock (was Stock)          | Coming Soon            | Stock store/routes intact                                                                        |
-| Reports                          | Coming Soon            | Report pages + export engine intact                                                              |
-| Expenses                         | Coming Soon            | Store intact                                                                                     |
+| Manufacturing                    | Partial                | Supabase-backed workspace landing and bill routes are active; full graph E2E evidence pending     |
+| Barcode & Tagging                | Partial                | Manufacturing tag selection/printing paths are active; scanner/device E2E evidence pending        |
+| Ready Stock (was Stock)          | Partial                | Supabase-backed paginated stock register and entry flow are active; mobile/export evidence pending |
+| Reports                          | Partial                | Report pages and export engine exist; route-level pagination and verified print/export coverage pending |
+| Expenses                         | Partial                | Store/routes exist; accounting-posting and release-gate evidence pending                          |
 | CEO Dashboard                    | Active (CEO role only) | Hidden from all other roles                                                                      |
 
-"Coming Soon" = the landing shows a professional placeholder; the underlying store/routes are preserved so the workspace can be finished without re-architecting.
+"Partial" = the module has working implementation surface, but release-gate evidence or end-to-end workflow completion is still pending.
 
 ## Our Gold Stock (`/ledger`)
 
@@ -32,7 +32,7 @@ Management overview dashboard for all gold/materials owned or managed. Balance c
 
 ## Worker Gold Book / Material Book (`/workshop/gold-book`)
 
-Material-movement ledger: Issue / Return of gold and materials to workers, auto worker custody balance. In-page **Material Book** hub with four books — **Worker Gold Book** (functional) and **Outside Worker Book / Polishing Book / Meena Book** (professional Coming Soon). **Daily Material Slip** (`daily-material-slip.ts`): one consolidated slip per worker per day, number `MTS-YYYYMMDD-NNN`, shown across ledgers and printable via the Print Engine. Store: `worker-gold-book-store.ts`.
+Material-movement ledger: Issue / Return of gold and materials to workers, auto worker custody balance. In-page **Material Book** hub with Worker Gold Book and Outside Worker Book active; Polishing Book and Meena Book remain pending. **Daily Material Slip** (`daily-material-slip.ts`): one consolidated slip per worker per day, number `MTS-YYYYMMDD-NNN`, shown across ledgers and printable via the Print Engine. Store: `worker-gold-book-store.ts`.
 
 ## Manufacturing Books (`/workshop/*`)
 

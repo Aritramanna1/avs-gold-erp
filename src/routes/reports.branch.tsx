@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ReportShell } from "@/components/report-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   BarChart,
   Bar,
@@ -12,11 +13,8 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { useBilling } from "@/lib/billing-store";
-import { useOrders } from "@/lib/orders-store";
-import { useRepairs } from "@/lib/repair-store";
-import { usePeople } from "@/lib/people-store";
 import { useSettings } from "@/lib/settings-store";
+import { fetchBranchReport, type BranchReportRow } from "@/lib/branch-report-query";
 import {
   thisMonthRange,
   exportToXLSX,
@@ -31,55 +29,35 @@ export const Route = createFileRoute("/reports/branch")({
   component: BranchReport,
 });
 
-export default function BranchReport() {
-  const invoices = useBilling((s) => s.invoices);
-  const orders = useOrders((s) => s.orders);
-  const repairs = useRepairs((s) => s.repairs);
-  const people = usePeople((s) => s.people);
+function BranchReport() {
   const branches = useSettings((s) => s.branches);
   const range = thisMonthRange();
   const [period, setPeriod] = useState<ReportPeriod>("monthly");
   const [from, setFrom] = useState(range.from);
   const [to, setTo] = useState(range.to);
   const [selectedBranch, setSelectedBranch] = useState("all");
+  const [branchStats, setBranchStats] = useState<BranchReportRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const inRange = (ts: number) => {
-    const d = new Date(ts).toISOString().slice(0, 10);
-    if (from && d < from) return false;
-    if (to && d > to) return false;
-    return true;
-  };
-
-  const branchStats = useMemo(() => {
-    return branches.map((branch) => {
-      const bid = branch.id;
-      const branchInvoices = invoices.filter(
-        (i) =>
-          inRange(i.createdAt) &&
-          ((i as unknown as Record<string, string>).branchId ?? "MAIN") === bid,
-      );
-      const salesPaise = branchInvoices.reduce((s, i) => s + i.grandTotalPaise, 0);
-      const outstandingPaise = branchInvoices.reduce((s, i) => s + i.balancePaise, 0);
-      const branchOrders = orders.filter(
-        (o) => inRange(o.createdAt) && (o.branchId ?? "MAIN") === bid,
-      );
-      const branchRepairs = repairs.filter(
-        (r) =>
-          inRange(r.createdAt) &&
-          ((r as unknown as Record<string, string>).branchId ?? "MAIN") === bid,
-      );
-      const customers = new Set(branchInvoices.map((i) => i.customerId)).size;
-      return {
-        id: bid,
-        name: branch.name,
-        salesPaise,
-        outstandingPaise,
-        orders: branchOrders.length,
-        repairs: branchRepairs.length,
-        customers,
-      };
-    });
-  }, [invoices, orders, repairs, branches, from, to]);
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    setLoadError(null);
+    fetchBranchReport({ branches, from, to })
+      .then((rows) => {
+        if (live) setBranchStats(rows);
+      })
+      .catch((error: any) => {
+        if (live) setLoadError(error?.message ?? "Could not load branch report.");
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [branches, from, to]);
 
   // Totals for filtered branch if one is selected
   const displayStats =
@@ -188,6 +166,29 @@ export default function BranchReport() {
         </Card>
       </div>
 
+      {loadError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
+          <p className="text-destructive">{loadError}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={() =>
+              void fetchBranchReport({ branches, from, to })
+                .then(setBranchStats)
+                .catch((error: any) => setLoadError(error?.message ?? "Could not load report."))
+            }
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+      {loading && (
+        <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+          Loading branch performance...
+        </div>
+      )}
+
       {/* Table */}
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
@@ -202,7 +203,7 @@ export default function BranchReport() {
             </tr>
           </thead>
           <tbody>
-            {branchStats.length === 0 && (
+            {!loading && !loadError && branchStats.length === 0 && (
               <tr>
                 <td colSpan={6} className="p-6 text-center text-muted-foreground">
                   No branches configured.

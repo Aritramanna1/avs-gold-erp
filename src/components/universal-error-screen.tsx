@@ -1,9 +1,20 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, Copy, Headphones, Home, RotateCcw, Undo2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Copy,
+  Headphones,
+  Home,
+  MessageSquare,
+  RotateCcw,
+  TicketPlus,
+  Undo2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { formatErrorDetails, type NormalizedAppError } from "@/lib/error-handling";
-import { clearLocalDatabase } from "@/lib/local-db";
+import { createSupportTicket } from "@/lib/platform-support-service";
+import { toast } from "sonner";
 
 interface UniversalErrorScreenProps {
   error: NormalizedAppError;
@@ -17,6 +28,21 @@ function copyText(text: string): void {
   void navigator.clipboard?.writeText(text).catch(() => {});
 }
 
+function supportPageUrl(
+  error: NormalizedAppError,
+  details: string,
+  mode: "ticket" | "chat",
+  ticketId?: string,
+) {
+  const params = new URLSearchParams({
+    mode,
+    subject: `${error.title} - ${error.id}`,
+    description: `Please help with this AVS ERP error.\n\n${details}`,
+  });
+  if (ticketId) params.set("open", ticketId);
+  return `/settings/support?${params.toString()}`;
+}
+
 export function UniversalErrorScreen({
   error,
   fullScreen = true,
@@ -25,8 +51,29 @@ export function UniversalErrorScreen({
   onBack,
 }: UniversalErrorScreenProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const isDatabaseCritical = error.category === "database" && error.severity === "critical";
+  const [supportBusy, setSupportBusy] = useState<"ticket" | "chat" | null>(null);
   const details = formatErrorDetails(error);
+
+  async function handleSupportAction(mode: "ticket" | "chat") {
+    setSupportBusy(mode);
+    try {
+      const ticket = await createSupportTicket({
+        subject: `${error.title} - ${error.id}`,
+        description: `Please help with this AVS ERP error.\n\n${details}`,
+        category: error.category,
+        priority: error.severity === "critical" ? "urgent" : "normal",
+      });
+      toast.success(`Ticket ${ticket.ticket_no} created.`);
+      window.location.href = supportPageUrl(error, details, mode, ticket.id);
+    } catch (supportError) {
+      toast.error(
+        supportError instanceof Error ? supportError.message : "Could not create a support ticket.",
+      );
+      window.location.href = supportPageUrl(error, details, mode);
+    } finally {
+      setSupportBusy(null);
+    }
+  }
 
   return (
     <div
@@ -53,6 +100,14 @@ export function UniversalErrorScreen({
             Error Reference ID
           </div>
           <div className="mt-1 break-all font-mono text-sm text-foreground">{error.id}</div>
+          <div className="mt-3 border-t border-border pt-3">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Technical summary
+            </div>
+            <div className="mt-1 break-words font-mono text-xs text-muted-foreground">
+              {error.technicalMessage}
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -74,6 +129,22 @@ export function UniversalErrorScreen({
           </Button>
           <Button
             variant="outline"
+            onClick={() => void handleSupportAction("ticket")}
+            disabled={supportBusy !== null}
+          >
+            <TicketPlus className="h-4 w-4" aria-hidden="true" />
+            {supportBusy === "ticket" ? "Creating..." : "Create Ticket"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => void handleSupportAction("chat")}
+            disabled={supportBusy !== null}
+          >
+            <MessageSquare className="h-4 w-4" aria-hidden="true" />
+            {supportBusy === "chat" ? "Opening..." : "Live Chat"}
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => {
               const subject = encodeURIComponent(`AVS Gold ERP Support - ${error.id}`);
               const body = encodeURIComponent(
@@ -86,24 +157,6 @@ export function UniversalErrorScreen({
             Contact Support
           </Button>
         </div>
-
-        {isDatabaseCritical ? (
-          <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
-            <p className="text-sm text-muted-foreground">
-              Use this only after confirming synced data or a verified backup is available.
-            </p>
-            <Button
-              className="mt-3"
-              variant="destructive"
-              onClick={async () => {
-                await clearLocalDatabase();
-                window.location.reload();
-              }}
-            >
-              Reset Local Database and Reload
-            </Button>
-          </div>
-        ) : null}
 
         <div className="rounded-md border border-border">
           <button

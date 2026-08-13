@@ -17,7 +17,6 @@
 import { createRepository } from "@/lib/repositories/base-repository";
 import { append as appendAudit } from "@/lib/security/audit-log";
 import { getCloudDataClient as getRawSupabaseClient } from "@/lib/providers/data-provider";
-import { isOfflineMode } from "@/lib/deployment-mode";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 
@@ -86,7 +85,6 @@ export async function requestApproval(
  * race past this guard and both "successfully" decide the same request.
  */
 async function fetchCurrentRequest(requestId: string): Promise<ApprovalRequest | null> {
-  if (isOfflineMode()) return approvalRepository.read(requestId);
   const client = getRawSupabaseClient();
   const { data, error } = await client
     .from("approval_requests" as any)
@@ -154,18 +152,18 @@ export function rejectRequest(
  * fetchCurrentRequest(): approval status is exactly the kind of data a
  * stale local cache must never be allowed to misrepresent (a pending
  * item that was actually just approved elsewhere must not still show as
- * pending here). Falls back to the local cache only if the network
- * request itself fails, so this still degrades gracefully offline.
+ * pending here). If Supabase cannot be reached, the caller gets an empty
+ * list plus an error log instead of a browser-local substitute.
  */
 async function fetchAllRequests(): Promise<ApprovalRequest[]> {
-  if (isOfflineMode()) return approvalRepository.readAll();
   try {
     const client = getRawSupabaseClient();
     const { data, error } = await client.from("approval_requests" as any).select("id, data");
     if (error || !data) throw error ?? new Error("No data");
     return (data as unknown as Array<{ id: string; data: ApprovalRequest }>).map((row) => row.data);
-  } catch {
-    return approvalRepository.getAllLocal();
+  } catch (error) {
+    console.error("[ApprovalWorkflow] Could not fetch approval requests from Supabase:", error);
+    return [];
   }
 }
 

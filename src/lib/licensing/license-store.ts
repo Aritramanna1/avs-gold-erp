@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { getMetaValue, setMetaValue } from "@/lib/local-db";
 import { getOrCreateDeviceId } from "@/lib/security/device-registry";
 import type { DeploymentMode } from "@/lib/deployment-mode";
 import { ArivahlyApiLicensingProvider, SupabaseLicensingProvider } from "./licensing-provider";
@@ -17,16 +16,26 @@ function isSupabaseLicensingEndpoint(endpoint: string): boolean {
     return false;
   }
 }
-import { evaluateOffline, type LicenseCache, type LicenseStatus } from "./license-grace";
 import {
   LICENSE_ACTIVATION_ENDPOINT,
   LICENSE_ED25519_PUBLIC_KEY,
   LICENSE_SUPPORT_URL,
-  LICENSE_GRACE_DAYS,
   LICENSE_RENEWAL_NOTICE_DAYS,
 } from "./license-config";
 
-export { evaluateOffline, type LicenseCache, type LicenseStatus } from "./license-grace";
+export type LicenseStatus = "checking" | "trial" | "active" | "expired" | "suspended" | "lifetime";
+
+export interface LicenseCache {
+  status: Exclude<LicenseStatus, "checking">;
+  expiry: number | null;
+  trialStartedAt: number | null;
+  trialEndsAt: number | null;
+  seats: number | null;
+  edition: string | null;
+  features: string[];
+  customerStatus: string | null;
+  lastVerifiedAt: number;
+}
 
 const K_KEY = "license_key";
 const SECURE_LICENSE_KEY = "license-entitlement" as const;
@@ -35,7 +44,6 @@ const CLOCK_ROLLBACK_TOLERANCE_MS = 5 * 60 * 1000;
 export interface LicenseConfig {
   endpoint: string;
   key: string;
-  graceDays: number;
   renewalUrl: string;
   renewalNoticeDays: number;
 }
@@ -63,7 +71,6 @@ interface SignedEntitlementPayload {
   issuedAt: number;
   notBefore: number;
   expiresAt: number | null;
-  offlineValidUntil: number | null;
   seats: number | null;
   features?: string[];
   edition?: string;
@@ -105,14 +112,12 @@ export const useLicense = create<LicenseState>()(() => ({
 }));
 
 export function getLicenseConfig(): LicenseConfig {
-  const browserKey = typeof window !== "undefined" ? window.localStorage.getItem(K_KEY) : null;
+  const browserKey = typeof window !== "undefined" ? window.sessionStorage.getItem(K_KEY) : null;
   return {
     endpoint: LICENSE_ACTIVATION_ENDPOINT,
-    // The license identifier is not a secret. Keep a browser fallback because
-    // first-run setup can recreate the local SQLite database before the next
-    // route load; losing this value would incorrectly lock a valid tenant out.
-    key: getMetaValue(K_KEY) ?? browserKey ?? "",
-    graceDays: LICENSE_GRACE_DAYS,
+    // The license identifier is not a secret. Supabase resolves tenant license
+    // state server-side; this browser value only supports explicit manual entry.
+    key: browserKey ?? "",
     renewalUrl: LICENSE_SUPPORT_URL,
     renewalNoticeDays: LICENSE_RENEWAL_NOTICE_DAYS,
   };
@@ -121,8 +126,7 @@ export function getLicenseConfig(): LicenseConfig {
 export function setLicenseConfig(partial: Partial<LicenseConfig>): void {
   if (partial.key !== undefined) {
     const value = partial.key.trim();
-    setMetaValue(K_KEY, value);
-    if (typeof window !== "undefined") window.localStorage.setItem(K_KEY, value);
+    if (typeof window !== "undefined") window.sessionStorage.setItem(K_KEY, value);
   }
 }
 
@@ -148,13 +152,13 @@ function secureStore(): DesktopSecureStore {
   if (desktop?.secureStore) return desktop.secureStore;
   // Browser web build (no Electron/OS keychain available): the stored value
   // is an Ed25519-signed server envelope, not a secret — safe to cache in
-  // localStorage. Previously this fallback only ran in DEV and threw in
+  // sessionStorage. Previously this fallback only ran in DEV and threw in
   // production, which meant the license gate blocked every logged-in screen
   // on the web deploy (caught via Playwright login smoke test).
   return {
-    get: async () => window.localStorage.getItem(SECURE_LICENSE_KEY),
-    set: async (_key, value) => window.localStorage.setItem(SECURE_LICENSE_KEY, value),
-    delete: async () => window.localStorage.removeItem(SECURE_LICENSE_KEY),
+    get: async () => window.sessionStorage.getItem(SECURE_LICENSE_KEY),
+    set: async (_key, value) => window.sessionStorage.setItem(SECURE_LICENSE_KEY, value),
+    delete: async () => window.sessionStorage.removeItem(SECURE_LICENSE_KEY),
   };
 }
 
@@ -225,7 +229,6 @@ function cacheFromPayload(payload: SignedEntitlementPayload, now: number): Licen
     features: payload.features ?? [],
     customerStatus: payload.customerStatus ?? payload.status,
     lastVerifiedAt: now,
-    offlineValidUntil: payload.offlineValidUntil,
   };
 }
 
@@ -266,7 +269,7 @@ async function persistRecord(record: SecureLicenseRecord): Promise<void> {
 function apply(status: LicenseStatus, cache: LicenseCache | null, message: string | null): void {
   useLicense.setState({
     status,
-    key: getMetaValue(K_KEY) ?? "",
+    key: typeof window !== "undefined" ? (window.sessionStorage.getItem(K_KEY) ?? "") : "",
     expiry: cache?.expiry ?? null,
     trialEndsAt: cache?.trialEndsAt ?? null,
     lastVerifiedAt: cache?.lastVerifiedAt ?? null,
@@ -277,19 +280,6 @@ function apply(status: LicenseStatus, cache: LicenseCache | null, message: strin
     message,
     blocked: status === "expired" || status === "suspended",
   });
-}
-
-async function applyCached(
-  record: SecureLicenseRecord,
-  cfg: LicenseConfig,
-  now: number,
-  message: string | null,
-): Promise<LicenseStatus> {
-  record.lastSeenAt = Math.max(record.lastSeenAt, now);
-  await persistRecord(record);
-  const status = evaluateOffline(record.cache, cfg.graceDays, now);
-  apply(status, record.cache, message);
-  return status;
 }
 
 export async function verifyLicense(mode: DeploymentMode | null): Promise<LicenseStatus> {
@@ -324,9 +314,8 @@ export async function verifyLicense(mode: DeploymentMode | null): Promise<Licens
         features: [],
         customerStatus: "active",
         lastVerifiedAt: now,
-        offlineValidUntil: null,
       },
-      "Local/Development License Bypass",
+      "Development License Bypass",
     );
     return "lifetime";
   }
@@ -351,9 +340,6 @@ export async function verifyLicense(mode: DeploymentMode | null): Promise<Licens
       return "expired";
     }
     const usingSupabase = isSupabaseLicensingEndpoint(cfg.endpoint);
-    if (mode === "offline" && record?.cache && (record.signedEnvelope || usingSupabase)) {
-      return applyCached(record, cfg, now, null);
-    }
     if (!cfg.endpoint || (!usingSupabase && !LICENSE_ED25519_PUBLIC_KEY)) {
       apply(
         "expired",
@@ -371,7 +357,7 @@ export async function verifyLicense(mode: DeploymentMode | null): Promise<Licens
       const response = await provider.validate({
         licenseKey: cfg.key,
         deviceId,
-        deploymentMode: mode ?? "offline",
+        deploymentMode: "online",
       });
       if (!response.valid) {
         const rejectedStatus =
@@ -417,9 +403,6 @@ export async function verifyLicense(mode: DeploymentMode | null): Promise<Licens
       return cache.status;
     } catch (error) {
       const message = error instanceof Error ? error.message : "License verification failed.";
-      if (record?.cache && (record.signedEnvelope || usingSupabase)) {
-        return applyCached(record, cfg, now, `${message} Using the cached offline entitlement.`);
-      }
       apply("expired", null, message);
       return "expired";
     }

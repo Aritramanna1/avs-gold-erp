@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ReportShell } from "@/components/report-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,6 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { useMfgBills } from "@/lib/manufacturing-bill-store";
 import { useSettings } from "@/lib/settings-store";
 import {
   thisMonthRange,
@@ -20,11 +19,16 @@ import {
   exportToCSV,
   fmtG,
   fmtRs,
-  fmtDate,
   type ReportPeriod,
 } from "@/lib/report-engine";
 import { ReportPeriodToggle } from "@/components/report-period-toggle";
 import type { MfgBillStatus } from "@/lib/manufacturing-bill-store";
+import {
+  fetchManufacturingReportBills,
+  type ManufacturingReportBill,
+} from "@/lib/manufacturing-report-query";
+import { EmptyState, WebAppState } from "@/components/web-app-state";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/reports/manufacturing")({
   head: () => ({ meta: [{ title: "Manufacturing Dashboard · AVS Gold ERP" }] }),
@@ -38,43 +42,71 @@ const STATUS_COLORS: Record<MfgBillStatus, string> = {
   settled: "default",
 };
 
-export default function ManufacturingReport() {
-  const bills = useMfgBills((s) => s.bills);
+function fmtReportDate(value: string): string {
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? new Date(time).toLocaleDateString() : value.slice(0, 10);
+}
+
+function ManufacturingReport() {
   const branches = useSettings((s) => s.branches);
   const range = thisMonthRange();
   const [period, setPeriod] = useState<ReportPeriod>("monthly");
   const [from, setFrom] = useState(range.from);
   const [to, setTo] = useState(range.to);
   const [selectedBranch, setSelectedBranch] = useState("all");
+  const [rows, setRows] = useState<ManufacturingReportBill[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [capped, setCapped] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const filtered = useMemo(() => {
-    return bills.filter((b) => {
-      const d = new Date(b.createdAt).toISOString().slice(0, 10);
-      if (from && d < from) return false;
-      if (to && d > to) return false;
-      if (selectedBranch !== "all" && b.branchId !== selectedBranch) return false;
-      return true;
-    });
-  }, [bills, from, to, selectedBranch]);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetchManufacturingReportBills({
+      from,
+      to,
+      branchId: selectedBranch,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        setRows(result.rows);
+        setTotalCount(result.totalCount);
+        setCapped(result.capped);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setRows([]);
+        setTotalCount(0);
+        setCapped(false);
+        setError(err instanceof Error ? err.message : "Could not load manufacturing report.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [from, to, selectedBranch, reloadKey]);
 
-  const activeBills = filtered.filter((b) => b.status === "draft" || b.status === "finalised");
-  const totalLabour = filtered.reduce((s, b) => s + b.labourChargesPaise, 0);
+  const activeBills = rows.filter((b) => b.status === "draft" || b.status === "finalised");
+  const totalLabour = rows.reduce((s, b) => s + b.labourChargesPaise, 0);
   const avgWastage =
-    filtered.length > 0
-      ? filtered.reduce((s, b) => s + b.actualWastagePct, 0) / filtered.length
-      : 0;
+    rows.length > 0 ? rows.reduce((s, b) => s + b.actualWastagePct, 0) / rows.length : 0;
 
   // Bills per day chart
   const byDay = useMemo(() => {
     const map: Record<string, number> = {};
-    filtered.forEach((b) => {
+    rows.forEach((b) => {
       const d = new Date(b.createdAt).toISOString().slice(0, 10);
       map[d] = (map[d] ?? 0) + 1;
     });
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, count]) => ({ date, count }));
-  }, [filtered]);
+  }, [rows]);
 
   function handleXLSX() {
     const header = [
@@ -87,7 +119,7 @@ export default function ManufacturingReport() {
       "Labour ₹",
       "Status",
     ];
-    const data = filtered.map((b) => [
+    const data = rows.map((b) => [
       b.billNo,
       b.itemName,
       b.karigarName ?? "",
@@ -111,7 +143,7 @@ export default function ManufacturingReport() {
       "Labour ₹",
       "Status",
     ];
-    const data = filtered.map((b) => [
+    const data = rows.map((b) => [
       b.billNo,
       b.itemName,
       b.karigarName ?? "",
@@ -161,7 +193,7 @@ export default function ManufacturingReport() {
             <CardTitle className="text-xs text-muted-foreground">Active Jobs</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xl font-bold">{activeBills.length}</p>
+            <p className="text-xl font-bold">{loading ? "..." : activeBills.length}</p>
           </CardContent>
         </Card>
         <Card>
@@ -169,7 +201,7 @@ export default function ManufacturingReport() {
             <CardTitle className="text-xs text-muted-foreground">Bills This Period</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xl font-bold">{filtered.length}</p>
+            <p className="text-xl font-bold">{loading ? "..." : totalCount}</p>
           </CardContent>
         </Card>
         <Card>
@@ -177,7 +209,7 @@ export default function ManufacturingReport() {
             <CardTitle className="text-xs text-muted-foreground">Avg Wastage %</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xl font-bold">{avgWastage.toFixed(2)}%</p>
+            <p className="text-xl font-bold">{loading ? "..." : `${avgWastage.toFixed(2)}%`}</p>
           </CardContent>
         </Card>
         <Card>
@@ -185,10 +217,28 @@ export default function ManufacturingReport() {
             <CardTitle className="text-xs text-muted-foreground">Total Labour</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xl font-bold">{fmtRs(totalLabour)}</p>
+            <p className="text-xl font-bold">{loading ? "..." : fmtRs(totalLabour)}</p>
           </CardContent>
         </Card>
       </div>
+
+      {capped && (
+        <WebAppState
+          tone="warning"
+          title="Report preview capped"
+          description={`Showing the latest ${rows.length} of ${totalCount} manufacturing bills for this period. Narrow the date or branch before exporting final numbers.`}
+        />
+      )}
+
+      {error && (
+        <WebAppState
+          tone="danger"
+          icon={<AlertTriangle className="h-5 w-5" />}
+          title="Could not load manufacturing report"
+          description={error}
+          action={{ label: "Retry", onClick: () => setReloadKey((v) => v + 1) }}
+        />
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto rounded-lg border">
@@ -207,30 +257,44 @@ export default function ManufacturingReport() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 && (
+            {loading && (
               <tr>
-                <td colSpan={9} className="p-6 text-center text-muted-foreground">
-                  No manufacturing bills in this period.
+                <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading manufacturing report...
+                  </span>
                 </td>
               </tr>
             )}
-            {filtered.map((b, i) => (
-              <tr key={b.id} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                <td className="p-3 font-mono text-xs">{b.billNo}</td>
-                <td className="p-3 text-xs">{fmtDate(b.createdAt)}</td>
-                <td className="p-3">{b.itemName}</td>
-                <td className="p-3">{b.karigarName ?? "—"}</td>
-                <td className="p-3 text-right">{fmtG(b.totalGoldIssuedFineMg)}</td>
-                <td className="p-3 text-right">{fmtG(b.totalGoldReturnedFineMg)}</td>
-                <td className="p-3 text-right">{b.actualWastagePct.toFixed(2)}%</td>
-                <td className="p-3 text-right">{fmtRs(b.labourChargesPaise)}</td>
-                <td className="p-3 text-center">
-                  <Badge variant={STATUS_COLORS[b.status] as "default" | "secondary"}>
-                    {b.status}
-                  </Badge>
+            {!loading && !error && rows.length === 0 && (
+              <tr>
+                <td colSpan={9} className="p-6 text-center text-muted-foreground">
+                  <EmptyState
+                    title="No manufacturing bills in this period"
+                    description="Change the date range or branch to inspect another manufacturing period."
+                  />
                 </td>
               </tr>
-            ))}
+            )}
+            {!loading &&
+              !error &&
+              rows.map((b, i) => (
+                <tr key={b.id} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                  <td className="p-3 font-mono text-xs">{b.billNo}</td>
+                  <td className="p-3 text-xs">{fmtReportDate(b.createdAt)}</td>
+                  <td className="p-3">{b.itemName}</td>
+                  <td className="p-3">{b.karigarName ?? "—"}</td>
+                  <td className="p-3 text-right">{fmtG(b.totalGoldIssuedFineMg)}</td>
+                  <td className="p-3 text-right">{fmtG(b.totalGoldReturnedFineMg)}</td>
+                  <td className="p-3 text-right">{b.actualWastagePct.toFixed(2)}%</td>
+                  <td className="p-3 text-right">{fmtRs(b.labourChargesPaise)}</td>
+                  <td className="p-3 text-center">
+                    <Badge variant={STATUS_COLORS[b.status] as "default" | "secondary"}>
+                      {b.status}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>

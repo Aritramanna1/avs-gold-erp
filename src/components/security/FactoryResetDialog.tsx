@@ -10,7 +10,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { clearAllLocalData } from "@/lib/settings-store";
+import { clearBrowserSessionResidue } from "@/lib/settings-store";
 
 interface FactoryResetDialogProps {
   open: boolean;
@@ -25,12 +25,10 @@ export function FactoryResetDialog({ open, onOpenChange, firmName }: FactoryRese
   const handleReset = async () => {
     if (confirmText !== firmName || resetting) return;
     setResetting(true);
-    // Same reset path as Settings > Danger Zone > "Clear local pilot data":
-    // wipes the pilot localStorage cache, session storage, and the encrypted
-    // local SQLite database (which also clears the IndexedDB crypto store,
-    // i.e. encrypted-storage keys). Awaited so the reload below only happens
-    // once everything has actually been cleared.
-    await clearAllLocalData();
+    // Same cleanup path as Settings > Danger Zone > "Clear browser cache":
+    // wipes browser session residue only. Supabase production data is not
+    // deleted by this client-side action.
+    await clearBrowserSessionResidue();
     window.location.href = "/";
   };
 
@@ -41,21 +39,19 @@ export function FactoryResetDialog({ open, onOpenChange, firmName }: FactoryRese
           <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
             <AlertTriangle className="h-6 w-6 text-red-600" />
           </div>
-          <DialogTitle className="text-center text-xl text-red-600">Factory Reset</DialogTitle>
+          <DialogTitle className="text-center text-xl text-red-600">
+            Clear Browser Session
+          </DialogTitle>
           <DialogDescription className="text-center pt-2 font-medium text-neutral-800">
-            This action cannot be undone. This will permanently delete all local ERP data, including
-            billing, inventory, job cards, people, and settings, and return the system to the
-            First-Time Setup state.
+            This clears browser cache and session residue on this device. Supabase production data
+            is not deleted by this client-side action.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="bg-red-50 text-red-800 p-3 rounded-md text-sm border border-red-200">
-            <p className="font-bold mb-1">Warning: Irreversible Data Loss!</p>
-            <p>
-              Ensure you have downloaded an encrypted backup before proceeding if you wish to keep
-              your data.
-            </p>
+            <p className="font-bold mb-1">Warning: browser session cleanup</p>
+            <p>Use Supabase Backup & Disaster Recovery for production data backup or restore.</p>
           </div>
 
           <div className="space-y-2">
@@ -89,7 +85,7 @@ export function FactoryResetDialog({ open, onOpenChange, firmName }: FactoryRese
             disabled={confirmText !== firmName || resetting}
             className="w-full sm:w-auto bg-red-600 hover:bg-red-700"
           >
-            {resetting ? "Erasing…" : "Erase All Data"}
+            {resetting ? "Clearing..." : "Clear Browser Session"}
           </Button>
         </DialogFooter>
       </DialogContent>

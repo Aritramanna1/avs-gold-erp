@@ -12,10 +12,10 @@
  * logic. No second source of truth for a gold balance, and nothing new to keep
  * in sync.
  *
- * Offline-first: this compiler reads ONLY local zustand store state
- * (`useX.getState()`) — never Supabase, never the network. The local database
- * is the source of truth for day-to-day operation; the cloud is for optional
- * backup/sync only. A jeweller book renders fully with no connection.
+ * Supabase-online: this compiler reads hydrated zustand store state
+ * (`useX.getState()`) after post-login hydration.
+ * Postgres remains the source of truth; this module derives a read-only book
+ * view from loaded ERP records.
  *
  * Out of scope on purpose: the Karigar / Worker Gold Book is the TRANSACTION
  * module (where issues/returns are entered); Workshop only stores and displays

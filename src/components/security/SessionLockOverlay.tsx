@@ -25,15 +25,9 @@ export function SessionLockOverlay() {
   /**
    * Whose session is locked.
    *
-   * MUST come from the same place that will verify the password. In Offline
-   * mode there is no Supabase session at all: `supabase.auth.getSession()`
-   * resolves to none (or, with no network, doesn't resolve promptly), so `email`
-   * stayed null — the overlay sat on "Loading session…" forever AND
-   * `handleUnlock` returned early at `if (!email)`, making the Unlock button
-   * permanently dead. The user was locked out of their own offline install.
-   *
-   * Online mode reads Supabase. On any failure `email` resolves to "" and the
-   * form falls back to asking for it, rather than silently disabling itself.
+   * MUST come from the same place that will verify the password: Supabase Auth.
+   * On any failure `email` resolves to "" and the form falls back to asking for
+   * it, rather than silently disabling itself.
    */
   useEffect(() => {
     if (!locked) return;

@@ -1,6 +1,9 @@
 # Comprehensive Final Verification & Validation Report (Pilot-Stable Release v1.0)
 
-> Archived point-in-time report. Current release evidence and limitations are in [Version 1 Testing Build](TESTING_BUILD.md) and [V1 Release Notes](V1_RELEASE_NOTES.md).
+> Archived point-in-time report. It describes retired Version 1 pilot behavior.
+> Current production architecture is Supabase-online only; current release
+> evidence and limitations are in [Version 1 Testing Build](TESTING_BUILD.md),
+> [V1 Release Notes](V1_RELEASE_NOTES.md), and the master documents.
 
 ## 1. Executive Summary
 
@@ -30,7 +33,7 @@ The `AvsPrintFooter.tsx` has been inserted across all printable components. In c
 
 ## 3. Pillar 2: Local Attachment & Filesystem Disclosure
 
-The system integrates an offline-first **Local Attachment Preview** paired with a physical Vault Filing index.
+The retired pilot integrated an offline-first **Local Attachment Preview** paired with a physical Vault Filing index. Current production document and attachment work must use the approved Supabase-compatible document/storage architecture.
 
 - **Storage Disclosure**: Created and archived `/docs/DISCLOSURE_STORAGE.md` warning of browser storage limitations (IndexedDB vs Cloud) and describing the standard physical register failsafes.
 - **Future Upgrade path**: Drafted and structured a step-by-step roadmap to transition seamlessly to **Supabase Storage buckets** with secure Row-Level Security policy controls.

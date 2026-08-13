@@ -69,10 +69,11 @@ const STATUS_BADGE: Record<WasenderSessionStatus, { label: string; cls: string }
   unknown: { label: "Unknown", cls: "border-border text-muted-foreground" },
 };
 
-export function WhatsAppIntegrationPage({ embedded = false }: { embedded?: boolean } = {}) {
+function WhatsAppIntegrationPage({ embedded = false }: { embedded?: boolean } = {}) {
   const branchId = useCurrentBranchId();
   const existing = useCommSettings((s) => s.getWasenderConfig(branchId));
   const setWasender = useCommSettings((s) => s.setWasender);
+  const refreshCommSettings = useCommSettings((s) => s.refresh);
 
   const bridgeAvailable = isWasenderBridgeAvailable();
 
@@ -89,6 +90,10 @@ export function WhatsAppIntegrationPage({ embedded = false }: { embedded?: boole
   const [busy, setBusy] = useState<string | null>(null);
   const [sessions, setSessions] = useState<WasenderSession[]>([]);
   const [qr, setQr] = useState<{ id: string | number; src: string } | null>(null);
+
+  useEffect(() => {
+    void refreshCommSettings();
+  }, [refreshCommSettings]);
 
   useEffect(() => {
     wasenderClient.setBaseUrl(baseUrl);

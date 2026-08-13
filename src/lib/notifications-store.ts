@@ -1,21 +1,24 @@
 import { create } from "zustand";
 import { getQueueEntries } from "@/lib/comm/comm-queue";
-import { initLocalDb } from "@/lib/local-db";
 import { getSyncStatus } from "@/lib/sync-engine";
 import { getPendingApprovals } from "@/lib/workflow/approval-workflow";
 import { useLicense } from "@/lib/licensing/license-store";
 import { useSettings } from "@/lib/settings-store";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
 export type NotificationSeverity = "info" | "warning" | "critical";
 
 export interface AppNotification {
   id: string;
   titleKey: string;
+  titleText?: string;
   descriptionKey: string;
+  descriptionText?: string;
   descriptionValues?: Record<string, string | number>;
   severity: NotificationSeverity;
   href: string;
   createdAt: number;
+  source?: "computed" | "platform";
 }
 
 interface NotificationsState {
@@ -30,10 +33,20 @@ interface NotificationsState {
 
 const READ_KEY = "erp-gold-notifications-read-v1";
 
+type PlatformNotificationRow = {
+  id: string;
+  kind?: string | null;
+  title?: string | null;
+  body?: string | null;
+  href?: string | null;
+  read_at?: string | null;
+  created_at?: string | null;
+};
+
 function readStoredIds(): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(READ_KEY) || "[]") as unknown;
+    const parsed = JSON.parse(window.sessionStorage.getItem(READ_KEY) || "[]") as unknown;
     return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
   } catch {
     return [];
@@ -42,7 +55,20 @@ function readStoredIds(): string[] {
 
 function persistReadIds(ids: string[]): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(READ_KEY, JSON.stringify(ids.slice(-250)));
+  window.sessionStorage.setItem(READ_KEY, JSON.stringify(ids.slice(-250)));
+}
+
+async function loadPlatformNotifications(): Promise<PlatformNotificationRow[]> {
+  try {
+    const { data } = await supabase
+      .from("platform_notifications" as never)
+      .select("id,kind,title,body,href,read_at,created_at")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    return (data ?? []) as PlatformNotificationRow[];
+  } catch {
+    return [];
+  }
 }
 
 function interpolateCount(
@@ -89,13 +115,20 @@ export const useNotifications = create<NotificationsState>()((set, get) => ({
     }
 
     try {
-      await initLocalDb();
-      const [pendingMessages, failedMessages, approvals] = await Promise.all([
-        getQueueEntries("pending"),
-        getQueueEntries("permanently_failed"),
-        getPendingApprovals(),
-      ]);
+      const [pendingMessages, failedMessages, approvals, platformNotifications] = await Promise.all(
+        [
+          getQueueEntries("pending"),
+          getQueueEntries("permanently_failed"),
+          getPendingApprovals(),
+          loadPlatformNotifications(),
+        ],
+      );
       const sync = getSyncStatus();
+
+      const remoteReadIds = platformNotifications
+        .filter((notification) => Boolean(notification.read_at))
+        .map((notification) => `platform-${notification.id}`);
+      const readIds = Array.from(new Set([...get().readIds, ...remoteReadIds]));
 
       if (sync.conflicts > 0) {
         items.push({
@@ -154,6 +187,22 @@ export const useNotifications = create<NotificationsState>()((set, get) => ({
           createdAt: approval.requestedAt,
         });
       }
+
+      for (const notification of platformNotifications) {
+        items.push({
+          id: `platform-${notification.id}`,
+          titleKey: "notifications.platform_title",
+          titleText: notification.title || "Platform notification",
+          descriptionKey: "notifications.platform_description",
+          descriptionText: notification.body || notification.kind || "Open notification",
+          severity: notification.kind === "critical" ? "critical" : "info",
+          href: notification.href || "/notifications",
+          createdAt: Date.parse(notification.created_at || "") || now,
+          source: "platform",
+        });
+      }
+
+      set({ readIds });
     } catch (error) {
       console.warn("[Notifications] Could not refresh operational alerts:", error);
     }
@@ -165,12 +214,27 @@ export const useNotifications = create<NotificationsState>()((set, get) => ({
 
   markRead: (id) => {
     const ids = Array.from(new Set([...get().readIds, id]));
+    if (id.startsWith("platform-")) {
+      void supabase
+        .from("platform_notifications" as never)
+        .update({ read_at: new Date().toISOString() } as never)
+        .eq("id", id.replace(/^platform-/, "") as never);
+    }
     persistReadIds(ids);
     set({ readIds: ids });
   },
 
   markAllRead: () => {
     const ids = Array.from(new Set([...get().readIds, ...get().items.map((item) => item.id)]));
+    const platformIds = get()
+      .items.filter((item) => item.source === "platform")
+      .map((item) => item.id.replace(/^platform-/, ""));
+    if (platformIds.length) {
+      void supabase
+        .from("platform_notifications" as never)
+        .update({ read_at: new Date().toISOString() } as never)
+        .in("id", platformIds as never);
+    }
     persistReadIds(ids);
     set({ readIds: ids });
   },

@@ -1,4 +1,4 @@
-import { createFileRoute, useParams, Link } from "@tanstack/react-router";
+﻿import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ import { ArrowLeft, Printer, CheckCircle2, Truck, Coins } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settlement/$id")({
-  head: () => ({ meta: [{ title: "Settlement · AVS Gold ERP" }] }),
+  head: () => ({ meta: [{ title: "Settlement Â· AVS Gold ERP" }] }),
   component: SettlementView,
 });
 
@@ -78,9 +78,9 @@ function SettlementView() {
   const [addingItem, setAddingItem] = useState(false);
 
   // Only refresh from storage if this settlement isn't already in memory
-  // (e.g. a fresh page load / direct link) — refreshing unconditionally
+  // (e.g. a fresh page load / direct link) â€” refreshing unconditionally
   // would race the store's own optimistic update right after createDraft()/
-  // recordPayment() and could wipe it with a stale local-first read before
+  // recordPayment() and could wipe it with a stale cached read before
   // the write has finished propagating (same class of bug fixed earlier in
   // outside-work-store.ts's own pages).
   useEffect(() => {
@@ -212,7 +212,7 @@ function SettlementView() {
     setFinalising(true);
     try {
       const invoice = await completeFinalSettlement(s!.id, branchId);
-      toast.success(`Final Settlement complete — GST Invoice ${invoice.invoiceNo} generated.`);
+      toast.success(`Final Settlement complete â€” GST Invoice ${invoice.invoiceNo} generated.`);
     } catch (err: any) {
       toast.error(err?.message || "Failed to complete final settlement.");
     } finally {
@@ -231,7 +231,7 @@ function SettlementView() {
           </Link>
           <PageHeader
             title={s.settlementNo}
-            subtitle={`${s.customerName}${s.orderNo ? ` · Order ${s.orderNo}` : ""}`}
+            subtitle={`${s.customerName}${s.orderNo ? ` Â· Order ${s.orderNo}` : ""}`}
           />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -297,9 +297,9 @@ function SettlementView() {
               className="flex items-center justify-between text-sm rounded-lg border border-border bg-background/40 px-3 py-1.5"
             >
               <span>
-                {it.itemName} — {mgToGrams(it.grossMg)} g · {it.purity} purity
+                {it.itemName} â€” {mgToGrams(it.grossMg)} g Â· {it.purity} purity
                 {it.makingChargesPaise > 0
-                  ? ` · Making ₹${paiseToRupees(it.makingChargesPaise)}`
+                  ? ` Â· Making â‚¹${paiseToRupees(it.makingChargesPaise)}`
                   : ""}
               </span>
               {!isFinalised && s.items.length > 1 && (
@@ -353,7 +353,7 @@ function SettlementView() {
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Making (₹)</Label>
+              <Label className="text-xs">Making (â‚¹)</Label>
               <Input
                 value={newItemMaking}
                 onChange={(e) => setNewItemMaking(e.target.value)}
@@ -367,7 +367,7 @@ function SettlementView() {
               className="gap-1.5"
               data-testid="settlement-add-item"
             >
-              {addingItem ? "Adding…" : "Add Item"}
+              {addingItem ? "Addingâ€¦" : "Add Item"}
             </Button>
           </div>
         )}
@@ -421,7 +421,7 @@ function SettlementView() {
         (() => {
           // Available = what compileCustomerLedger() reports minus what
           // THIS settlement has already applied (see the identical guard
-          // in settlement-store.ts's applyExistingCredit()) — once fully
+          // in settlement-store.ts's applyExistingCredit()) â€” once fully
           // consumed, the button disappears entirely instead of allowing a
           // no-op click, so it's obvious credit has already been used.
           const availableGoldMg = Math.max(0, liveLedger.goldAdvanceMg - s.goldCreditUsedMg);
@@ -444,7 +444,7 @@ function SettlementView() {
                 {availableCashPaise > 0 && (
                   <div>
                     Cash Credit:{" "}
-                    <span className="font-mono">₹{paiseToRupees(availableCashPaise)}</span>
+                    <span className="font-mono">â‚¹{paiseToRupees(availableCashPaise)}</span>
                   </div>
                 )}
               </div>
@@ -484,22 +484,22 @@ function SettlementView() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div>
             <div className="text-muted-foreground text-xs">Subtotal</div>
-            <div className="font-mono">₹{paiseToRupees(preview.subtotalPaise)}</div>
+            <div className="font-mono">â‚¹{paiseToRupees(preview.subtotalPaise)}</div>
           </div>
           <div>
             <div className="text-muted-foreground text-xs">GST + TCS</div>
-            <div className="font-mono">₹{paiseToRupees(preview.gstPaise + preview.tcsPaise)}</div>
+            <div className="font-mono">â‚¹{paiseToRupees(preview.gstPaise + preview.tcsPaise)}</div>
           </div>
           <div>
             <div className="text-muted-foreground text-xs">Paid</div>
-            <div className="font-mono">₹{paiseToRupees(preview.paidPaise)}</div>
+            <div className="font-mono">â‚¹{paiseToRupees(preview.paidPaise)}</div>
           </div>
           <div>
             <div className="text-muted-foreground text-xs">Balance</div>
             <div
               className={`font-mono font-bold ${preview.balancePaise > 0 ? "text-amber-400" : "text-emerald-400"}`}
             >
-              ₹{paiseToRupees(preview.balancePaise)}
+              â‚¹{paiseToRupees(preview.balancePaise)}
             </div>
           </div>
         </div>
@@ -546,7 +546,7 @@ function SettlementView() {
               </>
             ) : (
               <Input
-                placeholder="Amount (₹)"
+                placeholder="Amount (â‚¹)"
                 value={payAmt}
                 onChange={(e) => setPayAmt(e.target.value)}
                 data-testid="settlement-payment-amount"
@@ -582,9 +582,9 @@ function SettlementView() {
               <li key={p.id} className="px-4 py-3 flex items-center justify-between text-sm">
                 <span>
                   {PAYMENT_MODE_LABELS[p.mode]}
-                  {p.goldFineMg ? ` · ${mgToGrams(p.goldFineMg)} g fine` : ""}
+                  {p.goldFineMg ? ` Â· ${mgToGrams(p.goldFineMg)} g fine` : ""}
                 </span>
-                <span className="font-mono">₹{paiseToRupees(p.amountPaise)}</span>
+                <span className="font-mono">â‚¹{paiseToRupees(p.amountPaise)}</span>
               </li>
             ))}
           </ul>
@@ -599,15 +599,15 @@ function SettlementView() {
           data-testid="settlement-complete-final"
         >
           <CheckCircle2 className="h-4 w-4" />{" "}
-          {finalising ? "Finalising…" : "Complete Final Settlement"}
+          {finalising ? "Finalisingâ€¦" : "Complete Final Settlement"}
         </Button>
       ) : (
         <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-300">
-          Final Settlement complete — GST Invoice {s.linkedInvoiceNo} generated.
+          Final Settlement complete â€” GST Invoice {s.linkedInvoiceNo} generated.
         </div>
       )}
 
-      {/* Complete Final Settlement is irreversible — it generates a real
+      {/* Complete Final Settlement is irreversible â€” it generates a real
           GST Invoice. Require an explicit confirmation, matching the same
           pattern Manufacturing Bill finalisation already uses. */}
       <AlertDialog open={finaliseConfirmOpen} onOpenChange={setFinaliseConfirmOpen}>
@@ -616,9 +616,9 @@ function SettlementView() {
             <AlertDialogTitle>Complete Final Settlement?</AlertDialogTitle>
             <AlertDialogDescription>
               This will generate a real GST Invoice for <strong>{s.customerName}</strong> based on
-              the payments recorded so far (Balance: ₹{paiseToRupees(preview.balancePaise)}). This
-              cannot be undone from here — cancel the resulting invoice from Billing if a mistake is
-              found.
+              the payments recorded so far (Balance: â‚¹{paiseToRupees(preview.balancePaise)}). This
+              cannot be undone from here â€” cancel the resulting invoice from Billing if a mistake
+              is found.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

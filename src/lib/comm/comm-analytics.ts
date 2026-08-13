@@ -1,11 +1,9 @@
 /**
  * Communication History & Analytics (Step 9).
  *
- * Searches/aggregates over the two places communication outcomes actually
- * live: `useCommLog` (every attempted send, in-memory + synced to
- * Supabase's communication_logs table) and the local `comm_queue` SQLite
- * table (retryable failures — see comm-queue.ts). This is a read/query
- * layer only; it doesn't change how either is written.
+ * Searches/aggregates communication outcomes from the Supabase-backed log
+ * and retry queue. This is a read/query layer only; it does not change how
+ * either is written.
  *
  * Known gap, stated plainly: CommEvent (comm-log-store.ts) doesn't carry a
  * structured `channel` or `provider` field — that information only exists

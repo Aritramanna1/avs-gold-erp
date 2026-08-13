@@ -16,11 +16,9 @@
  * like "INV-FY2025-26-") directly in the key, since each distinct key gets
  * its own independent counter starting at 1.
  *
- * Falls back to a locally-derived number (timestamp-suffixed, never
- * colliding but not sequential) only when the RPC is unreachable (offline) —
- * true cross-client atomicity is impossible without a live database, which
- * matches this app's established offline-degradation pattern elsewhere
- * (see repositories/base-repository.ts's read()/readAll()).
+ * There is deliberately no browser-local fallback. Legal/business document
+ * numbers must be reserved in Supabase so every branch and device sees the
+ * same sequence.
  */
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
@@ -29,23 +27,17 @@ export async function nextDocumentNumber(
   prefix: string,
   padLength = 3,
 ): Promise<string> {
-  try {
-    const { data, error } = await supabase.rpc("next_document_number", {
-      p_key: key,
-      p_prefix: prefix,
-      p_pad_length: padLength,
-    });
-    if (error || typeof data !== "string") throw error ?? new Error("No sequence returned");
-    return data;
-  } catch (err) {
-    console.error(
-      `[DocumentNumbering] RPC unavailable for key "${key}", using offline fallback:`,
-      err,
+  const { data, error } = await supabase.rpc("next_document_number", {
+    p_key: key,
+    p_prefix: prefix,
+    p_pad_length: padLength,
+  });
+  if (error || typeof data !== "string") {
+    throw new Error(
+      `Could not reserve document number for "${key}". Supabase sequence RPC failed: ${
+        error?.message ?? "No sequence returned"
+      }`,
     );
-    const fallbackSeq =
-      Date.now()
-        .toString()
-        .slice(-padLength - 2, -2) || "0";
-    return `${prefix}${fallbackSeq.padStart(padLength, "0")}`;
   }
+  return data;
 }

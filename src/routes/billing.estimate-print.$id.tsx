@@ -1,9 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { Printer } from "lucide-react";
+import { Loader2, Printer, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { paiseToRupees } from "@/lib/billing-store";
-import { useEstimates } from "@/lib/billing-documents-store";
+import { useBillingDocumentById } from "@/lib/use-billing-document";
 
 export const Route = createFileRoute("/billing/estimate-print/$id")({
   head: () => ({ meta: [{ title: "Estimate Print · AVS Gold ERP" }] }),
@@ -12,10 +11,27 @@ export const Route = createFileRoute("/billing/estimate-print/$id")({
 
 function EstimatePrint() {
   const { id } = Route.useParams();
-  const estimate = useEstimates((s) => s.estimates.find((row) => row.id === id));
-  const refresh = useEstimates((s) => s.refresh);
-  useEffect(() => void refresh(), [refresh]);
-  if (!estimate) return <div className="p-8 text-center">Estimate not found.</div>;
+  const { document: estimate, loading, error, retry } = useBillingDocumentById("estimate", id);
+  if (loading && !estimate) {
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">
+        <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+        Loading estimate print data...
+      </div>
+    );
+  }
+  if (!estimate) {
+    return (
+      <div className="p-8 text-center space-y-3">
+        <p>Estimate not found.</p>
+        {error ? (
+          <Button variant="outline" className="gap-1.5" onClick={retry}>
+            <RotateCcw className="h-4 w-4" /> Retry
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
   return (
     <main className="mx-auto max-w-3xl p-6 print:p-0">
       <div className="mb-4 flex justify-end gap-2 print:hidden">

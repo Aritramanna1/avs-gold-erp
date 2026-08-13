@@ -31,7 +31,7 @@ async function r2SignedUrl(bucket: string, path: string): Promise<string> {
   return `${R2_PROXY_URL}/${bucket}/${path}`;
 }
 
-/** Local-vault namespace mapper. The returned value is never a cloud bucket. */
+/** Maps attachment entity types to the configured remote storage namespace. */
 export function getBucketForEntityType(
   entityType: AttachmentEntityType | "firm-logo" | "expense",
 ): string {
@@ -59,7 +59,7 @@ export function getBucketForEntityType(
 
 let readyPromise: Promise<void> | null = null;
 
-/** Compatibility no-op: local storage requires no bucket provisioning. */
+/** Compatibility no-op: remote storage provisioning is managed outside the browser. */
 export function ensureStorageBucketsReady(): Promise<void> {
   if (!readyPromise) readyPromise = Promise.resolve();
   return readyPromise;

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useCreditNotes } from "@/lib/billing-documents-store";
+import { useBillingDocumentById } from "@/lib/use-billing-document";
 import { paiseToRupees } from "@/lib/billing-store";
 import { useSettings } from "@/lib/settings-store";
 import { usePrintEngine } from "@/lib/print-engine";
@@ -18,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Printer, Ban } from "lucide-react";
+import { ArrowLeft, Ban, Loader2, Printer, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/billing/credit-notes/$id")({
@@ -28,25 +29,33 @@ export const Route = createFileRoute("/billing/credit-notes/$id")({
 
 function CreditNoteDetail() {
   const { id } = useParams({ from: "/billing/credit-notes/$id" });
-  const notes = useCreditNotes((s) => s.notes);
-  const refresh = useCreditNotes((s) => s.refresh);
   const cancel = useCreditNotes((s) => s.cancel);
   const { firm } = useSettings();
   const { triggerPrint } = usePrintEngine();
   const { can, email } = useCan();
-  const note = notes.find((n) => n.id === id);
-
-  useEffect(() => {
-    if (notes.length === 0) refresh();
-  }, [notes.length, refresh]);
+  const { document: note, loading, error, retry } = useBillingDocumentById("credit_note", id);
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+
+  if (loading && !note) {
+    return (
+      <div className="p-8 max-w-3xl mx-auto text-sm text-muted-foreground">
+        <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+        Loading credit note...
+      </div>
+    );
+  }
 
   if (!note) {
     return (
       <div className="p-8 max-w-3xl mx-auto text-center">
         <h1 className="font-serif text-2xl text-gold">Credit note not found</h1>
+        {error ? (
+          <Button variant="outline" className="gap-1.5 mt-4" onClick={retry}>
+            <RotateCcw className="h-4 w-4" /> Retry
+          </Button>
+        ) : null}
         <Link to="/billing/credit-notes" className="text-gold underline mt-4 inline-block">
           Back to Credit Notes
         </Link>

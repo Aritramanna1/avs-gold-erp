@@ -437,7 +437,7 @@ function VerifyPage() {
     setError(null);
     try {
       const cleanCode = codeParam.trim();
-      if (cleanCode.startsWith("MTJ|")) {
+      if (/^(AVS|MTJ)\|/i.test(cleanCode)) {
         const parsed = parsePayload(cleanCode);
         if (parsed) {
           await fetchAndRegisterLiveRecord(parsed.docType, parsed.recordId);
@@ -575,7 +575,7 @@ function VerifyPage() {
       </div>
       <PageHeader
         title="Verify Receipt"
-        subtitle="Scan a QR code from any MTJ printout, enter a document number (e.g. Order No, Invoice No), or paste the payload manually."
+        subtitle="Scan a QR code from any AVS printout, enter a document number (e.g. Order No, Invoice No), or paste the payload manually."
       />
 
       <div className="space-y-4">
@@ -634,7 +634,7 @@ function VerifyPage() {
             data-testid="verify-qr-input"
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
-            placeholder="e.g. O-202606-001, I-202606-001, or full MTJ|order_slip|... payload"
+            placeholder="e.g. O-202606-001, I-202606-001, or full AVS|order_slip|... payload"
             className="font-mono text-xs min-h-[100px]"
             disabled={loading}
           />
@@ -740,7 +740,7 @@ function ValidCard({
 function InvalidCard({ outcome }: { outcome: Extract<VerifyOutcome, { ok: false }> }) {
   const msg =
     outcome.reason === "format"
-      ? "Unknown format. This does not look like an MTJ verification QR."
+      ? "Unknown format. This does not look like an AVS verification QR."
       : outcome.reason === "not_found"
         ? "Document not found in ERP. It may have been deleted or never existed on this device."
         : "Tampered: payload exists but checksum does not match current ERP data.";

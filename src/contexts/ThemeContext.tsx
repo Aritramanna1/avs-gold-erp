@@ -10,12 +10,12 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = "mtj-app-theme";
+const SESSION_STORAGE_KEY = "mtj-app-theme";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem(LOCAL_STORAGE_KEY) as Theme | null;
+      const stored = window.sessionStorage.getItem(SESSION_STORAGE_KEY) as Theme | null;
       if (stored === "light" || stored === "dark" || stored === "system") {
         return stored;
       }
@@ -75,7 +75,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(LOCAL_STORAGE_KEY, newTheme);
+      window.sessionStorage.setItem(SESSION_STORAGE_KEY, newTheme);
     }
   };
 

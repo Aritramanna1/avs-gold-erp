@@ -53,7 +53,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const MG_TO_G = (mg: number) => (mg / 1000).toFixed(3);
 
-export default function MfgBillView() {
+function MfgBillView() {
   const { id } = useParams({ from: "/manufacturing/bill/$id" });
   const navigate = useNavigate();
   const { bills, patchBill } = useMfgBills();

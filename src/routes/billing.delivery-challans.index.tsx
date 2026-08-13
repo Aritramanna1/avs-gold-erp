@@ -19,9 +19,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useDeliveryChallans, type DeliveryChallanPurpose } from "@/lib/billing-documents-store";
-import { usePeople } from "@/lib/people-store";
-import { useOrders } from "@/lib/orders-store";
+import {
+  type DeliveryChallan,
+  useDeliveryChallans,
+  type DeliveryChallanPurpose,
+} from "@/lib/billing-documents-store";
+import type { Person } from "@/lib/people-store";
+import type { Order } from "@/lib/orders-store";
+import {
+  fetchActiveCustomerOptions,
+  fetchDeliveryChallans,
+  fetchOpenOrderOptions,
+} from "@/lib/billing-documents-query";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { useCan } from "@/lib/rbac";
 import { useSettings } from "@/lib/settings-store";
@@ -51,19 +60,15 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 function DeliveryChallansIndex() {
-  const challans = useDeliveryChallans((s) => s.challans);
-  const refresh = useDeliveryChallans((s) => s.refresh);
   const create = useDeliveryChallans((s) => s.create);
-  const people = usePeople((s) => s.people);
   const { can } = useCan();
 
-  const orders = useOrders((s) => s.orders);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
   const [q, setQ] = useState("");
+  const [challans, setChallans] = useState<DeliveryChallan[]>([]);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [customerId, setCustomerId] = useState("");
   const [orderId, setOrderId] = useState("none");
@@ -76,6 +81,29 @@ function DeliveryChallansIndex() {
   const [purpose, setPurpose] = useState<DeliveryChallanPurpose>("sale_on_approval");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    setLoadError(null);
+    Promise.all([fetchDeliveryChallans(q), fetchActiveCustomerOptions(), fetchOpenOrderOptions()])
+      .then(([nextChallans, nextPeople, nextOrders]) => {
+        if (!live) return;
+        setChallans(nextChallans);
+        setPeople(nextPeople);
+        setOrders(nextOrders);
+      })
+      .catch((error: any) => {
+        if (!live) return;
+        setLoadError(error?.message ?? "Could not load delivery challans.");
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [q]);
 
   function handleOrderSelect(id: string) {
     setOrderId(id);
@@ -125,6 +153,7 @@ function DeliveryChallansIndex() {
         purpose,
         notes: notes.trim() || undefined,
       });
+      setChallans((current) => [challan, ...current.filter((item) => item.id !== challan.id)]);
 
       // Single source of truth for gold balances: a Delivery Challan physically
       // hands gold to the customer, so it must post the same "gold_given" gold
@@ -199,9 +228,25 @@ function DeliveryChallansIndex() {
             className="pl-9"
           />
         </div>
-        {list.length === 0 ? (
+        {loadError ? (
+          <div className="py-6 text-center text-sm">
+            <p className="text-destructive">{loadError}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => void fetchDeliveryChallans(q).then(setChallans)}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : loading ? (
           <p className="text-sm text-muted-foreground py-6 text-center">
-            No delivery challans yet.
+            Loading delivery challans...
+          </p>
+        ) : list.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            No delivery challans found.
           </p>
         ) : (
           <div className="overflow-x-auto">

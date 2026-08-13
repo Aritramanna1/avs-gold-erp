@@ -14,12 +14,6 @@ function sanitizeEnvValue(value: string | undefined | null): string {
   return normalized.trim();
 }
 
-export const SUPABASE_RUNTIME_KEYS = {
-  url: "supabase_runtime_url",
-  key: "supabase_runtime_key",
-  projectId: "supabase_runtime_project_id",
-} as const;
-
 function getResolvedConfig() {
   return {
     url: sanitizeEnvValue(import.meta.env.VITE_SUPABASE_URL),
@@ -50,7 +44,10 @@ function createSupabaseClient() {
 
   return createClient<Database>(supabaseUrl, supabasePublishableKey, {
     auth: {
-      storage: typeof window !== "undefined" ? localStorage : undefined,
+      // Keep Supabase as the only auth authority while matching the Product
+      // Owner's session rule: stay signed in during the browser session, then
+      // expire naturally when the browser/tab session is closed.
+      storage: typeof window !== "undefined" ? sessionStorage : undefined,
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,

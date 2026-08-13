@@ -136,8 +136,8 @@ function emptyLine(): LineForm {
 /**
  * Makes one persisted line whole.
  *
- * The form draft is saved to localStorage under a fixed key and survives a code
- * change, so a line written by an EARLIER version of this form comes back
+ * The form draft is kept under a fixed session key during active editing, so
+ * a line written by an EARLIER version of this form can still come back
  * missing whatever fields have been added since — `attributes` was absent, and
  * `line.attributes[key]` threw the moment a category with dynamic fields
  * rendered, taking the whole page down.

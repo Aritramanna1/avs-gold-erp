@@ -19,7 +19,6 @@
  * already (incorrectly) claimed.
  */
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { useSettings } from "./settings-store";
 
 // ── Branch definitions ────────────────────────────────────────────────────────
@@ -144,60 +143,55 @@ interface BranchState {
 // a safe fallback before that store has hydrated its real branch list.
 const FALLBACK_BRANCH_ID = "MAIN";
 
-export const useBranch = create<BranchState>()(
-  persist(
-    (set, get) => ({
-      currentBranchId: FALLBACK_BRANCH_ID,
-      accessibleBranchIds: [], // populated from getAllBranches() as soon as settings-store hydrates; isGlobalAccess defaulting true means this doesn't gate anything meanwhile
-      userPermissions: [],
-      isGlobalAccess: true, // default true until Supabase auth is wired up
+export const useBranch = create<BranchState>()((set, get) => ({
+  currentBranchId: FALLBACK_BRANCH_ID,
+  accessibleBranchIds: [], // populated from getAllBranches() as soon as settings-store hydrates; isGlobalAccess defaulting true means this doesn't gate anything meanwhile
+  userPermissions: [],
+  isGlobalAccess: true, // default true until Supabase auth is wired up
 
-      setCurrent(branchId) {
-        const accessible = get().accessibleBranchIds;
-        if (accessible.includes(branchId) || get().isGlobalAccess) {
-          set({ currentBranchId: branchId });
-        }
-      },
+  setCurrent(branchId) {
+    const accessible = get().accessibleBranchIds;
+    if (accessible.includes(branchId) || get().isGlobalAccess) {
+      set({ currentBranchId: branchId });
+    }
+  },
 
-      setAccessible(ids, permissions, globalAccess) {
-        set({ accessibleBranchIds: ids, userPermissions: permissions });
-        if (globalAccess !== undefined) set({ isGlobalAccess: globalAccess });
-        // If current branch is no longer accessible, switch to first accessible
-        if (!get().isGlobalAccess && !ids.includes(get().currentBranchId)) {
-          set({ currentBranchId: ids[0] ?? FALLBACK_BRANCH_ID });
-        }
-      },
+  setAccessible(ids, permissions, globalAccess) {
+    set({ accessibleBranchIds: ids, userPermissions: permissions });
+    if (globalAccess !== undefined) set({ isGlobalAccess: globalAccess });
+    // If current branch is no longer accessible, switch to first accessible
+    if (!get().isGlobalAccess && !ids.includes(get().currentBranchId)) {
+      set({ currentBranchId: ids[0] ?? FALLBACK_BRANCH_ID });
+    }
+  },
 
-      getCurrentBranch() {
-        return getAllBranches().find((b) => b.id === get().currentBranchId);
-      },
+  getCurrentBranch() {
+    return getAllBranches().find((b) => b.id === get().currentBranchId);
+  },
 
-      getAccessibleBranches() {
-        const ids = get().accessibleBranchIds;
-        const all = getAllBranches();
-        // isGlobalAccess (CEO/Owner/single-user default) sees every active
-        // branch regardless of the accessibleBranchIds allow-list — matches
-        // hasAccess()'s/canDoAction()'s existing isGlobalAccess short-circuit.
-        return all.filter((b) => b.active && (get().isGlobalAccess || ids.includes(b.id)));
-      },
+  getAccessibleBranches() {
+    const ids = get().accessibleBranchIds;
+    const all = getAllBranches();
+    // isGlobalAccess (CEO/Owner/single-user default) sees every active
+    // branch regardless of the accessibleBranchIds allow-list — matches
+    // hasAccess()'s/canDoAction()'s existing isGlobalAccess short-circuit.
+    return all.filter((b) => b.active && (get().isGlobalAccess || ids.includes(b.id)));
+  },
 
-      hasAccess(branchId) {
-        return get().isGlobalAccess || get().accessibleBranchIds.includes(branchId);
-      },
+  hasAccess(branchId) {
+    return get().isGlobalAccess || get().accessibleBranchIds.includes(branchId);
+  },
 
-      canDoAction(action, branchId) {
-        const bid = branchId ?? get().currentBranchId;
-        if (get().isGlobalAccess) {
-          // CEO: only allowed CEO actions, not operational ones
-          return canDo("owner_ceo", action);
-        }
-        const perm = get().userPermissions.find((p) => p.branchId === bid);
-        return perm ? canDo(perm.role, action) : false;
-      },
-    }),
-    { name: "mtj-branch-v1" },
-  ),
-);
+  canDoAction(action, branchId) {
+    const bid = branchId ?? get().currentBranchId;
+    if (get().isGlobalAccess) {
+      // CEO: only allowed CEO actions, not operational ones
+      return canDo("owner_ceo", action);
+    }
+    const perm = get().userPermissions.find((p) => p.branchId === bid);
+    return perm ? canDo(perm.role, action) : false;
+  },
+}));
 
 /** Convenience hook: returns currentBranchId for store queries */
 export function useCurrentBranchId(): string {

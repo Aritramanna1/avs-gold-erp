@@ -21,13 +21,13 @@ export function WhatsNewDialog() {
   useEffect(() => {
     if (!entry) return;
     const seenKey = `${SEEN_KEY_PREFIX}${entry.version}`;
-    if (!window.localStorage.getItem(seenKey)) setOpen(true);
+    if (!window.sessionStorage.getItem(seenKey)) setOpen(true);
   }, [entry]);
 
   if (!entry) return null;
 
   const dismiss = () => {
-    window.localStorage.setItem(`${SEEN_KEY_PREFIX}${entry.version}`, "shown");
+    window.sessionStorage.setItem(`${SEEN_KEY_PREFIX}${entry.version}`, "shown");
     setOpen(false);
   };
 

@@ -7,27 +7,34 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import {
+  createSupportTicket,
+  getSupportThread,
+  listMySupportTickets,
+  replySupportTicket,
+  type SupportThread,
+  type SupportThreadMessage,
+  type SupportTicket,
+} from "@/lib/platform-support-service";
 import { LifeBuoy, Loader2, Send, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 
-type Ticket = {
-  id: string;
-  ticket_no: string;
-  subject: string;
-  status: string;
-  priority: string;
-  created_at: string;
-};
+type Ticket = SupportTicket;
+type ThreadMessage = SupportThreadMessage;
+type Thread = SupportThread;
+const SUPPORT_LOAD_TIMEOUT_MS = 9000;
 
-type ThreadMessage = {
-  id: string;
-  body: string;
-  status: string;
-  created_at: string;
-  sender: "customer" | "support";
-};
-
-type Thread = { ticket: Ticket; messages: ThreadMessage[] };
+async function settleSupport<T>(promise: Promise<T>, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timed out`)), SUPPORT_LOAD_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 export const Route = createFileRoute("/settings/support")({
   head: () => ({ meta: [{ title: "Support · AVS Gold ERP" }] }),
@@ -43,22 +50,50 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 function SupportPage() {
+  const initialParams =
+    typeof window === "undefined"
+      ? new URLSearchParams()
+      : new URLSearchParams(window.location.search);
+  const incomingSubject = initialParams.get("subject")?.slice(0, 160) ?? "";
+  const incomingDescription = initialParams.get("description")?.slice(0, 10000) ?? "";
+  const incomingMode = initialParams.get("mode");
+  const incomingOpenTicketId = initialParams.get("open");
+  const shouldAutoCreate =
+    (incomingMode === "ticket" || incomingMode === "chat") &&
+    incomingSubject.length >= 3 &&
+    incomingDescription.length >= 10 &&
+    !incomingOpenTicketId;
+
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [subject, setSubject] = useState("");
-  const [description, setDescription] = useState("");
+  const [subject, setSubject] = useState(incomingSubject);
+  const [description, setDescription] = useState(incomingDescription);
   const [submitting, setSubmitting] = useState(false);
   const [thread, setThread] = useState<Thread | null>(null);
   const [threadBusy, setThreadBusy] = useState(false);
   const [reply, setReply] = useState("");
+  const [initialOpenTicketId, setInitialOpenTicketId] = useState<string | null>(
+    incomingOpenTicketId,
+  );
+  const [pendingSupportRequest, setPendingSupportRequest] = useState<{
+    mode: "ticket" | "chat";
+    subject: string;
+    description: string;
+  } | null>(
+    shouldAutoCreate
+      ? {
+          mode: incomingMode,
+          subject: incomingSubject,
+          description: incomingDescription,
+        }
+      : null,
+  );
   const threadEndRef = useRef<HTMLDivElement>(null);
 
   async function refresh() {
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("list_my_support_tickets" as never);
-      if (error) throw new Error(error.message);
-      setTickets((data ?? []) as Ticket[]);
+      setTickets(await settleSupport(listMySupportTickets(), "Support tickets"));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not load support tickets.");
     } finally {
@@ -71,6 +106,36 @@ function SupportPage() {
   }, []);
 
   useEffect(() => {
+    if (!initialOpenTicketId) return;
+    void openThread(initialOpenTicketId);
+    setInitialOpenTicketId(null);
+  }, [initialOpenTicketId]);
+
+  useEffect(() => {
+    if (!pendingSupportRequest) return;
+    const request = pendingSupportRequest;
+    setPendingSupportRequest(null);
+    setSubmitting(true);
+    createSupportTicket({
+      subject: request.subject,
+      description: request.description,
+      category: request.mode === "chat" ? "live_chat" : "support",
+      priority: "normal",
+    })
+      .then(async (ticket) => {
+        setTickets((prev) => [ticket, ...prev.filter((existing) => existing.id !== ticket.id)]);
+        setSubject("");
+        setDescription("");
+        toast.success(`Ticket ${ticket.ticket_no} created.`);
+        await openThread(ticket.id);
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Could not create the ticket.");
+      })
+      .finally(() => setSubmitting(false));
+  }, [pendingSupportRequest]);
+
+  useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [thread?.messages.length]);
 
@@ -78,21 +143,17 @@ function SupportPage() {
     event.preventDefault();
     setSubmitting(true);
     try {
-      const { data, error } = await supabase.rpc(
-        "create_staff_support_ticket" as never,
-        {
-          p_subject: subject,
-          p_description: description,
-          p_category: "staff",
-          p_priority: "normal",
-        } as never,
-      );
-      if (error) throw new Error(error.message);
-      const ticket = data as unknown as Ticket;
+      const ticket = await createSupportTicket({
+        subject,
+        description,
+        category: "staff",
+        priority: "normal",
+      });
       setSubject("");
       setDescription("");
       setTickets((prev) => [ticket, ...prev]);
       toast.success(`Ticket ${ticket.ticket_no} created.`);
+      await openThread(ticket.id);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not create the ticket.");
     } finally {
@@ -103,14 +164,7 @@ function SupportPage() {
   async function openThread(ticketId: string) {
     setThreadBusy(true);
     try {
-      const { data, error } = await supabase.rpc(
-        "get_customer_support_thread" as never,
-        {
-          p_ticket_id: ticketId,
-        } as never,
-      );
-      if (error) throw new Error(error.message);
-      setThread(data as unknown as Thread);
+      setThread(await getSupportThread(ticketId));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not open this ticket.");
     } finally {
@@ -137,7 +191,6 @@ function SupportPage() {
     return () => {
       void supabase.removeChannel(channel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thread?.ticket?.id]);
 
   async function sendReply(event: FormEvent<HTMLFormElement>) {
@@ -145,14 +198,7 @@ function SupportPage() {
     if (!thread?.ticket?.id || !reply.trim()) return;
     setThreadBusy(true);
     try {
-      const { error } = await supabase.rpc(
-        "reply_customer_support_ticket" as never,
-        {
-          p_ticket_id: thread.ticket.id,
-          p_body: reply,
-        } as never,
-      );
-      if (error) throw new Error(error.message);
+      await replySupportTicket(thread.ticket.id, reply);
       setReply("");
       await openThread(thread.ticket.id);
     } catch (error) {
@@ -176,8 +222,11 @@ function SupportPage() {
           </h2>
           <form className="space-y-3" onSubmit={submitTicket}>
             <div className="space-y-1.5">
-              <Label className="text-xs">Subject</Label>
+              <Label htmlFor="support-subject" className="text-xs">
+                Subject
+              </Label>
               <Input
+                id="support-subject"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Short summary"
@@ -187,8 +236,11 @@ function SupportPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Description</Label>
+              <Label htmlFor="support-description" className="text-xs">
+                Description
+              </Label>
               <Textarea
+                id="support-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What's happening, and what did you expect instead?"
@@ -289,6 +341,7 @@ function SupportPage() {
           {thread.ticket.status !== "closed" && (
             <form className="flex gap-2" onSubmit={sendReply}>
               <Input
+                aria-label="Support reply"
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
                 placeholder="Type a message…"

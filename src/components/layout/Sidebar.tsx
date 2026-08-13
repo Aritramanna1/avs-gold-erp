@@ -253,4 +253,3 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
     </aside>
   );
 }
-

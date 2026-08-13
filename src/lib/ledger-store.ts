@@ -193,6 +193,7 @@ function makeId(): string {
 }
 
 const ledgerRepository = createRepository<LedgerEntry>("gold_ledger");
+const LEDGER_COMPAT_CACHE_LIMIT = 1000;
 
 export const useLedger = create<LedgerState>()((set, get) => ({
   entries: [],
@@ -206,8 +207,8 @@ export const useLedger = create<LedgerState>()((set, get) => ({
     let q = supabase
       .from("gold_ledger")
       .select("data")
-      .order("ts", { ascending: true })
-      .limit(10000);
+      .order("ts", { ascending: false })
+      .limit(LEDGER_COMPAT_CACHE_LIMIT);
     if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
     const { data, error } = await q;
     if (error) {
@@ -217,7 +218,7 @@ export const useLedger = create<LedgerState>()((set, get) => ({
     const rows = (data ?? [])
       .map((r) => r.data as LedgerEntry | null)
       .filter((e): e is LedgerEntry => !!e && !!e.id && typeof e.netFineMg === "number");
-    set({ entries: rows });
+    set({ entries: rows.sort((a, b) => a.createdAt - b.createdAt) });
   },
   append: async (input) => {
     const entry: LedgerEntry = {
@@ -388,12 +389,14 @@ export function computeBalances(entries: LedgerEntry[]): BalanceSheet {
   let totalCashPaise = 0;
 
   for (const e of entries) {
+    if (!e || typeof e.netFineMg !== "number") continue;
+    const deltas = e.deltas ?? {};
     ledgerTotal += e.netFineMg;
     const purity = e.purity ?? 999;
 
     const bucketKeys: Bucket[] = ["vault", "karigar", "finished", "customer", "jeweller", "scrap"];
     for (const b of bucketKeys) {
-      const deltaFine = e.deltas[b] ?? 0;
+      const deltaFine = deltas[b] ?? 0;
       if (deltaFine !== 0) {
         buckets[b] += deltaFine;
 

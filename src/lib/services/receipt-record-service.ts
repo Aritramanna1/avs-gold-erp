@@ -1,4 +1,5 @@
 import { createRepository } from "@/lib/repositories/base-repository";
+import { getCloudDataClient } from "@/lib/providers/data-provider";
 import type { PrintDocType } from "@/lib/printlog-store";
 
 export interface ReceiptRecord {
@@ -57,21 +58,74 @@ export async function findReceiptRecordById(
 }
 
 const NUMBER_LOOKUPS = [
-  { table: "job_cards", fields: ["jobNo", "job_no"] },
-  { table: "orders", fields: ["orderNo", "order_no"] },
-  { table: "invoices", fields: ["invoiceNo", "invoice_no"] },
-  { table: "repairs", fields: ["repairNo", "repair_no"] },
-  { table: "rate_cut_records", fields: ["rateCutNo", "rate_cut_no", "slipNo"] },
+  { table: "job_cards", fields: ["jobNo", "job_no"], columns: ["job_no"] },
+  { table: "orders", fields: ["orderNo", "order_no"], columns: ["order_no"] },
+  { table: "invoices", fields: ["invoiceNo", "invoice_no"], columns: ["invoice_no"] },
+  { table: "repairs", fields: ["repairNo", "repair_no"], columns: ["repair_no"] },
+  {
+    table: "rate_cut_records",
+    fields: ["rateCutNo", "rate_cut_no", "slipNo"],
+    columns: ["rate_cut_no"],
+  },
 ] as const;
+
+function pickData(row: Record<string, any> | null): Record<string, any> | null {
+  if (!row) return null;
+  const raw = row.data;
+  if (raw && typeof raw === "object") return raw as Record<string, any>;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as Record<string, any>;
+    } catch {
+      return row;
+    }
+  }
+  return row;
+}
+
+async function findFirstByColumn(
+  table: string,
+  column: string,
+  wanted: string,
+): Promise<Record<string, any> | null> {
+  const db = getCloudDataClient();
+  const { data, error } = await (db as any)
+    .from(table)
+    .select("data")
+    .eq(column, wanted)
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  return pickData(data as Record<string, any> | null);
+}
+
+async function findFirstByJsonField(
+  table: string,
+  field: string,
+  wanted: string,
+): Promise<Record<string, any> | null> {
+  const db = getCloudDataClient();
+  const { data, error } = await (db as any)
+    .from(table)
+    .select("data")
+    .filter(`data->>${field}`, "eq", wanted)
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  return pickData(data as Record<string, any> | null);
+}
 
 export async function findReceiptRecordByNumber(code: string): Promise<ReceiptRecord | null> {
   const wanted = code.trim();
   for (const lookup of NUMBER_LOOKUPS) {
-    const rows = await repository(lookup.table).readAll();
-    const data = rows.find((row) =>
-      lookup.fields.some((field) => String(row[field] ?? "") === wanted),
-    );
-    if (data) return { table: lookup.table, data, kind: data.kind };
+    for (const column of lookup.columns) {
+      const data = await findFirstByColumn(lookup.table, column, wanted);
+      if (data) return { table: lookup.table, data, kind: data.kind };
+    }
+    for (const field of lookup.fields) {
+      const data = await findFirstByJsonField(lookup.table, field, wanted);
+      if (data) return { table: lookup.table, data, kind: data.kind };
+    }
   }
   return null;
 }

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { useSettings } from "@/lib/settings-store";
 import { useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
@@ -7,18 +7,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useOrders, ORDER_STATUS_LABELS } from "@/lib/orders-store";
-import { useJobCards } from "@/lib/jobcards-store";
-import { useLedger, computeBalances } from "@/lib/ledger-store";
-import { useStock } from "@/lib/stock-store";
-import { useBilling } from "@/lib/billing-store";
-import { usePeople } from "@/lib/people-store";
-import { mgToGrams } from "@/lib/gold";
 import {
-  computeOrderBuckets,
-  customerReminderMessage,
-  karigarReminderMessage,
-} from "@/lib/orders-tracking";
+  fetchHomeDashboardSummary,
+  type HomeDashboardOrder,
+  type HomeDashboardPerson,
+  type HomeDashboardSummary,
+} from "@/lib/home-dashboard-query";
+import { mgToGrams } from "@/lib/gold";
+import { customerReminderMessage, karigarReminderMessage } from "@/lib/orders-tracking";
 import { ReminderDialog } from "@/components/reminder-dialog";
 import {
   Scale,
@@ -32,7 +28,6 @@ import {
   CalendarCheck,
   ClipboardList,
   MessageCircle,
-  TrendingDown,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -45,85 +40,47 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
+function emptySummaryBuckets() {
+  return { today: [], tomorrow: [], delayed: [], pendingJobCard: [], readyBilling: [] };
+}
+
 function Home() {
   const { t } = useLanguage();
   const { firm, settingsHydrated } = useSettings();
   const goldRatePerGramPaise = useCurrentGoldRatePaise();
   const navigate = useNavigate();
+  const [summary, setSummary] = useState<HomeDashboardSummary | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
-  // First-run gate: once settings have actually finished loading (not the
-  // pre-hydration window every page load briefly passes through), an empty
-  // shopName means this is a genuinely fresh install — send it straight to
-  // setup instead of showing an empty dashboard with a dismissible banner.
   useEffect(() => {
     if (settingsHydrated && !firm.shopName) {
       navigate({ to: "/setup", replace: true });
     }
   }, [settingsHydrated, firm.shopName, navigate]);
 
-  const orders = useOrders((s) => s.orders) ?? [];
-  const jobs = useJobCards((s) => s.jobs) ?? [];
-  const ledger = useLedger((s) => s.entries) ?? [];
-  const stock = useStock((s) => s.items) ?? [];
-  const invoices = useBilling((s) => s.invoices) ?? [];
-  const people = usePeople((s) => s.people) ?? [];
-
-  const balance = useMemo(() => computeBalances(ledger ?? []), [ledger]);
-  const linkedJobOrderIds = useMemo(
-    () => new Set((jobs ?? []).map((j) => j?.orderId).filter(Boolean) as string[]),
-    [jobs],
-  );
-  const buckets = useMemo(() => {
-    const fallback = { today: [], tomorrow: [], delayed: [], pendingJobCard: [], readyBilling: [] };
+  const loadDashboard = useCallback(async () => {
+    setDashboardLoading(true);
+    setDashboardError(null);
     try {
-      return computeOrderBuckets(orders ?? [], linkedJobOrderIds) ?? fallback;
+      setSummary(await fetchHomeDashboardSummary());
     } catch {
-      return fallback;
+      setDashboardError("Could not load daily dashboard from Supabase.");
+    } finally {
+      setDashboardLoading(false);
     }
-  }, [orders, linkedJobOrderIds]);
+  }, []);
 
-  const todayInvoices = (invoices ?? []).filter((i) => {
-    if (!i?.createdAt) return false;
-    return new Date(i.createdAt).toDateString() === new Date().toDateString();
-  });
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
 
-  const todayBill = todayInvoices.reduce((s, i) => s + (i?.grandTotalPaise ?? 0), 0);
-
-  const todayCash = todayInvoices.reduce(
-    (s, i) =>
-      s + i.payments.filter((p) => p.mode === "cash").reduce((a, p) => a + p.amountPaise, 0),
-    0,
-  );
-  const todayUpi = todayInvoices.reduce(
-    (s, i) => s + i.payments.filter((p) => p.mode === "upi").reduce((a, p) => a + p.amountPaise, 0),
-    0,
-  );
-  const todayCard = todayInvoices.reduce(
-    (s, i) =>
-      s + i.payments.filter((p) => p.mode === "card").reduce((a, p) => a + p.amountPaise, 0),
-    0,
-  );
-  const todayGoldPaid = todayInvoices.reduce(
-    (s, i) =>
-      s +
-      i.payments
-        .filter((p) => p.mode === "gold_exchange" || p.mode === "customer_gold_credit")
-        .reduce((a, p) => a + p.amountPaise, 0),
-    0,
-  );
-  const todayOutstanding = todayInvoices.reduce((s, i) => s + Math.max(0, i.balancePaise ?? 0), 0);
-  const todayGoldSoldMg = todayInvoices.reduce(
-    (s, i) => s + i.items.reduce((a, it) => a + (it.fineMg ?? 0), 0),
-    0,
-  );
-
-  const customerGold = balance?.buckets?.customer ?? 0;
-  const karigarGold = balance?.buckets?.karigar ?? 0;
-  const finishedGold = balance?.buckets?.finished ?? 0;
-  const openOrders = (orders ?? []).filter(
-    (o) => o?.status !== "delivered" && o?.status !== "cancelled",
-  ).length;
-  const stockCount = (stock ?? []).filter((s) => s?.status === "available").length;
+  const buckets = summary?.buckets ?? emptySummaryBuckets();
+  const peopleById = useMemo(() => {
+    const map = new Map<string, HomeDashboardPerson>();
+    for (const person of summary?.people ?? []) map.set(person.id, person);
+    return map;
+  }, [summary?.people]);
 
   const [reminder, setReminder] = useState<{
     cust: string;
@@ -133,26 +90,32 @@ function Home() {
   } | null>(null);
 
   function openReminder(orderId: string) {
-    const o = orders.find((x) => x.id === orderId);
-    if (!o) return;
-    const cust = people.find((p) => p.id === o.customerId);
-    // Karigar from the order, or from the job card assigned to it.
-    const jobKarigarId = jobs.find((j) => j.orderId === o.id && j.karigarId)?.karigarId;
-    const kari = people.find((p) => p.id === (o.karigarId ?? jobKarigarId)) ?? null;
+    const allOrders = [
+      ...buckets.today,
+      ...buckets.tomorrow,
+      ...buckets.delayed,
+      ...buckets.pendingJobCard,
+      ...buckets.readyBilling,
+    ];
+    const order = allOrders.find((candidate) => candidate.id === orderId);
+    if (!order) return;
+
+    const customer = order.customerId ? peopleById.get(order.customerId) : undefined;
+    const karigar = order.karigarId ? peopleById.get(order.karigarId) : undefined;
     setReminder({
-      custPhone: cust?.phone,
-      kariPhone: kari?.phone,
+      custPhone: customer?.phone,
+      kariPhone: karigar?.phone,
       cust: customerReminderMessage({
-        customerName: cust?.fullName ?? "Customer",
-        orderNo: o.orderNo,
-        itemName: o.item?.itemName ?? "",
+        customerName: customer?.fullName ?? "Customer",
+        orderNo: order.orderNo,
+        itemName: order.item?.itemName ?? "",
       }),
-      kari: kari
+      kari: karigar
         ? karigarReminderMessage({
-            karigarName: kari.fullName,
-            orderNo: o.orderNo,
-            itemName: o.item?.itemName ?? "",
-            deliveryDate: o.expectedDelivery,
+            karigarName: karigar.fullName,
+            orderNo: order.orderNo,
+            itemName: order.item?.itemName ?? "",
+            deliveryDate: order.expectedDelivery,
           })
         : undefined,
     });
@@ -166,10 +129,10 @@ function Home() {
         <div className="mb-6 p-4 rounded-md border border-gold/40 bg-gold/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="font-serif text-sm text-gold">
-              Welcome — finish setting up your business
+              Welcome - finish setting up your business
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Business name, GST, address, and your first branch aren't configured yet.
+              Business name, GST, address, and your first branch are not configured yet.
             </p>
           </div>
           <Link to="/setup">
@@ -206,47 +169,84 @@ function Home() {
         </div>
       )}
 
-      {/* Order Tracking Buckets */}
+      {dashboardError && (
+        <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700">
+          {dashboardError}
+          <button type="button" onClick={() => void loadDashboard()} className="ml-3 underline">
+            Retry
+          </button>
+        </div>
+      )}
+
+      {dashboardLoading && !summary && (
+        <div className="mb-6 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="h-32 rounded-none border border-border bg-card animate-pulse"
+              />
+            ))}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div
+                key={i}
+                className="h-32 rounded-none border border-border bg-card animate-pulse"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {summary?.capped && (
+        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700">
+          Some dashboard fallback values are based on bounded recent Supabase rows. Apply the
+          prepared dashboard aggregate RPC on the correct project for exact full-history cockpit
+          totals.
+        </div>
+      )}
+
       <h2 className="erp-section-title mb-3">{t("dashboard.orderTracking")}</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-6">
         <BucketCard
           icon={CalendarCheck}
           tone="emerald"
           label={t("dashboard.todayDeliveries")}
-          count={buckets?.today?.length ?? 0}
-          orders={buckets?.today?.slice(0, 3) ?? []}
+          count={buckets.today.length}
+          orders={buckets.today.slice(0, 3)}
           onReminder={openReminder}
         />
         <BucketCard
           icon={Clock}
           tone="amber"
           label={t("dashboard.dueTomorrow")}
-          count={buckets?.tomorrow?.length ?? 0}
-          orders={buckets?.tomorrow?.slice(0, 3) ?? []}
+          count={buckets.tomorrow.length}
+          orders={buckets.tomorrow.slice(0, 3)}
           onReminder={openReminder}
         />
         <BucketCard
           icon={AlertTriangle}
           tone="red"
           label={t("dashboard.delayed")}
-          count={buckets?.delayed?.length ?? 0}
-          orders={buckets?.delayed?.slice(0, 3) ?? []}
+          count={buckets.delayed.length}
+          orders={buckets.delayed.slice(0, 3)}
           onReminder={openReminder}
         />
         <BucketCard
           icon={ClipboardList}
           tone="blue"
           label={t("dashboard.pendingJobCard")}
-          count={buckets?.pendingJobCard?.length ?? 0}
-          orders={buckets?.pendingJobCard?.slice(0, 3) ?? []}
+          count={buckets.pendingJobCard.length}
+          orders={buckets.pendingJobCard.slice(0, 3)}
           onReminder={openReminder}
         />
         <BucketCard
           icon={Receipt}
           tone="gold"
           label={t("dashboard.readyForBilling")}
-          count={buckets?.readyBilling?.length ?? 0}
-          orders={buckets?.readyBilling?.slice(0, 3) ?? []}
+          count={buckets.readyBilling.length}
+          orders={buckets.readyBilling.slice(0, 3)}
         />
       </div>
 
@@ -256,56 +256,68 @@ function Home() {
           to="/ledger"
           icon={Scale}
           label={t("dashboard.vaultGold")}
-          value={`${mgToGrams(balance.buckets.vault)} g`}
-          hint={balance.balanced ? "Balanced" : `Difference ${mgToGrams(balance.discrepancyMg)} g`}
+          value={`${mgToGrams(summary?.goldBuckets.vault ?? 0)} g`}
+          hint={
+            summary?.ledgerBalanced
+              ? "Balanced"
+              : `Difference ${mgToGrams(summary?.ledgerDiscrepancyMg ?? 0)} g`
+          }
         />
         <Tile
           to="/workshop"
           icon={Hammer}
           label={t("dashboard.goldWithKarigars")}
-          value={`${mgToGrams(karigarGold)} g`}
+          value={`${mgToGrams(summary?.goldBuckets.karigar ?? 0)} g`}
           hint="In custody"
         />
         <Tile
           to="/stock"
           icon={Package}
           label={t("dashboard.finishedStock")}
-          value={`${mgToGrams(finishedGold)} g`}
-          hint={`${stockCount} in stock`}
+          value={`${mgToGrams(summary?.goldBuckets.finished ?? 0)} g`}
+          hint={`${summary?.stockCount ?? 0} in stock`}
         />
         <Tile
           to="/people"
           icon={Users}
           label={t("dashboard.customerGoldHeld")}
-          value={`${mgToGrams(customerGold)} g`}
+          value={`${mgToGrams(summary?.goldBuckets.customer ?? 0)} g`}
           hint="Old gold / advance"
         />
         <Tile
           to="/orders"
           icon={ShoppingBag}
           label={t("dashboard.openOrders")}
-          value={String(openOrders)}
-          hint={`${orders.length} total`}
+          value={String(summary?.openOrders ?? 0)}
+          hint={`${summary?.totalOrders ?? 0} total`}
         />
         <Tile
           to="/billing"
           icon={Receipt}
           label={t("dashboard.todayBilling")}
-          value={`₹ ${(todayBill / 100).toLocaleString("en-IN")}`}
-          hint={`${todayInvoices.length} bills today · ${invoices.length} total`}
+          value={`Rs. ${((summary?.todayBillingPaise ?? 0) / 100).toLocaleString("en-IN")}`}
+          hint={`${summary?.todayInvoiceCount ?? 0} bills today · ${summary?.totalInvoiceCount ?? 0} total`}
         />
       </div>
 
-      {/* Today's payment breakdown */}
-      {todayInvoices.length > 0 && (
+      {(summary?.todayInvoiceCount ?? 0) > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
           {[
-            { label: "Cash", value: todayCash, color: "text-emerald-500" },
-            { label: "UPI", value: todayUpi, color: "text-blue-500" },
-            { label: "Card", value: todayCard, color: "text-purple-500" },
-            { label: "Gold Paid", value: todayGoldPaid, color: "text-gold" },
-            { label: "Outstanding", value: todayOutstanding, color: "text-rose-500" },
-            { label: "Gold Sold", value: -1, goldGrams: todayGoldSoldMg, color: "text-amber-500" },
+            { label: "Cash", value: summary?.todayCashPaise ?? 0, color: "text-emerald-500" },
+            { label: "UPI", value: summary?.todayUpiPaise ?? 0, color: "text-blue-500" },
+            { label: "Card", value: summary?.todayCardPaise ?? 0, color: "text-purple-500" },
+            { label: "Gold Paid", value: summary?.todayGoldPaidPaise ?? 0, color: "text-gold" },
+            {
+              label: "Outstanding",
+              value: summary?.todayOutstandingPaise ?? 0,
+              color: "text-rose-500",
+            },
+            {
+              label: "Gold Sold",
+              value: -1,
+              goldGrams: summary?.todayGoldSoldMg ?? 0,
+              color: "text-amber-500",
+            },
           ].map((item) => (
             <div key={item.label} className="erp-surface rounded-md p-3 text-center">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
@@ -314,7 +326,7 @@ function Home() {
               <div className={`font-mono font-bold text-sm ${item.color}`}>
                 {item.value === -1
                   ? `${mgToGrams(item.goldGrams ?? 0)} g`
-                  : `₹ ${((item.value ?? 0) / 100).toLocaleString("en-IN")}`}
+                  : `Rs. ${((item.value ?? 0) / 100).toLocaleString("en-IN")}`}
               </div>
             </div>
           ))}
@@ -385,12 +397,7 @@ function BucketCard({
   tone: keyof typeof TONE;
   label: string;
   count: number;
-  orders: {
-    id: string;
-    orderNo: string;
-    item?: { itemName?: string };
-    expectedDelivery?: string;
-  }[];
+  orders: HomeDashboardOrder[];
   onReminder?: (id: string) => void;
 }) {
   return (
@@ -401,22 +408,22 @@ function BucketCard({
         </div>
         <Badge variant="outline">{count}</Badge>
       </div>
-      {(orders ?? []).length === 0 ? (
+      {orders.length === 0 ? (
         <div className="text-xs text-muted-foreground">None</div>
       ) : (
         <ul className="text-xs space-y-1">
-          {(orders ?? []).map((o) => (
-            <li key={o.id} className="flex items-center justify-between gap-2">
-              <Link to="/orders/$id" params={{ id: o.id }} className="truncate hover:text-gold">
-                <span className="font-mono">{o.orderNo}</span> ·{" "}
-                {o.item?.itemName ?? "No Item Name"}
+          {orders.map((order) => (
+            <li key={order.id} className="flex items-center justify-between gap-2">
+              <Link to="/orders/$id" params={{ id: order.id }} className="truncate hover:text-gold">
+                <span className="font-mono">{order.orderNo}</span> ·{" "}
+                {order.item?.itemName ?? "No Item Name"}
               </Link>
               {onReminder && (
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-6 px-2 text-[#25D366] hover:bg-[#25D366]/10 shrink-0"
-                  onClick={() => onReminder(o.id)}
+                  onClick={() => onReminder(order.id)}
                   title="Send WhatsApp reminder (Customer / Karigar)"
                 >
                   <MessageCircle className="h-3.5 w-3.5" />

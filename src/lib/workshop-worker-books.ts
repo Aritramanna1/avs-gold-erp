@@ -10,8 +10,8 @@
  * SEPARATE BOOK PER PURITY. A worker who works in 22K, 18K and Fine has THREE
  * independent books, each its own complete running ledger — exactly like the
  * physical worker books. Purities are never mixed and never converted: 916
- * stays 916. This reads only local zustand state (offline-first) — never
- * Supabase.
+ * stays 916. This is a read-model compiler over the active Supabase-backed
+ * stores; it does not create another source of truth.
  */
 import { useWorkerGoldBook, type WorkerGoldBookEntry } from "./worker-gold-book-store";
 import { usePeople, type Person, type PersonType } from "./people-store";

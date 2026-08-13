@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useSettlements, previewSettlementTotals } from "@/lib/settlement-store";
-import { useBilling } from "@/lib/billing-store";
+import { previewSettlementTotals, type Settlement } from "@/lib/settlement-store";
+import type { Invoice } from "@/lib/billing-store";
+import { fetchSettlementReportData } from "@/lib/delivery-summary-query";
 import { fmtRs, fmtDate, exportToCSV, triggerPrint } from "@/lib/report-engine";
-import { AlertTriangle, CheckCircle2, Download, Printer } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, Loader2, Printer, RotateCcw } from "lucide-react";
 
 export const Route = createFileRoute("/reports/settlement-reconciliation")({
   head: () => ({ meta: [{ title: "Settlement Reconciliation · AVS Gold ERP" }] }),
@@ -30,16 +31,38 @@ export const Route = createFileRoute("/reports/settlement-reconciliation")({
  * comparison against the settlement's items, not asserted as an error.
  */
 function SettlementReconciliationPage() {
-  const settlements = useSettlements((s) => s.settlements);
-  const refreshSettlements = useSettlements((s) => s.refresh);
-  const invoices = useBilling((s) => s.invoices);
-  const refreshInvoices = useBilling((s) => s.refresh);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [capped, setCapped] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    refreshSettlements();
-    refreshInvoices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetchSettlementReportData({ finalisedOnly: true })
+      .then((data) => {
+        if (cancelled) return;
+        setSettlements(data.settlements);
+        setInvoices(data.invoices);
+        setCapped(data.capped);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSettlements([]);
+        setInvoices([]);
+        setCapped(false);
+        setError(err instanceof Error ? err.message : "Could not load settlement reconciliation.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
 
   const rows = useMemo(() => {
     return settlements
@@ -93,6 +116,35 @@ function SettlementReconciliationPage() {
       />
 
       <div className="rounded-2xl border border-border bg-card p-4 mt-4 mb-4">
+        {loading ? (
+          <div className="mb-3 text-sm text-muted-foreground">
+            <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+            Loading finalised settlement links...
+          </div>
+        ) : null}
+        {error ? (
+          <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+            <div>
+              <p className="font-medium text-destructive">Reconciliation could not load</p>
+              <p className="mt-1 text-muted-foreground">{error}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setReloadKey((value) => value + 1)}
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Retry
+            </Button>
+          </div>
+        ) : null}
+        {capped ? (
+          <div className="mb-3 text-sm text-amber-500">
+            <AlertTriangle className="mr-2 inline h-4 w-4" />
+            Showing the first 1000 finalised settlements. Add paginated reconciliation evidence for
+            high-volume audit use.
+          </div>
+        ) : null}
         {exceptions.length === 0 ? (
           <div className="text-sm text-emerald-500 flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4" /> All finalised settlements reconcile cleanly against

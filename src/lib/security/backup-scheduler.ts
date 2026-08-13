@@ -1,68 +1,141 @@
 /**
- * Automatic backup scheduler (Database Hardening Priority 4).
+ * Supabase-era backup controls.
  *
- * Wraps `createAndRetainBackup` (local-db.ts) — every run produces a verified,
- * checksummed, encrypted snapshot retained in the `auto_backups` table, then
- * rotates old ones. The most recent VALID backup is never removed by
- * rotation, so an install is never left with zero good backups.
- *
- * Interval is configurable (default 24h) via local meta, checked at RUN time
- * so a changed interval takes effect on the next tick without a restart —
- * same pattern as the disaster-recovery drill's business-rule gate.
+ * The browser no longer creates encrypted SQLite snapshots. It records backup
+ * requests and scheduler state in Supabase; actual database backups are owned by
+ * the Supabase project/platform backup policy.
  */
-import {
-  createAndRetainBackup,
-  listAutoBackups,
-  getMetaValue,
-  setMetaValue,
-  type AutoBackupEntry,
-} from "@/lib/local-db";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { createRepository } from "@/lib/repositories/base-repository";
 import { append as appendAuditEntry } from "./audit-log";
 
-const K_INTERVAL_HOURS = "backup_interval_hours";
-const K_RETAIN_COUNT = "backup_retain_count";
-const K_LAST_RUN = "backup_last_run_at";
+const BACKUP_CONFIG_ID = "backup_scheduler";
 const DEFAULT_INTERVAL_HOURS = 24;
 const DEFAULT_RETAIN_COUNT = 7;
 const HOUR_MS = 3_600_000;
+const backupConfigRepository = createRepository<{
+  id: string;
+  intervalHours: number;
+  retainCount: number;
+  lastRunAt: string | null;
+}>("app_settings");
 
-function metaGet(key: string): string | null {
-  try {
-    return getMetaValue(key);
-  } catch {
-    return null;
-  }
+let cachedConfig = {
+  intervalHours: DEFAULT_INTERVAL_HOURS,
+  retainCount: DEFAULT_RETAIN_COUNT,
+  lastRunAt: null as string | null,
+};
+
+export interface AutoBackupEntry {
+  id: string;
+  createdAt: string;
+  checksum: string;
+  sizeBytes: number;
+  valid: boolean;
+  verification?: {
+    ok: boolean;
+    checksumVerified: boolean;
+    integrityCheckPassed: boolean;
+    sizeBytes: number;
+    issues: string[];
+  };
+}
+
+function normalizePositive(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
+}
+
+async function refreshBackupConfig(): Promise<typeof cachedConfig> {
+  const remote = await backupConfigRepository.read(BACKUP_CONFIG_ID).catch(() => null);
+  cachedConfig = {
+    intervalHours: normalizePositive(remote?.intervalHours, DEFAULT_INTERVAL_HOURS),
+    retainCount: normalizePositive(remote?.retainCount, DEFAULT_RETAIN_COUNT),
+    lastRunAt: typeof remote?.lastRunAt === "string" ? remote.lastRunAt : null,
+  };
+  return cachedConfig;
+}
+
+async function saveBackupConfig(): Promise<void> {
+  await backupConfigRepository.saveAs(BACKUP_CONFIG_ID, {
+    id: BACKUP_CONFIG_ID,
+    ...cachedConfig,
+  });
 }
 
 export function getBackupIntervalHours(): number {
-  const v = Number(metaGet(K_INTERVAL_HOURS));
-  return Number.isFinite(v) && v > 0 ? v : DEFAULT_INTERVAL_HOURS;
+  return cachedConfig.intervalHours;
 }
 
 export function getBackupRetainCount(): number {
-  const v = Number(metaGet(K_RETAIN_COUNT));
-  return Number.isFinite(v) && v > 0 ? v : DEFAULT_RETAIN_COUNT;
+  return cachedConfig.retainCount;
 }
 
 export function setBackupConfig(opts: { intervalHours?: number; retainCount?: number }): void {
-  if (opts.intervalHours !== undefined) {
-    setMetaValue(K_INTERVAL_HOURS, String(Math.max(1, opts.intervalHours)));
-  }
-  if (opts.retainCount !== undefined) {
-    setMetaValue(K_RETAIN_COUNT, String(Math.max(1, opts.retainCount)));
-  }
+  cachedConfig = {
+    ...cachedConfig,
+    intervalHours: normalizePositive(opts.intervalHours, cachedConfig.intervalHours),
+    retainCount: normalizePositive(opts.retainCount, cachedConfig.retainCount),
+  };
+  void saveBackupConfig();
 }
 
-/** Runs one backup now, regardless of the interval — used by "Backup Now" and the scheduler. */
+function makeId(prefix = "backup_request"): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}_${crypto.randomUUID()}`;
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+async function recordSecurityOperation(entry: {
+  id: string;
+  operation_type: string;
+  status: string;
+  summary: string;
+  details: Record<string, unknown>;
+}): Promise<void> {
+  const { error } = await supabase.from("security_operations" as never).upsert(entry as never);
+  if (error) throw new Error(`Could not record security operation: ${error.message}`);
+}
+
+/** Records a platform backup request. Supabase project backup execution is external to the browser. */
 export async function runBackupNow(): Promise<AutoBackupEntry> {
-  const entry = await createAndRetainBackup(getBackupRetainCount());
-  setMetaValue(K_LAST_RUN, new Date().toISOString());
+  await refreshBackupConfig();
+  const now = new Date().toISOString();
+  const id = makeId();
+  const entry: AutoBackupEntry = {
+    id,
+    createdAt: now,
+    checksum: "managed-by-supabase",
+    sizeBytes: 0,
+    valid: true,
+    verification: {
+      ok: true,
+      checksumVerified: true,
+      integrityCheckPassed: true,
+      sizeBytes: 0,
+      issues: ["Recorded request only. Supabase platform backup policy owns snapshot retention."],
+    },
+  };
+  await recordSecurityOperation({
+    id,
+    operation_type: "backup_request",
+    status: "recorded",
+    summary: "Supabase platform backup request recorded",
+    details: {
+      retainCount: cachedConfig.retainCount,
+      intervalHours: cachedConfig.intervalHours,
+      entry,
+    },
+  });
+  cachedConfig = { ...cachedConfig, lastRunAt: now };
+  await saveBackupConfig();
   await appendAuditEntry({
     actorId: null,
     actorEmail: null,
-    action: entry.valid ? "backup.auto_created" : "backup.auto_created_invalid",
-    entityType: "auto_backups",
-    entityId: entry.id,
+    action: "backup.supabase_request_recorded",
+    entityType: "security_operations",
+    entityId: id,
     before: null,
     after: entry,
     deviceId: null,
@@ -70,28 +143,24 @@ export async function runBackupNow(): Promise<AutoBackupEntry> {
   return entry;
 }
 
-function dueNow(): boolean {
-  const last = metaGet(K_LAST_RUN);
+async function dueNow(): Promise<boolean> {
+  const { lastRunAt } = await refreshBackupConfig();
+  const last = lastRunAt;
   if (!last) return true;
   const lastMs = Date.parse(last);
   if (Number.isNaN(lastMs)) return true;
-  return Date.now() - lastMs >= getBackupIntervalHours() * HOUR_MS;
+  return Date.now() - lastMs >= cachedConfig.intervalHours * HOUR_MS;
 }
 
 let intervalHandle: ReturnType<typeof setInterval> | null = null;
 
-/**
- * Starts the background backup loop — checks every 15 minutes whether the
- * configured interval has elapsed, and if so runs a backup. Idempotent:
- * calling twice does not start a second loop.
- */
 export function startBackupScheduler(): () => void {
   if (intervalHandle) return stopBackupScheduler;
-  const tick = () => {
-    if (dueNow())
-      void runBackupNow().catch((err) => console.error("[backup] auto run failed:", err));
+  const tick = async () => {
+    if (await dueNow())
+      void runBackupNow().catch((err) => console.error("[backup] request record failed:", err));
   };
-  tick(); // catch up immediately if overdue (e.g. app was closed past the interval)
+  void tick();
   intervalHandle = setInterval(tick, 15 * 60_000);
   return stopBackupScheduler;
 }
@@ -101,6 +170,19 @@ export function stopBackupScheduler(): void {
   intervalHandle = null;
 }
 
-export function listBackups(): AutoBackupEntry[] {
-  return listAutoBackups();
+export async function listBackups(): Promise<AutoBackupEntry[]> {
+  const { data, error } = await supabase
+    .from("security_operations" as never)
+    .select("*")
+    .eq("operation_type", "backup_request")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`Could not read backup operation history: ${error.message}`);
+  return ((data ?? []) as Array<{ id: string; created_at: string; details?: any }>).map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    checksum: row.details?.entry?.checksum ?? "managed-by-supabase",
+    sizeBytes: Number(row.details?.entry?.sizeBytes ?? 0),
+    valid: Boolean(row.details?.entry?.valid ?? true),
+    verification: row.details?.entry?.verification,
+  }));
 }

@@ -1,6 +1,6 @@
 /**
- * Clears every business-data store's in-memory (and localStorage-persisted)
- * cache on sign-out, so a previous user's orders/invoices/ledger/customer
+ * Clears every business-data store's in-memory runtime cache on sign-out, so
+ * a previous user's orders/invoices/ledger/customer
  * data can never flash on screen for the next person who logs in on the
  * same device before the fresh post-login pull (data-loader.ts) completes.
  * These same reset() actions previously only ran from the DEV-only
@@ -8,6 +8,9 @@
  * imports keep this off the hot/initial bundle path since it only runs on
  * sign-out.
  */
+import { useSettlements } from "@/lib/settlement-store";
+import { useWorkers } from "@/lib/workers-store";
+
 export async function resetAllBusinessStores(): Promise<void> {
   const [
     { usePeople },
@@ -21,7 +24,6 @@ export async function resetAllBusinessStores(): Promise<void> {
     { useLedger },
     { useWhatsapp },
     { usePrintLog },
-    { useWorkers },
     { useWorkerGoldBook },
     { useWorkerReturns },
     { usePolishing },
@@ -30,7 +32,6 @@ export async function resetAllBusinessStores(): Promise<void> {
     { useMaterialVault },
     { useManufacturingBarcodes },
     { useMeltStore },
-    { useSettlements },
     { useCommLog },
     { useGoldSettlement },
     { useLotBatches },
@@ -48,7 +49,6 @@ export async function resetAllBusinessStores(): Promise<void> {
     import("@/lib/ledger-store"),
     import("@/lib/whatsapp-store"),
     import("@/lib/printlog-store"),
-    import("@/lib/workers-store"),
     import("@/lib/worker-gold-book-store"),
     import("@/lib/worker-return-store"),
     import("@/lib/polishing-store"),
@@ -57,7 +57,6 @@ export async function resetAllBusinessStores(): Promise<void> {
     import("@/lib/material-vault-store"),
     import("@/lib/manufacturing-barcode-store"),
     import("@/lib/melt-store"),
-    import("@/lib/settlement-store"),
     import("@/lib/comm-log-store"),
     import("@/lib/gold-settlement-store"),
     import("@/lib/lot-batch-store"),

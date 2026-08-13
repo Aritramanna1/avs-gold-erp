@@ -1,9 +1,8 @@
 /**
- * MTJ ERP — Lovable Cloud / Supabase connection status.
+ * AVS ERP - Supabase connection status.
  *
- * Reports live cloud + auth + migration status to the UI.
- * Cloud is the source of truth once a user is signed in.
- * Local pilot storage remains only as a device-side cache.
+ * Reports live Supabase + auth status to the UI. Supabase is the production
+ * source of truth; browser storage is limited to UI/session cache.
  */
 import { useEffect, useState } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
@@ -14,7 +13,7 @@ const LAST_MIGRATION_KEY = "mtj_last_migration_at";
 const SOURCE_OF_TRUTH_KEY = "mtj_source_of_truth";
 const MIGRATED_SNAPSHOT_KEY = "mtj_migrated_snapshot_hash";
 
-export type SourceOfTruth = "cloud" | "local";
+export type SourceOfTruth = "supabase_online";
 
 export function validateEnvironment(): { env: string; projectId: string; isValid: boolean } {
   const env = (import.meta.env.VITE_APP_ENV || "development").toLowerCase();
@@ -38,11 +37,11 @@ export function validateEnvironment(): { env: string; projectId: string; isValid
 export function getDbStatusLabel(s: DbStatus): string {
   switch (s) {
     case "connected_authed":
-      return "Cloud Connected · Signed in";
+      return "Supabase Connected - Signed in";
     case "connected_anon":
-      return "Cloud Connected · Local Pilot Storage";
+      return "Supabase Connected - Sign in required";
     case "not_connected":
-      return "Cloud Not Connected · Using Local Pilot Storage";
+      return "Supabase Not Connected";
   }
 }
 
@@ -55,7 +54,7 @@ export function setLastMigrationAt(iso: string = new Date().toISOString()): void
 }
 
 export function getSourceOfTruth(): SourceOfTruth {
-  return "cloud";
+  return "supabase_online";
 }
 
 export function setSourceOfTruth(s: SourceOfTruth): void {
@@ -63,9 +62,7 @@ export function setSourceOfTruth(s: SourceOfTruth): void {
 }
 
 /**
- * Fingerprint of all local MTJ stores. Two snapshots with the same hash
- * mean the local pilot data is byte-identical. Used to detect divergence
- * between local cache and what was last pushed to Lovable Cloud.
+ * Retired local-pilot compatibility shim. Production data lives in Supabase.
  */
 export function computeLocalSnapshotHash(): string {
   return "";
@@ -92,12 +89,12 @@ export function useDbStatus(): {
   const [email, setEmail] = useState<string | undefined>();
   const [userId, setUserId] = useState<string | undefined>();
   const [lastMigrationAt, setLast] = useState<string | null>(null);
-  const [sourceOfTruth, setSrc] = useState<SourceOfTruth>("cloud");
+  const [sourceOfTruth, setSrc] = useState<SourceOfTruth>("supabase_online");
 
   useEffect(() => {
     let cancelled = false;
     setLast(null);
-    setSrc("cloud");
+    setSrc("supabase_online");
     async function check() {
       try {
         const { data } = await supabase.auth.getUser();
@@ -125,12 +122,12 @@ export function useDbStatus(): {
         setUserId(undefined);
       }
       setLast(null);
-      setSrc("cloud");
+      setSrc("supabase_online");
     });
     // Sync when other tabs migrate
     const onStorage = () => {
       setLast(null);
-      setSrc("cloud");
+      setSrc("supabase_online");
     };
     window.addEventListener("storage", onStorage);
     return () => {

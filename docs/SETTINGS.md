@@ -27,10 +27,10 @@ Old `/settings/whatsapp`, `/settings/integrations/whatsapp`, and `/settings/what
 ## Persistence
 
 - Main settings and branding: `app_settings[id="firm"]` through `settings-store.ts`.
-- Provider registry: `app_settings[id="comm_configs"]` through `createRepository` and the offline outbox.
+- Provider registry: `app_settings[id="comm_configs"]` through Supabase-backed settings services.
 - Branch WhatsApp configuration/automation: `branch_settings`.
-- Message templates: `wa-templates-store.ts` with local-first repository persistence.
-- WasenderAPI secrets: Electron `safeStorage`; never returned to the renderer or synced.
+- Message templates: `wa-templates-store.ts` with Supabase-backed template persistence.
+- WasenderAPI secrets: approved secret storage/server-side configuration; never expose service or provider secrets in public browser bundles.
 
 Stored branding is merged with current defaults during hydration, so older installations gain new fields without losing their existing values.
 

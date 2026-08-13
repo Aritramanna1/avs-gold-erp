@@ -4,10 +4,9 @@
  * Every automated business-event communication is gated behind an explicit,
  * independently-configurable toggle here — nothing in comm-automation.ts
  * fires unless its event key is enabled. Mirrors comm-settings-store.ts's
- * persistence pattern (Supabase app_settings + localStorage fallback).
+ * persistence pattern (Supabase app_settings).
  */
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { createRepository } from "@/lib/repositories/base-repository";
 
 export type AutomationEventKey =
@@ -131,10 +130,10 @@ const appSettingsRepository = createRepository<{ id: string } & Record<string, u
   "app_settings",
 );
 
-function persistToDb(rules: AutomationRule[]): void {
+function persistToDb(payload: { rules: AutomationRule[]; reportRecipientEmail: string }): void {
   void appSettingsRepository.saveAs("comm_automation_rules", {
     id: "comm_automation_rules",
-    rules,
+    ...payload,
   });
 }
 
@@ -142,38 +141,48 @@ interface AutomationSettingsState {
   rules: AutomationRule[];
   /** Recipient for daily/weekly/monthly business reports (management summaries have no single "customer" to address). */
   reportRecipientEmail: string;
+  refresh(): Promise<void>;
   isEnabled(eventKey: AutomationEventKey): boolean;
   channelsFor(eventKey: AutomationEventKey): Array<"email" | "whatsapp">;
   setRule(eventKey: AutomationEventKey, patch: Partial<Omit<AutomationRule, "eventKey">>): void;
   setReportRecipientEmail(email: string): void;
 }
 
-export const useAutomationSettings = create<AutomationSettingsState>()(
-  persist(
-    (set, get) => ({
-      rules: DEFAULT_RULES,
-      reportRecipientEmail: "",
+export const useAutomationSettings = create<AutomationSettingsState>()((set, get) => ({
+  rules: DEFAULT_RULES,
+  reportRecipientEmail: "",
 
-      isEnabled(eventKey) {
-        return get().rules.find((r) => r.eventKey === eventKey)?.enabled ?? false;
-      },
+  async refresh() {
+    const saved = await appSettingsRepository.read("comm_automation_rules").catch(() => null);
+    const savedRules = Array.isArray(saved?.rules) ? (saved.rules as AutomationRule[]) : [];
+    const byKey = new Map(savedRules.map((rule) => [rule.eventKey, rule]));
+    set({
+      rules: DEFAULT_RULES.map((rule) => ({ ...rule, ...byKey.get(rule.eventKey) })),
+      reportRecipientEmail:
+        typeof saved?.reportRecipientEmail === "string" ? saved.reportRecipientEmail : "",
+    });
+  },
 
-      channelsFor(eventKey) {
-        return get().rules.find((r) => r.eventKey === eventKey)?.channels ?? [];
-      },
+  isEnabled(eventKey) {
+    return get().rules.find((r) => r.eventKey === eventKey)?.enabled ?? false;
+  },
 
-      setRule(eventKey, patch) {
-        set((s) => {
-          const next = s.rules.map((r) => (r.eventKey === eventKey ? { ...r, ...patch } : r));
-          persistToDb(next);
-          return { rules: next };
-        });
-      },
+  channelsFor(eventKey) {
+    return get().rules.find((r) => r.eventKey === eventKey)?.channels ?? [];
+  },
 
-      setReportRecipientEmail(email) {
-        set({ reportRecipientEmail: email });
-      },
-    }),
-    { name: "mtj-comm-automation-v1" },
-  ),
-);
+  setRule(eventKey, patch) {
+    set((s) => {
+      const next = s.rules.map((r) => (r.eventKey === eventKey ? { ...r, ...patch } : r));
+      persistToDb({ rules: next, reportRecipientEmail: s.reportRecipientEmail });
+      return { rules: next };
+    });
+  },
+
+  setReportRecipientEmail(email) {
+    set((s) => {
+      persistToDb({ rules: s.rules, reportRecipientEmail: email });
+      return { reportRecipientEmail: email };
+    });
+  },
+}));

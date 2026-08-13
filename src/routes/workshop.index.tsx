@@ -133,7 +133,7 @@ function WorkshopBooksPage() {
                   )}
                   {planned && (
                     <span className="text-[9px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-0.5">
-                      Coming Soon
+                      Planned
                     </span>
                   )}
                 </div>

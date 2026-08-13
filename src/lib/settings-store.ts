@@ -2207,8 +2207,9 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   // used to be `set({ ...DEFAULTS })`, which wiped every registered user back
   // to a single default "Owner" stub, blanked the firm profile, and reset
   // currentUserRole/branches — locking the administrator out mid-pilot.
-  // Factory Reset (FactoryResetDialog -> clearAllLocalData) is the only
-  // operation allowed to erase that data.
+  // Browser session cleanup (FactoryResetDialog -> clearBrowserSessionResidue)
+  // is only a troubleshooting action. Supabase production data remains
+  // authoritative and is never deleted by this client-side path.
   resetAll: () => {
     set({
       branding: DEFAULTS.branding,
@@ -2221,110 +2222,36 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   },
 }));
 
-/** All Zustand stores in MTJ. Used by Backup/Export. */
-export const PILOT_STORAGE_KEYS = [
-  "mtj-settings-v1",
-  "mtj-people-v1",
-  "mtj-orders-v1",
-  "mtj-ledger-v1",
-  "mtj-jobcards-v1",
-  "mtj-workers-v1",
-  "mtj-catalog-v1",
-  "mtj-stock-v1",
-  "mtj-billing-v1",
-  "mtj-ratecut-v1",
-  "mtj-repair-v1",
-  "mtj-dailyclose-v1",
-  "mtj-printlog-v1",
-  "mtj-whatsapp-v1",
-];
+/** Retired local business-store keys. Kept empty for legacy settings UI imports. */
+export const PILOT_STORAGE_KEYS: string[] = [];
 
 export function exportPilotData(): string {
-  if (typeof window === "undefined") return "{}";
-  const out: Record<string, unknown> = {
-    _exportedAt: new Date().toISOString(),
-    _app: "MTJ ERP v1 pilot",
-  };
-  for (const k of PILOT_STORAGE_KEYS) {
-    const v = window.localStorage.getItem(k);
-    if (v) {
-      try {
-        out[k] = JSON.parse(v);
-      } catch {
-        out[k] = v;
-      }
-    }
-  }
-  return JSON.stringify(out, null, 2);
+  return JSON.stringify(
+    {
+      _exportedAt: new Date().toISOString(),
+      _app: "AVS Gold ERP",
+      _status: "retired",
+      message:
+        "Browser-local ERP backup/export has been retired. Use Supabase backup and document export workflows.",
+    },
+    null,
+    2,
+  );
 }
 
 export function importPilotData(json: string): { ok: boolean; restored: string[]; error?: string } {
-  if (typeof window === "undefined") return { ok: false, restored: [], error: "Not in browser" };
-  try {
-    const parsed = JSON.parse(json) as Record<string, unknown>;
-    const restored: string[] = [];
-    for (const k of PILOT_STORAGE_KEYS) {
-      if (parsed[k] !== undefined) {
-        window.localStorage.setItem(
-          k,
-          typeof parsed[k] === "string" ? (parsed[k] as string) : JSON.stringify(parsed[k]),
-        );
-        restored.push(k);
-      }
-    }
-    return { ok: true, restored };
-  } catch (e) {
-    return { ok: false, restored: [], error: e instanceof Error ? e.message : "Invalid JSON" };
-  }
+  void json;
+  return {
+    ok: false,
+    restored: [],
+    error:
+      "Browser-local ERP import has been retired. Restore production data through Supabase-controlled backup workflows.",
+  };
 }
 
-/**
- * Clears the flat localStorage-based pilot cache only. Does NOT touch the
- * encrypted local SQLite database in IndexedDB (see clearAllLocalData below)
- * — base-repository.ts's local-first read()/readAll() serve from that
- * database, so this alone leaves orders/ledger/etc. looking unchanged.
- */
-export function clearPilotData() {
-  if (typeof window === "undefined") return;
-  for (const k of PILOT_STORAGE_KEYS) window.localStorage.removeItem(k);
-
-  // Clean up all legacy migration / truth keys
-  window.localStorage.removeItem("mtj_source_of_truth");
-  window.localStorage.removeItem("mtj_migrated_snapshot_hash");
-  window.localStorage.removeItem("mtj_last_migration_at");
-
-  // Dynamically remove any other leftover mtj keys (except drafts and preferences)
-  const keysToRemove: string[] = [];
-  for (let i = 0; i < window.localStorage.length; i++) {
-    const key = window.localStorage.key(i);
-    if (key && (key.startsWith("mtj-") || key.startsWith("mtj_"))) {
-      if (
-        !key.startsWith("mtj-drafts-") &&
-        !key.startsWith("mtj-app-") &&
-        !key.includes("-draft")
-      ) {
-        keysToRemove.push(key);
-      }
-    }
-  }
-  for (const key of keysToRemove) {
-    window.localStorage.removeItem(key);
-  }
-}
-
-/**
- * The real "clear everything local" reset: the flat localStorage pilot cache
- * (clearPilotData above) PLUS the encrypted local SQLite database in
- * IndexedDB, PLUS sessionStorage. This is what the Settings "Clear Local
- * Pilot Data (Dev)" button actually needs to call — clearPilotData() alone
- * left orders/vault/etc. showing stale numbers because they're served
- * local-first from the SQLite database, not from these flat keys.
- */
-export async function clearAllLocalData(): Promise<void> {
-  clearPilotData();
+/** Production ERP data remains in Supabase and must be managed through authorized workflows. */
+export async function clearBrowserSessionResidue(): Promise<void> {
   if (typeof window !== "undefined") {
     window.sessionStorage.clear();
   }
-  const { clearLocalDatabase } = await import("@/lib/local-db");
-  await clearLocalDatabase();
 }

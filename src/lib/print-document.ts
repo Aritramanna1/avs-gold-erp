@@ -90,18 +90,12 @@ async function toDataUrl(src: string): Promise<string | null> {
 /**
  * Serializes `root` with every image embedded as a data: URL.
  *
- * Printing on the desktop hands the document's HTML to a SEPARATE Electron
- * window (see main.ts PRINT_HTML / PRINT_PREVIEW_HTML). A `blob:` object URL —
- * which is what the local file vault hands back for any stored attachment: a
- * worker's photo, a scanned Aadhaar/PAN/GST certificate, a signature, a design
- * photo on a job card — is scoped to the document that created it and resolves
- * to nothing in that other window, so the image prints as its alt text and the
- * document goes out with a blank box where a mandatory scan should be. An
- * `http(s):` src fails the same way on a workshop floor with no network.
- *
- * Embedding the bytes is the only form that survives the window boundary, an
- * offline install, and a restart. Every printable document in the ERP goes
- * through here, so a new attachment type needs no print-side work.
+ * Printing hands the document HTML to a separate browser print window. A
+ * `blob:` object URL is scoped to the document that created it and may resolve
+ * to nothing in that other window, so a mandatory scan/photo can print as a
+ * blank box. Embedding the bytes is the stable form that survives the print
+ * window boundary. Every printable document in the ERP goes through here, so a
+ * new attachment type needs no print-side work.
  */
 export async function serializeWithInlinedImages(root: HTMLElement): Promise<string> {
   const clone = root.cloneNode(true) as HTMLElement;

@@ -50,11 +50,11 @@ const GROUP_ICONS: Record<MaterialGroup, typeof Coins> = {
 };
 
 /**
- * Gold & Material Vault panel — grouped balances (Gold / Manufacturing
+ * Gold & Material Vault panel - grouped balances (Gold / Manufacturing
  * Materials / Recovery), the Material Conversion transaction, an authorized
  * Adjustment entry (the only manual-edit path), and full transaction
  * history. Every balance shown here is derived from material-vault-store.ts's
- * movement log — nothing here writes a balance directly.
+ * movement log - nothing here writes a balance directly.
  */
 export function MaterialVaultPanel() {
   const movements = useMaterialVault((s) => s.movements);
@@ -72,7 +72,7 @@ export function MaterialVaultPanel() {
         await refresh();
         attempts += 1;
         // Auth/session hydration can reset in-memory stores after the first
-        // route paint. Retry a few times so a persisted local-first movement
+        // route paint. Retry a few times so a Supabase-backed movement
         // is reloaded after that boundary without polling forever.
         if (!cancelled && attempts < 3 && useMaterialVault.getState().movements.length === 0) {
           window.setTimeout(() => void hydrate(), 500);
@@ -179,7 +179,7 @@ export function MaterialVaultPanel() {
         </h3>
         {stockItems.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No material stock yet. Use “Add / Manage Stock” to record material in.
+            No material stock yet. Use "Add / Manage Stock" to record material in.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -202,7 +202,7 @@ export function MaterialVaultPanel() {
                     </td>
                     <td className="text-right font-mono">{mgToGrams(it.weightMg)} g</td>
                     <td className="text-right font-mono text-gold">
-                      {it.fineMg > 0 ? `${mgToGrams(it.fineMg)} g` : "—"}
+                      {it.fineMg > 0 ? `${mgToGrams(it.fineMg)} g` : "-"}
                     </td>
                     <td className="pl-4 text-muted-foreground">{it.unit}</td>
                   </tr>
@@ -243,7 +243,7 @@ export function MaterialVaultPanel() {
                       </span>
                     </td>
                     <td className="text-xs text-muted-foreground">{m.category}</td>
-                    <td className="text-xs text-muted-foreground">{m.reference ?? "—"}</td>
+                    <td className="text-xs text-muted-foreground">{m.reference ?? "-"}</td>
                     <td
                       className={`text-right font-mono ${m.deltaMg < 0 ? "text-destructive" : "text-emerald-600"}`}
                     >
@@ -252,7 +252,7 @@ export function MaterialVaultPanel() {
                     </td>
                     <td className="text-right font-mono">{mgToGrams(m.balanceAfterMg)} g</td>
                     <td className="text-xs text-muted-foreground">
-                      {m.remarks ?? "—"}
+                      {m.remarks ?? "-"}
                       {m.conversionLossMg != null && (
                         <span className="block text-[10px] text-amber-600">
                           Loss: {mgToGrams(m.conversionLossMg)} g
@@ -275,7 +275,7 @@ export function MaterialVaultPanel() {
 }
 
 /**
- * Add / manage material stock — the working entry path for KDM Balls, Chains,
+ * Add / manage material stock - the working entry path for KDM Balls, Chains,
  * Findings, Components, etc. Purchase/Return add stock; Issue removes it. Each
  * posts through the same movement log (no direct balance edit).
  */
@@ -337,7 +337,7 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
     const deltaMg = gramsToMg(n) * sign;
     const purityVal = Number(purity) || 0;
     if (sign < 0) {
-      // Stock is tracked per (material × purity) — check this exact stock item.
+      // Stock is tracked per material and purity - check this exact stock item.
       const available = movements
         .filter(
           (m) =>
@@ -348,7 +348,7 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
         .reduce((s, m) => s + m.deltaMg, 0);
       if (Math.abs(deltaMg) > available) {
         setError(
-          `Issue exceeds stock — available ${(available / 1000).toFixed(3)} g of this material at this purity.`,
+          `Issue exceeds stock - available ${(available / 1000).toFixed(3)} g of this material at this purity.`,
         );
         return;
       }
@@ -455,7 +455,7 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
             <Input
               value={reference}
               onChange={(e) => setReference(e.target.value)}
-              placeholder="Supplier, worker, order…"
+              placeholder="Supplier, worker, order..."
             />
           </div>
           {error && (
@@ -470,7 +470,7 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
             Cancel
           </Button>
           <Button onClick={submit} disabled={saving} className="gap-2" data-testid="stock-submit">
-            <Wrench className="h-4 w-4" /> {saving ? "Saving…" : "Record Stock"}
+            <Wrench className="h-4 w-4" /> {saving ? "Saving..." : "Record Stock"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -492,7 +492,7 @@ function CategorySelect({
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger data-testid={testId}>
-        <SelectValue placeholder="Select material…" />
+        <SelectValue placeholder="Select material..." />
       </SelectTrigger>
       <SelectContent>
         {categories.map((c) => (
@@ -506,7 +506,7 @@ function CategorySelect({
 }
 
 /**
- * Manage Materials — admin-configurable material list. New materials persist and
+ * Manage Materials - admin-configurable material list. New materials persist and
  * appear in every material dropdown. Built-ins can't be removed; admin-defined
  * ones can. Nothing about the material list is hard-coded.
  */
@@ -589,7 +589,7 @@ function MaterialManageDialog({ open, onClose }: { open: boolean; onClose: () =>
                     <span>
                       {c.label}{" "}
                       <span className="text-[11px] text-muted-foreground">
-                        · {MATERIAL_GROUP_LABELS[c.group]}
+                        - {MATERIAL_GROUP_LABELS[c.group]}
                       </span>
                     </span>
                     <Button
@@ -687,7 +687,7 @@ function MaterialAdjustmentDialog({ open, onClose }: { open: boolean; onClose: (
             <CategorySelect value={category} onChange={setCategory} />
           </div>
           <div>
-            <Label>Adjustment (g) — negative to reduce *</Label>
+            <Label>Adjustment (g) - negative to reduce *</Label>
             <Input
               value={deltaG}
               onChange={(e) => setDeltaG(e.target.value)}
@@ -701,7 +701,7 @@ function MaterialAdjustmentDialog({ open, onClose }: { open: boolean; onClose: (
               rows={2}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Required — physical stock count correction, etc."
+              placeholder="Required - physical stock count correction, etc."
             />
           </div>
           {error && (
@@ -721,7 +721,7 @@ function MaterialAdjustmentDialog({ open, onClose }: { open: boolean; onClose: (
             className="gap-2"
             data-testid="adjustment-submit"
           >
-            <Settings2 className="h-4 w-4" /> {saving ? "Saving…" : "Record Adjustment"}
+            <Settings2 className="h-4 w-4" /> {saving ? "Saving..." : "Record Adjustment"}
           </Button>
         </DialogFooter>
       </DialogContent>

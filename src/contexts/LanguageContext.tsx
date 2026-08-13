@@ -19,7 +19,7 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = "mtj-app-language";
+const SESSION_STORAGE_KEY = "mtj-app-language";
 
 function isLanguageCode(value: unknown): value is LanguageCode {
   return value === "en" || value === "hi" || value === "mr" || value === "bn";
@@ -27,7 +27,7 @@ function isLanguageCode(value: unknown): value is LanguageCode {
 
 function readInitialLanguage(): LanguageCode {
   if (typeof window === "undefined") return "en";
-  const stored = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+  const stored = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
   if (isLanguageCode(stored)) return stored;
   return "en";
 }
@@ -78,11 +78,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (!isLanguageCode(newLang)) return;
     // Only allow languages that are flagged enabled, unless a Super-Owner override is set.
     const allowBeta =
-      typeof window !== "undefined" && window.localStorage.getItem("mtj-i18n-allow-beta") === "1";
+      typeof window !== "undefined" && window.sessionStorage.getItem("mtj-i18n-allow-beta") === "1";
     if (!LANGUAGE_INFO[newLang].enabled && !allowBeta) return;
     setLangState(newLang);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(LOCAL_STORAGE_KEY, newLang);
+      window.sessionStorage.setItem(SESSION_STORAGE_KEY, newLang);
     }
     // Mirror into the persisted settings-store so other devices/sessions stay in sync.
     try {

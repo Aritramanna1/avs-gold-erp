@@ -6,7 +6,8 @@ import { create } from "zustand";
  *
  * - `criticalLoadDone` flips once settings/branches/modules are in (the few
  *   pulls the shell itself needs). The boot skeleton is removed here, so the
- *   real shell + route appear fast — within a few local reads in Offline mode.
+ *   real shell + route appear fast while Supabase-backed module data continues
+ *   hydrating in the background.
  * - `initialLoadDone` flips once the full background pull has populated every
  *   operational store. Individual modules can still show their own per-store
  *   skeletons between the two, so data fills in as it arrives rather than the

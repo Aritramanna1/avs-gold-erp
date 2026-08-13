@@ -7,9 +7,9 @@
  * converted). This module holds that logic ONCE so the three book kinds are
  * thin adapters over it, not three copies.
  *
- * Read-only and offline-first: adapters read local zustand state only. Balances
- * are "current payable gold" per purity — no salary/wastage/deduction math,
- * which belongs to the (configurable) Payment module.
+ * Read-only adapters compile rows from the active Supabase-backed stores.
+ * Balances are "current payable gold" per purity; salary, wastage, and
+ * deduction rules belong to the configurable Payment module.
  */
 import { getCaratLabel } from "./gold";
 

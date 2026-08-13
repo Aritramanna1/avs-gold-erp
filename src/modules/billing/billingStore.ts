@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { InvoiceItem, PaymentMode, GstKind, BillingType } from "@/lib/billing-store";
 
 // Re-exported (not redefined) so existing `import { BillingType } from
@@ -78,9 +77,40 @@ export interface BillingState {
   resetBillingSession: () => void;
 }
 
-export const useBillingStore = create<BillingState>()(
-  persist(
-    (set) => ({
+export const useBillingStore = create<BillingState>()((set) => ({
+  customerId: null,
+  selectedOrderId: null,
+  selectedStockId: null,
+  selectedJobId: null,
+  billingType: "ready_stock",
+  gst: "gst3",
+  items: [],
+  payments: [],
+  customerSearch: "",
+  orderSearch: "",
+  stockSearchQuery: "",
+  customerLedger: null,
+  goldLedger: null,
+
+  setCustomerId: (id) => set({ customerId: id }),
+  setSelectedOrderId: (id) => set({ selectedOrderId: id }),
+  setSelectedStockId: (id) => set({ selectedStockId: id }),
+  setSelectedJobId: (id) => set({ selectedJobId: id }),
+  setBillingType: (type) => set({ billingType: type }),
+  setGst: (gst) => set({ gst: gst }),
+
+  setItems: (items) => set({ items: items }),
+  setPayments: (payments) => set({ payments: payments }),
+
+  setCustomerSearch: (query) => set({ customerSearch: query }),
+  setOrderSearch: (query) => set({ orderSearch: query }),
+  setStockSearchQuery: (query) => set({ stockSearchQuery: query }),
+
+  setCustomerLedger: (ledger) => set({ customerLedger: ledger }),
+  setGoldLedger: (ledger) => set({ goldLedger: ledger }),
+
+  resetBillingSession: () =>
+    set({
       customerId: null,
       selectedOrderId: null,
       selectedStockId: null,
@@ -94,43 +124,5 @@ export const useBillingStore = create<BillingState>()(
       stockSearchQuery: "",
       customerLedger: null,
       goldLedger: null,
-
-      setCustomerId: (id) => set({ customerId: id }),
-      setSelectedOrderId: (id) => set({ selectedOrderId: id }),
-      setSelectedStockId: (id) => set({ selectedStockId: id }),
-      setSelectedJobId: (id) => set({ selectedJobId: id }),
-      setBillingType: (type) => set({ billingType: type }),
-      setGst: (gst) => set({ gst: gst }),
-
-      setItems: (items) => set({ items: items }),
-      setPayments: (payments) => set({ payments: payments }),
-
-      setCustomerSearch: (query) => set({ customerSearch: query }),
-      setOrderSearch: (query) => set({ orderSearch: query }),
-      setStockSearchQuery: (query) => set({ stockSearchQuery: query }),
-
-      setCustomerLedger: (ledger) => set({ customerLedger: ledger }),
-      setGoldLedger: (ledger) => set({ goldLedger: ledger }),
-
-      resetBillingSession: () =>
-        set({
-          customerId: null,
-          selectedOrderId: null,
-          selectedStockId: null,
-          selectedJobId: null,
-          billingType: "ready_stock",
-          gst: "gst3",
-          items: [],
-          payments: [],
-          customerSearch: "",
-          orderSearch: "",
-          stockSearchQuery: "",
-          customerLedger: null,
-          goldLedger: null,
-        }),
     }),
-    {
-      name: "mtj-billing-module-state-v1",
-    },
-  ),
-);
+}));

@@ -64,10 +64,9 @@ function PrintPage() {
   } = usePrintRecord(order ? (docTypeMap[kind as Kind] ?? "order_slip") : null, id);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
-  // Reference images, read back out of the local encrypted vault. Full-size
-  // bytes, not the row's inlined thumbnail — a printed reference photo is what
-  // the karigar works from. Depends on no UI state and no network, so a
-  // reprint after a restart is identical.
+  // Reference images resolve from Supabase-backed storage. Full-size bytes,
+  // not the row's inlined thumbnail, are used because a printed reference
+  // photo is what the karigar works from.
   const attachmentItems = useAttachments((s) => s.items);
   const [referenceImages, setReferenceImages] = useState<
     Array<{ docKey: string; label: string; url: string }>
@@ -506,9 +505,9 @@ function PrintPage() {
               )}
 
               {/* Reference images — the piece the karigar is actually making.
-                  Resolved full-size from the local vault (not the 240px
+                  Resolved full-size from document storage (not the 240px
                   thumbnail), and embedded as data: URLs by the print engine, so
-                  they survive the Electron print window and work offline. */}
+                  they survive the print window. */}
               {referenceImages.length > 0 && (
                 <section className="mb-4">
                   <div className="font-medium text-sm mb-2">Reference Images</div>

@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useEstimates } from "@/lib/billing-documents-store";
-import { usePeople } from "@/lib/people-store";
+import { type Estimate, useEstimates } from "@/lib/billing-documents-store";
+import type { Person } from "@/lib/people-store";
 import { paiseToRupees } from "@/lib/billing-store";
+import { fetchActiveCustomerOptions, fetchEstimates } from "@/lib/billing-documents-query";
 import { FileText, Plus, Printer, Search, X } from "lucide-react";
 
 export const Route = createFileRoute("/billing/estimates/")({
@@ -14,13 +15,14 @@ export const Route = createFileRoute("/billing/estimates/")({
 });
 
 function EstimatesIndex() {
-  const estimates = useEstimates((s) => s.estimates);
-  const refresh = useEstimates((s) => s.refresh);
   const create = useEstimates((s) => s.create);
   const cancel = useEstimates((s) => s.cancel);
   const convert = useEstimates((s) => s.convertToInvoice);
-  const people = usePeople((s) => s.people).filter((p) => p.type === "customer" && p.active);
   const [query, setQuery] = useState("");
+  const [estimates, setEstimates] = useState<Estimate[]>([]);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [customerId, setCustomerId] = useState("");
   const [description, setDescription] = useState("");
@@ -28,8 +30,26 @@ function EstimatesIndex() {
   const [validDays, setValidDays] = useState("7");
   const [message, setMessage] = useState<string | null>(null);
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let live = true;
+    setLoading(true);
+    setLoadError(null);
+    Promise.all([fetchEstimates(query), fetchActiveCustomerOptions()])
+      .then(([nextEstimates, nextPeople]) => {
+        if (!live) return;
+        setEstimates(nextEstimates);
+        setPeople(nextPeople);
+      })
+      .catch((error: any) => {
+        if (!live) return;
+        setLoadError(error?.message ?? "Could not load estimates.");
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [query]);
   const rows = useMemo(
     () =>
       estimates.filter((e) =>
@@ -62,7 +82,7 @@ function EstimatesIndex() {
       lineTotalPaise: total,
       chargeMode: "job_work" as const,
     };
-    await create({
+    const created = await create({
       customerId: customer.id,
       customerName: customer.fullName,
       customerPhone: customer.phone,
@@ -75,6 +95,10 @@ function EstimatesIndex() {
       branchId: undefined,
       notes: "Estimate / quotation — not a tax invoice.",
     });
+    setEstimates((current) => [
+      created,
+      ...current.filter((estimate) => estimate.id !== created.id),
+    ]);
     setShowNew(false);
     setDescription("");
     setAmount("");
@@ -163,54 +187,102 @@ function EstimatesIndex() {
         </div>
       </div>
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="p-3">Estimate</th>
-              <th className="p-3">Customer</th>
-              <th className="p-3">Valid until</th>
-              <th className="p-3 text-right">Amount</th>
-              <th className="p-3">Status</th>
-              <th className="p-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((e) => (
-              <tr key={e.id} className="border-b border-border last:border-0">
-                <td className="p-3 font-mono text-xs text-gold">{e.estimateNo}</td>
-                <td className="p-3">
-                  {e.customerName}
-                  <div className="text-xs text-muted-foreground">{e.customerPhone}</div>
-                </td>
-                <td className="p-3">
-                  {e.validUntilIso ? new Date(e.validUntilIso).toLocaleDateString() : "—"}
-                </td>
-                <td className="p-3 text-right">₹ {paiseToRupees(e.grandTotalPaise)}</td>
-                <td className="p-3">{e.status}</td>
-                <td className="p-3">
-                  <div className="flex justify-end gap-1">
-                    <Link to="/billing/estimate/$id" params={{ id: e.id }}>
-                      <Button size="sm" variant="outline">
-                        <Printer className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                    {e.status === "draft" && (
-                      <>
-                        <Button size="sm" onClick={() => void convert(e.id)}>
-                          Convert
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => void cancel(e.id)}>
-                          Cancel
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </td>
+        {loadError ? (
+          <div className="p-8 text-center text-sm">
+            <p className="text-destructive">{loadError}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => void fetchEstimates(query).then(setEstimates)}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : loading ? (
+          <p className="p-8 text-center text-sm text-muted-foreground">Loading estimates...</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="border-b border-border text-left text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="p-3">Estimate</th>
+                <th className="p-3">Customer</th>
+                <th className="p-3">Valid until</th>
+                <th className="p-3 text-right">Amount</th>
+                <th className="p-3">Status</th>
+                <th className="p-3 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {rows.length === 0 && (
+            </thead>
+            <tbody>
+              {rows.map((e) => (
+                <tr key={e.id} className="border-b border-border last:border-0">
+                  <td className="p-3 font-mono text-xs text-gold">{e.estimateNo}</td>
+                  <td className="p-3">
+                    {e.customerName}
+                    <div className="text-xs text-muted-foreground">{e.customerPhone}</div>
+                  </td>
+                  <td className="p-3">
+                    {e.validUntilIso ? new Date(e.validUntilIso).toLocaleDateString() : "—"}
+                  </td>
+                  <td className="p-3 text-right">₹ {paiseToRupees(e.grandTotalPaise)}</td>
+                  <td className="p-3">{e.status}</td>
+                  <td className="p-3">
+                    <div className="flex justify-end gap-1">
+                      <Link to="/billing/estimate/$id" params={{ id: e.id }}>
+                        <Button size="sm" variant="outline">
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      {e.status === "draft" && (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              const result = await convert(e.id);
+                              if (result) {
+                                setEstimates((current) =>
+                                  current.map((estimate) =>
+                                    estimate.id === e.id
+                                      ? {
+                                          ...estimate,
+                                          status: "converted",
+                                          convertedToInvoiceId: result.invoiceId,
+                                          updatedAt: Date.now(),
+                                        }
+                                      : estimate,
+                                  ),
+                                );
+                              }
+                            }}
+                          >
+                            Convert
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={async () => {
+                              await cancel(e.id);
+                              setEstimates((current) =>
+                                current.map((estimate) =>
+                                  estimate.id === e.id
+                                    ? { ...estimate, status: "cancelled", updatedAt: Date.now() }
+                                    : estimate,
+                                ),
+                              );
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {!loading && !loadError && rows.length === 0 && (
           <p className="p-8 text-center text-sm text-muted-foreground">No estimates yet.</p>
         )}
       </div>

@@ -586,6 +586,7 @@ const billingPreferencesRepository = createRepository<{ id: string; gstDefault: 
   "app_settings",
 );
 const invoiceAddInFlight = new Set<string>();
+const BILLING_COMPAT_CACHE_LIMIT = 500;
 
 export const useBilling = create<BillingState>()((set, get) => ({
   invoices: [],
@@ -601,7 +602,13 @@ export const useBilling = create<BillingState>()((set, get) => ({
       !currentUserRole || GLOBAL_ROLES.includes(currentUserRole)
         ? null
         : selectedBranchId || "MAIN";
-    let invoiceQ = supabase.from("invoices").select("data").limit(10000);
+    // Compatibility cache only; register/report screens should use paginated
+    // Supabase queries or aggregates instead of loading the full invoice table.
+    let invoiceQ = supabase
+      .from("invoices")
+      .select("data")
+      .order("updated_at", { ascending: false })
+      .limit(BILLING_COMPAT_CACHE_LIMIT);
     if (bid) invoiceQ = invoiceQ.filter("data->>branchId", "eq", bid) as typeof invoiceQ;
     const [invoiceRes, prefsRes] = await Promise.all([
       invoiceQ,

@@ -245,18 +245,34 @@ export const useWorkers = create<WorkersState>()((set, get) => ({
         ? null
         : selectedBranchId || "MAIN";
 
-    let attQ = supabase.from("attendance").select("data").limit(10000);
+    const DETAIL_CACHE_LIMIT = 500;
+    const LEDGER_CACHE_LIMIT = 1000;
+    const REFERENCE_CACHE_LIMIT = 1000;
+
+    let attQ = supabase
+      .from("attendance")
+      .select("data")
+      .order("created_at", { ascending: false })
+      .limit(DETAIL_CACHE_LIMIT);
     if (bid) attQ = attQ.filter("data->>branchId", "eq", bid) as typeof attQ;
 
-    let txQ = supabase.from("worker_transactions").select("data, kind").limit(20000);
+    let txQ = supabase
+      .from("worker_transactions")
+      .select("data, kind")
+      .order("created_at", { ascending: false })
+      .limit(LEDGER_CACHE_LIMIT);
     if (bid) txQ = txQ.filter("data->>branchId", "eq", bid) as typeof txQ;
 
-    let setQ = supabase.from("worker_settlements").select("data").limit(10000);
+    let setQ = supabase
+      .from("worker_settlements")
+      .select("data")
+      .order("created_at", { ascending: false })
+      .limit(DETAIL_CACHE_LIMIT);
     if (bid) setQ = setQ.filter("data->>branchId", "eq", bid) as typeof setQ;
 
     const [attRes, rulesRes, txRes, setRes] = await Promise.all([
       attQ,
-      supabase.from("salary_rules").select("data").limit(10000),
+      supabase.from("salary_rules").select("data").limit(REFERENCE_CACHE_LIMIT),
       txQ,
       setQ,
     ]);

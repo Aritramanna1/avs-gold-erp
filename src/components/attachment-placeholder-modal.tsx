@@ -62,7 +62,7 @@ export function AttachmentPlaceholderModal({
   const [fileMissing, setFileMissing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const helpText =
-    "Documents and photographs are stored securely in this device's encrypted application vault.";
+    "Documents and photographs are stored in the configured Supabase-backed document storage and linked to this ERP record.";
 
   // Reset local state whenever the modal opens for a (possibly different) record.
   useEffect(() => {
@@ -76,9 +76,9 @@ export function AttachmentPlaceholderModal({
     setSelectedFile(null);
     setFileMissing(false);
 
-    // Bytes live in the local vault, not in the row, so the preview has to be
-    // read back asynchronously. getAttachmentUrl() falls back to the legacy
-    // inlined base64 for records created before the vault existed.
+    // Bytes live in Supabase-backed storage, not in the row, so the preview
+    // resolves asynchronously. getAttachmentUrl() still falls back to legacy
+    // inlined base64 for records created before the remote storage path existed.
     setFileDataUrl("");
     void getAttachmentUrl(entityType, entityId, docKey)
       .then((url) => {
@@ -141,11 +141,6 @@ export function AttachmentPlaceholderModal({
     setIsUploading(true);
 
     try {
-      // 1. LOCAL FIRST, ALWAYS. The bytes go into the encrypted local vault and
-      //    the attachment row records a reference to them. This is the durable
-      //    write — it needs no network, in any deployment mode, and once it
-      //    returns the document survives restart/logout/restore. Everything
-      //    below is replication, not storage.
       if (selectedFile) {
         await saveWithFile(entityType, entityId, docKey, selectedFile, {
           filed: true,
@@ -164,7 +159,7 @@ export function AttachmentPlaceholderModal({
         thumbnailDataUrl: rec?.thumbnailDataUrl,
       });
 
-      toast.success("Attachment saved locally.");
+      toast.success("Attachment saved.");
       onOpenChange(false);
     } catch (err: any) {
       console.error("[AttachmentModal Save Error]:", err);
@@ -184,7 +179,7 @@ export function AttachmentPlaceholderModal({
       setFileMissing(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
       onSaved?.({ filed: false, note: "" });
-      toast.success("Document cleared from local storage.");
+      toast.success("Document attachment cleared.");
       onOpenChange(false);
     } catch (err: any) {
       console.error("[AttachmentModal Clear Error]:", err);
@@ -258,7 +253,7 @@ export function AttachmentPlaceholderModal({
                   <div className="max-h-48 rounded overflow-hidden shadow-sm border border-border/60 bg-white flex items-center justify-center">
                     {fileMissing ? (
                       <div className="p-8 text-center text-xs text-red-500 font-medium font-mono">
-                        File missing from local storage
+                        File unavailable in document storage
                       </div>
                     ) : (
                       <img

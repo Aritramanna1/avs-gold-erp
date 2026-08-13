@@ -62,8 +62,8 @@ function DesignPage() {
     }
   }, [draft?.category]);
 
-  // Bytes come from the local encrypted vault (thumbnail first, full-size once
-  // decrypted), not from base64 inlined on the row.
+  // Bytes resolve from Supabase-backed storage, with legacy inlined-base64
+  // fallback handled inside useAttachmentUrl.
   const photoUrl = useAttachmentUrl("catalog", d?.id ?? "", "design_photo");
 
   if (!d) {

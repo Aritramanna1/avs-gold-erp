@@ -30,6 +30,7 @@ import { useSettings } from "./settings-store";
 import { usePrintLog } from "./printlog-store";
 import { useRateCuts } from "./ratecut-store";
 import { useRepairs } from "./repair-store";
+import { getNextSequenceNumber } from "./sequence-manager";
 import { useStock } from "./stock-store";
 import { useWhatsapp } from "./whatsapp-store";
 import { useWorkers } from "./workers-store";
@@ -82,7 +83,33 @@ export interface SeedResult {
   receiveSlipNo: string;
 }
 
+const E2E_SEED_CACHE_KEY = "avs_e2e_seed_result_v1";
+
+function readSeedCache(): SeedResult | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(E2E_SEED_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && parsed.orderId && parsed.invoiceId ? (parsed as SeedResult) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSeedCache(result: SeedResult): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(E2E_SEED_CACHE_KEY, JSON.stringify(result));
+  } catch {
+    // Test seed cache is a speed-up only; seed data itself is still returned.
+  }
+}
+
 export async function seedPilotDataset(): Promise<SeedResult> {
+  const cached = readSeedCache();
+  if (cached) return cached;
+
   // 1. Reset everything
   usePeople.getState().reset?.();
   useOrders.getState().reset();
@@ -667,6 +694,7 @@ export async function seedPilotDataset(): Promise<SeedResult> {
 
   // 13. Repair
   const repair = useRepairs.getState().add({
+    repairNo: await getNextSequenceNumber("repair"),
     kind: "repair",
     status: "delivered",
     customerId: customer.id,
@@ -692,6 +720,7 @@ export async function seedPilotDataset(): Promise<SeedResult> {
 
   // 13b. Polishing job
   const polishing = useRepairs.getState().add({
+    repairNo: await getNextSequenceNumber("repair"),
     kind: "polishing",
     status: "delivered",
     customerId: customer.id,
@@ -869,7 +898,7 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     linkedLabel: dc.date,
   });
 
-  return {
+  const result = {
     customerId: customer.id,
     karigarId: karigar.id,
     outsideJewellerId: outsideJeweller.id,
@@ -909,6 +938,8 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     issueSlipNo,
     receiveSlipNo,
   };
+  writeSeedCache(result);
+  return result;
 }
 
 /** Mount once on window for Playwright harnesses. Safe to call repeatedly. */

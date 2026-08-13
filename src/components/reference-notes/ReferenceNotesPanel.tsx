@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useReferenceNotes } from "@/lib/reference-notes-store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { MessageSquare, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Props {
   entityType: "person" | "order" | "job";
@@ -11,14 +12,32 @@ interface Props {
 }
 
 export function ReferenceNotesPanel({ entityType, entityId }: Props) {
-  const store = useReferenceNotes();
-  const notes = store.getNotes(entityType, entityId).sort((a, b) => b.createdAt - a.createdAt);
+  const notes = useReferenceNotes((s) => s.getNotes(entityType, entityId)).sort(
+    (a, b) => b.createdAt - a.createdAt,
+  );
+  const refresh = useReferenceNotes((s) => s.refresh);
+  const addNote = useReferenceNotes((s) => s.addNote);
+  const removeNote = useReferenceNotes((s) => s.removeNote);
   const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const handleAdd = () => {
+  useEffect(() => {
+    void refresh(entityType, entityId).catch((error) =>
+      toast.error(error instanceof Error ? error.message : "Could not load reference notes"),
+    );
+  }, [entityType, entityId, refresh]);
+
+  const handleAdd = async () => {
     if (!draft.trim()) return;
-    store.addNote(entityType, entityId, draft.trim());
-    setDraft("");
+    setSaving(true);
+    try {
+      await addNote(entityType, entityId, draft.trim());
+      setDraft("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save reference note");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -32,7 +51,7 @@ export function ReferenceNotesPanel({ entityType, entityId }: Props) {
           rows={3}
         />
         <div className="flex justify-end">
-          <Button size="sm" onClick={handleAdd} disabled={!draft.trim()}>
+          <Button size="sm" onClick={handleAdd} disabled={!draft.trim() || saving}>
             Post Note
           </Button>
         </div>
@@ -65,7 +84,13 @@ export function ReferenceNotesPanel({ entityType, entityId }: Props) {
                 variant="ghost"
                 size="icon"
                 className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 text-destructive"
-                onClick={() => store.removeNote(note.id)}
+                onClick={() =>
+                  void removeNote(note.id).catch((error) =>
+                    toast.error(
+                      error instanceof Error ? error.message : "Could not remove reference note",
+                    ),
+                  )
+                }
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>

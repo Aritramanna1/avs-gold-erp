@@ -44,7 +44,7 @@ export function getFinancialYearPrefix(type: SequenceType): { prefix: string; ye
   if (type === "order") {
     prefix = `ORD-${yearStr}-`;
   } else if (type === "invoice") {
-    prefix = `MTJ/${yearStr}/`;
+    prefix = `AVS/${yearStr}/`;
   } else if (type === "jobcard") {
     prefix = `JC-${yearStr}-`;
   } else if (type === "repair") {
@@ -189,35 +189,10 @@ export function getNextSequenceSync(type: SequenceType): string {
         if (!isNaN(val) && val > maxNum) maxNum = val;
       }
     });
-  } else {
-    // Generic localStorage fallback to ensure unique, sequential numbering for new/dynamic modules
-    const key = `seq_local_max_${type}_${prefix}`;
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      maxNum = parseInt(stored, 10) || 0;
-    }
   }
 
   const nextVal = maxNum + 1;
   const seq = String(nextVal).padStart(4, "0");
-
-  if (
-    ![
-      "order",
-      "invoice",
-      "jobcard",
-      "repair",
-      "expense",
-      "gold_settlement",
-      "design",
-      "daily_close",
-      "customer",
-      "worker",
-    ].includes(type)
-  ) {
-    const key = `seq_local_max_${type}_${prefix}`;
-    localStorage.setItem(key, String(nextVal));
-  }
 
   return `${prefix}${seq}`;
 }

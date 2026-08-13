@@ -194,7 +194,7 @@ function getSettingFields(type: ProviderType) {
   return [{ key: "api_key", label: "API Key", placeholder: "••••••••", type: "password" }];
 }
 
-export default function CommunicationsDashboardPage() {
+function CommunicationsDashboardPage() {
   const branchId = useCurrentBranchId();
   const accessible = useBranch(useShallow((s) => s.getAccessibleBranches()));
 
@@ -220,7 +220,13 @@ export default function CommunicationsDashboardPage() {
   const invoices = useBilling((s) => s.invoices);
   const repairs = useRepairs((s) => s.repairs);
   const jobs = useJobCards((s) => s.jobs);
-  const { configs, upsertConfig, removeConfig, ensureDefaults } = useCommSettings();
+  const {
+    configs,
+    upsertConfig,
+    removeConfig,
+    ensureDefaults,
+    refresh: refreshCommSettings,
+  } = useCommSettings();
   const commEvents = useCommLog((s) => s.events);
   const storedTemplates = useSettings((s) => s.campaignTemplates);
   const setCampaignTemplates = useSettings((s) => s.setCampaignTemplates);
@@ -286,9 +292,9 @@ export default function CommunicationsDashboardPage() {
   const [waQueueIdx, setWaQueueIdx] = useState(0);
 
   useEffect(() => {
-    ensureDefaults(branchId);
+    void refreshCommSettings().finally(() => ensureDefaults(branchId));
     void refresh();
-  }, [branchId, refresh, ensureDefaults]);
+  }, [branchId, refresh, ensureDefaults, refreshCommSettings]);
 
   // Resync template drafts when the settings store hydrates (or changes) —
   // these fields snapshot storedTemplates via useState() below, which would

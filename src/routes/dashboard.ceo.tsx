@@ -4,10 +4,20 @@
  * Uses dynamic branches from settings-store (persisted in Supabase).
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { getBranchKPIs } from "@/lib/services/ceo-dashboard-service";
+import {
+  fetchCeoGoldTrend,
+  fetchCeoManufacturingGoldSummary,
+  fetchCeoProductionPipeline,
+  fetchCeoWorkerPerformance,
+  type CeoGoldTrendPoint,
+  type CeoManufacturingGoldSummary,
+  type CeoProductionPipelinePoint,
+  type CeoWorkerPerformanceRow,
+} from "@/lib/services/ceo-dashboard-analytics";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -17,15 +27,9 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { useLedger, computeBalances } from "@/lib/ledger-store";
 import { mgToGrams } from "@/lib/gold";
 import { useSettings } from "@/lib/settings-store";
-import { useMfgBills } from "@/lib/manufacturing-bill-store";
-import { useJobCards, JOB_STATUS_LABELS, JOB_STATUS_FLOW } from "@/lib/jobcards-store";
-import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { BarChart, Bar } from "recharts";
-import { computeGoldOutstandingRows } from "./reports.gold-outstanding";
-import { computeManufacturingGoldTotals } from "./reports.gold-summary";
 import type { Branch } from "@/lib/settings-store";
 import {
   Building2,
@@ -63,11 +67,6 @@ function fmtCr(paise: number): string {
   return `₹${rupees.toLocaleString("en-IN")}`;
 }
 
-function dayKey(ts: number): string {
-  const d = new Date(ts);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
 /**
  * Gold-first executive trend — the ledger's own running vault balance over
  * the last 30 days, day by day. Deliberately the FIRST chart on this
@@ -75,26 +74,45 @@ function dayKey(ts: number): string {
  * visual slot, ahead of any cash/revenue chart.
  */
 function GoldTrendChart() {
-  const entries = useLedger((s) => s.entries);
+  const [data, setData] = useState<CeoGoldTrendPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const data = useMemo(() => {
-    const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const before = entries.filter((e) => e.createdAt < since);
-    const inWindow = entries
-      .filter((e) => e.createdAt >= since)
-      .sort((a, b) => a.createdAt - b.createdAt);
-    let runningFineMg = computeBalances(before).totalUnderManagement;
-
-    const byDay = new Map<string, number>();
-    for (const e of inWindow) {
-      runningFineMg += e.netFineMg;
-      byDay.set(dayKey(e.createdAt), runningFineMg);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await fetchCeoGoldTrend(30));
+    } catch {
+      setError("Could not load gold trend from Supabase.");
+    } finally {
+      setLoading(false);
     }
-    return Array.from(byDay.entries()).map(([date, fineMg]) => ({
-      date,
-      grams: Number((fineMg / 1000).toFixed(3)),
-    }));
-  }, [entries]);
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-gold/30 bg-gold/5 p-5">
+        <div className="h-4 w-72 max-w-full rounded bg-muted/30 animate-pulse mb-4" />
+        <div className="h-[180px] rounded-xl bg-muted/20 animate-pulse" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-700">
+        {error}
+        <button type="button" onClick={() => void load()} className="ml-3 underline">
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   if (data.length < 2) {
     return (
@@ -142,63 +160,100 @@ function GoldTrendChart() {
  * with either report.
  */
 function ManufacturingGoldSummaryCard() {
-  const bills = useMfgBills((s) => s.bills);
-  const jobs = useJobCards((s) => s.jobs);
-  const workerEntries = useWorkerGoldBook((s) => s.entries);
-  const getWorkerBalance = useWorkerGoldBook((s) => s.getWorkerBalance);
+  const [summary, setSummary] = useState<CeoManufacturingGoldSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const outstandingRows = useMemo(
-    () => computeGoldOutstandingRows(bills, jobs, workerEntries, getWorkerBalance),
-    [bills, jobs, workerEntries, getWorkerBalance],
-  );
-  const totalOutstandingMg = outstandingRows.reduce((s, r) => s + Math.abs(r.outstandingMg), 0);
-  const mfgTotals = useMemo(() => computeManufacturingGoldTotals(bills), [bills]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setSummary(await fetchCeoManufacturingGoldSummary());
+    } catch {
+      setError("Could not load manufacturing gold summary.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (loading) {
+    return (
+      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="rounded-2xl border border-border bg-card p-4">
+            <div className="h-3 w-28 rounded bg-muted/30 animate-pulse" />
+            <div className="mt-3 h-6 w-24 rounded bg-muted/20 animate-pulse" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error || !summary) {
+    return (
+      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700">
+        {error ?? "No manufacturing gold summary available."}
+        <button type="button" onClick={() => void load()} className="ml-3 underline">
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-      <Link
-        to="/reports/gold-outstanding"
-        className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
-      >
-        <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
-          Gold Outstanding
+    <div className="space-y-2">
+      {summary.capped && (
+        <div className="text-xs text-amber-700">
+          Showing a bounded dashboard aggregate. Open reports for full register review.
         </div>
-        <div className="text-xl font-mono font-bold mt-1">{mgToGrams(totalOutstandingMg)} g</div>
-      </Link>
-      <Link
-        to="/reports/gold-summary"
-        className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
-      >
-        <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
-          Gold Issued (Mfg)
-        </div>
-        <div className="text-xl font-mono font-bold mt-1">{mgToGrams(mfgTotals.required)} g</div>
-      </Link>
-      <Link
-        to="/reports/gold-summary"
-        className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
-      >
-        <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
-          Gold Returned (Mfg)
-        </div>
-        <div className="text-xl font-mono font-bold mt-1">{mgToGrams(mfgTotals.returned)} g</div>
-      </Link>
-      <Link
-        to="/reports/gold-summary"
-        className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
-      >
-        <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
-          Wastage (Mfg)
-        </div>
-        <div className="text-xl font-mono font-bold mt-1">{mgToGrams(mfgTotals.wastage)} g</div>
-      </Link>
+      )}
+      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <Link
+          to="/reports/gold-outstanding"
+          className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
+        >
+          <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+            Gold Outstanding
+          </div>
+          <div className="text-xl font-mono font-bold mt-1">
+            {mgToGrams(summary.totalOutstandingMg)} g
+          </div>
+        </Link>
+        <Link
+          to="/reports/gold-summary"
+          className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
+        >
+          <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+            Gold Issued (Mfg)
+          </div>
+          <div className="text-xl font-mono font-bold mt-1">{mgToGrams(summary.issuedMg)} g</div>
+        </Link>
+        <Link
+          to="/reports/gold-summary"
+          className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
+        >
+          <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+            Gold Returned (Mfg)
+          </div>
+          <div className="text-xl font-mono font-bold mt-1">{mgToGrams(summary.returnedMg)} g</div>
+        </Link>
+        <Link
+          to="/reports/gold-summary"
+          className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
+        >
+          <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+            Wastage (Mfg)
+          </div>
+          <div className="text-xl font-mono font-bold mt-1">{mgToGrams(summary.wastageMg)} g</div>
+        </Link>
+      </div>
     </div>
   );
 }
-
-// The live manufacturing workflow, in order (see jobcards-store's
-// JOB_STATUS_FLOW). Legacy statuses are folded onto these on read.
-const JOB_STATUS_ORDER: (keyof typeof JOB_STATUS_LABELS)[] = JOB_STATUS_FLOW;
 
 /**
  * Production Status — every Job Card grouped by its own `status` field
@@ -206,39 +261,59 @@ const JOB_STATUS_ORDER: (keyof typeof JOB_STATUS_LABELS)[] = JOB_STATUS_FLOW;
  * grouping of existing data, not a new pipeline-stage model.
  */
 function ProductionPipelineChart() {
-  const jobs = useJobCards((s) => s.jobs);
+  const [data, setData] = useState<CeoProductionPipelinePoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const data = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const j of jobs) counts.set(j.status, (counts.get(j.status) ?? 0) + 1);
-    return JOB_STATUS_ORDER.filter((s) => s !== "closed").map((status) => ({
-      status: JOB_STATUS_LABELS[status],
-      count: counts.get(status) ?? 0,
-    }));
-  }, [jobs]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await fetchCeoProductionPipeline());
+    } catch {
+      setError("Could not load production status.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="text-xs uppercase tracking-wider font-bold text-muted-foreground mb-3">
         Production Status — Job Cards by Stage
       </div>
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-          <XAxis
-            dataKey="status"
-            fontSize={9}
-            tickLine={false}
-            interval={0}
-            angle={-20}
-            textAnchor="end"
-            height={60}
-          />
-          <YAxis fontSize={10} tickLine={false} allowDecimals={false} width={30} />
-          <Tooltip />
-          <Bar dataKey="count" fill="#d4af37" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+      {loading ? (
+        <div className="h-[200px] rounded-xl bg-muted/20 animate-pulse" />
+      ) : error ? (
+        <div className="py-8 text-center text-sm text-amber-700">
+          {error}
+          <button type="button" onClick={() => void load()} className="ml-3 underline">
+            Retry
+          </button>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+            <XAxis
+              dataKey="status"
+              fontSize={9}
+              tickLine={false}
+              interval={0}
+              angle={-20}
+              textAnchor="end"
+              height={60}
+            />
+            <YAxis fontSize={10} tickLine={false} allowDecimals={false} width={30} />
+            <Tooltip />
+            <Bar dataKey="count" fill="#d4af37" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }
@@ -250,39 +325,45 @@ function ProductionPipelineChart() {
  * worker-gold-book-store.ts's getWorkerBalance()) rather than a new metric.
  */
 function WorkerPerformanceTable() {
-  const jobs = useJobCards((s) => s.jobs);
-  const workerEntries = useWorkerGoldBook((s) => s.entries);
-  const getWorkerBalance = useWorkerGoldBook((s) => s.getWorkerBalance);
+  const [rows, setRows] = useState<CeoWorkerPerformanceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const rows = useMemo(() => {
-    const byKarigar = new Map<string, { name: string; active: number; readyForBilling: number }>();
-    for (const j of jobs) {
-      if (!j.karigarId) continue;
-      const entry = byKarigar.get(j.karigarId) ?? {
-        name: j.karigarName ?? j.karigarId,
-        active: 0,
-        readyForBilling: 0,
-      };
-      if (j.status === "ready_for_billing") entry.readyForBilling += 1;
-      else if (j.status !== "closed") entry.active += 1;
-      byKarigar.set(j.karigarId, entry);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setRows(await fetchCeoWorkerPerformance());
+    } catch {
+      setError("Could not load worker performance.");
+    } finally {
+      setLoading(false);
     }
-    return Array.from(byKarigar.entries())
-      .map(([karigarId, v]) => ({
-        karigarId,
-        ...v,
-        pendingGoldMg: getWorkerBalance(karigarId).pendingFine,
-      }))
-      .sort((a, b) => b.active - a.active)
-      .slice(0, 8);
-  }, [jobs, workerEntries, getWorkerBalance]);
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="text-xs uppercase tracking-wider font-bold text-muted-foreground mb-3">
         Worker Performance — Top Active Karigars
       </div>
-      {rows.length === 0 ? (
+      {loading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-9 rounded bg-muted/20 animate-pulse" />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="text-sm text-amber-700 text-center py-6">
+          {error}
+          <button type="button" onClick={() => void load()} className="ml-3 underline">
+            Retry
+          </button>
+        </div>
+      ) : rows.length === 0 ? (
         <div className="text-sm text-muted-foreground text-center py-6">
           No karigar-assigned job cards yet.
         </div>
@@ -331,70 +412,6 @@ interface BranchKPIs {
 
 async function fetchBranchKPIs(branchId: string): Promise<BranchKPIs> {
   return getBranchKPIs(branchId);
-  /* legacy query retained below only until the provider cutover is verified
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-  const [invoiceRes, outstandRes, orderRes, jobRes, repairRes, customerRes] =
-    await Promise.allSettled([
-      supabase
-        .from("invoices")
-        .select("id, grand_total_paise")
-        .eq("branch_id", branchId)
-        .gte("created_at", monthStart),
-
-      supabase
-        .from("invoices")
-        .select("id, balance_paise")
-        .eq("branch_id", branchId)
-        .gt("balance_paise", 0),
-
-      supabase
-        .from("orders")
-        .select("id, status")
-        .eq("branch_id", branchId)
-        .in("status", ["pending", "in_progress", "ready"]),
-
-      supabase
-        .from("job_cards")
-        .select("id, status")
-        .eq("branch_id", branchId)
-        .in("status", ["open", "in_progress", "ready"]),
-
-      supabase
-        .from("repairs")
-        .select("id, status")
-        .eq("branch_id", branchId)
-        .not("status", "in", '("delivered","cancelled")'),
-
-      supabase.from("people").select("id").eq("branch_id", branchId).eq("type", "customer"),
-    ]);
-
-  const invoices = invoiceRes.status === "fulfilled" ? (invoiceRes.value.data ?? []) : [];
-  const outstanding = outstandRes.status === "fulfilled" ? (outstandRes.value.data ?? []) : [];
-  const orders = orderRes.status === "fulfilled" ? (orderRes.value.data ?? []) : [];
-  const jobs = jobRes.status === "fulfilled" ? (jobRes.value.data ?? []) : [];
-  const repairs = repairRes.status === "fulfilled" ? (repairRes.value.data ?? []) : [];
-  const customers = customerRes.status === "fulfilled" ? (customerRes.value.data ?? []) : [];
-
-  return {
-    salesThisMonthPaise: invoices.reduce(
-      (s: number, i: { grand_total_paise?: number }) => s + (i.grand_total_paise ?? 0),
-      0,
-    ),
-    invoiceCount: invoices.length,
-    outstandingPaise: outstanding.reduce(
-      (s: number, i: { balance_paise?: number }) => s + (i.balance_paise ?? 0),
-      0,
-    ),
-    pendingOrders: orders.length,
-    activeJobCards: jobs.filter(
-      (j: { status?: string }) => j.status === "open" || j.status === "in_progress",
-    ).length,
-    readyJobCards: jobs.filter((j: { status?: string }) => j.status === "ready").length,
-    pendingRepairs: repairs.length,
-    totalCustomers: customers.length,
-  }; */
 }
 
 // ── KPI Tile ──────────────────────────────────────────────────────────────────
@@ -652,7 +669,7 @@ function BranchPanel({ branch }: { branch: Branch }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export default function CeoDashboard() {
+function CeoDashboard() {
   const branches = useSettings((s) => s.branches);
   const activeBranches = branches.filter((b) => b.active);
 

@@ -9,14 +9,30 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { navigationItems } from "@/components/layout/Sidebar";
-import { searchAll, type SearchResult } from "@/lib/global-search";
-import { User, ShoppingBag, Receipt, Package } from "lucide-react";
+import { searchAll, searchRemote, type SearchResult } from "@/lib/global-search";
+import { useSettings } from "@/lib/settings-store";
+import { hasRoutePermission } from "@/lib/permissions";
+import {
+  User,
+  ShoppingBag,
+  Receipt,
+  Package,
+  Hammer,
+  Building2,
+  FileText,
+  Tag,
+} from "lucide-react";
 
 const RESULT_ICONS: Record<SearchResult["type"], typeof User> = {
   person: User,
   order: ShoppingBag,
   invoice: Receipt,
   stock_item: Package,
+  job: Hammer,
+  party: User,
+  document: FileText,
+  branch: Building2,
+  tag: Tag,
 };
 
 /**
@@ -35,8 +51,16 @@ const RESULT_ICONS: Record<SearchResult["type"], typeof User> = {
 export function GlobalCommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [remoteResults, setRemoteResults] = useState<SearchResult[]>([]);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const role = useSettings((s) => s.currentUserRole);
   const navigate = useNavigate();
-  const recordResults = searchAll(query, 5);
+  const localResults = searchAll(query, 5, role);
+  const recordResults = [...localResults, ...remoteResults].filter((result, index, all) => {
+    const key = `${result.type}:${result.id}:${result.route}`;
+    return all.findIndex((item) => `${item.type}:${item.id}:${item.route}` === key) === index;
+  });
+  const moduleResults = navigationItems.filter((item) => hasRoutePermission(role, item.to));
 
   useEffect(() => {
     function isEditableTarget(target: EventTarget | null): boolean {
@@ -58,6 +82,32 @@ export function GlobalCommandPalette() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!open || trimmed.length < 2) {
+      setRemoteResults([]);
+      setRemoteLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setRemoteLoading(true);
+    const timer = window.setTimeout(() => {
+      void searchRemote(trimmed, 6, role)
+        .then((results) => {
+          if (!cancelled) setRemoteResults(results);
+        })
+        .finally(() => {
+          if (!cancelled) setRemoteLoading(false);
+        });
+    }, 220);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [open, query, role]);
+
   return (
     <CommandDialog
       open={open}
@@ -73,7 +123,7 @@ export function GlobalCommandPalette() {
         onValueChange={setQuery}
       />
       <CommandList>
-        <CommandEmpty>No matches.</CommandEmpty>
+        <CommandEmpty>{remoteLoading ? "Searching records..." : "No matches."}</CommandEmpty>
         {recordResults.length > 0 && (
           <CommandGroup heading="Records">
             {recordResults.map((r) => {
@@ -97,7 +147,7 @@ export function GlobalCommandPalette() {
           </CommandGroup>
         )}
         <CommandGroup heading="Modules">
-          {navigationItems.map((item) => (
+          {moduleResults.map((item) => (
             <CommandItem
               key={item.to}
               value={item.label}

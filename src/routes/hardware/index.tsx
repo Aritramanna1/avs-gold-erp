@@ -509,7 +509,7 @@ function LabelPrinterSection() {
 // ============================================================
 // PAGE
 // ============================================================
-export default function HardwarePage() {
+function HardwarePage() {
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <PageHeader

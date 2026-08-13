@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useSettlements, previewSettlementTotals } from "@/lib/settlement-store";
+import { previewSettlementTotals, type Settlement } from "@/lib/settlement-store";
+import { fetchSettlementReportData } from "@/lib/delivery-summary-query";
 import { fmtRs, fmtDate, exportToCSV, triggerPrint } from "@/lib/report-engine";
-import { Download, Printer } from "lucide-react";
+import { AlertTriangle, Download, Loader2, Printer, RotateCcw } from "lucide-react";
 
 export const Route = createFileRoute("/reports/settlements")({
   head: () => ({ meta: [{ title: "Settlement Report · AVS Gold ERP" }] }),
@@ -26,14 +27,36 @@ const STATUS_LABELS: Record<string, string> = {
  * operator sees when opening any one settlement.
  */
 function SettlementReportPage() {
-  const settlements = useSettlements((s) => s.settlements);
-  const refresh = useSettlements((s) => s.refresh);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [capped, setCapped] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetchSettlementReportData({ status: statusFilter })
+      .then((data) => {
+        if (cancelled) return;
+        setSettlements(data.settlements);
+        setCapped(data.capped);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSettlements([]);
+        setCapped(false);
+        setError(err instanceof Error ? err.message : "Could not load settlements.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [statusFilter, reloadKey]);
 
   const rows = useMemo(() => {
     return settlements
@@ -41,9 +64,8 @@ function SettlementReportPage() {
         s,
         totals: previewSettlementTotals(s.items, s.gst, s.payments),
       }))
-      .filter((r) => statusFilter === "all" || r.s.financialStatus === statusFilter)
       .sort((a, b) => b.s.createdAt - a.s.createdAt);
-  }, [settlements, statusFilter]);
+  }, [settlements]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -96,6 +118,40 @@ function SettlementReportPage() {
           ),
         )}
       </div>
+
+      {loading ? (
+        <div className="mb-4 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+          <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+          Loading customer settlements...
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium text-destructive">Settlement report could not load</p>
+              <p className="mt-1 text-muted-foreground">{error}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setReloadKey((value) => value + 1)}
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Retry
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {capped ? (
+        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-amber-700">
+          <AlertTriangle className="mr-2 inline h-4 w-4" />
+          Showing the first 1000 matching settlements. Add paginated settlement reporting before
+          using this as high-volume audit evidence.
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">

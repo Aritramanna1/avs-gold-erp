@@ -21,15 +21,24 @@ import { sendWhatsAppText } from "./send-whatsapp-text";
 import { usePeople } from "@/lib/people-store";
 import { getPartyGoldBalance } from "@/lib/customer-account-ledger";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
-import { getMetaValue, setMetaValue } from "@/lib/local-db";
+import { createRepository } from "@/lib/repositories/base-repository";
 
-const FLAG = "weekly_statements_enabled";
+const SETTINGS_ID = "weekly_statements";
+const settingsRepository = createRepository<{ id: string; enabled: boolean }>("app_settings");
+let weeklyStatementsEnabled = false;
+
+async function refreshWeeklyStatementsEnabled(): Promise<boolean> {
+  const row = await settingsRepository.read(SETTINGS_ID).catch(() => null);
+  weeklyStatementsEnabled = Boolean(row?.enabled);
+  return weeklyStatementsEnabled;
+}
 
 export function isWeeklyStatementsEnabled(): boolean {
-  return getMetaValue(FLAG) === "1";
+  return weeklyStatementsEnabled;
 }
 export function setWeeklyStatementsEnabled(on: boolean): void {
-  setMetaValue(FLAG, on ? "1" : "0");
+  weeklyStatementsEnabled = on;
+  void settingsRepository.saveAs(SETTINGS_ID, { id: SETTINGS_ID, enabled: on });
 }
 
 /** True when a real sending WhatsApp provider (not the deep-link fallback) is active. */
@@ -46,7 +55,7 @@ function hasSendingProvider(): boolean {
 }
 
 async function runWeeklyStatements(): Promise<void> {
-  if (!isWeeklyStatementsEnabled()) return;
+  if (!(await refreshWeeklyStatementsEnabled())) return;
   if (!hasSendingProvider()) {
     console.info("[weekly-statements] skipped — no auto-sending WhatsApp provider configured.");
     return;

@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { PlatformShell } from "@/components/platform-shell";
+import { ModuleSkeleton } from "@/components/module-skeleton";
 import { AuthGate } from "@/components/auth-gate";
 import { LicenseGate } from "@/components/license-gate";
 import { WhatsNewDialog } from "@/components/whats-new-dialog";
@@ -53,6 +54,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return <RouteErrorFallback error={error} reset={reset} />;
 }
 
+function RouteContentPending() {
+  return (
+    <div className="min-h-[calc(100vh-4rem)] bg-background p-4 md:p-8" aria-busy="true">
+      <ModuleSkeleton />
+    </div>
+  );
+}
+
 import { useSettings } from "@/lib/settings-store";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -91,6 +100,7 @@ function RootComponent() {
   const currentPath = location.pathname;
 
   const { isOpen, printUrl, printTitle, closePrint } = usePrintEngine();
+  const [deferredChromeReady, setDeferredChromeReady] = useState(false);
 
   const isPublic =
     [
@@ -124,9 +134,18 @@ function RootComponent() {
     currentPath.includes("print-log") ||
     PRINT_ROUTE_PREFIXES.some((p) => currentPath.startsWith(p));
 
-  // Start non-essential services in stages after the shell has painted. This
-  // avoids SQLite, network, and scheduler work competing with authentication
-  // and the first useful render.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const idle = window.requestIdleCallback;
+      if (idle) idle(() => setDeferredChromeReady(true), { timeout: 2500 });
+      else setDeferredChromeReady(true);
+    }, 1_200);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  // Start non-essential developer helpers only after the shell has painted.
+  // Production business data remains Supabase-authoritative; this avoids
+  // debug/test chunks competing with authentication and first useful render.
   useEffect(() => {
     if (
       import.meta.env.DEV ||
@@ -152,29 +171,16 @@ function RootComponent() {
       import("@/lib/manufacturing-bill-store").then((m) => {
         (window as any).__mfgBillStore = m;
       });
-      import("@/lib/sync-engine").then((m) => {
-        (window as any).__syncEngine = m;
-      });
       import("@/lib/ledger-store").then((m) => {
         (window as any).__ledgerEntries = () => m.useLedger.getState().entries;
       });
-      // Permanent regression coverage (e2e/tests/plan1-stabilization.spec.ts)
-      // for the offline-first migration's later phases — exposes the same
-      // module surface used during each feature's original validation.
+      // Permanent regression coverage exposes the same module surface used
+      // during each feature's original validation.
       import("@/lib/security/audit-log").then((m) => {
         (window as any).__auditLog = m;
       });
-      import("@/lib/local-db").then((m) => {
-        (window as any).__localDb = m;
-      });
-      import("@/lib/security/device-registry").then((m) => {
-        (window as any).__deviceRegistry = m;
-      });
       import("@/lib/security/session-lock").then((m) => {
         (window as any).__sessionLock = m;
-      });
-      import("@/lib/comm/comm-queue").then((m) => {
-        (window as any).__commQueue = m;
       });
       import("@/lib/comm/service").then((m) => {
         (window as any).__commService = m.commService;
@@ -188,24 +194,22 @@ function RootComponent() {
       import("@/lib/hardware-service").then((m) => {
         (window as any).__hardwareService = m.hardwareService;
       });
-      import("@/lib/print/print-queue").then((printQueueMod) => {
-        import("@/lib/hardware-service").then((hw) => {
-          // submitPrintJob's real signature is job.type/{success,message,jobId,status}
-          // (hardware-service.ts) — this thin adapter is the one place that
-          // maps the test's docType/tagData vocabulary onto it, so the
-          // regression suite exercises the actual production call path
-          // rather than a second, parallel print entry point.
-          (window as any).__printQueue = {
-            submitPrintJob: (job: { docType: string; title: string; tagData?: unknown }) =>
-              hw.hardwareService.submitPrintJob({
-                type: job.docType as any,
-                title: job.title,
-                data: null,
-                tagData: job.tagData as any,
-              }),
-            getPrintJobHistory: printQueueMod.getPrintJobHistory,
-          };
-        });
+      import("@/lib/hardware-service").then((hw) => {
+        // submitPrintJob's real signature is job.type/{success,message,jobId,status}
+        // (hardware-service.ts) — this thin adapter is the one place that
+        // maps the test's docType/tagData vocabulary onto it, so the
+        // regression suite exercises the actual production call path
+        // rather than a second, parallel print entry point.
+        (window as any).__printQueue = {
+          submitPrintJob: (job: { docType: string; title: string; tagData?: unknown }) =>
+            hw.hardwareService.submitPrintJob({
+              type: job.docType as any,
+              title: job.title,
+              data: null,
+              tagData: job.tagData as any,
+            }),
+          getPrintJobHistory: () => [],
+        };
       });
     }
     const stops: Array<() => void> = [];
@@ -226,10 +230,6 @@ function RootComponent() {
 
     const securityTimer = schedule(1_500, () => {
       protect(
-        import("@/lib/security/device-registry").then((m) => m.registerThisDevice()),
-        "startup.device-registry",
-      );
-      protect(
         import("@/lib/security/session-lock").then((m) => {
           if (!cancelled) stops.push(m.startSessionLockMonitor());
         }),
@@ -244,77 +244,9 @@ function RootComponent() {
     // calls before anyone authenticates. Gate on an actual session and start
     // once, either immediately (session already exists on mount) or on the
     // first sign-in.
-    let servicesStarted = false;
-    const startFirmScopedServices = () => {
-      if (servicesStarted || cancelled) return;
-      servicesStarted = true;
-      const operationalTimer = schedule(6_000, () => {
-        protect(
-          import("@/lib/comm/comm-queue").then((m) => stops.push(m.startCommQueueScheduler())),
-          "startup.comm-queue",
-        );
-        protect(
-          import("@/lib/sync-engine").then((m) => stops.push(m.startSyncOutboxScheduler())),
-          "startup.sync-engine",
-        );
-        protect(
-          import("@/lib/bullion-rate-service").then((m) =>
-            stops.push(m.startBullionRateScheduler()),
-          ),
-          "startup.bullion-rate",
-        );
-        protect(
-          import("@/lib/security/backup-scheduler").then((m) =>
-            stops.push(m.startBackupScheduler()),
-          ),
-          "startup.backup-scheduler",
-        );
-      });
-      const automationTimer = schedule(12_000, () => {
-        protect(
-          Promise.all([
-            import("@/lib/comm/scheduler"),
-            import("@/lib/comm/scheduled-reports"),
-            import("@/lib/comm/reminder-sweeps"),
-            import("@/lib/reconciliation/scheduled-reconciliation"),
-            import("@/lib/security/disaster-recovery"),
-            import("@/lib/comm/scheduled-statements"),
-          ]).then(
-            ([scheduler, reports, reminders, reconciliation, disasterRecovery, statements]) => {
-              reports.registerScheduledReportJobs();
-              reminders.registerReminderSweeps();
-              reconciliation.registerGoldReconciliationJob();
-              disasterRecovery.registerDisasterRecoveryDrillJob();
-              statements.registerWeeklyStatementJobs();
-              if (!cancelled) stops.push(scheduler.startScheduler());
-            },
-          ),
-          "startup.automation-scheduler",
-        );
-      });
-      firmServiceTimers.push(operationalTimer, automationTimer);
-    };
-
-    const firmServiceTimers: number[] = [];
-    let authUnsub: (() => void) | undefined;
-    void import("@/lib/providers/data-provider").then(({ dataProvider }) => {
-      if (cancelled) return;
-      void dataProvider.auth.getSession().then(({ data }: { data: { session: unknown } }) => {
-        if (!cancelled && data.session) startFirmScopedServices();
-      });
-      const {
-        data: { subscription },
-      } = dataProvider.auth.onAuthStateChange((event: string) => {
-        if (event === "SIGNED_IN") startFirmScopedServices();
-      });
-      authUnsub = () => subscription.unsubscribe();
-    });
-
     return () => {
       cancelled = true;
       window.clearTimeout(securityTimer);
-      firmServiceTimers.forEach(window.clearTimeout);
-      authUnsub?.();
       stops.forEach((stop) => stop());
     };
   }, []);
@@ -326,7 +258,9 @@ function RootComponent() {
           <LanguageProvider>
             <div className="min-h-screen bg-background">
               <CatchBoundary getResetKey={() => currentPath} errorComponent={RouteErrorFallback}>
-                <Outlet />
+                <Suspense fallback={<RouteContentPending />}>
+                  <Outlet />
+                </Suspense>
               </CatchBoundary>
             </div>
             <Toaster richColors position="top-right" />
@@ -348,7 +282,9 @@ function RootComponent() {
                     getResetKey={() => currentPath}
                     errorComponent={RouteErrorFallback}
                   >
-                    <Outlet />
+                    <Suspense fallback={<RouteContentPending />}>
+                      <Outlet />
+                    </Suspense>
                   </CatchBoundary>
                 </div>
               </BackendGate>
@@ -374,7 +310,9 @@ function RootComponent() {
                       getResetKey={() => currentPath}
                       errorComponent={RouteErrorFallback}
                     >
-                      <Outlet />
+                      <Suspense fallback={<RouteContentPending />}>
+                        <Outlet />
+                      </Suspense>
                     </CatchBoundary>
                   </PlatformShell>
                 ) : (
@@ -383,7 +321,9 @@ function RootComponent() {
                       getResetKey={() => currentPath}
                       errorComponent={RouteErrorFallback}
                     >
-                      <Outlet />
+                      <Suspense fallback={<RouteContentPending />}>
+                        <Outlet />
+                      </Suspense>
                     </CatchBoundary>
                   </AppShell>
                 )}
@@ -392,8 +332,12 @@ function RootComponent() {
           </AuthGate>
           <Toaster richColors position="top-right" />
           <Suspense fallback={null}>
-            <SessionLockOverlay />
-            <GlobalCommandPalette />
+            {deferredChromeReady ? (
+              <>
+                <SessionLockOverlay />
+                <GlobalCommandPalette />
+              </>
+            ) : null}
             {isOpen ? (
               <PrintPreviewModal
                 isOpen={isOpen}

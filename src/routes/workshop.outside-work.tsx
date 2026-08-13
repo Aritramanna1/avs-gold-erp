@@ -38,15 +38,15 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/workshop/outside-work")({
-  head: () => ({ meta: [{ title: "Outside Work · AVS Gold ERP" }] }),
+  head: () => ({ meta: [{ title: "Outside Work - AVS Gold ERP" }] }),
   // Manufacturing Books freeze (Workshop V1 RC): Outside Work is deferred
-  // pending a dedicated pass — see docs/CHANGELOG.md. OutsideWorkPage stays
+  // pending a dedicated pass - see docs/CHANGELOG.md. OutsideWorkPage stays
   // in the repo untouched, just unreachable, so it renders again once this
   // is un-frozen.
   component: OutsideWorkPage,
 });
 
-export function OutsideWorkPage() {
+function OutsideWorkPage() {
   const people = usePeople((s) => s.people);
   const transactions = useOutsideWork((s) => s.transactions);
   const refreshOutsideWork = useOutsideWork((s) => s.refresh);
@@ -212,7 +212,7 @@ export function OutsideWorkPage() {
             <div className="flex-1">
               <Select value={selectedId} onValueChange={setSelectedId}>
                 <SelectTrigger data-testid="outside-work-jeweller-filter">
-                  <SelectValue placeholder="Select outside jeweller…" />
+                  <SelectValue placeholder="Select outside jeweller..." />
                 </SelectTrigger>
                 <SelectContent>
                   {jewellers.map((j) => (
@@ -243,7 +243,7 @@ export function OutsideWorkPage() {
               value={
                 position.lastTransactionTs
                   ? new Date(position.lastTransactionTs).toLocaleDateString("en-IN")
-                  : "—"
+                  : "-"
               }
             />
           </div>
@@ -251,18 +251,21 @@ export function OutsideWorkPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <Stat
               label="Labour Earned"
-              value={`₹${paiseToRupees(labourPosition.totalBilledPaise)}`}
+              value={`Rs. ${paiseToRupees(labourPosition.totalBilledPaise)}`}
             />
-            <Stat label="Labour Paid" value={`₹${paiseToRupees(labourPosition.totalPaidPaise)}`} />
+            <Stat
+              label="Labour Paid"
+              value={`Rs. ${paiseToRupees(labourPosition.totalPaidPaise)}`}
+            />
             <Stat
               label="Labour Outstanding"
-              value={`₹${paiseToRupees(labourPosition.outstandingPaise)}`}
+              value={`Rs. ${paiseToRupees(labourPosition.outstandingPaise)}`}
               tone={labourPosition.outstandingPaise > 0 ? "gold" : undefined}
             />
             {labourPosition.advancePaise > 0 && (
               <Stat
                 label="Labour Advance (credit)"
-                value={`₹${paiseToRupees(labourPosition.advancePaise)}`}
+                value={`Rs. ${paiseToRupees(labourPosition.advancePaise)}`}
               />
             )}
           </div>
@@ -287,14 +290,14 @@ export function OutsideWorkPage() {
                       )}
                       <div className="min-w-0">
                         <div className="text-sm">
-                          {t.type === "issue" ? "Issued" : "Received"} · {t.materialType} ·{" "}
+                          {t.type === "issue" ? "Issued" : "Received"} - {t.materialType} -{" "}
                           {mgToGrams(t.grossMg)} g
                         </div>
                         <div className="text-[11px] text-muted-foreground truncate">
                           {new Date(t.ts).toLocaleString("en-IN")}
-                          {t.orderNo ? ` · Order ${t.orderNo}` : ""}
-                          {t.expectedReturnDate ? ` · Expected back ${t.expectedReturnDate}` : ""}
-                          {t.remarks ? ` · ${t.remarks}` : ""}
+                          {t.orderNo ? ` - Order ${t.orderNo}` : ""}
+                          {t.expectedReturnDate ? ` - Expected back ${t.expectedReturnDate}` : ""}
+                          {t.remarks ? ` - ${t.remarks}` : ""}
                         </div>
                       </div>
                     </div>
@@ -330,15 +333,15 @@ export function OutsideWorkPage() {
                   <li key={c.id} className="px-4 py-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-sm">
-                        {c.calculationMethod} · ₹{paiseToRupees(c.totalPaise)}
+                        {c.calculationMethod} - Rs. {paiseToRupees(c.totalPaise)}
                         {c.gstEnabled ? ` (incl. GST ${c.gstRatePct}%)` : ""}
                       </div>
                       <div className="text-[11px] text-muted-foreground truncate">
                         {new Date(c.ts).toLocaleString("en-IN")}
-                        {c.billNumber ? ` · Bill ${c.billNumber}` : ""}
-                        {c.billDate ? ` · ${c.billDate}` : ""}
-                        {c.orderNo ? ` · Order ${c.orderNo}` : ""}
-                        {c.remarks ? ` · ${c.remarks}` : ""}
+                        {c.billNumber ? ` - Bill ${c.billNumber}` : ""}
+                        {c.billDate ? ` - ${c.billDate}` : ""}
+                        {c.orderNo ? ` - Order ${c.orderNo}` : ""}
+                        {c.remarks ? ` - ${c.remarks}` : ""}
                       </div>
                       {c.billAttachmentDataUrl && (
                         <a
@@ -389,13 +392,13 @@ export function OutsideWorkPage() {
                   >
                     <div className="min-w-0">
                       <div>
-                        ₹{paiseToRupees(p.amountPaise)} · {p.mode}
+                        Rs. {paiseToRupees(p.amountPaise)} - {p.mode}
                       </div>
                       <div className="text-[11px] text-muted-foreground truncate">
                         {new Date(p.ts).toLocaleString("en-IN")}
-                        {p.reference ? ` · Ref ${p.reference}` : ""}
-                        {p.orderNo ? ` · Order ${p.orderNo}` : ""}
-                        {p.notes ? ` · ${p.notes}` : ""}
+                        {p.reference ? ` - Ref ${p.reference}` : ""}
+                        {p.orderNo ? ` - Order ${p.orderNo}` : ""}
+                        {p.notes ? ` - ${p.notes}` : ""}
                       </div>
                     </div>
                   </li>
@@ -430,7 +433,7 @@ export function OutsideWorkPage() {
                     <span className="font-mono">
                       {s.settlement_type === "outside_work_gold_settlement"
                         ? `${mgToGrams(s.net_mg ?? 0)} g`
-                        : `₹${paiseToRupees(s.amount_paise ?? 0)}`}
+                        : `Rs. ${paiseToRupees(s.amount_paise ?? 0)}`}
                     </span>
                   </li>
                 ))}
@@ -440,9 +443,9 @@ export function OutsideWorkPage() {
         </>
       )}
 
-      {/* No explicit refresh() after add() — every store here already updates
+      {/* No explicit refresh() after add() - every store here already updates
           its own state optimistically inside add()/addPayment()/addCharge();
-          re-running the local-first readAll() would race that optimistic
+          re-running the cached readAll() would race that optimistic
           update (see outside-work-store.ts's Repository.readAll() note). */}
       <OutsideWorkIssueDialog
         open={issueOpen}

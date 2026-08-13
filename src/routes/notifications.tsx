@@ -127,14 +127,15 @@ function NotificationsPage() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{t(item.titleKey)}</span>
+                      <span className="font-medium">{item.titleText ?? t(item.titleKey)}</span>
                       {!isRead && <span className="h-2 w-2 rounded-full bg-gold" />}
                       <Badge variant="outline" className="text-[10px] capitalize">
                         {t(`notifications.severity_${item.severity}`)}
                       </Badge>
                     </span>
                     <span className="mt-1 block text-sm text-muted-foreground">
-                      {formatMessage(t(item.descriptionKey), item.descriptionValues)}
+                      {item.descriptionText ??
+                        formatMessage(t(item.descriptionKey), item.descriptionValues)}
                     </span>
                   </span>
                 </button>

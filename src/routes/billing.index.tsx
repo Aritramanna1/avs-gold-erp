@@ -1,18 +1,25 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useBilling, INVOICE_STATUS_LABELS, paiseToRupees } from "@/lib/billing-store";
+import {
+  fetchBillingInvoicePage,
+  fetchBillingOutstandingSummary,
+  type BillingOutstandingRow,
+} from "@/lib/billing-query";
+import { hydrateCustomerLedgerContext } from "@/lib/customer-ledger-context";
 import { compileCustomerLedger } from "@/lib/customer-account-ledger";
 import { mgToGrams } from "@/lib/gold";
 import { usePeople } from "@/lib/people-store";
 import { useCan } from "@/lib/rbac";
+import { useSettings } from "@/lib/settings-store";
 import { FileText, Plus, Receipt, Search, Coins, Printer } from "lucide-react";
 import { GoldSettlementTab } from "@/components/GoldSettlementTab";
-import { useEffect } from "react";
+import { EmptyState, WebAppState } from "@/components/web-app-state";
 import {
   useSettlements,
   FINANCIAL_STATUS_LABELS,
@@ -20,67 +27,130 @@ import {
 } from "@/lib/settlement-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
 
+type BillingSearch = {
+  q?: string;
+  page?: number;
+};
+
 export const Route = createFileRoute("/billing/")({
   head: () => ({ meta: [{ title: "Billing · AVS Gold ERP" }] }),
+  validateSearch: (search: Record<string, unknown>): BillingSearch => ({
+    q: typeof search.q === "string" ? search.q : "",
+    page:
+      typeof search.page === "number"
+        ? search.page
+        : typeof search.page === "string"
+          ? Number(search.page)
+          : 1,
+  }),
   component: BillingIndex,
 });
 
 function BillingIndex() {
   const invoices = useBilling((s) => s.invoices);
   const people = usePeople((s) => s.people);
-  const [q, setQ] = useState("");
+  const navigate = useNavigate({ from: "/billing" });
+  const search = useSearch({ from: "/billing/" });
+  const currentUserRole = useSettings((s) => s.currentUserRole);
+  const selectedBranchId = useSettings((s) => s.selectedBranchId);
+  const [pageInvoices, setPageInvoices] = useState<typeof invoices>([]);
+  const [invoiceTotalCount, setInvoiceTotalCount] = useState(0);
+  const [totalCollected, setTotalCollected] = useState(0);
+  const [serverOutstandingTotal, setServerOutstandingTotal] = useState(0);
+  const [outstandingRows, setOutstandingRows] = useState<BillingOutstandingRow[]>([]);
+  const [loadingOutstanding, setLoadingOutstanding] = useState(true);
+  const [outstandingError, setOutstandingError] = useState<string | null>(null);
+  const [loadingInvoices, setLoadingInvoices] = useState(true);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const { can } = useCan();
 
-  const list = useMemo(() => {
-    const t = q.toLowerCase();
-    return invoices.filter((i) => {
-      if (!t) return true;
-      return (
-        i.invoiceNo.toLowerCase().includes(t) ||
-        i.customerName.toLowerCase().includes(t) ||
-        (i.customerPhone ?? "").includes(t) ||
-        (i.orderNo ?? "").toLowerCase().includes(t)
-      );
+  const pageSize = 25;
+  const page = Math.max(1, Number(search.page) || 1);
+  const q = search.q?.trim() ?? "";
+  const invoiceTotalPages = Math.max(1, Math.ceil(invoiceTotalCount / pageSize));
+
+  const billingBranchId = useMemo(() => {
+    const globalRoles = [
+      "Super Owner",
+      "Administrator",
+      "CEO (View Only)",
+      "owner",
+      "admin",
+      "saas_admin",
+    ];
+    return currentUserRole && !globalRoles.includes(currentUserRole)
+      ? selectedBranchId || "MAIN"
+      : null;
+  }, [currentUserRole, selectedBranchId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoadingInvoices(true);
+    setInvoiceError(null);
+    fetchBillingInvoicePage({ page, pageSize, query: q, branchId: billingBranchId })
+      .then((result) => {
+        if (cancelled) return;
+        setPageInvoices(result.invoices);
+        setInvoiceTotalCount(result.totalCount);
+        setTotalCollected(result.collectedPaise);
+        setServerOutstandingTotal(result.outstandingPaise);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setInvoiceError(err instanceof Error ? err.message : "Could not load invoices.");
+        setPageInvoices([]);
+        setInvoiceTotalCount(0);
+        setTotalCollected(0);
+        setServerOutstandingTotal(0);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingInvoices(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [billingBranchId, page, q]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoadingOutstanding(true);
+    setOutstandingError(null);
+    fetchBillingOutstandingSummary({ branchId: billingBranchId })
+      .then((rows) => {
+        if (cancelled) return;
+        setOutstandingRows(rows);
+        setServerOutstandingTotal(rows.reduce((sum, row) => sum + row.amount, 0));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setOutstandingError(err instanceof Error ? err.message : "Could not load outstanding.");
+        setOutstandingRows([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingOutstanding(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [billingBranchId]);
+
+  const updateSearch = (patch: Partial<BillingSearch>) => {
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        ...patch,
+        page: patch.page ?? 1,
+      }),
+      replace: true,
     });
-  }, [invoices, q]);
+  };
 
-  const outstanding = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        customerId: string;
-        customerName: string;
-        phone?: string;
-        amount: number;
-        days: number;
-        latestInv: string;
-      }
-    >();
-    const now = Date.now();
-    for (const inv of invoices) {
-      if (inv.balancePaise <= 0 || inv.status === "cancelled") continue;
-      const days = Math.floor((now - inv.createdAt) / 86400000);
-      const ex = map.get(inv.customerId);
-      if (ex) {
-        ex.amount += inv.balancePaise;
-        ex.days = Math.max(ex.days, days);
-      } else {
-        map.set(inv.customerId, {
-          customerId: inv.customerId,
-          customerName: inv.customerName,
-          phone: inv.customerPhone,
-          amount: inv.balancePaise,
-          days,
-          latestInv: inv.invoiceNo,
-        });
-      }
-    }
-    return [...map.values()].sort((a, b) => b.amount - a.amount);
-  }, [invoices]);
-
-  const totalCollected = invoices.reduce((s, i) => s + i.paidPaise, 0);
-  const totalOutstanding = outstanding.reduce((s, o) => s + o.amount, 0);
-  const totalInvoices = invoices.length;
+  const totalOutstanding = serverOutstandingTotal;
+  const totalInvoices = invoiceTotalCount;
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
@@ -166,16 +236,32 @@ function BillingIndex() {
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={q}
-                onChange={(e) => setQ(e.target.value)}
+                onChange={(e) => updateSearch({ q: e.target.value })}
                 placeholder="Search invoice, customer, phone, order"
                 className="pl-9"
               />
             </div>
-            {list.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">
-                No invoices yet. Create one from an order, a finished stock item, or use New
-                Invoice.
-              </p>
+            {loadingInvoices ? (
+              <WebAppState
+                title="Loading invoices"
+                description="Fetching billing records from Supabase."
+              />
+            ) : invoiceError ? (
+              <WebAppState
+                title="Could not load invoices"
+                description={invoiceError}
+                tone="danger"
+                action={{ label: "Retry", onClick: () => updateSearch({ page }) }}
+              />
+            ) : pageInvoices.length === 0 ? (
+              <EmptyState
+                title={q ? "No invoices match this search" : "No invoices yet"}
+                description={
+                  q
+                    ? "Clear or change the search text to see other invoices."
+                    : "Create one from an order, a finished stock item, or use New Invoice."
+                }
+              />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -192,7 +278,7 @@ function BillingIndex() {
                     </tr>
                   </thead>
                   <tbody>
-                    {list.map((i) => (
+                    {pageInvoices.map((i) => (
                       <tr key={i.id} className="border-b border-border/60 hover:bg-background/30">
                         <td className="py-2 font-mono text-xs text-gold">{i.invoiceNo}</td>
                         <td>
@@ -235,6 +321,31 @@ function BillingIndex() {
                     ))}
                   </tbody>
                 </table>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    Page {page} of {invoiceTotalPages} · {invoiceTotalCount} invoices
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1 || loadingInvoices}
+                      onClick={() => updateSearch({ page: Math.max(1, page - 1) })}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= invoiceTotalPages || loadingInvoices}
+                      onClick={() => updateSearch({ page: page + 1 })}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -242,10 +353,22 @@ function BillingIndex() {
 
         <TabsContent value="outstanding" className="mt-4">
           <div className="rounded-2xl border border-border bg-card p-4">
-            {outstanding.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">
-                No outstanding balances.
-              </p>
+            {loadingOutstanding ? (
+              <WebAppState
+                title="Loading outstanding balances"
+                description="Fetching customer dues from Supabase."
+              />
+            ) : outstandingError ? (
+              <WebAppState
+                title="Could not load outstanding balances"
+                description={outstandingError}
+                tone="danger"
+              />
+            ) : outstandingRows.length === 0 ? (
+              <EmptyState
+                title="No outstanding balances"
+                description="All visible customer invoices are settled."
+              />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -260,7 +383,7 @@ function BillingIndex() {
                     </tr>
                   </thead>
                   <tbody>
-                    {outstanding.map((o) => (
+                    {outstandingRows.map((o) => (
                       <tr key={o.customerId} className="border-b border-border/60">
                         <td className="py-2">{o.customerName}</td>
                         <td className="text-xs text-muted-foreground">{o.phone ?? "—"}</td>
@@ -268,12 +391,7 @@ function BillingIndex() {
                         <td className="text-right text-amber-300">₹ {paiseToRupees(o.amount)}</td>
                         <td className="text-right">{o.days}d</td>
                         <td className="text-right">
-                          <Link
-                            to="/billing/$id"
-                            params={{
-                              id: invoices.find((iv) => iv.invoiceNo === o.latestInv)?.id ?? "",
-                            }}
-                          >
+                          <Link to="/billing/$id" params={{ id: o.latestInvoiceId }}>
                             <Button size="sm" variant="outline">
                               {can("billing.recordPayment") ? "Record Payment" : "Open"}
                             </Button>
@@ -386,12 +504,42 @@ function CustomerLedgerView({
       settlements.some((s) => s.party_type === "customer" && s.party_id === c.id),
   );
   const [selected, setSelected] = useState<string | null>(billing[0]?.id ?? null);
+  const [loadingLedger, setLoadingLedger] = useState(false);
+  const [ledgerError, setLedgerError] = useState<string | null>(null);
+  const [ledgerVersion, setLedgerVersion] = useState(0);
+
+  useEffect(() => {
+    if (!selected && billing[0]?.id) setSelected(billing[0].id);
+  }, [billing, selected]);
+
+  useEffect(() => {
+    if (!selected) return;
+    let cancelled = false;
+    setLoadingLedger(true);
+    setLedgerError(null);
+    hydrateCustomerLedgerContext(selected)
+      .then(() => {
+        if (!cancelled) setLedgerVersion((value) => value + 1);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setLedgerError(err instanceof Error ? err.message : "Could not load customer ledger.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingLedger(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selected]);
   // Unified running ledger — same compiler the People module's customer
   // profile and ledger print already use, so Billing shows the exact same
   // combined gold + cash position instead of a cash-only, invoice-only view.
   const ledger = useMemo(
     () => (selected ? compileCustomerLedger(selected) : null),
-    [selected, invoices, settlements],
+    [selected, invoices, settlements, ledgerVersion],
   );
 
   if (billing.length === 0) {
@@ -417,69 +565,82 @@ function CustomerLedgerView({
         ))}
       </div>
       <div className="rounded-2xl border border-border bg-card p-4">
-        {ledger && (
-          <>
-            <div className="grid sm:grid-cols-2 gap-3 mb-4">
-              <Stat
-                label="Gold Balance"
-                value={`${mgToGrams(Math.abs(ledger.closingGoldMg))} g ${ledger.closingGoldMg >= 0 ? "we owe" : "owed to us"}`}
-                tone={ledger.closingGoldMg > 0 ? "text-amber-300" : "text-emerald-300"}
-              />
-              <Stat
-                label="Money Balance"
-                value={`₹ ${paiseToRupees(Math.abs(ledger.closingMoneyPaise))} ${ledger.closingMoneyPaise >= 0 ? "due" : "advance"}`}
-                tone={ledger.closingMoneyPaise > 0 ? "text-amber-300" : "text-emerald-300"}
-              />
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="text-xs uppercase text-muted-foreground">
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2">Date</th>
-                    <th className="text-left">Voucher</th>
-                    <th className="text-left">Type</th>
-                    <th className="text-left">Description</th>
-                    <th className="text-right">Gold In</th>
-                    <th className="text-right">Gold Out</th>
-                    <th className="text-right">Dr (₹)</th>
-                    <th className="text-right">Cr (₹)</th>
-                    <th className="text-right border-l border-border/40">Gold Bal</th>
-                    <th className="text-right">Money Bal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ledger.rows.map((row) => (
-                    <tr key={row.id} className="border-b border-border/60">
-                      <td className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">
-                        {row.date}
-                      </td>
-                      <td className="font-mono text-xs uppercase">{row.voucherNo}</td>
-                      <td className="text-xs">{row.type}</td>
-                      <td className="text-xs max-w-[200px] break-words">{row.description}</td>
-                      <td className="text-right font-mono text-gold">
-                        {row.goldInMg > 0 ? `${mgToGrams(row.goldInMg)} g` : "—"}
-                      </td>
-                      <td className="text-right font-mono text-muted-foreground">
-                        {row.goldOutMg > 0 ? `${mgToGrams(row.goldOutMg)} g` : "—"}
-                      </td>
-                      <td className="text-right">
-                        {row.moneyDebitPaise ? `₹ ${paiseToRupees(row.moneyDebitPaise)}` : "—"}
-                      </td>
-                      <td className="text-right text-emerald-300">
-                        {row.moneyCreditPaise ? `₹ ${paiseToRupees(row.moneyCreditPaise)}` : "—"}
-                      </td>
-                      <td className="text-right font-mono font-semibold border-l border-border/40">
-                        {mgToGrams(row.closingGoldMg)} g
-                      </td>
-                      <td className="text-right font-mono font-semibold">
-                        ₹{paiseToRupees(row.closingMoneyPaise)}
-                      </td>
+        {loadingLedger ? (
+          <WebAppState
+            title="Loading customer ledger"
+            description="Fetching this customer's ledger context from Supabase."
+          />
+        ) : ledgerError ? (
+          <WebAppState
+            title="Could not load customer ledger"
+            description={ledgerError}
+            tone="danger"
+          />
+        ) : (
+          ledger && (
+            <>
+              <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                <Stat
+                  label="Gold Balance"
+                  value={`${mgToGrams(Math.abs(ledger.closingGoldMg))} g ${ledger.closingGoldMg >= 0 ? "we owe" : "owed to us"}`}
+                  tone={ledger.closingGoldMg > 0 ? "text-amber-300" : "text-emerald-300"}
+                />
+                <Stat
+                  label="Money Balance"
+                  value={`₹ ${paiseToRupees(Math.abs(ledger.closingMoneyPaise))} ${ledger.closingMoneyPaise >= 0 ? "due" : "advance"}`}
+                  tone={ledger.closingMoneyPaise > 0 ? "text-amber-300" : "text-emerald-300"}
+                />
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-xs uppercase text-muted-foreground">
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2">Date</th>
+                      <th className="text-left">Voucher</th>
+                      <th className="text-left">Type</th>
+                      <th className="text-left">Description</th>
+                      <th className="text-right">Gold In</th>
+                      <th className="text-right">Gold Out</th>
+                      <th className="text-right">Dr (₹)</th>
+                      <th className="text-right">Cr (₹)</th>
+                      <th className="text-right border-l border-border/40">Gold Bal</th>
+                      <th className="text-right">Money Bal</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+                  </thead>
+                  <tbody>
+                    {ledger.rows.map((row) => (
+                      <tr key={row.id} className="border-b border-border/60">
+                        <td className="py-1.5 text-xs text-muted-foreground whitespace-nowrap">
+                          {row.date}
+                        </td>
+                        <td className="font-mono text-xs uppercase">{row.voucherNo}</td>
+                        <td className="text-xs">{row.type}</td>
+                        <td className="text-xs max-w-[200px] break-words">{row.description}</td>
+                        <td className="text-right font-mono text-gold">
+                          {row.goldInMg > 0 ? `${mgToGrams(row.goldInMg)} g` : "—"}
+                        </td>
+                        <td className="text-right font-mono text-muted-foreground">
+                          {row.goldOutMg > 0 ? `${mgToGrams(row.goldOutMg)} g` : "—"}
+                        </td>
+                        <td className="text-right">
+                          {row.moneyDebitPaise ? `₹ ${paiseToRupees(row.moneyDebitPaise)}` : "—"}
+                        </td>
+                        <td className="text-right text-emerald-300">
+                          {row.moneyCreditPaise ? `₹ ${paiseToRupees(row.moneyCreditPaise)}` : "—"}
+                        </td>
+                        <td className="text-right font-mono font-semibold border-l border-border/40">
+                          {mgToGrams(row.closingGoldMg)} g
+                        </td>
+                        <td className="text-right font-mono font-semibold">
+                          ₹{paiseToRupees(row.closingMoneyPaise)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )
         )}
       </div>
     </div>

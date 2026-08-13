@@ -7,7 +7,7 @@
  * today) into one toolkit driven by the same SectionConfig/
  * PrintDocumentData shapes the screen renderer uses — one definition of
  * "what a table/balance-card/signature-block looks like," not four.
- * Still jsPDF-native (no html2canvas/Puppeteer) — offline, already proven.
+ * Still jsPDF-native (no html2canvas/Puppeteer), proven in the browser print path.
  *
  * Geometry is computed per-document from the actual jsPDF page size
  * (Geometry, below) rather than hardcoded A4 constants — the original

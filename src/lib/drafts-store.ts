@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { useEffect, useState, useRef } from "react";
 
 interface DraftsState {
@@ -8,31 +7,27 @@ interface DraftsState {
   clearDraft: (key: string) => void;
 }
 
-export const useDraftStore = create<DraftsState>()(
-  persist(
-    (set) => ({
-      drafts: {},
-      setDraft: (key, data) =>
-        set((state) => ({
-          drafts: {
-            ...state.drafts,
-            [key]: data,
-          },
-        })),
-      clearDraft: (key) =>
-        set((state) => {
-          const drafts = { ...state.drafts };
-          delete drafts[key];
-          return { drafts };
-        }),
+export const useDraftStore = create<DraftsState>()((set) => ({
+  drafts: {},
+  setDraft: (key, data) =>
+    set((state) => ({
+      drafts: {
+        ...state.drafts,
+        [key]: data,
+      },
+    })),
+  clearDraft: (key) =>
+    set((state) => {
+      const drafts = { ...state.drafts };
+      delete drafts[key];
+      return { drafts };
     }),
-    { name: "mtj-drafts-v1" },
-  ),
-);
+}));
 
 /**
- * A hook that mirrors useState but persists the value under the specified draft key.
- * Changes are automatically debounced to prevent performance issues during fast typing.
+ * A hook that mirrors useState but keeps the value under the specified draft key
+ * only in the current running tab. Submitted business records save to Supabase;
+ * durable drafts need a Supabase-backed draft table/RPC, not browser storage.
  */
 export function useDraft<T>(
   key: string,

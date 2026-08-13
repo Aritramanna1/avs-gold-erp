@@ -40,7 +40,7 @@ export interface BarcodeConfig {
 
 export const DEFAULT_BARCODE_CONFIG: BarcodeConfig = {
   id: "barcode_config",
-  prefix: "MTJ",
+  prefix: "AVS",
   numberLength: 8,
   qrFormat: "json",
   tagTemplate: "standard",

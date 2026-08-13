@@ -4,9 +4,9 @@
  * Full pipeline:
  *   1. Resolve document data from stores
  *   2. Generate PDF blob (jsPDF)
- *   3. Store the PDF in the local file vault
- *   4. Save local attachment metadata
- *   5. Return null because private desktop files have no public URL
+ *   3. Store the PDF through the authenticated remote storage adapter
+ *   4. Save attachment metadata
+ *   5. Return null because messaging currently sends the generated caption only
  */
 import { useSettings } from "@/lib/settings-store";
 import { useBilling } from "@/lib/billing-store";
@@ -47,7 +47,7 @@ function resolveDocumentData(req: CommRequest): any {
   return null;
 }
 
-/** Generates and stores a local PDF; no public/cloud file URL is returned. */
+/** Generates and stores a PDF through the remote storage adapter. */
 export async function getOrCreateDocumentPdfUrl(req: CommRequest): Promise<string | null> {
   try {
     const firm = useSettings.getState().firm;
@@ -78,7 +78,7 @@ export async function getOrCreateDocumentPdfUrl(req: CommRequest): Promise<strin
 
     return null;
   } catch (err) {
-    console.warn("[DocumentPdfService] Local PDF generation/save failed:", err);
+    console.warn("[DocumentPdfService] PDF generation/save failed:", err);
     return null;
   }
 }

@@ -169,6 +169,7 @@ interface MeltState {
 }
 
 let createJobInFlight = false;
+const MELT_JOB_COMPAT_CACHE_LIMIT = 500;
 
 export const useMeltStore = create<MeltState>()((set, get) => ({
   jobs: [],
@@ -189,7 +190,7 @@ export const useMeltStore = create<MeltState>()((set, get) => ({
       .from("melt_jobs")
       .select("data")
       .order("id", { ascending: false })
-      .limit(5000);
+      .limit(MELT_JOB_COMPAT_CACHE_LIMIT);
     if (bid) q = q.filter("data->>branchId", "eq", bid);
 
     const { data, error } = await q;

@@ -13,23 +13,24 @@ export const Route = createFileRoute("/settings/storage-diagnostics")({
 });
 
 function StorageDiagnostics() {
-  const localAttachments = useAttachments((state) => state.items);
-  const [gatewayStatus, setGatewayStatus] = useState<"checking" | "online" | "offline">("checking");
+  const attachmentRows = useAttachments((state) => state.items);
+  const [gatewayStatus, setGatewayStatus] = useState<"checking" | "online" | "unavailable">(
+    "checking",
+  );
   const [gatewayMsg, setGatewayMsg] = useState("");
   const [attachments, setAttachments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // File storage is local in every deployment mode.
   const checkGateway = useCallback(async () => {
     setGatewayStatus("checking");
     setGatewayStatus("online");
-    setGatewayMsg("Encrypted local storage is ready. No cloud connection is required.");
+    setGatewayMsg("Supabase storage and attachment metadata are the production file system.");
   }, []);
 
-  // Load last 20 attachments from the database
+  // Load last 20 attachment metadata rows already hydrated from Supabase.
   const loadAttachments = useCallback(async () => {
     setLoading(true);
-    const rows = Object.entries(localAttachments)
+    const rows = Object.entries(attachmentRows)
       .sort(([, a], [, b]) => b.updatedAt - a.updatedAt)
       .slice(0, 20)
       .map(([id, record]) => {
@@ -43,14 +44,14 @@ function StorageDiagnostics() {
           linked_id: linkedId,
           data: {
             notes: record.note,
-            storage_provider: "local",
+            storage_provider: record.bucket ? "supabase_storage" : "metadata_only",
             uploadedByEmail: record.uploadedBy,
           },
         };
       });
     setAttachments(rows);
     setLoading(false);
-  }, [localAttachments]);
+  }, [attachmentRows]);
 
   useEffect(() => {
     checkGateway();
@@ -61,7 +62,7 @@ function StorageDiagnostics() {
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
       <PageHeader
         title="Storage & File Diagnostics"
-        subtitle="Verify encrypted local storage and locally persisted file records."
+        subtitle="Verify Supabase-backed attachment metadata and storage references."
         actions={
           <Link to="/settings">
             <Button variant="outline" size="sm" className="gap-2">
@@ -79,8 +80,8 @@ function StorageDiagnostics() {
               <Server className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold">Local Application Storage</h3>
-              <p className="text-[11px] text-muted-foreground">Encrypted device vault</p>
+              <h3 className="text-sm font-semibold">Supabase Storage</h3>
+              <p className="text-[11px] text-muted-foreground">Remote object storage</p>
             </div>
           </div>
           <div>
@@ -117,13 +118,13 @@ function StorageDiagnostics() {
               <Database className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold">Local Attachment Register</h3>
-              <p className="text-[11px] text-muted-foreground">SQLite attachment metadata</p>
+              <h3 className="text-sm font-semibold">Attachment Register</h3>
+              <p className="text-[11px] text-muted-foreground">Supabase attachment metadata</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Every document or image saved by the ERP is tracked locally while its bytes remain in
-            the encrypted application vault.
+            Every document or image saved by the ERP is tracked through Supabase metadata. File
+            bytes are stored in the configured Supabase storage bucket when uploaded.
           </p>
           <div className="flex gap-2">
             <div className="text-center bg-muted/30 border border-border rounded-lg p-2 flex-1">
@@ -137,7 +138,7 @@ function StorageDiagnostics() {
             <div className="text-center bg-muted/30 border border-border rounded-lg p-2 flex-1">
               <span className="text-xs text-muted-foreground block text-left">Target Storage</span>
               <span className="font-mono text-xs font-semibold block text-left text-foreground mt-1.5">
-                Local Vault
+                Supabase
               </span>
             </div>
           </div>
@@ -148,7 +149,7 @@ function StorageDiagnostics() {
       <Card className="p-5">
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
           <FolderOpen className="h-4 w-4 text-gold" />
-          Local Storage Areas
+          Storage Areas
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
           {[
@@ -177,7 +178,7 @@ function StorageDiagnostics() {
       {/* Last 20 rows table */}
       <Card className="p-5">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-sm font-semibold">Local Attachment Ledger (Last 20 Files)</h3>
+          <h3 className="text-sm font-semibold">Attachment Ledger (Last 20 Files)</h3>
           <Button size="sm" variant="outline" className="text-xs h-7" onClick={loadAttachments}>
             Refresh Ledger Data
           </Button>
@@ -250,7 +251,7 @@ function StorageDiagnostics() {
                       </td>
                       <td className="p-3 text-right">
                         <Badge variant="outline" className="text-[10px]">
-                          Encrypted local
+                          Supabase-backed
                         </Badge>
                       </td>
                     </tr>

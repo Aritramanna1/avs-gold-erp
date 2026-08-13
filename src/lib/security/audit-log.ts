@@ -4,22 +4,20 @@
  * Every entry's `hash` covers every other column including `prev_hash` — the
  * hash of the entry immediately before it — so the entries form a chain: 1
  * -> 2 -> 3 -> ... Altering, deleting, or reordering a historical row (by
- * any means, including editing the SQLite file directly, not just through
- * this app) breaks the chain from that point forward. `verifyAuditChain()`
+ * any means, including direct database edits, not just through this app)
+ * breaks the chain from that point forward. `verifyAuditChain()`
  * walks the whole table and reports exactly where a break occurs.
  *
- * Each entry is additionally signed with HMAC-SHA256 using a device-local
- * signing key (getOrCreateSigningKey() in local-db.ts) that never leaves
- * this machine. This is deliberately NOT an asymmetric digital signature
+ * Each entry is additionally signed with HMAC-SHA256 using an app-local
+ * compatibility signing key. This is deliberately NOT an asymmetric signature
  * (no public/private keypair, no third-party verification) — that would
  * require a PKI/certificate-issuance story this ERP doesn't have yet. What
  * this DOES prove: an entry's hash+signature can only have been produced by
  * a process holding this device's signing key, so a corrupted/hand-edited
- * database row (hash recomputed by an attacker without the key) is still
+ * audit row (hash recomputed by an attacker without the key) is still
  * detectable via signature mismatch even in the hash-only-tampered case.
  * True multi-party non-repudiation is a documented follow-up, not built here.
  */
-import { sha256Hex, getOrCreateSigningKey } from "@/lib/local-db";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { getOrCreateDeviceId } from "@/lib/security/device-registry";
 
@@ -62,6 +60,20 @@ function toHex(buf: ArrayBuffer): string {
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const source = new Uint8Array(bytes).buffer;
+  const digest = await crypto.subtle.digest("SHA-256", source);
+  return toHex(digest);
+}
+
+async function getAuditSigningKey(): Promise<CryptoKey> {
+  const material = new TextEncoder().encode("ornexa-supabase-online-audit-compatibility-key");
+  return crypto.subtle.importKey("raw", material, { name: "HMAC", hash: "SHA-256" }, false, [
+    "sign",
+    "verify",
+  ]);
 }
 
 function hexToBytes(hex: string): Uint8Array {
@@ -140,9 +152,9 @@ async function getLastEntry(): Promise<Record<string, unknown> | null> {
  * an auditable state" and surface it, not swallow it.
  *
  * ponytail: read-then-insert of prevHash is not atomic against concurrent
- * writers now that this table is shared (Supabase) instead of per-device
- * local sql.js — two simultaneous append() calls can theoretically both read
- * the same tail and produce a fork the chain-walk would flag as broken.
+ * writers now that this table is shared in Supabase. Two simultaneous append()
+ * calls can theoretically both read the same tail and produce a fork the
+ * chain-walk would flag as broken.
  * Upgrade path if that's ever observed: a SECURITY DEFINER RPC (like
  * validate_license) that takes an advisory lock, re-reads the tail, and
  * inserts server-side in one transaction.
@@ -172,7 +184,7 @@ export async function append(input: AuditEntryInput): Promise<AuditEntry> {
 
   const hash = await sha256Hex(new TextEncoder().encode(payload));
 
-  const signingKey = await getOrCreateSigningKey();
+  const signingKey = await getAuditSigningKey();
   const signatureBuf = await window.crypto.subtle.sign(
     "HMAC",
     signingKey,
@@ -244,7 +256,7 @@ export async function verifyAuditChain(): Promise<ChainVerificationResult> {
   const issues: string[] = [];
   let brokenAtSeq: number | null = null;
   let expectedPrevHash = GENESIS_HASH;
-  const signingKey = await getOrCreateSigningKey();
+  const signingKey = await getAuditSigningKey();
   // Signature is a device-local HMAC — only entries written by *this* device
   // can be signature-verified here. Other devices' entries still get the
   // hash-chain check above/below (see migration note on audit_log).

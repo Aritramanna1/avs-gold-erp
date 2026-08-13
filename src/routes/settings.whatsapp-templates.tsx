@@ -48,7 +48,7 @@ const TARGETS: { value: TemplateTarget; label: string }[] = [
   { value: "vendor", label: "Vendor" },
 ];
 
-export function WaTemplatesPage({ embedded = false }: { embedded?: boolean } = {}) {
+function WaTemplatesPage({ embedded = false }: { embedded?: boolean } = {}) {
   const templates = useWaTemplates((s) => s.templates);
   const update = useWaTemplates((s) => s.update);
   const reset = useWaTemplates((s) => s.resetToDefault);

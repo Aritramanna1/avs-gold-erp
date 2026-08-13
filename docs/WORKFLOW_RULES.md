@@ -23,9 +23,14 @@ Worker material handovers roll up into **one Daily Material Slip per worker per 
 
 A document is defined once (Print Engine template + data-mapper builder). Print, preview, PDF download, and WhatsApp send all consume that one definition. Never duplicate document generation.
 
-## 5. Offline-first writes
+## 5. Supabase-online writes
 
-Write local + outbox first (`createRepository`), let `sync-engine` push to Supabase. Never block a workflow on the network; never write directly to Supabase bypassing the outbox.
+Supabase PostgreSQL is the production source of truth. Business writes must go
+through approved Supabase-backed repositories, RPCs, or services with RLS and
+audit behavior intact. Do not reintroduce local SQLite, IndexedDB,
+browser-local outboxes, or Offline/Hybrid write paths as authoritative storage.
+If a workflow cannot reserve/post remotely, fail visibly with retry/support
+guidance rather than silently creating a local business record.
 
 ## 6. Financial period locks
 

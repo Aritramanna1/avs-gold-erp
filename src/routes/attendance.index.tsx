@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +34,8 @@ import {
 import { usePeople, type Person } from "@/lib/people-store";
 import {
   useWorkers,
+  ATTENDANCE_LABELS,
+  type AttendanceStatus,
   type WorkerStatus,
   type WorkerStay,
   SALARY_RULE_LABELS,
@@ -356,13 +359,81 @@ function WorkerStatusBadge({ status }: { status: WorkerStatus }) {
 }
 
 function WorkerStatusTab({ workers }: { workers: Person[] }) {
+  const attendance = useWorkers((s) => s.attendance);
   const stays = useWorkers((s) => s.stays);
   const markArrived = useWorkers((s) => s.markArrived);
   const markGoneHome = useWorkers((s) => s.markGoneHome);
+  const upsertAttendance = useWorkers((s) => s.upsertAttendance);
   const rules = useWorkers((s) => s.rules);
 
   const [notesMap, setNotesMap] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [bulkDate, setBulkDate] = useState(todayISO());
+  const [bulkStatus, setBulkStatus] = useState<AttendanceStatus>("present");
+  const [bulkOvertime, setBulkOvertime] = useState("0");
+  const [bulkNotes, setBulkNotes] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set(workers.map((w) => w.id)),
+  );
+  const [bulkSaving, setBulkSaving] = useState(false);
+
+  const todaysAttendance = useMemo(
+    () => attendance.filter((a) => a.date === bulkDate),
+    [attendance, bulkDate],
+  );
+  const selectedCount = workers.filter((w) => selectedIds.has(w.id)).length;
+  const allSelected = workers.length > 0 && selectedCount === workers.length;
+
+  function toggleBulkWorker(workerId: string, checked: boolean) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(workerId);
+      else next.delete(workerId);
+      return next;
+    });
+  }
+
+  function setAllBulkWorkers(checked: boolean) {
+    setSelectedIds(checked ? new Set(workers.map((w) => w.id)) : new Set());
+  }
+
+  async function saveBulkAttendance() {
+    const selectedWorkers = workers.filter((w) => selectedIds.has(w.id));
+    if (!bulkDate) {
+      toast.error("Select an attendance date.");
+      return;
+    }
+    if (selectedWorkers.length === 0) {
+      toast.error("Select at least one worker.");
+      return;
+    }
+    const overtime = Number(bulkOvertime || "0");
+    if (!Number.isFinite(overtime) || overtime < 0 || overtime > 24) {
+      toast.error("Overtime must be between 0 and 24 hours.");
+      return;
+    }
+
+    setBulkSaving(true);
+    try {
+      for (const worker of selectedWorkers) {
+        await upsertAttendance({
+          workerId: worker.id,
+          date: bulkDate,
+          status: bulkStatus,
+          overtimeHours: overtime,
+          notes: bulkNotes.trim() || undefined,
+        });
+      }
+      toast.success(
+        `Attendance saved for ${selectedWorkers.length} worker${selectedWorkers.length === 1 ? "" : "s"}.`,
+      );
+      setBulkNotes("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save bulk attendance.");
+    } finally {
+      setBulkSaving(false);
+    }
+  }
 
   async function handleArrived(workerId: string) {
     setBusy((b) => ({ ...b, [workerId]: true }));
@@ -389,94 +460,200 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-      <div className="font-serif text-gold text-lg">Worker Status</div>
-      <p className="text-xs text-muted-foreground">
-        Workers from West Bengal stay for weeks or months. Use <strong>Mark Arrived</strong> when
-        they arrive and <strong>Gone Home</strong> when they leave. Salary accumulates while status
-        is <em>Working</em>.
-      </p>
-      {workers.length === 0 ? (
-        <EmptyHint text="No workers found." />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Worker</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Days on-site</TableHead>
-              <TableHead>Salary accrued</TableHead>
-              <TableHead>Arrived</TableHead>
-              <TableHead>Notes</TableHead>
-              <TableHead>Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {workers.map((w) => {
-              const status = workerStatus(w.id, stays);
-              const totalDays = stayDaysForWorker(w.id, stays);
-              const rule = activeRuleFor(rules, w.id);
-              const grossPaise = stayEarnedPaise(rule, totalDays);
-              const openStay = openStayFor(w.id, stays);
-              const arrivedDate = openStay
-                ? new Date(openStay.arrivedAt).toLocaleDateString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
-                : "—";
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="font-serif text-gold text-lg">Bulk Daily Attendance</div>
+            <p className="text-xs text-muted-foreground">
+              Mark the daily attendance register for many workers at once. Existing records for the
+              same worker and date are updated, not duplicated.
+            </p>
+          </div>
+          <Badge variant="outline">{selectedCount} selected</Badge>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-[160px_180px_140px_1fr]">
+          <div>
+            <Label htmlFor="bulk-attendance-date">Date</Label>
+            <Input
+              id="bulk-attendance-date"
+              type="date"
+              value={bulkDate}
+              onChange={(event) => setBulkDate(event.target.value)}
+            />
+          </div>
+          <div>
+            <Label>Status</Label>
+            <Select
+              value={bulkStatus}
+              onValueChange={(value) => setBulkStatus(value as AttendanceStatus)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(ATTENDANCE_LABELS) as AttendanceStatus[]).map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {ATTENDANCE_LABELS[status]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="bulk-overtime">Overtime (hours)</Label>
+            <Input
+              id="bulk-overtime"
+              inputMode="decimal"
+              value={bulkOvertime}
+              onChange={(event) => setBulkOvertime(event.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="bulk-notes">Notes</Label>
+            <Input
+              id="bulk-notes"
+              value={bulkNotes}
+              onChange={(event) => setBulkNotes(event.target.value)}
+              placeholder="Optional shared note"
+            />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-xs font-medium">
+            <Checkbox
+              checked={allSelected}
+              onCheckedChange={(checked) => setAllBulkWorkers(checked === true)}
+              aria-label="Select all workers"
+            />
+            <span>Select workers</span>
+          </div>
+          <div className="max-h-56 overflow-auto divide-y divide-border">
+            {workers.map((worker) => {
+              const dayRecord = todaysAttendance.find((entry) => entry.workerId === worker.id);
               return (
-                <TableRow key={w.id}>
-                  <TableCell className="font-medium">{w.fullName}</TableCell>
-                  <TableCell>
-                    <WorkerStatusBadge status={status} />
-                  </TableCell>
-                  <TableCell className="tabular-nums">{totalDays.toFixed(1)}</TableCell>
-                  <TableCell className="tabular-nums text-gold">
-                    {grossPaise > 0 ? `₹${paiseToRupees(grossPaise)}` : "—"}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{arrivedDate}</TableCell>
-                  <TableCell>
-                    <Input
-                      className="h-7 text-xs w-32"
-                      placeholder="Notes (optional)"
-                      value={notesMap[w.id] ?? ""}
-                      onChange={(e) => setNotesMap((m) => ({ ...m, [w.id]: e.target.value }))}
+                <label
+                  key={worker.id}
+                  className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Checkbox
+                      checked={selectedIds.has(worker.id)}
+                      onCheckedChange={(checked) => toggleBulkWorker(worker.id, checked === true)}
+                      aria-label={`Select ${worker.fullName}`}
                     />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {(status === "not_arrived" || status === "gone_home") && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs h-7 text-success border-success/40"
-                          disabled={busy[w.id]}
-                          onClick={() => handleArrived(w.id)}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Mark Arrived
-                        </Button>
-                      )}
-                      {status === "working" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs h-7 text-muted-foreground"
-                          disabled={busy[w.id]}
-                          onClick={() => handleGoneHome(w.id)}
-                        >
-                          Gone Home
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                    <span className="truncate font-medium">{worker.fullName}</span>
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {dayRecord ? ATTENDANCE_LABELS[dayRecord.status] : "Not marked"}
+                  </span>
+                </label>
               );
             })}
-          </TableBody>
-        </Table>
-      )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            Review the selected workers before saving. This writes directly to Supabase attendance.
+          </p>
+          <Button onClick={saveBulkAttendance} disabled={bulkSaving || selectedCount === 0}>
+            {bulkSaving ? "Saving..." : "Save bulk attendance"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <div className="font-serif text-gold text-lg">Worker Status</div>
+        <p className="text-xs text-muted-foreground">
+          Workers from West Bengal stay for weeks or months. Use <strong>Mark Arrived</strong> when
+          they arrive and <strong>Gone Home</strong> when they leave. Salary accumulates while
+          status is <em>Working</em>.
+        </p>
+        {workers.length === 0 ? (
+          <EmptyHint text="No workers found." />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Worker</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Days on-site</TableHead>
+                <TableHead>Salary accrued</TableHead>
+                <TableHead>Arrived</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {workers.map((w) => {
+                const status = workerStatus(w.id, stays);
+                const totalDays = stayDaysForWorker(w.id, stays);
+                const rule = activeRuleFor(rules, w.id);
+                const grossPaise = stayEarnedPaise(rule, totalDays);
+                const openStay = openStayFor(w.id, stays);
+                const arrivedDate = openStay
+                  ? new Date(openStay.arrivedAt).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "—";
+                return (
+                  <TableRow key={w.id}>
+                    <TableCell className="font-medium">{w.fullName}</TableCell>
+                    <TableCell>
+                      <WorkerStatusBadge status={status} />
+                    </TableCell>
+                    <TableCell className="tabular-nums">{totalDays.toFixed(1)}</TableCell>
+                    <TableCell className="tabular-nums text-gold">
+                      {grossPaise > 0 ? `₹${paiseToRupees(grossPaise)}` : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{arrivedDate}</TableCell>
+                    <TableCell>
+                      <Input
+                        className="h-7 text-xs w-32"
+                        placeholder="Notes (optional)"
+                        value={notesMap[w.id] ?? ""}
+                        onChange={(e) => setNotesMap((m) => ({ ...m, [w.id]: e.target.value }))}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {(status === "not_arrived" || status === "gone_home") && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-7 text-success border-success/40"
+                            disabled={busy[w.id]}
+                            onClick={() => handleArrived(w.id)}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Mark Arrived
+                          </Button>
+                        )}
+                        {status === "working" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-7 text-muted-foreground"
+                            disabled={busy[w.id]}
+                            onClick={() => handleGoneHome(w.id)}
+                          >
+                            Gone Home
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

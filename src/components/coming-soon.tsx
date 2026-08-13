@@ -1,9 +1,9 @@
 import { ModuleComingSoon } from "@/components/ModuleComingSoon";
 
-/** Compatibility wrapper for older routes; keeps one Coming Soon design language. */
+/** Compatibility wrapper for older deferred routes; keeps one release-gate notice style. */
 export const ComingSoonPlaceholder = ({ moduleName }: { moduleName: string }) => (
   <ModuleComingSoon
-    title={`${moduleName} (COMING SOON)`}
-    message={`${moduleName} is planned for a future jewellery manufacturing ERP update.`}
+    title={`${moduleName} Not Enabled`}
+    message={`${moduleName} is outside the currently enabled jewellery manufacturing ERP scope.`}
   />
 );

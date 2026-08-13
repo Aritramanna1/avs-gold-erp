@@ -1,19 +1,15 @@
 /**
- * MTJ ERP — Supabase ↔ Zustand sync layer
+ * Supabase -> Zustand branch/workshop hydration.
  *
- * On mount: fetches branches, workshops from Supabase → hydrates settings store.
- * On mutations: writes to Supabase AND updates the local store.
- *
- * This makes branches/workshops survive browser refresh, new devices, and
- * multiple users — they are the source of truth in Postgres, not localStorage.
+ * On mount: fetch branches and workshops from Supabase, then hydrate the
+ * in-memory settings store. On mutations: write to Supabase and update memory.
+ * Branches/workshops survive browser refresh, new devices, and multiple users
+ * because Postgres is authoritative; browser state is only a runtime view.
  */
 import { useEffect } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
 import type { Branch, WorkshopDefinition } from "@/lib/settings-store";
-import { isOfflineMode } from "@/lib/deployment-mode";
-
-// ── Row shapes from Supabase (snake_case) ────────────────────────
 
 interface DbBranch {
   id: string;
@@ -38,8 +34,6 @@ interface DbWorkshop {
   active: boolean;
   description: string | null;
 }
-
-// ── Converters ────────────────────────────────────────────────────
 
 function dbBranchToStore(r: DbBranch): Branch {
   return {
@@ -66,8 +60,6 @@ function dbWorkshopToStore(r: DbWorkshop): WorkshopDefinition {
   };
 }
 
-// ── Hook: call once at app root ───────────────────────────────────
-
 export function useSupabaseSync() {
   const { setBranches, setWorkshops } = useSettings();
 
@@ -75,9 +67,8 @@ export function useSupabaseSync() {
     let cancelled = false;
 
     async function sync() {
-      // Offline mode never touches Supabase — branches/workshops come from the
-      // local settings store (localStorage-cached), which is the source of truth.
-      if (isOfflineMode()) return;
+      // Supabase is authoritative. The settings store below is only an
+      // in-memory runtime projection used by the UI.
       const [{ data: branchRows }, { data: workshopRows }] = await Promise.all([
         supabase.from("branches").select("*"),
         supabase.from("workshops").select("*").order("name"),
@@ -100,10 +91,7 @@ export function useSupabaseSync() {
   }, [setBranches, setWorkshops]);
 }
 
-// ── Supabase-backed CRUD for branches ────────────────────────────
-
 export async function dbAddBranch(branch: Branch): Promise<void> {
-  if (isOfflineMode()) return;
   await (supabase.from("branches") as any).insert({
     id: branch.id,
     name: branch.name,
@@ -117,7 +105,6 @@ export async function dbAddBranch(branch: Branch): Promise<void> {
 }
 
 export async function dbUpdateBranch(id: string, patch: Partial<Branch>): Promise<void> {
-  if (isOfflineMode()) return;
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.code !== undefined) row.short_name = patch.code;
@@ -146,12 +133,10 @@ export async function dbUpdateBranch(id: string, patch: Partial<Branch>): Promis
 }
 
 export async function dbRemoveBranch(id: string): Promise<void> {
-  if (isOfflineMode()) return;
   await supabase.from("branches").delete().eq("id", id);
 }
 
 export async function dbSetDefaultBranch(id: string): Promise<void> {
-  if (isOfflineMode()) return;
   const { data: branches } = await (supabase.from("branches") as any).select("id,data");
   for (const branch of (branches ?? []) as Array<{
     id: string;
@@ -164,10 +149,7 @@ export async function dbSetDefaultBranch(id: string): Promise<void> {
   }
 }
 
-// ── Supabase-backed CRUD for workshops ───────────────────────────
-
 export async function dbAddWorkshop(w: WorkshopDefinition): Promise<void> {
-  if (isOfflineMode()) return;
   await supabase.from("workshops").insert({
     id: w.id,
     name: w.name,
@@ -182,7 +164,6 @@ export async function dbUpdateWorkshop(
   id: string,
   patch: Partial<WorkshopDefinition>,
 ): Promise<void> {
-  if (isOfflineMode()) return;
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.type !== undefined) row.type = patch.type;
@@ -197,6 +178,5 @@ export async function dbUpdateWorkshop(
 }
 
 export async function dbRemoveWorkshop(id: string): Promise<void> {
-  if (isOfflineMode()) return;
   await supabase.from("workshops").delete().eq("id", id);
 }

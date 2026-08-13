@@ -1,38 +1,7 @@
-﻿import { saveDirect, deleteDirect } from "@/lib/supabase-write";
 import { getCloudDataClient as getRawSupabaseClient } from "@/lib/providers/data-provider";
-import {
-  runLocal,
-  upsertRow,
-  bulkUpsertRows,
-  softDeleteRow,
-  undeleteRow,
-  selectById,
-  selectAllLive,
-  enqueueOutbox,
-  extractUpdatedAt,
-} from "@/lib/local-db";
-import { pullChangesSince } from "@/lib/sync-engine";
-import { getOrCreateDeviceId } from "@/lib/security/device-registry";
-import { getRuntimeProviders, LOCAL_ONLY_TABLES } from "@/lib/providers/runtime-providers";
 import { reportUnexpectedError } from "@/lib/error-handling";
+import { deleteDirect, saveDirect } from "@/lib/supabase-write";
 
-async function activeMode() {
-  return (await getRuntimeProviders()).mode;
-}
-
-/**
- * Tables whose writes represent a financial or gold-accounting action and
- * therefore get an automatic, best-effort audit log entry (Plan 1 Step 8) on
- * every save/delete â€” in addition to whatever explicit audit calls a
- * specific business flow already makes. Deliberately best-effort (caught,
- * logged to console, never thrown) here: this generic repository layer is
- * shared by 28 tables with years of validated behavior behind it, and this
- * pass's job is to add auditability without introducing a new failure mode
- * into stores that have nothing to do with security. A flow that needs a
- * HARD guarantee the audit entry was written (i.e. must throw on failure)
- * should call src/lib/security/audit-log.ts's `append()` directly instead of
- * relying on this best-effort hook.
- */
 const AUDITED_TABLES = new Set([
   "invoices",
   "payments",
@@ -49,187 +18,19 @@ const AUDITED_TABLES = new Set([
   "customer_gold_deposits",
   "ready_stock_items",
 ]);
-// Deliberately EXCLUDES "app_settings" â€” despite going through this same
-// repository, app_settings holds configuration/preferences (comm provider
-// config, WhatsApp templates, automation rules, expenses-store scratch
-// state), not a financial/gold/inventory/permission action, and it is
-// written far more frequently (branch selection, default-settings
-// bootstrapping on nearly every login) than the genuinely audited tables
-// above. Including it forced a full local SQLite/WASM initialization as a
-// side effect of routine app boot on every session â€” a real, measured
-// performance regression (see local-db.ts's initLocalDb() timing) that
-// showed up as widespread Playwright timeouts unrelated to any of the
-// tables actually being tested. Removing it fixes that without weakening
-// the audit trail's actual purpose.
 
-/**
- * Fire-and-forget: fetches the pre-write local snapshot (if any) itself,
- * rather than requiring callers to pre-fetch it, so a local-db access error
- * (e.g. not yet initialized in a session that never touched local storage
- * before) can never propagate into the actual save()/delete() call it's
- * documenting â€” it's caught here and logged, same as every other failure
- * mode in this function.
- */
-async function recordAuditBestEffort(
-  table: string,
-  action: "save" | "delete",
-  entityId: string,
-  after: unknown,
-): Promise<void> {
-  if (!AUDITED_TABLES.has(table)) return;
-  try {
-    const [{ append }, { supabase }, deviceId] = await Promise.all([
-      import("@/lib/security/audit-log"),
-      import("@/lib/providers/data-provider"),
-      getOrCreateDeviceId(),
-    ]);
-    let before: unknown = null;
-    try {
-      const { initLocalDb } = await import("@/lib/local-db");
-      await initLocalDb();
-      before = fromLocalRow(selectById(table, entityId));
-    } catch {
-      // Local DB unavailable â€” audit entry is still recorded, just without
-      // a "before" snapshot.
-    }
-    const { data } = await supabase.auth.getSession();
-    const actorId = data.session?.user.id ?? null;
-    const actorEmail = data.session?.user.email ?? null;
-    await append({
-      actorId,
-      actorEmail,
-      action: `${table}.${action}`,
-      entityType: table,
-      entityId,
-      before,
-      after,
-      deviceId,
-    });
-  } catch (err) {
-    console.error(`[AuditLog] Failed to record ${action} on ${table}/${entityId}:`, err);
-  }
-}
+const COMPATIBILITY_READ_LIMIT = 1000;
 
-/**
- * Repository Layer â€” Plan 1, Step 1 (offline-first migration).
- *
- * Every Zustand store's mutation handlers call a repository's save()/delete()
- * instead of saveDirect()/deleteDirect() directly. Today this is a pure
- * pass-through wrapper with zero behavior change (still writes straight to
- * Supabase) â€” it exists so the storage engine underneath can be swapped for
- * local SQLite + a sync outbox later without touching any store's call sites
- * again. See C:\Users\aritr\.claude\plans\hashed-churning-rocket.md (Plan 1).
- *
- * Plan 1 Step 3 (Local Write Engine) adds the *Local methods below. They are
- * NOT called by any store yet â€” stores still exclusively use save()/delete()/
- * saveAs(), which remain Supabase-only. The *Local methods exist so Step 4's
- * sync engine (and later, Step 5's read-switch) have a tested, atomic local
- * write path to build on, without touching store call sites again.
- *
- * Local row shape: every local-db table has at minimum `id` + `data` columns
- * (see local-db.ts's createTables()) â€” the repository stores the FULL domain
- * object as `data` (JSON) uniformly across all tables, rather than trying to
- * populate each table's extra structured/indexed columns from here. Those
- * structured columns exist for Step 5's local reads (fast filtered/indexed
- * queries) and get populated when that read path is built; until then they
- * simply stay empty, which is harmless since nothing reads them yet.
- * Critically, the OUTBOX always carries the plain, unwrapped domain object
- * (never the {id, data} local-row wrapper) â€” so when Step 4's sync engine
- * pushes it via saveDirect(), that function's existing per-table mapping
- * (see supabase-write.ts) applies exactly once, matching what a direct
- * save() call would have produced.
- */
 export interface Repository<T extends { id: string }> {
   save(payload: T): Promise<T>;
   delete(id: string): Promise<void>;
-  /**
-   * For tables keyed by a fixed/external id where the payload itself has no
-   * `id` field (e.g. a single settings-blob row like app_settings' scoped
-   * config rows) â€” saves `payload` under `id` without injecting an `id`
-   * property into the stored payload, so the row shape matches exactly what
-   * direct saveDirect(table, id, payload) calls wrote before this repository
-   * layer existed.
-   */
   saveAs(id: string, payload: unknown): Promise<void>;
-
-  // ---- Local Write Engine (Plan 1 Step 3) ----
-
-  /** Atomic local insert/update, keyed by payload.id. Enqueues an outbox entry for future sync. */
-  saveLocal(payload: T): Promise<T>;
-  /** Reads the current local row, merges `patch`, and saves atomically. No-ops if the row doesn't exist locally. */
-  updateLocal(id: string, patch: Partial<T>): Promise<T | null>;
-  /** Soft-deletes locally (row stays physically present for FK integrity + undo) and enqueues an outbox delete. */
-  deleteLocal(id: string): Promise<void>;
-  /** Reverses a not-yet-synced local soft delete. */
-  undeleteLocal(id: string): Promise<void>;
-  /**
-   * Saves every row in `payloads` inside ONE transaction â€” either all rows
-   * commit or none do (rollback on any failure), and one outbox entry is
-   * enqueued per row. Use for multi-row operations (e.g. bulk import) where
-   * partial application would leave inconsistent state.
-   */
-  bulkSaveLocal(payloads: T[]): Promise<T[]>;
-  /** Local row by id, or null if absent/soft-deleted. */
-  getLocalById(id: string): Promise<T | null>;
-  /** All non-soft-deleted local rows for this table. */
-  getAllLocal(): Promise<T[]>;
-
-  // ---- Local Read Engine (Plan 1 Step 5) ----
-
-  /**
-   * Reads a single row local-first: if a local copy exists, returns it
-   * immediately (works fully offline). If nothing local exists yet AND the
-   * network is reachable, falls back to a direct Supabase fetch and
-   * opportunistically caches the result locally for next time â€” so a
-   * genuinely offline app never blocks on a network call it can't complete,
-   * while a fresh/never-synced table still resolves online. Returns null if
-   * absent both locally and remotely (or offline with nothing cached).
-   */
   read(id: string): Promise<T | null>;
-  /**
-   * Reads all rows local-first. If local has never been populated for this
-   * table (e.g. first run before any sync) and the network is reachable,
-   * pulls once from Supabase and serves from the now-populated local cache.
-   * Offline with an empty local cache returns an empty array rather than
-   * throwing â€” callers should treat that as "nothing synced yet", not
-   * "table is empty", and the UI is responsible for surfacing that
-   * distinction if needed.
-   */
   readAll(): Promise<T[]>;
-
-  // ---- Portal/API readiness (future online ecosystem â€” Customer/Dealer/
-  // Karigar portals, Internal Management portal, future mobile apps) ----
-
-  /**
-   * Every non-deleted local row updated strictly after `sinceIso` (an ISO
-   * timestamp), sorted oldest-first. This is the exact `getChangedSince`
-   * shape Plan 1's architecture doc calls for on every repository â€” the
-   * same incremental-delta mechanism sync-engine.ts already uses
-   * internally (pullChangesSince) to keep local SQLite in sync with
-   * Supabase, now exposed on the repository itself so a FUTURE consumer
-   * (a portal's own sync job, a mobile app, an HTTP API wrapper) can ask
-   * "what changed since I last checked" through the same interface the
-   * desktop app already relies on â€” one implementation, multiple
-   * transports, no portal-specific sync logic to build or maintain
-   * separately. Falls back to an empty array (not a throw) if the local
-   * table has never been populated â€” "nothing synced yet" is the same
-   * shape as "nothing changed," and callers already have to handle both.
-   */
   getChangedSince(sinceIso: string): Promise<T[]>;
 }
 
-/** Wraps a domain object into this table's minimal local-row shape. */
-function toLocalRow<T extends { id: string }>(payload: T): Record<string, unknown> {
-  return { id: payload.id, data: JSON.stringify(payload) };
-}
-
-/**
- * Unwraps a local-row record back into its domain object shape. local-db.ts's
- * selectById/selectAllLive (via normalizeRow) already JSON.parse the `data`
- * column for us, so `row.data` is typically already an object here â€” only
- * parse it ourselves if it somehow arrives as a raw string.
- */
-function fromLocalRow<T>(row: Record<string, unknown> | null): T | null {
+function fromDbRow<T>(row: Record<string, unknown> | null): T | null {
   if (!row) return null;
   const raw = row.data;
   if (raw && typeof raw === "object") return raw as T;
@@ -241,6 +42,44 @@ function fromLocalRow<T>(row: Record<string, unknown> | null): T | null {
     }
   }
   return row as unknown as T;
+}
+
+function updatedAtOf(row: unknown): string | null {
+  if (!row || typeof row !== "object") return null;
+  const value =
+    (row as Record<string, unknown>).updatedAt ??
+    (row as Record<string, unknown>).updated_at ??
+    (row as Record<string, unknown>).createdAt ??
+    (row as Record<string, unknown>).created_at;
+  return typeof value === "string" ? value : null;
+}
+
+async function recordAuditBestEffort(
+  table: string,
+  action: "save" | "delete",
+  entityId: string,
+  after: unknown,
+): Promise<void> {
+  if (!AUDITED_TABLES.has(table)) return;
+  try {
+    const [{ append }, { supabase }] = await Promise.all([
+      import("@/lib/security/audit-log"),
+      import("@/lib/providers/data-provider"),
+    ]);
+    const { data } = await supabase.auth.getSession();
+    await append({
+      actorId: data.session?.user.id ?? null,
+      actorEmail: data.session?.user.email ?? null,
+      action: `${table}.${action}`,
+      entityType: table,
+      entityId,
+      before: null,
+      after,
+      deviceId: "supabase-online",
+    });
+  } catch (err) {
+    console.error(`[AuditLog] Failed to record ${action} on ${table}/${entityId}:`, err);
+  }
 }
 
 function userSafeThrow(error: unknown, context: string): never {
@@ -273,200 +112,63 @@ function wrapRepository<T extends { id: string }>(
   }) as Repository<T>;
 }
 
+/**
+ * Supabase-online repository.
+ *
+ * Use `save`, `delete`, `read`, and `readAll` for all business state. There is
+ * no browser-local repository/outbox path in production.
+ */
 export function createRepository<T extends { id: string }>(table: string): Repository<T> {
-  const shouldSynchronize = !LOCAL_ONLY_TABLES.has(table);
   const repository: Repository<T> = {
-    async save(payload: T): Promise<T> {
-      const mode = await activeMode();
-      if (mode === "online") await saveDirect(table, payload.id, payload);
-      else await this.saveLocal(payload);
+    async save(payload) {
+      await saveDirect(table, payload.id, payload);
       void recordAuditBestEffort(table, "save", payload.id, payload);
       return payload;
     },
-    async delete(id: string): Promise<void> {
-      const mode = await activeMode();
-      if (mode === "online") await deleteDirect(table, id);
-      else await this.deleteLocal(id);
+
+    async delete(id) {
+      await deleteDirect(table, id);
       void recordAuditBestEffort(table, "delete", id, null);
     },
-    async saveAs(id: string, payload: unknown): Promise<void> {
-      const mode = await activeMode();
-      if (mode === "online") {
-        await saveDirect(table, id, payload);
-      } else {
-        await runLocal(() => {
-          const before = fromLocalRow<Record<string, unknown>>(selectById(table, id));
-          undeleteRow(table, id);
-          upsertRow(table, { id, data: JSON.stringify(payload) });
-          if (shouldSynchronize)
-            enqueueOutbox(
-              `${table}:${id}:${Date.now()}`,
-              table,
-              id,
-              "insert",
-              payload,
-              extractUpdatedAt(before),
-            );
-        });
-      }
+
+    async saveAs(id, payload) {
+      await saveDirect(table, id, payload);
       void recordAuditBestEffort(table, "save", id, payload);
     },
 
-    async saveLocal(payload: T): Promise<T> {
-      await runLocal(() => {
-        const before = fromLocalRow<T>(selectById(table, payload.id));
-        undeleteRow(table, payload.id); // saving over a pending-delete row cancels the delete
-        upsertRow(table, toLocalRow(payload));
-        if (shouldSynchronize)
-          enqueueOutbox(
-            `${table}:${payload.id}:${Date.now()}`,
-            table,
-            payload.id,
-            "insert",
-            payload,
-            extractUpdatedAt(before as Record<string, unknown> | null),
-          );
-      });
-      return payload;
+    async read(id) {
+      const client = getRawSupabaseClient();
+      const { data, error } = await client
+        .from(table as any)
+        .select("id, data")
+        .eq("id", id)
+        .maybeSingle();
+      if (error || !data) return null;
+      return fromDbRow<T>(data as unknown as Record<string, unknown>);
     },
 
-    async updateLocal(id: string, patch: Partial<T>): Promise<T | null> {
-      return runLocal(() => {
-        const current = fromLocalRow<T>(selectById(table, id));
-        if (!current) return null;
-        const updated = { ...current, ...patch, id } as T;
-        upsertRow(table, toLocalRow(updated));
-        if (shouldSynchronize)
-          enqueueOutbox(
-            `${table}:${id}:${Date.now()}`,
-            table,
-            id,
-            "update",
-            updated,
-            extractUpdatedAt(current as unknown as Record<string, unknown>),
-          );
-        return updated;
-      });
+    async readAll() {
+      const client = getRawSupabaseClient();
+      // Transitional compatibility path only. High-volume screens must use a
+      // route-specific Supabase query/RPC with filters, counts, and pagination.
+      const { data, error } = await client
+        .from(table as any)
+        .select("data")
+        .limit(COMPATIBILITY_READ_LIMIT);
+      if (error) return [];
+      return ((data ?? []) as unknown[])
+        .map((row) => fromDbRow<T>(row as Record<string, unknown>))
+        .filter((row): row is T => row !== null);
     },
 
-    async deleteLocal(id: string): Promise<void> {
-      await runLocal(() => {
-        const before = fromLocalRow<T>(selectById(table, id));
-        softDeleteRow(table, id);
-        if (shouldSynchronize)
-          enqueueOutbox(
-            `${table}:${id}:${Date.now()}`,
-            table,
-            id,
-            "delete",
-            null,
-            extractUpdatedAt(before as Record<string, unknown> | null),
-          );
-      });
-    },
-
-    async undeleteLocal(id: string): Promise<void> {
-      await runLocal(() => {
-        undeleteRow(table, id);
-      });
-    },
-
-    async bulkSaveLocal(payloads: T[]): Promise<T[]> {
-      await runLocal(() => {
-        const beforeById = new Map(
-          payloads.map((p) => [p.id, fromLocalRow<T>(selectById(table, p.id))]),
-        );
-        bulkUpsertRows(
-          table,
-          payloads.map((p) => toLocalRow(p)),
-        );
-        for (const p of payloads) {
-          undeleteRow(table, p.id);
-          if (shouldSynchronize)
-            enqueueOutbox(
-              `${table}:${p.id}:${Date.now()}`,
-              table,
-              p.id,
-              "insert",
-              p,
-              extractUpdatedAt(beforeById.get(p.id) as unknown as Record<string, unknown> | null),
-            );
-        }
-      });
-      return payloads;
-    },
-
-    async getLocalById(id: string): Promise<T | null> {
-      try {
-        return fromLocalRow<T>(selectById(table, id));
-      } catch {
-        // Local sql.js cache unavailable (e.g. online-mode session that
-        // never initialized it) â€” same as "not cached locally".
-        return null;
-      }
-    },
-
-    async getAllLocal(): Promise<T[]> {
-      try {
-        return selectAllLive(table)
-          .map((row) => fromLocalRow<T>(row))
-          .filter((row): row is T => row !== null);
-      } catch {
-        return [];
-      }
-    },
-
-    async read(id: string): Promise<T | null> {
-      const local = await this.getLocalById(id);
-      if (local) return local;
-      if ((await activeMode()) === "offline") return null;
-      if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
-      try {
-        const client = getRawSupabaseClient();
-        const { data, error } = await client
-          .from(table as any)
-          .select("id, data")
-          .eq("id", id)
-          .maybeSingle();
-        if (error || !data) return null;
-        const remote = (data as unknown as { id: string; data: T }).data;
-        await runLocal(() => upsertRow(table, { id, data: JSON.stringify(remote) }));
-        return remote;
-      } catch {
-        // Network unreachable despite navigator.onLine === true (a common
-        // false-positive) â€” treat exactly like the offline-with-nothing-
-        // cached case rather than throwing and breaking the caller's UI.
-        return null;
-      }
-    },
-
-    async readAll(): Promise<T[]> {
-      const local = await this.getAllLocal();
-      if (local.length > 0) return local;
-      if ((await activeMode()) === "offline") return [];
-      if (typeof navigator !== "undefined" && navigator.onLine === false) return [];
-      try {
-        await pullChangesSince(table);
-        return this.getAllLocal();
-      } catch {
-        return [];
-      }
-    },
-
-    async getChangedSince(sinceIso: string): Promise<T[]> {
-      const rows = selectAllLive(table)
-        .map((row) => fromLocalRow<T>(row))
-        .filter((parsed): parsed is T => parsed !== null)
-        .filter((parsed) => {
-          const updatedAt = extractUpdatedAt(parsed as unknown as Record<string, unknown>);
+    async getChangedSince(sinceIso) {
+      const rows = await this.readAll();
+      return rows
+        .filter((row) => {
+          const updatedAt = updatedAtOf(row);
           return updatedAt !== null && updatedAt > sinceIso;
         })
-        .sort((a, b) =>
-          (extractUpdatedAt(a as unknown as Record<string, unknown>) ?? "").localeCompare(
-            extractUpdatedAt(b as unknown as Record<string, unknown>) ?? "",
-          ),
-        );
-      return rows;
+        .sort((a, b) => (updatedAtOf(a) ?? "").localeCompare(updatedAtOf(b) ?? ""));
     },
   };
   return wrapRepository(table, repository);

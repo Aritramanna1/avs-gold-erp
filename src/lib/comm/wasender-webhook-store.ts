@@ -1,28 +1,10 @@
 /**
- * WasenderAPI webhook event store (local, offline-first).
- *
- * WasenderAPI posts delivery statuses, read receipts and incoming customer
- * messages to a webhook URL. A LAN desktop app can't expose a public URL
- * directly, so events reach us one of two future ways (both feed `ingest`
- * below, so the rest of the app is agnostic to which):
- *   1. a small cloud relay that forwards webhook payloads to the app, or
- *   2. periodic polling of WasenderAPI for message status.
- * Either way every event is stored locally — this becomes the CRM
- * communication history the spec calls for. Nothing here depends on the cloud
- * for the LOCAL database; it only records what external WhatsApp reports.
- *
- * This module is the durable sink + a normalizer. Wiring an actual relay/poll
- * transport is a follow-up; the storage contract is stable so that work won't
- * touch any consumer.
+ * WasenderAPI webhook event store backed by Supabase communication_logs.
  */
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
-export type WebhookEventType =
-  | "message.incoming"
-  | "message.status" // sent / delivered / read / failed
-  | "session.status"
-  | "unknown";
+export type WebhookEventType = "message.incoming" | "message.status" | "session.status" | "unknown";
 
 export type MessageDeliveryStatus = "sent" | "delivered" | "read" | "failed" | "unknown";
 
@@ -30,17 +12,11 @@ export interface WebhookEvent {
   id: string;
   receivedAt: number;
   type: WebhookEventType;
-  /** WasenderAPI's own message id, when the event is about a message. */
   messageId?: string;
-  /** For status events. */
   status?: MessageDeliveryStatus;
-  /** Counterparty phone (incoming sender / outgoing recipient). */
   phone?: string;
-  /** Incoming text / media caption. */
   text?: string;
-  /** Media URL for incoming media messages. */
   mediaUrl?: string;
-  /** Raw payload, kept for audit and for fields we don't model yet. */
   raw: unknown;
 }
 
@@ -58,7 +34,6 @@ function normalizeStatus(raw: unknown): MessageDeliveryStatus {
   return "unknown";
 }
 
-/** Best-effort mapping of a raw WasenderAPI webhook payload to a WebhookEvent. */
 export function normalizeWebhook(payload: unknown): Omit<WebhookEvent, "id" | "receivedAt"> {
   const p = (payload ?? {}) as Record<string, unknown>;
   const event = String(p.event ?? p.type ?? "").toLowerCase();
@@ -90,40 +65,76 @@ function str(v: unknown): string | undefined {
   return v == null ? undefined : String(v);
 }
 
-interface WebhookState {
-  events: WebhookEvent[];
-  /** Store a raw webhook payload (from a relay/poll). Returns the stored event. */
-  ingest(payload: unknown): WebhookEvent;
-  /** Latest known delivery status for a message id, if any. */
-  statusFor(messageId: string): MessageDeliveryStatus | null;
-  clear(): void;
+function fromRow(row: Record<string, unknown>): WebhookEvent {
+  const data = (row.data ?? {}) as Partial<WebhookEvent>;
+  return {
+    id: String(row.id),
+    receivedAt: Date.parse(String(row.created_at ?? "")) || Date.now(),
+    type: (data.type as WebhookEventType) ?? "unknown",
+    messageId: data.messageId,
+    status: data.status,
+    phone: (row.phone as string) ?? data.phone,
+    text: (row.body as string) ?? data.text,
+    mediaUrl: data.mediaUrl,
+    raw: data.raw ?? row.data,
+  };
 }
 
-const MAX_EVENTS = 2000; // keep the local history bounded
+interface WebhookState {
+  events: WebhookEvent[];
+  refresh(): Promise<void>;
+  ingest(payload: unknown): Promise<WebhookEvent>;
+  statusFor(messageId: string): MessageDeliveryStatus | null;
+  clear(): Promise<void>;
+}
 
-export const useWasenderWebhooks = create<WebhookState>()(
-  persist(
-    (set, get) => ({
-      events: [],
-      ingest(payload) {
-        const event: WebhookEvent = {
-          id: makeId(),
-          receivedAt: Date.now(),
-          ...normalizeWebhook(payload),
-        };
-        set((s) => ({ events: [event, ...s.events].slice(0, MAX_EVENTS) }));
-        return event;
-      },
-      statusFor(messageId) {
-        const hit = get().events.find(
-          (e) => e.type === "message.status" && e.messageId === messageId,
-        );
-        return hit?.status ?? null;
-      },
-      clear() {
-        set({ events: [] });
-      },
-    }),
-    { name: "mtj-wasender-webhooks-v1" },
-  ),
-);
+const MAX_EVENTS = 2000;
+
+export const useWasenderWebhooks = create<WebhookState>()((set, get) => ({
+  events: [],
+  async refresh() {
+    const { data, error } = await supabase
+      .from("communication_logs" as never)
+      .select("*")
+      .eq("channel", "whatsapp")
+      .eq("linked_table", "wasender_webhook")
+      .order("created_at", { ascending: false })
+      .limit(MAX_EVENTS);
+    if (error) throw new Error(`Could not read webhook events: ${error.message}`);
+    set({ events: ((data ?? []) as Record<string, unknown>[]).map(fromRow) });
+  },
+  async ingest(payload) {
+    const event: WebhookEvent = {
+      id: makeId(),
+      receivedAt: Date.now(),
+      ...normalizeWebhook(payload),
+    };
+    const { error } = await supabase.from("communication_logs" as never).upsert({
+      id: event.id,
+      channel: "whatsapp",
+      direction: event.type === "message.incoming" ? "inbound" : "system",
+      status: event.status ?? "unknown",
+      phone: event.phone ?? null,
+      body: event.text ?? null,
+      linked_id: event.messageId ?? event.id,
+      linked_table: "wasender_webhook",
+      data: event,
+    } as never);
+    if (error) throw new Error(`Could not save webhook event: ${error.message}`);
+    set((s) => ({ events: [event, ...s.events].slice(0, MAX_EVENTS) }));
+    return event;
+  },
+  statusFor(messageId) {
+    const hit = get().events.find((e) => e.type === "message.status" && e.messageId === messageId);
+    return hit?.status ?? null;
+  },
+  async clear() {
+    const { error } = await supabase
+      .from("communication_logs" as never)
+      .delete()
+      .eq("channel", "whatsapp")
+      .eq("linked_table", "wasender_webhook");
+    if (error) throw new Error(`Could not clear webhook events: ${error.message}`);
+    set({ events: [] });
+  },
+}));

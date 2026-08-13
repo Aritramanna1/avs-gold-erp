@@ -152,16 +152,16 @@ function makeId() {
   return `cp_${Date.now()}`;
 }
 
-export default function CommunicationSettings() {
+function CommunicationSettings() {
   const currentBranchId = useCurrentBranchId();
-  const { configs, upsertConfig, removeConfig, ensureDefaults } = useCommSettings();
+  const { configs, upsertConfig, removeConfig, ensureDefaults, refresh } = useCommSettings();
   const accessible = useBranch(useShallow((s) => s.getAccessibleBranches()));
   const [selectedBranch, setSelectedBranch] = useState(currentBranchId);
 
   // Ensure defaults exist for the selected branch
   useEffect(() => {
-    ensureDefaults(selectedBranch);
-  }, [selectedBranch, ensureDefaults]);
+    void refresh().finally(() => ensureDefaults(selectedBranch));
+  }, [selectedBranch, ensureDefaults, refresh]);
 
   const branchConfigs = configs.filter((c) => c.branchId === selectedBranch);
 

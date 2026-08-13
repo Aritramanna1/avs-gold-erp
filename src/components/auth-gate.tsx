@@ -31,7 +31,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [session, setSession] = useState<Session | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
-  // Platform owners (saas_admin) never have — and never need — a tenant
+  // Platform owners (saas_admin) never have - and never need - a tenant
   // user_profiles row. Their identity is resolved from the authoritative
   // user_roles table before any tenant check runs, so they can never fall
   // through to the tenant "no assigned ERP role" rejection or briefly render
@@ -52,9 +52,9 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
     if (!session || isPlatformOwner !== true) return;
     if (!pathname.startsWith("/platform")) void navigate({ to: "/platform", replace: true });
   }, [navigate, pathname, session, isPlatformOwner]);
-  // Restoring a session from localStorage (as opposed to a fresh sign-in)
+  // Restoring a session from Supabase browser-session storage (as opposed to a fresh sign-in)
   // can legitimately take up to ~25s (see the account-lookup race below).
-  // Without this, that entire window renders the same UI as "logged out" â€”
+  // Without this, that entire window renders the same UI as "logged out" -
   // indistinguishable from an actual sign-out to a real user reopening the app.
   const [checking, setChecking] = useState(true);
 
@@ -66,7 +66,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
 
     // The authoritative identity mapping is user_profiles.auth_id. The
     // legacy app_settings user directory remains only as a compatibility
-    // fallback for older offline/pilot records.
+    // fallback for older pilot records that predate user_profiles.
     try {
       const { data: profile, error: profileError } = await supabase
         .from("user_profiles" as never)
@@ -95,7 +95,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
 
     if (!matched) {
       // A transient network blip here must never be mistaken for "this
-      // account doesn't exist" â€” that would forcibly sign out a fully
+      // account doesn't exist" - that would forcibly sign out a fully
       // legitimate, already-authenticated user. Retry once before giving up.
       for (let attempt = 0; attempt < 2 && !matched; attempt++) {
         try {
@@ -121,9 +121,9 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
               users = payload.users;
               matched = users.find((u) => u.email.toLowerCase() === userEmail.toLowerCase());
             }
-            break; // query succeeded (even if no match found) â€” don't retry
+            break; // query succeeded (even if no match found) - don't retry
           } else {
-            break; // query succeeded with no data â€” don't retry
+            break; // query succeeded with no data - don't retry
           }
         } catch (err) {
           console.error(
@@ -177,8 +177,8 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
     let mounted = true;
 
     // Safety valve so a hung/slow auth check (e.g. autoRefreshToken retrying
-    // a token refresh while offline at startup) doesn't leave the user
-    // staring at an infinite loading state â€” falls through to the login
+    // a token refresh while the network is unavailable at startup) doesn't leave the user
+    // staring at an infinite loading state - falls through to the login
     // screen. Deliberately does NOT delete the persisted Supabase auth token:
     // a slow check isn't an invalid session, and wiping it here would force
     // a full re-login even once the network/refresh that was merely slow
@@ -195,7 +195,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
         // INITIAL_SESSION may briefly carry a null session while Supabase
         // restores the persisted session during a page reload. Clearing all
         // business stores in that transient state races the real session
-        // hydration and makes local-first records disappear after refresh.
+        // hydration and clears Supabase-backed in-memory records after refresh.
         // Only an explicit sign-out is a data-boundary event.
         if (evt === "SIGNED_OUT") {
           setSession(null);
@@ -209,7 +209,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
           void resetAllBusinessStores();
         } else {
           // A null INITIAL_SESSION is still a valid signed-out state. Finish
-          // the auth check without clearing durable/local-first business data;
+          // the auth check without clearing Supabase-backed business state;
           // Supabase may immediately follow it with the restored session.
           setSession(null);
           setBootError(null);
@@ -218,7 +218,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Session is already Supabase-verified — render immediately instead of
+      // Session is already Supabase-verified - render immediately instead of
       // blocking the whole app behind the authorization lookup below (that
       // lookup used to gate the boot skeleton for up to ~25s on a slow
       // network). RLS on the backend enforces access independently of this
@@ -305,7 +305,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
 
     const unsubBranch = useSettings.subscribe((state, prev) => {
       // Only refetch on a REAL branch switch by the user. Skip the initial
-      // "" â†’ default assignment that pullBranches makes during the first load â€”
+      // "" -> default assignment that pullBranches makes during the first load -
       // otherwise it fires a second full pullAll() on top of the boot pull,
       // loading every table twice on every startup.
       if (prev.selectedBranchId && state.selectedBranchId !== prev.selectedBranchId) {
@@ -329,10 +329,14 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
     return <AuthLayout prefilledError={bootError} onClearError={() => setBootError(null)} />;
   }
 
-  // Platform-owner status hasn't resolved yet — hold on the skeleton instead
-  // of flashing tenant UI a saas_admin should never see, even briefly.
+  // Platform-owner status has not resolved yet. Only platform routes must wait;
+  // normal tenant screens can render while the lookup finishes in the background.
   const publicPaths = ["/auth/callback", "/forgot-password", "/reset-password", "/otp-login"];
-  if (isPlatformOwner === null && !publicPaths.some((path) => pathname.startsWith(path))) {
+  if (
+    isPlatformOwner === null &&
+    pathname.startsWith("/platform") &&
+    !publicPaths.some((path) => pathname.startsWith(path))
+  ) {
     return <AppBootSkeleton />;
   }
 

@@ -1,7 +1,7 @@
 /**
  * Embedded licensing configuration — NOT user-editable.
  *
- * The Arivahly API, verification key, support URL, and offline policy are baked
+ * The Arivahly API, verification key, and support URL are baked
  * into the application. End users can enter only their issued License Key.
  */
 
@@ -18,5 +18,5 @@ export const LICENSE_ED25519_PUBLIC_KEY = (import.meta.env.VITE_LICENSE_ED25519_
 /** Support / renewal contact — shown only as a "Contact Support" button. */
 export const LICENSE_SUPPORT_URL = "https://arivahly.in/contact";
 
-export const LICENSE_GRACE_DAYS = 7; // offline active-cache window
+export const LICENSE_GRACE_DAYS = 0;
 export const LICENSE_RENEWAL_NOTICE_DAYS = 7;

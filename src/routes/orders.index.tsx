@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,11 @@ import {
   orderItems,
   orderTotals,
   productionTypeLabel,
+  type Order,
   type OrderStatus,
   type OrderType,
 } from "@/lib/orders-store";
+import { fetchOrdersPage } from "@/lib/orders-query";
 import { renderOrderTemplate } from "@/lib/order-messages";
 import { usePeople } from "@/lib/people-store";
 import { useJobCards } from "@/lib/jobcards-store";
@@ -31,9 +33,29 @@ import { ReminderDialog } from "@/components/reminder-dialog";
 import { Plus, Search, ShoppingBag, Eye, Calendar, Send } from "lucide-react";
 import { useBranchFilter } from "@/lib/branch-filter";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useSettings } from "@/lib/settings-store";
+import { EmptyState, WebAppState } from "@/components/web-app-state";
+
+type OrdersSearch = {
+  q?: string;
+  status?: "all" | OrderStatus;
+  type?: "all" | OrderType;
+  page?: number;
+};
 
 export const Route = createFileRoute("/orders/")({
   head: () => ({ meta: [{ title: "Orders · AVS Gold ERP" }] }),
+  validateSearch: (search: Record<string, unknown>): OrdersSearch => ({
+    q: typeof search.q === "string" ? search.q : "",
+    status: typeof search.status === "string" ? (search.status as OrdersSearch["status"]) : "all",
+    type: typeof search.type === "string" ? (search.type as OrdersSearch["type"]) : "all",
+    page:
+      typeof search.page === "number"
+        ? search.page
+        : typeof search.page === "string"
+          ? Number(search.page)
+          : 1,
+  }),
   component: OrdersListPage,
 });
 
@@ -92,14 +114,17 @@ const BUCKET_TONE: Record<string, string> = {
 
 function OrdersListPage() {
   const { t } = useLanguage();
-  const orders = useOrders((s) => s.orders);
   const people = usePeople((s) => s.people);
   const jobs = useJobCards((s) => s.jobs);
   const { filter: branchFilter } = useBranchFilter();
-
-  const [query, setQuery] = useState("");
-  const [statusF, setStatusF] = useState<"all" | OrderStatus>("all");
-  const [typeF, setTypeF] = useState<"all" | OrderType>("all");
+  const navigate = useNavigate({ from: "/orders" });
+  const search = useSearch({ from: "/orders/" });
+  const currentUserRole = useSettings((s) => s.currentUserRole);
+  const selectedBranchId = useSettings((s) => s.selectedBranchId);
+  const [pageOrders, setPageOrders] = useState<Order[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
   const [reminder, setReminder] = useState<{
     cust: string;
     kari?: string;
@@ -107,12 +132,68 @@ function OrdersListPage() {
     kariPhone?: string;
   } | null>(null);
 
+  const pageSize = 25;
+  const page = Math.max(1, Number(search.page) || 1);
+  const query = search.q?.trim() ?? "";
+  const statusF = search.status ?? "all";
+  const typeF = search.type ?? "all";
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  const ordersBranchId = useMemo(() => {
+    const globalRoles = ["Super Owner", "Administrator", "CEO (View Only)", "owner", "admin"];
+    return currentUserRole && !globalRoles.includes(currentUserRole)
+      ? selectedBranchId || "MAIN"
+      : null;
+  }, [currentUserRole, selectedBranchId]);
+
   const customerName = (id: string) => people.find((p) => p.id === id)?.fullName ?? "—";
 
-  const filteredOrders = useMemo(() => branchFilter(orders), [orders, branchFilter]);
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingOrders(true);
+    setOrdersError(null);
+
+    fetchOrdersPage({
+      page,
+      pageSize,
+      query,
+      status: statusF,
+      type: typeF,
+      branchId: ordersBranchId,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        setPageOrders(branchFilter(result.orders));
+        setTotalCount(result.totalCount);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setOrdersError(err instanceof Error ? err.message : "Could not load orders.");
+        setPageOrders([]);
+        setTotalCount(0);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingOrders(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [branchFilter, ordersBranchId, page, query, statusF, typeF]);
+
+  const updateSearch = (patch: Partial<OrdersSearch>) => {
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        ...patch,
+        page: patch.page ?? 1,
+      }),
+      replace: true,
+    });
+  };
 
   function openReminder(orderId: string) {
-    const o = filteredOrders.find((x) => x.id === orderId);
+    const o = pageOrders.find((x) => x.id === orderId);
     if (!o) return;
     const cust = people.find((p) => p.id === o.customerId);
     // Who to chase for this order: whoever has one of its pieces on their bench.
@@ -135,26 +216,6 @@ function OrdersListPage() {
     });
   }
 
-  const list = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return filteredOrders.filter((o) => {
-      if (statusF !== "all" && o.status !== statusF) return false;
-      if (typeF !== "all" && o.type !== typeF) return false;
-      if (q) {
-        const cust = customerName(o.customerId).toLowerCase();
-        // Search EVERY line — an order found only by its first item is invisible
-        // to anyone looking for the bangles that were the third line on it.
-        const items = orderItems(o)
-          .map((it) => `${it.itemName} ${it.category}`)
-          .join(" ");
-        const hay = `${o.orderNo} ${cust} ${items}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredOrders, people, query, statusF, typeF]);
-
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <PageHeader
@@ -175,11 +236,14 @@ function OrdersListPage() {
           <Input
             placeholder={t("orders.searchPlaceholder")}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => updateSearch({ q: e.target.value })}
             className="pl-9"
           />
         </div>
-        <Select value={statusF} onValueChange={(v) => setStatusF(v as typeof statusF)}>
+        <Select
+          value={statusF}
+          onValueChange={(v) => updateSearch({ status: v as typeof statusF })}
+        >
           <SelectTrigger className="sm:w-52">
             <SelectValue placeholder={t("orders.statusPlaceholder")} />
           </SelectTrigger>
@@ -192,7 +256,7 @@ function OrdersListPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={typeF} onValueChange={(v) => setTypeF(v as typeof typeF)}>
+        <Select value={typeF} onValueChange={(v) => updateSearch({ type: v as typeof typeF })}>
           <SelectTrigger className="sm:w-56">
             <SelectValue placeholder={t("orders.orderTypePlaceholder")} />
           </SelectTrigger>
@@ -207,11 +271,32 @@ function OrdersListPage() {
         </Select>
       </div>
 
-      {list.length === 0 ? (
+      {loadingOrders ? (
+        <WebAppState
+          title="Loading orders"
+          description="Fetching the order register from Supabase."
+        />
+      ) : ordersError ? (
+        <WebAppState
+          title="Could not load orders"
+          description={ordersError}
+          tone="danger"
+          action={{ label: "Retry", onClick: () => updateSearch({ page }) }}
+        />
+      ) : pageOrders.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
-          <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground" />
-          <h3 className="mt-4 font-serif text-xl text-gold">{t("orders.noOrdersTitle")}</h3>
-          <p className="mt-2 text-sm text-muted-foreground">{t("orders.noOrdersDesc")}</p>
+          {query || statusF !== "all" || typeF !== "all" ? (
+            <EmptyState
+              title="No orders match this view"
+              description="Clear or adjust the search and filters to see other orders."
+            />
+          ) : (
+            <>
+              <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground" />
+              <h3 className="mt-4 font-serif text-xl text-gold">{t("orders.noOrdersTitle")}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{t("orders.noOrdersDesc")}</p>
+            </>
+          )}
           <Link to="/orders/new" className="inline-block mt-4">
             <Button className="gap-2">
               <Plus className="h-4 w-4" /> {t("orders.createOrder")}
@@ -236,7 +321,7 @@ function OrdersListPage() {
                 </tr>
               </thead>
               <tbody>
-                {list.map((o) => {
+                {pageOrders.map((o) => {
                   const bucket = deliveryBucket(o);
                   return (
                     <tr key={o.id} className="border-t border-border hover:bg-muted/20">
@@ -314,6 +399,31 @@ function OrdersListPage() {
                 })}
               </tbody>
             </table>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground">
+            <span>
+              Page {page} of {totalPages} · {totalCount} orders
+            </span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={page <= 1 || loadingOrders}
+                onClick={() => updateSearch({ page: Math.max(1, page - 1) })}
+              >
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages || loadingOrders}
+                onClick={() => updateSearch({ page: page + 1 })}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </div>
       )}

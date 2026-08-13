@@ -1,6 +1,9 @@
 # Technical Disclosure: Local Attachment Preview & Physical File Register System
 
-> Historical design record. The Version 1 rule is local-only files in every mode; any Supabase Storage proposal below is superseded by [Database Guide](DATABASE.md) and [Hybrid Mode Guide](HYBRID_SETUP.md).
+> Historical design record. The Version 1 local-only file rule is retired.
+> Current Ornexa / AVS production uses the Supabase-online architecture defined
+> by [Product Constitution](MASTER/ORNEXA_PRODUCT_CONSTITUTION.md),
+> [Database Guide](DATABASE.md), and [Architecture](ARCHITECTURE.md).
 
 This formal technical disclosure details the architecture, storage mechanisms, current operational constraints, and cloud migration blueprint for the **Local Attachment Preview** and **Physical File Register** frameworks in the **Areva Venture Studios ERP System**.
 
@@ -8,7 +11,7 @@ This formal technical disclosure details the architecture, storage mechanisms, c
 
 ## 1. Executive Summary
 
-In its current pilot release (MTJ ERP v1.0), the application operates as an **offline-first/client-heavy web platform**.
+In the retired MTJ ERP v1.0 pilot, the application operated as an **offline-first/client-heavy web platform**. This is not the current production model.
 
 - **Media Attachment Storage**: Image previews (job card blueprints, catalog entries, customer ID proofs) are stored in local client-side storage pools (**IndexedDB** and **localStorage**), serialised as Base64 strings.
 - **Metadata Registration**: The **Physical File Register** indexes physical binders, shelves, and cabinets inside the physical vault where actual gold materials or receipt logs are kept.

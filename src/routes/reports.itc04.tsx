@@ -144,5 +144,3 @@ function ITC04ReportPage() {
     </div>
   );
 }
-
-export default ITC04ReportPage;

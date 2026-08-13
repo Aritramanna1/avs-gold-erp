@@ -507,7 +507,14 @@ export const useOrders = create<OrdersState>()((set, get) => ({
       !currentUserRole || GLOBAL_ROLES.includes(currentUserRole)
         ? null
         : selectedBranchId || "MAIN";
-    let q = supabase.from("orders").select("data").limit(10000);
+    // Compatibility/detail cache only. High-volume order registers must use
+    // route-level Supabase pagination instead of hydrating every historical
+    // order into the browser on app startup.
+    let q = supabase
+      .from("orders")
+      .select("data")
+      .order("updated_at", { ascending: false })
+      .limit(500);
     if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
     const { data, error } = await q;
     if (error) {

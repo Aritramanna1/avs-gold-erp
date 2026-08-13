@@ -8,6 +8,7 @@ import { getNextSequenceSync } from "./sequence-manager";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "./settings-store";
 import { createRepository } from "./repositories/base-repository";
+import { archiveCentralPartyForPerson, syncPersonToCentralParty } from "@/lib/central-foundation";
 
 export type PersonType =
   "customer" | "firm_customer" | "karigar" | "worker" | "employee" | "vendor" | "outside_worker";
@@ -152,10 +153,14 @@ export const usePeople = create<PeopleState>()((set, get) => ({
     // JSON document. Read both shapes: older imports and QA/onboarding rows
     // may have identity fields in columns while newer writes keep the full
     // domain object in `data`.
+    // This store is now a small compatibility/detail cache. High-volume People
+    // lists use `people-query.ts` for Supabase range/count pagination, so this
+    // refresh must stay bounded.
     let q = supabase
       .from("people")
       .select("id,full_name,phone,email,type,active,created_at,updated_at,data")
-      .limit(5000);
+      .order("updated_at", { ascending: false })
+      .limit(250);
     if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
     const { data, error } = await q;
     if (error) {
@@ -208,6 +213,7 @@ export const usePeople = create<PeopleState>()((set, get) => ({
         branchId: input.branchId || useSettings.getState().selectedBranchId || undefined,
       };
       await peopleRepository.save(person);
+      await syncPersonToCentralParty(person);
       // Optimistic local update — realtime will confirm from DB
       set((s) => ({ people: [person, ...s.people] }));
       return person;
@@ -219,6 +225,7 @@ export const usePeople = create<PeopleState>()((set, get) => ({
     if (!current) return;
     const updated = { ...current, ...patch, updatedAt: Date.now() };
     await peopleRepository.save(updated);
+    await syncPersonToCentralParty(updated);
     set((s) => ({ people: s.people.map((p) => (p.id === id ? updated : p)) }));
   },
   setActive: async (id, active) => {
@@ -226,6 +233,7 @@ export const usePeople = create<PeopleState>()((set, get) => ({
     if (!current) return;
     const updated = { ...current, active, updatedAt: Date.now() };
     await peopleRepository.save(updated);
+    await syncPersonToCentralParty(updated);
     set((s) => ({ people: s.people.map((p) => (p.id === id ? updated : p)) }));
   },
   toggleDoc: async (id, key) => {
@@ -237,10 +245,12 @@ export const usePeople = create<PeopleState>()((set, get) => ({
       updatedAt: Date.now(),
     };
     await peopleRepository.save(updated);
+    await syncPersonToCentralParty(updated);
     set((s) => ({ people: s.people.map((p) => (p.id === id ? updated : p)) }));
   },
   remove: async (id) => {
     await peopleRepository.delete(id);
+    await archiveCentralPartyForPerson(id);
     set((s) => ({ people: s.people.filter((p) => p.id !== id) }));
   },
   reset: () => set({ people: [] }),

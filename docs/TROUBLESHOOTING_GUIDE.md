@@ -9,7 +9,7 @@
 | WhatsApp queued                        | Check connectivity, Wasender session/credentials, retry status, and provider limits.                          |
 | Attachment missing                     | Confirm it exists on the original computer/profile; Hybrid does not copy files.                               |
 | Gold balance unexpected                | Stop related postings and reconcile Gold Vault/audit trail; never overwrite totals manually.                  |
-| License expired/suspended              | Contact Arivahly support; do not change the clock or local database.                                          |
+| License expired/suspended              | Contact Arivahly support; do not change the system clock or Supabase-backed license records.                                          |
 | Restore/corruption error               | Stop, preserve the profile and backup, and contact support. Do not reinstall first.                           |
 
 Diagnostics should include app version, deployment mode, time, module, steps, screenshot, and non-sensitive error text—never credentials or customer documents.

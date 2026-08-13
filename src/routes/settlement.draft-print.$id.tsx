@@ -1,4 +1,4 @@
-import { createFileRoute, useParams } from "@tanstack/react-router";
+﻿import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useSettlements, previewSettlementTotals, type Settlement } from "@/lib/settlement-store";
 import { useSettings } from "@/lib/settings-store";
@@ -10,15 +10,15 @@ import { generateWorkerSlipPdf } from "@/lib/pdf/document-pdf-generator";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settlement/draft-print/$id")({
-  head: () => ({ meta: [{ title: "Settlement Draft · AVS Gold ERP" }] }),
+  head: () => ({ meta: [{ title: "Settlement Draft Â· AVS Gold ERP" }] }),
   component: SettlementDraftPrint,
 });
 
 /**
- * Settlement Draft — half-A4, TWO identical copies (Customer + Workshop),
+ * Settlement Draft â€” half-A4, TWO identical copies (Customer + Workshop),
  * printed front (customer-facing preview figures only) and back (a blank
  * handwritten form the employee fills at the delivery counter). This is
- * NEVER a GST Invoice and never a final Settlement Receipt — both of those
+ * NEVER a GST Invoice and never a final Settlement Receipt â€” both of those
  * only exist after Final Settlement (see settlement.$id.tsx's
  * completeFinalSettlement(), and the existing billing.settlement-slip.$id.tsx
  * for the post-final Settlement Receipt, reused as-is).
@@ -29,9 +29,9 @@ function SettlementDraftPrint() {
   const refresh = useSettlements((st) => st.refresh);
   const { firm } = useSettings();
 
-  // See settlement.$id.tsx's identical guard — never refresh() unconditionally
+  // See settlement.$id.tsx's identical guard â€” never refresh() unconditionally
   // here, it would race and overwrite the store's own optimistic update from
-  // createDraft() with a stale local-first read.
+  // createDraft() with a stale cached read.
   useEffect(() => {
     if (!s) refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -69,7 +69,7 @@ function SettlementDraftPrint() {
     try {
       const blob = generateWorkerSlipPdf(
         {
-          title: "Settlement Draft (Preview) — NOT A TAX INVOICE",
+          title: "Settlement Draft (Preview) â€” NOT A TAX INVOICE",
           docNo: s!.settlementNo,
           date: new Date(s!.createdAt).toLocaleDateString("en-IN"),
           personName: s!.customerName,
@@ -98,7 +98,7 @@ function SettlementDraftPrint() {
             },
           ],
           notes:
-            "Employee carries this draft with the jewellery — actual payment is recorded on the reverse side and finalised at the office.",
+            "Employee carries this draft with the jewellery â€” actual payment is recorded on the reverse side and finalised at the office.",
         },
         firm,
       );
@@ -132,7 +132,7 @@ function SettlementDraftPrint() {
       />
 
       <div className="p-4 md:p-8 max-w-3xl mx-auto print:p-0">
-        {/* ── PAGE 1 — FRONT SIDE — two identical copies stacked ────────────── */}
+        {/* â”€â”€ PAGE 1 â€” FRONT SIDE â€” two identical copies stacked â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div
           className="bg-white text-black print:break-after-page"
           data-testid="settlement-draft-front"
@@ -145,7 +145,8 @@ function SettlementDraftPrint() {
             shopName={firm.shopName}
           />
           <div className="border-t-2 border-dashed border-black/40 my-2 text-center text-[9px] text-black/40 py-1 print:my-0">
-            ✂ — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — ✂
+            âœ‚ â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€”
+            â€” â€” â€” â€” â€” â€” â€” â€” â€” âœ‚
           </div>
           <DraftCopy
             label="WORKSHOP COPY"
@@ -156,11 +157,12 @@ function SettlementDraftPrint() {
           />
         </div>
 
-        {/* ── PAGE 2 — BACK SIDE — two blank handwritten forms stacked ──────── */}
+        {/* â”€â”€ PAGE 2 â€” BACK SIDE â€” two blank handwritten forms stacked â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="bg-white text-black" data-testid="settlement-draft-back">
           <BackForm label="CUSTOMER COPY" />
           <div className="border-t-2 border-dashed border-black/40 my-2 text-center text-[9px] text-black/40 py-1 print:my-0">
-            ✂ — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — ✂
+            âœ‚ â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€” â€”
+            â€” â€” â€” â€” â€” â€” â€” â€” â€” âœ‚
           </div>
           <BackForm label="WORKSHOP COPY" />
         </div>
@@ -210,7 +212,7 @@ function DraftCopy({
             <Row2 label="Gross Weight" value={`${mgToGrams(item.grossMg)} g`} />
             <Row2 label="Net Weight" value={`${mgToGrams(item.netMg)} g`} />
             <Row2 label="Purity" value={`${(item.purity / 10).toFixed(1)}%`} />
-            <Row2 label="Making Charges" value={`₹${paiseToRupees(item.makingChargesPaise)}`} />
+            <Row2 label="Making Charges" value={`â‚¹${paiseToRupees(item.makingChargesPaise)}`} />
           </tbody>
         </table>
       )}
@@ -228,18 +230,22 @@ function DraftCopy({
             value={`${mgToGrams(Math.max(0, s.existingGoldCreditMgAtDraft - (item?.fineMg ?? 0)))} g`}
           />
           {s.gst !== "none" && (
-            <Row2 label="GST Preview" value={`₹${paiseToRupees(preview.gstPaise)}`} />
+            <Row2 label="GST Preview" value={`â‚¹${paiseToRupees(preview.gstPaise)}`} />
           )}
           {preview.tcsPaise > 0 && (
-            <Row2 label="TCS Preview" value={`₹${paiseToRupees(preview.tcsPaise)}`} />
+            <Row2 label="TCS Preview" value={`â‚¹${paiseToRupees(preview.tcsPaise)}`} />
           )}
           <Row2 label="Gold Payable" value={`${mgToGrams(item?.fineMg ?? 0)} g fine`} bold />
-          <Row2 label="Cash Equivalent" value={`₹${paiseToRupees(preview.grandTotalPaise)}`} bold />
+          <Row2
+            label="Cash Equivalent"
+            value={`â‚¹${paiseToRupees(preview.grandTotalPaise)}`}
+            bold
+          />
         </tbody>
       </table>
 
       <p className="text-[9px] text-center text-black/50 mt-2">
-        Employee carries this draft with the jewellery — actual payment is recorded on the reverse
+        Employee carries this draft with the jewellery â€” actual payment is recorded on the reverse
         side and finalised at the office.
       </p>
     </div>
@@ -250,7 +256,7 @@ function BackForm({ label }: { label: string }) {
   return (
     <div className="p-6 text-xs" style={{ minHeight: "135mm" }}>
       <div className="text-center border-b-2 border-black pb-2 mb-3">
-        <div className="text-sm font-bold tracking-widest">SETTLEMENT — DELIVERY RECORD</div>
+        <div className="text-sm font-bold tracking-widest">SETTLEMENT â€” DELIVERY RECORD</div>
         <div className="text-[9px] mt-0.5 font-bold">{label}</div>
       </div>
 
@@ -262,9 +268,9 @@ function BackForm({ label }: { label: string }) {
       <div className="mb-3">
         <div className="font-bold mb-1">Payment Type</div>
         <div className="flex gap-6">
-          <span>☐ Full Payment</span>
-          <span>☐ Partial Payment</span>
-          <span>☐ Credit Delivery (No Payment)</span>
+          <span>â˜ Full Payment</span>
+          <span>â˜ Partial Payment</span>
+          <span>â˜ Credit Delivery (No Payment)</span>
         </div>
       </div>
 

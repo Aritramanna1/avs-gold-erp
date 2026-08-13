@@ -230,7 +230,7 @@ export function hasRoutePermission(role: string | null | undefined, path: string
   if (SUPER_ROLES.includes(role)) return true;
 
   // Planned manufacturing entries intentionally remain navigable so their
-  // professional Coming Soon pages are visible instead of hidden or disabled.
+  // release-gate notices are visible instead of failing as broken routes.
   if (path === "/coming-soon" || path.startsWith("/coming-soon/")) return true;
 
   // Find the longest matching prefix

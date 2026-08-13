@@ -147,6 +147,8 @@ function makeId() {
 
 const inventoryRepository = createRepository<StockItem>("inventory");
 const stockMovementRepository = createRepository<StockMovement>("stock_movements");
+const STOCK_COMPAT_CACHE_LIMIT = 500;
+const STOCK_MOVEMENT_COMPAT_CACHE_LIMIT = 1000;
 
 export const useStock = create<StockState>()((set, get) => ({
   items: [],
@@ -165,9 +167,18 @@ export const useStock = create<StockState>()((set, get) => ({
       !currentUserRole || GLOBAL_ROLES.includes(currentUserRole)
         ? null
         : selectedBranchId || "MAIN";
-    let inventoryQ = supabase.from("inventory").select("data").limit(10000);
+    // Compatibility cache only; /stock uses Supabase range/count pagination.
+    let inventoryQ = supabase
+      .from("inventory")
+      .select("data")
+      .order("updated_at", { ascending: false })
+      .limit(STOCK_COMPAT_CACHE_LIMIT);
     if (bid) inventoryQ = inventoryQ.filter("data->>branchId", "eq", bid) as typeof inventoryQ;
-    let movsQ = supabase.from("stock_movements").select("data").limit(10000);
+    let movsQ = supabase
+      .from("stock_movements")
+      .select("data")
+      .order("ts", { ascending: false })
+      .limit(STOCK_MOVEMENT_COMPAT_CACHE_LIMIT);
     if (bid) movsQ = movsQ.filter("data->>branchId", "eq", bid) as typeof movsQ;
     const [itemsRes, movsRes] = await Promise.all([inventoryQ, movsQ]);
     if (itemsRes.error) {

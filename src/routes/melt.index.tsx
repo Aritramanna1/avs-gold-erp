@@ -125,7 +125,7 @@ function safeGramsToMg(val: string): number {
   }
 }
 
-export default function MeltIndex() {
+function MeltIndex() {
   const { jobs, refresh, createJob, updateJob, deleteJob, completeJob } = useMeltStore();
   const people = usePeople((s) => s.people);
   const branches = useSettings((s) => s.branches);

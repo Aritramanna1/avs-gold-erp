@@ -1,0 +1,268 @@
+# Ornexa Master Audit - 2026-08-13
+
+## Audit Answer
+
+The master-document audit pass is complete for the current directive scope, excluding legacy offline/Hybrid architecture as requested by the Product Owner.
+
+The ERP is not production complete yet. This audit is a source/documentation reconciliation pass, not a final runtime verification. No route, module, workflow, print path, RLS policy, mobile layout, or support action may be marked production-ready until it has evidence from tests, screenshots, migration results, and end-to-end workflow execution.
+
+## Non-Negotiable Architecture Decision
+
+Production Ornexa uses the Supabase online structure:
+
+- Supabase Auth is the authoritative authentication layer.
+- Supabase Postgres with RLS is the authoritative business data layer.
+- Supabase-compatible storage/service architecture remains the production direction.
+- Offline-first, local-auth, local SQLite primary, IndexedDB primary, or Hybrid-as-authoritative architecture is not approved.
+- Older offline/Hybrid documents remain historical references for business rules only. They do not override the production stack decision.
+
+## Checklist.Design Gate References
+
+The release gate now incorporates Checklist Design web-app guidance from these relevant pages:
+
+- https://www.checklist.design/web-app
+- https://www.checklist.design/web-app/login
+- https://www.checklist.design/web-app/search-results
+- https://www.checklist.design/web-app/empty-state
+- https://www.checklist.design/web-app/analytics
+- https://www.checklist.design/web-app/onboarding
+- https://www.checklist.design/web-app/notifications
+- https://www.checklist.design/web-app/settings
+- https://www.checklist.design/web-app/user-management
+- https://www.checklist.design/web-app/version-history
+- https://www.checklist.design/web-app/multi-step-form
+- https://www.checklist.design/web-app/api-keys
+- https://www.checklist.design/web-app/kanban-board-view
+- https://www.checklist.design/web-app/single-item-detail
+
+Checklist.Design is a quality gate, not a visual theme. Only web-app requirements relevant to a jewellery manufacturing ERP are applicable.
+
+## Source Surface Evidence
+
+Current route inventory shows broad coverage across owner platform, billing, stock, workshop, reports, settings, attendance, portals, manufacturing, repair, communications, WhatsApp, and print routes.
+
+Important evidence from source scan:
+
+- Routes exist for `billing`, `orders`, `workshop`, `manufacturing`, `stock`, `attendance`, `people`, `reports`, `settings`, `customer-portal`, `karigar-portal`, `platform`, and `communications`.
+- Explicit coming-soon routes still exist: `coming-soon.barcode-printing.tsx`, `coming-soon.barcode-scanner.tsx`, and `coming-soon.meena-book.tsx`.
+- Active source has been cleaned of authoritative Offline/Hybrid/local database paths found in the current sweep; remaining references are retirement notices, historical documentation, browser UI/session metadata, or test/runtime caches that require continued classification evidence before PASS.
+- Print is partially centralized through print engine components, but direct `window.print()` routes remain. The central document engine is therefore PARTIAL.
+- Several comments explicitly state future or not-implemented extension points. These cannot be treated as completed product scope.
+
+## Centralized Architecture Audit
+
+| Foundation | Status | Evidence | Required Completion |
+|---|---|---|---|
+| One firm/branch model | PARTIAL | Branch routes, settings, platform tenant controls exist | Verify firm/branch isolation with Supabase RLS and remove local/offline assumptions |
+| One user/role system | PARTIAL | Auth, user profile, platform owner and role UI exist | Complete RBAC matrix and role workspace evidence |
+| One party system | PARTIAL | `people` module supports customer/supplier/karigar style use | Confirm 360 profile, shared contacts/GST/address/KYC, balances, documents, communication, audit |
+| One metal engine | PARTIAL | Shared gold helpers and fine calculations exist in multiple flows | Centralize all gross/net/fine/touch/wastage/rate/value calculations and immutable snapshots |
+| One transaction foundation | IMPLEMENTING | `src/lib/ornexa/transaction-contracts.ts` exists | Bind every workflow to central transaction/event contracts and postings |
+| One inventory foundation | PARTIAL | Stock, lots, stones, hallmark, verification routes exist | Complete raw/WIP/finished/stone/diamond/tag/box/tray/location movements |
+| One manufacturing graph | PARTIAL | Workshop, job cards, outside work, worker books exist | Complete order to job to issue to receive to QC to hallmark to stock to settlement traceability |
+| One accounting foundation | PARTIAL | Billing, settlement, ledger, reports exist | Prove cash/metal ledger postings, reversals, GST, day close, Tally export |
+| One document engine | PARTIAL | Print engine, print routes, print templates exist | Remove scattered print implementations and complete preview/PDF/share/WhatsApp/email flow |
+| One storage architecture | PARTIAL | Supabase storage services exist, legacy local file paths remain | Make Supabase-compatible storage authoritative and RLS-safe |
+| One notification/follow-up engine | PARTIAL | Notifications/reminders/support/communications routes exist | Centralize overdue work/payment/QC/hallmark/refinery/document follow-ups |
+| One audit system | PARTIAL | Audit routes and audit logging exist | Entity-level timelines for jobs, parties, documents, inventory, payments |
+| One reporting foundation | PARTIAL | Broad reports route set exists | Verify report totals, filters, exports, print, saved/verified reports |
+| One assistant tool layer | PARTIAL | Assistant migration and brain files exist; `src/lib/avs-assistant-brain.ts` now routes supported requests to Supabase/RLS-backed ERP record search, customer balance, karigar gold book, document/printing register summary, daily follow-up, production queue, inventory exception, and draft gold issue tools with best-effort `assistant_action_audit` writes | Authenticated RLS/no-leak tests, provider adapter hardening, voice, confirmation execution flows, and broader accounting/report/posting tools remain |
+
+## Jewellery ERP Reference Classification
+
+| Feature / Concept | Status | Decision |
+|---|---|---|
+| Accounts | PARTIAL | Improve through central accounting foundation |
+| Account Groups | PARTIAL | Improve |
+| Customer | PARTIAL | Merge into central Party |
+| Supplier | PARTIAL | Merge into central Party |
+| Karigar | PARTIAL | Merge into central Party plus manufacturing extension |
+| Refinery | MISSING | Implement as Party role plus metal workflow |
+| Hallmark Vendor | PARTIAL | Improve as Party role plus hallmark workflow |
+| Service Provider | PARTIAL | Merge into central Party |
+| Item Groups | PARTIAL | Improve inventory/catalog masters |
+| Items | PARTIAL | Improve inventory/catalog masters |
+| Metal | PARTIAL | Improve central metal engine |
+| Purity | PARTIAL | Centralize validation and snapshots |
+| Touch | PARTIAL | Centralize metal calculation rules |
+| Fine calculation | PARTIAL | Centralize and test across all modules |
+| Stone/Diamond | PARTIAL | Improve stone/diamond inventory and valuation |
+| Making charges | PARTIAL | Improve billing/manufacturing/accounting rules |
+| Hallmark charges | PARTIAL | Improve hallmark and billing linkage |
+| Opening Stock | PARTIAL | Improve audited opening balance flow |
+| Daily Bhav / Metal Rates | PARTIAL | Improve rate snapshots and permissions |
+| Purchase | PARTIAL | Implement/verify full transaction workflow |
+| Purchase Return | MISSING | Implement |
+| Sale | PARTIAL | Improve existing billing flow |
+| Sale Return | PARTIAL | Improve through credit/debit/return workflow |
+| Receipt | PARTIAL | Improve central document/accounting posting |
+| Payment | PARTIAL | Improve central document/accounting posting |
+| Expense | PARTIAL | Verify posting and reports |
+| Journal | PARTIAL | Verify accounting workflow |
+| Contra | PARTIAL | Verify accounting workflow |
+| Metal Receipt | PARTIAL | Improve central transaction and ledger posting |
+| Metal Payment | PARTIAL | Improve central transaction and ledger posting |
+| Issue | PARTIAL | Improve manufacturing/karigar/vault traceability |
+| Receive | PARTIAL | Improve manufacturing/karigar/vault traceability |
+| Transfer | PARTIAL | Verify branch/vault/stock transfer flows |
+| Job Work | PARTIAL | Improve full manufacturing graph |
+| Repair | PARTIAL | Verify repair lifecycle |
+| Old Gold | PARTIAL | Improve appraisal/refinery/customer ledger |
+| Refinery | MISSING | Implement dedicated lifecycle |
+| Hallmark | PARTIAL | Improve custody, charges, report, timeline |
+| Stock Adjustment | PARTIAL | Verify approval/audit |
+| Karigar Settlement | PARTIAL | Complete hisab/final settlement |
+| Branch Transfer | PARTIAL | Verify RLS and document flow |
+| Vault Transfer | PARTIAL | Verify metal ledger and audit |
+| Order | PARTIAL | Improve cross-module deep links |
+| Advance | PARTIAL | Verify cash/gold advance accounting |
+| Credit Note | PARTIAL | Existing route; verify workflow |
+| Debit Note | PARTIAL | Existing route; verify workflow |
+| Tag Generation | PARTIAL | Improve central tag flow |
+| Tag Modification | PARTIAL | Verify audit/approval |
+| Tag Stock | PARTIAL | Verify stock link |
+| Box/Tray | MISSING | Implement if required for inventory control |
+| Physical Stock | PARTIAL | Improve verification workflow |
+| Stock Ageing | PARTIAL | Verify reports |
+| Weight-wise Stock | PARTIAL | Verify reports |
+| Quality-wise Stock | PARTIAL | Verify reports |
+| Supplier Ageing | MISSING | Implement report if supplier credit is in scope |
+| Dead Stock | MISSING | Implement notification/report |
+| Karigar Reports | PARTIAL | Improve outside-work and settlement reports |
+| Daily Books | PARTIAL | Verify reports and day close |
+| Ledger | PARTIAL | Improve unified cash/metal party ledger |
+| Outstanding | PARTIAL | Verify customer/supplier/karigar balances |
+| Stock Summary | PARTIAL | Verify reports |
+| Sale Register | PARTIAL | Verify GST/accounting reports |
+| Purchase Register | PARTIAL | Implement/verify |
+| Bank Reconciliation | MISSING | Implement if banking module is in release scope |
+| Reminders | PARTIAL | Merge into central follow-up engine |
+| To-do | PARTIAL | Merge into central follow-up engine |
+| Work Book | PARTIAL | Improve workshop/karigar books |
+| Web Orders | PARTIAL | Verify portal/import workflow |
+| Hisab Final | PARTIAL | Complete karigar settlement finalization |
+| Voucher numbering | PARTIAL | Centralize numbering and branch sequences |
+| Backup/Restore | PARTIAL | Keep Supabase-compatible production backup strategy, not offline primary |
+| Tally Export | PARTIAL | Verify route/report output |
+| Report Save | MISSING | Implement for critical reports |
+| Report Verify | MISSING | Implement verification/approval for critical reports |
+| Finished Jewellery | PARTIAL | Improve finished stock lifecycle |
+| Metal Inventory | PARTIAL | Improve central metal/vault model |
+| Diamond/Stone Inventory | PARTIAL | Improve stock/stones model |
+| Production | PARTIAL | Improve manufacturing graph |
+| Karigar Manufacturing | PARTIAL | Improve karigar/outside work traceability |
+| Loss Consideration | PARTIAL | Centralize wastage/loss rules |
+| Wastage | PARTIAL | Centralize and report |
+| Stock Management | PARTIAL | Improve central inventory foundation |
+| Suppliers | PARTIAL | Merge into Party |
+| Metal Rates | PARTIAL | Improve rate snapshots |
+| Old Gold Exchange | PARTIAL | Improve full workflow |
+| QC | PARTIAL | Complete checklists and transitions |
+| Branch Management | PARTIAL | Verify RLS, settings, reports |
+| AI Intelligence | PARTIAL | Assistant now supports deterministic tools for authorized ERP search, customer balance context, karigar gold book summary, document/printing register summary, daily follow-ups, production queue, inventory exceptions, and draft gold issue cards without fabricated demo data | Add authenticated tests, action confirmation execution, role-specific prompts, provider gateway, broader accounting/report tools, and no-cross-tenant proof |
+| Recommendations | MISSING | Implement only after core ERP data is reliable |
+| Production User/Karigar views | PARTIAL | Improve role-specific mobile workspace |
+
+## Checklist.Design Web-App Gate Status
+
+| Area | Status | Evidence | Required Completion |
+|---|---|---|---|
+| Authentication, OTP, reset password, invitation | PARTIAL | Routes exist | Verify errors, session expiry, recovery, persistence, mobile |
+| Login and account access management | PARTIAL | Login, OTP, reset, invite, customer-login, karigar-login routes exist | Verify organization-aware login, session persistence, role routing, lockout, account recovery, and denied states |
+| Pricing and subscription management | PARTIAL | Platform subscriptions/plans/settings exist | Complete plan creation, pricing, assignment, expiry, renewal, trial, billing, and audit evidence |
+| Admin panel | PARTIAL | `/platform`, `saas-admin`, settings, user/profile routes exist | Complete platform owner management, tenant view, firm drill-down, owner actions, support, health, backups, and safe admin audit |
+| Role-based access and user management | PARTIAL | `permissions`, `rbac`, users/platform/settings routes exist | Prove UI, route guards, RPCs, RLS, module licensing, branch scope, and denial states for every role |
+| Organizational settings | PARTIAL | Settings and branch settings routes exist | Verify firm/branch/legal/tax/numbering/branding/communication/print/workflow settings save and apply without code edits |
+| Maintenance state | MISSING | Directive only | Add planned maintenance, degraded Supabase dependency, retry, and support escalation UX |
+| API keys and provider credentials | PARTIAL | WhatsApp/communications/integration settings exist | Complete secure storage, masking, rotation, test connection, audit, and no client secret leakage |
+| Danger zone / destructive controls | PARTIAL | Security/settings/reset-style controls exist | Gate destructive actions with RBAC, confirmation, audit, backup prerequisite, and rollback notes |
+| Audit mode and version history | PARTIAL | Audit reports/logging exist | Add entity-level audit mode, version history, diff, actor, timestamp, source, and reversal links |
+| Timeline | PARTIAL | Audit/activity/reporting code exists | Add cross-module entity timelines for party, job, order, invoice, stock item, and document |
+| Navigation | PARTIAL | Sidebar/mobile nav exist | Fix dead CTAs, role grouping, mobile/desktop behavior |
+| Search | PARTIAL | Command/search code exists | Verify RBAC/RLS-safe global search across records |
+| Forms | PARTIAL | Many forms exist | Audit labels, required fields, validation, units, save states, duplicate prevention |
+| Tables | PARTIAL | ERP tables exist | Audit columns, filters, sorting, totals, export, mobile strategy |
+| Loading/skeletons | PARTIAL | Boot skeleton exists | Add screen-level progressive skeletons and partial-data states |
+| Empty/error states | PARTIAL | Error boundary and empty states exist | Add create ticket/live chat working actions and support trace |
+| Drawers/modals/tabs/toasts/tooltips | PARTIAL | Components exist | Verify behavior and accessibility across critical flows |
+| Uploads/attachments | PARTIAL | Attachment modal exists | Verify storage, validation, security, preview, retry |
+| Saving/submission | PARTIAL | Mixed patterns | Standardize saving, saved, conflict, retry, unsaved changes |
+| Support/contact | PARTIAL | Support route and ticket RPC exist | Complete customer-side ticket/live chat lifecycle |
+| Chats and message threads | PARTIAL | Communications routes and comm log store exist | Complete threaded conversations, assignments, status, linked party/order/job/document, and audit |
+| Message import | PARTIAL | WhatsApp/import-related routes exist | Complete import from WhatsApp/file/manual paste with dedupe, parsing, review, and linked workflow creation |
+| Message time span / filtering | PARTIAL | Communication analytics and reports exist | Add date ranges, SLA windows, unread filters, overdue follow-ups, and export |
+| Read receipts | MISSING | No verified complete lifecycle | Add channel-specific read/delivery receipt model where provider supports it |
+| File attachments in communication | PARTIAL | Attachment/storage utilities exist | Complete secure attachment upload, preview, download, RLS, retention, and link-to-entity |
+| Maintenance/network/session states | PARTIAL | Error screens exist | Add clear maintenance and session-expired flows |
+| Responsive | PARTIAL | Some mobile patterns exist | Test 375, 390, 430, 768, 1024, 1440+ |
+| UX copy | PARTIAL | Mixed AVS/MTJ/Ornexa naming remains | Standardize AVS/Ornexa branding and remove MTJ leakage |
+
+## Intelligence / AI Scope Audit
+
+Current status: PARTIAL, not complete.
+
+Evidence:
+
+- `src/lib/avs-assistant-brain.ts` exists.
+- Assistant persistence/database work has started.
+- Supported assistant answers now use Supabase/RLS-backed tools for authorized ERP record search, customer balances, karigar gold books, document/printing register summaries, daily follow-ups, production queue, inventory exceptions, and draft gold issue cards.
+- Master documents define assistant and intelligence as part of the final product.
+
+Missing before this can be called implemented:
+
+- RBAC/RLS-safe assistant tools for each allowed business action.
+- Confirmation before mutations.
+- Audit trail for assistant reads and writes.
+- Source-linked answers from current ERP data for every P0 workflow.
+- Payment, document, report, and recommendation intelligence.
+- Recommendations only after reliable central ledgers and transaction foundation exist.
+- Voice/chat UX, thread history, file context, and escalation to support where applicable.
+- Tests proving the assistant cannot leak another firm/branch/user's data.
+
+## No-Dead-End CTA Audit
+
+Current status: FAIL until proven otherwise.
+
+Known risk areas:
+
+- Coming-soon routes remain.
+- Some print links open standalone pages or rely on `window.print()`.
+- Customer-side ticket creation and live chat need full lifecycle verification.
+- Module bottom navigation and desktop side navigation need route/action verification.
+- Settings contains broad controls, but each save/test/reset action needs proof.
+- Platform owner module management needs plan/license lifecycle proof.
+
+## Required Specialist Workstreams
+
+| Workstream | Owner Lane | Acceptance Evidence |
+|---|---|---|
+| Supabase schema/RLS inventory | Database + Security | Live table/policy report, two-firm isolation tests |
+| Central transaction foundation | Backend + Accounting | All P0 workflows mapped to transaction contracts and postings |
+| Central Party 360 | ERP + Frontend | Customer/supplier/karigar/refinery/hallmark profile with balances, docs, communication, audit |
+| Central Metal Engine | Backend + Accounting | Unit tests for gross/net/fine/touch/wastage/rate snapshots |
+| Manufacturing graph | Manufacturing | Order to issue to receive to QC to hallmark to stock to settlement test |
+| Document engine | Frontend + Backend | Preview/PDF/print/share/WhatsApp/email for P0 documents |
+| Support and live chat | Support | Customer-side ticket, owner queue, assignment, SLA, chat transcript |
+| Role workspaces/mobile | Frontend + QA | Screenshots and tests for owner, accountant, karigar, production, support |
+| Checklist.Design sweep | QA | Matrix rows with route/test/screenshot/result/evidence |
+| Legacy stack cleanup | Platform | Offline/Hybrid code/docs isolated without losing business workflows |
+
+## Final Release Position
+
+Ornexa must not be declared production-ready until:
+
+- Master ERP requirements are checked with evidence.
+- Legacy AVS workflows are reconciled.
+- Jewellery ERP reference concepts are reconciled.
+- Database/RLS/storage pass.
+- Major business workflows pass end-to-end.
+- Role permissions pass.
+- Mobile passes.
+- Printing passes.
+- Settings passes.
+- Attendance passes.
+- Assistant passes defined scope.
+- Support/error handling passes.
+- Checklist.Design applicable requirements pass.
+- No P0/P1 defects remain.
+- Permanent documentation matches the implementation.

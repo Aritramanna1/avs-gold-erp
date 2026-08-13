@@ -1,25 +1,39 @@
 # Architecture
 
-AVS Gold ERP is an offline-first jewellery manufacturing desktop ERP. Electron hosts a sandboxed React renderer. WebAssembly SQLite is the primary operational database; Hybrid mode optionally synchronizes structured records to an owner-managed Supabase Postgres project. Files remain local in every supported Version 1 mode. This is not a retail POS.
+AVS Gold ERP is a Supabase-online jewellery manufacturing ERP. Supabase Auth,
+Postgres, RLS, RPCs, Storage, and Edge Functions are the production authority
+for tenant data, roles, files, support, operations, and audit evidence.
 
-## Runtime layers
+Older offline-first and Hybrid notes are historical references only. They do
+not override `docs/MASTER/ORNEXA_PRODUCT_CONSTITUTION.md` or the Product Owner
+decision that production Ornexa/AVS must remain Supabase-backed.
 
-- `electron/`: BrowserWindow, safe credential storage, native dialogs/notifications, printing, and the typed preload IPC bridge.
-- `src/routes` and `src/components`: presentation and navigation.
-- `src/lib`: domain stores/services, authentication, permissions, providers, synchronization, print/export engines, and local persistence.
-- `src/lib/repositories/base-repository.ts`: local-first persistence contract.
-- `src/lib/providers/runtime-providers.ts`: database, storage, authentication, and synchronization provider selection.
+## Runtime Layers
 
-## Deployment modes
+- `src/routes` and `src/components`: presentation, navigation, and progressive
+  web-app states.
+- `src/lib`: domain services, Supabase-backed stores, document/print engines,
+  permissions, support, communication, and operational clients.
+- `src/integrations/supabase`: generated types and Supabase client setup.
+- `supabase/migrations`: authoritative database, RLS, RPC, storage, support,
+  licensing, and operational-state migrations.
 
-| Mode    | Database                                  | Files                   | Authentication          | Synchronization           |
-| ------- | ----------------------------------------- | ----------------------- | ----------------------- | ------------------------- |
-| Offline | SQLite                                    | Local only              | Local                   | Disabled                  |
-| Hybrid  | SQLite primary + Supabase structured data | Local only              | Local/current provider  | Queued Supabase data sync |
-| Online  | Future managed provider                   | Local by current policy | Future managed provider | Not Version 1 ready       |
+## Production Data Rules
 
-Local writes commit first and enter the SQLite outbox. In Hybrid mode, the sync engine retries queued rows, pulls incremental remote changes, records conflicts, and preserves local data through network loss. File/blob tables are explicitly excluded.
+| Area | Authority |
+|---|---|
+| Authentication | Supabase Auth |
+| Authorization | Supabase RLS/RBAC/RPC checks |
+| Tenant data | Supabase Postgres |
+| Files and attachments | Supabase Storage/signed URLs |
+| Support/live chat records | Supabase support tables/RPCs |
+| Print/document history | Supabase operational tables |
+| Browser storage | UI preference, session, draft, or retired-cache cleanup only |
 
-Gold Vault is the single source of truth. Gold uses integer milligrams, purity integer per-mille, and money integer paise. Printable documents use the Universal Print Engine; exports use the Universal Export Engine.
+There is no production Offline or Hybrid database mode. Do not add local
+SQLite, IndexedDB, local-auth, local file vault, local outbox, or browser-local
+business backup as an authoritative path.
 
-Settings owns runtime branding, operational defaults, providers, hardware, WhatsApp, licensing UI, backup/recovery, and permissions-facing configuration. The frontend must use existing services/providers and must never select Supabase directly.
+Gold Vault remains a business source of truth for gold balances inside the
+Supabase-backed ERP model. Gold uses integer milligrams, purity integer
+per-mille, and money integer paise where applicable.

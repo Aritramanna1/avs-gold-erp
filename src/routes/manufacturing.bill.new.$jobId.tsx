@@ -82,7 +82,7 @@ const G_TO_MG = (gStr: string) => Math.max(0, Math.round(parseFloat(gStr || "0")
 const safeFineGoldMg = (grossMg: number, purity: number) =>
   fineGoldMg(Math.max(0, Math.round(grossMg)), Math.max(0, Math.min(999, Math.round(purity))));
 
-export default function NewMfgBill() {
+function NewMfgBill() {
   const { jobId } = useParams({ from: "/manufacturing/bill/new/$jobId" });
   const navigate = useNavigate();
   const { jobs } = useJobCards();

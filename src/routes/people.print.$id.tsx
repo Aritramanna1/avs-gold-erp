@@ -51,15 +51,14 @@ interface KycDoc {
 function PrintPage() {
   const { id } = useParams({ from: "/people/print/$id" });
   const person = usePeople((s) => s.people.find((p) => p.id === id));
-  // Source of truth for KYC files in every deployment mode: the attachments
-  // store. The row carries a reference; the bytes come out of the local
-  // encrypted vault, so printing works with no network in any mode.
+  // Source of truth for KYC files: attachment metadata plus Supabase-backed
+  // storage references. Legacy inlined rows are still readable.
   const attachmentItems = useAttachments((s) => s.items);
   const formsMetadata = useSettings((s) => s.formsMetadata);
   const firm = useSettings((s) => s.firm);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
-  // Full-size bytes, resolved from the vault. Printing off the 240px thumbnail
+  // Full-size bytes, resolved from document storage. Printing off the 240px thumbnail
   // would be unreadable, and non-image docs (PDF scans) have no thumbnail at
   // all — they'd silently drop off the printout entirely.
   const [resolvedUrls, setResolvedUrls] = useState<Record<string, string>>({});

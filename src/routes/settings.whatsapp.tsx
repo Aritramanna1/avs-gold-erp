@@ -95,7 +95,7 @@ const AUTOMATION_GROUPS: { title: string; keys: WaAutomationKey[] }[] = [
   },
 ];
 
-export function WhatsAppSettingsPage({ embedded = false }: { embedded?: boolean } = {}) {
+function WhatsAppSettingsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const branchId = useCurrentBranchId();
   const accessible = useBranch(useShallow((s) => s.getAccessibleBranches()));
   const [selectedBranch, setSelectedBranch] = useState(branchId);

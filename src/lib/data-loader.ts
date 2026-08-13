@@ -1,6 +1,5 @@
 import { toast } from "sonner";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { isOfflineMode } from "@/lib/deployment-mode";
 import { getAttachmentSignedUrl } from "@/lib/supabase-storage";
 import { usePeople, type Person } from "@/lib/people-store";
 import { useLedger, type LedgerEntry } from "@/lib/ledger-store";
@@ -44,9 +43,22 @@ function getActiveBranchId(): string | null {
   return selectedBranchId || "MAIN";
 }
 
+const STARTUP_DETAIL_CACHE_LIMIT = 500;
+const STARTUP_LEDGER_CACHE_LIMIT = 1000;
+const STARTUP_REFERENCE_CACHE_LIMIT = 1000;
+const STARTUP_ATTACHMENT_CACHE_LIMIT = 1000;
+
 export async function pullPeople(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("people").select("data").limit(5000);
+  // Keep only a small recent cache for legacy detail helpers and optimistic
+  // edits. High-volume People screens use Supabase range/count queries via
+  // `people-query.ts`; startup must not hydrate thousands of parties just to
+  // render the shell.
+  let q = supabase
+    .from("people")
+    .select("data")
+    .order("updated_at", { ascending: false })
+    .limit(250);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`people pull: ${error.message}`);
@@ -58,7 +70,11 @@ export async function pullPeople(): Promise<void> {
 
 export async function pullLedger(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("gold_ledger").select("data").order("ts", { ascending: true }).limit(20000);
+  let q = supabase
+    .from("gold_ledger")
+    .select("data")
+    .order("ts", { ascending: false })
+    .limit(STARTUP_LEDGER_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`gold_ledger pull: ${error.message}`);
@@ -70,7 +86,11 @@ export async function pullLedger(): Promise<void> {
 
 export async function pullOrders(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("orders").select("data").limit(10000);
+  let q = supabase
+    .from("orders")
+    .select("data")
+    .order("updated_at", { ascending: false })
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`orders pull: ${error.message}`);
@@ -82,7 +102,11 @@ export async function pullOrders(): Promise<void> {
 
 export async function pullJobCards(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("job_cards").select("data").limit(10000);
+  let q = supabase
+    .from("job_cards")
+    .select("data")
+    .order("updated_at", { ascending: false })
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`job_cards pull: ${error.message}`);
@@ -94,7 +118,11 @@ export async function pullJobCards(): Promise<void> {
 
 export async function pullInventory(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("inventory").select("data").limit(20000);
+  let q = supabase
+    .from("inventory")
+    .select("data")
+    .order("updated_at", { ascending: false })
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`inventory pull: ${error.message}`);
@@ -110,7 +138,7 @@ export async function pullMovements(): Promise<void> {
     .from("stock_movements")
     .select("data")
     .order("ts", { ascending: false })
-    .limit(20000);
+    .limit(STARTUP_LEDGER_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`stock_movements pull: ${error.message}`);
@@ -122,7 +150,11 @@ export async function pullMovements(): Promise<void> {
 
 export async function pullInvoices(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("invoices").select("data").limit(20000);
+  let q = supabase
+    .from("invoices")
+    .select("data")
+    .order("updated_at", { ascending: false })
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`invoices pull: ${error.message}`);
@@ -140,7 +172,11 @@ export async function pullPayments(): Promise<void> {
 
 export async function pullAttendance(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("attendance").select("data").limit(10000);
+  let q = supabase
+    .from("attendance")
+    .select("data")
+    .order("created_at", { ascending: false })
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`attendance pull: ${error.message}`);
@@ -151,7 +187,10 @@ export async function pullAttendance(): Promise<void> {
 }
 
 export async function pullSalaryRules(): Promise<void> {
-  const { data, error } = await supabase.from("salary_rules").select("data").limit(2000);
+  const { data, error } = await supabase
+    .from("salary_rules")
+    .select("data")
+    .limit(STARTUP_REFERENCE_CACHE_LIMIT);
   if (error) throw new Error(`salary_rules pull: ${error.message}`);
   const rows = (data ?? [])
     .map((r) => r.data as SalaryRule | null)
@@ -161,7 +200,11 @@ export async function pullSalaryRules(): Promise<void> {
 
 export async function pullWorkerTransactions(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("worker_transactions").select("data, kind").limit(20000);
+  let q = supabase
+    .from("worker_transactions")
+    .select("data, kind")
+    .order("created_at", { ascending: false })
+    .limit(STARTUP_LEDGER_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`worker_transactions pull: ${error.message}`);
@@ -192,7 +235,11 @@ export async function pullWorkerTransactions(): Promise<void> {
 
 export async function pullWorkerSettlements(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("worker_settlements").select("data").limit(5000);
+  let q = supabase
+    .from("worker_settlements")
+    .select("data")
+    .order("created_at", { ascending: false })
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`worker_settlements pull: ${error.message}`);
@@ -203,7 +250,11 @@ export async function pullWorkerSettlements(): Promise<void> {
 }
 
 export async function pullCatalogDesigns(): Promise<void> {
-  const { data, error } = await supabase.from("catalog_designs").select("data").limit(10000);
+  const { data, error } = await supabase
+    .from("catalog_designs")
+    .select("data")
+    .order("updated_at", { ascending: false })
+    .limit(STARTUP_REFERENCE_CACHE_LIMIT);
   if (error) throw new Error(`catalog_designs pull: ${error.message}`);
   const rows = (data ?? [])
     .map((r) => r.data as CatalogDesign | null)
@@ -213,7 +264,11 @@ export async function pullCatalogDesigns(): Promise<void> {
 
 export async function pullRateCutRecords(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("rate_cut_records").select("data").limit(5000);
+  let q = supabase
+    .from("rate_cut_records")
+    .select("data")
+    .order("created_at", { ascending: false })
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`rate_cut_records pull: ${error.message}`);
@@ -225,7 +280,11 @@ export async function pullRateCutRecords(): Promise<void> {
 
 export async function pullRepairs(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("repairs").select("data").limit(5000);
+  let q = supabase
+    .from("repairs")
+    .select("data")
+    .order("updated_at", { ascending: false })
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`repairs pull: ${error.message}`);
@@ -237,7 +296,11 @@ export async function pullRepairs(): Promise<void> {
 
 export async function pullDailyCloses(): Promise<void> {
   const bid = getActiveBranchId();
-  let q = supabase.from("daily_close").select("data").limit(5000);
+  let q = supabase
+    .from("daily_close")
+    .select("data")
+    .order("date", { ascending: false })
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`daily_close pull: ${error.message}`);
@@ -248,7 +311,11 @@ export async function pullDailyCloses(): Promise<void> {
 }
 
 export async function pullPrintLogs(): Promise<void> {
-  const { data, error } = await supabase.from("print_logs").select("data").limit(10000);
+  const { data, error } = await supabase
+    .from("print_logs")
+    .select("data")
+    .order("created_at", { ascending: false })
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (error) throw new Error(`print_logs pull: ${error.message}`);
   const rows = (data ?? [])
     .map((r) => r.data as PrintLogRecord | null)
@@ -276,7 +343,7 @@ export async function pullWhatsappInbox(): Promise<void> {
       "id, sender_name, sender_phone, raw_text, status, parsed, converted_order_id, linked_person_id, notes, created_at, updated_at",
     )
     .order("created_at", { ascending: false })
-    .limit(10000);
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (error) throw new Error(`whatsapp_inbox pull: ${error.message}`);
   const rows = (data ?? []).map((r) => ({
     id: r.id,
@@ -315,8 +382,7 @@ export async function pullAppSettings(): Promise<void> {
     const payload = data.data as any;
     const firm = payload.firm ?? useSettings.getState().firm;
 
-    // Resolve through the mode-aware provider: local vault in Offline, local
-    // fallback in Hybrid, signed cloud URL in Online.
+    // Resolve the logo through the configured remote storage signer.
     if (firm && firm.logoStoragePath) {
       try {
         const freshUrl = await getAttachmentSignedUrl("firm-assets", firm.logoStoragePath);
@@ -393,7 +459,7 @@ export async function pullDropdownMasters(): Promise<void> {
     .select("master_key, value")
     .eq("active", true)
     .order("sort_order", { ascending: true })
-    .limit(10000);
+    .limit(STARTUP_REFERENCE_CACHE_LIMIT);
   if (error) throw new Error(`dropdown_masters pull: ${error.message}`);
   const dict: Record<string, string[]> = {};
   (data ?? []).forEach((r) => {
@@ -406,11 +472,8 @@ export async function pullDropdownMasters(): Promise<void> {
 }
 
 export async function pullAttachments(): Promise<void> {
-  // Local SQLite is the source of truth for attachments and runs FIRST, in every
-  // deployment mode. Previously this function only asked Supabase, so any boot
-  // without a working cloud session (Offline, Hybrid, or just no network) came up
-  // with zero attachments and every uploaded photo/KYC doc looked deleted — even
-  // though the bytes were sitting on disk the whole time.
+  // Supabase-backed attachment metadata is authoritative. The compatibility
+  // hydration call is retained while older attachment stores are migrated.
   await hydrateAttachmentsFromLocal();
 
   const dict: any = {};
@@ -418,7 +481,8 @@ export async function pullAttachments(): Promise<void> {
     const { data: legacyData, error: legacyError } = await supabase
       .from("attachments")
       .select("data, id, file_name, storage_path")
-      .limit(10000);
+      .order("updated_at", { ascending: false })
+      .limit(STARTUP_ATTACHMENT_CACHE_LIMIT);
 
     if (legacyError) {
       console.warn("Attachments table query skipped/errored:", legacyError.message);
@@ -452,10 +516,9 @@ export async function pullAttachments(): Promise<void> {
   // The freshly-pulled DB row still wins per key — it's only the KEYS this
   // pull doesn't know about yet that are preserved from the in-memory state.
   //
-  // `checksum` is the exception: it points at locally-vaulted bytes. A cloud row
-  // that predates the vault (or came from another device that hasn't synced its
-  // blobs) carries no checksum, and letting that undefined win would strand the
-  // file we already hold on this disk. Local reference always survives.
+  // `checksum` is legacy attachment metadata. New rows should use bucket and
+  // storagePath; preserving checksum here only avoids erasing old references
+  // while those records are migrated to Supabase storage.
   useAttachments.setState((s) => ({
     items: Object.fromEntries(
       Object.entries({ ...s.items, ...dict }).map(([k, v]: [string, any]) => [
@@ -558,7 +621,7 @@ export async function pullCommLogs(): Promise<void> {
     .from("communication_logs")
     .select("data")
     .order("created_at", { ascending: false })
-    .limit(10000);
+    .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`communication_logs pull: ${error.message}`);
@@ -658,20 +721,19 @@ export async function pullBackground(): Promise<{ ok: boolean; errors: string[] 
       errors,
     ),
     runSafe(
-      "comm_configs",
+      "operational_settings",
       async () => {
-        const { data, error } = await supabase
-          .from("app_settings")
-          .select("data")
-          .eq("id", "comm_configs")
-          .maybeSingle();
-        if (error || !data?.data) return;
-        const payload = data.data as any;
-        if (Array.isArray(payload.configs) && payload.configs.length > 0) {
-          const { useCommSettings, redactProviderSecrets } =
-            await import("@/lib/comm/comm-settings-store");
-          useCommSettings.setState({ configs: payload.configs.map(redactProviderSecrets) });
-        }
+        const [{ useCommSettings }, { useAutomationSettings }, { useWorkflowEngine }] =
+          await Promise.all([
+            import("@/lib/comm/comm-settings-store"),
+            import("@/lib/comm/automation-settings-store"),
+            import("@/lib/workflow-engine"),
+          ]);
+        await Promise.all([
+          useCommSettings.getState().refresh(),
+          useAutomationSettings.getState().refresh(),
+          useWorkflowEngine.getState().refresh(),
+        ]);
       },
       errors,
     ),
@@ -711,7 +773,6 @@ let starting = false;
 let isLoaded = false;
 
 export async function startCloudSync(): Promise<void> {
-  if (isOfflineMode()) return;
   if (isLoaded || starting) {
     // Already hydrated (e.g. HMR remount or a second auth event) — the shell
     // must not stay stuck on the loading skeleton.
@@ -792,35 +853,7 @@ export function stopCloudSync(): void {
   isLoaded = false;
 }
 
-/**
- * Offline-mode boot load. Same pulls as startCloudSync, but they resolve
- * against the local SQLite database (supabase.from() is routed to the local
- * query shim in Offline mode — see integrations/supabase/client.ts), with no
- * realtime subscription and no cloud storage init. Without this, an Offline
- * install booted into empty stores: the data was on disk but nothing read it.
- */
+/** Compatibility alias. Ornexa production has one Supabase-backed boot path. */
 export async function startLocalLoad(): Promise<void> {
-  if (isLoaded || starting) {
-    if (isLoaded) markInitialLoadDone();
-    return;
-  }
-  starting = true;
-  try {
-    // Only the shell's own data (settings/branches/modules) is on the critical
-    // path. Reveal the UI as soon as it's in — Offline reads are local SQLite,
-    // so this is a handful of synchronous queries, not a network wait.
-    await pullCritical();
-    useSettings.getState().setSettingsHydrated(true);
-    isLoaded = true;
-    markCriticalLoadDone();
-    // Operational data loads in the background WITHOUT blocking the shell, the
-    // same way Cloud mode already does it. Previously this was awaited, so an
-    // Offline boot sat on the loading skeleton until every table + heavy store
-    // refresh finished — the exact "startup should not wait" regression.
-    void pullBackground()
-      .catch((error) => reportUnexpectedError(error, "data-loader.local-background"))
-      .finally(() => markInitialLoadDone());
-  } finally {
-    starting = false;
-  }
+  return startCloudSync();
 }
