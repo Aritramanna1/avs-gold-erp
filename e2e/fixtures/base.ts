@@ -340,6 +340,16 @@ export const test = base.extend<Fixtures>({
       fs.writeFileSync(seedPath, JSON.stringify(seedResult, null, 2));
     }
 
+    // WhatsNewDialog gates on sessionStorage, which storageState never
+    // persists (Playwright only carries cookies + localStorage across
+    // contexts), so every fresh test context sees it once. Dismiss it here,
+    // once, instead of every spec needing to know about it.
+    const whatsNewDismiss = page.getByRole("button", { name: "Got it" });
+    await whatsNewDismiss.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
+    if (await whatsNewDismiss.isVisible().catch(() => false)) {
+      await whatsNewDismiss.click();
+    }
+
     await use(page);
     testInfo.attach("console-errors", {
       body: JSON.stringify((page as any).__consoleErrors ?? [], null, 2),
@@ -354,6 +364,19 @@ export const test = base.extend<Fixtures>({
 });
 
 export { expect };
+
+/**
+ * WhatsNewDialog can reappear after a hard navigation within the same test
+ * (its sessionStorage-seen check races the app boot on some routes). Call
+ * after any `page.goto` that might land on a fresh app boot.
+ */
+export async function dismissWhatsNew(page: Page) {
+  const dismiss = page.getByRole("button", { name: "Got it" });
+  await dismiss.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
+  if (await dismiss.isVisible().catch(() => false)) {
+    await dismiss.click();
+  }
+}
 
 /** Fails the test if any console errors / uncaught exceptions were recorded. */
 export function expectNoPageErrors(page: Page) {
