@@ -43,6 +43,11 @@ function supportPageUrl(
   return `/settings/support?${params.toString()}`;
 }
 
+function openSupportFallback(error: NormalizedAppError, details: string, mode: "ticket" | "chat") {
+  copyText(details);
+  window.location.href = supportPageUrl(error, details, mode);
+}
+
 export function UniversalErrorScreen({
   error,
   fullScreen = true,
@@ -63,13 +68,19 @@ export function UniversalErrorScreen({
         category: error.category,
         priority: error.severity === "critical" ? "urgent" : "normal",
       });
-      toast.success(`Ticket ${ticket.ticket_no} created.`);
+      toast.success(
+        mode === "chat"
+          ? `Ticket ${ticket.ticket_no} created. Opening live support thread.`
+          : `Ticket ${ticket.ticket_no} created.`,
+      );
       window.location.href = supportPageUrl(error, details, mode, ticket.id);
     } catch (supportError) {
       toast.error(
-        supportError instanceof Error ? supportError.message : "Could not create a support ticket.",
+        supportError instanceof Error
+          ? `${supportError.message} Error details copied for support.`
+          : "Could not create a support ticket. Error details copied for support.",
       );
-      window.location.href = supportPageUrl(error, details, mode);
+      openSupportFallback(error, details, mode);
     } finally {
       setSupportBusy(null);
     }

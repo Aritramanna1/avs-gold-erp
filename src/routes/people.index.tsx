@@ -309,7 +309,29 @@ function PeoplePage() {
       />
 
       <Tabs value={tab} onValueChange={(v) => updateSearch({ tab: v as TabKey })}>
-        <TabsList className="flex flex-wrap h-auto bg-card border border-border p-1">
+        {/* Mobile tab selector */}
+        <div className="block md:hidden mb-3">
+          <Select value={tab} onValueChange={(v) => updateSearch({ tab: v as TabKey })}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TABS.map((tItem) => {
+                const count =
+                  tItem.key === "kyc"
+                    ? people.filter((p) => !kycComplete(p)).length
+                    : (tabCounts[tItem.key as keyof PeopleTabCounts] ?? 0);
+                return (
+                  <SelectItem key={tItem.key} value={tItem.key}>
+                    {t("people.tab_" + tItem.key)} ({count})
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+        {/* Desktop tab bar */}
+        <TabsList className="hidden md:flex flex-wrap h-auto bg-card border border-border p-1">
           {TABS.map((tItem) => {
             const Icon = tItem.icon;
             const count =

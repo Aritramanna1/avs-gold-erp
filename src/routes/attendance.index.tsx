@@ -119,7 +119,30 @@ function AttendancePage() {
         <NoWorkersHint />
       ) : (
         <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-          <TabsList className="flex flex-wrap h-auto bg-card border border-border p-1">
+          {/* Mobile Tab Select */}
+          <div className="block md:hidden mb-4">
+            <Select value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TABS.map((t) => {
+                  const Icon = t.icon;
+                  return (
+                    <SelectItem key={t.key} value={t.key}>
+                      <span className="flex items-center gap-2">
+                        <Icon className="h-4 w-4" />
+                        {t.label}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Desktop TabsList */}
+          <TabsList className="hidden md:flex flex-wrap h-auto bg-card border border-border p-1">
             {TABS.map((t) => {
               const Icon = t.icon;
               return (
@@ -364,6 +387,7 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
   const markArrived = useWorkers((s) => s.markArrived);
   const markGoneHome = useWorkers((s) => s.markGoneHome);
   const upsertAttendance = useWorkers((s) => s.upsertAttendance);
+  const bulkUpsertAttendance = useWorkers((s) => s.bulkUpsertAttendance);
   const rules = useWorkers((s) => s.rules);
 
   const [notesMap, setNotesMap] = useState<Record<string, string>>({});
@@ -415,15 +439,15 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
 
     setBulkSaving(true);
     try {
-      for (const worker of selectedWorkers) {
-        await upsertAttendance({
+      await bulkUpsertAttendance(
+        selectedWorkers.map((worker) => ({
           workerId: worker.id,
           date: bulkDate,
           status: bulkStatus,
           overtimeHours: overtime,
           notes: bulkNotes.trim() || undefined,
-        });
-      }
+        })),
+      );
       toast.success(
         `Attendance saved for ${selectedWorkers.length} worker${selectedWorkers.length === 1 ? "" : "s"}.`,
       );
@@ -575,19 +599,9 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
         {workers.length === 0 ? (
           <EmptyHint text="No workers found." />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Worker</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Days on-site</TableHead>
-                <TableHead>Salary accrued</TableHead>
-                <TableHead>Arrived</TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile View */}
+            <div className="md:hidden space-y-3">
               {workers.map((w) => {
                 const status = workerStatus(w.id, stays);
                 const totalDays = stayDaysForWorker(w.id, stays);
@@ -602,35 +616,51 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
                     })
                   : "—";
                 return (
-                  <TableRow key={w.id}>
-                    <TableCell className="font-medium">{w.fullName}</TableCell>
-                    <TableCell>
+                  <div
+                    key={w.id}
+                    className="rounded-2xl border border-border bg-card p-4 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-sm">{w.fullName}</span>
                       <WorkerStatusBadge status={status} />
-                    </TableCell>
-                    <TableCell className="tabular-nums">{totalDays.toFixed(1)}</TableCell>
-                    <TableCell className="tabular-nums text-gold">
-                      {grossPaise > 0 ? `₹${paiseToRupees(grossPaise)}` : "—"}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{arrivedDate}</TableCell>
-                    <TableCell>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <span className="text-muted-foreground block text-[10px]">Days</span>
+                        <span className="font-medium font-mono">{totalDays.toFixed(1)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px]">
+                          Accrued Salary
+                        </span>
+                        <span className="font-medium text-gold font-mono">
+                          {grossPaise > 0 ? `₹${paiseToRupees(grossPaise)}` : "—"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px]">
+                          Arrived Date
+                        </span>
+                        <span className="font-medium">{arrivedDate}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2 pt-2 border-t border-border/60">
                       <Input
-                        className="h-7 text-xs w-32"
+                        className="h-8 text-xs w-full"
                         placeholder="Notes (optional)"
                         value={notesMap[w.id] ?? ""}
                         onChange={(e) => setNotesMap((m) => ({ ...m, [w.id]: e.target.value }))}
                       />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
+                      <div className="flex gap-2">
                         {(status === "not_arrived" || status === "gone_home") && (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs h-7 text-success border-success/40"
+                            className="w-full text-xs h-8 text-success border-success/40"
                             disabled={busy[w.id]}
                             onClick={() => handleArrived(w.id)}
                           >
-                            <Plus className="h-3 w-3 mr-1" />
+                            <Plus className="h-3.5 w-3.5 mr-1" />
                             Mark Arrived
                           </Button>
                         )}
@@ -638,7 +668,7 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-xs h-7 text-muted-foreground"
+                            className="w-full text-xs h-8 text-muted-foreground"
                             disabled={busy[w.id]}
                             onClick={() => handleGoneHome(w.id)}
                           >
@@ -646,12 +676,95 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
                           </Button>
                         )}
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                  </div>
                 );
               })}
-            </TableBody>
-          </Table>
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Worker</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Days on-site</TableHead>
+                    <TableHead>Salary accrued</TableHead>
+                    <TableHead>Arrived</TableHead>
+                    <TableHead>Notes</TableHead>
+                    <TableHead>Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {workers.map((w) => {
+                    const status = workerStatus(w.id, stays);
+                    const totalDays = stayDaysForWorker(w.id, stays);
+                    const rule = activeRuleFor(rules, w.id);
+                    const grossPaise = stayEarnedPaise(rule, totalDays);
+                    const openStay = openStayFor(w.id, stays);
+                    const arrivedDate = openStay
+                      ? new Date(openStay.arrivedAt).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "—";
+                    return (
+                      <TableRow key={w.id}>
+                        <TableCell className="font-medium">{w.fullName}</TableCell>
+                        <TableCell>
+                          <WorkerStatusBadge status={status} />
+                        </TableCell>
+                        <TableCell className="tabular-nums">{totalDays.toFixed(1)}</TableCell>
+                        <TableCell className="tabular-nums text-gold">
+                          {grossPaise > 0 ? `₹${paiseToRupees(grossPaise)}` : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {arrivedDate}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            className="h-7 text-xs w-32"
+                            placeholder="Notes (optional)"
+                            value={notesMap[w.id] ?? ""}
+                            onChange={(e) => setNotesMap((m) => ({ ...m, [w.id]: e.target.value }))}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {(status === "not_arrived" || status === "gone_home") && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-7 text-success border-success/40"
+                                disabled={busy[w.id]}
+                                onClick={() => handleArrived(w.id)}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Mark Arrived
+                              </Button>
+                            )}
+                            {status === "working" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-7 text-muted-foreground"
+                                disabled={busy[w.id]}
+                                onClick={() => handleGoneHome(w.id)}
+                              >
+                                Gone Home
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -708,46 +821,110 @@ function StayHistoryTab({ workers }: { workers: Person[] }) {
       {filteredStays.length === 0 ? (
         <EmptyHint text="No stay records yet. Mark workers as Arrived to start tracking." />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Worker</TableHead>
-              <TableHead>Arrived</TableHead>
-              <TableHead>Went Home</TableHead>
-              <TableHead>Days</TableHead>
-              <TableHead>Salary Earned</TableHead>
-              <TableHead>Notes</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* Mobile View */}
+          <div className="md:hidden space-y-3">
             {filteredStays.map((stay) => {
               const w = workers.find((x) => x.id === stay.workerId);
               const rule = activeRuleFor(rules, stay.workerId);
               const days = stayDays(stay);
               const earned = stayEarnedPaise(rule, days);
               return (
-                <TableRow key={stay.id}>
-                  <TableCell className="font-medium">{w?.fullName ?? "—"}</TableCell>
-                  <TableCell className="text-xs">{fmtDate(stay.arrivedAt)}</TableCell>
-                  <TableCell className="text-xs">
+                <div
+                  key={stay.id}
+                  className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm">{w?.fullName ?? "—"}</span>
                     {stay.departedAt ? (
-                      fmtDate(stay.departedAt)
+                      <Badge variant="secondary" className="text-[10px]">
+                        Departed
+                      </Badge>
                     ) : (
-                      <span className="text-success text-xs">Still here</span>
+                      <Badge
+                        variant="outline"
+                        className="border-success/40 text-success bg-success/5 text-[10px]"
+                      >
+                        Still here
+                      </Badge>
                     )}
-                  </TableCell>
-                  <TableCell className="tabular-nums">{days.toFixed(1)}</TableCell>
-                  <TableCell className="tabular-nums text-gold">
-                    {earned > 0 ? `₹${paiseToRupees(earned)}` : "—"}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {stay.notes ?? ""}
-                  </TableCell>
-                </TableRow>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-muted-foreground block text-[10px]">Arrived</span>
+                      <span className="font-medium">{fmtDate(stay.arrivedAt)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px]">Went Home</span>
+                      <span className="font-medium">
+                        {stay.departedAt ? fmtDate(stay.departedAt) : "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px]">Days</span>
+                      <span className="font-medium font-mono">{days.toFixed(1)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px]">Salary Earned</span>
+                      <span className="font-medium text-gold font-mono">
+                        {earned > 0 ? `₹${paiseToRupees(earned)}` : "—"}
+                      </span>
+                    </div>
+                  </div>
+                  {stay.notes && (
+                    <div className="text-[11px] text-muted-foreground bg-muted/40 p-2 rounded">
+                      {stay.notes}
+                    </div>
+                  )}
+                </div>
               );
             })}
-          </TableBody>
-        </Table>
+          </div>
+
+          {/* Desktop View */}
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Worker</TableHead>
+                  <TableHead>Arrived</TableHead>
+                  <TableHead>Went Home</TableHead>
+                  <TableHead>Days</TableHead>
+                  <TableHead>Salary Earned</TableHead>
+                  <TableHead>Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredStays.map((stay) => {
+                  const w = workers.find((x) => x.id === stay.workerId);
+                  const rule = activeRuleFor(rules, stay.workerId);
+                  const days = stayDays(stay);
+                  const earned = stayEarnedPaise(rule, days);
+                  return (
+                    <TableRow key={stay.id}>
+                      <TableCell className="font-medium">{w?.fullName ?? "—"}</TableCell>
+                      <TableCell className="text-xs">{fmtDate(stay.arrivedAt)}</TableCell>
+                      <TableCell className="text-xs">
+                        {stay.departedAt ? (
+                          fmtDate(stay.departedAt)
+                        ) : (
+                          <span className="text-success text-xs">Still here</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="tabular-nums">{days.toFixed(1)}</TableCell>
+                      <TableCell className="tabular-nums text-gold">
+                        {earned > 0 ? `₹${paiseToRupees(earned)}` : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {stay.notes ?? ""}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </div>
   );
@@ -879,16 +1056,9 @@ function SalaryRulesTab({
         {rules.filter((r) => r.active).length === 0 ? (
           <EmptyHint text="No salary rules set yet." />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Worker</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Effective</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile view */}
+            <div className="md:hidden space-y-3">
               {rules
                 .filter((r) => r.active)
                 .map((r) => {
@@ -902,16 +1072,63 @@ function SalaryRulesTab({
                           ? `${paiseToRupees(r.makingRatePaise ?? 0)} / g`
                           : "—";
                   return (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-medium">{w?.fullName ?? "—"}</TableCell>
-                      <TableCell>{SALARY_RULE_LABELS[r.type]}</TableCell>
-                      <TableCell>{amount}</TableCell>
-                      <TableCell>{r.effectiveDate}</TableCell>
-                    </TableRow>
+                    <div
+                      key={r.id}
+                      className="rounded-xl border border-border bg-muted/20 p-3 space-y-2 text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">{w?.fullName ?? "—"}</span>
+                        <span className="text-muted-foreground">{r.effectiveDate}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>
+                          Type:{" "}
+                          <strong className="font-medium">{SALARY_RULE_LABELS[r.type]}</strong>
+                        </span>
+                        <span className="font-mono text-gold font-semibold">{amount}</span>
+                      </div>
+                    </div>
                   );
                 })}
-            </TableBody>
-          </Table>
+            </div>
+
+            {/* Desktop view */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Worker</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Effective</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rules
+                    .filter((r) => r.active)
+                    .map((r) => {
+                      const w = workers.find((x) => x.id === r.workerId);
+                      const amount =
+                        r.type === "fixed_monthly"
+                          ? `${paiseToRupees(r.monthlySalaryPaise ?? 0)} / month`
+                          : r.type === "per_day"
+                            ? `${paiseToRupees(r.perDayPaise ?? 0)} / day`
+                            : r.type === "making_charge"
+                              ? `${paiseToRupees(r.makingRatePaise ?? 0)} / g`
+                              : "—";
+                      return (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-medium">{w?.fullName ?? "—"}</TableCell>
+                          <TableCell>{SALARY_RULE_LABELS[r.type]}</TableCell>
+                          <TableCell>{amount}</TableCell>
+                          <TableCell>{r.effectiveDate}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -1242,46 +1459,95 @@ function CashEventList({
       {items.length === 0 ? (
         <EmptyHint text="Nothing recorded yet." />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Worker</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Mode</TableHead>
-              <TableHead>Reason</TableHead>
-              <TableHead>Slip</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* Mobile view */}
+          <div className="md:hidden space-y-3">
             {[...items]
               .sort((a, b) => (a.date < b.date ? 1 : -1))
               .map((it) => {
                 const w = workers.find((x) => x.id === it.workerId);
                 return (
-                  <TableRow key={it.id}>
-                    <TableCell>{it.date}</TableCell>
-                    <TableCell>{w?.fullName ?? "—"}</TableCell>
-                    <TableCell>{paiseToRupees(it.amountPaise)}</TableCell>
-                    <TableCell>{it.mode ? PAY_MODE_LABELS[it.mode] : "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {it.reason ?? ""}
-                    </TableCell>
-                    <TableCell>
+                  <div
+                    key={it.id}
+                    className="rounded-xl border border-border bg-muted/20 p-3 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">{w?.fullName ?? "—"}</span>
+                      <span className="text-muted-foreground">{it.date}</span>
+                    </div>
+                    <div className="flex items-center justify-between font-mono">
+                      <span>
+                        Amount:{" "}
+                        <strong className="text-gold font-sans font-semibold">
+                          ₹{paiseToRupees(it.amountPaise)}
+                        </strong>
+                      </span>
+                      <span>{it.mode ? PAY_MODE_LABELS[it.mode] : "—"}</span>
+                    </div>
+                    {it.reason && (
+                      <div className="text-[11px] text-muted-foreground bg-muted/40 p-1.5 rounded">
+                        {it.reason}
+                      </div>
+                    )}
+                    <div className="flex justify-end pt-1">
                       <Link
                         to="/attendance/print/$kind/$id"
                         params={{ kind: printKind, id: it.id }}
                         target="_blank"
-                        className="text-xs text-gold underline"
+                        className="text-xs text-gold hover:underline font-semibold"
                       >
-                        Print
+                        Print Slip
                       </Link>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                  </div>
                 );
               })}
-          </TableBody>
-        </Table>
+          </div>
+
+          {/* Desktop view */}
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Worker</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Mode</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Slip</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...items]
+                  .sort((a, b) => (a.date < b.date ? 1 : -1))
+                  .map((it) => {
+                    const w = workers.find((x) => x.id === it.workerId);
+                    return (
+                      <TableRow key={it.id}>
+                        <TableCell>{it.date}</TableCell>
+                        <TableCell>{w?.fullName ?? "—"}</TableCell>
+                        <TableCell>{paiseToRupees(it.amountPaise)}</TableCell>
+                        <TableCell>{it.mode ? PAY_MODE_LABELS[it.mode] : "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {it.reason ?? ""}
+                        </TableCell>
+                        <TableCell>
+                          <Link
+                            to="/attendance/print/$kind/$id"
+                            params={{ kind: printKind, id: it.id }}
+                            target="_blank"
+                            className="text-xs text-gold underline"
+                          >
+                            Print
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </div>
   );
@@ -1571,44 +1837,99 @@ function GoldEventList({
       {items.length === 0 ? (
         <EmptyHint text="Nothing recorded yet." />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Worker</TableHead>
-              <TableHead>Gross (g)</TableHead>
-              <TableHead>Purity</TableHead>
-              <TableHead>Fine (g)</TableHead>
-              <TableHead>Slip</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* Mobile view */}
+          <div className="md:hidden space-y-3">
             {[...items]
               .sort((a, b) => (a.date < b.date ? 1 : -1))
               .map((it) => {
                 const w = workers.find((x) => x.id === it.workerId);
                 return (
-                  <TableRow key={it.id}>
-                    <TableCell>{it.date}</TableCell>
-                    <TableCell>{w?.fullName ?? "—"}</TableCell>
-                    <TableCell>{mgToGrams(it.grossMg)}</TableCell>
-                    <TableCell>{it.purity}</TableCell>
-                    <TableCell className="text-gold">{mgToGrams(it.fineMg)}</TableCell>
-                    <TableCell>
+                  <div
+                    key={it.id}
+                    className="rounded-xl border border-border bg-muted/20 p-3 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">{w?.fullName ?? "—"}</span>
+                      <span className="text-muted-foreground">{it.date}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center font-mono text-[11px] bg-muted/40 p-2 rounded-lg">
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block font-sans">
+                          Gross
+                        </span>
+                        <span>{mgToGrams(it.grossMg)} g</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block font-sans">
+                          Purity
+                        </span>
+                        <span>{it.purity}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block font-sans">
+                          Fine
+                        </span>
+                        <span className="text-gold font-semibold">{mgToGrams(it.fineMg)} g</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-end pt-1">
                       <Link
                         to="/attendance/print/$kind/$id"
                         params={{ kind: printKind, id: it.id }}
                         target="_blank"
-                        className="text-xs text-gold underline"
+                        className="text-xs text-gold hover:underline font-semibold"
                       >
-                        Print
+                        Print Slip
                       </Link>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                  </div>
                 );
               })}
-          </TableBody>
-        </Table>
+          </div>
+
+          {/* Desktop view */}
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Worker</TableHead>
+                  <TableHead>Gross (g)</TableHead>
+                  <TableHead>Purity</TableHead>
+                  <TableHead>Fine (g)</TableHead>
+                  <TableHead>Slip</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...items]
+                  .sort((a, b) => (a.date < b.date ? 1 : -1))
+                  .map((it) => {
+                    const w = workers.find((x) => x.id === it.workerId);
+                    return (
+                      <TableRow key={it.id}>
+                        <TableCell>{it.date}</TableCell>
+                        <TableCell>{w?.fullName ?? "—"}</TableCell>
+                        <TableCell>{mgToGrams(it.grossMg)}</TableCell>
+                        <TableCell>{it.purity}</TableCell>
+                        <TableCell className="text-gold">{mgToGrams(it.fineMg)}</TableCell>
+                        <TableCell>
+                          <Link
+                            to="/attendance/print/$kind/$id"
+                            params={{ kind: printKind, id: it.id }}
+                            target="_blank"
+                            className="text-xs text-gold underline"
+                          >
+                            Print
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </div>
   );
@@ -1950,40 +2271,117 @@ export function PassbookContent({ workerId }: { workerId: string }) {
       {rows.length === 0 ? (
         <EmptyHint text="No events recorded for this worker yet." />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Event</TableHead>
-              <TableHead>Cash out (₹)</TableHead>
-              <TableHead>Cash in (₹)</TableHead>
-              <TableHead>Cash bal</TableHead>
-              <TableHead>Gold out (g)</TableHead>
-              <TableHead>Gold in (g)</TableHead>
-              <TableHead>Gold bal</TableHead>
-              <TableHead>Note</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r, i) => {
-              cashBal += (r.cashIn ?? 0) - (r.cashOut ?? 0);
-              goldBal += (r.goldIn ?? 0) - (r.goldOut ?? 0);
-              return (
-                <TableRow key={i}>
-                  <TableCell>{r.date}</TableCell>
-                  <TableCell className="font-medium">{r.label}</TableCell>
-                  <TableCell>{r.cashOut ? paiseToRupees(r.cashOut) : ""}</TableCell>
-                  <TableCell>{r.cashIn ? paiseToRupees(r.cashIn) : ""}</TableCell>
-                  <TableCell className="text-gold">{paiseToRupees(cashBal)}</TableCell>
-                  <TableCell>{r.goldOut ? mgToGrams(r.goldOut) : ""}</TableCell>
-                  <TableCell>{r.goldIn ? mgToGrams(r.goldIn) : ""}</TableCell>
-                  <TableCell className="text-gold">{mgToGrams(goldBal)}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{r.note ?? ""}</TableCell>
+        <>
+          {/* Mobile view */}
+          <div className="md:hidden space-y-3">
+            {(() => {
+              let runningCashBal = 0;
+              let runningGoldBal = 0;
+              return rows.map((r, i) => {
+                runningCashBal += (r.cashIn ?? 0) - (r.cashOut ?? 0);
+                runningGoldBal += (r.goldIn ?? 0) - (r.goldOut ?? 0);
+                return (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-border bg-muted/20 p-3 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between font-medium">
+                      <span>{r.label}</span>
+                      <span className="text-muted-foreground font-normal">{r.date}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 border-t border-border/40 pt-2 text-[11px]">
+                      <div>
+                        {r.cashOut || r.cashIn ? (
+                          <div className="mb-1">
+                            <span className="text-muted-foreground block text-[9px]">
+                              Cash (In/Out)
+                            </span>
+                            <span className="font-semibold text-foreground">
+                              {r.cashOut ? `−₹${paiseToRupees(r.cashOut)}` : ""}
+                              {r.cashIn ? `+₹${paiseToRupees(r.cashIn)}` : ""}
+                            </span>
+                          </div>
+                        ) : null}
+                        <span className="text-muted-foreground block text-[9px]">
+                          Running Cash Bal
+                        </span>
+                        <span className="font-bold text-gold">
+                          ₹{paiseToRupees(runningCashBal)}
+                        </span>
+                      </div>
+                      <div>
+                        {r.goldOut || r.goldIn ? (
+                          <div className="mb-1">
+                            <span className="text-muted-foreground block text-[9px]">
+                              Gold (In/Out)
+                            </span>
+                            <span className="font-semibold text-foreground font-mono">
+                              {r.goldOut ? `−${mgToGrams(r.goldOut)}g` : ""}
+                              {r.goldIn ? `+${mgToGrams(r.goldIn)}g` : ""}
+                            </span>
+                          </div>
+                        ) : null}
+                        <span className="text-muted-foreground block text-[9px]">
+                          Running Gold Bal
+                        </span>
+                        <span className="font-bold text-gold font-mono">
+                          {mgToGrams(runningGoldBal)} g
+                        </span>
+                      </div>
+                    </div>
+
+                    {r.note && (
+                      <div className="text-[10px] text-muted-foreground bg-muted/40 p-1.5 rounded">
+                        {r.note}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
+          </div>
+
+          {/* Desktop view */}
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Cash out (₹)</TableHead>
+                  <TableHead>Cash in (₹)</TableHead>
+                  <TableHead>Cash bal</TableHead>
+                  <TableHead>Gold out (g)</TableHead>
+                  <TableHead>Gold in (g)</TableHead>
+                  <TableHead>Gold bal</TableHead>
+                  <TableHead>Note</TableHead>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r, i) => {
+                  cashBal += (r.cashIn ?? 0) - (r.cashOut ?? 0);
+                  goldBal += (r.goldIn ?? 0) - (r.goldOut ?? 0);
+                  return (
+                    <TableRow key={i}>
+                      <TableCell>{r.date}</TableCell>
+                      <TableCell className="font-medium">{r.label}</TableCell>
+                      <TableCell>{r.cashOut ? paiseToRupees(r.cashOut) : ""}</TableCell>
+                      <TableCell>{r.cashIn ? paiseToRupees(r.cashIn) : ""}</TableCell>
+                      <TableCell className="text-gold">{paiseToRupees(cashBal)}</TableCell>
+                      <TableCell>{r.goldOut ? mgToGrams(r.goldOut) : ""}</TableCell>
+                      <TableCell>{r.goldIn ? mgToGrams(r.goldIn) : ""}</TableCell>
+                      <TableCell className="text-gold">{mgToGrams(goldBal)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {r.note ?? ""}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </div>
   );

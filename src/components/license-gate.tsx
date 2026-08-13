@@ -282,6 +282,9 @@ export function LicensePanel({ onActivated }: { onActivated?: () => void }) {
     try {
       if (key.trim()) setLicenseConfig({ key: key.trim() });
       const resolved = await verifyLicense(mode);
+      if (resolved === "expired" || resolved === "suspended") {
+        throw new Error("License key verification failed.");
+      }
       toast.success(`License: ${resolved}`);
       onActivated?.();
     } catch (error) {

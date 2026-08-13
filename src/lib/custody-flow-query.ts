@@ -35,11 +35,13 @@ async function fetchDataRows<T>(
     .filter((row): row is T => row !== null);
 }
 
-export async function fetchCustomerGoldDeposits(options: {
-  customerId?: string;
-  metal?: string;
-  limit?: number;
-} = {}): Promise<CustomerGoldDeposit[]> {
+export async function fetchCustomerGoldDeposits(
+  options: {
+    customerId?: string;
+    metal?: string;
+    limit?: number;
+  } = {},
+): Promise<CustomerGoldDeposit[]> {
   const rows = await fetchDataRows<CustomerGoldDeposit>(
     "customer_gold_deposits",
     options.limit ?? CUSTODY_FLOW_READ_LIMIT,
@@ -50,12 +52,14 @@ export async function fetchCustomerGoldDeposits(options: {
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export async function fetchMaterialVaultMovements(options: {
-  branchId?: string;
-  category?: string;
-  type?: MaterialMovement["type"];
-  limit?: number;
-} = {}): Promise<MaterialMovement[]> {
+export async function fetchMaterialVaultMovements(
+  options: {
+    branchId?: string;
+    category?: string;
+    type?: MaterialMovement["type"];
+    limit?: number;
+  } = {},
+): Promise<MaterialMovement[]> {
   const rows = await fetchDataRows<MaterialMovement>(
     "material_vault_movements",
     options.limit ?? CUSTODY_FLOW_READ_LIMIT,
@@ -67,11 +71,13 @@ export async function fetchMaterialVaultMovements(options: {
     .sort((a, b) => b.ts - a.ts);
 }
 
-export async function fetchMetalConversions(options: {
-  sourcePurity?: number;
-  destPurity?: number;
-  limit?: number;
-} = {}): Promise<ConversionRecord[]> {
+export async function fetchMetalConversions(
+  options: {
+    sourcePurity?: number;
+    destPurity?: number;
+    limit?: number;
+  } = {},
+): Promise<ConversionRecord[]> {
   const rows = await fetchDataRows<ConversionRecord>(
     "metal_conversions",
     options.limit ?? CUSTODY_FLOW_READ_LIMIT,
@@ -82,12 +88,14 @@ export async function fetchMetalConversions(options: {
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export async function fetchPolishingTransactions(options: {
-  orderId?: string;
-  polisherId?: string;
-  type?: PolishingTransactionType;
-  limit?: number;
-} = {}): Promise<PolishingTransaction[]> {
+export async function fetchPolishingTransactions(
+  options: {
+    orderId?: string;
+    polisherId?: string;
+    type?: PolishingTransactionType;
+    limit?: number;
+  } = {},
+): Promise<PolishingTransaction[]> {
   const rows = await fetchDataRows<PolishingTransaction>(
     "polishing_transactions",
     options.limit ?? CUSTODY_FLOW_READ_LIMIT,
@@ -99,12 +107,14 @@ export async function fetchPolishingTransactions(options: {
     .sort((a, b) => b.ts - a.ts);
 }
 
-export async function fetchCustomerSettlements(options: {
-  branchId?: string;
-  customerId?: string;
-  orderId?: string;
-  limit?: number;
-} = {}): Promise<Settlement[]> {
+export async function fetchCustomerSettlements(
+  options: {
+    branchId?: string;
+    customerId?: string;
+    orderId?: string;
+    limit?: number;
+  } = {},
+): Promise<Settlement[]> {
   const db = getCloudDataClient();
   let query = db
     .from("customer_settlements")
@@ -124,12 +134,14 @@ export async function fetchCustomerSettlements(options: {
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-export async function fetchWorkerReturns(options: {
-  branchId?: string;
-  orderId?: string;
-  workerId?: string;
-  limit?: number;
-} = {}): Promise<WorkerReturn[]> {
+export async function fetchWorkerReturns(
+  options: {
+    branchId?: string;
+    orderId?: string;
+    workerId?: string;
+    limit?: number;
+  } = {},
+): Promise<WorkerReturn[]> {
   const db = getCloudDataClient();
   let query = db
     .from("worker_returns")
@@ -149,12 +161,14 @@ export async function fetchWorkerReturns(options: {
     .sort((a, b) => b.ts - a.ts);
 }
 
-export async function fetchWorkshopProcessTransactions(options: {
-  processType?: WorkshopProcessType;
-  karigarId?: string;
-  jobCardId?: string;
-  limit?: number;
-} = {}): Promise<WorkshopProcessTransaction[]> {
+export async function fetchWorkshopProcessTransactions(
+  options: {
+    processType?: WorkshopProcessType;
+    karigarId?: string;
+    jobCardId?: string;
+    limit?: number;
+  } = {},
+): Promise<WorkshopProcessTransaction[]> {
   const rows = await fetchDataRows<WorkshopProcessTransaction>(
     "workshop_process_transactions",
     options.limit ?? CUSTODY_FLOW_READ_LIMIT,

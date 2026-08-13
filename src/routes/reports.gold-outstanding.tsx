@@ -112,7 +112,7 @@ function GoldOutstandingPage() {
             </div>
           )}
 
-          <div className="grid sm:grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 font-sans">
             <div className="rounded-2xl border border-border bg-card p-4">
               <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
                 Total Outstanding
@@ -137,7 +137,45 @@ function GoldOutstandingPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          {/* Mobile view */}
+          <div className="block md:hidden space-y-3">
+            {rows.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground italic text-xs bg-card rounded-2xl border border-border">
+                <AlertTriangle className="h-6 w-6 mx-auto mb-2 opacity-40" />
+                No outstanding gold anywhere. Everything is settled.
+              </div>
+            ) : (
+              rows.map((r, i) => (
+                <div
+                  key={`${r.source}-${r.reference}-${i}`}
+                  className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm">{r.name}</span>
+                    <Badge variant="secondary">{r.source}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">
+                      Ref: <strong className="font-medium text-foreground">{r.reference}</strong>
+                    </span>
+                    <span
+                      className={
+                        r.outstandingMg > 0
+                          ? "text-amber-600 font-semibold font-mono"
+                          : "text-red-600 font-semibold font-mono"
+                      }
+                    >
+                      {r.outstandingMg > 0 ? "Jama: " : "Udhar: "}
+                      {mgToGrams(Math.abs(r.outstandingMg))} g
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop view */}
+          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

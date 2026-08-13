@@ -58,4 +58,6 @@ Additional current evidence, 2026-08-13: Customer Gold Deposit, Material Vault, 
 
 Additional current evidence, 2026-08-13: Unified print template overrides now load through `src/lib/print-engine/template-query.ts` with bounded Supabase/RLS reads instead of generic repository `readAll()`. This supports the printing/settings gates but remains PARTIAL until authenticated template CRUD, preview, PDF/print, reprint audit, and mobile evidence are captured.
 
+Additional current evidence, 2026-08-13: Attendance bulk marking now uses `src/lib/workers-store.ts` `bulkUpsertAttendance()` from `src/routes/attendance.index.tsx`, sending one Supabase/RLS-backed upsert batch for selected workers and updating the attendance section optimistically after the remote write succeeds. This resolves the repeated per-worker refresh loop for bulk attendance, but remains PARTIAL until browser/mobile screenshots, role/RLS denial tests, activity timeline evidence, and print/report verification are captured.
+
 No P0/P1 workflow may be marked production-ready until all applicable checks for its routes are PASS or explicitly N/A with evidence.

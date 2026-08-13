@@ -221,7 +221,48 @@ function StockWorkspace() {
           </div>
         ) : (
           <>
-            <div className="mt-4 overflow-x-auto">
+            {/* ── Mobile card view ── */}
+            <div className="block md:hidden mt-4 space-y-2">
+              {items.map((item) => (
+                <Link
+                  key={item.id}
+                  to="/stock/$id"
+                  params={{ id: item.id }}
+                  className="block border border-border rounded-xl p-3 bg-card hover:bg-muted/20 active:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium truncate">{item.itemName}</div>
+                      <div className="font-mono text-xs text-muted-foreground">{item.itemCode}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-mono text-sm text-gold">
+                        {(item.fineMg / 1000).toFixed(3)} g
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {STOCK_STATUS_LABELS[item.status]}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                    {item.barcode && (
+                      <span>
+                        BC: <span className="font-mono">{item.barcode}</span>
+                      </span>
+                    )}
+                    {item.huid && (
+                      <span>
+                        HUID: <span className="font-mono">{item.huid}</span>
+                      </span>
+                    )}
+                    {item.location && <span>{item.location}</span>}
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* ── Desktop table view ── */}
+            <div className="mt-4 hidden md:block overflow-x-auto">
               <table className="erp-table w-full text-sm">
                 <thead>
                   <tr>

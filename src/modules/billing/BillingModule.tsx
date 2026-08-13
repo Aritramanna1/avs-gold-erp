@@ -1604,7 +1604,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             : ""),
       });
     } catch (err: any) {
-      alert(
+      toast.error(
         `किंमत सेव्ह करणे अपयशी ठरले / Failed to save invoice: ${err.message || err}. Please check network connection and try again.`,
       );
       return;

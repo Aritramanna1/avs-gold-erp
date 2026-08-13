@@ -102,7 +102,74 @@ function HallmarkPage() {
               Sent to {batch.assayCenterName} on {new Date(batch.sentAt).toLocaleDateString()} ·{" "}
               {batch.lines.length} items
             </div>
-            <div className="rounded-lg border border-border overflow-hidden">
+            {/* Mobile View */}
+            <div className="md:hidden space-y-2">
+              {batch.lines.map((l) => (
+                <div
+                  key={l.itemId}
+                  className="border border-border rounded-xl p-3 bg-muted/20 space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{l.itemCode}</span>
+                    <div>
+                      {l.status === "received" && (
+                        <Badge className="bg-green-600 hover:bg-green-600 gap-1 text-xs py-0.5">
+                          <CheckCircle2 className="h-3 w-3" /> Received
+                        </Badge>
+                      )}
+                      {l.status === "rejected" && (
+                        <Badge variant="destructive" className="gap-1 text-xs py-0.5">
+                          <XCircle className="h-3 w-3" /> Rejected
+                        </Badge>
+                      )}
+                      {l.status === "pending" && (
+                        <Badge variant="outline" className="text-xs py-0.5">
+                          Pending
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {(l.huid || l.rejectionReason) && (
+                    <div className="text-xs text-muted-foreground bg-muted/40 p-2 rounded">
+                      {l.huid ? `HUID: ${l.huid}` : `Reason: ${l.rejectionReason}`}
+                    </div>
+                  )}
+                  {l.status === "pending" && (
+                    <div className="flex gap-2 justify-end pt-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 text-xs h-8"
+                        onClick={() =>
+                          setReceivingLine({
+                            batch,
+                            itemId: l.itemId,
+                            itemCode: l.itemCode,
+                          })
+                        }
+                      >
+                        Receive
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="flex-1 text-xs h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          const reason = window.prompt("Rejection reason?") ?? "";
+                          if (reason)
+                            useHallmarkBatches.getState().rejectItem(batch.id, l.itemId, reason);
+                        }}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden md:block rounded-lg border border-border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -260,7 +327,7 @@ function SendBatchDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl w-[95vw] md:w-full">
         <DialogHeader>
           <DialogTitle>Send Batch to Assay Center</DialogTitle>
         </DialogHeader>
@@ -330,7 +397,7 @@ function ReceiveDialog({
   const [huid, setHuid] = useState("");
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-md w-[95vw] md:w-full">
         <DialogHeader>
           <DialogTitle>Receive {itemCode}</DialogTitle>
         </DialogHeader>

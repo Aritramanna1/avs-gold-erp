@@ -184,7 +184,28 @@ function CatalogIndex() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as DesignSource | "all")}>
-        <TabsList className="flex-wrap h-auto">
+        {/* Mobile select dropdown */}
+        <div className="block md:hidden mb-4">
+          <Select value={tab} onValueChange={(v) => setTab(v as DesignSource | "all")}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TABS.map((tItem) => (
+                <SelectItem key={tItem.value} value={tItem.value}>
+                  {t("catalog.tab_" + tItem.value)} (
+                  {tItem.value === "all"
+                    ? designs.length
+                    : designs.filter((d) => d.source === tItem.value).length}
+                  )
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop TabsList */}
+        <TabsList className="hidden md:flex flex-wrap h-auto">
           {TABS.map((tItem) => (
             <TabsTrigger key={tItem.value} value={tItem.value}>
               {t("catalog.tab_" + tItem.value)}
@@ -436,7 +457,7 @@ function AddDesignDialog({ open, onClose }: { open: boolean; onClose: () => void
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl w-[95vw] md:w-full">
         <DialogHeader>
           <DialogTitle className="font-serif text-gold">{t("catalog.add_design")}</DialogTitle>
           <DialogDescription>{t("catalog.add_design_desc")}</DialogDescription>

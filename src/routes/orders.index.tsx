@@ -305,7 +305,60 @@ function OrdersListPage() {
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* ── Mobile card view ── */}
+          <div className="block md:hidden divide-y divide-border">
+            {pageOrders.map((o) => {
+              const bucket = deliveryBucket(o);
+              const items = orderItems(o);
+              return (
+                <Link
+                  key={o.id}
+                  to="/orders/$id"
+                  params={{ id: o.id }}
+                  className="block p-3 hover:bg-muted/20 active:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs text-gold">{o.orderNo}</span>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${STATUS_TONE[o.status] ?? STATUS_TONE_FALLBACK}`}
+                        >
+                          {t("orders.status_" + o.status)}
+                        </Badge>
+                      </div>
+                      <div className="text-sm mt-1 truncate">{customerName(o.customerId)}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {items[0]?.itemName ?? "—"}
+                        {items.length > 1 ? ` · +${items.length - 1} more` : ""}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-mono text-xs">{mgToGrams(orderTotals(o).fineMg)} g</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        {new Date(o.createdAt).toLocaleDateString("en-IN")}
+                      </div>
+                    </div>
+                  </div>
+                  {o.expectedDelivery && (
+                    <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      {o.expectedDelivery}
+                      {(bucket === "delayed" || bucket === "today" || bucket === "tomorrow") && (
+                        <Badge variant="outline" className={`text-[10px] ${BUCKET_TONE[bucket]}`}>
+                          {t("orders." + bucket)}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* ── Desktop table view ── */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/30 text-muted-foreground">
                 <tr>
@@ -339,8 +392,6 @@ function OrdersListPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-xs">{productionTypeLabel(o)}</td>
-                      {/* Fine gold across ALL lines — a multi-item order's first
-                          line is not what the workshop owes against it. */}
                       <td className="px-4 py-3 font-mono text-xs">
                         {mgToGrams(orderTotals(o).fineMg)} g
                       </td>

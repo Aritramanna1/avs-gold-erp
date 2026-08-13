@@ -15,6 +15,13 @@ import {
 } from "@/lib/repair-store";
 import { paiseToRupees } from "@/lib/billing-store";
 import { Plus, Search, Wrench, Sparkles, Eye } from "lucide-react";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/repair/")({
   head: () => ({ meta: [{ title: "Repair · AVS Gold ERP" }] }),
@@ -32,6 +39,7 @@ const STATUS_TONE: Record<RepairStatus, string> = {
 function RepairIndex() {
   const repairs = useRepairs((s) => s.repairs);
   const [q, setQ] = useState("");
+  const [activeTab, setActiveTab] = useState("pending");
 
   const filtered = useMemo(() => {
     const t = q.toLowerCase().trim();
@@ -70,7 +78,7 @@ function RepairIndex() {
         }
       />
 
-      <div className="grid sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <Card label="Pending" value={byStatus(repairsOnly, "pending").length} />
         <Card label="In Work" value={byStatus(repairsOnly, "in_work").length} />
         <Card label="Ready" value={byStatus(repairsOnly, "ready").length} />
@@ -87,8 +95,25 @@ function RepairIndex() {
         />
       </div>
 
-      <Tabs defaultValue="pending">
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        {/* Mobile Tab Select */}
+        <div className="block md:hidden mb-4">
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="in_work">In Work</SelectItem>
+              <SelectItem value="ready">Ready</SelectItem>
+              <SelectItem value="delivered">Delivered / History</SelectItem>
+              <SelectItem value="polishing">Polishing Jobs</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop TabsList */}
+        <TabsList className="hidden md:flex">
           <TabsTrigger value="pending">Pending</TabsTrigger>
           <TabsTrigger value="in_work">In Work</TabsTrigger>
           <TabsTrigger value="ready">Ready</TabsTrigger>
@@ -134,57 +159,115 @@ function RepairTable({ rows, polishing }: { rows: Repair[]; polishing?: boolean 
     );
   }
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/30 text-left text-xs uppercase tracking-wider text-muted-foreground">
-            <tr>
-              <th className="p-3">No.</th>
-              <th className="p-3">Customer</th>
-              <th className="p-3">Item</th>
-              <th className="p-3">Type</th>
-              <th className="p-3">Expected</th>
-              <th className="p-3 text-right">Balance ₹</th>
-              <th className="p-3">Status</th>
-              <th className="p-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const t = computeRepairTotals(r);
-              return (
-                <tr key={r.id} className="border-t border-border hover:bg-muted/20">
-                  <td className="p-3 font-mono">{r.repairNo}</td>
-                  <td className="p-3">
-                    <div>{r.customerName}</div>
-                    {r.customerPhone && (
-                      <div className="text-xs text-muted-foreground">{r.customerPhone}</div>
-                    )}
-                  </td>
-                  <td className="p-3">{r.itemType}</td>
-                  <td className="p-3">
+    <>
+      {/* Mobile view */}
+      <div className="md:hidden space-y-3">
+        {rows.map((r) => {
+          const t = computeRepairTotals(r);
+          return (
+            <div
+              key={r.id}
+              className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-gold font-semibold">{r.repairNo}</span>
+                <Badge variant="outline" className={STATUS_TONE[r.status]}>
+                  {REPAIR_STATUS_LABELS[r.status]}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">Customer</span>
+                  <span className="font-medium text-foreground">{r.customerName}</span>
+                  {r.customerPhone && (
+                    <span className="block text-[10px] text-muted-foreground">
+                      {r.customerPhone}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">Item</span>
+                  <span className="font-medium text-foreground">{r.itemType}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">Type</span>
+                  <span className="font-medium text-foreground">
                     {polishing ? "Polishing" : REPAIR_TYPE_LABELS[r.repairType]}
-                  </td>
-                  <td className="p-3">{r.expectedDelivery ?? "—"}</td>
-                  <td className="p-3 text-right">{paiseToRupees(t.balancePaise)}</td>
-                  <td className="p-3">
-                    <Badge variant="outline" className={STATUS_TONE[r.status]}>
-                      {REPAIR_STATUS_LABELS[r.status]}
-                    </Badge>
-                  </td>
-                  <td className="p-3">
-                    <Link to="/repair/$id" params={{ id: r.id }}>
-                      <Button size="sm" variant="ghost" className="gap-1">
-                        <Eye className="h-3 w-3" /> Open
-                      </Button>
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">Expected Date</span>
+                  <span className="font-medium text-foreground">{r.expectedDelivery ?? "—"}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                <span className="font-semibold text-gold">
+                  Balance: ₹{paiseToRupees(t.balancePaise)}
+                </span>
+                <Link to="/repair/$id" params={{ id: r.id }}>
+                  <Button size="sm" variant="ghost" className="gap-1 h-8 text-xs">
+                    <Eye className="h-3 w-3" /> View
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </div>
+
+      {/* Desktop view */}
+      <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/30 text-left text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="p-3">No.</th>
+                <th className="p-3">Customer</th>
+                <th className="p-3">Item</th>
+                <th className="p-3">Type</th>
+                <th className="p-3">Expected</th>
+                <th className="p-3 text-right">Balance ₹</th>
+                <th className="p-3">Status</th>
+                <th className="p-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const t = computeRepairTotals(r);
+                return (
+                  <tr key={r.id} className="border-t border-border hover:bg-muted/20">
+                    <td className="p-3 font-mono">{r.repairNo}</td>
+                    <td className="p-3">
+                      <div>{r.customerName}</div>
+                      {r.customerPhone && (
+                        <div className="text-xs text-muted-foreground">{r.customerPhone}</div>
+                      )}
+                    </td>
+                    <td className="p-3">{r.itemType}</td>
+                    <td className="p-3">
+                      {polishing ? "Polishing" : REPAIR_TYPE_LABELS[r.repairType]}
+                    </td>
+                    <td className="p-3">{r.expectedDelivery ?? "—"}</td>
+                    <td className="p-3 text-right">{paiseToRupees(t.balancePaise)}</td>
+                    <td className="p-3">
+                      <Badge variant="outline" className={STATUS_TONE[r.status]}>
+                        {REPAIR_STATUS_LABELS[r.status]}
+                      </Badge>
+                    </td>
+                    <td className="p-3">
+                      <Link to="/repair/$id" params={{ id: r.id }}>
+                        <Button size="sm" variant="ghost" className="gap-1">
+                          <Eye className="h-3 w-3" /> Open
+                        </Button>
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }

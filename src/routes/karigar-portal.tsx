@@ -2,14 +2,14 @@
  * Karigar Portal — /karigar-portal
  *
  * Public-accessible route (authenticated via Supabase OTP, not ERP staff login).
- * Shows a karigar's own data: gold balance, gold issue/return ledger,
- * wages, and attendance — all read-only.
+ * Shows a karigar's own data: gold balance, active jobs, work returns,
+ * wages, and attendance.
  *
  * Data fetched via get_karigar_portal() Supabase RPC, which uses
  * the caller's JWT to find their karigar record by phone/email.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import {
   Hammer,
@@ -20,6 +20,8 @@ import {
   TrendingDown,
   TrendingUp,
   LogOut,
+  PackageCheck,
+  Send,
 } from "lucide-react";
 
 export const Route = createFileRoute("/karigar-portal")({
@@ -38,6 +40,35 @@ function mg(val: number) {
 
 function rs(paiseOrAmount: number) {
   return "₹" + paiseOrAmount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function numericValue(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) {
+    return Number(value);
+  }
+  return undefined;
+}
+
+function gramsToMg(value: string): number {
+  const parsed = Number(value.trim());
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return Math.round(parsed * 1000);
+}
+
+function safeJson<T>(value: string): T | null {
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+}
+
+function cryptoSuffix(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID().slice(0, 8).toUpperCase();
+  }
+  return Math.random().toString(36).slice(2, 10).toUpperCase();
 }
 
 function fmtDate(val: string | number | null | undefined) {
@@ -93,6 +124,22 @@ interface KarigarData {
   attendance: AttendanceEntry[];
 }
 
+interface PortalJobCard {
+  id: string;
+  jobNo: string;
+  status: string;
+  createdAt: string;
+  branchId: string | null;
+  orderId: string;
+  itemName?: string;
+  customerName?: string;
+  grossMg?: number;
+  netMg?: number;
+  fineMg?: number;
+  purity?: number;
+  dueDate?: string;
+}
+
 // ── sub-components ────────────────────────────────────────────────────────────
 
 function StatCard({
@@ -132,7 +179,20 @@ function KarigarPortal() {
   const navigate = useNavigate();
   const [data, setData] = useState<KarigarData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"gold" | "wages" | "attendance">("gold");
+  const [tab, setTab] = useState<"gold" | "wages" | "attendance" | "jobs" | "return">("gold");
+  const [jobCards, setJobCards] = useState<PortalJobCard[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+
+  // Form states for Scrap/Return Submission
+  const [selectedJobId, setSelectedJobId] = useState("");
+  const [finishedGrossWt, setFinishedGrossWt] = useState("");
+  const [scrapGrossWt, setScrapGrossWt] = useState("");
+  const [filingsGrossWt, setFilingsGrossWt] = useState("");
+  const [returnNotes, setReturnNotes] = useState("");
+  const [submitBusy, setSubmitBusy] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [jobsError, setJobsError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -152,12 +212,129 @@ function KarigarPortal() {
         setError("Could not load your portal data. Please contact your firm.");
       } else {
         setData(result as KarigarData);
+
+        // Fetch only this karigar's active job cards through Supabase/RLS.
+        const { data: jobsResult, error: jobsErr } = await supabase
+          .from("job_cards")
+          .select("id,job_no,status,created_at,order_id,data")
+          .eq("karigar_id", (result as KarigarData).profile.id)
+          .not("status", "in", "(closed,cancelled,delivered)")
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (!active) return;
+        if (jobsErr) {
+          setJobsError(jobsErr.message || "Could not load your active jobs.");
+          setJobCards([]);
+          setLoadingJobs(false);
+          return;
+        }
+        if (!jobsErr && jobsResult) {
+          const parsed = jobsResult.map((j) => {
+            const rawData =
+              (typeof j.data === "string"
+                ? safeJson<Record<string, unknown>>(j.data)
+                : (j.data as Record<string, unknown> | null)) ?? {};
+            return {
+              id: j.id,
+              jobNo: j.job_no,
+              status: j.status,
+              createdAt: j.created_at,
+              branchId: String(rawData?.branchId ?? "") || null,
+              orderId: j.order_id ?? "",
+              itemName: String(
+                rawData?.itemName ?? rawData?.designName ?? rawData?.productName ?? "",
+              ),
+              customerName: String(rawData?.customerName ?? ""),
+              grossMg: numericValue(rawData?.grossMg),
+              netMg: numericValue(rawData?.netMg),
+              fineMg: numericValue(rawData?.fineMg),
+              purity: numericValue(rawData?.purity),
+              dueDate: typeof rawData?.dueDate === "string" ? rawData.dueDate : undefined,
+            } satisfies PortalJobCard;
+          });
+          setJobCards(parsed);
+          if (parsed.length > 0) {
+            setSelectedJobId(parsed[0].id);
+          }
+        }
+        setLoadingJobs(false);
       }
     })();
     return () => {
       active = false;
     };
   }, [navigate]);
+
+  async function handleReturnSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!selectedJobId || !data) return;
+    setSubmitBusy(true);
+    setSubmitSuccess(false);
+    setSubmitError(null);
+
+    const selectedJob = jobCards.find((j) => j.id === selectedJobId);
+    if (!selectedJob) {
+      setSubmitBusy(false);
+      setSubmitError("Select an active job before submitting returned work.");
+      return;
+    }
+
+    try {
+      const finishedMg = gramsToMg(finishedGrossWt);
+      const scrapMg = gramsToMg(scrapGrossWt);
+      const filingsMg = gramsToMg(filingsGrossWt);
+      if (finishedMg + scrapMg + filingsMg <= 0) {
+        throw new Error("Enter at least one returned weight.");
+      }
+
+      const now = Date.now();
+      const returnNo = `WR-${new Date(now).toISOString().slice(0, 10).replace(/-/g, "")}-${cryptoSuffix()}`;
+      const returnId = `wr_${cryptoSuffix().toLowerCase()}_${now}`;
+      const { error: insertErr } = await supabase.from("worker_returns").insert({
+        id: returnId,
+        branch_id: selectedJob.branchId || null,
+        order_id: selectedJob.orderId || "",
+        worker_id: data.profile.id,
+        data: {
+          id: returnId,
+          returnNo,
+          orderId: selectedJob.orderId || "",
+          workerId: data.profile.id,
+          workerName: data.profile.name,
+          jobCardId: selectedJob.id,
+          jobNo: selectedJob.jobNo,
+          materialReturned: "Finished Product",
+          itemName: selectedJob.itemName ?? "",
+          finishedGrossMg: finishedMg,
+          scrapGrossMg: scrapMg,
+          filingsGrossMg: filingsMg,
+          grossMg: finishedMg + scrapMg + filingsMg,
+          fineMg: 0,
+          purity: selectedJob.purity ?? 0,
+          ts: now,
+          notes: returnNotes,
+          remarks: returnNotes,
+          status: "submitted",
+          source: "karigar_portal",
+          createdAt: now,
+        },
+      });
+
+      if (insertErr) throw insertErr;
+
+      setSubmitSuccess(true);
+      setFinishedGrossWt("");
+      setScrapGrossWt("");
+      setFilingsGrossWt("");
+      setReturnNotes("");
+      setSelectedJobId(jobCards.find((job) => job.id !== selectedJob.id)?.id ?? selectedJob.id);
+    } catch (ex: any) {
+      setSubmitError(ex.message || "Could not submit returned work.");
+    } finally {
+      setSubmitBusy(false);
+    }
+  }
 
   function handleSignOut() {
     void supabase.auth.signOut().then(() => {
@@ -261,8 +438,24 @@ function KarigarPortal() {
         </section>
 
         {/* Tab navigation */}
-        <div className="flex gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm">
-          {(["gold", "wages", "attendance"] as const).map((t) => (
+        {/* Mobile View: Select Dropdown to keep layout clean */}
+        <div className="block sm:hidden mb-4">
+          <select
+            value={tab}
+            onChange={(e) => setTab(e.target.value as any)}
+            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+          >
+            <option value="gold">Gold Ledger Summary</option>
+            <option value="jobs">Your Active Bench Jobs</option>
+            <option value="return">Submit Completed Work &amp; Scrap</option>
+            <option value="wages">Wages &amp; Payments Ledger</option>
+            <option value="attendance">Daily Attendance Log</option>
+          </select>
+        </div>
+
+        {/* Desktop View: Full horizontal tabs triggers bar */}
+        <div className="hidden sm:flex gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm">
+          {(["gold", "jobs", "return", "wages", "attendance"] as const).map((t) => (
             <button
               key={t}
               type="button"
@@ -273,7 +466,15 @@ function KarigarPortal() {
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              {t === "gold" ? "Gold Ledger" : t === "wages" ? "Wages & Payments" : "Attendance"}
+              {t === "gold"
+                ? "Gold Ledger"
+                : t === "jobs"
+                  ? "Active Jobs"
+                  : t === "return"
+                    ? "Work Return"
+                    : t === "wages"
+                      ? "Wages"
+                      : "Attendance"}
             </button>
           ))}
         </div>
@@ -311,6 +512,225 @@ function KarigarPortal() {
                 ))}
               </div>
             )}
+          </section>
+        )}
+
+        {/* Tab: Active Jobs */}
+        {tab === "jobs" && (
+          <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800">Active Bench Jobs</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Jobs assigned to you by the firm.</p>
+              </div>
+              <span className="rounded-full bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700">
+                {jobCards.length}
+              </span>
+            </div>
+            {loadingJobs ? (
+              <div className="p-6 space-y-3">
+                {[0, 1, 2].map((item) => (
+                  <div key={item} className="h-20 animate-pulse rounded-lg bg-orange-50" />
+                ))}
+              </div>
+            ) : jobsError ? (
+              <div className="p-8 text-center text-sm text-rose-600">{jobsError}</div>
+            ) : jobCards.length === 0 ? (
+              <div className="p-8 text-center text-sm text-gray-400">
+                No active jobs are assigned right now.
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {jobCards.map((job) => (
+                  <div key={job.id} className="px-4 py-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-gray-900">
+                          {job.jobNo || job.id}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          {job.itemName || "Manufacturing job"}
+                          {job.customerName ? ` for ${job.customerName}` : ""}
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold capitalize text-gray-600">
+                        {job.status?.replace(/_/g, " ") || "active"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                      <div className="rounded-lg bg-gray-50 p-2">
+                        <div className="text-gray-400">Gross</div>
+                        <div className="font-mono font-semibold">
+                          {job.grossMg != null ? mg(job.grossMg) : "-"}
+                        </div>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 p-2">
+                        <div className="text-gray-400">Fine</div>
+                        <div className="font-mono font-semibold">
+                          {job.fineMg != null ? mg(job.fineMg) : "-"}
+                        </div>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 p-2">
+                        <div className="text-gray-400">Purity</div>
+                        <div className="font-mono font-semibold">
+                          {job.purity != null ? job.purity : "-"}
+                        </div>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 p-2">
+                        <div className="text-gray-400">Due</div>
+                        <div className="font-semibold">{fmtDate(job.dueDate)}</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedJobId(job.id);
+                        setTab("return");
+                      }}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 sm:w-auto"
+                    >
+                      <PackageCheck className="h-4 w-4" />
+                      Return work
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Tab: Work Return */}
+        {tab === "return" && (
+          <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-800">
+                Submit Completed Work &amp; Scrap
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Send finished work, scrap, and filings to the firm for review.
+              </p>
+            </div>
+            <form onSubmit={handleReturnSubmit} className="p-4 space-y-4">
+              <div>
+                <label
+                  htmlFor="return-job"
+                  className="block text-xs font-semibold text-gray-600 mb-1"
+                >
+                  Job
+                </label>
+                <select
+                  id="return-job"
+                  value={selectedJobId}
+                  onChange={(e) => setSelectedJobId(e.target.value)}
+                  disabled={loadingJobs || jobCards.length === 0}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50"
+                >
+                  {jobCards.length === 0 ? (
+                    <option value="">No active jobs</option>
+                  ) : (
+                    jobCards.map((job) => (
+                      <option key={job.id} value={job.id}>
+                        {job.jobNo || job.id}
+                        {job.itemName ? ` - ${job.itemName}` : ""}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <label
+                    htmlFor="finished-gross"
+                    className="block text-xs font-semibold text-gray-600 mb-1"
+                  >
+                    Finished gross (g)
+                  </label>
+                  <input
+                    id="finished-gross"
+                    value={finishedGrossWt}
+                    onChange={(e) => setFinishedGrossWt(e.target.value)}
+                    inputMode="decimal"
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="scrap-gross"
+                    className="block text-xs font-semibold text-gray-600 mb-1"
+                  >
+                    Scrap (g)
+                  </label>
+                  <input
+                    id="scrap-gross"
+                    value={scrapGrossWt}
+                    onChange={(e) => setScrapGrossWt(e.target.value)}
+                    inputMode="decimal"
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="filings-gross"
+                    className="block text-xs font-semibold text-gray-600 mb-1"
+                  >
+                    Filings (g)
+                  </label>
+                  <input
+                    id="filings-gross"
+                    value={filingsGrossWt}
+                    onChange={(e) => setFilingsGrossWt(e.target.value)}
+                    inputMode="decimal"
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label
+                  htmlFor="return-notes"
+                  className="block text-xs font-semibold text-gray-600 mb-1"
+                >
+                  Notes
+                </label>
+                <textarea
+                  id="return-notes"
+                  value={returnNotes}
+                  onChange={(e) => setReturnNotes(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              {submitError && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                  {submitError}
+                </div>
+              )}
+              {submitSuccess && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                  Work return submitted. The firm can review it in Supabase-backed records.
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={submitBusy || jobCards.length === 0}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                {submitBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Submit return
+              </button>
+            </form>
           </section>
         )}
 
@@ -396,7 +816,7 @@ function KarigarPortal() {
         {/* Footer */}
         <footer className="text-center text-xs text-gray-400 pb-4">
           Powered by <span className="font-semibold text-orange-700">AVS Gold ERP</span>
-          {" · "}Data is read-only. Contact your firm for corrections.
+          {" - "}Work returns are submitted to your firm for review.
         </footer>
       </main>
     </div>

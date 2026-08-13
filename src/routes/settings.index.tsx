@@ -4987,9 +4987,9 @@ function DbStatusPanel() {
               password: authPass,
               options: { emailRedirectTo: getAuthRedirectUrl("/auth/callback") },
             });
-      if (error) alert(error.message);
+      if (error) toast.error(error.message);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Sign-in/sign-up failed.");
+      toast.error(error instanceof Error ? error.message : "Sign-in/sign-up failed.");
     } finally {
       setBusy(false);
     }
@@ -5000,7 +5000,7 @@ function DbStatusPanel() {
   }
 
   async function handleMigrate() {
-    alert(
+    toast.info(
       "Local pilot migration is retired. Supabase is already the production source of truth; use Backup & Disaster Recovery for restore operations.",
     );
   }

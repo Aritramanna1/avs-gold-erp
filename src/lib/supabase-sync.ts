@@ -13,50 +13,56 @@ import type { Branch, WorkshopDefinition } from "@/lib/settings-store";
 
 interface DbBranch {
   id: string;
-  name: string;
+  name: string | null;
   code?: string;
-  short_name?: string;
-  address: string;
-  phone: string;
+  short_name?: string | null;
+  address: string | null;
+  phone: string | null;
   manager_name?: string;
   gstin: string | null;
   active: boolean;
   is_default?: boolean;
-  data?: Record<string, unknown> | null;
-  notes: string | null;
+  data?: unknown;
+  notes?: string | null;
+  [key: string]: unknown;
 }
 
 interface DbWorkshop {
   id: string;
-  name: string;
-  type: string;
+  name: string | null;
   branch_id: string | null;
-  active: boolean;
-  description: string | null;
+  data?: unknown;
+  [key: string]: unknown;
 }
 
 function dbBranchToStore(r: DbBranch): Branch {
+  const d = (
+    typeof r.data === "object" && r.data && !Array.isArray(r.data) ? r.data : {}
+  ) as Record<string, unknown>;
   return {
     id: r.id,
-    name: r.name,
+    name: r.name ?? "Unnamed",
     code: r.code ?? r.short_name ?? "MAIN",
     address: r.address ?? "",
     phone: r.phone ?? "",
-    managerName: r.manager_name ?? String(r.data?.manager_name ?? "Unassigned"),
+    managerName: r.manager_name ?? String(d.manager_name ?? "Unassigned"),
     gstin: r.gstin ?? undefined,
     active: r.active,
-    isDefault: r.is_default ?? Boolean(r.data?.is_default),
+    isDefault: r.is_default ?? Boolean(d.is_default),
   };
 }
 
 function dbWorkshopToStore(r: DbWorkshop): WorkshopDefinition {
+  const d = (
+    typeof r.data === "object" && r.data && !Array.isArray(r.data) ? r.data : {}
+  ) as Record<string, unknown>;
   return {
     id: r.id,
-    name: r.name,
-    type: r.type as WorkshopDefinition["type"],
+    name: String(r.name ?? d.name ?? ""),
+    type: String(d.type ?? "manufacturing") as WorkshopDefinition["type"],
     branchId: r.branch_id ?? "",
-    active: r.active,
-    description: r.description ?? undefined,
+    active: d.active !== false,
+    description: d.description ? String(d.description) : undefined,
   };
 }
 
@@ -77,10 +83,10 @@ export function useSupabaseSync() {
       if (cancelled) return;
 
       if (branchRows && branchRows.length > 0) {
-        setBranches(branchRows.map(dbBranchToStore));
+        setBranches((branchRows as unknown as DbBranch[]).map(dbBranchToStore));
       }
       if (workshopRows && workshopRows.length > 0) {
-        setWorkshops(workshopRows.map(dbWorkshopToStore));
+        setWorkshops((workshopRows as unknown as DbWorkshop[]).map(dbWorkshopToStore));
       }
     }
 
@@ -153,11 +159,13 @@ export async function dbAddWorkshop(w: WorkshopDefinition): Promise<void> {
   await supabase.from("workshops").insert({
     id: w.id,
     name: w.name,
-    type: w.type,
     branch_id: w.branchId,
-    active: w.active,
-    description: w.description ?? null,
-  });
+    data: {
+      type: w.type,
+      active: w.active,
+      description: w.description ?? null,
+    },
+  } as any);
 }
 
 export async function dbUpdateWorkshop(

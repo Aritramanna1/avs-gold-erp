@@ -138,15 +138,17 @@ async function saveWorkshopToDb(w: {
   description?: string;
 }): Promise<void> {
   try {
-    await supabase.from("workshops").upsert(
+    await (supabase.from("workshops") as any).upsert(
       [
         {
           id: w.id,
           name: w.name,
-          type: w.type,
           branch_id: w.branchId,
-          active: w.active,
-          description: w.description ?? null,
+          data: {
+            type: w.type,
+            active: w.active,
+            description: w.description ?? null,
+          },
         },
       ],
       { onConflict: "id" },

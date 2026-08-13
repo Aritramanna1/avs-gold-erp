@@ -199,35 +199,62 @@ function TallyExportPage() {
               No confirmed invoices in this date range.
             </p>
           ) : (
-            <div className="overflow-x-auto border rounded-md">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-left">
-                  <tr>
-                    <th className="p-2">Voucher</th>
-                    <th className="p-2">Type</th>
-                    <th className="p-2">Date</th>
-                    <th className="p-2">Party</th>
-                    <th className="p-2 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vouchers.slice(0, 50).map((v) => (
-                    <tr key={v.voucherNumber} className="border-t">
-                      <td className="p-2 font-mono text-xs">{v.voucherNumber}</td>
-                      <td className="p-2 text-xs">{v.voucherType}</td>
-                      <td className="p-2 text-xs">{v.dateStr}</td>
-                      <td className="p-2">{v.partyName}</td>
-                      <td className="p-2 text-right">₹{(v.amountPaise / 100).toFixed(2)}</td>
+            <>
+              {/* Mobile view */}
+              <div className="block md:hidden border rounded-md divide-y divide-border">
+                {vouchers.slice(0, 50).map((v) => (
+                  <div key={v.voucherNumber} className="p-3 space-y-1 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-gold font-semibold">{v.voucherNumber}</span>
+                      <span className="text-[10px] text-muted-foreground">{v.dateStr}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span>
+                        Type:{" "}
+                        <strong className="font-medium text-foreground">{v.voucherType}</strong>
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        ₹{(v.amountPaise / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      Party: <span className="font-medium text-foreground">{v.partyName}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop view */}
+              <div className="hidden md:block overflow-x-auto border rounded-md">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 text-left">
+                    <tr>
+                      <th className="p-2">Voucher</th>
+                      <th className="p-2">Type</th>
+                      <th className="p-2">Date</th>
+                      <th className="p-2">Party</th>
+                      <th className="p-2 text-right">Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {vouchers.slice(0, 50).map((v) => (
+                      <tr key={v.voucherNumber} className="border-t">
+                        <td className="p-2 font-mono text-xs">{v.voucherNumber}</td>
+                        <td className="p-2 text-xs">{v.voucherType}</td>
+                        <td className="p-2 text-xs">{v.dateStr}</td>
+                        <td className="p-2">{v.partyName}</td>
+                        <td className="p-2 text-right">₹{(v.amountPaise / 100).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {vouchers.length > 50 && (
                 <p className="p-2 text-xs text-muted-foreground text-center">
                   Showing first 50 of {vouchers.length} — export includes all.
                 </p>
               )}
-            </div>
+            </>
           )}
         </CardContent>
       </Card>

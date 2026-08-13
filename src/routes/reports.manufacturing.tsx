@@ -241,7 +241,69 @@ function ManufacturingReport() {
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border">
+      {/* Mobile view */}
+      <div className="block md:hidden space-y-3">
+        {loading && (
+          <div className="p-8 text-center text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Loading...
+          </div>
+        )}
+        {!loading && !error && rows.length === 0 && (
+          <div className="p-6 bg-card border border-border rounded-xl text-center text-muted-foreground text-xs">
+            No manufacturing bills in this period.
+          </div>
+        )}
+        {!loading &&
+          !error &&
+          rows.map((b) => (
+            <div
+              key={b.id}
+              className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-gold font-semibold">{b.billNo}</span>
+                <Badge variant={STATUS_COLORS[b.status] as "default" | "secondary"}>
+                  {b.status}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">Item</span>
+                  <span className="font-medium text-foreground">{b.itemName}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">Karigar</span>
+                  <span className="font-medium text-foreground">{b.karigarName ?? "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">Date</span>
+                  <span className="font-medium text-foreground">{fmtReportDate(b.createdAt)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px]">Labour</span>
+                  <span className="font-medium text-foreground">{fmtRs(b.labourChargesPaise)}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-[11px] font-mono bg-muted/20 p-2 rounded-lg text-center">
+                <div>
+                  <span className="text-[9px] text-muted-foreground block font-sans">Issued</span>
+                  <span>{fmtG(b.totalGoldIssuedFineMg)}g</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-muted-foreground block font-sans">Returned</span>
+                  <span>{fmtG(b.totalGoldReturnedFineMg)}g</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-muted-foreground block font-sans">Wastage</span>
+                  <span>{b.actualWastagePct.toFixed(2)}%</span>
+                </div>
+              </div>
+            </div>
+          ))}
+      </div>
+
+      {/* Desktop view */}
+      <div className="hidden md:block overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>

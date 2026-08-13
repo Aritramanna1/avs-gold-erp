@@ -19,6 +19,7 @@ import { gramsToMg } from "@/lib/gold";
 import { rupeesToPaise } from "@/lib/billing-store";
 import type { PaymentMode } from "@/lib/billing-store";
 import { ArrowLeft, Save } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/repair/polishing/new")({
   head: () => ({ meta: [{ title: "New Polishing Job · AVS Gold ERP" }] }),
@@ -64,7 +65,7 @@ function PolishingNew() {
       cphone = p.phone;
     }
     if (!cid) {
-      alert("Select or quick-add a customer");
+      toast.error("Select or quick-add a customer.");
       return;
     }
 

@@ -21,6 +21,7 @@ import { rupeesToPaise } from "@/lib/billing-store";
 import type { PaymentMode } from "@/lib/billing-store";
 import { ArrowLeft, Camera, ImageIcon, Save } from "lucide-react";
 import { AttachmentButton } from "@/components/attachment-placeholder-modal";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/repair/new")({
   head: () => ({ meta: [{ title: "New Repair Intake · AVS Gold ERP" }] }),
@@ -104,11 +105,11 @@ function RepairNew() {
       cphone = p.phone;
     }
     if (!cid) {
-      alert("Select or quick-add a customer");
+      toast.error("Select or quick-add a customer.");
       return;
     }
     if (!itemType.trim()) {
-      alert("Item type is required");
+      toast.error("Item type is required.");
       return;
     }
     const gross = receivedGrams ? gramsToMg(receivedGrams) : 0;

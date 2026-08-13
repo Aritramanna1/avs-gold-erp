@@ -58,6 +58,7 @@ export const Route = createFileRoute("/ledger")({
 
 function LedgerPage() {
   const entries = useLedger((s) => s.entries);
+  const [tab, setTab] = useState("balance");
   const balance = useMemo(() => computeBalances(entries), [entries]);
   const people = usePeople((s) => s.people);
   // This dashboard was fine-gold-only — a real dual-currency ERP shows cash
@@ -130,8 +131,24 @@ function LedgerPage() {
         }
       />
 
-      <Tabs defaultValue="balance" className="space-y-6">
-        <TabsList className="bg-card border border-border no-print flex-wrap h-auto">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
+        {/* Mobile select dropdown */}
+        <div className="block md:hidden mb-4 no-print">
+          <Select value={tab} onValueChange={setTab}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="balance">Balance Sheet</SelectItem>
+              <SelectItem value="material-vault">Material Vault</SelectItem>
+              <SelectItem value="opening">Opening Vault</SelectItem>
+              <SelectItem value="movements">Gold Movements ({entries.length})</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop TabsList */}
+        <TabsList className="hidden md:flex bg-card border border-border no-print flex-wrap h-auto">
           <TabsTrigger value="balance">Balance Sheet</TabsTrigger>
           <TabsTrigger value="material-vault" data-testid="tab-material-vault">
             Material Vault
@@ -775,46 +792,97 @@ function MovementsList({ entries }: { entries: LedgerEntry[] }) {
   // newest first
   const sorted = [...entries].sort((a, b) => b.createdAt - a.createdAt);
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-elegant overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-background/60 text-muted-foreground text-xs uppercase tracking-wider">
-            <tr>
-              <th className="text-left px-4 py-3">When</th>
-              <th className="text-left px-4 py-3">Type</th>
-              <th className="text-right px-4 py-3">Gross (g)</th>
-              <th className="text-right px-4 py-3">Purity</th>
-              <th className="text-right px-4 py-3">Fine (g)</th>
-              <th className="text-right px-4 py-3">Net to system</th>
-              <th className="text-left px-4 py-3">Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((e) => (
-              <tr key={e.id} className="border-t border-border">
-                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                  {new Date(e.createdAt).toLocaleString()}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-[11px] text-gold">
-                    {MOVEMENT_LABELS[e.type]}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {e.grossMg != null ? mgToGrams(e.grossMg) : "—"}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">{e.purity ?? "—"}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-gold">
-                  {e.fineMg != null ? mgToGrams(e.fineMg) : "—"}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {mgToGrams(e.netFineMg, { sign: true })}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">{e.notes ?? e.reference ?? "—"}</td>
+    <div className="space-y-3">
+      {/* Mobile View */}
+      <div className="block md:hidden space-y-3">
+        {sorted.map((e) => (
+          <div
+            key={e.id}
+            className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+          >
+            <div className="flex items-center justify-between">
+              <span className="rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-[10px] text-gold font-medium">
+                {MOVEMENT_LABELS[e.type]}
+              </span>
+              <span className="text-muted-foreground text-[10px]">
+                {new Date(e.createdAt).toLocaleString()}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-4 gap-1.5 bg-muted/20 p-2 rounded-lg text-center font-mono text-[9px]">
+              <div>
+                <span className="text-[8px] text-muted-foreground block font-sans">Gross</span>
+                <span>{e.grossMg != null ? `${mgToGrams(e.grossMg)}g` : "—"}</span>
+              </div>
+              <div>
+                <span className="text-[8px] text-muted-foreground block font-sans">Purity</span>
+                <span>{e.purity ?? "—"}</span>
+              </div>
+              <div>
+                <span className="text-[8px] text-muted-foreground block font-sans">Fine</span>
+                <span className="text-gold font-semibold">
+                  {e.fineMg != null ? `${mgToGrams(e.fineMg)}g` : "—"}
+                </span>
+              </div>
+              <div>
+                <span className="text-[8px] text-muted-foreground block font-sans">Net Sys</span>
+                <span className="font-semibold">{mgToGrams(e.netFineMg, { sign: true })}g</span>
+              </div>
+            </div>
+
+            {e.notes || e.reference ? (
+              <div className="text-[10px] text-muted-foreground bg-muted/40 p-1.5 rounded">
+                {e.notes ?? e.reference}
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden md:block rounded-2xl border border-border bg-card shadow-elegant overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-background/60 text-muted-foreground text-xs uppercase tracking-wider">
+              <tr>
+                <th className="text-left px-4 py-3">When</th>
+                <th className="text-left px-4 py-3">Type</th>
+                <th className="text-right px-4 py-3">Gross (g)</th>
+                <th className="text-right px-4 py-3">Purity</th>
+                <th className="text-right px-4 py-3">Fine (g)</th>
+                <th className="text-right px-4 py-3">Net to system</th>
+                <th className="text-left px-4 py-3">Notes</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sorted.map((e) => (
+                <tr key={e.id} className="border-t border-border">
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                    {new Date(e.createdAt).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-[11px] text-gold">
+                      {MOVEMENT_LABELS[e.type]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {e.grossMg != null ? mgToGrams(e.grossMg) : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">{e.purity ?? "—"}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-gold">
+                    {e.fineMg != null ? mgToGrams(e.fineMg) : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {mgToGrams(e.netFineMg, { sign: true })}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {e.notes ?? e.reference ?? "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

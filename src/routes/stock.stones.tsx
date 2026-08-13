@@ -76,7 +76,91 @@ function StonesPage() {
         className="mb-4 max-w-sm"
       />
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      {/* Mobile View */}
+      <div className="md:hidden space-y-3">
+        {branchStones.length === 0 ? (
+          <div className="rounded-2xl border border-border bg-card p-6 text-center text-muted-foreground">
+            No stone records yet.
+          </div>
+        ) : (
+          branchStones.map((s) => (
+            <div key={s.id} className="rounded-2xl border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm flex items-center gap-1.5">
+                  <Gem className="h-4 w-4 text-gold" />
+                  {STONE_TYPE_LABELS[s.stoneType]} {s.count > 1 ? `×${s.count}` : ""}
+                </span>
+                <span className="font-mono text-sm font-medium">{s.caratWeight.toFixed(3)} ct</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-muted-foreground block">Clarity/Color</span>
+                  <span className="font-medium">
+                    {s.clarity ?? "—"} / {s.color ?? "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Certificate</span>
+                  <span className="font-medium break-all">
+                    {s.certificateNumber ? (
+                      <>
+                        {s.certificateNumber}
+                        {s.certifyingLab ? ` (${s.certifyingLab})` : ""}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Cost</span>
+                  <span className="font-mono font-medium">
+                    {s.purchaseCostPaise ? fmtRs(s.purchaseCostPaise) : "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Linked Item</span>
+                  <span>
+                    {s.itemId ? (
+                      <Badge variant="secondary" className="text-[10px] py-0.5">
+                        {itemCodeById.get(s.itemId) ?? s.itemId}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] py-0.5">
+                        Unset
+                      </Badge>
+                    )}
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-end pt-1 border-t border-border/60">
+                {s.itemId ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-full gap-1 h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => useStones.getState().unlinkFromItem(s.id)}
+                  >
+                    <Unlink className="h-3.5 w-3.5" /> Unlink
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-1 h-8 text-xs"
+                    onClick={() => setLinkingStone(s)}
+                  >
+                    <Link2 className="h-3.5 w-3.5" /> Link to Item
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -219,11 +303,11 @@ function AddStoneDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg w-[95vw] md:w-full">
         <DialogHeader>
           <DialogTitle>Add Stone / Diamond Record</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
             <Label>Stone Type</Label>
             <select
@@ -327,7 +411,7 @@ function LinkStoneDialog({ stone, onClose }: { stone: StoneRecord | null; onClos
 
   return (
     <Dialog open={!!stone} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-md w-[95vw] md:w-full">
         <DialogHeader>
           <DialogTitle>Link Stone to Stock Item</DialogTitle>
         </DialogHeader>

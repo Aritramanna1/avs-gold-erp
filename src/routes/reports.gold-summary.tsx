@@ -140,7 +140,7 @@ function GoldSummaryPage() {
             </div>
           )}
 
-          <div className="grid sm:grid-cols-4 gap-3 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
             <GoldStatCard
               label="Total Gold Required"
               value={report.totals.required}
@@ -180,7 +180,65 @@ function GoldSummaryPage() {
             <Coins className="h-4 w-4 text-gold" />
             <h2 className="font-serif text-lg">Dealer / Karigar Gold Position</h2>
           </div>
-          <div className="rounded-2xl border border-border bg-card overflow-hidden mb-8">
+          {/* Mobile view */}
+          <div className="block md:hidden space-y-3 mb-8">
+            {report.custody.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground italic text-xs bg-card rounded-2xl border border-border">
+                No karigar gold custody data yet.
+              </div>
+            ) : (
+              report.custody.map((c) => (
+                <div
+                  key={c.karigarId}
+                  className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-sm">{c.karigarName}</span>
+                    <Badge variant={c.outstandingMg === 0 ? "secondary" : "destructive"}>
+                      Outstanding: {mgToGrams(Math.abs(c.outstandingMg))} g
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-[11px] font-mono">
+                    <div>
+                      <span className="text-[9px] text-muted-foreground block font-sans">
+                        Issued
+                      </span>
+                      <span>{mgToGrams(c.issuedMg)}g</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-muted-foreground block font-sans">
+                        Finished
+                      </span>
+                      <span>{mgToGrams(c.finishedMg)}g</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-muted-foreground block font-sans">
+                        Scrap
+                      </span>
+                      <span>{mgToGrams(c.scrapMg)}g</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-muted-foreground block font-sans">
+                        Filings
+                      </span>
+                      <span>{mgToGrams(c.filingsMg)}g</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-muted-foreground block font-sans">
+                        Wastage
+                      </span>
+                      <span className="text-amber-600 font-semibold">
+                        {mgToGrams(c.wastageMg)}g
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop view */}
+          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden mb-8">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -228,7 +286,67 @@ function GoldSummaryPage() {
             <Coins className="h-4 w-4 text-gold" />
             <h2 className="font-serif text-lg">Manufacturing Bills - Gold Outstanding</h2>
           </div>
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          {/* Mobile view */}
+          <div className="block md:hidden space-y-3">
+            {report.bills.filter((b) => b.outstandingMg !== 0).length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground italic text-xs bg-card rounded-2xl border border-border">
+                Every manufacturing bill is fully settled in gold. No outstanding balances.
+              </div>
+            ) : (
+              report.bills
+                .filter((b) => b.outstandingMg !== 0)
+                .sort((a, b) => Math.abs(b.outstandingMg) - Math.abs(a.outstandingMg))
+                .map((b) => (
+                  <div
+                    key={b.id}
+                    className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-sm">{b.billNo}</span>
+                      <span
+                        className={
+                          b.outstandingMg > 0
+                            ? "text-amber-600 font-semibold font-mono"
+                            : "text-red-600 font-semibold font-mono"
+                        }
+                      >
+                        {b.outstandingMg > 0 ? "Jama: " : "Owed: "}
+                        {mgToGrams(Math.abs(b.outstandingMg))} g
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Karigar:{" "}
+                      <span className="font-semibold text-foreground">{b.karigarName}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-[11px] font-mono bg-muted/20 p-2 rounded-lg text-center">
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block font-sans">
+                          Required
+                        </span>
+                        <span>{mgToGrams(b.issuedMg)}g</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block font-sans">
+                          Returned
+                        </span>
+                        <span>{mgToGrams(b.returnedMg)}g</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block font-sans">
+                          Wastage
+                        </span>
+                        <span className="text-amber-600 font-semibold">
+                          {mgToGrams(b.wastageMg)}g
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+
+          {/* Desktop view */}
+          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

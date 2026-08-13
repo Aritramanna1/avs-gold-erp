@@ -136,7 +136,74 @@ function ConversionIndex() {
 
       <Card className="border-border">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Mobile View */}
+          <div className="block md:hidden divide-y divide-border">
+            {records.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                <Recycle className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                No conversions yet. Create one to get started.
+              </div>
+            ) : (
+              records.map((r) => (
+                <div key={r.id} className="p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-semibold text-gold">{r.batchNo}</span>
+                    <span className="text-xs text-muted-foreground font-medium">{r.operator}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span>
+                      Purity:{" "}
+                      <strong className="font-medium text-foreground">
+                        {r.sourcePurity} → {r.destPurity}
+                      </strong>
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5 bg-muted/20 p-2 rounded-lg text-center font-mono text-[10px]">
+                    <div>
+                      <span className="text-[8px] text-muted-foreground block uppercase font-sans">
+                        Input
+                      </span>
+                      <span>{mgToGrams(r.inputFineMg)}g</span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] text-muted-foreground block uppercase font-sans">
+                        Output
+                      </span>
+                      <span className="text-green-400 font-semibold">
+                        {mgToGrams(r.actualOutputFineMg)}g
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] text-muted-foreground block uppercase font-sans">
+                        Loss
+                      </span>
+                      <span className="text-red-400 font-semibold">
+                        {r.conversionLossMg > 0 ? `${mgToGrams(r.conversionLossMg)}g` : "—"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[8px] text-muted-foreground block uppercase font-sans">
+                        Recovery
+                      </span>
+                      <span>{r.recoveryMg > 0 ? `${mgToGrams(r.recoveryMg)}g` : "—"}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <Link
+                      to="/conversion/slip/$id"
+                      params={{ id: r.id }}
+                      className="inline-flex items-center gap-1 text-xs text-gold hover:underline"
+                    >
+                      <Printer className="h-3.5 w-3.5" /> Print
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop View */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
@@ -215,7 +282,7 @@ function ConversionIndex() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[95vw] md:w-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-serif text-gold">
               <Recycle className="h-5 w-5" />

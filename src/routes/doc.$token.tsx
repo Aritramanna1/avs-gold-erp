@@ -349,6 +349,7 @@ function DocumentPortal() {
   const [share, setShare] = useState<DocumentShare | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   useEffect(() => {
     getDocumentShare(token)
@@ -381,6 +382,7 @@ function DocumentPortal() {
   const docDate = doc.createdAt ? fmtDate(doc.createdAt) : "";
 
   async function handleDownloadPdf() {
+    setPdfError(null);
     try {
       const pdfDocType =
         docType === "job" ? "manufacturing_bill" : (docType as "invoice" | "order" | "repair");
@@ -392,7 +394,7 @@ function DocumentPortal() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert("PDF generation failed. Please try printing instead.");
+      setPdfError("PDF generation failed. Please try printing instead.");
       console.error(err);
     }
   }
@@ -421,6 +423,11 @@ function DocumentPortal() {
           </button>
         </div>
       </div>
+      {pdfError && (
+        <div className="print:hidden border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {pdfError}
+        </div>
+      )}
 
       {/* Document card */}
       <div

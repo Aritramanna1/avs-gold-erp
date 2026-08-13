@@ -463,8 +463,10 @@ export async function pullDropdownMasters(): Promise<void> {
   if (error) throw new Error(`dropdown_masters pull: ${error.message}`);
   const dict: Record<string, string[]> = {};
   (data ?? []).forEach((r) => {
-    if (!dict[r.master_key]) dict[r.master_key] = [];
-    dict[r.master_key].push(r.value);
+    const key = r.master_key;
+    if (!key) return;
+    if (!dict[key]) dict[key] = [];
+    if (r.value != null) dict[key].push(r.value);
   });
   if (Object.keys(dict).length > 0) {
     useSettings.setState({ dropdowns: { ...useSettings.getState().dropdowns, ...dict } });

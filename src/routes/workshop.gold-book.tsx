@@ -615,9 +615,70 @@ function WorkerGoldBookPage() {
                 </div>
               </div>
 
-              {/* Ledger table */}
+              {/* Ledger — mobile + desktop */}
               <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* ── Mobile card view ── */}
+                <div className="block md:hidden divide-y divide-border">
+                  {filteredEntries.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground italic text-sm">
+                      No transactions match. Issue or return gold to populate ledger.
+                    </div>
+                  ) : (
+                    filteredEntries.map((e) => {
+                      const isGiven = e.type === "given";
+                      return (
+                        <div key={e.id} className="p-3 space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-sm">{e.workerName}</span>
+                                <span
+                                  className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border ${isGiven ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}
+                                >
+                                  {isGiven ? (
+                                    <TrendingUp className="h-3 w-3" />
+                                  ) : (
+                                    <TrendingDown className="h-3 w-3" />
+                                  )}
+                                  {isGiven ? "Issued" : "Returned"}
+                                </span>
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate mt-0.5">
+                                {e.particulars}
+                                {e.reference && <span className="ml-1">· Ref: {e.reference}</span>}
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div
+                                className={`font-mono text-sm font-bold ${isGiven ? "text-red-400" : "text-green-400"}`}
+                              >
+                                {e.fineMg > 0 ? `${mgToGrams(e.fineMg)} g` : "—"}
+                              </div>
+                              <div className="font-mono text-[10px] text-muted-foreground">
+                                Net: {mgToGrams(e.netMg)} · {e.purity > 0 ? e.purity : "—"}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                            <span>
+                              {e.date} · {e.time}
+                            </span>
+                            <Link
+                              to="/workshop/material-slip/$workerId/$date"
+                              params={{ workerId: e.workerId, date: e.date }}
+                              className="font-mono text-gold hover:underline"
+                            >
+                              Slip {slipNumberForEntry(e)}
+                            </Link>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* ── Desktop table view ── */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-muted/50 border-b border-border text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <tr>
@@ -941,7 +1002,77 @@ function WorkerGoldBookPage() {
               </div>
 
               <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Mobile view */}
+                <div className="block md:hidden divide-y divide-border">
+                  {dailySlips.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground italic text-sm">
+                      No daily slips yet. Issue or return material to generate a Daily Material
+                      Slip.
+                    </div>
+                  ) : (
+                    dailySlips.map((s) => (
+                      <div key={`${s.workerId}-${s.date}`} className="p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-bold text-gold text-sm">
+                            {s.slipNumber}
+                          </span>
+                          <span className="font-semibold text-xs text-muted-foreground">
+                            {s.date}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-foreground">{s.workerName}</span>
+                          <span className="text-muted-foreground font-mono">
+                            {s.transactionCount} Txns
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 bg-muted/20 p-2 rounded-lg text-center font-mono text-[11px]">
+                          <div>
+                            <span className="text-[9px] text-muted-foreground block uppercase font-sans">
+                              Issued
+                            </span>
+                            <span className="text-red-400 font-semibold">
+                              {mgToGrams(s.totalIssuedFineMg)} g
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-muted-foreground block uppercase font-sans">
+                              Returned
+                            </span>
+                            <span className="text-green-400 font-semibold">
+                              {mgToGrams(s.totalReturnedFineMg)} g
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-muted-foreground block uppercase font-sans">
+                              Custody
+                            </span>
+                            <span className="text-amber-500 font-bold">
+                              {mgToGrams(s.custodyBalanceAfterMg)} g
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-end pt-1">
+                          <Link
+                            to="/workshop/material-slip/$workerId/$date"
+                            params={{ workerId: s.workerId, date: s.date }}
+                            className="w-full"
+                          >
+                            <Button
+                              size="sm"
+                              className="w-full bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold gap-1.5 h-8"
+                            >
+                              <Printer className="h-4 w-4" /> Print
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Desktop view */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-muted/50 border-b border-border text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <tr>

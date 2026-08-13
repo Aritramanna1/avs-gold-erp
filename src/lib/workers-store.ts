@@ -189,6 +189,9 @@ interface WorkersState {
   upsertAttendance: (
     e: Omit<AttendanceEntry, "id" | "createdAt"> & { id?: string },
   ) => Promise<AttendanceEntry>;
+  bulkUpsertAttendance: (
+    entries: Array<Omit<AttendanceEntry, "id" | "createdAt"> & { id?: string }>,
+  ) => Promise<AttendanceEntry[]>;
   removeAttendance: (id: string) => Promise<void>;
 
   setSalaryRule: (r: Omit<SalaryRule, "id" | "createdAt"> & { id?: string }) => Promise<SalaryRule>;
@@ -392,6 +395,70 @@ export const useWorkers = create<WorkersState>()((set, get) => ({
     await attendanceRepository.save(entry);
     await get().refresh();
     return entry;
+  },
+  bulkUpsertAttendance: async (inputs) => {
+    if (inputs.length === 0) return [];
+
+    const now = Date.now();
+    const branchId = useSettings.getState().selectedBranchId || "MAIN";
+    const entries = inputs.map((input) => {
+      const existing = get().attendance.find(
+        (a) => a.workerId === input.workerId && a.date === input.date,
+      );
+      const entry: AttendanceEntry = {
+        id: input.id ?? existing?.id ?? makeId("a"),
+        createdAt: existing?.createdAt ?? now,
+        workerId: input.workerId,
+        date: input.date,
+        status: input.status,
+        overtimeHours: input.overtimeHours,
+        notes: input.notes,
+      };
+      return entry;
+    });
+
+    const { data: userResult } = await supabase.auth.getUser();
+    let firmId: string | null = null;
+    if (userResult.user?.id) {
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("firm_id")
+        .eq("auth_id", userResult.user.id)
+        .maybeSingle();
+      firmId = profile?.firm_id ?? null;
+    }
+
+    const rows = entries.map((entry) => {
+      const data = {
+        ...entry,
+        branchId,
+        branch_id: branchId,
+      };
+      return {
+        id: entry.id,
+        worker_id: entry.workerId,
+        date: entry.date,
+        status: entry.status,
+        hours: entry.overtimeHours ?? null,
+        firm_id: firmId,
+        data,
+      };
+    });
+
+    const { error } = await supabase.from("attendance").upsert(rows, { onConflict: "id" });
+    if (error) throw new Error(`Bulk attendance save failed: ${error.message}`);
+
+    set((state) => {
+      const byId = new Map(state.attendance.map((entry) => [entry.id, entry]));
+      for (const entry of entries) byId.set(entry.id, entry);
+      return {
+        attendance: Array.from(byId.values()).sort((a, b) =>
+          b.date === a.date ? b.createdAt - a.createdAt : b.date.localeCompare(a.date),
+        ),
+      };
+    });
+
+    return entries;
   },
   removeAttendance: async (id) => {
     await attendanceRepository.delete(id);

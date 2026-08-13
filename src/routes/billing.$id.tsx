@@ -179,7 +179,7 @@ function InvoiceDetailPage() {
   async function record() {
     const amt = rupeesToPaise(payAmt);
     if (amt <= 0) {
-      alert("Enter payment amount.");
+      toast.error("Enter payment amount.");
       return;
     }
     try {

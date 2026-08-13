@@ -125,7 +125,7 @@ function InventoryAgeingPage() {
         }
       />
 
-      <div className="grid sm:grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 font-sans">
         <div className="rounded-2xl border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground">Total Available Items</div>
           <div className="text-2xl font-semibold">{available.length}</div>
@@ -141,7 +141,26 @@ function InventoryAgeingPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card overflow-hidden mb-6">
-        <div className="overflow-x-auto">
+        {/* Mobile view */}
+        <div className="block md:hidden divide-y divide-border">
+          {buckets.map((b) => (
+            <div key={b.label} className="p-3 space-y-1 text-xs">
+              <div className="flex items-center justify-between">
+                <Badge variant={b.minDays >= 181 ? "destructive" : "secondary"}>{b.label}</Badge>
+                <span className="font-semibold text-foreground">{b.count} items</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground font-mono">
+                <span>Fine Gold: {fmtG(b.fineMg)}</span>
+                <span>
+                  {totalFineMg > 0 ? ((b.fineMg / totalFineMg) * 100).toFixed(1) : "0.0"}%
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop view */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">
@@ -175,7 +194,36 @@ function InventoryAgeingPage() {
         <div className="p-4 border-b border-border font-semibold">
           Slow-Moving Stock (180+ days)
         </div>
-        <div className="overflow-x-auto">
+        {/* Mobile view */}
+        <div className="block md:hidden divide-y divide-border">
+          {buckets.filter((b) => b.minDays >= 181).every((b) => b.items.length === 0) ? (
+            <div className="p-6 text-center text-muted-foreground text-xs italic">
+              No slow-moving stock — everything is under 180 days old.
+            </div>
+          ) : (
+            buckets
+              .filter((b) => b.minDays >= 181)
+              .flatMap((b) => b.items)
+              .sort((a, b) => a.createdAt - b.createdAt)
+              .slice(0, 100)
+              .map((i) => (
+                <div key={i.id} className="p-3 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-foreground">{i.itemCode}</span>
+                    <span className="font-mono">{ageDays(i.createdAt)} days old</span>
+                  </div>
+                  <div className="text-muted-foreground">{i.itemName}</div>
+                  <div className="flex justify-between items-center text-muted-foreground font-mono">
+                    <span>Loc: {STOCK_LOCATION_LABELS[i.location]}</span>
+                    <span className="text-gold font-semibold">{fmtG(i.fineMg)}</span>
+                  </div>
+                </div>
+              ))
+          )}
+        </div>
+
+        {/* Desktop view */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-left">

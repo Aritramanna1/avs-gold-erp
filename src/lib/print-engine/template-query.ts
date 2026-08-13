@@ -10,10 +10,12 @@ function fromData(row: Record<string, unknown> | null): PrintTemplate | null {
   return null;
 }
 
-export async function fetchPrintTemplates(options: {
-  docType?: PrintDocType;
-  limit?: number;
-} = {}): Promise<PrintTemplate[]> {
+export async function fetchPrintTemplates(
+  options: {
+    docType?: PrintDocType;
+    limit?: number;
+  } = {},
+): Promise<PrintTemplate[]> {
   const db = getCloudDataClient();
   const { data, error } = await db
     .from("print_templates" as any)

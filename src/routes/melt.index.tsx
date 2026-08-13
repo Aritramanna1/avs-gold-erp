@@ -429,7 +429,105 @@ function MeltIndex() {
         <TabsContent value="jobs" className="mt-4">
           <Card className="border-border">
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              {/* Mobile View */}
+              <div className="block md:hidden divide-y divide-border">
+                {filteredJobs.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground italic text-sm">
+                    <FlameKindling className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    No melt jobs for this period. Create one to get started.
+                  </div>
+                ) : (
+                  filteredJobs.map((job) => {
+                    const badge = STATUS_BADGE[job.status];
+                    return (
+                      <div
+                        key={job.id}
+                        className="p-3 space-y-2 cursor-pointer"
+                        onClick={() => openEditDialog(job)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs font-semibold text-gold">
+                            {job.jobNo}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{job.date}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-foreground">
+                            {job.karigarName ?? "—"}
+                          </span>
+                          <Badge className={`text-[10px] border ${badge.className}`}>
+                            {badge.label}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 bg-muted/20 p-2 rounded-lg text-center font-mono text-[11px]">
+                          <div>
+                            <span className="text-[9px] text-muted-foreground block uppercase font-sans">
+                              Input Fine
+                            </span>
+                            <span>{mgToGrams(job.totalInputFineMg)}g</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-muted-foreground block uppercase font-sans">
+                              Recovered
+                            </span>
+                            <span className="text-green-400 font-semibold">
+                              {mgToGrams(job.fineGoldRecoveredMg)}g
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-muted-foreground block uppercase font-sans">
+                              Loss
+                            </span>
+                            <span className="text-red-400 font-semibold">
+                              {job.lossFineMg > 0 ? `${mgToGrams(job.lossFineMg)}g` : "—"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-muted-foreground block uppercase font-sans">
+                              Recovery
+                            </span>
+                            <span>
+                              {job.totalInputFineMg > 0
+                                ? `${(job.recoveryPct / 100).toFixed(1)}%`
+                                : "—"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-end pt-1" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex gap-1 w-full">
+                            {(job.status === "open" || job.status === "processing") && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1 h-8 text-xs text-green-400 border-green-500/30 hover:bg-green-500/10"
+                                disabled={completing === job.id}
+                                onClick={() => handleComplete(job.id)}
+                              >
+                                <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                Complete
+                              </Button>
+                            )}
+                            {job.status !== "completed" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 px-3 text-xs text-red-400 hover:bg-red-500/10"
+                                disabled={deleting === job.id}
+                                onClick={() => handleDelete(job.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Desktop View */}
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border hover:bg-transparent">
@@ -564,82 +662,179 @@ function MeltIndex() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-border hover:bg-transparent">
-                        <TableHead className="text-xs text-muted-foreground">Job No</TableHead>
-                        <TableHead className="text-xs text-muted-foreground">Karigar</TableHead>
-                        <TableHead className="text-xs text-muted-foreground text-right">
-                          Scrap (g)
-                        </TableHead>
-                        <TableHead className="text-xs text-muted-foreground text-right">
-                          Dust (g)
-                        </TableHead>
-                        <TableHead className="text-xs text-muted-foreground text-right">
-                          Input Fine (g)
-                        </TableHead>
-                        <TableHead className="text-xs text-muted-foreground text-right">
-                          Recovered (g)
-                        </TableHead>
-                        <TableHead className="text-xs text-muted-foreground text-right">
-                          Recovery %
-                        </TableHead>
-                        <TableHead className="text-xs text-muted-foreground">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dayJobs.map((j) => (
-                        <TableRow key={j.id} className="border-border hover:bg-card/60">
-                          <TableCell className="font-mono text-xs text-gold">{j.jobNo}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
+                  {/* Mobile View */}
+                  <div className="block md:hidden divide-y divide-border">
+                    {dayJobs.map((j) => (
+                      <div key={j.id} className="p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs text-gold font-semibold">
+                            {j.jobNo}
+                          </span>
+                          <Badge
+                            className={`text-[10px] border ${STATUS_BADGE[j.status].className}`}
+                          >
+                            {STATUS_BADGE[j.status].label}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Karigar:{" "}
+                          <span className="font-medium text-foreground">
                             {j.karigarName ?? "—"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-5 gap-1 bg-muted/20 p-2 rounded-lg text-center font-mono text-[9px]">
+                          <div>
+                            <span className="text-[8px] text-muted-foreground block uppercase font-sans">
+                              Scrap
+                            </span>
+                            <span>{mgToGrams(j.scrapInputGrossMg)}g</span>
+                          </div>
+                          <div>
+                            <span className="text-[8px] text-muted-foreground block uppercase font-sans">
+                              Dust
+                            </span>
+                            <span>{mgToGrams(j.dustInputGrossMg)}g</span>
+                          </div>
+                          <div>
+                            <span className="text-[8px] text-muted-foreground block uppercase font-sans">
+                              Input Fine
+                            </span>
+                            <span>{mgToGrams(j.totalInputFineMg)}g</span>
+                          </div>
+                          <div>
+                            <span className="text-[8px] text-muted-foreground block uppercase font-sans">
+                              Recovered
+                            </span>
+                            <span className="text-green-400 font-semibold">
+                              {mgToGrams(j.fineGoldRecoveredMg)}g
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[8px] text-muted-foreground block uppercase font-sans">
+                              Recov %
+                            </span>
+                            <span>
+                              {j.totalInputFineMg > 0
+                                ? `${(j.recoveryPct / 100).toFixed(1)}%`
+                                : "—"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {/* Summary row */}
+                    <div className="p-3 bg-muted/30 font-semibold text-xs space-y-1">
+                      <div className="text-muted-foreground text-[10px] uppercase tracking-wider mb-1">
+                        Day Total
+                      </div>
+                      <div className="flex justify-between font-mono">
+                        <span>Total Scrap:</span>
+                        <span>
+                          {mgToGrams(dayJobs.reduce((s, j) => s + j.scrapInputGrossMg, 0))} g
+                        </span>
+                      </div>
+                      <div className="flex justify-between font-mono">
+                        <span>Total Dust:</span>
+                        <span>
+                          {mgToGrams(dayJobs.reduce((s, j) => s + j.dustInputGrossMg, 0))} g
+                        </span>
+                      </div>
+                      <div className="flex justify-between font-mono">
+                        <span>Total Input Fine:</span>
+                        <span>
+                          {mgToGrams(dayJobs.reduce((s, j) => s + j.totalInputFineMg, 0))} g
+                        </span>
+                      </div>
+                      <div className="flex justify-between font-mono text-green-400">
+                        <span>Total Recovered:</span>
+                        <span>
+                          {mgToGrams(dayJobs.reduce((s, j) => s + j.fineGoldRecoveredMg, 0))} g
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Desktop View */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border hover:bg-transparent">
+                          <TableHead className="text-xs text-muted-foreground">Job No</TableHead>
+                          <TableHead className="text-xs text-muted-foreground">Karigar</TableHead>
+                          <TableHead className="text-xs text-muted-foreground text-right">
+                            Scrap (g)
+                          </TableHead>
+                          <TableHead className="text-xs text-muted-foreground text-right">
+                            Dust (g)
+                          </TableHead>
+                          <TableHead className="text-xs text-muted-foreground text-right">
+                            Input Fine (g)
+                          </TableHead>
+                          <TableHead className="text-xs text-muted-foreground text-right">
+                            Recovered (g)
+                          </TableHead>
+                          <TableHead className="text-xs text-muted-foreground text-right">
+                            Recovery %
+                          </TableHead>
+                          <TableHead className="text-xs text-muted-foreground">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dayJobs.map((j) => (
+                          <TableRow key={j.id} className="border-border hover:bg-card/60">
+                            <TableCell className="font-mono text-xs text-gold">{j.jobNo}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {j.karigarName ?? "—"}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs">
+                              {mgToGrams(j.scrapInputGrossMg)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs">
+                              {mgToGrams(j.dustInputGrossMg)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs">
+                              {mgToGrams(j.totalInputFineMg)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs text-green-400">
+                              {mgToGrams(j.fineGoldRecoveredMg)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs">
+                              {j.totalInputFineMg > 0
+                                ? `${(j.recoveryPct / 100).toFixed(2)}%`
+                                : "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                className={`text-[10px] border ${STATUS_BADGE[j.status].className}`}
+                              >
+                                {STATUS_BADGE[j.status].label}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {/* Day summary row */}
+                        <TableRow className="border-t-2 border-border bg-card/40 font-semibold">
+                          <TableCell colSpan={2} className="text-xs text-muted-foreground">
+                            Day Total
                           </TableCell>
                           <TableCell className="text-right font-mono text-xs">
-                            {mgToGrams(j.scrapInputGrossMg)}
+                            {mgToGrams(dayJobs.reduce((s, j) => s + j.scrapInputGrossMg, 0))}
                           </TableCell>
                           <TableCell className="text-right font-mono text-xs">
-                            {mgToGrams(j.dustInputGrossMg)}
+                            {mgToGrams(dayJobs.reduce((s, j) => s + j.dustInputGrossMg, 0))}
                           </TableCell>
                           <TableCell className="text-right font-mono text-xs">
-                            {mgToGrams(j.totalInputFineMg)}
+                            {mgToGrams(dayJobs.reduce((s, j) => s + j.totalInputFineMg, 0))}
                           </TableCell>
                           <TableCell className="text-right font-mono text-xs text-green-400">
-                            {mgToGrams(j.fineGoldRecoveredMg)}
+                            {mgToGrams(dayJobs.reduce((s, j) => s + j.fineGoldRecoveredMg, 0))}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-xs">
-                            {j.totalInputFineMg > 0 ? `${(j.recoveryPct / 100).toFixed(2)}%` : "—"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              className={`text-[10px] border ${STATUS_BADGE[j.status].className}`}
-                            >
-                              {STATUS_BADGE[j.status].label}
-                            </Badge>
-                          </TableCell>
+                          <TableCell />
+                          <TableCell />
                         </TableRow>
-                      ))}
-                      {/* Day summary row */}
-                      <TableRow className="border-t-2 border-border bg-card/40 font-semibold">
-                        <TableCell colSpan={2} className="text-xs text-muted-foreground">
-                          Day Total
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs">
-                          {mgToGrams(dayJobs.reduce((s, j) => s + j.scrapInputGrossMg, 0))}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs">
-                          {mgToGrams(dayJobs.reduce((s, j) => s + j.dustInputGrossMg, 0))}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs">
-                          {mgToGrams(dayJobs.reduce((s, j) => s + j.totalInputFineMg, 0))}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs text-green-400">
-                          {mgToGrams(dayJobs.reduce((s, j) => s + j.fineGoldRecoveredMg, 0))}
-                        </TableCell>
-                        <TableCell />
-                        <TableCell />
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
             ))
@@ -649,7 +844,7 @@ function MeltIndex() {
 
       {/* New / Edit Melt Job Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl w-[95vw] md:w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-serif text-gold">
               <FlameKindling className="h-5 w-5" />
@@ -659,7 +854,7 @@ function MeltIndex() {
 
           <div className="space-y-5">
             {/* Basic Info */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Date
