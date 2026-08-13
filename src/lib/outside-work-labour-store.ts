@@ -15,6 +15,7 @@
  */
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
+import { fetchOutsideWorkLabourCharges, fetchOutsideWorkPayments } from "./outside-work-query";
 
 /**
  * Not a closed enum — new calculation methods can be added by any caller
@@ -120,8 +121,8 @@ export const useOutsideWorkLabour = create<OutsideWorkLabourState>()((set, get) 
   payments: [],
   refresh: async () => {
     const [charges, payments] = await Promise.all([
-      labourChargeRepository.readAll(),
-      paymentRepository.readAll(),
+      fetchOutsideWorkLabourCharges(),
+      fetchOutsideWorkPayments(),
     ]);
     set({ charges, payments });
   },

@@ -1,5 +1,6 @@
 # APPIT Jewel ERP — Business Workflow Map
-**Date:** 2026-08-12  
+
+**Date:** 2026-08-12
 
 This document maps the flow of physical gold and money through the systems during core transactions.
 
@@ -34,8 +35,9 @@ sequenceDiagram
 ```
 
 ### Metal Balancing Rules:
-* **Karigar Ledger**: Maintained in pure gold equivalent (or specific Karat weights).
-* **Metal Settlement**: If actual wastage exceed allowable limit (e.g. 2%), Karigar is debited with the cash equivalent of the excess gold weight, or must pay back in pure gold.
+
+- **Karigar Ledger**: Maintained in pure gold equivalent (or specific Karat weights).
+- **Metal Settlement**: If actual wastage exceed allowable limit (e.g. 2%), Karigar is debited with the cash equivalent of the excess gold weight, or must pay back in pure gold.
 
 ---
 
@@ -85,6 +87,7 @@ flowchart LR
 ```
 
 ### Material Accounting:
+
 1. **Old Gold Intake**: Added as `Old Gold Scrap` asset at cost price (live rate - appraiser discount).
 2. **Refinery Shipment**: Transferred to WIP - Refinery (reduces Scrap inventory, debits Refinery asset account).
 3. **Refinery Return**: Credits Refinery asset account with refined weight, debits Main Vault (24K Gold Bar), records refining charges as expense, melting loss as scrap loss.

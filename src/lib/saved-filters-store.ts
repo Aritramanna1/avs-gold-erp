@@ -10,6 +10,7 @@
  */
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
+import { getCloudDataClient } from "./providers/data-provider";
 
 export interface SavedFilter {
   id: string;
@@ -41,11 +42,29 @@ function makeId(): string {
 
 const filterRepository = createRepository<SavedFilter>("saved_filters");
 
+function pickSavedFilter(row: { data?: Partial<SavedFilter> | null }): SavedFilter | null {
+  const data = row.data;
+  if (!data?.id || !data.viewKey || !data.name) return null;
+  return data as SavedFilter;
+}
+
+async function fetchSavedFilters(): Promise<SavedFilter[]> {
+  const db = getCloudDataClient();
+  const { data, error } = await (db as any)
+    .from("saved_filters")
+    .select("data")
+    .order("updated_at", { ascending: false })
+    .limit(250);
+  if (error) throw new Error(error.message ?? "Could not load saved filters.");
+  return ((data ?? []) as Array<{ data?: Partial<SavedFilter> | null }>)
+    .map(pickSavedFilter)
+    .filter((row): row is SavedFilter => !!row);
+}
+
 export const useSavedFilters = create<SavedFiltersState>()((set, get) => ({
   filters: [],
   refresh: async () => {
-    const all = await filterRepository.readAll();
-    set({ filters: all });
+    set({ filters: await fetchSavedFilters() });
   },
   save: async (input) => {
     const now = Date.now();

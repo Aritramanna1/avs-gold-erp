@@ -32,7 +32,7 @@ test.describe("Metal Conversion", () => {
     // input 100g fine = 100000mg -> alloy = 100000 * 90 / 1000 = 9000mg,
     // expected output = 100000 * (1 - 1/100) = 99000mg = 99 g
     await expect(dialog.getByText(/Calculated Alloy \(mg\)/)).toBeVisible();
-    const alloyInput = dialog.locator('input[readonly]');
+    const alloyInput = dialog.locator("input[readonly]");
     await expect(alloyInput).toHaveValue("9000");
     await expect(dialog.getByText(/Expected output:/)).toContainText("99.000 g");
   });

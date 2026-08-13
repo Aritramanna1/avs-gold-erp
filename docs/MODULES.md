@@ -4,25 +4,25 @@ Each module is a set of routes (`src/routes`) backed by services/stores (`src/li
 
 ## Pilot module status
 
-| Module                           | Status                 | Notes                                                                                            |
-| -------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------ |
-| Our Gold Stock (`/ledger`)       | Active                 | Overview dashboard; drill-downs; configurable materials                                          |
-| Worker Gold Book / Material Book | Partial                | Daily Material Slip and outside-work flows are active; polishing/meena still need completion evidence |
-| Orders                           | Active                 | WhatsApp doc send wired                                                                          |
-| Billing                          | Active                 | Jeweller Account; gold-first settlement                                                          |
-| Manufacturing Books              | Active                 | Read-only ledgers                                                                                |
-| People / KYC                     | Active                 |                                                                                                  |
-| Communications                   | Active                 | WasenderAPI + email + weekly statements                                                          |
-| Settings                         | Active                 | Runtime Brand Settings + consolidated WhatsApp providers/Wasender/templates/automation + License |
-| Notifications                    | Active                 | Operational alerts from licensing, sync, communications, approvals, and gold-rate configuration  |
-| Catalog                          | Active                 | Configurable design library, encrypted references, customer links, localized UI, CSV export      |
-| Translations                     | Active                 | Lazy Hindi/Marathi/Bengali dictionaries with English fallback and coverage reporting             |
-| Manufacturing                    | Partial                | Supabase-backed workspace landing and bill routes are active; full graph E2E evidence pending     |
-| Barcode & Tagging                | Partial                | Manufacturing tag selection/printing paths are active; scanner/device E2E evidence pending        |
-| Ready Stock (was Stock)          | Partial                | Supabase-backed paginated stock register and entry flow are active; mobile/export evidence pending |
+| Module                           | Status                 | Notes                                                                                                   |
+| -------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| Our Gold Stock (`/ledger`)       | Active                 | Overview dashboard; drill-downs; configurable materials                                                 |
+| Worker Gold Book / Material Book | Partial                | Daily Material Slip and outside-work flows are active; polishing/meena still need completion evidence   |
+| Orders                           | Active                 | WhatsApp doc send wired                                                                                 |
+| Billing                          | Active                 | Jeweller Account; gold-first settlement                                                                 |
+| Manufacturing Books              | Active                 | Read-only ledgers                                                                                       |
+| People / KYC                     | Active                 |                                                                                                         |
+| Communications                   | Active                 | WasenderAPI + email + weekly statements                                                                 |
+| Settings                         | Active                 | Runtime Brand Settings + consolidated WhatsApp providers/Wasender/templates/automation + License        |
+| Notifications                    | Active                 | Operational alerts from licensing, sync, communications, approvals, and gold-rate configuration         |
+| Catalog                          | Active                 | Configurable design library, encrypted references, customer links, localized UI, CSV export             |
+| Translations                     | Active                 | Lazy Hindi/Marathi/Bengali dictionaries with English fallback and coverage reporting                    |
+| Manufacturing                    | Partial                | Supabase-backed workspace landing and bill routes are active; full graph E2E evidence pending           |
+| Barcode & Tagging                | Partial                | Manufacturing tag selection/printing paths are active; scanner/device E2E evidence pending              |
+| Ready Stock (was Stock)          | Partial                | Supabase-backed paginated stock register and entry flow are active; mobile/export evidence pending      |
 | Reports                          | Partial                | Report pages and export engine exist; route-level pagination and verified print/export coverage pending |
-| Expenses                         | Partial                | Store/routes exist; accounting-posting and release-gate evidence pending                          |
-| CEO Dashboard                    | Active (CEO role only) | Hidden from all other roles                                                                      |
+| Expenses                         | Partial                | Store/routes exist; accounting-posting and release-gate evidence pending                                |
+| CEO Dashboard                    | Active (CEO role only) | Hidden from all other roles                                                                             |
 
 "Partial" = the module has working implementation surface, but release-gate evidence or end-to-end workflow completion is still pending.
 

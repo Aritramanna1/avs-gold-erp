@@ -1,7 +1,8 @@
 # APPIT Jewel ERP — Complete Reverse-Audit Report
+
 **Date:** 2026-08-12  
 **Target System:** Appitsoft Jewel ERP (https://jewelerp.appitsoft.net)  
-**Access Level:** Owner (Rahul Sharma · Trial Instance)  
+**Access Level:** Owner (Rahul Sharma · Trial Instance)
 
 ---
 
@@ -92,39 +93,44 @@ graph TD
 ## 3. Core Module Audits
 
 ### 3.1. Sales & Billing (`/sales-billing/new-sale`)
-* **Purpose**: Pos interface for generating retail tax invoices.
-* **Fields**: Customer search, Product search, Discount (%), Old Gold Adjustment, Advance Adjustment, Tax (3% GST).
-* **Payment Modes**: Cash, Card, UPI, Bank Transfer, Split.
-* **Actions**: Hold Sale, Save Draft, Print Preview, Generate Invoice.
-* **Calculations**:
+
+- **Purpose**: Pos interface for generating retail tax invoices.
+- **Fields**: Customer search, Product search, Discount (%), Old Gold Adjustment, Advance Adjustment, Tax (3% GST).
+- **Payment Modes**: Cash, Card, UPI, Bank Transfer, Split.
+- **Actions**: Hold Sale, Save Draft, Print Preview, Generate Invoice.
+- **Calculations**:
   $$\text{Subtotal} = \text{Gold Value} + \text{Diamond/Stone Value}$$
   $$\text{Taxable Value} = \text{Subtotal} + \text{Making Charges} + \text{Wastage} - \text{Discounts}$$
   $$\text{GST (3\%)} = \text{Taxable Value} \times 0.03$$
   $$\text{Grand Total} = \text{Taxable Value} + \text{GST} - \text{Adjustments}$$
 
 ### 3.2. Manufacturing (`/manufacturing/job-cards`)
-* **Purpose**: Tracks jewellery items through the workshop production lifecycle.
-* **Lifecycle Stages**: Design $\rightarrow$ Metal Issue $\rightarrow$ Karigar Work $\rightarrow$ Stone Setting $\rightarrow$ Polishing $\rightarrow$ QC $\rightarrow$ Completed.
-* **Drawer Panel Fields**: Karigar name, Metal/Purity (e.g. Gold 22K), Priority (High/Medium/Low), Expected Wt, Actual Wt, Metal Issued, Stone Issued, Wastage %, Scrap Recovery, Labour Charge.
-* **AI Delay Prediction**: Built-in risk engine calculating delay probabilities based on Karigar historical on-time statistics and job priority.
+
+- **Purpose**: Tracks jewellery items through the workshop production lifecycle.
+- **Lifecycle Stages**: Design $\rightarrow$ Metal Issue $\rightarrow$ Karigar Work $\rightarrow$ Stone Setting $\rightarrow$ Polishing $\rightarrow$ QC $\rightarrow$ Completed.
+- **Drawer Panel Fields**: Karigar name, Metal/Purity (e.g. Gold 22K), Priority (High/Medium/Low), Expected Wt, Actual Wt, Metal Issued, Stone Issued, Wastage %, Scrap Recovery, Labour Charge.
+- **AI Delay Prediction**: Built-in risk engine calculating delay probabilities based on Karigar historical on-time statistics and job priority.
 
 ### 3.3. Metal & Rates (`/metal-rates/daily-metal-rates`)
-* **Purpose**: Central rate-cut control center.
-* **Rates Tracked**: Gold 24K, Gold 22K, Gold 18K, Gold 14K, Silver (92.5), Platinum 950.
-* **Analytics**: Trend analysis, Margin impact analysis, Rate-based pricing recommendations.
-* **Branch-wise Rates**: Support setting different rates per branch.
+
+- **Purpose**: Central rate-cut control center.
+- **Rates Tracked**: Gold 24K, Gold 22K, Gold 18K, Gold 14K, Silver (92.5), Platinum 950.
+- **Analytics**: Trend analysis, Margin impact analysis, Rate-based pricing recommendations.
+- **Branch-wise Rates**: Support setting different rates per branch.
 
 ### 3.4. Old Gold & Exchange (`/old-gold-exchange/old-gold-purchase`)
-* **Purpose**: Purchasing old gold from retail customers.
-* **Fields**: Customer, Item type, Gross Wt, Purity (Karat/touch), Net Pure Wt, Est. Value, Stage.
-* **Business Rules**:
+
+- **Purpose**: Purchasing old gold from retail customers.
+- **Fields**: Customer, Item type, Gross Wt, Purity (Karat/touch), Net Pure Wt, Est. Value, Stage.
+- **Business Rules**:
   - Buying rate has a pre-configured discount/reduction (typically ~1.5% - 2%) compared to the live 24K selling rate.
   - Net Pure Wt is computed by applying the touch factor and subtracting dirt/loss margins.
 
 ### 3.5. Finance (`/finance/receipts-payments`)
-* **Purpose**: Registers non-sales monetary and metal transactions.
-* **Modes**: UPI, Card, Cash, Bank Transfer.
-* **Running Balances**: Tracks cash flows and net positions across branches.
+
+- **Purpose**: Registers non-sales monetary and metal transactions.
+- **Modes**: UPI, Card, Cash, Bank Transfer.
+- **Running Balances**: Tracks cash flows and net positions across branches.
 
 ---
 
@@ -133,8 +139,9 @@ graph TD
 Appitsoft Jewel ERP implements the following standard jewellery workflows:
 
 ### Workflow A: Old Gold Purchase & Melting
+
 ```
-Customer brings old jewellery 
+Customer brings old jewellery
   --> Appraiser checks purity (karat/touch)
   --> Appraiser weighs gross wt and inputs dirt reduction
   --> System calculates Net Pure Gold weight: Gross Wt * Touch %
@@ -144,8 +151,9 @@ Customer brings old jewellery
 ```
 
 ### Workflow B: Manufacturing & Job-Work Settlement
+
 ```
-Sales Order placed/Inventory Reorder triggered 
+Sales Order placed/Inventory Reorder triggered
   --> Job Card created, assigned to Karigar (e.g., Ramesh Suthar)
   --> Gold issued from Vault (e.g. 24K Gold or pre-alloyed 22K shot)
   --> Karigar works on design (Design -> Metal Issue -> Karigar Work -> Polishing)
@@ -160,16 +168,16 @@ Sales Order placed/Inventory Reorder triggered
 
 ## 5. Comparative Capability Matrix (APPIT vs. Ornexa/AVS)
 
-| Feature Area | APPIT Jewel ERP | Ornexa (AVS Gold ERP) | Parity Verdict |
-|--------------|-----------------|----------------------|----------------|
-| **Core Accounting** | Single currency cash entries | **Dual-currency (Cash + Gold Mg)** | **BETTER IN ORNEXA** |
-| **Wastage Settings** | Fixed percentage per karigar | Process-wise wastage & stone-loss formulas | **BETTER IN ORNEXA** |
-| **HUID Records** | Manual registration fields | Unified barcode + automatic HUID tags | **BETTER IN ORNEXA** |
-| **Daily close** | Simple Day Book close | Multi-department vault close with reconciliation | **BETTER IN ORNEXA** |
-| **Metal Credit Limits** | None / Warning only | Enforced limit check blocking issues | **BETTER IN ORNEXA** |
-| **Karigar Portal** | None (Karigar management admin only) | **Self-Service OTP Portal** | **BETTER IN ORNEXA** |
-| **GST & Invoice Print** | Basic templates | Print-dialog bypass (hidden iframe) & Tally XML | **BETTER IN ORNEXA** |
-| **AI Insights** | Built-in Delay Prediction | Local sales assistant brain | **PARTIAL / PARITY** |
+| Feature Area            | APPIT Jewel ERP                      | Ornexa (AVS Gold ERP)                            | Parity Verdict       |
+| ----------------------- | ------------------------------------ | ------------------------------------------------ | -------------------- |
+| **Core Accounting**     | Single currency cash entries         | **Dual-currency (Cash + Gold Mg)**               | **BETTER IN ORNEXA** |
+| **Wastage Settings**    | Fixed percentage per karigar         | Process-wise wastage & stone-loss formulas       | **BETTER IN ORNEXA** |
+| **HUID Records**        | Manual registration fields           | Unified barcode + automatic HUID tags            | **BETTER IN ORNEXA** |
+| **Daily close**         | Simple Day Book close                | Multi-department vault close with reconciliation | **BETTER IN ORNEXA** |
+| **Metal Credit Limits** | None / Warning only                  | Enforced limit check blocking issues             | **BETTER IN ORNEXA** |
+| **Karigar Portal**      | None (Karigar management admin only) | **Self-Service OTP Portal**                      | **BETTER IN ORNEXA** |
+| **GST & Invoice Print** | Basic templates                      | Print-dialog bypass (hidden iframe) & Tally XML  | **BETTER IN ORNEXA** |
+| **AI Insights**         | Built-in Delay Prediction            | Local sales assistant brain                      | **PARTIAL / PARITY** |
 
 ---
 

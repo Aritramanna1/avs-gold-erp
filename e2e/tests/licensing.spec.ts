@@ -26,7 +26,9 @@ test.describe("Licensing", () => {
       authedPage.getByRole("heading", { name: "License & Activation", exact: true }),
     ).toBeVisible({ timeout: 15_000 });
 
-    const keyInput = authedPage.locator('input[placeholder="XXXX-XXXX-XXXX-XXXX"], input[placeholder="Enter a new key to re-activate"]');
+    const keyInput = authedPage.locator(
+      'input[placeholder="XXXX-XXXX-XXXX-XXXX"], input[placeholder="Enter a new key to re-activate"]',
+    );
     await keyInput.fill("INVALID-LICENSE-KEY-0000-0000");
 
     const activateButton = authedPage.getByRole("button", { name: "Activate / Verify" });

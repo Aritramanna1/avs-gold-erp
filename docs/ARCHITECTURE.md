@@ -20,15 +20,15 @@ decision that production Ornexa/AVS must remain Supabase-backed.
 
 ## Production Data Rules
 
-| Area | Authority |
-|---|---|
-| Authentication | Supabase Auth |
-| Authorization | Supabase RLS/RBAC/RPC checks |
-| Tenant data | Supabase Postgres |
-| Files and attachments | Supabase Storage/signed URLs |
-| Support/live chat records | Supabase support tables/RPCs |
-| Print/document history | Supabase operational tables |
-| Browser storage | UI preference, session, draft, or retired-cache cleanup only |
+| Area                      | Authority                                                    |
+| ------------------------- | ------------------------------------------------------------ |
+| Authentication            | Supabase Auth                                                |
+| Authorization             | Supabase RLS/RBAC/RPC checks                                 |
+| Tenant data               | Supabase Postgres                                            |
+| Files and attachments     | Supabase Storage/signed URLs                                 |
+| Support/live chat records | Supabase support tables/RPCs                                 |
+| Print/document history    | Supabase operational tables                                  |
+| Browser storage           | UI preference, session, draft, or retired-cache cleanup only |
 
 There is no production Offline or Hybrid database mode. Do not add local
 SQLite, IndexedDB, local-auth, local file vault, local outbox, or browser-local

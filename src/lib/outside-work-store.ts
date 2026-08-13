@@ -15,6 +15,7 @@
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { nextDocumentNumber } from "./document-numbering";
+import { fetchOutsideWorkTransactions } from "./outside-work-query";
 
 export type OutsideWorkTxnType = "issue" | "receive";
 
@@ -80,7 +81,7 @@ interface OutsideWorkState {
 
 export const useOutsideWork = create<OutsideWorkState>()((set, get) => ({
   transactions: [],
-  refresh: async () => set({ transactions: await outsideWorkRepository.readAll() }),
+  refresh: async () => set({ transactions: await fetchOutsideWorkTransactions() }),
   add: async (input) => {
     const inFlightKey = `${input.jewellerId}:${input.type}:${input.orderId ?? ""}`;
     if (addInFlight.has(inFlightKey)) {

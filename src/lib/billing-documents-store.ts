@@ -19,6 +19,12 @@ import { append as appendAuditEntry } from "./security/audit-log";
 import { getNextSequenceNumber } from "./sequence-manager";
 import { useBilling, type InvoiceItem } from "./billing-store";
 import type { GstKind } from "./billing-store";
+import {
+  fetchCreditNotes,
+  fetchDebitNotes,
+  fetchDeliveryChallans,
+  fetchEstimates,
+} from "./billing-documents-query";
 
 function makeId(prefix: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto)
@@ -63,7 +69,7 @@ interface CreditNoteState {
 
 export const useCreditNotes = create<CreditNoteState>()((set, get) => ({
   notes: [],
-  refresh: async () => set({ notes: await creditNoteRepository.readAll() }),
+  refresh: async () => set({ notes: await fetchCreditNotes() }),
   issue: async (input, actor) => {
     const now = Date.now();
     const note: CreditNote = {
@@ -144,7 +150,7 @@ interface DebitNoteState {
 
 export const useDebitNotes = create<DebitNoteState>()((set, get) => ({
   notes: [],
-  refresh: async () => set({ notes: await debitNoteRepository.readAll() }),
+  refresh: async () => set({ notes: await fetchDebitNotes() }),
   issue: async (input, actor) => {
     const now = Date.now();
     const note: DebitNote = {
@@ -233,7 +239,7 @@ interface EstimateState {
 
 export const useEstimates = create<EstimateState>()((set, get) => ({
   estimates: [],
-  refresh: async () => set({ estimates: await estimateRepository.readAll() }),
+  refresh: async () => set({ estimates: await fetchEstimates() }),
   create: async (input) => {
     const now = Date.now();
     const estimate: Estimate = {
@@ -343,7 +349,7 @@ interface DeliveryChallanState {
 
 export const useDeliveryChallans = create<DeliveryChallanState>()((set, get) => ({
   challans: [],
-  refresh: async () => set({ challans: await challanRepository.readAll() }),
+  refresh: async () => set({ challans: await fetchDeliveryChallans() }),
   create: async (input) => {
     const now = Date.now();
     const challan: DeliveryChallan = {
