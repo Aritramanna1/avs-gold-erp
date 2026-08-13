@@ -226,6 +226,10 @@ export type Database = {
           wa_automations: Json | null;
           wa_config: Json | null;
           wa_phone_number: string | null;
+          gold_rate_24k_override_paise: number | null;
+          gold_rate_22k_override_paise: number | null;
+          gold_rate_18k_override_paise: number | null;
+          silver_rate_override_paise: number | null;
         };
         Insert: {
           address?: string | null;
@@ -255,6 +259,10 @@ export type Database = {
           wa_automations?: Json | null;
           wa_config?: Json | null;
           wa_phone_number?: string | null;
+          gold_rate_24k_override_paise?: number | null;
+          gold_rate_22k_override_paise?: number | null;
+          gold_rate_18k_override_paise?: number | null;
+          silver_rate_override_paise?: number | null;
         };
         Update: {
           address?: string | null;
@@ -284,6 +292,10 @@ export type Database = {
           wa_automations?: Json | null;
           wa_config?: Json | null;
           wa_phone_number?: string | null;
+          gold_rate_24k_override_paise?: number | null;
+          gold_rate_22k_override_paise?: number | null;
+          gold_rate_18k_override_paise?: number | null;
+          silver_rate_override_paise?: number | null;
         };
         Relationships: [
           {
@@ -981,21 +993,35 @@ export type Database = {
           created_at: string;
           data: Json | null;
           id: string;
+          branch_id: string;
+          period: string;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
           data?: Json | null;
           id: string;
+          branch_id: string;
+          period: string;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
           data?: Json | null;
           id?: string;
+          branch_id?: string;
+          period?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "financial_lock_periods_branch_id_fkey";
+            columns: ["branch_id"];
+            isOneToOne: false;
+            referencedRelation: "branches";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       gold_issue_register: {
         Row: {

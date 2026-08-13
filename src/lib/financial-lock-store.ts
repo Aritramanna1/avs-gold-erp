@@ -13,6 +13,7 @@
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { append as appendAudit } from "./security/audit-log";
+import { fetchFinancialLocks } from "./financial-lock-query";
 
 export interface FinancialLockPeriod {
   id: string;
@@ -99,7 +100,7 @@ export const useFinancialLocks = create<FinancialLockState>()((set, get) => ({
 }));
 
 export async function loadFinancialLocks(): Promise<void> {
-  const all = await lockRepository.readAll();
+  const all = await fetchFinancialLocks();
   useFinancialLocks.getState().setAll(all);
 }
 
@@ -117,6 +118,15 @@ let loadedOnce: Promise<void> | null = null;
 export function ensureFinancialLocksLoaded(): Promise<void> {
   if (!loadedOnce) loadedOnce = loadFinancialLocks();
   return loadedOnce;
+}
+
+export async function ensureFinancialLockLoaded(branchId: string, period: string): Promise<void> {
+  const locks = await fetchFinancialLocks({ branchId, period, limit: 1 });
+  const state = useFinancialLocks.getState();
+  const existing = state.locks.filter(
+    (lock) => !(lock.branchId === branchId && lock.period === period),
+  );
+  state.setAll([...locks, ...existing]);
 }
 
 /** Error thrown by assertPeriodOpen() — callers can catch this specifically to show a locked-period message. */
@@ -137,6 +147,14 @@ export class PeriodLockedError extends Error {
  */
 export function assertPeriodOpen(branchId: string, dateIso: string): void {
   const period = periodOf(dateIso);
+  if (useFinancialLocks.getState().isLocked(branchId, period)) {
+    throw new PeriodLockedError(branchId, period);
+  }
+}
+
+export async function assertPeriodOpenOnline(branchId: string, dateIso: string): Promise<void> {
+  const period = periodOf(dateIso);
+  await ensureFinancialLockLoaded(branchId, period);
   if (useFinancialLocks.getState().isLocked(branchId, period)) {
     throw new PeriodLockedError(branchId, period);
   }

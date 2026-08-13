@@ -13,6 +13,7 @@ import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { useLedger } from "./ledger-store";
 import { useMaterialVault } from "./material-vault-store";
+import { fetchCustomerGoldDeposits } from "./custody-flow-query";
 
 export interface CustomerGoldDeposit {
   id: string;
@@ -57,8 +58,7 @@ function makeId(): string {
 export const useCustomerGoldDeposit = create<CustomerGoldDepositState>()((set, get) => ({
   deposits: [],
   refresh: async () => {
-    const rows = await depositRepository.readAll();
-    set({ deposits: rows.sort((a, b) => b.createdAt - a.createdAt) });
+    set({ deposits: await fetchCustomerGoldDeposits() });
   },
   deposit: async (input) => {
     const id = makeId();

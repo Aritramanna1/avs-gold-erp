@@ -15,6 +15,7 @@ import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { useLedger } from "./ledger-store";
 import { useSettings, type WorkshopProcessType } from "./settings-store";
+import { fetchWorkshopProcessTransactions } from "./custody-flow-query";
 
 export interface WorkshopProcessTransaction {
   id: string;
@@ -95,8 +96,7 @@ function configFor(processType: WorkshopProcessType) {
 export const useWorkshopProcess = create<WorkshopProcessState>()((set, get) => ({
   transactions: [],
   refresh: async () => {
-    const rows = await processRepository.readAll();
-    set({ transactions: rows.sort((a, b) => b.createdAt - a.createdAt) });
+    set({ transactions: await fetchWorkshopProcessTransactions() });
   },
   issue: async (input) => {
     const cfg = configFor(input.processType);

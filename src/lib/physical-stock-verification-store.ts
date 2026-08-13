@@ -14,6 +14,7 @@ import { createRepository } from "./repositories/base-repository";
 import { useStock, type StockItem } from "./stock-store";
 import { useLedger } from "./ledger-store";
 import { append as appendAudit } from "./security/audit-log";
+import { fetchPhysicalStockCounts } from "./physical-stock-verification-query";
 
 export interface StockCountLine {
   itemId: string;
@@ -216,6 +217,6 @@ export const usePhysicalStockCounts = create<PhysicalStockCountState>()((set, ge
 }));
 
 export async function loadPhysicalStockCounts(): Promise<void> {
-  const all = await countRepository.readAll();
+  const all = await fetchPhysicalStockCounts();
   usePhysicalStockCounts.getState().setAll(all);
 }

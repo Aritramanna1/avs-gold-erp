@@ -39,7 +39,11 @@ import { usePeople } from "@/lib/people-store";
 import { useLedger } from "@/lib/ledger-store";
 import { useSettings } from "@/lib/settings-store";
 import { resolveMakingCharge } from "@/lib/calculation-engine";
-import { getCurrentGoldRatePaise, useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
+import {
+  getCurrentGoldRatePaise,
+  useCurrentGoldRatePaise,
+  getBranchBullionRates,
+} from "@/lib/bullion-rate-service";
 import { useAttachments } from "@/lib/attachments-store";
 import { useBillingStore, type BillingType } from "./billingStore";
 import { useModuleStore } from "@/lib/module-store";
@@ -105,6 +109,8 @@ interface DraftPayment {
   goldGramsStr: string;
   goldPurityStr: string;
   goldRateStr: string;
+  goldMeltLossWtDeductionStr?: string;
+  goldMeltLossPctDeductionStr?: string;
   /** False until the operator explicitly overrides the current main rate. */
   goldRateManuallyOverridden?: boolean;
 }
@@ -1153,6 +1159,8 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         goldGramsStr: "",
         goldPurityStr: "",
         goldRateStr: "",
+        goldMeltLossWtDeductionStr: "",
+        goldMeltLossPctDeductionStr: "",
       },
     ]);
   }
@@ -1203,7 +1211,13 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
   function autoFillFromGold(
     idx: number,
-    overrides?: { goldGramsStr?: string; goldPurityStr?: string; goldRateStr?: string },
+    overrides?: {
+      goldGramsStr?: string;
+      goldPurityStr?: string;
+      goldRateStr?: string;
+      goldMeltLossWtDeductionStr?: string;
+      goldMeltLossPctDeductionStr?: string;
+    },
   ) {
     const p = payments[idx];
     if (!p) return;
@@ -1211,9 +1225,18 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       const gramsStr = overrides?.goldGramsStr ?? p.goldGramsStr;
       const purityStr = overrides?.goldPurityStr ?? p.goldPurityStr;
       const rateStr = overrides?.goldRateStr ?? p.goldRateStr;
-      const grossMg = gramsToMg(gramsStr);
+      const wtDedStr = overrides?.goldMeltLossWtDeductionStr ?? p.goldMeltLossWtDeductionStr ?? "";
+      const pctDedStr =
+        overrides?.goldMeltLossPctDeductionStr ?? p.goldMeltLossPctDeductionStr ?? "";
+
+      const grossG = parseFloat(gramsStr) || 0;
+      const wtDed = parseFloat(wtDedStr) || 0;
+      const pctDed = parseFloat(pctDedStr) || 0;
+      const netG = Math.max(0, grossG - wtDed - (grossG * pctDed) / 100);
+
+      const netMg = Math.round(netG * 1000);
       const purity = Math.round(Number(purityStr));
-      const fine = fineGoldMg(grossMg, purity);
+      const fine = fineGoldMg(netMg, purity);
       const ratePaise = rupeesToPaise(rateStr) || currentGoldRatePaise;
       const valuePaise = Math.round((fine * ratePaise) / 1000);
       if (valuePaise > 0) patchPayment(idx, { amountStr: (valuePaise / 100).toString() });
@@ -1267,14 +1290,21 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         };
         if ((p.mode === "gold_exchange" || p.mode === "customer_gold_credit") && p.goldGramsStr) {
           try {
-            const grossMg = gramsToMg(p.goldGramsStr);
+            const grossG = parseFloat(p.goldGramsStr) || 0;
+            const wtDed = parseFloat(p.goldMeltLossWtDeductionStr || "") || 0;
+            const pctDed = parseFloat(p.goldMeltLossPctDeductionStr || "") || 0;
+            const netG = Math.max(0, grossG - wtDed - (grossG * pctDed) / 100);
+
+            const netMg = Math.round(netG * 1000);
             const purity = Math.round(Number(p.goldPurityStr));
-            const fine = fineGoldMg(grossMg, purity);
+            const fine = fineGoldMg(netMg, purity);
             const ratePaise = rupeesToPaise(p.goldRateStr) || currentGoldRatePaise;
-            base.goldGrossMg = grossMg;
+            base.goldGrossMg = gramsToMg(p.goldGramsStr);
             base.goldPurity = purity;
             base.goldFineMg = fine;
             base.goldRatePerGramPaise = ratePaise;
+            base.goldMeltLossWtDeductionStr = p.goldMeltLossWtDeductionStr || undefined;
+            base.goldMeltLossPctDeductionStr = p.goldMeltLossPctDeductionStr || undefined;
           } catch {
             /* ignore */
           }
@@ -3014,7 +3044,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                             : "Using Customer's Gold Advance"}
                         </div>
                         {/* Input row */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
                           <div>
                             <Label className="text-[10px] text-gold/80 font-semibold block mb-1">
                               Gross Wt (g)
@@ -3026,6 +3056,42 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                                 patchPayment(idx, { goldGramsStr: val });
                                 autoFillFromGold(idx, { goldGramsStr: val });
                               }}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-gold/80 font-semibold block mb-1">
+                              Melt Loss (g)
+                            </Label>
+                            <Input
+                              type="number"
+                              step="0.001"
+                              placeholder="0.000"
+                              value={p.goldMeltLossWtDeductionStr ?? ""}
+                              onChange={(e) => {
+                                patchPayment(idx, { goldMeltLossWtDeductionStr: e.target.value });
+                                autoFillFromGold(idx, {
+                                  goldMeltLossWtDeductionStr: e.target.value,
+                                });
+                              }}
+                              className="h-8 text-xs font-mono border-gold/30 focus-visible:border-gold"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-[10px] text-gold/80 font-semibold block mb-1">
+                              Melt Loss (%)
+                            </Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={p.goldMeltLossPctDeductionStr ?? ""}
+                              onChange={(e) => {
+                                patchPayment(idx, { goldMeltLossPctDeductionStr: e.target.value });
+                                autoFillFromGold(idx, {
+                                  goldMeltLossPctDeductionStr: e.target.value,
+                                });
+                              }}
+                              className="h-8 text-xs font-mono border-gold/30 focus-visible:border-gold"
                             />
                           </div>
                           <div>
@@ -3046,35 +3112,73 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                             <Label className="text-[10px] text-gold/80 font-semibold block mb-1">
                               Rate ₹/g
                             </Label>
-                            <Input
-                              value={p.goldRateStr}
-                              onChange={(e) => {
-                                patchPayment(idx, {
-                                  goldRateStr: e.target.value,
-                                  goldRateManuallyOverridden: true,
-                                });
-                                autoFillFromGold(idx, { goldRateStr: e.target.value });
-                              }}
-                              placeholder="Market rate"
-                              className="h-8 text-xs font-mono border-gold/30 focus-visible:border-gold"
-                            />
+                            <div className="flex gap-1 items-center">
+                              <Input
+                                value={p.goldRateStr}
+                                onChange={(e) => {
+                                  patchPayment(idx, {
+                                    goldRateStr: e.target.value,
+                                    goldRateManuallyOverridden: true,
+                                  });
+                                  autoFillFromGold(idx, { goldRateStr: e.target.value });
+                                }}
+                                placeholder="Market rate"
+                                className="h-8 text-xs font-mono border-gold/30 focus-visible:border-gold w-20"
+                              />
+                              <select
+                                className="h-8 text-[10px] border border-gold/30 rounded px-1 bg-background focus:outline-none focus:ring-1 focus:ring-gold"
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    const val = parseInt(e.target.value, 10);
+                                    patchPayment(idx, {
+                                      goldRateStr: paiseToRupees(val),
+                                      goldRateManuallyOverridden: true,
+                                    });
+                                    autoFillFromGold(idx, { goldRateStr: paiseToRupees(val) });
+                                  }
+                                }}
+                              >
+                                <option value="" disabled>
+                                  Branch Rate
+                                </option>
+                                {useSettings.getState().branches.map((b) => {
+                                  const rates = getBranchBullionRates(b.id);
+                                  const purity = Math.round(Number(p.goldPurityStr) || 916);
+                                  let rate = rates.gold22KPerGramPaise;
+                                  if (purity >= 990) rate = rates.gold24KPerGramPaise;
+                                  else if (purity <= 780 && purity > 0)
+                                    rate = rates.gold18KPerGramPaise;
+                                  return (
+                                    <option key={b.id} value={rate}>
+                                      {b.code}: ₹{paiseToRupees(rate)}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
                           </div>
                         </div>
                         {/* Live calculation chain */}
                         {(() => {
                           try {
-                            const grossMgVal = gramsToMg(p.goldGramsStr);
+                            const grossG = parseFloat(p.goldGramsStr) || 0;
+                            const wtDed = parseFloat(p.goldMeltLossWtDeductionStr || "") || 0;
+                            const pctDed = parseFloat(p.goldMeltLossPctDeductionStr || "") || 0;
+                            const netG = Math.max(0, grossG - wtDed - (grossG * pctDed) / 100);
+
+                            const netMgVal = Math.round(netG * 1000);
                             const purityVal = Math.round(Number(p.goldPurityStr) || 0);
-                            const fine = purityVal > 0 ? fineGoldMg(grossMgVal, purityVal) : 0;
+                            const fine = purityVal > 0 ? fineGoldMg(netMgVal, purityVal) : 0;
                             const rateP = rupeesToPaise(p.goldRateStr);
                             const goldValue =
                               fine > 0 && rateP > 0 ? Math.round((fine * rateP) / 1000) : 0;
                             return (
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono">
                                 <div className="bg-background/60 border border-gold/20 rounded-lg p-2 text-center">
-                                  <div className="text-muted-foreground mb-0.5">Gross</div>
+                                  <div className="text-muted-foreground mb-0.5">Gross / Net Wt</div>
                                   <div className="font-bold text-foreground">
-                                    {Number(mgToGrams(grossMgVal)).toFixed(3)} g
+                                    {grossG.toFixed(3)}g / {netG.toFixed(3)}g
                                   </div>
                                 </div>
                                 <div className="bg-background/60 border border-gold/20 rounded-lg p-2 text-center">
@@ -4110,14 +4214,42 @@ function StandardItemRow({
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">
             Rate ₹/g
           </div>
-          <Input
-            value={rateStr}
-            onChange={(e) => {
-              setRateStr(e.target.value);
-              onChange({ goldRatePerGramPaise: rupeesToPaise(e.target.value) });
-            }}
-            className="h-8 text-xs font-mono border-border/60"
-          />
+          <div className="flex gap-1 items-center">
+            <Input
+              value={rateStr}
+              onChange={(e) => {
+                setRateStr(e.target.value);
+                onChange({ goldRatePerGramPaise: rupeesToPaise(e.target.value) });
+              }}
+              className="h-8 text-xs font-mono border-border/60 w-24"
+            />
+            <select
+              className="h-8 text-[10px] border border-border/60 rounded px-1 bg-background focus:outline-none focus:ring-1 focus:ring-gold"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  const val = parseInt(e.target.value, 10);
+                  setRateStr(paiseToRupees(val));
+                  onChange({ goldRatePerGramPaise: val });
+                }
+              }}
+            >
+              <option value="" disabled>
+                Branch Rate
+              </option>
+              {useSettings.getState().branches.map((b) => {
+                const rates = getBranchBullionRates(b.id);
+                let rate = rates.gold22KPerGramPaise;
+                if (it.purity >= 990) rate = rates.gold24KPerGramPaise;
+                else if (it.purity <= 780 && it.purity > 0) rate = rates.gold18KPerGramPaise;
+                return (
+                  <option key={b.id} value={rate}>
+                    {b.code}: ₹{paiseToRupees(rate)}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
         </div>
       </div>
 

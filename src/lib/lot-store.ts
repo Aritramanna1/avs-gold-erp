@@ -10,6 +10,7 @@
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { useStock, type StockItem } from "./stock-store";
+import { fetchStockLots } from "./lot-query";
 
 export type LotStatus = "open" | "closed";
 
@@ -84,7 +85,7 @@ export const useLots = create<LotState>()((set, get) => ({
 }));
 
 export async function loadLots(): Promise<void> {
-  const all = await lotRepository.readAll();
+  const all = await fetchStockLots();
   useLots.getState().setAll(all);
 }
 

@@ -11,6 +11,7 @@
  */
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
+import { fetchStoneDetails } from "./stone-query";
 
 export type StoneType =
   "diamond" | "ruby" | "emerald" | "sapphire" | "pearl" | "cubic_zirconia" | "other";
@@ -64,7 +65,7 @@ const stoneRepository = createRepository<StoneDetail>("stone_details");
 export const useStoneTracking = create<StoneTrackingState>()((set, get) => ({
   details: [],
   refresh: async () => {
-    const all = await stoneRepository.readAll();
+    const all = await fetchStoneDetails();
     set({ details: all });
   },
   add: async (input) => {

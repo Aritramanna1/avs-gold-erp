@@ -48,4 +48,14 @@ Do not mark PASS from visual inspection alone. Evidence should name a route, tes
 
 ## Release Rule
 
+Additional current evidence, 2026-08-13: Outside Work transaction, labour, and payment refreshes now use `src/lib/outside-work-query.ts` for bounded, ordered Supabase/RLS reads instead of generic repository `readAll()` compatibility refreshes. The Outside Work screen computes overdue external-work follow-up count from expected return dates and outstanding fine-gold position. This supports the manufacturing follow-up gate but remains PARTIAL until authenticated browser evidence, central notification delivery, WhatsApp follow-up audit, and outside-worker settlement/statement no-leak tests are complete.
+
+Additional current evidence, 2026-08-13: Hallmark batch and Physical Stock Count loading now use `src/lib/hallmark-query.ts` and `src/lib/physical-stock-verification-query.ts` for bounded, ordered Supabase/RLS reads instead of generic repository `readAll()` compatibility refreshes. These support the manufacturing traceability and stock-audit gates but remain PARTIAL until authenticated send/receive/reject/close, count scan/adjustment, branch no-leak, mobile scanner, report/export, and document/print evidence are captured.
+
+Additional current evidence, 2026-08-13: Stock Lot, legacy Lot Batch, Stock Stone, and legacy Stone Detail loading now use `src/lib/lot-query.ts` and `src/lib/stone-query.ts` for bounded Supabase/RLS reads. This reduces broad compatibility hydration in jewellery inventory traceability, but remains PARTIAL until the old/new lot and stone schemas are consolidated under the central inventory foundation and authenticated certificate/tag lookup, branch no-leak, table, export, and mobile evidence are captured.
+
+Additional current evidence, 2026-08-13: Customer Gold Deposit, Material Vault, Metal Conversion, Polishing, Customer Settlement, Worker Return, and Workshop Process refreshes now use `src/lib/custody-flow-query.ts` for bounded Supabase/RLS reads instead of generic repository `readAll()` compatibility refreshes. This supports the manufacturing custody, karigar, settlement, and large-data gates but remains PARTIAL until full-history aggregate/RPC balances, authenticated no-leak tests, issue/receive/process E2E, mobile evidence, and audit/document proof are captured.
+
+Additional current evidence, 2026-08-13: Unified print template overrides now load through `src/lib/print-engine/template-query.ts` with bounded Supabase/RLS reads instead of generic repository `readAll()`. This supports the printing/settings gates but remains PARTIAL until authenticated template CRUD, preview, PDF/print, reprint audit, and mobile evidence are captured.
+
 No P0/P1 workflow may be marked production-ready until all applicable checks for its routes are PASS or explicitly N/A with evidence.

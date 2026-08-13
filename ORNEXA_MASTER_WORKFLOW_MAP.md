@@ -727,6 +727,8 @@ Tracks system activities in a central log:
 
 ## SECTION 60 — SOURCE-OF-TRUTH MATRIX
 
+### A. Business Event Ledger Matrix
+
 | Business Event       | Authoritative Source | Physical Metal Effect   | Fine Gold Effect        | Money Ledger Effect  | Party Balance Effect    | Reversal Method   |
 | :------------------- | :------------------- | :---------------------- | :---------------------- | :------------------- | :---------------------- | :---------------- |
 | **Opening Balance**  | Ledger Entry         | None                    | None                    | Post opening balance | Update customer balance | Adjusting journal |
@@ -734,6 +736,21 @@ Tracks system activities in a central log:
 | **Gold Issue**       | Gold Ledger          | Vault - / Karigar WIP + | Vault - / Karigar WIP + | None                 | Karigar Gold Account +  | Reversal voucher  |
 | **Job Receive**      | Gold Ledger          | Karigar WIP - / Vault + | Karigar WIP - / Vault + | None                 | Karigar Gold Account -  | Reversal voucher  |
 | **Invoice Settle**   | Sales Invoice        | Finished Vault -        | Finished Vault -        | Cash/Bank Account +  | Customer Cash Account - | Credit Note       |
+
+### B. Core Data Subsystem Ownership Matrix
+
+| Value Metric | Authoritative Subsystem | Database Table(s) | Primary Mutation Source | Calculation / Derivation Principle |
+| :--- | :--- | :--- | :--- | :--- |
+| **Customer Gold Balance** | Gold Ledger | `gold_ledger` | Metal Vouchers (Receipts, Issues) | Sum of `fine_gold_deltas` where party is customer. |
+| **Karigar Custody Balance** | Gold Ledger | `gold_ledger` | Job Card Issue/Receive Vouchers | Sum of `fine_gold_deltas` where party is karigar. |
+| **Vault / Location Balances** | Vault Stock Subsystem | `gold_ledger`, `stock_verification` | Branch Transfers, Job Receipts | Sum of gross/fine deltas scoped by branch/vault/location. |
+| **Fine Weight (Transaction)** | Purity Conversion Engine | `calculation_engine` schema | Form Inputs, Scale API | $\text{Gross} \times \text{Touch/Purity}$. Deterministic utility, never stored as independent input. |
+| **Party Cash Balance** | Financial Ledger | `cash_ledger`, `payments` | Invoices, Cash Receipts, Payments | Sum of cash deltas (in paise) per party. |
+| **Stock Quantity / Tag Weight** | Tag Registry | `stock_tags` | Tagging / Barcoding Actions | Single tag registry row representing exact active physical weight. |
+| **Job WIP Status** | Production Workflow Tracker | `job_cards` | Karigar portal stage updates | Configurable workflow state enumeration. |
+| **Invoice Amount (Totals)** | Billing Engine | `sales_invoices`, `mfg_bills` | Checkout settlement wizard | Persisted aggregate values (Making + Labour + Gold Value + Taxes) locked at save time. |
+| **Worker Entitlement (Wages)** | Rule Calculation Engine | `karigar_wage_ledger` | Job completion approvals | Snapshotted compensation rule applied to eligible net/gross weight. |
+| **Document Delivery Status** | Notification Dispatcher | `message_deliveries` | Webhook hooks, SMS/WA gateways | ephemerally checked status (`sent`, `delivered`, `read`) with timestamp. |
 
 ---
 

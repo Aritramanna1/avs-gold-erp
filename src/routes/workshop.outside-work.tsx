@@ -113,6 +113,21 @@ function OutsideWorkPage() {
   );
 
   const overallPosition = useMemo(() => computeOutsideWorkPosition(transactions), [transactions]);
+  const todayYmd = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const overdueIssues = useMemo(() => {
+    const byPartyAndOrder = new Map<string, typeof transactions>();
+    for (const txn of transactions) {
+      const key = `${txn.jewellerId}:${txn.orderId ?? "unlinked"}`;
+      byPartyAndOrder.set(key, [...(byPartyAndOrder.get(key) ?? []), txn]);
+    }
+    return transactions.filter((txn) => {
+      if (txn.type !== "issue" || !txn.expectedReturnDate || txn.expectedReturnDate >= todayYmd) {
+        return false;
+      }
+      const key = `${txn.jewellerId}:${txn.orderId ?? "unlinked"}`;
+      return computeOutsideWorkPosition(byPartyAndOrder.get(key) ?? []).pendingGoldFineMg > 0;
+    });
+  }, [todayYmd, transactions]);
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
@@ -176,7 +191,7 @@ function OutsideWorkPage() {
         }
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
         <Stat
           label="Total Issued (fine)"
           value={`${mgToGrams(overallPosition.totalIssuedFineMg)} g`}
@@ -195,7 +210,22 @@ function OutsideWorkPage() {
           value={`${mgToGrams(overallPosition.pendingMaterialGrossMg)} g`}
           tone={overallPosition.pendingMaterialGrossMg > 0 ? "gold" : undefined}
         />
+        <Stat
+          label="Overdue Follow-ups"
+          value={`${overdueIssues.length}`}
+          tone={overdueIssues.length > 0 ? "gold" : undefined}
+        />
       </div>
+
+      {overdueIssues.length > 0 && (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 mb-6">
+          <div className="font-serif text-gold">External work follow-up due</div>
+          <div className="mt-1 text-sm text-muted-foreground">
+            {overdueIssues.length} outside-work issue{overdueIssues.length === 1 ? "" : "s"} passed
+            the expected return date while gold/material is still outstanding.
+          </div>
+        </div>
+      )}
 
       {jewellers.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
@@ -444,9 +474,8 @@ function OutsideWorkPage() {
       )}
 
       {/* No explicit refresh() after add() - every store here already updates
-          its own state optimistically inside add()/addPayment()/addCharge();
-          re-running the cached readAll() would race that optimistic
-          update (see outside-work-store.ts's Repository.readAll() note). */}
+          its own state after the Supabase write succeeds; forcing a second
+          network refresh would only add latency to the operator flow. */}
       <OutsideWorkIssueDialog
         open={issueOpen}
         onClose={() => setIssueOpen(false)}

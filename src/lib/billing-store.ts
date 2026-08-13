@@ -105,6 +105,8 @@ export interface PaymentRecord {
   goldPurity?: number;
   goldFineMg?: number;
   goldRatePerGramPaise?: number;
+  goldMeltLossWtDeductionStr?: string;
+  goldMeltLossPctDeductionStr?: string;
 }
 
 export interface OrderAdjustment {

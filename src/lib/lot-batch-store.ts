@@ -8,6 +8,7 @@
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { useStock } from "./stock-store";
+import { fetchLotBatches } from "./lot-query";
 
 export type LotStatus = "open" | "closed";
 
@@ -49,7 +50,7 @@ const lotRepository = createRepository<LotBatch>("lot_batches");
 export const useLotBatches = create<LotBatchState>()((set, get) => ({
   batches: [],
   refresh: async () => {
-    const all = await lotRepository.readAll();
+    const all = await fetchLotBatches();
     set({ batches: all });
   },
   create: async (input) => {

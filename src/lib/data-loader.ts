@@ -594,6 +594,10 @@ export async function pullBranchSettings(): Promise<void> {
         receiptTemplateId: r.receipt_template_id ?? undefined,
         logoUrl: r.logo_url ?? undefined,
         logoStoragePath: r.logo_storage_path ?? undefined,
+        goldRate24KOverridePaise: r.gold_rate_24k_override_paise ?? undefined,
+        goldRate22KOverridePaise: r.gold_rate_22k_override_paise ?? undefined,
+        goldRate18KOverridePaise: r.gold_rate_18k_override_paise ?? undefined,
+        silverRateOverridePaise: r.silver_rate_override_paise ?? undefined,
       });
     });
   }

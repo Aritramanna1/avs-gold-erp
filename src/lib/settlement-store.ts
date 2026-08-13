@@ -40,6 +40,7 @@ import { compileCustomerLedger } from "./customer-account-ledger";
 import { nextDocumentNumber } from "./document-numbering";
 import { useGoldSettlement } from "./gold-settlement-store";
 import { getCurrentGoldRatePaise } from "./bullion-rate-service";
+import { fetchCustomerSettlements } from "./custody-flow-query";
 
 export type FinancialStatus =
   "pending_settlement" | "partially_settled" | "settled" | "credit_delivery";
@@ -229,7 +230,7 @@ interface SettlementState {
 
 export const useSettlements = create<SettlementState>()((set, get) => ({
   settlements: [],
-  refresh: async () => set({ settlements: await settlementRepository.readAll() }),
+  refresh: async () => set({ settlements: await fetchCustomerSettlements() }),
 
   createDraft: async (input) => {
     const now = Date.now();

@@ -87,6 +87,39 @@ function BranchSettingsPage() {
     );
   }
 
+  function RateField({
+    label,
+    field,
+    placeholder,
+  }: {
+    label: string;
+    field:
+      | "goldRate24KOverridePaise"
+      | "goldRate22KOverridePaise"
+      | "goldRate18KOverridePaise"
+      | "silverRateOverridePaise";
+    placeholder?: string;
+  }) {
+    const rawVal = bs[field];
+    const displayVal = rawVal && rawVal > 0 ? (rawVal / 100).toString() : "";
+    return (
+      <div className="grid gap-1.5">
+        <Label className="text-xs">{label} (₹/g)</Label>
+        <Input
+          type="number"
+          step="0.01"
+          placeholder={placeholder}
+          value={displayVal}
+          onChange={(e) => {
+            const num = parseFloat(e.target.value);
+            const paise = isNaN(num) ? 0 : Math.round(num * 100);
+            patch(field, paise);
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-5 md:p-8 max-w-3xl mx-auto space-y-5">
       <PageHeader
@@ -206,6 +239,36 @@ function BranchSettingsPage() {
               <option value="api">Live API (MCX feed)</option>
             </select>
           </div>
+        </div>
+        <div className="border-t border-border/60 my-2 pt-4">
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-amber-500 mb-3">
+            Bullion Rate Overrides
+          </h4>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <RateField
+              label="24K Gold"
+              field="goldRate24KOverridePaise"
+              placeholder="Firm-wide rate"
+            />
+            <RateField
+              label="22K Gold"
+              field="goldRate22KOverridePaise"
+              placeholder="Firm-wide rate"
+            />
+            <RateField
+              label="18K Gold"
+              field="goldRate18KOverridePaise"
+              placeholder="Firm-wide rate"
+            />
+            <RateField
+              label="Silver"
+              field="silverRateOverridePaise"
+              placeholder="Firm-wide rate"
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-2">
+            Leave blank or zero to fall back to the firm-wide daily rate.
+          </p>
         </div>
       </Section>
 

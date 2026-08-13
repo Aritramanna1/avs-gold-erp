@@ -15,6 +15,7 @@ import { createRepository } from "./repositories/base-repository";
 import { useLedger } from "./ledger-store";
 import { useSettings } from "./settings-store";
 import { calculateLoss } from "./metal-composition-engine";
+import { fetchMetalConversions } from "./custody-flow-query";
 
 export interface ConversionRecord {
   id: string;
@@ -70,8 +71,7 @@ function makeBatchNo(): string {
 export const useMetalConversion = create<MetalConversionState>()((set, get) => ({
   records: [],
   refresh: async () => {
-    const records = await conversionRepository.readAll();
-    set({ records: records.sort((a, b) => b.createdAt - a.createdAt) });
+    set({ records: await fetchMetalConversions() });
   },
   convert: async (input) => {
     const formula = useSettings

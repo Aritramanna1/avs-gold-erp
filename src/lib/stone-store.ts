@@ -9,6 +9,7 @@
  */
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
+import { fetchStockStones } from "./stone-query";
 
 export type StoneType = "diamond" | "ruby" | "emerald" | "sapphire" | "pearl" | "other";
 export const STONE_TYPE_LABELS: Record<StoneType, string> = {
@@ -89,7 +90,7 @@ export const useStones = create<StoneState>()((set, get) => ({
 }));
 
 export async function loadStones(): Promise<void> {
-  const all = await stoneRepository.readAll();
+  const all = await fetchStockStones();
   useStones.getState().setAll(all);
 }
 

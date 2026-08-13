@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { createRepository } from "./repositories/base-repository";
-import { assertPeriodOpen, ensureFinancialLocksLoaded } from "./financial-lock-store";
+import { assertPeriodOpenOnline } from "./financial-lock-store";
 import { useWorkflowEngine } from "./workflow-engine";
 
 const appSettingsRepository = createRepository<{ id: string } & Record<string, unknown>>(
@@ -136,8 +136,7 @@ export const useExpensesStore = create<ExpensesState>()((set, get) => {
       // Financial lock: block backdating an expense into a month-end-closed period.
       // Configurable via Settings → Workflow (financialLockEnforcementEnabled).
       if (useWorkflowEngine.getState().config.financialLockEnforcementEnabled) {
-        await ensureFinancialLocksLoaded();
-        assertPeriodOpen(input.branchId || "MAIN", input.date);
+        await assertPeriodOpenOnline(input.branchId || "MAIN", input.date);
       }
 
       const id = "ex_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);

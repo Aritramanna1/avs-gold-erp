@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { fineGoldMg, type Purity } from "./gold";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { createRepository } from "./repositories/base-repository";
-import { assertPeriodOpen, ensureFinancialLocksLoaded } from "./financial-lock-store";
+import { assertPeriodOpenOnline } from "./financial-lock-store";
 import { useSettings } from "./settings-store";
 import { useWorkflowEngine } from "./workflow-engine";
 import { nextDocumentNumber } from "./document-numbering";
@@ -183,8 +183,7 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
     // Financial lock: block postings dated inside a month-end-closed period.
     // Configurable via Settings → Workflow (financialLockEnforcementEnabled).
     if (useWorkflowEngine.getState().config.financialLockEnforcementEnabled) {
-      await ensureFinancialLocksLoaded();
-      assertPeriodOpen(useSettings.getState().selectedBranchId || "MAIN", date);
+      await assertPeriodOpenOnline(useSettings.getState().selectedBranchId || "MAIN", date);
     }
 
     const kind = input.type === "given" ? "gold_book_given" : "gold_book_return";

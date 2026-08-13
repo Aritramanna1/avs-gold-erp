@@ -20,6 +20,7 @@ import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { append as appendAuditEntry } from "./security/audit-log";
 import { nextDocumentNumber } from "./document-numbering";
+import { fetchPolishingTransactions } from "./custody-flow-query";
 
 export type PolishingTransactionType = "sent" | "received";
 
@@ -170,7 +171,7 @@ const addInFlight = new Set<string>();
 
 export const usePolishing = create<PolishingState>()((set, get) => ({
   transactions: [],
-  refresh: async () => set({ transactions: await polishingRepository.readAll() }),
+  refresh: async () => set({ transactions: await fetchPolishingTransactions() }),
   add: async (input, actor) => {
     const inFlightKey = `${input.orderId ?? ""}:${input.polisherId}:${input.type}`;
     if (addInFlight.has(inFlightKey)) {

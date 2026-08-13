@@ -19,6 +19,7 @@
 import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { nextDocumentNumber } from "./document-numbering";
+import { fetchWorkerReturns } from "./custody-flow-query";
 
 export const COMMON_RETURN_MATERIALS = [
   "Finished Product",
@@ -90,7 +91,7 @@ const addInFlight = new Set<string>();
 
 export const useWorkerReturns = create<WorkerReturnState>()((set, get) => ({
   returns: [],
-  refresh: async () => set({ returns: await workerReturnRepository.readAll() }),
+  refresh: async () => set({ returns: await fetchWorkerReturns() }),
   add: async (input) => {
     const inFlightKey = `${input.orderId}:${input.workerId}`;
     if (addInFlight.has(inFlightKey)) {

@@ -146,6 +146,23 @@ export function getCurrentGoldRatePaise(): number {
   );
 }
 
+/** Imperative accessor for non-reactive call sites to retrieve rates by branch */
+export function getBranchBullionRates(branchId: string): {
+  gold24KPerGramPaise: number;
+  gold22KPerGramPaise: number;
+  gold18KPerGramPaise: number;
+  silverPerGramPaise: number;
+} {
+  const s = useSettings.getState();
+  const branch = s.getBranchSettings(branchId);
+  return {
+    gold24KPerGramPaise: withOverride(branch.goldRate24KOverridePaise, s.goldRate24KPerGramPaise),
+    gold22KPerGramPaise: withOverride(branch.goldRate22KOverridePaise, s.goldRatePerGramPaise),
+    gold18KPerGramPaise: withOverride(branch.goldRate18KOverridePaise, s.goldRate18KPerGramPaise),
+    silverPerGramPaise: withOverride(branch.silverRateOverridePaise, s.silverRatePerGramPaise),
+  };
+}
+
 // ── Scheduled refresh — mirrors sync-engine.ts's startSyncOutboxScheduler() pattern ──
 
 let schedulerHandle: ReturnType<typeof setInterval> | null = null;

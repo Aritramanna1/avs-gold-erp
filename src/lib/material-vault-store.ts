@@ -21,6 +21,7 @@ import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { append as appendAuditEntry } from "./security/audit-log";
 import { fineGoldMg } from "./gold";
+import { fetchMaterialVaultMovements } from "./custody-flow-query";
 
 // ── Material categories — extensible registry, not a closed enum ──────────
 
@@ -355,7 +356,7 @@ export const useMaterialVault = create<MaterialVaultState>()((set, get) => ({
   movements: [],
   categories: mergeCategories(readCustomCategories()),
   refresh: async () => {
-    const persisted = await movementRepository.readAll();
+    const persisted = await fetchMaterialVaultMovements();
     const settings = await materialConfigRepository.read(CUSTOM_CATEGORIES_KEY).catch(() => null);
     const remoteCustom = Array.isArray(settings?.value)
       ? (settings.value as MaterialCategoryDef[]).filter((c) => c && c.key && c.label && c.group)

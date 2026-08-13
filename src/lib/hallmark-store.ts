@@ -13,6 +13,7 @@ import { create } from "zustand";
 import { createRepository } from "./repositories/base-repository";
 import { useStock } from "./stock-store";
 import { append as appendAudit } from "./security/audit-log";
+import { fetchHallmarkBatches } from "./hallmark-query";
 
 export type HallmarkBatchStatus = "sent" | "partially_received" | "received" | "closed";
 export type HallmarkItemStatus = "pending" | "received" | "rejected";
@@ -146,6 +147,6 @@ export const useHallmarkBatches = create<HallmarkState>()((set, get) => ({
 }));
 
 export async function loadHallmarkBatches(): Promise<void> {
-  const all = await hallmarkRepository.readAll();
+  const all = await fetchHallmarkBatches();
   useHallmarkBatches.getState().setAll(all);
 }

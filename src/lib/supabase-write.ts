@@ -312,6 +312,10 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
       logo_storage_path: rawPayload.logoStoragePath ?? null,
       wa_config: rawPayload.wa_config ?? rawPayload.waConfig ?? null,
       wa_automations: rawPayload.wa_automations ?? rawPayload.waAutomations ?? null,
+      gold_rate_24k_override_paise: rawPayload.goldRate24KOverridePaise ?? null,
+      gold_rate_22k_override_paise: rawPayload.goldRate22KOverridePaise ?? null,
+      gold_rate_18k_override_paise: rawPayload.goldRate18KOverridePaise ?? null,
+      silver_rate_override_paise: rawPayload.silverRateOverridePaise ?? null,
       updated_at: new Date().toISOString(),
     };
   } else if (table === "manufacturing_bills") {

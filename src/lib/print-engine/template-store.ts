@@ -12,6 +12,7 @@ import { create } from "zustand";
 import { createRepository } from "@/lib/repositories/base-repository";
 import type { PrintDocType, PrintTemplate, SectionConfig, TemplateVersion } from "./types";
 import { DEFAULT_TEMPLATES } from "./default-templates";
+import { fetchPrintTemplates } from "./template-query";
 
 const TEMPLATE_VERSION_HISTORY_LIMIT = 20;
 
@@ -67,8 +68,7 @@ export const usePrintTemplates = create<PrintTemplateState>()((set, get) => {
     loaded: false,
 
     refresh: async () => {
-      const saved = await templateRepository.readAll();
-      set({ templates: saved, loaded: true });
+      set({ templates: await fetchPrintTemplates(), loaded: true });
     },
 
     getForDocType: (docType, paperSize) => {

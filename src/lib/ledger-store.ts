@@ -17,7 +17,7 @@ import type { GoldForm, Purity } from "./gold";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "./settings-store";
 import { createRepository } from "./repositories/base-repository";
-import { assertPeriodOpen, ensureFinancialLocksLoaded } from "./financial-lock-store";
+import { assertPeriodOpenOnline } from "./financial-lock-store";
 import { useWorkflowEngine } from "./workflow-engine";
 
 export type MovementType =
@@ -246,8 +246,7 @@ export const useLedger = create<LedgerState>()((set, get) => ({
     // (financialLockEnforcementEnabled) — defaults on; disabling is a
     // deliberate, audited admin decision, not a silent default.
     if (useWorkflowEngine.getState().config.financialLockEnforcementEnabled) {
-      await ensureFinancialLocksLoaded();
-      assertPeriodOpen(
+      await assertPeriodOpenOnline(
         useSettings.getState().selectedBranchId || "MAIN",
         new Date(entry.createdAt).toISOString(),
       );
