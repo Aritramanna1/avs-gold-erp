@@ -893,6 +893,117 @@ Allows businesses to adjust parameters through settings instead of requesting co
 
 ---
 
+## SECTION 70 — TAX, GST, HALLMARKING & REGULATORY COMPLIANCE ENGINE
+
+Ornexa is designed as a compliance-aware jewellery manufacturing ERP for the Indian regulatory landscape. Compliance is integrated at the architecture level across manufacturing, job work, purchases, sales, gold movements, invoices, documents, accounting, hallmarking, and statutory reporting.
+
+**Core Principle:** Compliance rules must be configurable and versioned. Statutory changes (tax rates, thresholds, filing structures, e-invoice or e-way bill limits, and hallmarking guidelines) must be updatable through authorized configuration without modifying the ERP source code.
+
+### A. Business Registration & Legal Master
+Maintains essential organizational compliance profiles with isolated storage:
+- **Details:** Legal/Trade Name, Constitution, PAN, GSTIN, State & State Code, Registered Address, Additional Places of Business, Branch GST configs, Financial Year, BIS Registration details, and Authorized Signatories.
+- **Rules:** Documents (GST certificates, BIS licenses) must be securely stored and subject to strict role-based access control.
+
+### B. GST Configuration
+Determines tax treatments dynamically using context-aware rules:
+- **Tax Types:** Supports CGST, SGST, IGST, UTGST, Cess, Taxable, Exempt, Nil-rated, and Non-GST supply classifications.
+- **Tax & Compliance Engine:** A centralized service resolves tax calculations based on the following flow:
+  $$\text{Transaction} \longrightarrow \text{Party Status} \longrightarrow \text{Place of Supply} \longrightarrow \text{Supply Type} \longrightarrow \text{Classification} \longrightarrow \text{Rule Version} \longrightarrow \text{Tax Calc} \longrightarrow \text{Posting} \longrightarrow \text{Invoice/Report}$$
+
+### C. HSN / SAC
+Manages mapping classifications dynamically:
+- Supports mappings for Metals, Jewellery Categories, Diamonds/Stones, Making Charges, Hallmarking Services, Refining Services, and Job Work.
+- Every code is versioned with an effective date and linked tax rule.
+
+### D. GST Party Master
+Consolidates compliance data inside the Party 360 profile:
+- Tracks GSTIN, registration type (regular, composition, unregistered, SEZ), Place of Supply details, billing/shipping addresses, reverse charge applicability, and TDS/TCS settings.
+
+### E. GST Invoice Engine
+Constructs invoices by snapshotting the active statutory rules at the time of posting:
+- Prevents subsequent configuration changes from retrospectively modifying historical invoices.
+- Captures taxable value, GST components, round-off posting, and ledger impacts.
+
+### F. GST Reporting
+Maintains structured outboxes for GSTR-1, GSTR-3B, GSTR-9, and ITC matching:
+- Reports are generated dynamically using state flags: `Draft` $\rightarrow$ `Prepared` $\rightarrow$ `Reviewed` $\rightarrow$ `Verified` $\rightarrow$ `Exported`.
+- ERP does not falsely flag a report as "government filed" without authenticated proof of submission.
+
+### G. GSTR Workflow
+Provides a controlled, auditable filing sequence:
+$$\text{Transactions} \longrightarrow \text{GST Register} \longrightarrow \text{Validation/Exceptions} \longrightarrow \text{Return Prep} \longrightarrow \text{Reconciliation} \longrightarrow \text{Export/API} \longrightarrow \text{Locked History Snapshot}$$
+
+### H. ITC / Purchase Reconciliation
+Automates Input Tax Credit matching by cross-referencing the Purchase Register against supplier-uploaded GST data, flagging eligible, ineligible, and pending items.
+
+### I. Job-Work Compliance
+Tracks Karigar metal custody as a compliance event (e.g. for ITC-04 reporting under Section 143):
+- Tracks material challans, delivery dates, 300-day aging alerts, partial returns, and scrap/loss matching.
+- **Rule:** A Karigar metal issue is never a simple physical transfer; it is simultaneously a physical custody shift, a B2B manufacturing entry, and a compliance-tracked job-work movement.
+
+### J. Delivery Challan
+Generates legally compliant Delivery Challans for non-sale inventory movements:
+- **Contexts:** Job Work Outward/Return, Hallmark Outward/Return, Refinery Outward, and Branch Stock Transfers.
+- Tracks goods descriptions, weight, value, vehicle numbers, and transporter details.
+
+### K. E-Way Bill Readiness
+Calculates e-way bill requirements dynamically based on threshold configurations (value, distance, and interstate rules) without hardcoded values. Integrates payload generation and document linkage.
+
+### L. E-Invoice Readiness
+Validates invoice payloads against schemas and links official IRN, Acknowledgment numbers/dates, and government-signed QR codes upon validation.
+
+### M. TDS / TCS Extensibility
+Contains rule sets for TDS (e.g., Section 194Q) and TCS (e.g., Section 206C(1H)) based on dynamic thresholds, party classifications, and transaction accumulators.
+
+### N. BIS / Hallmarking Compliance
+Tracks mandatory hallmarking workflows and logs HUID details:
+- Tracks assaying centre custody, purity validation, and logs the mandatory unique six-character alphanumeric HUID tag per article.
+- Restricts duplicate HUID entries within the database.
+
+### O. Hallmark Responsibility
+Ornexa distinguishes business roles (Manufacturer, Wholesaler, Distributor, Retailer, Jobworker) to resolve hallmarking responsibility.
+- **Rule:** BIS states that responsibility lies with the party making the first point of sale. Job workers doing pure manufacturing do not inherit mandatory hallmarking responsibility unless configured by ownership transfer.
+
+### P. Hallmark Charges
+Calculates hallmarking charges based on statutory rules. Charges are article-based (per piece) rather than weight-based, as described in BIS consumer guidelines, and are version-controlled in the formula engine.
+
+### Q. Audit-Ready Documentation
+Stores an immutable change history snapshot for all compliance-sensitive events (original payload, tax version, user, timestamp, approvals, external API references).
+
+### R. Period Lock
+Provides financial lock functions to close compliance periods. Once frozen, transactions cannot be added, edited, or deleted in that period. Corrections require authorized reversals or adjusting entries.
+
+### S. Compliance Dashboard
+Centralizes compliance health monitors at **Control → Compliance**:
+- Flags exceptions: missing GSTIN, invalid tax configurations, missing HUIDs, unregistered job work, expiring licenses, and open exceptions.
+
+### T. Compliance Rule Versioning
+Statutory rules are stored as versioned entities:
+- Features `Rule ID`, `Authority`, `Effective From/To`, `Threshold`, and `Status` (`Draft`, `Active`, `Superseded`).
+- Changes activate on a future date without mutating history.
+
+### U. Compliance Update Architecture
+Statutory updates follow a strict workflow:
+$$\text{Regulatory Change} \longrightarrow \text{Admin Draft} \longrightarrow \text{Test/Simulation} \longrightarrow \text{Approval Sign-off} \longrightarrow \text{Scheduled Activation}$$
+- **Rule:** Assistant or AI agents cannot autonomously modify statutory rules or tax configurations. Human admin sign-off is mandatory.
+
+### V. Compliance Report Explainability
+Every tax line or compliance value supports "Explain This Calculation" logic, detailing formula structures and rule versions used.
+
+### W. CA / Auditor Workspace
+A read-only CA/Auditor interface with direct export tools for sales/purchase registers, Tally XMLs, and gold ledgers.
+
+### X. Compliance as a Plugin Layer
+The compliance engine operates as a plugin layer that sits atop the transaction and formula cores:
+$$\text{ERP Core (Metal, Inventory)} \longrightarrow \text{No-Code Transaction Core} \longrightarrow \text{Formula Engine} \longrightarrow \text{Compliance Rules Engine}$$
+
+### Y. The Ultimate Configurator Rule
+Ornexa is built on the principle of progressive configuration. Ordinary B2B operational changes in business rules, tax rates, or workflows must be manageable via configuration.
+- **No-Code Boundaries:** No-code configuration changes can never bypass double-entry accounting integrity, gold/fine-gold reconciliation, database RLS, RBAC, tenant isolation, or immutable audit logs.
+- **Database Authority:** The Supabase online database serves as the sole, authoritative source of truth. No local or offline business state databases are permitted.
+
+---
+
 ### FINAL SIMPLIFICATION PRINCIPLE
 
 **COMPLEX ENGINE — SIMPLE INTERFACE.**
@@ -903,4 +1014,4 @@ Ornexa provides powerful B2B tracking capabilities while keeping daily screens c
 ### FINAL MASTER PRINCIPLE
 
 **ORNEXA IS NOT A RETAIL JEWELLERY POS.**
-Every business flow, master data schema, and custom transaction template must support the manufacturing-first lifecycle.
+Every business flow, master data schema, and custom transaction template must support the manufacturing-first B2B lifecycle.
