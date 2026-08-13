@@ -77,37 +77,12 @@ function getEnvValue(key: string): string {
   return ((import.meta.env[key] as string | undefined) ?? "").trim().replace(/^['"]|['"]$/g, "");
 }
 
-function readStoredAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  for (let i = 0; i < window.sessionStorage.length; i += 1) {
-    const key = window.sessionStorage.key(i);
-    if (!key?.startsWith("sb-") || !key.endsWith("-auth-token")) continue;
-    try {
-      const parsed = JSON.parse(window.sessionStorage.getItem(key) || "{}");
-      if (typeof parsed.access_token === "string" && parsed.access_token) {
-        return parsed.access_token;
-      }
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-
-function readAuthUserIdFromToken(token: string | null): string | null {
-  if (!token) return null;
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1] || ""));
-    return typeof payload?.sub === "string" ? payload.sub : null;
-  } catch {
-    return null;
-  }
-}
-
-function getRestSession(): RestSession {
+async function getRestSession(): Promise<RestSession> {
   const url = getEnvValue("VITE_SUPABASE_URL");
   const key = getEnvValue("VITE_SUPABASE_PUBLISHABLE_KEY");
-  const accessToken = readStoredAccessToken();
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw new Error(error.message);
+  const accessToken = data.session?.access_token;
   if (!url || !key || !accessToken) {
     throw new Error("Please sign in again before using support.");
   }
@@ -140,7 +115,7 @@ async function restRequest<T>(
   init: RequestInit = {},
   timeoutMs = SUPPORT_RPC_TIMEOUT_MS,
 ): Promise<T> {
-  const session = getRestSession();
+  const session = await getRestSession();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -175,8 +150,9 @@ async function rpcWithFallback<T>(
 }
 
 async function getActiveFirmProfile() {
-  const token = readStoredAccessToken();
-  const userId = readAuthUserIdFromToken(token);
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw new Error(error.message);
+  const userId = data.user?.id ?? null;
   if (!userId) throw new Error("Please sign in again before creating a support ticket.");
 
   let profileError: unknown = null;

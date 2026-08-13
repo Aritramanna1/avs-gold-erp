@@ -228,6 +228,15 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
       setBootError(null);
       setChecking(false);
 
+      // Portal visitors authenticate via their respective portal views, so bypass staff authorization checks.
+      const isPortalRoute =
+        window.location.pathname.startsWith("/karigar") ||
+        window.location.pathname.startsWith("/customer");
+      if (isPortalRoute) {
+        _initialSyncDone = true;
+        return;
+      }
+
       // Resolve platform-owner status before anything tenant-side: a
       // saas_admin has no tenant profile and must never hit the tenant
       // checkUserAllowed() gate below (which would reject/sign them out for

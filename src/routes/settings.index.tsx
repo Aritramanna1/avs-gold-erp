@@ -339,7 +339,47 @@ function SettingsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex flex-wrap h-auto">
+        {/* Mobile View: Select Dropdown to keep layout clean */}
+        <div className="block md:hidden mb-4">
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full bg-white border border-border rounded-xl px-4 py-3 text-sm font-semibold shadow-sm focus:ring-2 focus:ring-gold focus:ring-offset-1 focus:border-transparent">
+              <SelectValue placeholder="Select settings section" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="firm">Firm Settings</SelectItem>
+              <SelectItem value="branches">Branches</SelectItem>
+              <SelectItem value="branding">Branding &amp; Logo</SelectItem>
+              <SelectItem value="whatsapp">WhatsApp Integration</SelectItem>
+              <SelectItem value="appearance">Appearance &amp; Theme</SelectItem>
+              <SelectItem value="print">Print Margins</SelectItem>
+              <SelectItem value="printers">Printer Profiles</SelectItem>
+              <SelectItem value="templates">Document Templates</SelectItem>
+              <SelectItem value="compliance">Compliance Profile</SelectItem>
+              <SelectItem value="forms">Dynamic Forms</SelectItem>
+              <SelectItem value="users">Users &amp; Roles</SelectItem>
+              <SelectItem value="logs">Security Audit Logs</SelectItem>
+              {useModuleStore.getState().isModuleEnabled("gst") && (
+                <SelectItem value="gst">GST Registration</SelectItem>
+              )}
+              <SelectItem value="purity">Purity &amp; Fineness</SelectItem>
+              <SelectItem value="workshop">Workshop Processes</SelectItem>
+              <SelectItem value="rate">Bullion Gold Rates</SelectItem>
+              <SelectItem value="making">Making &amp; Labour rules</SelectItem>
+              <SelectItem value="hardware">Hardware Scales</SelectItem>
+              <SelectItem value="catalog">Catalog Settings</SelectItem>
+              <SelectItem value="dropdowns">Custom Dropdowns</SelectItem>
+              <SelectItem value="language">Language Preference</SelectItem>
+              <SelectItem value="modules">Modules Manager</SelectItem>
+              <SelectItem value="email">Email &amp; SMTP</SelectItem>
+              <SelectItem value="backup">Data Backup &amp; Sync</SelectItem>
+              <SelectItem value="db">Database Administration</SelectItem>
+              <SelectItem value="about">About ERP</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop View: Full horizontal tab triggers list */}
+        <TabsList className="hidden md:flex flex-wrap h-auto">
           <TabsTrigger value="firm">Firm</TabsTrigger>
           <TabsTrigger value="branches">Branches</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>

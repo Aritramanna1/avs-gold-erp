@@ -1,0 +1,110 @@
+# Jewellery ERP Benchmark Matrix
+
+This matrix is a release-control artifact for Ornexa / AVS Jewellery Manufacturing ERP. It reconciles the original Ornexa vision, current Ornexa implementation, and jewellery ERP reference concepts from AVS/JewelAcc research plus Jwelly/JewellERP/Appitsoft-style product exploration.
+
+References are product/business references only. Do not copy competitor source code, proprietary assets, wording, or visual design. Final decisions must preserve the approved Supabase-online, manufacturing-heavy Ornexa architecture.
+
+Decision values: KEEP EXISTING, IMPROVE, IMPLEMENT, MERGE, NOT RELEVANT, SUPERSEDED BY BETTER ORNEXA WORKFLOW.
+
+Status values: EXISTS, PARTIAL, MISSING, NOT APPLICABLE, SUPERSEDED BY BETTER ORNEXA WORKFLOW.
+
+| Feature / Concept | Original Ornexa Vision | Current Ornexa | Jewellery ERP Reference Concepts | Final Ornexa Decision | Status | Completion Evidence / Gap |
+| --- | --- | --- | --- | --- | --- | --- |
+| Accounts | Central accounting foundation with cash, bank, party, metal, GST, and labour dimensions | Ledger, billing, reports, expenses exist | Accounts masters, day books, ledger reports | IMPROVE | PARTIAL | Needs complete transaction posting/reversal proof |
+| Account Groups | Configurable chart/grouping for reporting and exports | Partial ledger/report structure | Account groups and grouped reports | IMPLEMENT | PARTIAL | Needs admin-managed group hierarchy and Tally mapping proof |
+| Customer | Central Party role | People/customer flows exist | Customer master, ledgers, orders | MERGE | PARTIAL | Needs Party 360 profile evidence |
+| Supplier | Central Party role | People/supplier purchase flows partial | Supplier master, ageing, purchases | MERGE | PARTIAL | Needs supplier ledger, purchase return, ageing proof |
+| Karigar | Central Party role plus manufacturing extension | Worker/gold-book/outside-work flows exist | Karigar issue/receive/hisab | MERGE | PARTIAL | Needs full outside work custody E2E and mobile portal proof |
+| Refinery | Party role plus metal workflow | Generic/partial ledger paths | Refinery batches, loss, charges | IMPLEMENT | MISSING | Dedicated refinery lifecycle not complete |
+| Hallmark Vendor | Party role plus hallmark workflow | Hallmark routes/tables partial | HUID, hallmark charges | IMPROVE | PARTIAL | Needs send/receive/reject/rework/charge/document proof |
+| Service Provider | Central Party role | Partial | Vendors/service providers | MERGE | PARTIAL | Needs shared contact/GST/address/doc/audit model proof |
+| Other Counterparty | Central Party role | Partial through People | Misc party/account masters | MERGE | PARTIAL | Needs role extension and permissions proof |
+| Item Groups | Central catalog/inventory master | Catalog/stock routes exist | Item groups/categories | IMPROVE | PARTIAL | Needs configurable hierarchy and report/export proof |
+| Items | Central product/design/item master | Catalog, stock, tags, barcode partial | Items, design, product masters | IMPROVE | PARTIAL | Needs unified design-item-stock lifecycle |
+| Metal | Central metal master | Gold helpers and ledgers exist | Metal master | MERGE | PARTIAL | Needs single shared metal engine across all modules |
+| Purity | Central purity/touch/fineness rules | Settings/helpers partial | Purity master | IMPROVE | PARTIAL | Needs immutable snapshots and validation tests |
+| Touch | Central metal calculation input | Partial | Touch/fine conversion | IMPROVE | PARTIAL | Needs shared calculation service proof |
+| Fine Calculation | Authoritative gross/net/fine rules | Multiple flows calculate fine | Fine weight calculations | MERGE | PARTIAL | Needs one tested domain service and historical snapshots |
+| Stone/Diamond | Separate inventory/valuation dimensions | Stone routes/query helpers partial | Diamond/stone inventory | IMPROVE | PARTIAL | Needs parcel issue/consume/balance/valuation proof |
+| Making Charges | Configurable labour/value rules | Billing/manufacturing partial | Making/labour charges | IMPROVE | PARTIAL | Needs settings, tax, ledger, and document proof |
+| Hallmark Charges | Charge linked to hallmark lifecycle | Partial | Hallmark charge tracking | IMPROVE | PARTIAL | Needs vendor charge and customer billing linkage |
+| Opening Stock | Audited opening balances | Partial | Opening stock | IMPROVE | PARTIAL | Needs approval, lock, no historical rewrite proof |
+| Daily Bhav / Metal Rates | Historical rate snapshots and branch override | Global rates, branch overrides partial | Daily bhav | IMPROVE | PARTIAL | Needs branch override UI, permissions, immutable snapshots |
+| Purchase | Supplier inward transaction | Supplier purchase migrations/routes partial | Purchase register | IMPROVE | PARTIAL | Needs complete posting, documents, return, reports |
+| Purchase Return | Supplier outward/reversal transaction | Not proven complete | Purchase return | IMPLEMENT | MISSING | Needs transaction type, document, ledger, stock reversal |
+| Sale | Invoice/order-to-cash | Billing exists | Sale register | KEEP EXISTING | PARTIAL | Needs reversal, GST, payments, print, reports proof |
+| Sale Return | Customer return/reversal | Credit-note paths partial | Sale return | IMPROVE | PARTIAL | Needs stock/cash/metal reversal proof |
+| Receipt | Cash/bank/metal receipt | Billing/settlement partial | Receipt vouchers | IMPLEMENT | PARTIAL | Needs universal receipt workflow and allocation proof |
+| Payment | Cash/bank/metal payment | Payment/settlement partial | Payment vouchers | IMPLEMENT | PARTIAL | Needs supplier/karigar/customer allocation proof |
+| Expense | Expense transaction | Expenses route/store exists | Expense book | IMPROVE | PARTIAL | Needs locks, approval, GST, report proof |
+| Journal | Accounting adjustment | Ledger partial | Journal voucher | IMPLEMENT | MISSING | Needs central transaction workflow |
+| Contra | Cash/bank transfer | Not proven | Contra voucher | IMPLEMENT | MISSING | Needs central finance workflow |
+| Metal Receipt | Metal inward/custody receipt | Gold ledger/receive paths partial | Metal receipt | IMPLEMENT | PARTIAL | Needs central metal transaction and document proof |
+| Metal Payment | Metal outward/payment | Gold settlement/worker flows partial | Metal payment | IMPLEMENT | PARTIAL | Needs party allocation, document, audit proof |
+| Issue | Manufacturing/stock issue | Job/worker/outside issue partial | Issue voucher | IMPROVE | PARTIAL | Needs universal issue document and audit timeline |
+| Receive | Manufacturing/stock receive | Receive paths partial | Receive voucher | IMPROVE | PARTIAL | Needs partial receive, QC, loss/wastage posting |
+| Transfer | Inventory/vault movement | Partial | Transfer voucher | IMPLEMENT | PARTIAL | Needs source/in-transit/destination discrepancy proof |
+| Job Work | Internal/external manufacturing work | Workshop/outside work exists | Job work/work book | IMPROVE | PARTIAL | Needs full graph E2E and follow-up proof |
+| Repair | Repair lifecycle | Repair routes exist | Repair orders | IMPROVE | PARTIAL | Needs metal/cash posting, print, delivery proof |
+| Old Gold | Exchange/appraisal/melt | Partial | Old gold exchange | IMPLEMENT | PARTIAL | Needs appraisal, touch, melt, settlement, refinery proof |
+| Refinery Transaction | Scrap/refinery outward and return | Missing dedicated lifecycle | Refinery | IMPLEMENT | MISSING | Needs batch, loss, charge, return, report |
+| Hallmark Transaction | Hallmark outward/return/HUID | Partial | Hallmark | IMPROVE | PARTIAL | Needs HUID and vendor lifecycle proof |
+| Stock Adjustment | Physical variance and controlled adjustment | Physical stock partial | Stock adjustment | IMPROVE | PARTIAL | Needs approval, audit, ledger/stock posting |
+| Karigar Settlement | Hisab final | Settlement flows partial | Hisab final | IMPROVE | PARTIAL | Needs finalization, labour, deductions, payment proof |
+| Branch Transfer | Branch stock/gold transfer | Branch/location partial | Branch transfer | IMPLEMENT | PARTIAL | Needs RLS, document, receive/discrepancy proof |
+| Vault Transfer | Vault/location custody transfer | Material vault partial | Vault transfer | IMPLEMENT | PARTIAL | Needs custody ledger and approval proof |
+| Order | Customer order intake | Orders route/query exists | Web/order book | KEEP EXISTING | PARTIAL | Needs mobile, portal, manufacturing link proof |
+| Advance | Cash/gold advance | Partial | Advances | IMPROVE | PARTIAL | Needs allocation, ageing, refund/adjustment proof |
+| Credit Note | Sale return/adjustment document | Credit note routes exist | Credit note | KEEP EXISTING | PARTIAL | Needs posting/report proof |
+| Debit Note | Charge/adjustment document | Debit note routes exist | Debit note | KEEP EXISTING | PARTIAL | Needs posting/report proof |
+| Tag Generation | Barcode/QR/HUID labels | Barcode/tag routes exist | Tag generation | IMPROVE | PARTIAL | Needs central tag identity and print proof |
+| Tag Modification | Controlled tag edits | Not proven | Tag modification | IMPLEMENT | MISSING | Needs RBAC, audit, no silent stock rewrite |
+| Tag Stock | Tagged stock availability | Stock/tag partial | Tag stock | IMPROVE | PARTIAL | Needs branch/location availability and scan proof |
+| Box/Tray | Physical stock organization | Partial | Box/tray | IMPLEMENT | PARTIAL | Needs central location model |
+| Physical Stock | Count and variance control | Physical count query/helper partial | Physical stock | IMPROVE | PARTIAL | Needs scan/count/adjust/approve/report E2E |
+| Stock Ageing | Ageing reports | Partial | Stock ageing | IMPLEMENT | PARTIAL | Needs verified report and filters |
+| Weight-wise Stock | Weight bucket reports | Partial | Weight-wise stock | IMPLEMENT | PARTIAL | Needs report/table/export proof |
+| Quality-wise Stock | Purity/quality reports | Partial | Quality-wise stock | IMPLEMENT | PARTIAL | Needs report/table/export proof |
+| Supplier Ageing | Supplier outstanding ageing | Partial | Supplier ageing | IMPLEMENT | PARTIAL | Needs purchase/payment report proof |
+| Dead Stock | Exception/follow-up report | Partial | Dead stock | IMPLEMENT | PARTIAL | Needs central notification/report proof |
+| Karigar Reports | Worker gold/labour/hisab | Worker reports partial | Karigar reports | IMPROVE | PARTIAL | Needs full-history RPC balances and no-leak tests |
+| Daily Books | Daily business summaries | Daily close/reports partial | Daily books | IMPROVE | PARTIAL | Needs close, print, verification proof |
+| Ledger | Cash/metal ledgers | Ledger exists | Ledger | KEEP EXISTING | PARTIAL | Needs universal posting and reversal proof |
+| Outstanding | Customer/supplier/karigar balances | Billing outstanding RPC partial | Outstanding reports | IMPROVE | PARTIAL | Needs all-party cash/metal ageing proof |
+| Stock Summary | Inventory summary | Stock/reports partial | Stock summary | IMPROVE | PARTIAL | Needs central inventory aggregates |
+| Sale Register | Invoice report | Billing/reports partial | Sale register | IMPROVE | PARTIAL | Needs tax/export/reversal proof |
+| Purchase Register | Supplier purchase report | Partial | Purchase register | IMPLEMENT | PARTIAL | Needs purchase return and GST proof |
+| Bank Reconciliation | Finance control | Not proven | Bank reconciliation | IMPLEMENT | MISSING | Needs approved scope and bank/cash ledger model |
+| Reminders | Follow-up engine | Notifications/reminders partial | Reminders/to-do | MERGE | PARTIAL | Needs central follow-up delivery and SLA proof |
+| To-do | Operational follow-ups | Partial | To-do/workbook | MERGE | PARTIAL | Needs one follow-up engine rather than separate lists |
+| Work Book | Workshop/karigar work book | Workshop books exist | Work book | IMPROVE | PARTIAL | Needs graph and mobile worker view proof |
+| Web Orders | Portal/order intake | Customer portal partial | Web orders | IMPLEMENT | PARTIAL | Needs portal/import/order review proof |
+| Hisab Final | Final karigar settlement | Partial | Hisab final | IMPROVE | PARTIAL | Needs audited finalization and print proof |
+| Voucher Numbering | Central sequences | Numbering RPCs/settings partial | Voucher numbering | IMPROVE | PARTIAL | Needs all document/transaction types verified |
+| Backup/Restore | Supabase-compatible recovery | Supabase ops docs/tables partial | Backup/restore | IMPROVE | PARTIAL | Needs restore drill evidence, not browser-local backup |
+| Tally Export | Accounting export | Tally report route partial | Tally export | IMPROVE | PARTIAL | Needs mapping validation and exported file checks |
+| Report Save | Reproducible report snapshots | Not proven complete | Report save | IMPLEMENT | MISSING | Needs metadata, filters, snapshot, permissions |
+| Report Verify | Approval/check of reports | Not proven complete | Report verify | IMPLEMENT | MISSING | Needs verifier, signature/audit, immutable evidence |
+| Finished Jewellery | Finished stock lifecycle | Partial | Finished jewellery | IMPROVE | PARTIAL | Needs QC/hallmark/tag/stock/sale graph proof |
+| Metal Inventory | Vault/WIP/fine-gold tracking | Partial | Metal inventory | MERGE | PARTIAL | Needs one metal ledger foundation |
+| Diamond/Stone Inventory | Stone/diamond custody | Partial | Diamond/stone inventory | IMPROVE | PARTIAL | Needs parcel/certificate/valuation proof |
+| Production | Manufacturing graph | Partial | Production | IMPROVE | PARTIAL | Needs stage transitions and mobile production view |
+| Karigar Manufacturing | Worker/external work traceability | Partial | Karigar manufacturing | IMPROVE | PARTIAL | Needs "who has our gold" dashboard/report proof |
+| Loss Consideration | Wastage/loss rules | Partial | Loss consideration | IMPLEMENT | PARTIAL | Needs central rules, approval, posting |
+| Wastage | Manufacturing loss dimension | Partial | Wastage | IMPLEMENT | PARTIAL | Needs stage/worker/order reporting |
+| Stock Management | Inventory foundation | Partial | Stock management | IMPROVE | PARTIAL | Needs central movement model and no duplicate mini-stores |
+| Suppliers | Supplier role in Party | Partial | Suppliers | MERGE | PARTIAL | Needs supplier profile and ledger proof |
+| Metal Rates | Rate snapshots | Partial | Metal rates | IMPROVE | PARTIAL | Needs immutable snapshots and branch overrides |
+| Old Gold Exchange | Customer gold exchange | Partial | Old gold exchange | IMPLEMENT | PARTIAL | Needs appraisal-to-settlement flow |
+| QC | Manufacturing quality gate | Partial | QC | IMPLEMENT | PARTIAL | Needs configurable checklists and rework path |
+| Branch Management | Firm/branch control | Partial | Branch management | IMPROVE | PARTIAL | Needs UI, RLS, reports, settings proof |
+| AI Intelligence | Authorized assistant and insights | Assistant tools partial | AI recommendations/intelligence | IMPROVE | PARTIAL | Needs no-leak tests, confirmations, provider gateway, broader tools |
+| Recommendations | Follow-up/intelligence suggestions | Not reliable enough yet | Recommendations | IMPLEMENT | MISSING | Must wait for reliable ledgers and event data |
+| Production User / Karigar Views | Role-specific mobile workspace | Portals/routes partial | Production/karigar views | IMPROVE | PARTIAL | Needs mobile-first tasks: jobs, receive, issue, stage, photo, QC |
+
+## Release Control Notes
+
+- A row marked PARTIAL means useful implementation exists but is not production complete.
+- A row marked MISSING must not appear as a finished module or decorative CTA.
+- A row marked MERGE must be implemented through shared Ornexa foundations, not duplicated module-specific masters.
+- This matrix does not approve copying competitor implementations; it preserves business-depth requirements for independent Ornexa implementation.

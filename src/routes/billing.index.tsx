@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useBilling, INVOICE_STATUS_LABELS, paiseToRupees } from "@/lib/billing-store";
 import {
   fetchBillingInvoicePage,
@@ -63,6 +70,7 @@ function BillingIndex() {
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const { can } = useCan();
+  const [activeTab, setActiveTab] = useState("invoices");
 
   const pageSize = 25;
   const page = Math.max(1, Number(search.page) || 1);
@@ -211,8 +219,25 @@ function BillingIndex() {
         />
       </div>
 
-      <Tabs defaultValue="invoices" className="w-full">
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* Mobile View: Select Dropdown to keep layout clean */}
+        <div className="block md:hidden mb-4">
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full bg-white border border-border rounded-xl px-4 py-3 text-sm font-semibold shadow-sm focus:ring-2 focus:ring-gold focus:ring-offset-1 focus:border-transparent">
+              <SelectValue placeholder="Select billing view" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="invoices">Invoices Registry</SelectItem>
+              <SelectItem value="outstanding">Outstanding Balances</SelectItem>
+              <SelectItem value="ledger">Customer Ledger Statement</SelectItem>
+              <SelectItem value="settlements">Gold Settlements (Karigar)</SelectItem>
+              <SelectItem value="customer-settlements">Customer Settlements</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop View: Full horizontal tabs triggers bar */}
+        <TabsList className="hidden md:flex flex-wrap h-auto">
           <TabsTrigger value="invoices" className="gap-2">
             <FileText className="h-4 w-4" /> Invoices
           </TabsTrigger>
@@ -263,64 +288,132 @@ function BillingIndex() {
                 }
               />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-xs uppercase text-muted-foreground">
-                    <tr className="border-b border-border">
-                      <th className="text-left py-2">Invoice</th>
-                      <th className="text-left">Customer</th>
-                      <th className="text-left">Order</th>
-                      <th className="text-right">Total</th>
-                      <th className="text-right">Paid</th>
-                      <th className="text-right">Balance</th>
-                      <th className="text-left pl-3">Status</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageInvoices.map((i) => (
-                      <tr key={i.id} className="border-b border-border/60 hover:bg-background/30">
-                        <td className="py-2 font-mono text-xs text-gold">{i.invoiceNo}</td>
-                        <td>
-                          {i.customerName}
-                          <div className="text-[11px] text-muted-foreground">{i.customerPhone}</div>
-                        </td>
-                        <td className="text-xs text-muted-foreground">{i.orderNo ?? "—"}</td>
-                        <td className="text-right">
-                          ₹ {paiseToRupees(i.subtotalPaise + i.gstPaise)}
-                        </td>
-                        <td className="text-right text-emerald-300">
-                          ₹ {paiseToRupees(i.paidPaise)}
-                        </td>
-                        <td className="text-right text-amber-300">
-                          ₹ {paiseToRupees(i.balancePaise)}
-                        </td>
-                        <td className="pl-3">
-                          <Badge variant="outline" className="text-[10px]">
-                            {INVOICE_STATUS_LABELS[i.status]}
-                          </Badge>
-                        </td>
-                        <td className="text-right">
-                          <div className="flex gap-1 justify-end">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              title="Print Invoice"
-                              onClick={() => window.open(`/billing/print/${i.id}`, "_blank")}
-                            >
-                              <Printer className="h-3 w-3" />
-                            </Button>
-                            <Link to="/billing/$id" params={{ id: i.id }}>
-                              <Button size="sm" variant="outline">
-                                Open
-                              </Button>
-                            </Link>
+              <div>
+                {/* Mobile View: Cards */}
+                <div className="block md:hidden space-y-3">
+                  {pageInvoices.map((i) => (
+                    <div
+                      key={i.id}
+                      className="border border-border rounded-xl p-4 bg-card shadow-sm space-y-2"
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono text-xs font-semibold text-gold">
+                          {i.invoiceNo}
+                        </span>
+                        <Badge variant="outline" className="text-[9px]">
+                          {INVOICE_STATUS_LABELS[i.status]}
+                        </Badge>
+                      </div>
+                      <div className="text-sm font-medium">{i.customerName}</div>
+                      {i.customerPhone && (
+                        <div className="text-xs text-muted-foreground">{i.customerPhone}</div>
+                      )}
+                      {i.orderNo && (
+                        <div className="text-xs text-muted-foreground">Order: {i.orderNo}</div>
+                      )}
+                      <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-border/50">
+                        <div>
+                          <div className="text-muted-foreground text-[10px]">Total</div>
+                          <div className="font-semibold text-foreground">
+                            ₹ {paiseToRupees(i.subtotalPaise + i.gstPaise)}
                           </div>
-                        </td>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-[10px]">Paid</div>
+                          <div className="font-semibold text-emerald-300">
+                            ₹ {paiseToRupees(i.paidPaise)}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-[10px]">Balance</div>
+                          <div className="font-semibold text-amber-300">
+                            ₹ {paiseToRupees(i.balancePaise)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end pt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs gap-1"
+                          onClick={() => window.open(`/billing/print/${i.id}`, "_blank")}
+                        >
+                          <Printer className="h-3.5 w-3.5" /> Print
+                        </Button>
+                        <Link to="/billing/$id" params={{ id: i.id }}>
+                          <Button size="sm" className="h-8 text-xs">
+                            Open
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop View: Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-xs uppercase text-muted-foreground">
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2">Invoice</th>
+                        <th className="text-left">Customer</th>
+                        <th className="text-left">Order</th>
+                        <th className="text-right">Total</th>
+                        <th className="text-right">Paid</th>
+                        <th className="text-right">Balance</th>
+                        <th className="text-left pl-3">Status</th>
+                        <th></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {pageInvoices.map((i) => (
+                        <tr key={i.id} className="border-b border-border/60 hover:bg-background/30">
+                          <td className="py-2 font-mono text-xs text-gold">{i.invoiceNo}</td>
+                          <td>
+                            {i.customerName}
+                            <div className="text-[11px] text-muted-foreground">
+                              {i.customerPhone}
+                            </div>
+                          </td>
+                          <td className="text-xs text-muted-foreground">{i.orderNo ?? "—"}</td>
+                          <td className="text-right">
+                            ₹ {paiseToRupees(i.subtotalPaise + i.gstPaise)}
+                          </td>
+                          <td className="text-right text-emerald-300">
+                            ₹ {paiseToRupees(i.paidPaise)}
+                          </td>
+                          <td className="text-right text-amber-300">
+                            ₹ {paiseToRupees(i.balancePaise)}
+                          </td>
+                          <td className="pl-3">
+                            <Badge variant="outline" className="text-[10px]">
+                              {INVOICE_STATUS_LABELS[i.status]}
+                            </Badge>
+                          </td>
+                          <td className="text-right">
+                            <div className="flex gap-1 justify-end">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                title="Print Invoice"
+                                onClick={() => window.open(`/billing/print/${i.id}`, "_blank")}
+                              >
+                                <Printer className="h-3 w-3" />
+                              </Button>
+                              <Link to="/billing/$id" params={{ id: i.id }}>
+                                <Button size="sm" variant="outline">
+                                  Open
+                                </Button>
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Controls */}
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                   <span>
                     Page {page} of {invoiceTotalPages} · {invoiceTotalCount} invoices
@@ -370,37 +463,81 @@ function BillingIndex() {
                 description="All visible customer invoices are settled."
               />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-xs uppercase text-muted-foreground">
-                    <tr className="border-b border-border">
-                      <th className="text-left py-2">Customer</th>
-                      <th className="text-left">Phone</th>
-                      <th className="text-left">Latest Inv.</th>
-                      <th className="text-right">Outstanding</th>
-                      <th className="text-right">Days</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {outstandingRows.map((o) => (
-                      <tr key={o.customerId} className="border-b border-border/60">
-                        <td className="py-2">{o.customerName}</td>
-                        <td className="text-xs text-muted-foreground">{o.phone ?? "—"}</td>
-                        <td className="font-mono text-xs">{o.latestInv}</td>
-                        <td className="text-right text-amber-300">₹ {paiseToRupees(o.amount)}</td>
-                        <td className="text-right">{o.days}d</td>
-                        <td className="text-right">
-                          <Link to="/billing/$id" params={{ id: o.latestInvoiceId }}>
-                            <Button size="sm" variant="outline">
-                              {can("billing.recordPayment") ? "Record Payment" : "Open"}
-                            </Button>
-                          </Link>
-                        </td>
+              <div>
+                {/* Mobile View: Cards */}
+                <div className="block md:hidden space-y-3">
+                  {outstandingRows.map((o) => (
+                    <div
+                      key={o.customerId}
+                      className="border border-border rounded-xl p-4 bg-card shadow-sm space-y-2"
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-sm">{o.customerName}</span>
+                        <span className="text-xs font-mono text-muted-foreground">
+                          {o.latestInv}
+                        </span>
+                      </div>
+                      {o.phone && <div className="text-xs text-muted-foreground">{o.phone}</div>}
+                      <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                        <div>
+                          <span className="text-[10px] text-muted-foreground block">
+                            Outstanding
+                          </span>
+                          <span className="font-bold text-amber-300 text-sm">
+                            ₹ {paiseToRupees(o.amount)}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-muted-foreground block">Age</span>
+                          <span className="font-semibold text-xs text-foreground">
+                            {o.days} days
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex justify-end pt-2">
+                        <Link to="/billing/$id" params={{ id: o.latestInvoiceId }}>
+                          <Button size="sm" className="h-8 text-xs">
+                            {can("billing.recordPayment") ? "Record Payment" : "Open"}
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop View: Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-xs uppercase text-muted-foreground">
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2">Customer</th>
+                        <th className="text-left">Phone</th>
+                        <th className="text-left">Latest Inv.</th>
+                        <th className="text-right">Outstanding</th>
+                        <th className="text-right">Days</th>
+                        <th></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {outstandingRows.map((o) => (
+                        <tr key={o.customerId} className="border-b border-border/60">
+                          <td className="py-2">{o.customerName}</td>
+                          <td className="text-xs text-muted-foreground">{o.phone ?? "—"}</td>
+                          <td className="font-mono text-xs">{o.latestInv}</td>
+                          <td className="text-right text-amber-300">₹ {paiseToRupees(o.amount)}</td>
+                          <td className="text-right">{o.days}d</td>
+                          <td className="text-right">
+                            <Link to="/billing/$id" params={{ id: o.latestInvoiceId }}>
+                              <Button size="sm" variant="outline">
+                                {can("billing.recordPayment") ? "Record Payment" : "Open"}
+                              </Button>
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -443,43 +580,82 @@ function CustomerSettlementsList() {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="text-xs uppercase text-muted-foreground">
-          <tr className="border-b border-border">
-            <th className="text-left py-2">Settlement</th>
-            <th className="text-left">Customer</th>
-            <th className="text-left">Financial Status</th>
-            <th className="text-left">Delivery Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((s) => (
-            <tr key={s.id} className="border-b border-border/60 hover:bg-background/30">
-              <td className="py-2 font-mono text-xs text-gold">{s.settlementNo}</td>
-              <td>{s.customerName}</td>
-              <td>
-                <Badge variant="outline" className="text-[10px]">
+    <div className="rounded-2xl border border-border bg-card p-4">
+      {/* Mobile View: Cards */}
+      <div className="block md:hidden space-y-3">
+        {sorted.map((s) => (
+          <div
+            key={s.id}
+            className="border border-border rounded-xl p-4 bg-background/50 shadow-sm space-y-2"
+          >
+            <div className="flex justify-between items-center">
+              <span className="font-mono text-xs font-semibold text-gold">{s.settlementNo}</span>
+              <span className="text-xs font-medium text-foreground">{s.customerName}</span>
+            </div>
+            <div className="flex gap-2 pt-2 border-t border-border/50 text-[10px]">
+              <div>
+                <span className="text-muted-foreground block mb-0.5">Financial</span>
+                <Badge variant="outline" className="text-[9px] px-1 py-0">
                   {FINANCIAL_STATUS_LABELS[s.financialStatus]}
                 </Badge>
-              </td>
-              <td>
-                <Badge variant="outline" className="text-[10px]">
+              </div>
+              <div>
+                <span className="text-muted-foreground block mb-0.5">Delivery</span>
+                <Badge variant="outline" className="text-[9px] px-1 py-0">
                   {DELIVERY_STATUS_LABELS[s.deliveryStatus]}
                 </Badge>
-              </td>
-              <td className="text-right">
-                <Link to="/settlement/$id" params={{ id: s.id }}>
-                  <Button size="sm" variant="outline">
-                    Open
-                  </Button>
-                </Link>
-              </td>
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Link to="/settlement/$id" params={{ id: s.id }}>
+                <Button size="sm" className="h-8 text-xs">
+                  Open
+                </Button>
+              </Link>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop View: Table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-xs uppercase text-muted-foreground">
+            <tr className="border-b border-border">
+              <th className="text-left py-2">Settlement</th>
+              <th className="text-left">Customer</th>
+              <th className="text-left">Financial Status</th>
+              <th className="text-left">Delivery Status</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sorted.map((s) => (
+              <tr key={s.id} className="border-b border-border/60 hover:bg-background/30">
+                <td className="py-2 font-mono text-xs text-gold">{s.settlementNo}</td>
+                <td>{s.customerName}</td>
+                <td>
+                  <Badge variant="outline" className="text-[10px]">
+                    {FINANCIAL_STATUS_LABELS[s.financialStatus]}
+                  </Badge>
+                </td>
+                <td>
+                  <Badge variant="outline" className="text-[10px]">
+                    {DELIVERY_STATUS_LABELS[s.deliveryStatus]}
+                  </Badge>
+                </td>
+                <td className="text-right">
+                  <Link to="/settlement/$id" params={{ id: s.id }}>
+                    <Button size="sm" variant="outline">
+                      Open
+                    </Button>
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

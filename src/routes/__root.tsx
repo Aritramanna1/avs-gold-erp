@@ -111,9 +111,15 @@ function RootComponent() {
       "/invite",
       "/invite/accept",
       "/verify",
+      "/karigar-login",
+      "/karigar-portal",
+      "/customer-login",
+      "/customer-portal",
     ].includes(currentPath) ||
     currentPath.startsWith("/invite/") ||
-    currentPath.startsWith("/doc/");
+    currentPath.startsWith("/doc/") ||
+    currentPath.startsWith("/karigar-") ||
+    currentPath.startsWith("/customer-");
 
   /**
    * A print route renders the DOCUMENT ONLY — no sidebar, no header, no app
