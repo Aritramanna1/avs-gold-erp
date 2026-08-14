@@ -68,6 +68,7 @@ import { Route as WorkshopPolishingRouteImport } from './routes/workshop.polishi
 import { Route as WorkshopOutsideWorkerBooksRouteImport } from './routes/workshop.outside-worker-books'
 import { Route as WorkshopOutsideWorkRouteImport } from './routes/workshop.outside-work'
 import { Route as WorkshopGoldBookRouteImport } from './routes/workshop.gold-book'
+import { Route as WorkshopBenchCustodyRouteImport } from './routes/workshop.bench-custody'
 import { Route as WorkshopBarcodeScannerRouteImport } from './routes/workshop.barcode-scanner'
 import { Route as WorkshopIdRouteImport } from './routes/workshop.$id'
 import { Route as StockVerificationRouteImport } from './routes/stock.verification'
@@ -480,6 +481,11 @@ const WorkshopOutsideWorkRoute = WorkshopOutsideWorkRouteImport.update({
 const WorkshopGoldBookRoute = WorkshopGoldBookRouteImport.update({
   id: '/gold-book',
   path: '/gold-book',
+  getParentRoute: () => WorkshopRoute,
+} as any)
+const WorkshopBenchCustodyRoute = WorkshopBenchCustodyRouteImport.update({
+  id: '/bench-custody',
+  path: '/bench-custody',
   getParentRoute: () => WorkshopRoute,
 } as any)
 const WorkshopBarcodeScannerRoute = WorkshopBarcodeScannerRouteImport.update({
@@ -1203,6 +1209,7 @@ export interface FileRoutesByFullPath {
   '/stock/verification': typeof StockVerificationRoute
   '/workshop/$id': typeof WorkshopIdRoute
   '/workshop/barcode-scanner': typeof WorkshopBarcodeScannerRoute
+  '/workshop/bench-custody': typeof WorkshopBenchCustodyRoute
   '/workshop/gold-book': typeof WorkshopGoldBookRoute
   '/workshop/outside-work': typeof WorkshopOutsideWorkRoute
   '/workshop/outside-worker-books': typeof WorkshopOutsideWorkerBooksRoute
@@ -1369,6 +1376,7 @@ export interface FileRoutesByTo {
   '/stock/verification': typeof StockVerificationRoute
   '/workshop/$id': typeof WorkshopIdRoute
   '/workshop/barcode-scanner': typeof WorkshopBarcodeScannerRoute
+  '/workshop/bench-custody': typeof WorkshopBenchCustodyRoute
   '/workshop/gold-book': typeof WorkshopGoldBookRoute
   '/workshop/outside-work': typeof WorkshopOutsideWorkRoute
   '/workshop/outside-worker-books': typeof WorkshopOutsideWorkerBooksRoute
@@ -1548,6 +1556,7 @@ export interface FileRoutesById {
   '/stock/verification': typeof StockVerificationRoute
   '/workshop/$id': typeof WorkshopIdRoute
   '/workshop/barcode-scanner': typeof WorkshopBarcodeScannerRoute
+  '/workshop/bench-custody': typeof WorkshopBenchCustodyRoute
   '/workshop/gold-book': typeof WorkshopGoldBookRoute
   '/workshop/outside-work': typeof WorkshopOutsideWorkRoute
   '/workshop/outside-worker-books': typeof WorkshopOutsideWorkerBooksRoute
@@ -1728,6 +1737,7 @@ export interface FileRouteTypes {
     | '/stock/verification'
     | '/workshop/$id'
     | '/workshop/barcode-scanner'
+    | '/workshop/bench-custody'
     | '/workshop/gold-book'
     | '/workshop/outside-work'
     | '/workshop/outside-worker-books'
@@ -1894,6 +1904,7 @@ export interface FileRouteTypes {
     | '/stock/verification'
     | '/workshop/$id'
     | '/workshop/barcode-scanner'
+    | '/workshop/bench-custody'
     | '/workshop/gold-book'
     | '/workshop/outside-work'
     | '/workshop/outside-worker-books'
@@ -2072,6 +2083,7 @@ export interface FileRouteTypes {
     | '/stock/verification'
     | '/workshop/$id'
     | '/workshop/barcode-scanner'
+    | '/workshop/bench-custody'
     | '/workshop/gold-book'
     | '/workshop/outside-work'
     | '/workshop/outside-worker-books'
@@ -2615,6 +2627,13 @@ declare module '@tanstack/react-router' {
       path: '/gold-book'
       fullPath: '/workshop/gold-book'
       preLoaderRoute: typeof WorkshopGoldBookRouteImport
+      parentRoute: typeof WorkshopRoute
+    }
+    '/workshop/bench-custody': {
+      id: '/workshop/bench-custody'
+      path: '/bench-custody'
+      fullPath: '/workshop/bench-custody'
+      preLoaderRoute: typeof WorkshopBenchCustodyRouteImport
       parentRoute: typeof WorkshopRoute
     }
     '/workshop/barcode-scanner': {
@@ -3765,6 +3784,7 @@ const StockRouteWithChildren = StockRoute._addFileChildren(StockRouteChildren)
 interface WorkshopRouteChildren {
   WorkshopIdRoute: typeof WorkshopIdRoute
   WorkshopBarcodeScannerRoute: typeof WorkshopBarcodeScannerRoute
+  WorkshopBenchCustodyRoute: typeof WorkshopBenchCustodyRoute
   WorkshopGoldBookRoute: typeof WorkshopGoldBookRoute
   WorkshopOutsideWorkRoute: typeof WorkshopOutsideWorkRoute
   WorkshopOutsideWorkerBooksRoute: typeof WorkshopOutsideWorkerBooksRoute
@@ -3788,6 +3808,7 @@ interface WorkshopRouteChildren {
 const WorkshopRouteChildren: WorkshopRouteChildren = {
   WorkshopIdRoute: WorkshopIdRoute,
   WorkshopBarcodeScannerRoute: WorkshopBarcodeScannerRoute,
+  WorkshopBenchCustodyRoute: WorkshopBenchCustodyRoute,
   WorkshopGoldBookRoute: WorkshopGoldBookRoute,
   WorkshopOutsideWorkRoute: WorkshopOutsideWorkRoute,
   WorkshopOutsideWorkerBooksRoute: WorkshopOutsideWorkerBooksRoute,

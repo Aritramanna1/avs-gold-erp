@@ -16,7 +16,7 @@
  * their own.
  */
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, Truck, Sparkles, Users, Hammer } from "lucide-react";
+import { BookOpen, Truck, Sparkles, Users, Hammer, Scale } from "lucide-react";
 
 export interface WorkshopBookType {
   /** Stable key — also the segment under /workshop/… when it owns a route. */
@@ -112,6 +112,15 @@ export const BOOK_TYPES: WorkshopBookType[] = [
       "Gold issued to and returned from polishing, with allowed/excess loss and recovery. Distinct from the older Polishing Books section above, which tracks per-polisher party ledgers.",
     icon: Hammer,
     indexRoute: "/workshop/process/polish",
+    status: "implemented",
+  },
+  {
+    key: "bench-custody",
+    title: "Bench Custody",
+    description:
+      "Per-job gold custody across every karigar: what's outstanding on which job, how long it's been out, and overloss against the allowed wastage. Answers the Manufacturing Ledger's core custody questions in one view.",
+    icon: Scale,
+    indexRoute: "/workshop/bench-custody",
     status: "implemented",
   },
   {
