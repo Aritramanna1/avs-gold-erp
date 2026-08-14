@@ -57,6 +57,7 @@ import {
 } from "@/lib/workers-store";
 import { COMMON_PURITIES, fineGoldMg, gramsToMg, mgToGrams, parsePurity } from "@/lib/gold";
 import { useLedger } from "@/lib/ledger-store";
+import { formatDateShort as fmtDate } from "@/lib/format-date";
 import {
   CalendarDays,
   CalendarRange,
@@ -783,14 +784,6 @@ function StayHistoryTab({ workers }: { workers: Person[] }) {
       .filter((s) => filterWorker === "all" || s.workerId === filterWorker)
       .sort((a, b) => b.arrivedAt - a.arrivedAt);
   }, [stays, filterWorker]);
-
-  function fmtDate(ms: number) {
-    return new Date(ms).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
 
   function stayDays(stay: WorkerStay) {
     const end = stay.departedAt ?? Date.now();

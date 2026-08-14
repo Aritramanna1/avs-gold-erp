@@ -13,6 +13,7 @@ import { ARCHIVAL_SIZES } from "@/components/print/PrintLayout";
 import { usePrintSetup } from "@/lib/print-setup-store";
 import type { FirmProfile } from "@/lib/settings-store";
 import { payloadFor } from "@/lib/verify-token";
+import { formatDateMedium as formatDate } from "@/lib/format-date";
 import type { PrintDocumentData, PrintTemplate, SectionConfig } from "../types";
 import {
   addBalanceCard,
@@ -131,10 +132,6 @@ async function drawSection(
     default:
       return y;
   }
-}
-
-function formatDate(createdAt: number | undefined): string {
-  return createdAt ? new Date(createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "";
 }
 
 export async function generateDocumentPdf(

@@ -12,6 +12,7 @@ import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getDocumentShare, type DocumentShare } from "@/lib/document-shares";
 import { printDocument } from "@/lib/print-document";
+import { formatDateMedium as fmtDate } from "@/lib/format-date";
 
 export const Route = createFileRoute("/doc/$token")({
   component: DocumentPortal,
@@ -25,14 +26,6 @@ function rs(paise: number) {
 
 function grams(mg: number) {
   return (mg / 1000).toFixed(3) + "g";
-}
-
-function fmtDate(val: string | number | Date) {
-  try {
-    return new Date(val).toLocaleDateString("en-IN", { dateStyle: "medium" });
-  } catch {
-    return String(val);
-  }
 }
 
 // ── Loading / error screens ───────────────────────────────────────────────────

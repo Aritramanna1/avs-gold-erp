@@ -23,6 +23,7 @@ import {
   PackageCheck,
   Send,
 } from "lucide-react";
+import { formatDateMedium as fmtDate } from "@/lib/format-date";
 
 export const Route = createFileRoute("/karigar-portal")({
   head: () => ({
@@ -69,15 +70,6 @@ function cryptoSuffix(): string {
     return crypto.randomUUID().slice(0, 8).toUpperCase();
   }
   return Math.random().toString(36).slice(2, 10).toUpperCase();
-}
-
-function fmtDate(val: string | number | null | undefined) {
-  if (!val) return "—";
-  try {
-    return new Date(val).toLocaleDateString("en-IN", { dateStyle: "medium" });
-  } catch {
-    return String(val);
-  }
 }
 
 // ── types ─────────────────────────────────────────────────────────────────────

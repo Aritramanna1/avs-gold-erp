@@ -29,22 +29,12 @@ import { closeFinancialYear } from "@/lib/financial-lock-store";
 import { useSettings } from "@/lib/settings-store";
 import { useWorkflowEngine } from "@/lib/workflow-engine";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { formatDateTime as fmtDate } from "@/lib/format-date";
 
 export const Route = createFileRoute("/reports/auditor")({
   head: () => ({ meta: [{ title: "Auditor Workspace · AVS Gold ERP" }] }),
   component: AuditorWorkspacePage,
 });
-
-function fmtDate(val: string) {
-  try {
-    return new Date(val).toLocaleString("en-IN", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  } catch {
-    return val;
-  }
-}
 
 function AuditorWorkspacePage() {
   const selectedBranchId = useSettings((s) => s.selectedBranchId || "MAIN");

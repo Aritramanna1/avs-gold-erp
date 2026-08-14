@@ -16,17 +16,12 @@ import type { FirmProfile } from "@/lib/settings-store";
 import { mgToGrams } from "@/lib/gold";
 import { paiseToRupees } from "@/lib/orders-store";
 import type { OutsideWorkStatementData } from "@/lib/outside-work-statement";
+import { formatDateShort as fmtDate } from "@/lib/format-date";
 
 const MARGIN = 15;
 const PAGE_W = 210; // A4 portrait, mm
 const CONTENT_W = PAGE_W - MARGIN * 2;
 const COL_R = PAGE_W - MARGIN;
-
-function fmtDate(ts: number | string): string {
-  const d = typeof ts === "number" ? new Date(ts) : new Date(ts);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-}
 
 function hrule(doc: jsPDF, y: number): number {
   doc.setDrawColor(190, 180, 165);

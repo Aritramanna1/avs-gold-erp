@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Badge } from "@/components/ui/badge";
+import { formatDateMedium as fmtDate } from "@/lib/format-date";
 
 type SupplierPortalData = {
   profile: {
@@ -59,15 +60,6 @@ function mg(val: number) {
 
 function rs(paise: number) {
   return "₹" + (paise / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-function fmtDate(val: string | number | null | undefined) {
-  if (!val) return "—";
-  try {
-    return new Date(val).toLocaleDateString("en-IN", { dateStyle: "medium" });
-  } catch {
-    return String(val);
-  }
 }
 
 const PURCHASE_STATUS_COLORS = (due: number) => {

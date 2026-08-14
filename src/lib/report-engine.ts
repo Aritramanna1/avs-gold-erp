@@ -168,10 +168,4 @@ export function fmtRs(paise: number): string {
   );
 }
 
-export function fmtDate(ts: number): string {
-  return new Date(ts).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
+export { formatDateShort as fmtDate } from "@/lib/format-date";

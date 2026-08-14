@@ -16,6 +16,7 @@ import { jsPDF } from "jspdf";
 import type { FirmProfile } from "@/lib/settings-store";
 import type { GoldSettlementRecord } from "@/lib/supabase-services";
 import { mgToGrams } from "@/lib/gold";
+import { formatDateShort as fmtDate } from "@/lib/format-date";
 
 const MARGIN = 12;
 const PAGE_W = 210; // A4 portrait, mm
@@ -24,13 +25,6 @@ const COL_R = PAGE_W - MARGIN;
 
 function paiseToRs(p: number): string {
   return (p / 100).toFixed(2);
-}
-
-function fmtDate(d: string | undefined): string {
-  if (!d) return "—";
-  const date = new Date(d);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 interface TableColumn {
