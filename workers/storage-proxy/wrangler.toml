@@ -1,0 +1,14 @@
+name = "mtj-storage-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-08-15"
+
+[vars]
+ALLOWED_ORIGIN = "https://maatarajewellers.shop"
+SUPABASE_URL = "https://dqgrrafuoxaorvyrcuuh.supabase.co"
+
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "mtj-erp-files"
+
+# SUPABASE_PUBLISHABLE_KEY is a secret, not a var — set it with:
+#   wrangler secret put SUPABASE_PUBLISHABLE_KEY
