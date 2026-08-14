@@ -217,6 +217,8 @@ export interface KarigarCustodySummary {
   wastageMg: number;
   overlossMg: number;
   outstandingMg: number;
+  /** Days since the oldest still-outstanding issue to this karigar; undefined if nothing outstanding. */
+  oldestIssueAgeDays?: number;
   jobs: { jobId: string; jobNo: string; outstandingMg: number }[];
 }
 
@@ -233,6 +235,7 @@ export function karigarCustodySummaries(jobs: JobCard[]): KarigarCustodySummary[
     wastageMg: number;
     overlossMg: number;
     outstandingMg: number;
+    oldestIssueAgeDays?: number;
     jobs: { jobId: string; jobNo: string; outstandingMg: number }[];
   }
 
@@ -271,11 +274,32 @@ export function karigarCustodySummaries(jobs: JobCard[]): KarigarCustodySummary[
     });
 
     const activeJobsForWorker = jobs.filter((j) => j.karigarId === workerId);
-    const workerJobsList = activeJobsForWorker.map((j) => ({
-      jobId: j.id,
-      jobNo: j.jobNo,
-      outstandingMg: 0,
-    }));
+    let overlossMg = 0;
+    const workerJobsList = activeJobsForWorker.map((j) => {
+      const jobEntries = workerEntries.filter((e) => e.orderId === j.orderId);
+      const givenFine = jobEntries
+        .filter((e) => e.type === "given")
+        .reduce((sum, e) => sum + e.fineMg, 0);
+      const returnedFine = jobEntries
+        .filter((e) => e.type === "return")
+        .reduce((sum, e) => sum + e.fineMg, 0);
+      overlossMg += j.workReceipt?.overlossMg ?? 0;
+      return {
+        jobId: j.id,
+        jobNo: j.jobNo,
+        outstandingMg: Math.max(0, givenFine - returnedFine),
+      };
+    });
+
+    const oldestOutstandingGiven =
+      bal.pendingFine > 0
+        ? workerEntries
+            .filter((e) => e.type === "given")
+            .reduce<number | undefined>(
+              (oldest, e) => (oldest === undefined || e.createdAt < oldest ? e.createdAt : oldest),
+              undefined,
+            )
+        : undefined;
 
     map.set(workerId, {
       karigarId: workerId,
@@ -285,8 +309,12 @@ export function karigarCustodySummaries(jobs: JobCard[]): KarigarCustodySummary[
       scrapMg,
       filingsMg,
       wastageMg,
-      overlossMg: 0,
+      overlossMg,
       outstandingMg: bal.pendingFine,
+      oldestIssueAgeDays:
+        oldestOutstandingGiven !== undefined
+          ? Math.max(0, Math.floor((Date.now() - oldestOutstandingGiven) / 86_400_000))
+          : undefined,
       jobs: workerJobsList,
     });
   }
