@@ -54,7 +54,7 @@ function createSupabaseClient() {
     },
     global: {
       fetch: (input, init) => {
-        const timeoutSignal = AbortSignal.timeout(10_000);
+        const timeoutSignal = AbortSignal.timeout(25_000);
         const signal =
           init?.signal && typeof AbortSignal.any === "function"
             ? AbortSignal.any([init.signal, timeoutSignal])

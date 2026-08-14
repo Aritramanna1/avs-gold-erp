@@ -16,7 +16,6 @@ import { useSettings } from "@/lib/settings-store";
 import { buildJobCardData } from "@/lib/job-card-engine";
 import { resolvePrintContext } from "@/lib/print-engine/data-mapper";
 import { usePrintTemplates } from "@/lib/print-engine/template-store";
-import { generateDocumentPdf } from "@/lib/print-engine/pdf/generate";
 import { mgToGrams } from "@/lib/gold";
 import { ArrowLeft, Download, Loader2, Printer, QrCode } from "lucide-react";
 import { toast } from "sonner";
@@ -89,6 +88,7 @@ function JobCardPage() {
       const printData = resolvePrintContext("job_card", recordId);
       if (!printData) throw new Error("Job Card data not available");
       const template = usePrintTemplates.getState().getForDocType("job_card");
+      const { generateDocumentPdf } = await import("@/lib/print-engine/pdf/generate");
       const { blob, fileName } = await generateDocumentPdf(printData, template, firm);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

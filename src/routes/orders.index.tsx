@@ -140,7 +140,14 @@ function OrdersListPage() {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   const ordersBranchId = useMemo(() => {
-    const globalRoles = ["Super Owner", "Administrator", "CEO (View Only)", "owner", "admin"];
+    const globalRoles = [
+      "Super Owner",
+      "Administrator",
+      "CEO (View Only)",
+      "owner",
+      "admin",
+      "saas_admin",
+    ];
     return currentUserRole && !globalRoles.includes(currentUserRole)
       ? selectedBranchId || "MAIN"
       : null;

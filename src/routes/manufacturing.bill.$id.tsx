@@ -23,7 +23,6 @@ import { useMfgBills, MFG_BILL_STATUS_LABELS } from "@/lib/manufacturing-bill-st
 import { useSettings } from "@/lib/settings-store";
 import { useWorkflowEngine } from "@/lib/workflow-engine";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
-import { generateManufacturingBillPdf } from "@/lib/pdf/document-pdf-generator";
 import {
   ArrowLeft,
   Printer,
@@ -69,6 +68,7 @@ function MfgBillView() {
   async function handleDownloadPdf() {
     setDownloadingPdf(true);
     try {
+      const { generateManufacturingBillPdf } = await import("@/lib/pdf/document-pdf-generator");
       const blob = generateManufacturingBillPdf(bill, firm);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

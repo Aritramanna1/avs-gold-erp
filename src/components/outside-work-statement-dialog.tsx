@@ -22,10 +22,6 @@ import { useOutsideWorkLabour } from "@/lib/outside-work-labour-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { useSettings } from "@/lib/settings-store";
 import { buildOutsideWorkStatement, type StatementKind } from "@/lib/outside-work-statement";
-import {
-  generateOutsideWorkerStatementPdf,
-  outsideWorkerStatementFileName,
-} from "@/lib/pdf/outside-worker-statement-pdf";
 import { FileText, AlertTriangle } from "lucide-react";
 
 const KIND_OPTIONS: { value: StatementKind; label: string }[] = [
@@ -82,6 +78,8 @@ export function OutsideWorkStatementDialog({
         fromTs: fromDate ? new Date(fromDate).getTime() : undefined,
         toTs: toDate ? new Date(toDate).setHours(23, 59, 59, 999) : undefined,
       });
+      const { generateOutsideWorkerStatementPdf, outsideWorkerStatementFileName } =
+        await import("@/lib/pdf/outside-worker-statement-pdf");
       const blob = await generateOutsideWorkerStatementPdf(data, firm);
       const fileName = outsideWorkerStatementFileName(data, firm);
       const url = URL.createObjectURL(blob);

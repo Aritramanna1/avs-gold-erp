@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkshopRouteImport } from './routes/workshop'
 import { Route as WhatsappRouteImport } from './routes/whatsapp'
 import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as SupplierPortalRouteImport } from './routes/supplier-portal'
+import { Route as SupplierLoginRouteImport } from './routes/supplier-login'
 import { Route as StockRouteImport } from './routes/stock'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -22,6 +24,7 @@ import { Route as RepairRouteImport } from './routes/repair'
 import { Route as PlatformRouteImport } from './routes/platform'
 import { Route as OtpLoginRouteImport } from './routes/otp-login'
 import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MeltRouteImport } from './routes/melt'
 import { Route as ManufacturingRouteImport } from './routes/manufacturing'
@@ -40,6 +43,7 @@ import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as BarcodeRouteImport } from './routes/barcode'
 import { Route as AttendanceRouteImport } from './routes/attendance'
+import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkshopIndexRouteImport } from './routes/workshop.index'
 import { Route as StockIndexRouteImport } from './routes/stock.index'
@@ -112,10 +116,12 @@ import { Route as ReportsDailyGoldFlowRouteImport } from './routes/reports.daily
 import { Route as ReportsDailyCloseRouteImport } from './routes/reports.daily-close'
 import { Route as ReportsCommunicationAnalyticsRouteImport } from './routes/reports.communication-analytics'
 import { Route as ReportsBranchRouteImport } from './routes/reports.branch'
+import { Route as ReportsAuditorRouteImport } from './routes/reports.auditor'
 import { Route as ReportsAuditLogRouteImport } from './routes/reports.audit-log'
 import { Route as ReportsApprovalsRouteImport } from './routes/reports.approvals'
 import { Route as RepairNewRouteImport } from './routes/repair.new'
 import { Route as RepairIdRouteImport } from './routes/repair.$id'
+import { Route as PlatformPlansRouteImport } from './routes/platform.plans'
 import { Route as PeopleImportRouteImport } from './routes/people.import'
 import { Route as PeopleIdRouteImport } from './routes/people.$id'
 import { Route as OrdersNewRouteImport } from './routes/orders.new'
@@ -124,6 +130,12 @@ import { Route as OrdersIdRouteImport } from './routes/orders.$id'
 import { Route as InviteAcceptRouteImport } from './routes/invite.accept'
 import { Route as DocTokenRouteImport } from './routes/doc.$token'
 import { Route as DashboardCeoRouteImport } from './routes/dashboard.ceo'
+import { Route as ControlTerminologyRouteImport } from './routes/control.terminology'
+import { Route as ControlTallyExportRouteImport } from './routes/control.tally-export'
+import { Route as ControlRatesRouteImport } from './routes/control.rates'
+import { Route as ControlPrintProfilesRouteImport } from './routes/control.print-profiles'
+import { Route as ControlMigrationRouteImport } from './routes/control.migration'
+import { Route as ControlCustomizationRouteImport } from './routes/control.customization'
 import { Route as ComingSoonMeenaBookRouteImport } from './routes/coming-soon.meena-book'
 import { Route as ComingSoonBarcodeScannerRouteImport } from './routes/coming-soon.barcode-scanner'
 import { Route as ComingSoonBarcodePrintingRouteImport } from './routes/coming-soon.barcode-printing'
@@ -189,6 +201,16 @@ const VerifyRoute = VerifyRouteImport.update({
   path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SupplierPortalRoute = SupplierPortalRouteImport.update({
+  id: '/supplier-portal',
+  path: '/supplier-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupplierLoginRoute = SupplierLoginRouteImport.update({
+  id: '/supplier-login',
+  path: '/supplier-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StockRoute = StockRouteImport.update({
   id: '/stock',
   path: '/stock',
@@ -237,6 +259,11 @@ const OtpLoginRoute = OtpLoginRouteImport.update({
 const OrdersRoute = OrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -327,6 +354,11 @@ const BarcodeRoute = BarcodeRouteImport.update({
 const AttendanceRoute = AttendanceRouteImport.update({
   id: '/attendance',
   path: '/attendance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssistantRoute = AssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -697,6 +729,11 @@ const ReportsBranchRoute = ReportsBranchRouteImport.update({
   path: '/branch',
   getParentRoute: () => ReportsRoute,
 } as any)
+const ReportsAuditorRoute = ReportsAuditorRouteImport.update({
+  id: '/auditor',
+  path: '/auditor',
+  getParentRoute: () => ReportsRoute,
+} as any)
 const ReportsAuditLogRoute = ReportsAuditLogRouteImport.update({
   id: '/audit-log',
   path: '/audit-log',
@@ -716,6 +753,11 @@ const RepairIdRoute = RepairIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => RepairRoute,
+} as any)
+const PlatformPlansRoute = PlatformPlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => PlatformRoute,
 } as any)
 const PeopleImportRoute = PeopleImportRouteImport.update({
   id: '/people/import',
@@ -756,6 +798,36 @@ const DashboardCeoRoute = DashboardCeoRouteImport.update({
   id: '/ceo',
   path: '/ceo',
   getParentRoute: () => DashboardRoute,
+} as any)
+const ControlTerminologyRoute = ControlTerminologyRouteImport.update({
+  id: '/control/terminology',
+  path: '/control/terminology',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ControlTallyExportRoute = ControlTallyExportRouteImport.update({
+  id: '/control/tally-export',
+  path: '/control/tally-export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ControlRatesRoute = ControlRatesRouteImport.update({
+  id: '/control/rates',
+  path: '/control/rates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ControlPrintProfilesRoute = ControlPrintProfilesRouteImport.update({
+  id: '/control/print-profiles',
+  path: '/control/print-profiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ControlMigrationRoute = ControlMigrationRouteImport.update({
+  id: '/control/migration',
+  path: '/control/migration',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ControlCustomizationRoute = ControlCustomizationRouteImport.update({
+  id: '/control/customization',
+  path: '/control/customization',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ComingSoonMeenaBookRoute = ComingSoonMeenaBookRouteImport.update({
   id: '/coming-soon/meena-book',
@@ -1021,6 +1093,7 @@ const AttendancePrintKindIdRoute = AttendancePrintKindIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/assistant': typeof AssistantRoute
   '/attendance': typeof AttendanceRouteWithChildren
   '/barcode': typeof BarcodeRoute
   '/billing': typeof BillingRouteWithChildren
@@ -1039,6 +1112,7 @@ export interface FileRoutesByFullPath {
   '/manufacturing': typeof ManufacturingRouteWithChildren
   '/melt': typeof MeltRouteWithChildren
   '/notifications': typeof NotificationsRoute
+  '/onboarding': typeof OnboardingRoute
   '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
   '/platform': typeof PlatformRouteWithChildren
@@ -1049,6 +1123,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteWithChildren
   '/setup': typeof SetupRoute
   '/stock': typeof StockRouteWithChildren
+  '/supplier-login': typeof SupplierLoginRoute
+  '/supplier-portal': typeof SupplierPortalRoute
   '/verify': typeof VerifyRoute
   '/whatsapp': typeof WhatsappRoute
   '/workshop': typeof WorkshopRouteWithChildren
@@ -1059,6 +1135,12 @@ export interface FileRoutesByFullPath {
   '/coming-soon/barcode-printing': typeof ComingSoonBarcodePrintingRoute
   '/coming-soon/barcode-scanner': typeof ComingSoonBarcodeScannerRoute
   '/coming-soon/meena-book': typeof ComingSoonMeenaBookRoute
+  '/control/customization': typeof ControlCustomizationRoute
+  '/control/migration': typeof ControlMigrationRoute
+  '/control/print-profiles': typeof ControlPrintProfilesRoute
+  '/control/rates': typeof ControlRatesRoute
+  '/control/tally-export': typeof ControlTallyExportRoute
+  '/control/terminology': typeof ControlTerminologyRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
@@ -1067,10 +1149,12 @@ export interface FileRoutesByFullPath {
   '/orders/new': typeof OrdersNewRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/import': typeof PeopleImportRoute
+  '/platform/plans': typeof PlatformPlansRoute
   '/repair/$id': typeof RepairIdRoute
   '/repair/new': typeof RepairNewRoute
   '/reports/approvals': typeof ReportsApprovalsRoute
   '/reports/audit-log': typeof ReportsAuditLogRoute
+  '/reports/auditor': typeof ReportsAuditorRoute
   '/reports/branch': typeof ReportsBranchRoute
   '/reports/communication-analytics': typeof ReportsCommunicationAnalyticsRoute
   '/reports/daily-close': typeof ReportsDailyCloseRoute
@@ -1187,6 +1271,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assistant': typeof AssistantRoute
   '/barcode': typeof BarcodeRoute
   '/company-admin': typeof CompanyAdminRoute
   '/customer-login': typeof CustomerLoginRoute
@@ -1199,11 +1284,14 @@ export interface FileRoutesByTo {
   '/karigar-portal': typeof KarigarPortalRoute
   '/ledger': typeof LedgerRoute
   '/notifications': typeof NotificationsRoute
+  '/onboarding': typeof OnboardingRoute
   '/otp-login': typeof OtpLoginRoute
   '/platform': typeof PlatformRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/saas-admin': typeof SaasAdminRoute
   '/setup': typeof SetupRoute
+  '/supplier-login': typeof SupplierLoginRoute
+  '/supplier-portal': typeof SupplierPortalRoute
   '/verify': typeof VerifyRoute
   '/whatsapp': typeof WhatsappRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -1213,6 +1301,12 @@ export interface FileRoutesByTo {
   '/coming-soon/barcode-printing': typeof ComingSoonBarcodePrintingRoute
   '/coming-soon/barcode-scanner': typeof ComingSoonBarcodeScannerRoute
   '/coming-soon/meena-book': typeof ComingSoonMeenaBookRoute
+  '/control/customization': typeof ControlCustomizationRoute
+  '/control/migration': typeof ControlMigrationRoute
+  '/control/print-profiles': typeof ControlPrintProfilesRoute
+  '/control/rates': typeof ControlRatesRoute
+  '/control/tally-export': typeof ControlTallyExportRoute
+  '/control/terminology': typeof ControlTerminologyRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
@@ -1221,10 +1315,12 @@ export interface FileRoutesByTo {
   '/orders/new': typeof OrdersNewRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/import': typeof PeopleImportRoute
+  '/platform/plans': typeof PlatformPlansRoute
   '/repair/$id': typeof RepairIdRoute
   '/repair/new': typeof RepairNewRoute
   '/reports/approvals': typeof ReportsApprovalsRoute
   '/reports/audit-log': typeof ReportsAuditLogRoute
+  '/reports/auditor': typeof ReportsAuditorRoute
   '/reports/branch': typeof ReportsBranchRoute
   '/reports/communication-analytics': typeof ReportsCommunicationAnalyticsRoute
   '/reports/daily-close': typeof ReportsDailyCloseRoute
@@ -1342,6 +1438,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/assistant': typeof AssistantRoute
   '/attendance': typeof AttendanceRouteWithChildren
   '/barcode': typeof BarcodeRoute
   '/billing': typeof BillingRouteWithChildren
@@ -1360,6 +1457,7 @@ export interface FileRoutesById {
   '/manufacturing': typeof ManufacturingRouteWithChildren
   '/melt': typeof MeltRouteWithChildren
   '/notifications': typeof NotificationsRoute
+  '/onboarding': typeof OnboardingRoute
   '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
   '/platform': typeof PlatformRouteWithChildren
@@ -1370,6 +1468,8 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteWithChildren
   '/setup': typeof SetupRoute
   '/stock': typeof StockRouteWithChildren
+  '/supplier-login': typeof SupplierLoginRoute
+  '/supplier-portal': typeof SupplierPortalRoute
   '/verify': typeof VerifyRoute
   '/whatsapp': typeof WhatsappRoute
   '/workshop': typeof WorkshopRouteWithChildren
@@ -1380,6 +1480,12 @@ export interface FileRoutesById {
   '/coming-soon/barcode-printing': typeof ComingSoonBarcodePrintingRoute
   '/coming-soon/barcode-scanner': typeof ComingSoonBarcodeScannerRoute
   '/coming-soon/meena-book': typeof ComingSoonMeenaBookRoute
+  '/control/customization': typeof ControlCustomizationRoute
+  '/control/migration': typeof ControlMigrationRoute
+  '/control/print-profiles': typeof ControlPrintProfilesRoute
+  '/control/rates': typeof ControlRatesRoute
+  '/control/tally-export': typeof ControlTallyExportRoute
+  '/control/terminology': typeof ControlTerminologyRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
@@ -1388,10 +1494,12 @@ export interface FileRoutesById {
   '/orders/new': typeof OrdersNewRoute
   '/people/$id': typeof PeopleIdRoute
   '/people/import': typeof PeopleImportRoute
+  '/platform/plans': typeof PlatformPlansRoute
   '/repair/$id': typeof RepairIdRoute
   '/repair/new': typeof RepairNewRoute
   '/reports/approvals': typeof ReportsApprovalsRoute
   '/reports/audit-log': typeof ReportsAuditLogRoute
+  '/reports/auditor': typeof ReportsAuditorRoute
   '/reports/branch': typeof ReportsBranchRoute
   '/reports/communication-analytics': typeof ReportsCommunicationAnalyticsRoute
   '/reports/daily-close': typeof ReportsDailyCloseRoute
@@ -1510,6 +1618,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/assistant'
     | '/attendance'
     | '/barcode'
     | '/billing'
@@ -1528,6 +1637,7 @@ export interface FileRouteTypes {
     | '/manufacturing'
     | '/melt'
     | '/notifications'
+    | '/onboarding'
     | '/orders'
     | '/otp-login'
     | '/platform'
@@ -1538,6 +1648,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup'
     | '/stock'
+    | '/supplier-login'
+    | '/supplier-portal'
     | '/verify'
     | '/whatsapp'
     | '/workshop'
@@ -1548,6 +1660,12 @@ export interface FileRouteTypes {
     | '/coming-soon/barcode-printing'
     | '/coming-soon/barcode-scanner'
     | '/coming-soon/meena-book'
+    | '/control/customization'
+    | '/control/migration'
+    | '/control/print-profiles'
+    | '/control/rates'
+    | '/control/tally-export'
+    | '/control/terminology'
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
@@ -1556,10 +1674,12 @@ export interface FileRouteTypes {
     | '/orders/new'
     | '/people/$id'
     | '/people/import'
+    | '/platform/plans'
     | '/repair/$id'
     | '/repair/new'
     | '/reports/approvals'
     | '/reports/audit-log'
+    | '/reports/auditor'
     | '/reports/branch'
     | '/reports/communication-analytics'
     | '/reports/daily-close'
@@ -1676,6 +1796,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/assistant'
     | '/barcode'
     | '/company-admin'
     | '/customer-login'
@@ -1688,11 +1809,14 @@ export interface FileRouteTypes {
     | '/karigar-portal'
     | '/ledger'
     | '/notifications'
+    | '/onboarding'
     | '/otp-login'
     | '/platform'
     | '/reset-password'
     | '/saas-admin'
     | '/setup'
+    | '/supplier-login'
+    | '/supplier-portal'
     | '/verify'
     | '/whatsapp'
     | '/auth/callback'
@@ -1702,6 +1826,12 @@ export interface FileRouteTypes {
     | '/coming-soon/barcode-printing'
     | '/coming-soon/barcode-scanner'
     | '/coming-soon/meena-book'
+    | '/control/customization'
+    | '/control/migration'
+    | '/control/print-profiles'
+    | '/control/rates'
+    | '/control/tally-export'
+    | '/control/terminology'
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
@@ -1710,10 +1840,12 @@ export interface FileRouteTypes {
     | '/orders/new'
     | '/people/$id'
     | '/people/import'
+    | '/platform/plans'
     | '/repair/$id'
     | '/repair/new'
     | '/reports/approvals'
     | '/reports/audit-log'
+    | '/reports/auditor'
     | '/reports/branch'
     | '/reports/communication-analytics'
     | '/reports/daily-close'
@@ -1830,6 +1962,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/assistant'
     | '/attendance'
     | '/barcode'
     | '/billing'
@@ -1848,6 +1981,7 @@ export interface FileRouteTypes {
     | '/manufacturing'
     | '/melt'
     | '/notifications'
+    | '/onboarding'
     | '/orders'
     | '/otp-login'
     | '/platform'
@@ -1858,6 +1992,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup'
     | '/stock'
+    | '/supplier-login'
+    | '/supplier-portal'
     | '/verify'
     | '/whatsapp'
     | '/workshop'
@@ -1868,6 +2004,12 @@ export interface FileRouteTypes {
     | '/coming-soon/barcode-printing'
     | '/coming-soon/barcode-scanner'
     | '/coming-soon/meena-book'
+    | '/control/customization'
+    | '/control/migration'
+    | '/control/print-profiles'
+    | '/control/rates'
+    | '/control/tally-export'
+    | '/control/terminology'
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
@@ -1876,10 +2018,12 @@ export interface FileRouteTypes {
     | '/orders/new'
     | '/people/$id'
     | '/people/import'
+    | '/platform/plans'
     | '/repair/$id'
     | '/repair/new'
     | '/reports/approvals'
     | '/reports/audit-log'
+    | '/reports/auditor'
     | '/reports/branch'
     | '/reports/communication-analytics'
     | '/reports/daily-close'
@@ -1997,6 +2141,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AssistantRoute: typeof AssistantRoute
   AttendanceRoute: typeof AttendanceRouteWithChildren
   BarcodeRoute: typeof BarcodeRoute
   BillingRoute: typeof BillingRouteWithChildren
@@ -2015,6 +2160,7 @@ export interface RootRouteChildren {
   ManufacturingRoute: typeof ManufacturingRouteWithChildren
   MeltRoute: typeof MeltRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
+  OnboardingRoute: typeof OnboardingRoute
   OrdersRoute: typeof OrdersRouteWithChildren
   OtpLoginRoute: typeof OtpLoginRoute
   PlatformRoute: typeof PlatformRouteWithChildren
@@ -2025,6 +2171,8 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRouteWithChildren
   SetupRoute: typeof SetupRoute
   StockRoute: typeof StockRouteWithChildren
+  SupplierLoginRoute: typeof SupplierLoginRoute
+  SupplierPortalRoute: typeof SupplierPortalRoute
   VerifyRoute: typeof VerifyRoute
   WhatsappRoute: typeof WhatsappRoute
   WorkshopRoute: typeof WorkshopRouteWithChildren
@@ -2032,6 +2180,12 @@ export interface RootRouteChildren {
   ComingSoonBarcodePrintingRoute: typeof ComingSoonBarcodePrintingRoute
   ComingSoonBarcodeScannerRoute: typeof ComingSoonBarcodeScannerRoute
   ComingSoonMeenaBookRoute: typeof ComingSoonMeenaBookRoute
+  ControlCustomizationRoute: typeof ControlCustomizationRoute
+  ControlMigrationRoute: typeof ControlMigrationRoute
+  ControlPrintProfilesRoute: typeof ControlPrintProfilesRoute
+  ControlRatesRoute: typeof ControlRatesRoute
+  ControlTallyExportRoute: typeof ControlTallyExportRoute
+  ControlTerminologyRoute: typeof ControlTerminologyRoute
   DocTokenRoute: typeof DocTokenRoute
   PeopleIdRoute: typeof PeopleIdRoute
   PeopleImportRoute: typeof PeopleImportRoute
@@ -2069,6 +2223,20 @@ declare module '@tanstack/react-router' {
       path: '/verify'
       fullPath: '/verify'
       preLoaderRoute: typeof VerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/supplier-portal': {
+      id: '/supplier-portal'
+      path: '/supplier-portal'
+      fullPath: '/supplier-portal'
+      preLoaderRoute: typeof SupplierPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/supplier-login': {
+      id: '/supplier-login'
+      path: '/supplier-login'
+      fullPath: '/supplier-login'
+      preLoaderRoute: typeof SupplierLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stock': {
@@ -2139,6 +2307,13 @@ declare module '@tanstack/react-router' {
       path: '/orders'
       fullPath: '/orders'
       preLoaderRoute: typeof OrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -2265,6 +2440,13 @@ declare module '@tanstack/react-router' {
       path: '/attendance'
       fullPath: '/attendance'
       preLoaderRoute: typeof AttendanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assistant': {
+      id: '/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof AssistantRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -2771,6 +2953,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsBranchRouteImport
       parentRoute: typeof ReportsRoute
     }
+    '/reports/auditor': {
+      id: '/reports/auditor'
+      path: '/auditor'
+      fullPath: '/reports/auditor'
+      preLoaderRoute: typeof ReportsAuditorRouteImport
+      parentRoute: typeof ReportsRoute
+    }
     '/reports/audit-log': {
       id: '/reports/audit-log'
       path: '/audit-log'
@@ -2798,6 +2987,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/repair/$id'
       preLoaderRoute: typeof RepairIdRouteImport
       parentRoute: typeof RepairRoute
+    }
+    '/platform/plans': {
+      id: '/platform/plans'
+      path: '/plans'
+      fullPath: '/platform/plans'
+      preLoaderRoute: typeof PlatformPlansRouteImport
+      parentRoute: typeof PlatformRoute
     }
     '/people/import': {
       id: '/people/import'
@@ -2854,6 +3050,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/ceo'
       preLoaderRoute: typeof DashboardCeoRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/control/terminology': {
+      id: '/control/terminology'
+      path: '/control/terminology'
+      fullPath: '/control/terminology'
+      preLoaderRoute: typeof ControlTerminologyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/control/tally-export': {
+      id: '/control/tally-export'
+      path: '/control/tally-export'
+      fullPath: '/control/tally-export'
+      preLoaderRoute: typeof ControlTallyExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/control/rates': {
+      id: '/control/rates'
+      path: '/control/rates'
+      fullPath: '/control/rates'
+      preLoaderRoute: typeof ControlRatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/control/print-profiles': {
+      id: '/control/print-profiles'
+      path: '/control/print-profiles'
+      fullPath: '/control/print-profiles'
+      preLoaderRoute: typeof ControlPrintProfilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/control/migration': {
+      id: '/control/migration'
+      path: '/control/migration'
+      fullPath: '/control/migration'
+      preLoaderRoute: typeof ControlMigrationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/control/customization': {
+      id: '/control/customization'
+      path: '/control/customization'
+      fullPath: '/control/customization'
+      preLoaderRoute: typeof ControlCustomizationRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/coming-soon/meena-book': {
       id: '/coming-soon/meena-book'
@@ -3358,10 +3596,12 @@ const OrdersRouteWithChildren =
   OrdersRoute._addFileChildren(OrdersRouteChildren)
 
 interface PlatformRouteChildren {
+  PlatformPlansRoute: typeof PlatformPlansRoute
   PlatformBillingPrintIdRoute: typeof PlatformBillingPrintIdRoute
 }
 
 const PlatformRouteChildren: PlatformRouteChildren = {
+  PlatformPlansRoute: PlatformPlansRoute,
   PlatformBillingPrintIdRoute: PlatformBillingPrintIdRoute,
 }
 
@@ -3391,6 +3631,7 @@ const RepairRouteWithChildren =
 interface ReportsRouteChildren {
   ReportsApprovalsRoute: typeof ReportsApprovalsRoute
   ReportsAuditLogRoute: typeof ReportsAuditLogRoute
+  ReportsAuditorRoute: typeof ReportsAuditorRoute
   ReportsBranchRoute: typeof ReportsBranchRoute
   ReportsCommunicationAnalyticsRoute: typeof ReportsCommunicationAnalyticsRoute
   ReportsDailyCloseRoute: typeof ReportsDailyCloseRoute
@@ -3422,6 +3663,7 @@ interface ReportsRouteChildren {
 const ReportsRouteChildren: ReportsRouteChildren = {
   ReportsApprovalsRoute: ReportsApprovalsRoute,
   ReportsAuditLogRoute: ReportsAuditLogRoute,
+  ReportsAuditorRoute: ReportsAuditorRoute,
   ReportsBranchRoute: ReportsBranchRoute,
   ReportsCommunicationAnalyticsRoute: ReportsCommunicationAnalyticsRoute,
   ReportsDailyCloseRoute: ReportsDailyCloseRoute,
@@ -3572,6 +3814,7 @@ const WorkshopRouteWithChildren = WorkshopRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AssistantRoute: AssistantRoute,
   AttendanceRoute: AttendanceRouteWithChildren,
   BarcodeRoute: BarcodeRoute,
   BillingRoute: BillingRouteWithChildren,
@@ -3590,6 +3833,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManufacturingRoute: ManufacturingRouteWithChildren,
   MeltRoute: MeltRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
+  OnboardingRoute: OnboardingRoute,
   OrdersRoute: OrdersRouteWithChildren,
   OtpLoginRoute: OtpLoginRoute,
   PlatformRoute: PlatformRouteWithChildren,
@@ -3600,6 +3844,8 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRouteWithChildren,
   SetupRoute: SetupRoute,
   StockRoute: StockRouteWithChildren,
+  SupplierLoginRoute: SupplierLoginRoute,
+  SupplierPortalRoute: SupplierPortalRoute,
   VerifyRoute: VerifyRoute,
   WhatsappRoute: WhatsappRoute,
   WorkshopRoute: WorkshopRouteWithChildren,
@@ -3607,6 +3853,12 @@ const rootRouteChildren: RootRouteChildren = {
   ComingSoonBarcodePrintingRoute: ComingSoonBarcodePrintingRoute,
   ComingSoonBarcodeScannerRoute: ComingSoonBarcodeScannerRoute,
   ComingSoonMeenaBookRoute: ComingSoonMeenaBookRoute,
+  ControlCustomizationRoute: ControlCustomizationRoute,
+  ControlMigrationRoute: ControlMigrationRoute,
+  ControlPrintProfilesRoute: ControlPrintProfilesRoute,
+  ControlRatesRoute: ControlRatesRoute,
+  ControlTallyExportRoute: ControlTallyExportRoute,
+  ControlTerminologyRoute: ControlTerminologyRoute,
   DocTokenRoute: DocTokenRoute,
   PeopleIdRoute: PeopleIdRoute,
   PeopleImportRoute: PeopleImportRoute,

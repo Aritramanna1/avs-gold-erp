@@ -1,4 +1,4 @@
-﻿import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Home,
   Users,
@@ -20,6 +20,7 @@ import {
   TrendingDown,
   Mail,
   Cpu,
+  Sliders,
 } from "lucide-react";
 import { useSettings } from "@/lib/settings-store";
 import { Logo } from "@/components/ui/Logo";
@@ -31,6 +32,7 @@ import { useMemo } from "react";
 // supporting/admin) rather than the prior alphabetical-ish grouping.
 export const navigationItems = [
   { to: "/", label: "Home", icon: Home },
+  { to: "/assistant", label: "AI Assistant", icon: Sparkles },
   { to: "/people", label: "People / KYC", icon: Users },
   { to: "/orders", label: "Orders", icon: ShoppingBag },
   { to: "/catalog", label: "Catalog", icon: Sparkles },
@@ -58,12 +60,14 @@ export const navigationItems = [
   { to: "/branches", label: "Branches", icon: Building2 },
   { to: "/manufacturing", label: "Manufacturing", icon: Wrench },
   { to: "/hardware", label: "Hardware Integrations", icon: Cpu },
+  { to: "/control/customization", label: "Customization", icon: Sliders },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
   { to: "/help", label: "Help & Guide", icon: LifeBuoy },
 ] as const;
 
 const labelKeys: Record<string, string> = {
   "/": "home",
+  "/assistant": "assistant",
   "/people": "peopleKyc",
   "/communications": "communications",
   "/orders": "orders",
@@ -78,6 +82,7 @@ const labelKeys: Record<string, string> = {
   "/branches": "branches",
   "/reports": "reports",
   "/hardware": "hardware",
+  "/control/customization": "customization",
   "/settings": "settings",
   "/help": "helpGuide",
 };

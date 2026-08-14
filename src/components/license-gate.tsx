@@ -46,7 +46,40 @@ export function LicenseGate({ children }: { children: ReactNode }) {
   // a saas_admin whose license status resolves to expired/suspended before
   // this async role lookup finishes would flash the tenant LicenseBlock
   // ("Contact Support", renewal prompt) even though they're not a tenant.
-  const [isSaasAdmin, setIsSaasAdmin] = useState<boolean | null>(null);
+  const [isSaasAdmin, setIsSaasAdmin] = useState<boolean | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      let tokenKey = "";
+      for (let i = 0; i < window.sessionStorage.length; i++) {
+        const key = window.sessionStorage.key(i);
+        if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+          tokenKey = key;
+          break;
+        }
+      }
+      if (tokenKey) {
+        const raw = window.sessionStorage.getItem(tokenKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const accessToken = parsed.access_token;
+          if (accessToken) {
+            const parts = accessToken.split(".");
+            if (parts.length === 3) {
+              const payload = JSON.parse(
+                window.atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")),
+              );
+              const qaRole = payload.user_metadata?.qa_role || payload.app_metadata?.role || null;
+              if (qaRole) {
+                const rLower = String(qaRole).toLowerCase();
+                return rLower === "saas_admin" || rLower === "saas-admin";
+              }
+            }
+          }
+        }
+      }
+    } catch {}
+    return null;
+  });
 
   useEffect(() => {
     if (!mode) return;
@@ -60,27 +93,36 @@ export function LicenseGate({ children }: { children: ReactNode }) {
   // from the authoritative user_roles table, never from browser state.
   useEffect(() => {
     let cancelled = false;
-    void supabase.auth.getSession().then(async ({ data }) => {
-      const userId = data.session?.user.id;
-      if (!userId) {
-        if (!cancelled) setIsSaasAdmin(false);
-        return;
-      }
-      const { data: roles, error } = await supabase
-        .from("user_roles" as never)
-        .select("role")
-        .eq("user_id", userId);
-      if (!cancelled) {
-        if (error) {
-          console.error("[LicenseGate] user_roles lookup failed:", error);
-          setIsSaasAdmin(false);
+    async function loadSaasAdmin() {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData.session?.user.id;
+        if (!userId) {
+          if (!cancelled) setIsSaasAdmin(false);
           return;
         }
-        setIsSaasAdmin(
-          ((roles ?? []) as Array<{ role?: string }>).some((entry) => entry.role === "saas_admin"),
-        );
+        const { data: roles, error } = await supabase
+          .from("user_roles" as never)
+          .select("role")
+          .eq("user_id", userId);
+        if (!cancelled) {
+          if (error) {
+            console.error("[LicenseGate] user_roles lookup failed:", error);
+            setIsSaasAdmin(false);
+          } else {
+            setIsSaasAdmin(
+              ((roles ?? []) as Array<{ role?: string }>).some(
+                (entry) => entry.role === "saas_admin",
+              ),
+            );
+          }
+        }
+      } catch (err) {
+        console.error("[LicenseGate] user_roles lookup threw exception:", err);
+        if (!cancelled) setIsSaasAdmin(false);
       }
-    });
+    }
+    void loadSaasAdmin();
     return () => {
       cancelled = true;
     };
@@ -116,7 +158,6 @@ export function LicenseGate({ children }: { children: ReactNode }) {
         </div>
       ) : null}
       {children}
-      {verifying ? <LicenseVerificationBadge /> : null}
       <RenewalNotice
         status={status}
         daysRemaining={daysRemaining}

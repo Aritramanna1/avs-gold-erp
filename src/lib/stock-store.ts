@@ -162,7 +162,14 @@ export const useStock = create<StockState>()((set, get) => ({
   },
   refresh: async () => {
     const { currentUserRole, selectedBranchId } = useSettings.getState();
-    const GLOBAL_ROLES = ["Super Owner", "Administrator", "CEO (View Only)"];
+    const GLOBAL_ROLES = [
+      "Super Owner",
+      "Administrator",
+      "CEO (View Only)",
+      "owner",
+      "admin",
+      "saas_admin",
+    ];
     const bid =
       !currentUserRole || GLOBAL_ROLES.includes(currentUserRole)
         ? null

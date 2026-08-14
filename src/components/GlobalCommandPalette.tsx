@@ -110,6 +110,7 @@ export function GlobalCommandPalette() {
 
   return (
     <CommandDialog
+      shouldFilter={false}
       open={open}
       onOpenChange={(o) => {
         setOpen(o);

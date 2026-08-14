@@ -64,6 +64,7 @@ test.describe("AVS Master Architecture Unit & E2E Validation", () => {
       fullName: "Raju Karigar",
       phone: "9876543210",
       maxFineGoldCreditMg: 100000, // 100g max credit limit
+      docs: {},
     };
 
     const validCheck = validateMetalCreditLimit(mockPerson, 50000, 30000); // 50g + 30g = 80g <= 100g
@@ -161,7 +162,7 @@ test.describe("AVS Master Architecture Unit & E2E Validation", () => {
     });
 
     const prompt = brain.getSystemPrompt();
-    expect(prompt).toContain("Hey! 👋 What are we working on today?");
+    expect(prompt).toContain("Ornexa Assistant");
     expect(prompt).not.toContain("I am a deterministic ERP engine");
   });
 });

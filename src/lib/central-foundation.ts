@@ -21,19 +21,42 @@ function partyRolesForPerson(person: Person): string[] {
   }
 }
 
+let cachedCentralFirmId: string | null = null;
+
 export async function syncPersonToCentralParty(person: Person): Promise<void> {
   const partyId = crypto.randomUUID();
-  const { data: existing, error: existingError } = await centralDb
-    .from("central_parties")
-    .select("id")
-    .eq("metadata->>source_table", "people")
-    .eq("metadata->>source_id", person.id)
-    .maybeSingle();
+
+  // Resolve and cache firm_id
+  let firmId = cachedCentralFirmId;
+  if (!firmId) {
+    const { data: userResult } = await centralDb.auth.getUser();
+    const userId = userResult?.user?.id;
+    if (userId) {
+      const { data: profile } = await centralDb
+        .from("user_profiles")
+        .select("firm_id")
+        .eq("auth_id", userId)
+        .maybeSingle();
+      if (profile?.firm_id) {
+        firmId = profile.firm_id;
+        cachedCentralFirmId = firmId;
+      }
+    }
+  }
+
+  // Lookup existing central party by (firm_id, party_code) to prevent duplicate key violations
+  let q = centralDb.from("central_parties").select("id");
+  if (firmId) {
+    q = q.eq("firm_id", firmId).eq("party_code", person.id);
+  } else {
+    q = q.eq("metadata->>source_table", "people").eq("metadata->>source_id", person.id);
+  }
+  const { data: existing, error: existingError } = await q.maybeSingle();
 
   if (existingError) throw new Error(`central party lookup failed: ${existingError.message}`);
 
   const centralPartyId = (existing as { id?: string } | null)?.id ?? partyId;
-  const partyRow = {
+  const partyRow: any = {
     id: centralPartyId,
     party_code: person.id,
     display_name: person.fullName,
@@ -59,6 +82,10 @@ export async function syncPersonToCentralParty(person: Person): Promise<void> {
       notes: person.notes ?? null,
     },
   };
+
+  if (firmId) {
+    partyRow.firm_id = firmId;
+  }
 
   const { error: partyError } = await centralDb
     .from("central_parties")

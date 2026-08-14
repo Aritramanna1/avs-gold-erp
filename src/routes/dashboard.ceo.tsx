@@ -48,6 +48,7 @@ import {
   AlertTriangle,
   Clock,
   Lock,
+  ShieldCheck,
 } from "lucide-react";
 
 import { guardRoute } from "@/lib/permissions";
@@ -721,6 +722,82 @@ function CeoDashboard() {
         </div>
       )}
 
+      {/* Internal Staff & User Governance */}
+      <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-gold/15 flex items-center justify-center text-gold">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-serif text-lg text-gold">Internal Staff &amp; User Governance</h2>
+              <p className="text-xs text-muted-foreground">
+                Manage internal ERP operators, roles, branch access scopes, and pending invitations
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/invite"
+            className="flex items-center gap-1.5 rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-black hover:bg-gold-dark transition-colors shadow-sm"
+          >
+            <Users className="h-3.5 w-3.5" />+ Invite Internal Staff
+          </Link>
+        </div>
+
+        <div className="divide-y divide-border text-xs">
+          <div className="py-2.5 flex items-center justify-between flex-wrap gap-2">
+            <div className="space-y-0.5">
+              <div className="font-semibold flex items-center gap-2">
+                Aritra Manna
+                <Badge variant="outline" className="text-[10px] text-gold border-gold/30">
+                  Super Owner
+                </Badge>
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                All Branches · Owner Executive Access · Active Now
+              </div>
+            </div>
+            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]">
+              Active
+            </Badge>
+          </div>
+
+          <div className="py-2.5 flex items-center justify-between flex-wrap gap-2">
+            <div className="space-y-0.5">
+              <div className="font-semibold flex items-center gap-2">
+                Workshop Lead Supervisor
+                <Badge variant="outline" className="text-[10px]">
+                  Workshop
+                </Badge>
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                Main Workshop HQ · Bench Custody &amp; QC
+              </div>
+            </div>
+            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]">
+              Active
+            </Badge>
+          </div>
+
+          <div className="py-2.5 flex items-center justify-between flex-wrap gap-2">
+            <div className="space-y-0.5">
+              <div className="font-semibold flex items-center gap-2">
+                Counter Billing Operator
+                <Badge variant="outline" className="text-[10px]">
+                  Billing
+                </Badge>
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                Retail Showroom Branch · Invoices &amp; Receipts
+              </div>
+            </div>
+            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]">
+              Active
+            </Badge>
+          </div>
+        </div>
+      </div>
+
       {/* Management Links */}
       <div>
         <div className="flex items-center gap-2 mb-4">
@@ -738,6 +815,7 @@ function CeoDashboard() {
             { label: "Branch Setup", to: "/branches", icon: Building2 },
             { label: "Manufacturing", to: "/manufacturing", icon: Wrench },
             { label: "Manufacturing Books", to: "/workshop", icon: Package },
+            { label: "Backup & Recovery", to: "/settings/backup-recovery", icon: ShieldCheck },
             { label: "Settings", to: "/settings", icon: ArrowUpRight },
             { label: "Daily Close", to: "/reports/daily-close", icon: CheckCircle },
             { label: "Exception Report", to: "/reports/exceptions", icon: AlertTriangle },

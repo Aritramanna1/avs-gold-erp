@@ -36,6 +36,12 @@ test.describe("Invitation (signed in)", () => {
   test("admin can open the Send Invitation panel in Settings", async ({ authedPage }) => {
     await authedPage.goto("/settings");
     await authedPage.getByRole("tab", { name: /users.*roles/i }).click();
+    // The UsersTab fetches user_roles from Supabase then resolves the RBAC
+    // context — this can take up to 30s on a cold E2E run. Wait for the
+    // loading state to resolve before asserting the panel content.
+    await expect(authedPage.getByText("Loading security context…")).not.toBeVisible({
+      timeout: 30_000,
+    });
     await expect(authedPage.getByRole("button", { name: /send invite/i })).toBeVisible({
       timeout: 15_000,
     });

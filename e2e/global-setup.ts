@@ -33,9 +33,25 @@ export default async function globalSetup(config: FullConfig) {
     await page.getByTestId("auth-submit").click({ timeout: 15_000 });
 
     // Wait for the login form to hide, indicating successful authentication.
-    // If it fails (e.g. rate limit, invalid credentials, offline), catch and fallback
+    // If it fails (e.g. transient network timeout), retry once
     console.log("[global-setup] Waiting for auth form to hide");
-    await page.getByTestId("auth-form").waitFor({ state: "hidden", timeout: 45_000 });
+    try {
+      await page.getByTestId("auth-form").waitFor({ state: "hidden", timeout: 30_000 });
+    } catch {
+      console.warn("[global-setup] First login attempt timed out, retrying submit...");
+      await page.waitForTimeout(2000);
+      if (
+        await page
+          .getByTestId("auth-form")
+          .isVisible()
+          .catch(() => false)
+      ) {
+        await page.getByTestId("auth-email").fill(email, { timeout: 15_000 });
+        await page.getByTestId("auth-password").fill(password, { timeout: 15_000 });
+        await page.getByTestId("auth-submit").click({ timeout: 15_000 });
+        await page.getByTestId("auth-form").waitFor({ state: "hidden", timeout: 45_000 });
+      }
+    }
     console.log("[global-setup] Authentication successful");
 
     // Tenant-role suites may opt into a disposable QA license and setup
@@ -88,19 +104,52 @@ export default async function globalSetup(config: FullConfig) {
     .catch(() => {
       console.warn("[global-setup] Timeout waiting for window.__mtjSeed");
     });
-  const seedResult = await page.evaluate(() => {
-    const w = window as unknown as { __mtjSeed?: () => Record<string, unknown> };
-    return typeof w.__mtjSeed === "function" ? w.__mtjSeed() : null;
-  });
+  await page.waitForLoadState("domcontentloaded").catch(() => {});
+  await page.waitForTimeout(2000);
+
+  let seedResult: Record<string, unknown> | null = null;
+  try {
+    seedResult = await page.evaluate(async () => {
+      const w = window as unknown as {
+        __mtjSeed?: () => Promise<Record<string, unknown>> | Record<string, unknown>;
+      };
+      if (typeof w.__mtjSeed === "function") {
+        try {
+          return await w.__mtjSeed();
+        } catch (e) {
+          console.warn("[global-setup] Error during seed in browser:", e);
+          return null;
+        }
+      }
+      return null;
+    });
+  } catch (evalErr) {
+    console.warn("[global-setup] page.evaluate failed:", evalErr);
+  }
+
   if (seedResult) {
     fs.writeFileSync(path.join(authDir, "seed.json"), JSON.stringify(seedResult, null, 2));
+  } else if (fs.existsSync(path.join(authDir, "seed.json"))) {
+    console.log("[global-setup] Reusing existing seed.json");
   } else {
     console.warn(
-      "[global-setup] window.__mtjSeed() not found — skipping data seed. " +
+      "[global-setup] window.__mtjSeed() not completed — skipping data seed. " +
         "Tests that depend on pre-seeded records will fail individually. " +
         "__mtjSeed is only installed in DEV builds (import.meta.env.DEV).",
     );
   }
+
+  const sessionStorageDump = await page.evaluate(() => {
+    const data: Record<string, string> = {};
+    for (let i = 0; i < window.sessionStorage.length; i++) {
+      const key = window.sessionStorage.key(i);
+      if (key) {
+        data[key] = window.sessionStorage.getItem(key) || "";
+      }
+    }
+    return data;
+  });
+  fs.writeFileSync(path.join(authDir, "session.json"), JSON.stringify(sessionStorageDump, null, 2));
 
   await page.context().storageState({ path: statePath });
   await browser.close();

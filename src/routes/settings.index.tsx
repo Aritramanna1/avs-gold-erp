@@ -88,6 +88,8 @@ import { useBullionRate } from "@/lib/bullion-rate-service";
 import { Route as WhatsAppIntegrationRoute } from "@/routes/settings.integrations.whatsapp";
 import { Route as WhatsAppSettingsRoute } from "@/routes/settings.whatsapp";
 import { Route as WaTemplatesRoute } from "@/routes/settings.whatsapp-templates";
+import { TerminologyManager } from "@/components/settings/TerminologyManager";
+import { MigrationWizard } from "@/components/migration/MigrationWizard";
 
 const SearchSchema = z.object({
   tab: z.string().optional(),
@@ -369,6 +371,8 @@ function SettingsPage() {
               <SelectItem value="catalog">Catalog Settings</SelectItem>
               <SelectItem value="dropdowns">Custom Dropdowns</SelectItem>
               <SelectItem value="language">Language Preference</SelectItem>
+              <SelectItem value="terminology">Trade Terminology (42 Terms)</SelectItem>
+              <SelectItem value="migration">13-Stage Migration</SelectItem>
               <SelectItem value="modules">Modules Manager</SelectItem>
               <SelectItem value="email">Email &amp; SMTP</SelectItem>
               <SelectItem value="backup">Data Backup &amp; Sync</SelectItem>
@@ -403,6 +407,8 @@ function SettingsPage() {
           <TabsTrigger value="catalog">Catalog</TabsTrigger>
           <TabsTrigger value="dropdowns">Dropdowns</TabsTrigger>
           <TabsTrigger value="language">Language</TabsTrigger>
+          <TabsTrigger value="terminology">Terminology</TabsTrigger>
+          <TabsTrigger value="migration">Migration Wizard</TabsTrigger>
           <TabsTrigger value="modules">Modules Manager</TabsTrigger>
           <TabsTrigger value="email">Email &amp; SMTP</TabsTrigger>
           <TabsTrigger value="backup">Backup</TabsTrigger>
@@ -474,6 +480,12 @@ function SettingsPage() {
         </TabsContent>
         <TabsContent value="language">
           <LanguageTab />
+        </TabsContent>
+        <TabsContent value="terminology">
+          <TerminologyManager />
+        </TabsContent>
+        <TabsContent value="migration">
+          <MigrationWizard />
         </TabsContent>
         <TabsContent value="modules">
           <ModulesManagerTab />

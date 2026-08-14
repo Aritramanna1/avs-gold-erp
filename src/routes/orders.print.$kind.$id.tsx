@@ -15,7 +15,6 @@ import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { PrintQR } from "@/components/print-qr";
-import { generateOrderPdf, generateOrderReceiptPdf } from "@/lib/pdf/document-pdf-generator";
 import { toast } from "sonner";
 import type { PrintDocType } from "@/lib/printlog-store";
 import { useSettings } from "@/lib/settings-store";
@@ -233,6 +232,8 @@ function PrintPage() {
   async function handleDownloadPdf() {
     setDownloadingPdf(true);
     try {
+      const { generateOrderPdf, generateOrderReceiptPdf } =
+        await import("@/lib/pdf/document-pdf-generator");
       const dateStr = new Date(order!.createdAt || Date.now()).toLocaleDateString("en-IN", {
         dateStyle: "medium",
       });

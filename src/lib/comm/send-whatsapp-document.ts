@@ -12,7 +12,6 @@
 import { activeWhatsAppProvider, resolveWhatsAppProvider } from "./send-whatsapp-text";
 import { resolvePrintContext } from "@/lib/print-engine/data-mapper";
 import { usePrintTemplates } from "@/lib/print-engine/template-store";
-import { generateDocumentPdf } from "@/lib/print-engine/pdf/generate";
 import { useSettings } from "@/lib/settings-store";
 import { uploadToSupabaseStorage } from "@/lib/supabase-storage";
 import { isValidWaPhone } from "@/lib/wa-link";
@@ -64,6 +63,7 @@ export async function sendWhatsAppDocument(req: WhatsAppDocRequest): Promise<Wha
 
   let fileName = `${req.docType}.pdf`;
   try {
+    const { generateDocumentPdf } = await import("@/lib/print-engine/pdf/generate");
     const pdf = await generateDocumentPdf(data, template, firm);
     fileName = pdf.fileName;
     // 2. Preserve the generated PDF through remote document storage.

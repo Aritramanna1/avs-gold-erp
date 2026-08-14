@@ -9,13 +9,17 @@ import { test, expect } from "../fixtures/base";
  */
 async function snapshot(page: import("@playwright/test").Page) {
   return page.evaluate(async () => {
+    // @ts-expect-error dynamic runtime import path, no type declarations
     const ledgerMod = await import(/* @vite-ignore */ "/src/lib/ledger-store.ts");
+    // @ts-expect-error dynamic runtime import path, no type declarations
     const wgbMod = await import(/* @vite-ignore */ "/src/lib/worker-gold-book-store.ts");
+    // @ts-expect-error dynamic runtime import path, no type declarations
     const vaultMod = await import(/* @vite-ignore */ "/src/lib/material-vault-store.ts");
     await ledgerMod.useLedger.getState().refresh();
     await wgbMod.useWorkerGoldBook.getState().refresh();
     // material vault store may expose refresh or just read directly
     const vaultState = vaultMod.useMaterialVault?.getState?.() ?? null;
+
     if (vaultState?.refresh) await vaultState.refresh();
     const balances = ledgerMod.computeBalances(ledgerMod.useLedger.getState().entries);
 
@@ -118,6 +122,7 @@ test.describe("Workflow Integration — Production Order ↔ Gold Ledger ↔ Wor
     // fineGoldMg convention, not a simple ÷1000), so compute the expected
     // deltas via the app's own function rather than reimplementing it.
     const expectedFine = await page.evaluate(async () => {
+      // @ts-expect-error dynamic runtime import path, no type declarations
       const goldMod = await import(/* @vite-ignore */ "/src/lib/gold.ts");
       return {
         issueFineMg: goldMod.fineGoldMg(3000, 916),

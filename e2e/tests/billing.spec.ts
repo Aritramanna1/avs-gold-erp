@@ -3,7 +3,7 @@ import { test, expect, expectNoPageErrors } from "../fixtures/base";
 test.describe("Billing", () => {
   test("billing list loads with invoices/payments view", async ({ authedPage }) => {
     await authedPage.goto("/billing");
-    await expect(authedPage.getByText("Billing", { exact: true })).toBeVisible({
+    await expect(authedPage.getByRole("heading", { name: "Billing", exact: true })).toBeVisible({
       timeout: 15_000,
     });
     expectNoPageErrors(authedPage);

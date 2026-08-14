@@ -1,26 +1,179 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { FileText, Loader2, MessageCircle, Package, Wrench } from "lucide-react";
+import {
+  FileText,
+  Loader2,
+  MessageCircle,
+  Package,
+  Wrench,
+  Scale,
+  Coins,
+  LayoutGrid,
+  TrendingUp,
+  TrendingDown,
+  ChevronRight,
+  Plus,
+} from "lucide-react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { Badge } from "@/components/ui/badge";
 
 type PortalData = {
-  profile: { id: string; full_name: string; phone: string | null; email: string | null };
-  invoices: Array<{ id: string; invoice_no?: string; status?: string; total_paise?: number }>;
-  orders: Array<{ id: string; order_no?: string; status?: string }>;
-  repairs: Array<{ id: string; repair_no?: string; status?: string }>;
-  support_tickets: Array<{ id: string; ticket_no?: string; status?: string; subject?: string }>;
+  profile: {
+    id: string;
+    full_name: string;
+    phone: string | null;
+    email: string | null;
+    village_city?: string | null;
+    current_address?: string | null;
+  };
+  gold_balance_mg: number;
+  gold_entries: Array<{
+    id: string;
+    ts: string;
+    type: string;
+    netFineMg: number;
+    grossMg: number;
+    purity: number;
+    notes: string | null;
+    reference: string | null;
+  }>;
+  cash_ledger: Array<{
+    id: string;
+    ts: string;
+    kind: string;
+    debit_paise: number;
+    credit_paise: number;
+    description: string | null;
+    ref: string | null;
+  }>;
+  invoices: Array<{
+    id: string;
+    invoice_no?: string;
+    status?: string;
+    gst?: string;
+    subtotal_paise?: number;
+    gst_paise?: number;
+    grand_total_paise?: number;
+    paid_paise?: number;
+    balance_paise?: number;
+    created_at: string;
+  }>;
+  orders: Array<{
+    id: string;
+    order_no?: string;
+    type?: string;
+    status?: string;
+    expected_delivery?: string;
+    priority?: string;
+    created_at: string;
+  }>;
+  repairs: Array<{
+    id: string;
+    repair_no?: string;
+    kind?: string;
+    status?: string;
+    estimated_charge_paise?: number;
+    advance_paise?: number;
+    received_gross_mg?: number;
+    created_at: string;
+  }>;
+  support_tickets: Array<{
+    id: string;
+    ticket_no?: string;
+    status?: string;
+    subject?: string;
+    description?: string;
+    category?: string;
+    severity?: string;
+    priority?: string;
+    resolution?: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
 };
+
+interface CatalogDesign {
+  id: string;
+  name: string;
+  category: string | null;
+  design_no: string | null;
+  data: any;
+}
 
 // Public route — authenticated via customer email OTP (not ERP staff session).
 export const Route = createFileRoute("/customer-portal")({
+  head: () => ({
+    meta: [{ title: "Customer Portal · AVS Gold ERP" }],
+  }),
   component: CustomerPortal,
 });
+
+// helpers
+function mg(val: number) {
+  const g = val / 1000;
+  return g.toFixed(3) + "g";
+}
+
+function rs(paise: number) {
+  return "₹" + (paise / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function fmtDate(val: string | number | null | undefined) {
+  if (!val) return "—";
+  try {
+    return new Date(val).toLocaleDateString("en-IN", { dateStyle: "medium" });
+  } catch {
+    return String(val);
+  }
+}
+
+const INVOICE_STATUS_COLORS: Record<string, string> = {
+  draft: "bg-gray-100 text-gray-700 border-gray-200",
+  finalised: "bg-blue-100 text-blue-700 border-blue-200",
+  delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  paid: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  unpaid: "bg-rose-100 text-rose-700 border-rose-200",
+  partial: "bg-amber-100 text-amber-800 border-amber-200",
+};
+
+const ORDER_STATUS_COLORS: Record<string, string> = {
+  pending: "bg-amber-100 text-amber-800 border-amber-200",
+  approved: "bg-blue-100 text-blue-700 border-blue-200",
+  in_production: "bg-purple-100 text-purple-700 border-purple-200",
+  ready: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  cancelled: "bg-rose-100 text-rose-700 border-rose-200",
+};
+
+const REPAIR_STATUS_COLORS: Record<string, string> = {
+  received: "bg-blue-100 text-blue-700 border-blue-200",
+  in_progress: "bg-amber-100 text-amber-800 border-amber-200",
+  ready: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
+};
+
+const TICKET_STATUS_COLORS: Record<string, string> = {
+  open: "bg-amber-100 text-amber-800 border-amber-200",
+  resolved: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  closed: "bg-gray-100 text-gray-700 border-gray-200",
+};
 
 function CustomerPortal() {
   const navigate = useNavigate();
   const [data, setData] = useState<PortalData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+
+  // Tab states
+  const [tab, setTab] = useState<
+    "dashboard" | "invoices" | "orders" | "repairs" | "ledger" | "catalog" | "support"
+  >("dashboard");
+
+  // Catalog state
+  const [catalog, setCatalog] = useState<CatalogDesign[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+
+  // Ticket creation states
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -39,6 +192,26 @@ function CustomerPortal() {
         void navigate({ to: "/customer-login" });
         return;
       }
+
+      // Check if user is company staff (has role in user_profiles or user_roles)
+      const { data: profile } = await supabase
+        .from("user_profiles" as never)
+        .select("role")
+        .eq("auth_id", sessionData.session.user.id)
+        .maybeSingle();
+
+      const { data: userRoles } = await supabase
+        .from("user_roles" as never)
+        .select("role")
+        .eq("user_id", sessionData.session.user.id);
+
+      const hasCompanyRole =
+        Boolean((profile as any)?.role) || ((userRoles as any[]) ?? []).length > 0;
+      if (hasCompanyRole) {
+        void navigate({ to: "/" });
+        return;
+      }
+
       setAuthChecked(true);
 
       // 2. Fetch portal data via RPC (uses caller's JWT to scope results)
@@ -46,9 +219,23 @@ function CustomerPortal() {
         "get_customer_portal",
       );
       if (!active) return;
-      if (queryError)
+      if (queryError) {
         setError("Your customer portal is not yet configured. Please contact the firm.");
-      else setData(result as PortalData);
+      } else {
+        setData(result as PortalData);
+
+        // 3. Fetch Catalog Designs
+        setLoadingCatalog(true);
+        const { data: catData, error: catError } = await supabase
+          .from("catalog_designs" as never)
+          .select("id, name, category, design_no, data")
+          .order("created_at", { ascending: false } as any)
+          .limit(40);
+        if (!catError && catData && active) {
+          setCatalog(catData as CatalogDesign[]);
+        }
+        setLoadingCatalog(false);
+      }
     })();
     return () => {
       active = false;
@@ -65,10 +252,14 @@ function CustomerPortal() {
       </main>
     );
   }
+
   if (!data) {
     return (
       <main className="grid min-h-[50vh] place-items-center">
-        <Loader2 className="h-6 w-6 animate-spin" aria-label="Loading customer portal" />
+        <Loader2
+          className="h-6 w-6 animate-spin text-primary"
+          aria-label="Loading customer portal"
+        />
       </main>
     );
   }
@@ -130,187 +321,791 @@ function CustomerPortal() {
     await openThread(thread.ticket.id);
   }
 
+  // Calculate totals
+  const outstandingCash = data.invoices.reduce((sum, inv) => sum + (inv.balance_paise || 0), 0);
+  const paidCash = data.invoices.reduce((sum, inv) => sum + (inv.paid_paise || 0), 0);
+  const totalInvoiced = data.invoices.reduce((sum, inv) => sum + (inv.grand_total_paise || 0), 0);
+
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
-      <header className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">My account</p>
-          <h1 className="mt-2 text-2xl font-semibold">Welcome, {data.profile.full_name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your invoices, orders, and repairs in one place.
-          </p>
+    <div className="min-h-screen bg-slate-50/50">
+      {/* Top bar */}
+      <header className="bg-white border-b border-border shadow-sm sticky top-0 z-40">
+        <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Coins className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-foreground">Customer Account Portal</div>
+              <div className="text-xs text-muted-foreground">{data.profile.full_name}</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+            onClick={() => {
+              void supabase.auth.signOut().then(() => {
+                window.location.href = "/customer-login";
+              });
+            }}
+          >
+            Sign out
+          </button>
         </div>
-        <button
-          type="button"
-          className="text-xs text-muted-foreground hover:text-foreground underline"
-          onClick={() => {
-            void supabase.auth.signOut().then(() => {
-              window.location.href = "/customer-login";
-            });
-          }}
-        >
-          Sign out
-        </button>
       </header>
-      <div className="grid gap-4 sm:grid-cols-3">
-        {[
-          [FileText, "Invoices", data.invoices.length],
-          [Package, "Orders", data.orders.length],
-          [Wrench, "Repairs", data.repairs.length],
-        ].map(([Icon, label, count]) => {
-          const Component = Icon as typeof FileText;
-          return (
-            <section className="erp-surface rounded-md p-5" key={String(label)}>
-              <Component className="h-5 w-5 text-primary" />
-              <p className="mt-4 text-sm text-muted-foreground">{String(label)}</p>
-              <p className="text-2xl font-semibold">{String(count)}</p>
-            </section>
-          );
-        })}
-      </div>
-      <section className="erp-surface rounded-md p-5">
-        <h2 className="font-semibold">Recent activity</h2>
-        <div className="mt-4 divide-y text-sm">
+
+      <main className="mx-auto max-w-5xl px-4 py-6 space-y-6">
+        {/* Navigation - Mobile select */}
+        <div className="block md:hidden">
+          <select
+            value={tab}
+            onChange={(e) => setTab(e.target.value as any)}
+            className="w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="dashboard">Dashboard Overview</option>
+            <option value="invoices">Invoice History ({data.invoices.length})</option>
+            <option value="orders">Orders Tracking ({data.orders.length})</option>
+            <option value="repairs">Repairs &amp; Service ({data.repairs.length})</option>
+            <option value="ledger">Gold &amp; Cash Wallet Ledger</option>
+            <option value="catalog">View Catalog Designs ({catalog.length})</option>
+            <option value="support">Support Tickets &amp; Help</option>
+          </select>
+        </div>
+
+        {/* Navigation - Desktop tabs */}
+        <div className="hidden md:flex gap-1 bg-white rounded-xl border border-border p-1 shadow-sm">
           {[
-            ...data.invoices.map((x) => ({
-              kind: "Invoice",
-              id: x.invoice_no ?? x.id,
-              status: x.status,
-            })),
-            ...data.orders.map((x) => ({
-              kind: "Order",
-              id: x.order_no ?? x.id,
-              status: x.status,
-            })),
-            ...data.repairs.map((x) => ({
-              kind: "Repair",
-              id: x.repair_no ?? x.id,
-              status: x.status,
-            })),
-            ...data.support_tickets.map((x) => ({
-              kind: "Support",
-              id: x.ticket_no ?? x.id,
-              status: x.status,
-            })),
-          ]
-            .slice(0, 12)
-            .map((item) => (
-              <div className="flex justify-between gap-4 py-3" key={`${item.kind}-${item.id}`}>
-                <span>
-                  {item.kind} · {item.id}
-                </span>
-                <span className="text-muted-foreground">{item.status ?? "Recorded"}</span>
-              </div>
-            ))}
-          {data.invoices.length +
-            data.orders.length +
-            data.repairs.length +
-            data.support_tickets.length ===
-            0 && <p className="py-3 text-muted-foreground">No activity yet.</p>}
-        </div>
-      </section>
-      <section className="erp-surface rounded-md p-5">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold">Support conversations</h2>
-        </div>
-        <div className="mt-4 space-y-2">
-          {data.support_tickets.length === 0 && (
-            <p className="text-sm text-muted-foreground">No support tickets yet.</p>
-          )}
-          {data.support_tickets.map((ticket) => (
+            ["dashboard", "Overview"],
+            ["invoices", `Invoices (${data.invoices.length})`],
+            ["orders", `Orders (${data.orders.length})`],
+            ["repairs", `Repairs (${data.repairs.length})`],
+            ["ledger", "Wallet Ledger"],
+            ["catalog", `Catalog (${catalog.length})`],
+            ["support", "Help & Support"],
+          ].map(([t, label]) => (
             <button
-              className="flex w-full items-center justify-between rounded-md border p-3 text-left text-sm hover:bg-muted/40"
-              key={ticket.id}
-              onClick={() => void openThread(ticket.id)}
+              key={t}
               type="button"
+              onClick={() => setTab(t as any)}
+              className={`flex-1 rounded-lg py-2.5 text-xs font-semibold capitalize transition-all ${
+                tab === t
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
             >
-              <span>
-                {ticket.ticket_no ?? ticket.id} · {ticket.subject ?? "Support request"}
-              </span>
-              <span className="text-muted-foreground">{ticket.status ?? "open"}</span>
+              {label}
             </button>
           ))}
         </div>
-        {thread && (
-          <div className="mt-4 rounded-md border p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="font-medium">{thread.ticket.subject}</h3>
-              <button
-                className="text-sm text-muted-foreground underline"
-                onClick={() => setThread(null)}
-                type="button"
-              >
-                Close
-              </button>
-            </div>
-            <div className="mt-3 max-h-64 space-y-2 overflow-auto">
-              {(thread.messages ?? []).map((message: any) => (
-                <div className="rounded-md bg-muted/40 p-3 text-sm" key={message.id}>
-                  <div className="text-xs text-muted-foreground">{message.sender}</div>
-                  <p className="mt-1 whitespace-pre-wrap">{message.body}</p>
+
+        {/* Tab content: Dashboard */}
+        {tab === "dashboard" && (
+          <div className="space-y-6">
+            {/* KPI Overview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  Gold Wallet Balance
+                </span>
+                <div className="text-xl font-bold font-mono text-gold">
+                  {mg(Number(data.gold_balance_mg || 0))}
                 </div>
-              ))}
+                <span className="text-[10px] text-muted-foreground">Fine gold deposit</span>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  Outstanding Balance
+                </span>
+                <div className="text-xl font-bold font-mono text-red-600">
+                  {rs(outstandingCash)}
+                </div>
+                <span className="text-[10px] text-muted-foreground">Total money due</span>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  Active Orders
+                </span>
+                <div className="text-xl font-bold">
+                  {
+                    data.orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled")
+                      .length
+                  }
+                </div>
+                <span className="text-[10px] text-muted-foreground">Jobs currently at work</span>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">
+                  Active Repairs
+                </span>
+                <div className="text-xl font-bold">
+                  {data.repairs.filter((r) => r.status !== "delivered").length}
+                </div>
+                <span className="text-[10px] text-muted-foreground">Items in service</span>
+              </div>
             </div>
-            <form className="mt-4 flex gap-2" onSubmit={sendThreadReply}>
-              <input
-                className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm"
-                maxLength={10000}
-                required
-                value={threadReply}
-                onChange={(event) => setThreadReply(event.target.value)}
-                placeholder="Reply to support"
-              />
-              <button
-                className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"
-                disabled={threadBusy}
-                type="submit"
-              >
-                Send
-              </button>
-            </form>
+
+            {/* Quick Profile Information */}
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <h2 className="font-semibold text-sm text-foreground">Linked Customer Profile</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <span className="text-muted-foreground block mb-0.5">Full Name</span>
+                  <span className="font-medium text-foreground">{data.profile.full_name}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block mb-0.5">Phone / Whatsapp</span>
+                  <span className="font-medium text-foreground">{data.profile.phone || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block mb-0.5">Email</span>
+                  <span className="font-medium text-foreground">{data.profile.email || "—"}</span>
+                </div>
+                {data.profile.village_city && (
+                  <div>
+                    <span className="text-muted-foreground block mb-0.5">City / Village</span>
+                    <span className="font-medium text-foreground">{data.profile.village_city}</span>
+                  </div>
+                )}
+                {data.profile.current_address && (
+                  <div className="md:col-span-2">
+                    <span className="text-muted-foreground block mb-0.5">Address</span>
+                    <span className="font-medium text-foreground">
+                      {data.profile.current_address}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <h2 className="font-semibold text-sm text-foreground">Recent Activities</h2>
+              <div className="divide-y divide-border text-xs">
+                {[
+                  ...data.invoices.map((x) => ({
+                    kind: "Invoice",
+                    id: x.invoice_no ?? x.id,
+                    status: x.status,
+                    color: INVOICE_STATUS_COLORS[x.status ?? ""] ?? "bg-gray-100",
+                    date: x.created_at,
+                  })),
+                  ...data.orders.map((x) => ({
+                    kind: "Order",
+                    id: x.order_no ?? x.id,
+                    status: x.status,
+                    color: ORDER_STATUS_COLORS[x.status ?? ""] ?? "bg-gray-100",
+                    date: x.created_at,
+                  })),
+                  ...data.repairs.map((x) => ({
+                    kind: "Repair",
+                    id: x.repair_no ?? x.id,
+                    status: x.status,
+                    color: REPAIR_STATUS_COLORS[x.status ?? ""] ?? "bg-gray-100",
+                    date: x.created_at,
+                  })),
+                ]
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .slice(0, 10)
+                  .map((item) => (
+                    <div
+                      className="flex justify-between items-center py-3"
+                      key={`${item.kind}-${item.id}`}
+                    >
+                      <div className="space-y-0.5">
+                        <span className="font-semibold text-foreground">
+                          {item.kind} · {item.id}
+                        </span>
+                        <span className="block text-[10px] text-muted-foreground">
+                          {fmtDate(item.date)}
+                        </span>
+                      </div>
+                      <Badge
+                        className={`${item.color} border px-2 py-0.5 text-[10px] font-medium capitalize`}
+                      >
+                        {item.status ?? "recorded"}
+                      </Badge>
+                    </div>
+                  ))}
+                {data.invoices.length + data.orders.length + data.repairs.length === 0 && (
+                  <p className="py-6 text-center text-muted-foreground italic">
+                    No recent transactions or orders.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         )}
-      </section>
-      <section className="erp-surface rounded-md p-5">
-        <h2 className="font-semibold">Contact support</h2>
-        <form className="mt-4 space-y-3" onSubmit={submitTicket}>
-          <label className="block text-sm">
-            <span className="mb-1 block">Subject</span>
-            <input
-              className="w-full rounded-md border bg-background px-3 py-2"
-              minLength={3}
-              maxLength={160}
-              required
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block">What do you need help with?</span>
-            <textarea
-              className="min-h-28 w-full rounded-md border bg-background px-3 py-2"
-              minLength={10}
-              maxLength={10000}
-              required
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </label>
-          <button
-            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-            disabled={submitting}
-            type="submit"
-          >
-            {submitting ? "Submitting…" : "Create support ticket"}
-          </button>
-          {notice && (
-            <p className="text-sm text-muted-foreground" role="status">
-              {notice}
-            </p>
-          )}
-        </form>
-      </section>
-    </main>
+
+        {/* Tab content: Invoices */}
+        {tab === "invoices" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-sm">Invoice History</h2>
+              <span className="text-xs text-muted-foreground">
+                Total Invoiced:{" "}
+                <strong className="font-medium text-foreground">{rs(totalInvoiced)}</strong>
+              </span>
+            </div>
+            {data.invoices.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+                No invoices issued yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {data.invoices.map((inv) => (
+                  <div
+                    key={inv.id}
+                    className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <span className="font-semibold text-sm text-foreground">
+                          {inv.invoice_no || "Draft Invoice"}
+                        </span>
+                        <span className="block text-[10px] text-muted-foreground">
+                          {fmtDate(inv.created_at)}
+                        </span>
+                      </div>
+                      <Badge
+                        className={`${INVOICE_STATUS_COLORS[inv.status ?? ""] ?? "bg-gray-100"} border px-2 py-0.5 text-[10px] capitalize`}
+                      >
+                        {inv.status}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center font-mono bg-muted/20 p-2.5 rounded-lg text-[10px]">
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block font-sans">
+                          Total
+                        </span>
+                        <span>{rs(inv.grand_total_paise || 0)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block font-sans">
+                          Paid
+                        </span>
+                        <span className="text-emerald-600 font-semibold">
+                          {rs(inv.paid_paise || 0)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block font-sans">
+                          Balance
+                        </span>
+                        <span
+                          className={
+                            (inv.balance_paise || 0) > 0
+                              ? "text-red-600 font-bold"
+                              : "text-emerald-600"
+                          }
+                        >
+                          {rs(inv.balance_paise || 0)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {inv.gst && (
+                      <div className="text-[10px] text-muted-foreground flex justify-between bg-muted/40 p-2 rounded">
+                        <span>
+                          GSTIN Applied:{" "}
+                          <strong className="font-mono text-foreground">{inv.gst}</strong>
+                        </span>
+                        <span>GST: {rs(inv.gst_paise || 0)}</span>
+                      </div>
+                    )}
+
+                    {/* PDF Download — opens the secure public doc viewer */}
+                    {inv.invoice_no && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          // Try to get a signed download URL from Supabase Storage first
+                          const { data: urlData } = await (supabase as any).rpc(
+                            "get_invoice_document_url",
+                            { p_invoice_id: inv.id },
+                          );
+                          const url = urlData?.url || `/doc/${inv.id}?type=invoice`;
+                          window.open(url, "_blank", "noopener,noreferrer");
+                        }}
+                        className="w-full flex items-center justify-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs font-medium hover:bg-muted/60 transition-colors"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        View / Download PDF Invoice
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab content: Orders */}
+        {tab === "orders" && (
+          <div className="space-y-4">
+            <h2 className="font-semibold text-sm">Order Status &amp; Tracking</h2>
+            {data.orders.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+                No orders placed yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {data.orders.map((ord) => (
+                  <div
+                    key={ord.id}
+                    className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <span className="font-semibold text-sm text-foreground">
+                          {ord.order_no || "Draft Order"}
+                        </span>
+                        <span className="block text-[10px] text-muted-foreground">
+                          Placed: {fmtDate(ord.created_at)}
+                        </span>
+                      </div>
+                      <Badge
+                        className={`${ORDER_STATUS_COLORS[ord.status ?? ""] ?? "bg-gray-100"} border px-2 py-0.5 text-[10px] capitalize`}
+                      >
+                        {ord.status?.replace(/_/g, " ")}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center bg-muted/20 p-2 rounded-lg text-[10px]">
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block">Order Type</span>
+                        <span className="font-medium text-foreground capitalize">
+                          {ord.type || "standard"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block">Priority</span>
+                        <span className="font-medium text-foreground capitalize">
+                          {ord.priority || "normal"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block">Due Delivery</span>
+                        <span className="font-mono font-medium text-foreground">
+                          {ord.expected_delivery ? fmtDate(ord.expected_delivery) : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab content: Repairs */}
+        {tab === "repairs" && (
+          <div className="space-y-4">
+            <h2 className="font-semibold text-sm">Repair &amp; Refurbishing Jobs</h2>
+            {data.repairs.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+                No repair items in service.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {data.repairs.map((rep) => (
+                  <div
+                    key={rep.id}
+                    className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <span className="font-semibold text-sm text-foreground">
+                          {rep.repair_no || "Repair Card"}
+                        </span>
+                        <span className="block text-[10px] text-muted-foreground">
+                          {fmtDate(rep.created_at)}
+                        </span>
+                      </div>
+                      <Badge
+                        className={`${REPAIR_STATUS_COLORS[rep.status ?? ""] ?? "bg-gray-100"} border px-2 py-0.5 text-[10px] capitalize`}
+                      >
+                        {rep.status}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center bg-muted/20 p-2 rounded-lg text-[10px]">
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block">Service Kind</span>
+                        <span className="font-medium text-foreground capitalize">
+                          {rep.kind || "repair"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block">Received Wt</span>
+                        <span className="font-mono font-medium text-foreground">
+                          {rep.received_gross_mg ? mg(rep.received_gross_mg) : "—"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-muted-foreground block">
+                          Estimated Charge
+                        </span>
+                        <span className="font-mono font-medium text-foreground">
+                          {rep.estimated_charge_paise ? rs(rep.estimated_charge_paise) : "—"}
+                        </span>
+                      </div>
+                    </div>
+                    {rep.advance_paise ? (
+                      <div className="text-[10px] text-muted-foreground bg-muted/40 p-2 rounded flex justify-between font-mono">
+                        <span>Advance Paid</span>
+                        <span className="text-emerald-600 font-semibold">
+                          {rs(rep.advance_paise)}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab content: Ledger (Gold Wallet & Cash Register) */}
+        {tab === "ledger" && (
+          <div className="space-y-6">
+            {/* Gold Wallet Ledger */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Scale className="h-4 w-4 text-gold" />
+                  <h2 className="font-semibold text-sm">Gold Wallet Ledger (Fine Gold)</h2>
+                </div>
+                <Badge className="bg-gold/10 text-gold border border-gold/30 font-mono">
+                  Wallet Balance: {mg(Number(data.gold_balance_mg || 0))}
+                </Badge>
+              </div>
+
+              {data.gold_entries.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+                  No gold deposits or transactions on record.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {data.gold_entries.map((e) => (
+                    <div
+                      key={e.id}
+                      className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-[10px] text-gold font-medium">
+                          {e.type.replace(/_/g, " ").toUpperCase()}
+                        </span>
+                        <span className="text-muted-foreground text-[10px]">{fmtDate(e.ts)}</span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 bg-muted/20 p-2.5 rounded-lg text-center font-mono text-[10px]">
+                        <div>
+                          <span className="text-[9px] text-muted-foreground block font-sans">
+                            Gross
+                          </span>
+                          <span>{e.grossMg != null ? `${mg(e.grossMg)}` : "—"}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-muted-foreground block font-sans">
+                            Purity
+                          </span>
+                          <span>{e.purity ?? "—"}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-muted-foreground block font-sans">
+                            Net Fine Change
+                          </span>
+                          <span
+                            className={
+                              e.netFineMg >= 0
+                                ? "text-emerald-600 font-bold"
+                                : "text-rose-600 font-bold"
+                            }
+                          >
+                            {e.netFineMg >= 0 ? "+" : ""}
+                            {mg(e.netFineMg)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {e.notes || e.reference ? (
+                        <div className="text-[10px] text-muted-foreground bg-muted/40 p-2 rounded">
+                          {e.notes ?? e.reference}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Cash Ledger */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Coins className="h-4 w-4 text-emerald-600" />
+                  <h2 className="font-semibold text-sm">Monetary Ledger (Payments &amp; Credit)</h2>
+                </div>
+                <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
+                  Outstanding Cash: {rs(outstandingCash)}
+                </Badge>
+              </div>
+
+              {data.cash_ledger.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+                  No cash transactions or payments recorded yet.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {data.cash_ledger.map((c) => (
+                    <div
+                      key={c.id}
+                      className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-sm text-foreground capitalize">
+                          {c.kind.replace(/_/g, " ")}
+                        </span>
+                        <span className="text-muted-foreground text-[10px]">{fmtDate(c.ts)}</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 bg-muted/20 p-2 rounded-lg text-center font-mono text-[10px]">
+                        <div>
+                          <span className="text-[9px] text-muted-foreground block font-sans">
+                            Debit (Charges)
+                          </span>
+                          <span className="text-rose-600 font-medium">
+                            {c.debit_paise ? rs(c.debit_paise) : "—"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-muted-foreground block font-sans">
+                            Credit (Payments)
+                          </span>
+                          <span className="text-emerald-600 font-semibold">
+                            {c.credit_paise ? rs(c.credit_paise) : "—"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {(c.description || c.ref) && (
+                        <div className="text-[10px] text-muted-foreground">
+                          {c.description} {c.ref ? `(Ref: ${c.ref})` : ""}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab content: Catalog */}
+        {tab === "catalog" && (
+          <div className="space-y-4">
+            <h2 className="font-semibold text-sm">Design Catalog Browser</h2>
+            {loadingCatalog && (
+              <div className="p-8 text-center text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-primary inline mr-2" /> Loading
+                designs...
+              </div>
+            )}
+            {!loadingCatalog && catalog.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+                No catalog designs listed in the registry.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {catalog.map((cat) => {
+                  const d = typeof cat.data === "string" ? {} : (cat.data as any) || {};
+                  return (
+                    <div
+                      key={cat.id}
+                      className="rounded-2xl border border-border bg-card p-3 space-y-2 text-xs flex flex-col justify-between"
+                    >
+                      <div className="space-y-1">
+                        <div className="aspect-square bg-muted/40 rounded-xl flex items-center justify-center text-muted-foreground relative overflow-hidden">
+                          {d.imageStoragePath ? (
+                            <img
+                              src={`${supabase.storage.from("catalog-images").getPublicUrl(d.imageStoragePath).data.publicUrl}`}
+                              alt={cat.name}
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            <LayoutGrid className="h-6 w-6 opacity-30" />
+                          )}
+                          <span className="absolute top-2 left-2 bg-background/90 text-foreground border border-border px-1.5 py-0.5 rounded text-[9px] font-mono">
+                            {cat.design_no || cat.category || "item"}
+                          </span>
+                        </div>
+                        <h3 className="font-semibold text-foreground truncate mt-1">{cat.name}</h3>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-muted-foreground font-mono border-t border-border pt-2 mt-1">
+                        <span>{d.purity || "916"} K</span>
+                        <span>{d.weightGrams ? `${d.weightGrams}g` : "—"}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab content: Support */}
+        {tab === "support" && (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-primary" />
+                <h2 className="font-semibold text-sm text-foreground font-serif">
+                  Support Conversations
+                </h2>
+              </div>
+              <div className="space-y-2">
+                {data.support_tickets.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-2 italic text-center">
+                    No support tickets created yet.
+                  </p>
+                )}
+                {data.support_tickets.map((ticket) => (
+                  <button
+                    className="flex w-full items-center justify-between rounded-xl border border-border p-3 text-left text-xs hover:bg-muted/40 transition-colors"
+                    key={ticket.id}
+                    onClick={() => void openThread(ticket.id)}
+                    type="button"
+                  >
+                    <div className="space-y-0.5">
+                      <span className="font-semibold text-foreground">
+                        {ticket.ticket_no || "Ticket"} · {ticket.subject || "Support request"}
+                      </span>
+                      <span className="block text-[10px] text-muted-foreground truncate max-w-xs">
+                        {ticket.description}
+                      </span>
+                    </div>
+                    <Badge
+                      className={`${TICKET_STATUS_COLORS[ticket.status ?? ""] ?? "bg-gray-100"} border px-2 py-0.5 text-[9px] capitalize`}
+                    >
+                      {ticket.status ?? "open"}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+
+              {thread && (
+                <div className="mt-4 rounded-xl border border-border p-4 space-y-3 bg-muted/10">
+                  <div className="flex items-center justify-between gap-3 border-b border-border pb-2">
+                    <h3 className="font-semibold text-sm text-foreground">
+                      {thread.ticket.subject}
+                    </h3>
+                    <button
+                      className="text-xs text-muted-foreground underline hover:text-foreground"
+                      onClick={() => setThread(null)}
+                      type="button"
+                    >
+                      Close Conversation
+                    </button>
+                  </div>
+                  <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                    {(thread.messages ?? []).map((message: any) => (
+                      <div
+                        className="rounded-xl bg-card border border-border p-3 text-xs space-y-1"
+                        key={message.id}
+                      >
+                        <div className="flex justify-between items-center text-[10px] text-muted-foreground border-b border-border/50 pb-1">
+                          <span className="font-semibold">{message.sender}</span>
+                          <span>{fmtDate(message.created_at || message.ts)}</span>
+                        </div>
+                        <p className="mt-1 whitespace-pre-wrap leading-relaxed text-foreground/80">
+                          {message.body}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <form
+                    className="flex gap-2 pt-2 border-t border-border"
+                    onSubmit={sendThreadReply}
+                  >
+                    <input
+                      className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      maxLength={10000}
+                      required
+                      value={threadReply}
+                      onChange={(event) => setThreadReply(event.target.value)}
+                      placeholder="Type your message reply..."
+                    />
+                    <button
+                      className="rounded-lg bg-primary px-4 py-2 text-xs text-primary-foreground font-semibold disabled:opacity-50"
+                      disabled={threadBusy}
+                      type="submit"
+                    >
+                      Send
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <h2 className="font-semibold text-sm text-foreground flex items-center gap-1.5">
+                <Plus className="h-4 w-4 text-primary" /> Create Support Request
+              </h2>
+              <form className="space-y-4" onSubmit={submitTicket}>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="ticket-subject"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    Subject
+                  </label>
+                  <input
+                    id="ticket-subject"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    minLength={3}
+                    maxLength={160}
+                    required
+                    value={subject}
+                    onChange={(event) => setSubject(event.target.value)}
+                    placeholder="Brief summary of your query"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="ticket-desc"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    Detailed Description
+                  </label>
+                  <textarea
+                    id="ticket-desc"
+                    className="min-h-24 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    minLength={10}
+                    maxLength={10000}
+                    required
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Please include invoice numbers, repair details, or specific help topics..."
+                  />
+                </div>
+                <button
+                  className="rounded-lg bg-primary px-4 py-2.5 text-xs text-primary-foreground font-semibold disabled:opacity-50"
+                  disabled={submitting}
+                  type="submit"
+                >
+                  {submitting ? "Submitting…" : "Submit Support Ticket"}
+                </button>
+                {notice && (
+                  <p className="text-xs text-muted-foreground" role="status">
+                    {notice}
+                  </p>
+                )}
+              </form>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }

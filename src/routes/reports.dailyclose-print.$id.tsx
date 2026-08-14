@@ -8,7 +8,6 @@ import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { useSettings } from "@/lib/settings-store";
-import { generateReportPdf } from "@/lib/pdf/document-pdf-generator";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports/dailyclose-print/$id")({
@@ -39,6 +38,7 @@ function DailyClosePrint() {
   async function handleDownloadPdf() {
     setDownloadingPdf(true);
     try {
+      const { generateReportPdf } = await import("@/lib/pdf/document-pdf-generator");
       const blob = generateReportPdf(
         {
           title,

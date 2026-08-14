@@ -599,7 +599,17 @@ export const useBilling = create<BillingState>()((set, get) => ({
   },
   refresh: async () => {
     const { currentUserRole, selectedBranchId } = useSettings.getState();
-    const GLOBAL_ROLES = ["Super Owner", "Administrator", "CEO (View Only)"];
+    const GLOBAL_ROLES = [
+      "Super Owner",
+      "Administrator",
+      "CEO (View Only)",
+      "owner",
+      "admin",
+      "saas_admin",
+      "firm-owner",
+      "super_owner",
+      "administrator",
+    ];
     const bid =
       !currentUserRole || GLOBAL_ROLES.includes(currentUserRole)
         ? null
@@ -608,7 +618,9 @@ export const useBilling = create<BillingState>()((set, get) => ({
     // Supabase queries or aggregates instead of loading the full invoice table.
     let invoiceQ = supabase
       .from("invoices")
-      .select("data")
+      .select(
+        "id,invoice_no,customer_id,order_id,status,subtotal_paise,gst_paise,grand_total_paise,paid_paise,balance_paise,created_at,updated_at,data",
+      )
       .order("updated_at", { ascending: false })
       .limit(BILLING_COMPAT_CACHE_LIMIT);
     if (bid) invoiceQ = invoiceQ.filter("data->>branchId", "eq", bid) as typeof invoiceQ;
@@ -618,7 +630,22 @@ export const useBilling = create<BillingState>()((set, get) => ({
     ]);
     if (!invoiceRes.error) {
       const rows = (invoiceRes.data ?? [])
-        .map((r) => r.data as Invoice | null)
+        .map((r: any) => {
+          const d = (r.data as Invoice) || {};
+          const id = r.id || d.id;
+          const invoiceNo = r.invoice_no || d.invoiceNo;
+          if (!id || !invoiceNo) return null;
+          return {
+            ...d,
+            id,
+            invoiceNo,
+            customerId: d.customerId || r.customer_id || "",
+            status: d.status || r.status || "draft",
+            grandTotalPaise: d.grandTotalPaise ?? r.grand_total_paise ?? 0,
+            paidPaise: d.paidPaise ?? r.paid_paise ?? 0,
+            balancePaise: d.balancePaise ?? r.balance_paise ?? 0,
+          } as Invoice;
+        })
         .filter((i): i is Invoice => !!i && !!i.id && !!i.invoiceNo);
       set({ invoices: rows });
     }

@@ -74,7 +74,7 @@ export function CustomShell({
           }
         }
       `}</style>
-      <div className="flex-1 p-4 md:p-8 flex justify-center items-start overflow-y-auto">
+      <div className="flex-1 p-4 md:p-8 flex justify-center items-start overflow-x-auto overflow-y-auto">
         <div
           id={rootId}
           className={boxClass}

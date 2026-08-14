@@ -19,7 +19,6 @@ import { useSettings } from "@/lib/settings-store";
 import { usePrintTemplates } from "@/lib/print-engine/template-store";
 import { resolvePrintContext, hasPrintContextBuilder } from "@/lib/print-engine/data-mapper";
 import { usePrintDataSourcesTick } from "@/lib/print-engine/data-source-tick";
-import { generateDocumentPdf } from "@/lib/print-engine/pdf/generate";
 import { PrintSections } from "./sections";
 import { CustomShell } from "./CustomShell";
 import type {
@@ -174,6 +173,7 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
   const handleDownloadPdf = async () => {
     setDownloadingPdf(true);
     try {
+      const { generateDocumentPdf } = await import("@/lib/print-engine/pdf/generate");
       const { blob, fileName } = await generateDocumentPdf(data, template, brandedFirm);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -241,7 +241,7 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {toolbar}
-      <div className="flex-1 p-4 md:p-8 flex justify-center items-start overflow-y-auto">
+      <div className="flex-1 p-4 md:p-8 flex justify-center items-start overflow-x-auto overflow-y-auto">
         <PrintLayout
           title={data.title}
           docNumber={docNumber || data.docNumber}

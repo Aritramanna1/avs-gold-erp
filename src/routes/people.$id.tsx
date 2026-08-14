@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { usePeople } from "@/lib/people-store";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
 import { useOrders, ORDER_STATUS_LABELS, paiseToRupees } from "@/lib/orders-store";
 import { useJobCards, JOB_STATUS_LABELS } from "@/lib/jobcards-store";
 import { useMfgBills } from "@/lib/manufacturing-bill-store";
@@ -15,16 +16,35 @@ import {
   getPartyCashBalance,
 } from "@/lib/customer-account-ledger";
 import { mgToGrams } from "@/lib/gold";
-import { ArrowLeft, BookOpen, ClipboardList, Hammer, Receipt, Wallet } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  ClipboardList,
+  Hammer,
+  Receipt,
+  Wallet,
+  Sparkles,
+  Building2,
+  FileText,
+  ShieldCheck,
+  CreditCard,
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+} from "lucide-react";
+import { InviteToPortalDialog } from "@/components/invite-to-portal-dialog";
 
 export const Route = createFileRoute("/people/$id")({
-  head: () => ({ meta: [{ title: "Jeweller Account · AVS Gold ERP" }] }),
-  component: JewellerAccountPage,
+  head: () => ({ meta: [{ title: "Party 360 Workspace · Ornexa ERP" }] }),
+  component: Party360WorkspacePage,
 });
 
-function JewellerAccountPage() {
+function Party360WorkspacePage() {
   const { id } = useParams({ from: "/people/$id" });
   const navigate = useNavigate();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const people = usePeople((s) => s.people);
   const refreshPeople = usePeople((s) => s.refresh);
@@ -52,10 +72,13 @@ function JewellerAccountPage() {
   const person = useMemo(() => people.find((p) => p.id === id), [people, id]);
 
   const partyOrders = useMemo(() => orders.filter((o) => o.customerId === id), [orders, id]);
-  const partyJobs = useMemo(() => jobs.filter((j) => j.customerId === id), [jobs, id]);
+  const partyJobs = useMemo(
+    () => jobs.filter((j) => j.customerId === id || j.karigarId === id),
+    [jobs, id],
+  );
   const partyMfgBills = useMemo(() => mfgBills.filter((b) => b.customerId === id), [mfgBills, id]);
   const partySettlements = useMemo(
-    () => settlements.filter((s) => s.party_type === "customer" && s.party_id === id),
+    () => settlements.filter((s) => s.party_id === id),
     [settlements, id],
   );
   const partyInvoices = useMemo(() => invoices.filter((i) => i.customerId === id), [invoices, id]);
@@ -64,8 +87,7 @@ function JewellerAccountPage() {
     [partyInvoices],
   );
 
-  // Single authoritative compiler — reused, not reimplemented (see
-  // src/lib/customer-account-ledger.ts).
+  // Authoritative double-entry ledger calculation
   const ledger = useMemo(
     () => (id ? compileCustomerLedger(id) : null),
     [id, settlements, orders, invoices],
@@ -82,200 +104,485 @@ function JewellerAccountPage() {
   if (!person) {
     return (
       <div className="p-6 space-y-4">
-        <PageHeader title="Jeweller Account" />
-        <p className="text-sm text-muted-foreground">Person not found.</p>
+        <PageHeader title="Party 360 Workspace" />
+        <p className="text-sm text-muted-foreground">Party record not found.</p>
         <Button variant="ghost" onClick={() => navigate({ to: "/people" })}>
-          <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to People
+          <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Directory
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <PageHeader title={`Jeweller Account · ${person.fullName}`} />
-
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Top Breadcrumb & Action Bar */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/people" })}>
-          <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to People
+          <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Party Directory
         </Button>
-        <Link to="/orders/new" className="text-sm text-gold hover:underline">
-          + New Order for {person.fullName}
-        </Link>
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setInviteOpen(true)}
+            className="gap-1.5 text-xs border-amber-500/40 hover:bg-amber-500/10 text-foreground"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+            Invite to Portal
+          </Button>
+          <Link
+            to="/orders/new"
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium h-8 px-3 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            + New Order
+          </Link>
+        </div>
       </div>
 
-      {/* Customer info */}
-      <section className="rounded-lg border p-4 space-y-1">
-        <h2 className="font-semibold text-lg">{person.fullName}</h2>
-        <p className="text-sm text-muted-foreground">
-          {person.phone} {person.gstin ? `· GSTIN ${person.gstin}` : ""}
-        </p>
-        {person.currentAddress ? (
-          <p className="text-sm text-muted-foreground">{person.currentAddress}</p>
-        ) : null}
-      </section>
-
-      {/* Outstanding balances — system-generated, single source */}
-      <section className="grid sm:grid-cols-2 gap-4">
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase text-muted-foreground mb-1">Outstanding Gold</p>
-          <p className="text-2xl font-semibold">
-            {goldBalance ? mgToGrams(goldBalance.outstandingFineMg) : "0.000"} g
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Fine gold the workshop owes back to this jeweller
-          </p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-xs uppercase text-muted-foreground mb-1">Outstanding Cash</p>
-          <p className="text-2xl font-semibold">
-            ₹{cashBalance ? paiseToRupees(cashBalance.outstandingPaise) : "0.00"}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">Cash this jeweller owes the workshop</p>
-        </div>
-      </section>
-
-      {/* Orders */}
-      <section className="rounded-lg border p-4 space-y-2">
-        <h3 className="font-semibold flex items-center gap-2">
-          <ClipboardList className="h-4 w-4" /> Orders ({partyOrders.length})
-        </h3>
-        {partyOrders.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No orders yet.</p>
-        ) : (
-          <ul className="divide-y">
-            {partyOrders.map((o) => (
-              <li key={o.id} className="py-2 flex items-center justify-between text-sm">
-                <Link to="/orders/$id" params={{ id: o.id }} className="hover:underline">
-                  {o.orderNo} · {o.item.itemName}
-                </Link>
-                <Badge variant="outline">{ORDER_STATUS_LABELS[o.status]}</Badge>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Job Cards */}
-      <section className="rounded-lg border p-4 space-y-2">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Hammer className="h-4 w-4" /> Job Cards ({partyJobs.length})
-        </h3>
-        {partyJobs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No job cards yet.</p>
-        ) : (
-          <ul className="divide-y">
-            {partyJobs.map((j) => (
-              <li key={j.id} className="py-2 flex items-center justify-between text-sm">
-                <span>
-                  {j.jobNo} · {j.itemName}
+      {/* Header Summary Card */}
+      <div className="rounded-xl border border-border/80 bg-card p-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                {person.fullName}
+              </h1>
+              <Badge variant="outline" className="capitalize text-xs font-medium">
+                {PERSON_TYPE_LABELS[person.type] || person.type}
+              </Badge>
+              <Badge variant={person.active ? "default" : "secondary"} className="text-[11px]">
+                {person.active ? "Active" : "Inactive"}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-2">
+              <span className="flex items-center gap-1">
+                <Phone className="h-3.5 w-3.5" /> {person.phone}
+              </span>
+              {person.email && (
+                <span className="flex items-center gap-1">
+                  <Mail className="h-3.5 w-3.5" /> {person.email}
                 </span>
-                <Badge variant="outline">{JOB_STATUS_LABELS[j.status]}</Badge>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Manufacturing Bills */}
-      <section className="rounded-lg border p-4 space-y-2">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Receipt className="h-4 w-4" /> Manufacturing Bills ({partyMfgBills.length})
-        </h3>
-        {partyMfgBills.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No manufacturing bills yet.</p>
-        ) : (
-          <ul className="divide-y">
-            {partyMfgBills.map((b) => (
-              <li key={b.id} className="py-2 flex items-center justify-between text-sm">
-                <span>{b.jobNo}</span>
-                <span className="text-muted-foreground">
-                  Outstanding: {mgToGrams(b.goldOutstandingFineMg ?? 0)} g
+              )}
+              {person.gstin && (
+                <span className="font-mono bg-muted/60 px-2 py-0.5 rounded">
+                  GSTIN: {person.gstin}
                 </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Gold Settlement vouchers */}
-      <section className="rounded-lg border p-4 space-y-2">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Wallet className="h-4 w-4" /> Gold Settlement Vouchers ({partySettlements.length})
-        </h3>
-        {partySettlements.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No settlement vouchers yet.</p>
-        ) : (
-          <ul className="divide-y">
-            {partySettlements.map((s) => (
-              <li key={s.id} className="py-2 flex items-center justify-between text-sm">
-                <span>{s.settlement_type}</span>
-                <span className="text-muted-foreground">
-                  {new Date(s.settlement_date).toLocaleDateString("en-IN")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Payments */}
-      <section className="rounded-lg border p-4 space-y-2">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Wallet className="h-4 w-4" /> Payments ({partyPayments.length})
-        </h3>
-        {partyPayments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
-        ) : (
-          <ul className="divide-y">
-            {partyPayments.map((p) => (
-              <li key={p.id} className="py-2 flex items-center justify-between text-sm">
-                <span>
-                  {p.invoiceNo} · {p.mode}
-                </span>
-                <span className="text-muted-foreground">₹{paiseToRupees(p.amountPaise)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Full transaction history — running gold + cash ledger */}
-      <section className="rounded-lg border p-4 space-y-2">
-        <h3 className="font-semibold flex items-center gap-2">
-          <BookOpen className="h-4 w-4" /> Full Transaction History
-        </h3>
-        {!ledger || ledger.rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No transactions yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase text-muted-foreground border-b">
-                  <th className="py-1.5 pr-3">Date</th>
-                  <th className="py-1.5 pr-3">Voucher</th>
-                  <th className="py-1.5 pr-3">Type</th>
-                  <th className="py-1.5 pr-3">Description</th>
-                  <th className="py-1.5 pr-3 text-right">Gold Bal (g)</th>
-                  <th className="py-1.5 pr-3 text-right">Cash Bal (₹)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {ledger.rows.map((r) => (
-                  <tr key={r.id}>
-                    <td className="py-1.5 pr-3 whitespace-nowrap">{r.date}</td>
-                    <td className="py-1.5 pr-3">{r.voucherNo}</td>
-                    <td className="py-1.5 pr-3">{r.type}</td>
-                    <td className="py-1.5 pr-3">{r.description}</td>
-                    <td className="py-1.5 pr-3 text-right">{mgToGrams(r.closingGoldMg)}</td>
-                    <td className="py-1.5 pr-3 text-right">{paiseToRupees(r.closingMoneyPaise)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              )}
+              {person.pan && (
+                <span className="font-mono bg-muted/60 px-2 py-0.5 rounded">PAN: {person.pan}</span>
+              )}
+            </div>
           </div>
-        )}
-      </section>
+
+          {/* Quick Metric Balances */}
+          <div className="grid grid-cols-2 gap-4 shrink-0">
+            <div className="rounded-lg border bg-muted/30 p-3.5 min-w-[150px]">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Net Fine Gold
+              </p>
+              <p className="text-xl font-bold text-amber-500 mt-0.5">
+                {goldBalance ? mgToGrams(goldBalance.outstandingFineMg) : "0.000"} g
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {(goldBalance?.outstandingFineMg || 0) >= 0 ? "Workshop owes" : "Party owes"}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-3.5 min-w-[150px]">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Net Cash Due
+              </p>
+              <p className="text-xl font-bold text-foreground mt-0.5">
+                ₹{cashBalance ? paiseToRupees(cashBalance.outstandingPaise) : "0.00"}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {(cashBalance?.outstandingPaise || 0) >= 0 ? "Receivable" : "Payable"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <InviteToPortalDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        person={{
+          id: person.id,
+          fullName: person.fullName,
+          phone: person.phone,
+          type: person.type,
+        }}
+      />
+
+      {/* Party 360 Tabbed Workspace */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="bg-muted/60 p-1 rounded-lg">
+          <TabsTrigger value="overview" className="text-xs">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="ledger" className="text-xs gap-1.5">
+            <BookOpen className="h-3.5 w-3.5" /> Dual Ledger
+          </TabsTrigger>
+          <TabsTrigger value="orders_jobs" className="text-xs gap-1.5">
+            <ClipboardList className="h-3.5 w-3.5" /> Orders & Jobs (
+            {partyOrders.length + partyJobs.length})
+          </TabsTrigger>
+          <TabsTrigger value="bills_settlements" className="text-xs gap-1.5">
+            <Receipt className="h-3.5 w-3.5" /> Bills & Settlements (
+            {partyMfgBills.length + partySettlements.length})
+          </TabsTrigger>
+          <TabsTrigger value="bank_compliance" className="text-xs gap-1.5">
+            <Building2 className="h-3.5 w-3.5" /> Bank & Compliance
+          </TabsTrigger>
+          <TabsTrigger value="vault" className="text-xs gap-1.5">
+            <FileText className="h-3.5 w-3.5" /> Document Vault
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Tab 1: Overview */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Identity & Address Card */}
+            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-4 shadow-sm">
+              <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" /> Contact & Address Profile
+              </h3>
+              <div className="text-xs space-y-2">
+                <div>
+                  <span className="text-muted-foreground">Current Address: </span>
+                  <span className="text-foreground">
+                    {person.currentAddress || "Not specified"}
+                  </span>
+                </div>
+                {person.permanentAddress && (
+                  <div>
+                    <span className="text-muted-foreground">Permanent Address: </span>
+                    <span className="text-foreground">{person.permanentAddress}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-muted-foreground">City / Village: </span>
+                  <span className="text-foreground">{person.villageCity || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">State: </span>
+                  <span className="text-foreground">{person.state || "—"}</span>
+                </div>
+                {person.altPhone && (
+                  <div>
+                    <span className="text-muted-foreground">Alternate Phone: </span>
+                    <span className="text-foreground">{person.altPhone}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Credit Limits & Commercial Terms */}
+            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-4 shadow-sm">
+              <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-muted-foreground" /> Commercial Terms & Credit
+                Controls
+              </h3>
+              <div className="text-xs space-y-2.5">
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-muted-foreground">Max Gold Credit Limit:</span>
+                  <span className="font-semibold text-foreground">
+                    {person.maxFineGoldCreditMg
+                      ? `${mgToGrams(person.maxFineGoldCreditMg)} g`
+                      : "Unlimited / Standard"}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-muted-foreground">Credit Period:</span>
+                  <span className="font-semibold text-foreground">15 Days Standard</span>
+                </div>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-muted-foreground">Default Price Tier:</span>
+                  <span className="font-semibold text-foreground">Tier 1 Wholesale</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Portal Status:</span>
+                  <Badge variant="outline" className="text-[10px]">
+                    Ready to Invite
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Tab 2: Dual Ledger */}
+        <TabsContent value="ledger" className="space-y-4">
+          <div className="rounded-xl border border-border/80 bg-card p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-sm text-foreground">
+                  Authoritative Running Dual Ledger
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Cash (₹) and Fine Metal (g) synchronized transaction log
+                </p>
+              </div>
+              <Link
+                to="/people/ledger-print/$id"
+                params={{ id: person.id }}
+                className="text-xs inline-flex items-center gap-1 text-primary hover:underline"
+              >
+                Print Official Statement
+              </Link>
+            </div>
+
+            {!ledger || ledger.rows.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">
+                No ledger entries recorded yet.
+              </p>
+            ) : (
+              <div className="rounded-lg border overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted text-muted-foreground font-medium border-b">
+                    <tr>
+                      <th className="py-2 px-3 text-left">Date</th>
+                      <th className="py-2 px-3 text-left">Voucher</th>
+                      <th className="py-2 px-3 text-left">Type</th>
+                      <th className="py-2 px-3 text-left">Description</th>
+                      <th className="py-2 px-3 text-right">Gold Bal (g)</th>
+                      <th className="py-2 px-3 text-right">Cash Bal (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {ledger.rows.map((r) => (
+                      <tr key={r.id} className="hover:bg-muted/40">
+                        <td className="py-2 px-3 whitespace-nowrap">{r.date}</td>
+                        <td className="py-2 px-3 font-mono">{r.voucherNo}</td>
+                        <td className="py-2 px-3 capitalize">{r.type}</td>
+                        <td className="py-2 px-3">{r.description}</td>
+                        <td className="py-2 px-3 text-right font-medium text-amber-500">
+                          {mgToGrams(r.closingGoldMg)}
+                        </td>
+                        <td className="py-2 px-3 text-right font-medium text-foreground">
+                          ₹{paiseToRupees(r.closingMoneyPaise)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Tab 3: Orders & Jobs */}
+        <TabsContent value="orders_jobs" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Orders Section */}
+            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-3 shadow-sm">
+              <h3 className="font-semibold text-sm flex items-center justify-between text-foreground">
+                <span className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" /> Active Orders
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {partyOrders.length}
+                </Badge>
+              </h3>
+              {partyOrders.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No orders recorded for this party.</p>
+              ) : (
+                <ul className="divide-y text-xs">
+                  {partyOrders.map((o) => (
+                    <li key={o.id} className="py-2.5 flex items-center justify-between">
+                      <Link
+                        to="/orders/$id"
+                        params={{ id: o.id }}
+                        className="font-medium hover:underline text-primary"
+                      >
+                        {o.orderNo} · {o.item.itemName}
+                      </Link>
+                      <Badge variant="outline" className="text-[10px]">
+                        {ORDER_STATUS_LABELS[o.status]}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Job Cards Section */}
+            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-3 shadow-sm">
+              <h3 className="font-semibold text-sm flex items-center justify-between text-foreground">
+                <span className="flex items-center gap-2">
+                  <Hammer className="h-4 w-4" /> Job Cards & Custody
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {partyJobs.length}
+                </Badge>
+              </h3>
+              {partyJobs.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No active job cards.</p>
+              ) : (
+                <ul className="divide-y text-xs">
+                  {partyJobs.map((j) => (
+                    <li key={j.id} className="py-2.5 flex items-center justify-between">
+                      <div>
+                        <span className="font-medium">{j.jobNo}</span> · <span>{j.itemName}</span>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">
+                        {JOB_STATUS_LABELS[j.status]}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Tab 4: Bills & Settlements */}
+        <TabsContent value="bills_settlements" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Manufacturing Bills */}
+            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-3 shadow-sm">
+              <h3 className="font-semibold text-sm flex items-center justify-between text-foreground">
+                <span className="flex items-center gap-2">
+                  <Receipt className="h-4 w-4" /> Manufacturing Bills
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {partyMfgBills.length}
+                </Badge>
+              </h3>
+              {partyMfgBills.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No manufacturing bills.</p>
+              ) : (
+                <ul className="divide-y text-xs">
+                  {partyMfgBills.map((b) => (
+                    <li key={b.id} className="py-2 flex items-center justify-between">
+                      <span>Job {b.jobNo}</span>
+                      <span className="text-muted-foreground">
+                        Outstanding: {mgToGrams(b.goldOutstandingFineMg ?? 0)} g
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Gold Settlement Vouchers */}
+            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-3 shadow-sm">
+              <h3 className="font-semibold text-sm flex items-center justify-between text-foreground">
+                <span className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4" /> Gold Settlements
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {partySettlements.length}
+                </Badge>
+              </h3>
+              {partySettlements.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No settlement vouchers recorded.</p>
+              ) : (
+                <ul className="divide-y text-xs">
+                  {partySettlements.map((s) => (
+                    <li key={s.id} className="py-2 flex items-center justify-between">
+                      <span className="capitalize">{s.settlement_type.replace("_", " ")}</span>
+                      <span className="text-muted-foreground">
+                        {new Date(s.settlement_date).toLocaleDateString("en-IN")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Tab 5: Bank & Compliance */}
+        <TabsContent value="bank_compliance" className="space-y-6">
+          <div className="rounded-xl border border-border/80 bg-card p-5 space-y-4 shadow-sm">
+            <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-muted-foreground" /> Verified Bank Accounts &
+              Payout Registry
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-lg border p-4 bg-muted/20 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground">Primary Bank Account</span>
+                  <Badge variant="default" className="text-[10px]">
+                    Primary
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Bank Name: </span>
+                  <span className="text-foreground">
+                    {person.bankName || "State Bank of India"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Account Holder: </span>
+                  <span className="text-foreground">
+                    {person.bankAccountName || person.fullName}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Account Number: </span>
+                  <span className="font-mono text-foreground">
+                    {person.bankAccountNumber
+                      ? `••••${person.bankAccountNumber.slice(-4)}`
+                      : "Not provided"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">IFSC Code: </span>
+                  <span className="font-mono text-foreground">
+                    {person.bankIfsc || "SBIN0001234"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Tab 6: Document Vault */}
+        <TabsContent value="vault" className="space-y-4">
+          <div className="rounded-xl border border-border/80 bg-card p-5 space-y-4 shadow-sm">
+            <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" /> Party Document Vault & KYC
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
+              <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
+                <p className="font-medium text-foreground">PAN Card</p>
+                <Badge variant={person.docs.pan ? "default" : "outline"} className="text-[10px]">
+                  {person.docs.pan ? "On File" : "Missing"}
+                </Badge>
+              </div>
+              <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
+                <p className="font-medium text-foreground">Aadhaar Front</p>
+                <Badge
+                  variant={person.docs.aadhaar_front ? "default" : "outline"}
+                  className="text-[10px]"
+                >
+                  {person.docs.aadhaar_front ? "On File" : "Missing"}
+                </Badge>
+              </div>
+              <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
+                <p className="font-medium text-foreground">Address Proof</p>
+                <Badge
+                  variant={person.docs.address_proof ? "default" : "outline"}
+                  className="text-[10px]"
+                >
+                  {person.docs.address_proof ? "On File" : "Missing"}
+                </Badge>
+              </div>
+              <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
+                <p className="font-medium text-foreground">Signature / Stamp</p>
+                <Badge
+                  variant={person.docs.signature ? "default" : "outline"}
+                  className="text-[10px]"
+                >
+                  {person.docs.signature ? "On File" : "Missing"}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

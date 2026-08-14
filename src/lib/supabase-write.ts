@@ -1,6 +1,8 @@
 import { getCloudDataClient as getRawSupabaseClient } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
 
+let cachedProfile: { firm_id: string; branch_id: string | null } | null = null;
+
 // Map our entity types to Supabase table structures
 const BRANCH_SUPPORTED_TABLES = [
   "attachments",
@@ -249,6 +251,7 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
   } else if (table === "daily_close") {
     dbRow = {
       id: rawPayload.id,
+      date: rawPayload.date,
       data: rawPayload,
     };
   } else if (table === "print_logs") {
@@ -476,67 +479,73 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
     }
   }
 
+  // Load and cache firm profile to optimize writes and handle network blips
+  let profile = cachedProfile;
+  if (!profile) {
+    const { data: userResult } = await supabase.auth.getUser();
+    if (userResult.user?.id) {
+      const { data: profileData } = await supabase
+        .from("user_profiles")
+        .select("firm_id, branch_id")
+        .eq("auth_id", userResult.user.id)
+        .maybeSingle();
+      if (profileData?.firm_id) {
+        profile = {
+          firm_id: profileData.firm_id,
+          branch_id: profileData.branch_id || null,
+        };
+        cachedProfile = profile;
+      }
+    }
+  }
+
   if (["credit_notes", "debit_notes", "estimates", "delivery_challans"].includes(table)) {
-    const { data: userResult } = await supabase.auth.getUser();
-    if (userResult.user?.id) {
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("firm_id,branch_id")
-        .eq("auth_id", userResult.user.id)
-        .maybeSingle();
-      if (profile?.firm_id) dbRow.firm_id = profile.firm_id;
-      if (!dbRow.branch_id) dbRow.branch_id = profile?.branch_id ?? null;
-    }
+    if (profile?.firm_id) dbRow.firm_id = profile.firm_id;
+    if (!dbRow.branch_id) dbRow.branch_id = profile?.branch_id ?? null;
   }
 
-  // People is a structured tenant table as well. Its legacy mapper stores
-  // the domain document in `data`, but RLS authorizes the top-level firm_id;
-  // derive it from auth.uid() instead of trusting browser payloads.
-  if (
-    [
-      "people",
-      "gold_ledger",
-      "orders",
-      "job_cards",
-      "whatsapp_inbox",
-      "inventory",
-      "stock_movements",
-      "invoices",
-      "payments",
-      "repairs",
-      "attendance",
-      "worker_returns",
-      "customer_settlements",
-      "worker_transactions",
-      "worker_settlements",
-      "material_vault_movements",
-    ].includes(table) &&
-    !dbRow.firm_id
-  ) {
-    const { data: userResult } = await supabase.auth.getUser();
-    if (userResult.user?.id) {
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("firm_id")
-        .eq("auth_id", userResult.user.id)
-        .maybeSingle();
-      if (profile?.firm_id) dbRow.firm_id = profile.firm_id;
-    }
-  }
+  // Auto-populate firm_id for all multi-tenant tables
+  const multiTenantTables = [
+    "people",
+    "gold_ledger",
+    "orders",
+    "job_cards",
+    "whatsapp_inbox",
+    "inventory",
+    "stock_movements",
+    "invoices",
+    "payments",
+    "repairs",
+    "attendance",
+    "worker_returns",
+    "customer_settlements",
+    "worker_transactions",
+    "worker_settlements",
+    "material_vault_movements",
+    "catalog_designs",
+    "rate_cut_records",
+    "daily_close",
+    "branches",
+    "precious_metals",
+    "precious_metal_purities",
+    "metal_composition_formulas",
+    "supplier_purchases",
+    "metal_conversions",
+    "physical_stock_counts",
+    "dropdown_masters",
+    "financial_lock_periods",
+    "stock_lots",
+    "stock_stones",
+    "hallmark_batches",
+    "order_issues",
+    "outside_work_transactions",
+    "outside_work_labour_charges",
+    "outside_work_payments",
+    "attachments",
+  ];
 
-  // Attachment metadata is tenant-owned even when the legacy domain payload
-  // does not carry firm_id. Derive it from the authenticated profile so RLS
-  // can authorize the write without trusting browser input.
-  if (table === "attachments" && !dbRow.firm_id) {
-    const { data: userResult } = await supabase.auth.getUser();
-    if (userResult.user?.id) {
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("firm_id")
-        .eq("auth_id", userResult.user.id)
-        .maybeSingle();
-      if (profile?.firm_id) dbRow.firm_id = profile.firm_id;
-    }
+  if (multiTenantTables.includes(table) && !dbRow.firm_id) {
+    if (profile?.firm_id) dbRow.firm_id = profile.firm_id;
   }
 
   // Strict Database-First Action: Save directly to Supabase, throw error on failure

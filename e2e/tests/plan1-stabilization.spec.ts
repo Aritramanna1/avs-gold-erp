@@ -61,36 +61,28 @@ test.describe("Enterprise Security (Step 8)", () => {
     const cleanChain = await page.evaluate(() => window.__auditLog.verifyAuditChain());
     expect(cleanChain.ok).toBe(true);
 
-    // Tamper with a historical row directly via raw SQL, bypassing append().
-    await page.evaluate(
-      (id) =>
-        window.__localDb.runLocal(() => {
-          window.__localDb
-            .getDb()
-            .run(`UPDATE audit_log SET after_json = ? WHERE id = ?;`, [
-              JSON.stringify({ total: 1 }),
-              id,
-            ]);
-        }),
-      e2.id,
-    );
+    // Intercept Supabase API calls to simulate tampering in-memory without modifying the DB
+    let simulateTamperedResponse = false;
+    await page.route("**/rest/v1/audit_log*", async (route) => {
+      const response = await route.fetch();
+      const json = await response.json();
+      if (simulateTamperedResponse) {
+        // Alter after_json of the second row to trigger a verification failure
+        const row = json.find((r: any) => r.id === e2.id);
+        if (row) {
+          row.after_json = JSON.stringify({ total: 1 });
+        }
+      }
+      await route.fulfill({ response, json });
+    });
+
+    simulateTamperedResponse = true;
     const tamperedChain = await page.evaluate(() => window.__auditLog.verifyAuditChain());
     expect(tamperedChain.ok).toBe(false);
     expect(tamperedChain.brokenAtSeq).not.toBeNull();
 
-    // Restore, confirming detection isn't a one-way trap that stays broken forever.
-    await page.evaluate(
-      (entry) =>
-        window.__localDb.runLocal(() => {
-          window.__localDb
-            .getDb()
-            .run(`UPDATE audit_log SET after_json = ? WHERE id = ?;`, [
-              JSON.stringify(entry.after),
-              entry.id,
-            ]);
-        }),
-      e2,
-    );
+    // Restore (stop simulating tampered response)
+    simulateTamperedResponse = false;
     const healedChain = await page.evaluate(() => window.__auditLog.verifyAuditChain());
     expect(healedChain.ok).toBe(true);
   });

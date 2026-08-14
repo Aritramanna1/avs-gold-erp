@@ -2,87 +2,128 @@
  * Customer Login — /customer-login
  *
  * Public route — no ERP staff login required.
- * Customers authenticate via Supabase email or mobile OTP.
- * On success → redirect to /customer-portal which shows their invoices, orders, repairs.
+ * Customers authenticate via Password (Primary) or OTP (Optional).
+ * On success → redirect to /customer-portal which shows orders, approvals, catalogue, invoices.
  */
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { Mail, Phone, ArrowLeft, CheckCircle2, Loader2, ShoppingBag } from "lucide-react";
+import {
+  Mail,
+  Phone,
+  Lock,
+  ArrowLeft,
+  CheckCircle2,
+  Loader2,
+  ShoppingBag,
+  Eye,
+  EyeOff,
+  KeyRound,
+} from "lucide-react";
 
 export const Route = createFileRoute("/customer-login")({
   head: () => ({
-    meta: [{ title: "Customer Login · AVS Gold ERP" }],
+    meta: [{ title: "Customer Portal Login · AVS Gold ERP" }],
   }),
   component: CustomerLoginPage,
 });
 
 function CustomerLoginPage() {
   const navigate = useNavigate();
-  const [method, setMethod] = useState<"email" | "phone">("email");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
+  const [authMode, setAuthMode] = useState<"password" | "otp">("password");
+  const [otpMethod, setOtpMethod] = useState<"email" | "phone">("email");
+
+  // Password state
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // OTP state
+  const [otpPhone, setOtpPhone] = useState("");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+
+  // Status
   const [busy, setBusy] = useState(false);
-  const [verifyBusy, setVerifyBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
 
   const getDialablePhone = (value: string) => {
     const trimmed = value.trim();
     return trimmed.startsWith("+") ? trimmed : "+91" + trimmed.replace(/\D/g, "");
   };
-  const destination = method === "email" ? email.trim() : getDialablePhone(phone);
 
-  async function handleSend(e: FormEvent) {
+  async function handlePasswordLogin(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setErr(null);
     try {
-      if (method === "phone" && destination.replace(/\D/g, "").length < 12) {
-        throw new Error("Enter a valid mobile number with 10 digits.");
-      }
-      const { error } = await supabase.auth.signInWithOtp(
-        method === "email" ? { email: destination } : { phone: destination },
-      );
+      const emailToUse = identifier.trim();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: emailToUse,
+        password: password,
+      });
       if (error) throw error;
-      setSent(true);
+      if (data?.session) {
+        void navigate({ to: "/customer-portal" });
+      }
     } catch (ex: any) {
-      setErr(ex.message || "Could not send the verification code. Please try again.");
+      setErr(ex.message || "Invalid credentials. Please verify your email and password.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleVerify(e: FormEvent) {
+  async function handleSendOtp(e: FormEvent) {
     e.preventDefault();
-    setVerifyBusy(true);
+    setBusy(true);
     setErr(null);
     try {
-      const cleanedOtp = otp.trim();
-      if (!/^\d{6}$/.test(cleanedOtp)) {
+      const target = otpMethod === "email" ? otpEmail.trim() : getDialablePhone(otpPhone);
+      if (otpMethod === "phone" && target.replace(/\D/g, "").length < 12) {
+        throw new Error("Enter a valid mobile number with 10 digits.");
+      }
+      const { error } = await supabase.auth.signInWithOtp(
+        otpMethod === "email" ? { email: target } : { phone: target },
+      );
+      if (error) throw error;
+      setOtpSent(true);
+    } catch (ex: any) {
+      setErr(ex.message || "Could not send verification code. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleVerifyOtp(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    try {
+      const target = otpMethod === "email" ? otpEmail.trim() : getDialablePhone(otpPhone);
+      const cleaned = otpCode.trim();
+      if (!/^\d{6}$/.test(cleaned)) {
         throw new Error("Enter the 6-digit verification code.");
       }
       const { error } = await supabase.auth.verifyOtp(
-        method === "email"
-          ? { email: destination, token: cleanedOtp, type: "email" }
-          : { phone: destination, token: cleanedOtp, type: "sms" },
+        otpMethod === "email"
+          ? { email: target, token: cleaned, type: "email" }
+          : { phone: target, token: cleaned, type: "sms" },
       );
       if (error) throw error;
       void navigate({ to: "/customer-portal" });
     } catch (ex: any) {
       setErr(ex.message || "Invalid or expired code. Please try again.");
     } finally {
-      setVerifyBusy(false);
+      setBusy(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-white to-amber-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-white to-amber-50 px-4 py-8">
       <div className="w-full max-w-sm">
-        {/* Header card */}
-        <div className="bg-white rounded-2xl shadow-lg border border-amber-100 p-8 space-y-6">
-          {/* Logo mark */}
+        <div className="bg-white rounded-2xl shadow-lg border border-amber-100 p-6 sm:p-8 space-y-6">
+          {/* Header */}
           <div className="text-center space-y-3">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-600 text-white shadow-md">
               <ShoppingBag className="h-7 w-7" />
@@ -90,170 +131,258 @@ function CustomerLoginPage() {
             <div>
               <h1 className="font-serif text-2xl font-bold text-amber-900">Customer Portal</h1>
               <p className="text-xs text-amber-700 mt-0.5">
-                View your orders, invoices &amp; repairs
+                Track orders, approve CAD designs &amp; view invoices
               </p>
             </div>
           </div>
 
-          {/* Method selector */}
-          {!sent && (
-            <div className="flex rounded-xl bg-gray-100 p-1 border border-gray-200">
-              <button
-                type="button"
-                onClick={() => {
-                  setMethod("email");
-                  setErr(null);
-                }}
-                className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${
-                  method === "email"
-                    ? "bg-white text-amber-950 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Email OTP
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMethod("phone");
-                  setErr(null);
-                }}
-                className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${
-                  method === "phone"
-                    ? "bg-white text-amber-950 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Mobile OTP
-              </button>
-            </div>
-          )}
+          {/* Mode Selector (Password vs OTP) */}
+          <div className="flex rounded-xl bg-gray-100 p-1 border border-gray-200 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode("password");
+                setErr(null);
+              }}
+              className={`flex-1 rounded-lg py-1.5 transition-all ${
+                authMode === "password"
+                  ? "bg-white text-amber-950 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Password Login
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode("otp");
+                setErr(null);
+              }}
+              className={`flex-1 rounded-lg py-1.5 transition-all ${
+                authMode === "otp"
+                  ? "bg-white text-amber-950 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              OTP Code
+            </button>
+          </div>
 
-          {/* Form */}
-          {!sent ? (
-            <form onSubmit={handleSend} className="space-y-4">
-              {method === "email" ? (
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="customer-email"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                    <input
-                      id="customer-email"
-                      type="email"
-                      required
-                      autoComplete="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400">Use the email registered by your firm</p>
+          {/* Password Login Form */}
+          {authMode === "password" && (
+            <form onSubmit={handlePasswordLogin} className="space-y-4">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="customer-identifier"
+                  className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                >
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                  <input
+                    id="customer-identifier"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    placeholder="client@example.com"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
                 </div>
-              ) : (
-                <div className="space-y-1.5">
-                  <label
-                    htmlFor="customer-phone"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Mobile Number
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                    <input
-                      id="customer-phone"
-                      type="tel"
-                      required
-                      inputMode="tel"
-                      autoComplete="tel"
-                      placeholder="98765 43210"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400">Use the phone registered by your firm</p>
-                </div>
-              )}
+              </div>
 
-              {err && <p className="text-xs text-red-600 font-medium leading-relaxed">{err}</p>}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="customer-password"
+                    className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                  >
+                    Password
+                  </label>
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs text-amber-700 hover:text-amber-900 underline"
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                  <input
+                    id="customer-password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-9 pr-10 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {err && <p className="text-xs text-red-600 font-medium">{err}</p>}
 
               <button
                 type="submit"
                 disabled={busy}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                Sign In to Customer Portal
+              </button>
+            </form>
+          )}
+
+          {/* OTP Login Form */}
+          {authMode === "otp" && !otpSent && (
+            <form onSubmit={handleSendOtp} className="space-y-4">
+              <div className="flex gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setOtpMethod("email")}
+                  className={`flex-1 py-1 rounded border text-center ${otpMethod === "email" ? "border-amber-600 bg-amber-50 text-amber-900 font-semibold" : "border-gray-200 text-gray-600"}`}
+                >
+                  Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOtpMethod("phone")}
+                  className={`flex-1 py-1 rounded border text-center ${otpMethod === "phone" ? "border-amber-600 bg-amber-50 text-amber-900 font-semibold" : "border-gray-200 text-gray-600"}`}
+                >
+                  Mobile SMS
+                </button>
+              </div>
+
+              {otpMethod === "email" ? (
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="otp-email"
+                    className="block text-xs font-semibold text-gray-700 uppercase"
+                  >
+                    Registered Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                    <input
+                      id="otp-email"
+                      type="email"
+                      required
+                      placeholder="client@example.com"
+                      value={otpEmail}
+                      onChange={(e) => setOtpEmail(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="otp-phone"
+                    className="block text-xs font-semibold text-gray-700 uppercase"
+                  >
+                    Registered Phone
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                    <input
+                      id="otp-phone"
+                      type="tel"
+                      required
+                      placeholder="98765 43210"
+                      value={otpPhone}
+                      onChange={(e) => setOtpPhone(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {err && <p className="text-xs text-red-600 font-medium">{err}</p>}
+
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors shadow-sm"
               >
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                 Send Verification Code
               </button>
             </form>
-          ) : (
-            <div className="space-y-4">
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex gap-3 text-sm">
+          )}
+
+          {/* OTP Verification Step */}
+          {authMode === "otp" && otpSent && (
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex gap-3 text-xs text-emerald-800">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="text-emerald-800">
-                  A 6-digit code was sent to{" "}
-                  <strong className="break-all">{method === "email" ? email : phone}</strong>. Check
-                  your inbox.
-                </div>
+                <div>Verification code sent. Check your inbox / phone.</div>
               </div>
 
-              <form onSubmit={handleVerify} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label htmlFor="customer-otp" className="block text-sm font-medium text-gray-700">
-                    6-Digit Verification Code
-                  </label>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="otp-code"
+                  className="block text-xs font-semibold text-gray-700 uppercase"
+                >
+                  6-Digit OTP Code
+                </label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                   <input
-                    id="customer-otp"
+                    id="otp-code"
                     type="text"
                     required
                     inputMode="numeric"
-                    pattern="[0-9]{6}"
                     maxLength={6}
                     placeholder="123456"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-center text-xl font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-center tracking-widest font-mono text-lg focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
+              </div>
 
-                {err && <p className="text-xs text-red-600 font-medium leading-relaxed">{err}</p>}
+              {err && <p className="text-xs text-red-600 font-medium">{err}</p>}
 
-                <button
-                  type="submit"
-                  disabled={verifyBusy}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
-                >
-                  {verifyBusy && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Verify &amp; Enter Portal
-                </button>
-              </form>
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                Verify &amp; Sign In
+              </button>
 
               <button
                 type="button"
-                onClick={() => {
-                  setSent(false);
-                  setOtp("");
-                  setErr(null);
-                }}
-                className="w-full flex items-center justify-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+                onClick={() => setOtpSent(false)}
+                className="w-full text-xs text-gray-500 hover:text-gray-700 underline text-center block"
               >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Use a different {method === "email" ? "email" : "number"}
+                Back / Resend Code
               </button>
-            </div>
+            </form>
           )}
-        </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-4">
-          Powered by <span className="font-semibold text-amber-700">AVS Gold ERP</span>
-        </p>
+          {/* Footer Back Link */}
+          <div className="pt-2 text-center border-t border-gray-100">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Return to Main Staff Login
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -9,7 +9,6 @@
  */
 import { resolvePrintContext } from "@/lib/print-engine/data-mapper";
 import { usePrintTemplates } from "@/lib/print-engine/template-store";
-import { generateDocumentPdf } from "@/lib/print-engine/pdf/generate";
 import { useSettings } from "@/lib/settings-store";
 import { sendGenericEmail } from "@/lib/email-service";
 import type { PrintDocType } from "@/lib/print-engine/types";
@@ -46,6 +45,7 @@ export async function sendDocumentEmail(
 
   const template = usePrintTemplates.getState().getForDocType(req.docType);
   const firm = useSettings.getState().firm;
+  const { generateDocumentPdf } = await import("@/lib/print-engine/pdf/generate");
   const pdf = await generateDocumentPdf(data, template, firm);
   const contentBase64 = await blobToBase64(pdf.blob);
 

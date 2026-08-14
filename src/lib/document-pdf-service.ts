@@ -15,7 +15,7 @@ import { useRepairs } from "@/lib/repair-store";
 import { useMfgBills } from "@/lib/manufacturing-bill-store";
 import { uploadToHostingerServer } from "@/lib/hostinger-client";
 import { saveAttachmentMetadata } from "@/lib/hostinger-storage";
-import { generateDocumentPdf, type PdfDocumentType } from "@/lib/pdf/document-pdf-generator";
+import type { PdfDocumentType } from "@/lib/pdf/document-pdf-generator";
 import type { CommRequest } from "@/lib/comm/types";
 
 function linkedTypeToPdfType(linkedType: CommRequest["linkedType"]): PdfDocumentType {
@@ -56,6 +56,7 @@ export async function getOrCreateDocumentPdfUrl(req: CommRequest): Promise<strin
     if (!docData) return null;
 
     const pdfType = linkedTypeToPdfType(req.linkedType);
+    const { generateDocumentPdf } = await import("@/lib/pdf/document-pdf-generator");
     const { blob, fileName } = await generateDocumentPdf(pdfType, docData, firm);
 
     const result = await uploadToHostingerServer(blob, fileName, "invoices", req.linkedId);

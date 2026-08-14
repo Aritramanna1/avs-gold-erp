@@ -4,7 +4,14 @@ test.describe("Role Permissions", () => {
   test("Users & Roles tab shows the signed-in account's role", async ({ authedPage }) => {
     await authedPage.goto("/settings");
     await authedPage.getByRole("tab", { name: /users.*roles/i }).click();
-    await expect(authedPage.getByText(/role/i).first()).toBeVisible({ timeout: 15_000 });
+    // Wait for the tab panel content to appear — look for the heading inside the panel
+    // (not the tab trigger itself which also contains "role").
+    await expect(
+      authedPage
+        .getByRole("tabpanel")
+        .getByText(/role|user|account/i)
+        .first(),
+    ).toBeVisible({ timeout: 15_000 });
     expectNoPageErrors(authedPage);
   });
 

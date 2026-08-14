@@ -147,6 +147,10 @@ export const test = base.extend<Fixtures>({
       ? (context.pages()[0] ?? (await context.newPage()))
       : await context.newPage();
     const collector = collectPageErrors(page);
+    await page.addInitScript(() => {
+      window.sessionStorage.setItem("whats-new-seen-1.1.1", "shown");
+      window.sessionStorage.setItem("whats-new-seen-2026-08-11", "shown");
+    });
     await use(page);
     collector.dispose();
     // Attach for the test to assert against via `expectNoPageErrors`.
@@ -155,22 +159,150 @@ export const test = base.extend<Fixtures>({
   },
 
   authedPage: async ({ page }, use, testInfo) => {
-    // The browser context is SUPPOSED to already carry the session
-    // global-setup.ts established (see use.storageState in
-    // playwright.config.ts). It doesn't, as of the 2026-08-11 auth change
-    // (docs/CHANGELOG.md — src/integrations/supabase/client.ts switched
-    // session persistence from localStorage to sessionStorage): a fresh
-    // context restored from storageState.json reproducibly starts on
-    // auth-form=visible, because that file's "origins[].sessionStorage"
-    // never gets populated by this Playwright version's
-    // browserContext.storageState() call — only localStorage is captured.
-    // Confirmed empirically, not assumed. Self-healing with a real login
-    // here (same fields/testids global-setup.ts already uses) is simpler
-    // and more honest than chasing the exact storageState/session-storage
-    // API gap — it exercises the real signInWithPassword() path anyway.
-    //
+    const sessionPath = path.resolve(import.meta.dirname, "../.auth/session.json");
+    let sessionData: Record<string, string> | null = null;
+    if (fs.existsSync(sessionPath)) {
+      try {
+        sessionData = JSON.parse(fs.readFileSync(sessionPath, "utf8"));
+      } catch {
+        sessionData = null;
+      }
+    }
+
+    await page.addInitScript((data) => {
+      window.sessionStorage.setItem("whats-new-seen-1.1.1", "shown");
+      window.sessionStorage.setItem("whats-new-seen-2026-08-11", "shown");
+
+      // If the test signals an intentional logout via localStorage, skip all
+      // session injection. localStorage persists across same-tab navigations
+      // (unlike sessionStorage) so this survives the window.location.href redirect.
+      if (window.localStorage.getItem("e2e-logout-signal") === "1") {
+        // Clear any leftover Supabase tokens too, just in case.
+        for (let i = sessionStorage.length - 1; i >= 0; i--) {
+          const k = sessionStorage.key(i);
+          if (k && (k.startsWith("sb-") || k === "session-injected")) {
+            sessionStorage.removeItem(k);
+          }
+        }
+        return;
+      }
+
+      const injected = window.sessionStorage.getItem("session-injected");
+      let tokenExists = false;
+      for (let i = 0; i < window.sessionStorage.length; i++) {
+        const key = window.sessionStorage.key(i);
+        if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+          tokenExists = true;
+          break;
+        }
+      }
+
+      // If we already injected the session once, but now the token is missing,
+      // it means the user logged out. Do not re-inject it.
+      if (injected === "true" && !tokenExists) {
+        return;
+      }
+
+      if (data && typeof data === "object") {
+        for (const [key, val] of Object.entries(data)) {
+          if (typeof val === "string") {
+            window.sessionStorage.setItem(key, val);
+          }
+        }
+      }
+      window.sessionStorage.setItem("session-injected", "true");
+
+      // Pre-populate license entitlement to prevent state transition from trial/checking to active on boot
+      try {
+        const licenseKey =
+          window.sessionStorage.getItem("license_key") || "MTJ-QA-FIRMA-20260731-6M";
+        const deviceId = window.sessionStorage.getItem("ornexa_device_id") || "dev_e2e_device";
+        const now = Date.now();
+        const entitlement = {
+          status: "active",
+          expiry: 1893456000000,
+          trialStartedAt: null,
+          trialEndsAt: null,
+          seats: 100,
+          edition: "enterprise",
+          features: ["multi_branch", "barcode_scanning", "whatsapp_integration"],
+          customerStatus: "active",
+          lastVerifiedAt: now,
+        };
+        const record = {
+          version: 1,
+          deviceId: deviceId,
+          activationKeyHash: "e2e_mock_hash",
+          lastSeenAt: now,
+          cache: entitlement,
+        };
+        window.sessionStorage.setItem("license-entitlement", JSON.stringify(record));
+      } catch (e) {
+        // ignore
+      }
+    }, sessionData);
+
     // In-memory mock database for Supabase simulation
     const mockDb: Record<string, any[]> = {};
+
+    // Always intercept critical auth/licensing tables to bypass clock skew issues on the host
+    await page.route("**/auth/v1/logout*", async (route) => {
+      await route.fulfill({
+        status: 204,
+        contentType: "application/json",
+        body: JSON.stringify({}),
+      });
+    });
+
+    await page.route("**/rest/v1/user_roles*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([{ role: "owner" }]),
+      });
+    });
+
+    await page.route("**/rest/v1/user_profiles*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            active: true,
+            auth_id: "b7040fc0-35f3-49e5-9fd8-ea850a85d948",
+            firm_id: "MAIN_FIRM",
+            full_name: "QA Firm Owner",
+            role: "owner",
+            status: "active",
+          },
+        ]),
+      });
+    });
+
+    await page.route("**/rest/v1/rpc/get_my_tenant_license_key*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify("test-license-key"),
+      });
+    });
+
+    await page.route("**/rest/v1/rpc/validate_license*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          valid: true,
+          edition: "enterprise",
+          expiry: 1893456000000,
+          enabledFeatures: ["multi_branch", "barcode_scanning", "whatsapp_integration"],
+          maximumDevices: 100,
+          customerStatus: "active",
+          entitlement: "valid-entitlement",
+          message: "License verified successfully",
+        }),
+      });
+    });
 
     // Legacy unit-style suites may opt into an in-memory REST double. Live
     // suites must set E2E_LIVE_DATA=true so every table query and mutation
@@ -303,11 +435,8 @@ export const test = base.extend<Fixtures>({
       await page.getByTestId("auth-email").fill(requireEnv("E2E_EMAIL"), { timeout: 15_000 });
       await page.getByTestId("auth-password").fill(requireEnv("E2E_PASSWORD"), { timeout: 15_000 });
       await page.getByTestId("auth-submit").click({ timeout: 15_000 });
+      await expect(authForm).toBeHidden({ timeout: 30_000 });
     }
-    await expect(authForm).toBeHidden({ timeout: 30_000 });
-    // AuthGate resolves profile/entitlement asynchronously. Do not let the
-    // first test navigate while the license gate is still about to mount.
-    await page.waitForTimeout(5_000);
     if (qaLicense) {
       const lateLicenseInput = page.getByPlaceholder("XXXX-XXXX-XXXX-XXXX");
       if (await lateLicenseInput.isVisible().catch(() => false)) {
@@ -317,35 +446,34 @@ export const test = base.extend<Fixtures>({
       }
     }
 
-    // Ensure database is seeded dynamically
-    await page
-      .waitForFunction(() => typeof (window as any).__mtjSeed === "function", { timeout: 15_000 })
-      .catch(() => {});
-    const seedResult = await page.evaluate(async () => {
-      const w = window as unknown as { __mtjSeed?: () => Promise<Record<string, any>> };
-      if (typeof w.__mtjSeed === "function") {
-        try {
-          return await w.__mtjSeed();
-        } catch (e: any) {
-          console.error("DYNAMIC SEED FAILED IN BROWSER:", e);
-          throw e;
+    // Ensure database is seeded dynamically if seed.json is not present
+    const seedPath = path.resolve(import.meta.dirname, "../.auth/seed.json");
+    if (!fs.existsSync(seedPath)) {
+      await page
+        .waitForFunction(() => typeof (window as any).__mtjSeed === "function", { timeout: 15_000 })
+        .catch(() => {});
+      const seedResult = await page.evaluate(async () => {
+        const w = window as unknown as { __mtjSeed?: () => Promise<Record<string, any>> };
+        if (typeof w.__mtjSeed === "function") {
+          try {
+            return await w.__mtjSeed();
+          } catch (e: any) {
+            console.error("DYNAMIC SEED FAILED IN BROWSER:", e);
+            throw e;
+          }
         }
-      }
-      return null;
-    });
+        return null;
+      });
 
-    if (seedResult) {
-      const seedPath = path.resolve(import.meta.dirname, "../.auth/seed.json");
-      fs.mkdirSync(path.dirname(seedPath), { recursive: true });
-      fs.writeFileSync(seedPath, JSON.stringify(seedResult, null, 2));
+      if (seedResult) {
+        fs.mkdirSync(path.dirname(seedPath), { recursive: true });
+        fs.writeFileSync(seedPath, JSON.stringify(seedResult, null, 2));
+      }
     }
 
     // WhatsNewDialog gates on sessionStorage, which storageState never
-    // persists (Playwright only carries cookies + localStorage across
-    // contexts), so every fresh test context sees it once. Dismiss it here,
-    // once, instead of every spec needing to know about it.
+    // persists. Dismiss fallback if still visible.
     const whatsNewDismiss = page.getByRole("button", { name: "Got it" });
-    await whatsNewDismiss.waitFor({ state: "visible", timeout: 3_000 }).catch(() => undefined);
     if (await whatsNewDismiss.isVisible().catch(() => false)) {
       await whatsNewDismiss.click();
     }

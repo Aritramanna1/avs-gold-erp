@@ -1,4 +1,4 @@
-﻿import { createFileRoute, useParams } from "@tanstack/react-router";
+import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useSettlements, previewSettlementTotals, type Settlement } from "@/lib/settlement-store";
 import { useSettings } from "@/lib/settings-store";
@@ -6,7 +6,6 @@ import { mgToGrams } from "@/lib/gold";
 import { paiseToRupees } from "@/lib/billing-store";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
-import { generateWorkerSlipPdf } from "@/lib/pdf/document-pdf-generator";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settlement/draft-print/$id")({
@@ -67,6 +66,7 @@ function SettlementDraftPrint() {
   async function handleDownloadPdf() {
     setDownloadingPdf(true);
     try {
+      const { generateWorkerSlipPdf } = await import("@/lib/pdf/document-pdf-generator");
       const blob = generateWorkerSlipPdf(
         {
           title: "Settlement Draft (Preview) â€” NOT A TAX INVOICE",

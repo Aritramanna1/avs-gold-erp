@@ -239,12 +239,20 @@ export async function seedPilotDataset(): Promise<SeedResult> {
     active: true,
   });
 
-  // Mark a few KYC docs filed on both
-  await usePeople.getState().toggleDoc(customer.id, "photo");
-  await usePeople.getState().toggleDoc(customer.id, "pan");
-  await usePeople.getState().toggleDoc(karigar.id, "photo");
-  await usePeople.getState().toggleDoc(karigar.id, "aadhaar_front");
-  await usePeople.getState().toggleDoc(karigar.id, "aadhaar_back");
+  // Mark a few KYC docs filed on both — non-fatal: a Supabase timeout here
+  // must not abort the whole seed; the people & order data is what matters.
+  const toggleDocSafe = async (id: string, doc: string) => {
+    try {
+      await usePeople.getState().toggleDoc(id, doc as any);
+    } catch (e) {
+      console.warn(`[seed] toggleDoc(${id}, ${doc}) failed — continuing seed:`, e);
+    }
+  };
+  await toggleDocSafe(customer.id, "photo");
+  await toggleDocSafe(customer.id, "pan");
+  await toggleDocSafe(karigar.id, "photo");
+  await toggleDocSafe(karigar.id, "aadhaar_front");
+  await toggleDocSafe(karigar.id, "aadhaar_back");
 
   // 3. Shared attachment store: filed-with-note records (so Photos & Files sections render filled)
   const att = useAttachments.getState();

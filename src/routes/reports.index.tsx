@@ -8,6 +8,7 @@ import {
   Package,
   FileSpreadsheet,
   Receipt,
+  ShieldAlert,
 } from "lucide-react";
 import { ModuleWorkspace } from "@/components/module-workspace";
 export const Route = createFileRoute("/reports/")({ component: ReportsWorkspace });
@@ -47,6 +48,13 @@ const reports = [
     description: "GSTR-1 (B2B) and GSTR-3B summary exports for the GST portal.",
     to: "/reports/gst-returns",
     icon: Receipt,
+  },
+  {
+    label: "Auditor workspace",
+    description:
+      "Verify immutable audit logs, check financial year locks, and manage freeze status.",
+    to: "/reports/auditor",
+    icon: ShieldAlert,
   },
 ];
 function ReportsWorkspace() {

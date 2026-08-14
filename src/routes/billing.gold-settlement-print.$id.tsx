@@ -7,10 +7,6 @@ import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { useGoldSettlementRecord } from "@/lib/use-gold-settlement-record";
-import {
-  generateGoldSettlementPdf,
-  goldSettlementPdfFileName,
-} from "@/lib/pdf/gold-settlement-pdf";
 import { Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -192,6 +188,8 @@ function GoldSettlementPrintComponent() {
   async function handleDownload() {
     setDownloading(true);
     try {
+      const { generateGoldSettlementPdf, goldSettlementPdfFileName } =
+        await import("@/lib/pdf/gold-settlement-pdf");
       const blob = generateGoldSettlementPdf(settlement!, partyName, firm);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

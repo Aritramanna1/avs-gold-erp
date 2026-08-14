@@ -14,19 +14,18 @@ test.describe("Global search (command palette records)", () => {
     await page.waitForLoadState("networkidle");
 
     await page.keyboard.press("Control+f");
-    await expect(page.locator("[cmdk-input]")).toBeVisible();
+    await expect(page.locator("[cmdk-input]")).toBeVisible({ timeout: 10000 });
 
     // Search by a distinctive fragment of the seeded invoice number.
     const fragment = seedIds.invoiceNo.slice(-6);
     await page.locator("[cmdk-input]").fill(fragment);
-    await page.waitForTimeout(300);
 
-    await expect(page.getByText("Records", { exact: true })).toBeVisible();
+    await expect(page.getByText("Records", { exact: true })).toBeVisible({ timeout: 10000 });
     const resultItem = page.locator("[cmdk-item]", { hasText: seedIds.invoiceNo });
-    await expect(resultItem).toBeVisible();
+    await expect(resultItem).toBeVisible({ timeout: 10000 });
 
     await resultItem.click();
-    await page.waitForURL(new RegExp(seedIds.invoiceId), { timeout: 5000 });
+    await page.waitForURL(new RegExp(seedIds.invoiceId), { timeout: 10000 });
     await expect(page.locator("[cmdk-input]")).not.toBeVisible();
   });
 

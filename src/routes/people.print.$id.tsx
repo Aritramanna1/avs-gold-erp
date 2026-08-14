@@ -15,7 +15,6 @@ import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { useSettings } from "@/lib/settings-store";
-import { generateKycCoverSheetPdf } from "@/lib/pdf/document-pdf-generator";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/people/print/$id")({
@@ -184,6 +183,7 @@ function PrintPage() {
   async function handleDownloadPdf() {
     setDownloadingPdf(true);
     try {
+      const { generateKycCoverSheetPdf } = await import("@/lib/pdf/document-pdf-generator");
       const blob = generateKycCoverSheetPdf(
         {
           fullName: person!.fullName,

@@ -2,7 +2,9 @@ import { test, expect } from "../fixtures/base";
 
 async function snapshot(page: import("@playwright/test").Page) {
   return page.evaluate(async () => {
+    // @ts-expect-error dynamic runtime import path, no type declarations
     const ledgerMod = await import(/* @vite-ignore */ "/src/lib/ledger-store.ts");
+    // @ts-expect-error dynamic runtime import path, no type declarations
     const supabaseMod = await import(/* @vite-ignore */ "/src/integrations/supabase/client.ts");
     await ledgerMod.useLedger.getState().refresh();
     const balances = ledgerMod.computeBalances(ledgerMod.useLedger.getState().entries);
@@ -69,6 +71,7 @@ test.describe("Polishing workflow", () => {
 
     // Gold Ledger tracks fine gold (gross × purity ÷ 999).
     const expectedFine = await page.evaluate(async () => {
+      // @ts-expect-error dynamic runtime import path, no type declarations
       const goldMod = await import(/* @vite-ignore */ "/src/lib/gold.ts");
       return {
         sentFineMg: goldMod.fineGoldMg(5000, 916),
@@ -128,7 +131,9 @@ test.describe("Polishing workflow", () => {
     // a polishing_transactions row with this orderId, and (b) a timeline
     // entry on this exact order.
     const result = await page.evaluate(async (orderId) => {
+      // @ts-expect-error dynamic runtime import path, no type declarations
       const ordersMod = await import(/* @vite-ignore */ "/src/lib/orders-store.ts");
+      // @ts-expect-error dynamic runtime import path, no type declarations
       const supabaseMod = await import(/* @vite-ignore */ "/src/integrations/supabase/client.ts");
       await ordersMod.useOrders.getState().refresh();
       const order = ordersMod.useOrders.getState().orders.find((o: any) => o.id === orderId);

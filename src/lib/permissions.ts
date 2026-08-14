@@ -29,8 +29,17 @@ export const ROLES = {
 
 type Role = (typeof ROLES)[keyof typeof ROLES];
 
-/** Roles that bypass every module check. "Owner" is a legacy alias for Super Owner. */
-const SUPER_ROLES: string[] = [ROLES.SUPER_OWNER, ROLES.ADMINISTRATOR, "Owner"];
+/** Roles that bypass every module check. "Owner" and "firm-owner" are aliases for Super Owner. */
+const SUPER_ROLES: string[] = [
+  ROLES.SUPER_OWNER,
+  ROLES.ADMINISTRATOR,
+  "Owner",
+  "owner",
+  "admin",
+  "firm-owner",
+  "super_owner",
+  "administrator",
+];
 
 /**
  * Map of route path prefix → roles allowed to navigate to it.
@@ -42,6 +51,18 @@ const SUPER_ROLES: string[] = [ROLES.SUPER_OWNER, ROLES.ADMINISTRATOR, "Owner"];
 const ROUTE_ACL: Record<string, Role[]> = {
   "/saas-admin": [],
   "/platform": [],
+  "/assistant": [
+    ROLES.SUPER_OWNER,
+    ROLES.ADMINISTRATOR,
+    ROLES.CEO,
+    ROLES.BRANCH_MANAGER,
+    ROLES.WORKSHOP_MANAGER,
+    ROLES.RETAIL_STAFF,
+    ROLES.MANUFACTURING_STAFF,
+    ROLES.ACCOUNTANT,
+    ROLES.SALES_EXECUTIVE,
+    ROLES.CRM_EXECUTIVE,
+  ],
   "/dashboard/ceo": [ROLES.CEO],
   "/dashboard": [
     ROLES.SUPER_OWNER,

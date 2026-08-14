@@ -11,7 +11,6 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getDocumentShare, type DocumentShare } from "@/lib/document-shares";
-import { generateDocumentPdf } from "@/lib/pdf/document-pdf-generator";
 import { printDocument } from "@/lib/print-document";
 
 export const Route = createFileRoute("/doc/$token")({
@@ -386,6 +385,7 @@ function DocumentPortal() {
     try {
       const pdfDocType =
         docType === "job" ? "manufacturing_bill" : (docType as "invoice" | "order" | "repair");
+      const { generateDocumentPdf } = await import("@/lib/pdf/document-pdf-generator");
       const { blob, fileName } = await generateDocumentPdf(pdfDocType, doc, firm as any);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

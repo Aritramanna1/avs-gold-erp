@@ -38,7 +38,17 @@ import { reportUnexpectedError } from "@/lib/error-handling";
  */
 function getActiveBranchId(): string | null {
   const { currentUserRole, selectedBranchId } = useSettings.getState();
-  const GLOBAL_ROLES = ["Super Owner", "Administrator", "CEO (View Only)"];
+  const GLOBAL_ROLES = [
+    "Super Owner",
+    "Administrator",
+    "CEO (View Only)",
+    "owner",
+    "admin",
+    "saas_admin",
+    "firm-owner",
+    "super_owner",
+    "administrator",
+  ];
   if (!currentUserRole || GLOBAL_ROLES.includes(currentUserRole)) return null;
   return selectedBranchId || "MAIN";
 }
@@ -152,14 +162,31 @@ export async function pullInvoices(): Promise<void> {
   const bid = getActiveBranchId();
   let q = supabase
     .from("invoices")
-    .select("data")
+    .select(
+      "id,invoice_no,customer_id,order_id,status,subtotal_paise,gst_paise,grand_total_paise,paid_paise,balance_paise,created_at,updated_at,data",
+    )
     .order("updated_at", { ascending: false })
     .limit(STARTUP_DETAIL_CACHE_LIMIT);
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`invoices pull: ${error.message}`);
   const rows = (data ?? [])
-    .map((r) => r.data as Invoice | null)
+    .map((r: any) => {
+      const d = (r.data as Invoice) || {};
+      const id = r.id || d.id;
+      const invoiceNo = r.invoice_no || d.invoiceNo;
+      if (!id || !invoiceNo) return null;
+      return {
+        ...d,
+        id,
+        invoiceNo,
+        customerId: d.customerId || r.customer_id || "",
+        status: d.status || r.status || "draft",
+        grandTotalPaise: d.grandTotalPaise ?? r.grand_total_paise ?? 0,
+        paidPaise: d.paidPaise ?? r.paid_paise ?? 0,
+        balancePaise: d.balancePaise ?? r.balance_paise ?? 0,
+      } as Invoice;
+    })
     .filter((i): i is Invoice => !!i && !!i.id && !!i.invoiceNo)
     .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
   useBilling.setState({ invoices: rows });
@@ -362,10 +389,22 @@ export async function pullWhatsappInbox(): Promise<void> {
 }
 
 export async function pullAppSettings(): Promise<void> {
+  const { data: authData } = await supabase.auth.getUser();
+  const userId = authData?.user?.id;
+  if (!userId) return;
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("firm_id")
+    .eq("auth_id", userId)
+    .maybeSingle();
+  const firmId = profile?.firm_id;
+  if (!firmId) return;
+
   const { data, error } = await supabase
     .from("app_settings")
     .select("data, updated_at")
-    .eq("id", "firm")
+    .eq("id", firmId)
     .maybeSingle();
   if (error) throw new Error(`app_settings pull: ${error.message}`);
 

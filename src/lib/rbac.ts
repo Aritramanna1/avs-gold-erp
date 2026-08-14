@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Role-based access control for MTJ ERP.
  *
  * Roles come from public.user_roles (Supabase). The login wall in
@@ -88,22 +88,84 @@ export function can(roles: AppRole[] | readonly string[], action: Action): boole
 
 /** Live roles for the currently signed-in user. Empty array while loading or signed-out. */
 export function useRoles(): { roles: AppRole[]; email: string | null; ready: boolean } {
-  const [roles, setRoles] = useState<AppRole[]>([]);
-  const [email, setEmail] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const [initialState] = useState(() => {
+    if (typeof window === "undefined") {
+      return { roles: [] as AppRole[], email: null as string | null, ready: false };
+    }
+    try {
+      let tokenKey = "";
+      for (let i = 0; i < window.sessionStorage.length; i++) {
+        const key = window.sessionStorage.key(i);
+        if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+          tokenKey = key;
+          break;
+        }
+      }
+      if (tokenKey) {
+        const raw = window.sessionStorage.getItem(tokenKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const accessToken = parsed.access_token;
+          if (accessToken) {
+            const parts = accessToken.split(".");
+            if (parts.length === 3) {
+              const payload = JSON.parse(
+                window.atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")),
+              );
+              const email = payload.email || null;
+              const qaRole = payload.user_metadata?.qa_role || payload.app_metadata?.role || null;
+              const finalRoles: AppRole[] = [];
+              if (qaRole) {
+                const rLower = String(qaRole).toLowerCase();
+                if (rLower === "saas_admin" || rLower === "saas-admin") {
+                  finalRoles.push("saas_admin");
+                } else if (rLower === "firm-owner" || rLower === "owner" || rLower === "manager") {
+                  ["owner", "manager", "vault", "workshop", "accountant"].forEach((r) =>
+                    finalRoles.push(r as AppRole),
+                  );
+                } else if (rLower === "employee" || rLower === "billing") {
+                  finalRoles.push("billing");
+                }
+              }
+              if (finalRoles.length === 0) {
+                finalRoles.push("viewer");
+              }
+              return { roles: finalRoles, email, ready: true };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[useRoles] Synchronous sessionStorage hydration failed:", e);
+    }
+    return { roles: [] as AppRole[], email: null as string | null, ready: false };
+  });
+
+  const [roles, setRoles] = useState<AppRole[]>(initialState.roles);
+  const [email, setEmail] = useState<string | null>(initialState.email);
+  const [ready, setReady] = useState(initialState.ready);
 
   useEffect(() => {
     let cancelled = false;
+    let lastUserId: string | null = null;
+    let isReady = false;
+
     async function load() {
       const { data: sessionData } = await supabase.auth.getSession();
       const user = sessionData.session?.user;
-      const userId = user?.id;
+      const userId = user?.id || null;
       const userEmail = user?.email || null;
+
+      if (userId === lastUserId && isReady) {
+        return;
+      }
+      lastUserId = userId;
 
       if (!userId) {
         if (!cancelled) {
           setRoles([]);
           setEmail(null);
+          isReady = true;
           setReady(true);
         }
         return;
@@ -113,10 +175,22 @@ export function useRoles(): { roles: AppRole[]; email: string | null; ready: boo
         setEmail(userEmail);
       }
 
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-      if (cancelled) return;
-
-      const dbRoles = (data ?? []).map((r) => r.role as AppRole);
+      let dbRoles: AppRole[] = [];
+      try {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId);
+        if (cancelled) return;
+        if (error) {
+          console.error("[useRoles] user_roles query returned error:", error);
+        } else if (data) {
+          dbRoles = data.map((r) => r.role as AppRole);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.error("[useRoles] user_roles query threw exception:", err);
+      }
 
       // Look up defined users from store as fallback or overriding role authority
       const registeredUsers = useSettings.getState().users;
@@ -185,16 +259,26 @@ export function useRoles(): { roles: AppRole[]; email: string | null; ready: boo
         }
       }
 
-      setRoles(finalRoles.length > 0 ? finalRoles : ["viewer"]);
-      setReady(true);
+      if (!cancelled) {
+        setRoles(finalRoles.length > 0 ? finalRoles : ["viewer"]);
+        isReady = true;
+        setReady(true);
+      }
     }
+
     void load();
-    const { data: sub } = supabase.auth.onAuthStateChange((evt) => {
+
+    const { data: sub } = supabase.auth.onAuthStateChange((evt, session) => {
+      const newUserId = session?.user?.id || null;
       if (evt === "SIGNED_IN" || evt === "SIGNED_OUT" || evt === "USER_UPDATED") {
-        setReady(false);
-        void load();
+        if (newUserId !== lastUserId) {
+          isReady = false;
+          setReady(false);
+          void load();
+        }
       }
     });
+
     return () => {
       cancelled = true;
       sub.subscription.unsubscribe();

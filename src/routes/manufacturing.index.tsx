@@ -25,7 +25,14 @@ function ManufacturingWorkspace() {
   const [error, setError] = useState<string | null>(null);
 
   const branchId = useMemo(() => {
-    const globalRoles = ["Super Owner", "Administrator", "CEO (View Only)", "owner", "admin"];
+    const globalRoles = [
+      "Super Owner",
+      "Administrator",
+      "CEO (View Only)",
+      "owner",
+      "admin",
+      "saas_admin",
+    ];
     return currentUserRole && !globalRoles.includes(currentUserRole)
       ? selectedBranchId || "MAIN"
       : null;

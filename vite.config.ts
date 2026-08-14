@@ -58,6 +58,8 @@ export default defineConfig({
           if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
           if (id.includes("@supabase")) return "vendor-supabase";
           if (id.includes("exceljs")) return "vendor-exceljs";
+          if (id.includes("jspdf")) return "vendor-jspdf";
+          if (id.includes("html2canvas")) return "vendor-html2canvas";
           if (id.includes("node_modules/react") || id.includes("node_modules/react-dom"))
             return "vendor-react";
         },

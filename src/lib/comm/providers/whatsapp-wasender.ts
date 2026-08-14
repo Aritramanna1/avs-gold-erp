@@ -24,7 +24,7 @@ import type {
 import { WHATSAPP_KEYS } from "../types";
 import { wasenderClient, isWasenderBridgeAvailable } from "../wasender-client";
 import { cleanPhone } from "@/lib/wa-link";
-import { generateDocumentPdf, type PdfDocumentType } from "@/lib/pdf/document-pdf-generator";
+import type { PdfDocumentType } from "@/lib/pdf/document-pdf-generator";
 import { useSettings } from "@/lib/settings-store";
 import { useBilling } from "@/lib/billing-store";
 import { useOrders } from "@/lib/orders-store";
@@ -149,6 +149,7 @@ export class WhatsAppWasenderProvider implements CommProvider {
       if (pdfType && record) {
         try {
           const firm = useSettings.getState().firm;
+          const { generateDocumentPdf } = await import("@/lib/pdf/document-pdf-generator");
           const pdfRes = await generateDocumentPdf(pdfType, record, firm);
           documentBlob = pdfRes.blob;
           documentFileName = pdfRes.fileName;

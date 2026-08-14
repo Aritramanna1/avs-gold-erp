@@ -19,12 +19,7 @@ import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import type { PrintDocType } from "@/lib/printlog-store";
 import { buildWorkerPassbookRows } from "@/lib/workers-store";
-import {
-  generateReportPdf,
-  generateWorkerSlipPdf,
-  generateAttendanceSheetPdf,
-  type WorkerSlipSection,
-} from "@/lib/pdf/document-pdf-generator";
+import type { WorkerSlipSection } from "@/lib/pdf/document-pdf-generator";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/attendance/print/$kind/$id")({
@@ -125,6 +120,8 @@ function PrintPage() {
     if (!recordExists) return;
     setDownloadingPdf(true);
     try {
+      const { generateReportPdf, generateWorkerSlipPdf, generateAttendanceSheetPdf } =
+        await import("@/lib/pdf/document-pdf-generator");
       if (kind === "passbook") {
         const worker = people.find((p) => p.id === id)!;
         const rows = buildWorkerPassbookRows(id, {

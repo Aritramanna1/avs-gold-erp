@@ -6,7 +6,7 @@ test.describe("Inventory (Stock)", () => {
     // getByText("Stock") is ambiguous — the sidebar nav link is also
     // literally "Stock" — getByRole("heading") targets only the page's own
     // <h1> title, unambiguously.
-    await expect(authedPage.getByRole("heading", { name: "Ready Stock", exact: true })).toBeVisible(
+    await expect(authedPage.getByRole("heading", { name: "Ready stock", exact: true })).toBeVisible(
       {
         timeout: 15_000,
       },

@@ -5,6 +5,11 @@ test.describe("Billing Documents UI (Credit/Debit Notes, Estimates, Delivery Cha
     authedPage: page,
   }) => {
     await page.goto("/billing");
+    // Wait for RBAC + data load — billing page shows "Checking permissions…" until
+    // useRoles() resolves its Supabase query. The heading appearing confirms both.
+    await expect(page.getByRole("heading", { name: "Billing", exact: true })).toBeVisible({
+      timeout: 30_000,
+    });
     await expect(page.locator('a[href="/billing/credit-notes"]').first()).toBeVisible();
     await expect(page.locator('a[href="/billing/debit-notes"]').first()).toBeVisible();
     await expect(page.locator('a[href="/billing/estimates"]').first()).toBeVisible();

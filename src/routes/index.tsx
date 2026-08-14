@@ -28,6 +28,9 @@ import {
   CalendarCheck,
   ClipboardList,
   MessageCircle,
+  CheckCircle2,
+  Banknote,
+  Layers,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -121,9 +124,193 @@ function Home() {
     });
   }
 
+  const { currentUserRole } = useSettings();
+  const role = (currentUserRole ?? "").toLowerCase();
+  const isOwnerOrManager = role === "owner" || role === "super_owner" || role === "manager";
+  const isWorkshop = role === "workshop" || role === "vault";
+  const isBilling = role === "billing" || role === "accountant";
+
   return (
     <div className="p-4 md:p-7 max-w-7xl mx-auto page-enter">
       <PageHeader title={t("dashboard.goodDay")} subtitle={t("dashboard.overview")} />
+
+      {/* ── Role-specific quick-access panel ────────────────────────────── */}
+      {isOwnerOrManager && summary && (
+        <div className="mb-6">
+          <h2 className="erp-section-title mb-3 flex items-center gap-2">
+            <Layers className="h-4 w-4 text-gold" />
+            {role === "owner" || role === "super_owner" ? "Owner Overview" : "Manager Overview"}
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Link
+              to="/ledger"
+              className="erp-surface rounded-none p-3 hover:border-gold/40 transition-colors block"
+            >
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
+                <Scale className="h-3 w-3" /> Vault Gold
+              </div>
+              <div className="font-mono font-bold text-gold text-lg">
+                {mgToGrams(summary.goldBuckets.vault ?? 0)} g
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Fine gold in vault</div>
+            </Link>
+            <Link
+              to="/workshop"
+              className="erp-surface rounded-none p-3 hover:border-gold/40 transition-colors block"
+            >
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
+                <Hammer className="h-3 w-3" /> With Karigars
+              </div>
+              <div className="font-mono font-bold text-amber-500 text-lg">
+                {mgToGrams(summary.goldBuckets.karigar ?? 0)} g
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Gold in WIP custody</div>
+            </Link>
+            <Link
+              to="/orders"
+              className="erp-surface rounded-none p-3 hover:border-primary/40 transition-colors block"
+            >
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
+                <ShoppingBag className="h-3 w-3" /> Open Orders
+              </div>
+              <div className="font-mono font-bold text-foreground text-lg">
+                {summary.openOrders ?? 0}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {summary.totalOrders ?? 0} total orders
+              </div>
+            </Link>
+            <Link
+              to="/billing"
+              className="erp-surface rounded-none p-3 hover:border-primary/40 transition-colors block"
+            >
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
+                <Banknote className="h-3 w-3" /> Today Billing
+              </div>
+              <div className="font-mono font-bold text-emerald-500 text-lg">
+                ₹{((summary.todayBillingPaise ?? 0) / 100).toLocaleString("en-IN")}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">
+                {summary.todayInvoiceCount ?? 0} invoices today
+              </div>
+            </Link>
+          </div>
+          {(buckets.readyBilling.length > 0 || buckets.delayed.length > 0) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {buckets.readyBilling.length > 0 && (
+                <Link to="/billing/new">
+                  <Button
+                    size="sm"
+                    className="bg-gold hover:bg-gold/90 text-black h-8 text-xs font-medium"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                    {buckets.readyBilling.length} Ready to Bill
+                  </Button>
+                </Link>
+              )}
+              {buckets.delayed.length > 0 && (
+                <Link to="/orders">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-500/50 text-red-600 h-8 text-xs"
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+                    {buckets.delayed.length} Delayed Orders
+                  </Button>
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isWorkshop && summary && (
+        <div className="mb-6">
+          <h2 className="erp-section-title mb-3 flex items-center gap-2">
+            <Hammer className="h-4 w-4 text-gold" />
+            Workshop Summary
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="erp-surface rounded-none p-3">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                Gold with Karigars
+              </div>
+              <div className="font-mono font-bold text-amber-500 text-xl">
+                {mgToGrams(summary.goldBuckets.karigar ?? 0)} g
+              </div>
+            </div>
+            <div className="erp-surface rounded-none p-3">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                Orders in WIP
+              </div>
+              <div className="font-mono font-bold text-foreground text-xl">
+                {(buckets.pendingJobCard?.length ?? 0) + (buckets.today?.length ?? 0)}
+              </div>
+            </div>
+          </div>
+          <div className="mt-2">
+            <Link to="/workshop">
+              <Button
+                size="sm"
+                className="bg-gold hover:bg-gold/90 text-black h-8 text-xs font-medium w-full sm:w-auto"
+              >
+                <Hammer className="h-3.5 w-3.5 mr-1" /> Open Workshop
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {isBilling && summary && (
+        <div className="mb-6">
+          <h2 className="erp-section-title mb-3 flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-gold" />
+            Billing Overview
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="erp-surface rounded-none p-3">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                Today Revenue
+              </div>
+              <div className="font-mono font-bold text-emerald-500 text-lg">
+                ₹{((summary.todayBillingPaise ?? 0) / 100).toLocaleString("en-IN")}
+              </div>
+            </div>
+            <div className="erp-surface rounded-none p-3">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                Ready to Bill
+              </div>
+              <div className="font-mono font-bold text-gold text-lg">
+                {buckets.readyBilling.length}
+              </div>
+            </div>
+            <div className="erp-surface rounded-none p-3">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                Today Invoices
+              </div>
+              <div className="font-mono font-bold text-foreground text-lg">
+                {summary.todayInvoiceCount ?? 0}
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 flex gap-2 flex-wrap">
+            <Link to="/billing/new">
+              <Button
+                size="sm"
+                className="bg-gold hover:bg-gold/90 text-black h-8 text-xs font-medium"
+              >
+                <Receipt className="h-3.5 w-3.5 mr-1" /> New Invoice
+              </Button>
+            </Link>
+            <Link to="/billing">
+              <Button size="sm" variant="outline" className="h-8 text-xs">
+                View All Billing
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {!firm.shopName && (
         <div className="mb-6 p-4 rounded-md border border-gold/40 bg-gold/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

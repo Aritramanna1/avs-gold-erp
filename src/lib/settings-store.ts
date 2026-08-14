@@ -55,7 +55,7 @@ async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<v
     const { error } = await supabase.from("app_settings").upsert(
       [
         {
-          id: "firm",
+          id: firmId,
           firm_id: firmId,
           scope: "firm",
           data: snapshot as any,

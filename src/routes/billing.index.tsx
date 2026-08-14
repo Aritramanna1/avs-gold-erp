@@ -85,6 +85,9 @@ function BillingIndex() {
       "owner",
       "admin",
       "saas_admin",
+      "firm-owner",
+      "super_owner",
+      "administrator",
     ];
     return currentUserRole && !globalRoles.includes(currentUserRole)
       ? selectedBranchId || "MAIN"
@@ -94,6 +97,7 @@ function BillingIndex() {
   useEffect(() => {
     let cancelled = false;
 
+    void useBilling.getState().refresh();
     setLoadingInvoices(true);
     setInvoiceError(null);
     fetchBillingInvoicePage({ page, pageSize, query: q, branchId: billingBranchId })
@@ -103,6 +107,12 @@ function BillingIndex() {
         setInvoiceTotalCount(result.totalCount);
         setTotalCollected(result.collectedPaise);
         setServerOutstandingTotal(result.outstandingPaise);
+        useBilling.setState((s) => ({
+          invoices: [
+            ...result.invoices,
+            ...s.invoices.filter((i) => !result.invoices.some((r) => r.id === i.id)),
+          ],
+        }));
       })
       .catch((err) => {
         if (cancelled) return;

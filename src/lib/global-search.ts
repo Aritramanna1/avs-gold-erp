@@ -203,15 +203,15 @@ export async function searchRemote(
     ),
     safeSelect<{
       id: string;
-      invoice_no: string;
-      status: string;
+      invoice_no: string | null;
+      status: string | null;
       data: Record<string, unknown> | null;
     }>(() =>
       db
         .from("invoices")
         .select("id,invoice_no,status,data")
-        .or(`invoice_no.ilike.${like},status.ilike.${like}`)
-        .limit(limitPerType),
+        .order("updated_at", { ascending: false })
+        .limit(limitPerType * 8),
     ),
     safeSelect<{
       id: string;
@@ -273,13 +273,22 @@ export async function searchRemote(
       subtitle: [item.item_code, item.barcode, item.huid, item.status].filter(Boolean).join(" - "),
       route: `/stock?selected=${item.id}`,
     })),
-    ...invoices.map((invoice) => ({
-      type: "invoice" as const,
-      id: invoice.id,
-      title: invoice.invoice_no,
-      subtitle: String(invoice.status ?? "invoice"),
-      route: `/billing/${invoice.id}`,
-    })),
+    ...invoices
+      .map((invoice) => {
+        const d = (invoice.data as any) || {};
+        const invNo = invoice.invoice_no || d.invoiceNo || invoice.id;
+        const custName = d.customerName || "";
+        return {
+          type: "invoice" as const,
+          id: invoice.id,
+          title: invNo,
+          subtitle: [custName, String(invoice.status || d.status || "invoice")]
+            .filter(Boolean)
+            .join(" - "),
+          route: `/billing/${invoice.id}`,
+        };
+      })
+      .filter((inv) => matches(q, inv.title, inv.subtitle)),
     ...billingDocs.map((doc) => ({
       type: "document" as const,
       id: doc.id,

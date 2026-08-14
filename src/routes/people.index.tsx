@@ -1296,17 +1296,23 @@ function PersonFormDialog({
     setSubmitting(true);
     if (initial) {
       update(initial.id, form)
-        .then(() => onSaved({ ...initial, ...form, updatedAt: Date.now() }))
+        .then(() => {
+          onSaved({ ...initial, ...form, updatedAt: Date.now() });
+          clearForm();
+          onClose();
+        })
         .catch(() => toast.error(`Failed to save ${form.fullName || "person"}. Please try again.`))
         .finally(() => setSubmitting(false));
     } else {
       add(form)
-        .then((created) => onSaved(created))
+        .then((created) => {
+          onSaved(created);
+          clearForm();
+          onClose();
+        })
         .catch(() => toast.error(`Failed to save ${form.fullName || "person"}. Please try again.`))
         .finally(() => setSubmitting(false));
     }
-    clearForm();
-    onClose();
   };
 
   // Keyboard-first (Priority 4/3): Ctrl+S saves without reaching for the mouse.

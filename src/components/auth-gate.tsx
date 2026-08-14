@@ -99,10 +99,22 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
       // legitimate, already-authenticated user. Retry once before giving up.
       for (let attempt = 0; attempt < 2 && !matched; attempt++) {
         try {
+          const { data: userResult } = await supabase.auth.getUser();
+          const userId = userResult?.user?.id;
+          if (!userId) break;
+
+          const { data: profile } = await supabase
+            .from("user_profiles")
+            .select("firm_id")
+            .eq("auth_id", userId)
+            .maybeSingle();
+          const firmId = profile?.firm_id;
+          if (!firmId) break;
+
           const { data, error } = await supabase
             .from("app_settings")
             .select("data")
-            .eq("id", "firm")
+            .eq("id", firmId)
             .maybeSingle();
 
           if (error) {
@@ -231,7 +243,8 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
       // Portal visitors authenticate via their respective portal views, so bypass staff authorization checks.
       const isPortalRoute =
         window.location.pathname.startsWith("/karigar") ||
-        window.location.pathname.startsWith("/customer");
+        window.location.pathname.startsWith("/customer") ||
+        window.location.pathname.startsWith("/supplier");
       if (isPortalRoute) {
         _initialSyncDone = true;
         return;

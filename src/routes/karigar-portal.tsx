@@ -179,7 +179,9 @@ function KarigarPortal() {
   const navigate = useNavigate();
   const [data, setData] = useState<KarigarData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"gold" | "wages" | "attendance" | "jobs" | "return">("gold");
+  const [tab, setTab] = useState<"gold" | "wages" | "attendance" | "jobs" | "return" | "qc">(
+    "gold",
+  );
   const [jobCards, setJobCards] = useState<PortalJobCard[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
 
@@ -193,6 +195,9 @@ function KarigarPortal() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [jobsError, setJobsError] = useState<string | null>(null);
+  // QC rework state
+  const [reworkBusy, setReworkBusy] = useState<string | null>(null);
+  const [reworkDone, setReworkDone] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let active = true;
@@ -336,6 +341,22 @@ function KarigarPortal() {
     }
   }
 
+  async function handleAcknowledgeRework(jobId: string) {
+    setReworkBusy(jobId);
+    try {
+      const { error: updErr } = await supabase
+        .from("job_cards")
+        .update({ status: "rework_started" })
+        .eq("id", jobId);
+      if (updErr) throw updErr;
+      setReworkDone((prev) => new Set([...prev, jobId]));
+    } catch {
+      // silently fail - next reload will show updated state
+    } finally {
+      setReworkBusy(null);
+    }
+  }
+
   function handleSignOut() {
     void supabase.auth.signOut().then(() => {
       window.location.href = "/karigar-login";
@@ -447,6 +468,7 @@ function KarigarPortal() {
           >
             <option value="gold">Gold Ledger Summary</option>
             <option value="jobs">Your Active Bench Jobs</option>
+            <option value="qc">QC Rejections</option>
             <option value="return">Submit Completed Work &amp; Scrap</option>
             <option value="wages">Wages &amp; Payments Ledger</option>
             <option value="attendance">Daily Attendance Log</option>
@@ -455,7 +477,7 @@ function KarigarPortal() {
 
         {/* Desktop View: Full horizontal tabs triggers bar */}
         <div className="hidden sm:flex gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm">
-          {(["gold", "jobs", "return", "wages", "attendance"] as const).map((t) => (
+          {(["gold", "jobs", "qc", "return", "wages", "attendance"] as const).map((t) => (
             <button
               key={t}
               type="button"
@@ -470,11 +492,13 @@ function KarigarPortal() {
                 ? "Gold Ledger"
                 : t === "jobs"
                   ? "Active Jobs"
-                  : t === "return"
-                    ? "Work Return"
-                    : t === "wages"
-                      ? "Wages"
-                      : "Attendance"}
+                  : t === "qc"
+                    ? "QC Rejected"
+                    : t === "return"
+                      ? "Work Return"
+                      : t === "wages"
+                        ? "Wages"
+                        : "Attendance"}
             </button>
           ))}
         </div>
@@ -594,6 +618,88 @@ function KarigarPortal() {
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Tab: QC Rejections */}
+        {tab === "qc" && (
+          <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800">QC Rejected — Needs Rework</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Jobs returned by QC. Review rejection notes and start rework.
+                </p>
+              </div>
+              <span className="rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
+                {jobCards.filter((j) => j.status === "qc_rejected" && !reworkDone.has(j.id)).length}
+              </span>
+            </div>
+            {loadingJobs ? (
+              <div className="p-6 space-y-3">
+                {[0, 1].map((i) => (
+                  <div key={i} className="h-20 animate-pulse rounded-lg bg-red-50" />
+                ))}
+              </div>
+            ) : jobCards.filter((j) => j.status === "qc_rejected").length === 0 ? (
+              <div className="p-8 text-center space-y-2">
+                <div className="text-2xl">✅</div>
+                <div className="text-sm text-gray-400">
+                  No QC rejections. All jobs are in good standing.
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {jobCards
+                  .filter((j) => j.status === "qc_rejected")
+                  .map((job) => (
+                    <div key={job.id} className="px-4 py-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {job.jobNo || job.id}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {job.itemName || "Manufacturing job"}
+                            {job.customerName ? ` for ${job.customerName}` : ""}
+                          </div>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                          QC Rejected
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2">
+                        <div className="text-xs font-semibold text-red-700 mb-0.5">
+                          Rejection Reason
+                        </div>
+                        <div className="text-xs text-red-600">
+                          Please contact your supervisor for rejection details and rework
+                          instructions.
+                        </div>
+                      </div>
+                      {reworkDone.has(job.id) ? (
+                        <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs text-emerald-700 font-semibold">
+                          ✅ Rework acknowledged — supervisor notified.
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={reworkBusy === job.id}
+                          onClick={() => void handleAcknowledgeRework(job.id)}
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-orange-300 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-60"
+                        >
+                          {reworkBusy === job.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <PackageCheck className="h-4 w-4" />
+                          )}
+                          Acknowledge &amp; Start Rework
+                        </button>
+                      )}
+                    </div>
+                  ))}
               </div>
             )}
           </section>

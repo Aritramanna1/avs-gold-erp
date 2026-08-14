@@ -3,8 +3,10 @@ import { compressImage } from "./image-compression";
 import { buildFirmStoragePath, resolveStoragePathContext } from "./storage-paths";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
-// Cloudflare R2 storage proxy Worker URL — all online uploads/downloads route here.
-const R2_PROXY_URL = import.meta.env.VITE_R2_PROXY_URL as string | undefined;
+const R2_PROXY_URL =
+  typeof import.meta.env !== "undefined"
+    ? (import.meta.env.VITE_R2_PROXY_URL as string | undefined)
+    : undefined;
 
 async function r2AuthHeader(): Promise<string> {
   const { data } = await supabase.auth.getSession();

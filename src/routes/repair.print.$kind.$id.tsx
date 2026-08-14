@@ -14,11 +14,6 @@ import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { useSettings } from "@/lib/settings-store";
-import {
-  generateRepairPdf,
-  generateRepairInvoicePdf,
-  generateRepairPaymentReceiptPdf,
-} from "@/lib/pdf/document-pdf-generator";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -85,6 +80,8 @@ function RepairPrint() {
     const repair = r!;
     setDownloadingPdf(true);
     try {
+      const { generateRepairPdf, generateRepairInvoicePdf, generateRepairPaymentReceiptPdf } =
+        await import("@/lib/pdf/document-pdf-generator");
       const dateStr = new Date(repair.createdAt).toLocaleDateString("en-IN", {
         dateStyle: "medium",
       });

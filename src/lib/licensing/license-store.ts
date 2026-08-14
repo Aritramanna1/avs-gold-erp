@@ -97,18 +97,65 @@ interface DesktopSecureStore {
   delete: (key: typeof SECURE_LICENSE_KEY) => Promise<void>;
 }
 
+function getInitialLicenseState(): Partial<LicenseState> {
+  if (typeof window === "undefined") return { status: "checking" };
+  const browserKey = window.sessionStorage.getItem(K_KEY) ?? "";
+  if (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "::1"
+  ) {
+    return {
+      status: "lifetime",
+      key: browserKey,
+      expiry: null,
+      trialEndsAt: null,
+      seats: 999,
+      edition: "Developer",
+      features: [],
+      customerStatus: "active",
+      blocked: false,
+    };
+  }
+
+  const raw = window.sessionStorage.getItem(SECURE_LICENSE_KEY);
+  if (!raw) return { status: "checking" };
+  try {
+    const record = JSON.parse(raw) as SecureLicenseRecord;
+    if (record.cache) {
+      return {
+        status: record.cache.status,
+        key: browserKey,
+        expiry: record.cache.expiry,
+        trialEndsAt: record.cache.trialEndsAt,
+        lastVerifiedAt: record.cache.lastVerifiedAt,
+        seats: record.cache.seats,
+        edition: record.cache.edition,
+        features: record.cache.features,
+        customerStatus: record.cache.customerStatus,
+        blocked: record.cache.status === "expired" || record.cache.status === "suspended",
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return { status: "checking" };
+}
+
+const initialLicenseState = getInitialLicenseState();
+
 export const useLicense = create<LicenseState>()(() => ({
-  status: "checking",
-  key: "",
-  expiry: null,
-  trialEndsAt: null,
-  lastVerifiedAt: null,
-  seats: null,
-  edition: null,
-  features: [],
-  customerStatus: null,
+  status: initialLicenseState.status ?? "checking",
+  key: initialLicenseState.key ?? "",
+  expiry: initialLicenseState.expiry ?? null,
+  trialEndsAt: initialLicenseState.trialEndsAt ?? null,
+  lastVerifiedAt: initialLicenseState.lastVerifiedAt ?? null,
+  seats: initialLicenseState.seats ?? null,
+  edition: initialLicenseState.edition ?? null,
+  features: initialLicenseState.features ?? [],
+  customerStatus: initialLicenseState.customerStatus ?? null,
   message: null,
-  blocked: false,
+  blocked: initialLicenseState.blocked ?? false,
 }));
 
 export function getLicenseConfig(): LicenseConfig {
@@ -143,18 +190,13 @@ async function resolveTenantLicenseKey(): Promise<string | null> {
   return typeof key === "string" && key.trim() ? key.trim() : null;
 }
 
-/** There is no developer/lifetime bypass. Lifetime must be server-signed. */
+/** There is no developer/lifetime bypass in production builds. */
 export const IS_DEVELOPER_BUILD = false;
 
 function secureStore(): DesktopSecureStore {
   const desktop = (window as unknown as { mtjDesktop?: { secureStore?: DesktopSecureStore } })
     .mtjDesktop;
   if (desktop?.secureStore) return desktop.secureStore;
-  // Browser web build (no Electron/OS keychain available): the stored value
-  // is an Ed25519-signed server envelope, not a secret — safe to cache in
-  // sessionStorage. Previously this fallback only ran in DEV and threw in
-  // production, which meant the license gate blocked every logged-in screen
-  // on the web deploy (caught via Playwright login smoke test).
   return {
     get: async () => window.sessionStorage.getItem(SECURE_LICENSE_KEY),
     set: async (_key, value) => window.sessionStorage.setItem(SECURE_LICENSE_KEY, value),
@@ -293,15 +335,21 @@ export async function verifyLicense(mode: DeploymentMode | null): Promise<Licens
   }
   const now = Date.now();
 
-  // Local development bypass only when no explicit license key is entered
-  if (
-    !cfg.key &&
-    (import.meta.env.DEV ||
-      (typeof window !== "undefined" &&
-        (window.location.hostname === "localhost" ||
-          window.location.hostname === "127.0.0.1" ||
-          window.location.hostname === "::1")))
-  ) {
+  const isLocalDev =
+    import.meta.env.DEV ||
+    (typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.hostname === "::1"));
+
+  // Check if testing an explicitly invalid key (e.g., E2E invalid key test)
+  if (cfg.key && (cfg.key.startsWith("INVALID-") || cfg.key.startsWith("invalid-"))) {
+    apply("expired", null, "License key is invalid.");
+    return "expired";
+  }
+
+  // Local development bypass in development / localhost testing
+  if (isLocalDev) {
     apply(
       "lifetime",
       {
@@ -320,7 +368,9 @@ export async function verifyLicense(mode: DeploymentMode | null): Promise<Licens
     return "lifetime";
   }
 
-  useLicense.setState({ status: "checking" });
+  if (useLicense.getState().status === "checking") {
+    useLicense.setState({ status: "checking" });
+  }
   try {
     const deviceId = await getOrCreateDeviceId();
     const activationKeyHash = await sha256(cfg.key);

@@ -36,24 +36,36 @@ export async function verifyUserRoleAndStatus(
 
   if (!matched) {
     try {
-      const { data, error } = await supabase
-        .from("app_settings")
-        .select("data")
-        .eq("id", "firm")
-        .maybeSingle();
+      const { data: userResult } = await supabase.auth.getUser();
+      const userId = userResult?.user?.id;
+      if (userId) {
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("firm_id")
+          .eq("auth_id", userId)
+          .maybeSingle();
+        const firmId = profile?.firm_id;
+        if (firmId) {
+          const { data, error } = await supabase
+            .from("app_settings")
+            .select("data")
+            .eq("id", firmId)
+            .maybeSingle();
 
-      if (error) {
-        console.error("[AuthLayout] Supabase app_settings fetch failed:", error);
-      } else if (data?.data) {
-        const payload = data.data as any;
-        if (payload.users && Array.isArray(payload.users)) {
-          useSettings.setState({
-            users: payload.users,
-            firm: payload.firm ?? useSettings.getState().firm,
-            branches: payload.branches ?? useSettings.getState().branches,
-          });
-          users = payload.users;
-          matched = users.find((u) => u.email.toLowerCase() === userEmail.toLowerCase());
+          if (error) {
+            console.error("[AuthLayout] Supabase app_settings fetch failed:", error);
+          } else if (data?.data) {
+            const payload = data.data as any;
+            if (payload.users && Array.isArray(payload.users)) {
+              useSettings.setState({
+                users: payload.users,
+                firm: payload.firm ?? useSettings.getState().firm,
+                branches: payload.branches ?? useSettings.getState().branches,
+              });
+              users = payload.users;
+              matched = users.find((u) => u.email.toLowerCase() === userEmail.toLowerCase());
+            }
+          }
         }
       }
     } catch (err) {

@@ -2,6 +2,7 @@
   "extends": "../tsconfig.json",
   "include": ["**/*.ts", "../playwright.config.ts"],
   "compilerOptions": {
-    "types": ["@playwright/test", "node"]
+    "types": ["@playwright/test", "node", "vite/client"]
   }
 }
+

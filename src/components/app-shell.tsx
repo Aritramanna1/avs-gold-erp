@@ -1,4 +1,4 @@
-﻿import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   Menu,
   Sun,
@@ -14,6 +14,8 @@ import {
   Receipt,
   BookOpen,
   AlertTriangle,
+  Sparkles,
+  Sliders,
 } from "lucide-react";
 import { type ReactNode, useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -40,6 +42,7 @@ import { useAppLoading, markInitialLoadDone } from "@/lib/app-loading-store";
 import { ModuleSkeleton } from "@/components/module-skeleton";
 import { toast } from "sonner";
 import { NotificationBell } from "@/components/notification-bell";
+import { AssistantDrawer, openOrnexaAssistant } from "@/components/assistant/AssistantDrawer";
 
 export function triggerGoldRateEditor() {
   if (typeof window !== "undefined") {
@@ -93,21 +96,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   async function handleSignOut() {
     try {
       await supabase.auth.signOut();
-      toast.success("Signed out successfully");
-      navigate({ to: "/" });
     } catch {
-      toast.error("Sign out failed - please try again");
+      // Ignore API errors — local session is cleared regardless
     }
+    // Hard reload to root: guarantees React state is wiped and AuthGate
+    // renders the login form. The Playwright session-injected guard in
+    // addInitScript detects the cleared token and will not re-inject it.
+    window.location.href = "/";
   }
 
   async function handleSwitchAccount() {
     try {
       await supabase.auth.signOut();
-      toast.success("Ready to sign in with another account");
-      navigate({ to: "/" });
     } catch {
-      toast.error("Account switch failed - please try again");
+      // Ignore API errors — local session is cleared regardless
     }
+    window.location.href = "/";
   }
 
   useEffect(() => {
@@ -269,6 +273,17 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Moon className="h-4 w-4 text-muted-foreground" />
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => openOrnexaAssistant()}
+              className="relative h-9 px-2.5 flex items-center gap-1.5 rounded-md border border-gold/30 bg-gold/5 hover:bg-gold/10 hover:border-gold/60 text-gold transition-colors focus:outline-none cursor-pointer no-print"
+              aria-label="Open AI Assistant (Ctrl+J)"
+              id="header-ai-assistant-trigger"
+              title="AI Assistant (Ctrl+J)"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="text-xs font-semibold hidden md:inline">Assistant</span>
+            </button>
             <NotificationBell />
             {/* User menu with Sign Out */}
             <DropdownMenu>
@@ -298,16 +313,24 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
+                  <Link
+                    to="/control/customization"
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Sliders className="h-3.5 w-3.5" /> Customization
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
                     <Settings className="h-3.5 w-3.5" /> Settings
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSwitchAccount} className="gap-2 cursor-pointer">
+                <DropdownMenuItem onSelect={handleSwitchAccount} className="gap-2 cursor-pointer">
                   <Repeat className="h-3.5 w-3.5" /> Switch Account
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={handleSignOut}
+                  onSelect={handleSignOut}
                   className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 cursor-pointer"
                 >
                   <LogOut className="h-3.5 w-3.5" /> Sign Out
@@ -360,6 +383,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </nav>
         <GoldRateEditor open={goldRateOpen} onOpenChange={setGoldRateOpen} />
+        <AssistantDrawer />
       </div>
     </div>
   );

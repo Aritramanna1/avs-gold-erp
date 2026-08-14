@@ -16,8 +16,13 @@ const MIGRATED_SNAPSHOT_KEY = "mtj_migrated_snapshot_hash";
 export type SourceOfTruth = "supabase_online";
 
 export function validateEnvironment(): { env: string; projectId: string; isValid: boolean } {
-  const env = (import.meta.env.VITE_APP_ENV || "development").toLowerCase();
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || "";
+  const envMeta =
+    typeof import.meta !== "undefined" && (import.meta as any).env
+      ? (import.meta as any).env
+      : undefined;
+  const procEnv = typeof process !== "undefined" && process.env ? process.env : undefined;
+  const env = (envMeta?.VITE_APP_ENV || procEnv?.VITE_APP_ENV || "development").toLowerCase();
+  const projectId = envMeta?.VITE_SUPABASE_PROJECT_ID || procEnv?.VITE_SUPABASE_PROJECT_ID || "";
 
   const DEV_PROJECT_ID = "dqgrrafuoxaorvyrcuuh";
   const PROD_PROJECT_ID = "kjfjsfhftytezsjyegmb";

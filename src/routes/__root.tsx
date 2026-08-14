@@ -115,11 +115,14 @@ function RootComponent() {
       "/karigar-portal",
       "/customer-login",
       "/customer-portal",
+      "/supplier-login",
+      "/supplier-portal",
     ].includes(currentPath) ||
     currentPath.startsWith("/invite/") ||
     currentPath.startsWith("/doc/") ||
     currentPath.startsWith("/karigar-") ||
-    currentPath.startsWith("/customer-");
+    currentPath.startsWith("/customer-") ||
+    currentPath.startsWith("/supplier-");
 
   /**
    * A print route renders the DOCUMENT ONLY — no sidebar, no header, no app
@@ -141,12 +144,7 @@ function RootComponent() {
     PRINT_ROUTE_PREFIXES.some((p) => currentPath.startsWith(p));
 
   useEffect(() => {
-    const id = window.setTimeout(() => {
-      const idle = window.requestIdleCallback;
-      if (idle) idle(() => setDeferredChromeReady(true), { timeout: 2500 });
-      else setDeferredChromeReady(true);
-    }, 1_200);
-    return () => window.clearTimeout(id);
+    setDeferredChromeReady(true);
   }, []);
 
   // Start non-essential developer helpers only after the shell has painted.
@@ -191,6 +189,12 @@ function RootComponent() {
       import("@/lib/comm/service").then((m) => {
         (window as any).__commService = m.commService;
       });
+      import("@/lib/comm/comm-queue").then((m) => {
+        (window as any).__commQueue = m;
+      });
+      import("@/lib/security/device-registry").then((m) => {
+        (window as any).__deviceRegistry = m;
+      });
       import("@/lib/comm/automation-settings-store").then((m) => {
         (window as any).__automationSettings = m;
       });
@@ -200,7 +204,8 @@ function RootComponent() {
       import("@/lib/hardware-service").then((m) => {
         (window as any).__hardwareService = m.hardwareService;
       });
-      import("@/lib/hardware-service").then((hw) => {
+      import("@/lib/hardware-service").then(async (hw) => {
+        const pq = await import("@/lib/print/print-queue");
         // submitPrintJob's real signature is job.type/{success,message,jobId,status}
         // (hardware-service.ts) — this thin adapter is the one place that
         // maps the test's docType/tagData vocabulary onto it, so the
@@ -214,7 +219,7 @@ function RootComponent() {
               data: null,
               tagData: job.tagData as any,
             }),
-          getPrintJobHistory: () => [],
+          getPrintJobHistory: (limit?: number) => pq.getPrintJobHistory(limit),
         };
       });
     }
