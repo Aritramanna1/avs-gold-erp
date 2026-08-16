@@ -96,6 +96,23 @@ export interface ERPActionCard {
   data: Record<string, any>;
 }
 
+export interface KnowledgeSourceRef {
+  id: string;
+  title: string;
+  topic: string;
+  knowledgeTier: string;
+  sourceDoc?: string;
+  relatedRoute?: string;
+  lastReviewedAt: string;
+}
+
+export interface IntentNormalizationAudit {
+  rawText: string;
+  normalizedText: string;
+  detectedLanguage?: string;
+  corrections?: Array<{ from: string; to: string }>;
+}
+
 export interface AssistantMessage {
   id: string;
   role: "system" | "user" | "assistant" | "tool";
@@ -105,6 +122,12 @@ export interface AssistantMessage {
   tokensUsed?: number;
   provider?: AIProvider;
   createdAt: string;
+  /** Knowledge articles cited in this response (not live ERP data) */
+  knowledgeSources?: KnowledgeSourceRef[];
+  /** Original vs normalized query for audit/debug */
+  normalization?: IntentNormalizationAudit;
+  /** True when answer is from knowledge base, not live ERP query */
+  isKnowledgeAnswer?: boolean;
 }
 
 export interface ToolDefinition {

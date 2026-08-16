@@ -1,6 +1,14 @@
 {
-  "name": "AVS Gold ERP",
-  "short_name": "AVS Gold ERP",
+  "name": "Ornexa — AVS Gold ERP",
+  "short_name": "Ornexa",
+  "description": "Jewellery manufacturing ERP — gold vault, workshop, billing, and stock.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "categories": ["business", "finance", "productivity"],
+  "lang": "en-IN",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png?v=20260705",
@@ -16,6 +24,5 @@
     }
   ],
   "theme_color": "#f5e8dc",
-  "background_color": "#f5e8dc",
-  "display": "standalone"
+  "background_color": "#f5e8dc"
 }

@@ -54,6 +54,81 @@ interface SmtpConfig {
   use_ssl?: string | boolean;
 }
 
+/** Reads tenant email account from tenant_email_accounts + comm_provider_secrets vault. */
+async function readTenantEmailConfigFromDb(
+  admin: ReturnType<typeof createClient>,
+  branchId?: string,
+): Promise<SmtpConfig | null> {
+  let query = admin
+    .from("tenant_email_accounts")
+    .select(
+      "id,from_email,display_name,reply_to,provider_type,provider_settings,branch_id,is_default,is_active",
+    )
+    .eq("is_active", true)
+    .order("is_default", { ascending: false });
+
+  if (branchId) {
+    query = query.or(`branch_id.eq.${branchId},branch_id.is.null`);
+  }
+
+  const { data: rows, error } = await query;
+  if (error) {
+    console.error("[send-email] tenant_email_accounts read failed:", error);
+    return null;
+  }
+  if (!rows?.length) return null;
+
+  const scoped = branchId
+    ? (rows as Array<{ branch_id?: string | null }>).filter(
+        (r) => r.branch_id === branchId || r.branch_id == null,
+      )
+    : rows;
+  const account = (scoped[0] ?? rows[0]) as {
+    id: string;
+    from_email: string;
+    display_name?: string | null;
+    reply_to?: string | null;
+    provider_type: string;
+    provider_settings?: Record<string, unknown>;
+    branch_id?: string | null;
+  };
+
+  const settings = (account.provider_settings ?? {}) as SmtpConfig;
+  const secretProviderType =
+    account.provider_type === "email_google_workspace" ? "email_smtp" : account.provider_type;
+  const secretBranch = account.branch_id ?? branchId ?? "MAIN";
+
+  const { data: secretRow, error: secretError } = await admin
+    .from("comm_provider_secrets")
+    .select("secret_data")
+    .eq("branch_id", secretBranch)
+    .eq("provider_type", secretProviderType)
+    .maybeSingle();
+
+  if (secretError) {
+    console.error("[send-email] tenant secret vault read failed:", secretError);
+  }
+
+  const secrets = (secretRow?.secret_data ?? {}) as SmtpConfig;
+  const merged: SmtpConfig = {
+    host:
+      settings.host ??
+      (account.provider_type === "email_google_workspace" ? "smtp.gmail.com" : undefined),
+    port: settings.port ?? (account.provider_type === "email_google_workspace" ? 465 : undefined),
+    encryption:
+      settings.encryption ??
+      (account.provider_type === "email_google_workspace" ? "ssl" : undefined),
+    from_email: account.from_email,
+    from_name: account.display_name ?? undefined,
+    reply_to: account.reply_to ?? undefined,
+    username: secrets.username ?? account.from_email,
+    password: secrets.password,
+  };
+
+  if (!merged.host || !merged.password) return null;
+  return merged;
+}
+
 /** Reads the persisted SMTP settings from app_settings.comm_configs (the same
  *  row Settings → Communications writes to), picking the active email_smtp
  *  provider config, optionally scoped to a branch. */
@@ -157,13 +232,22 @@ Deno.serve(async (req) => {
         );
       }
       try {
-        smtp = await readSmtpConfigFromDb(supabaseUrl, serviceKey, body.branchId);
+        const admin = createClient(supabaseUrl, serviceKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        smtp = await readTenantEmailConfigFromDb(admin, body.branchId);
+        if (!smtp) {
+          smtp = await readSmtpConfigFromDb(supabaseUrl, serviceKey, body.branchId);
+        }
       } catch (dbErr) {
         return json({ error: dbErr instanceof Error ? dbErr.message : String(dbErr) }, 500);
       }
       if (!smtp) {
         return json(
-          { error: "No active SMTP configuration was found in Settings → Communications." },
+          {
+            error:
+              "No active email configuration found. Configure tenant email sender or Settings → Communications SMTP.",
+          },
           400,
         );
       }

@@ -133,7 +133,7 @@ function InvoiceDetailPage() {
   if (loadingInvoice && !inv) {
     return (
       <div className="p-8 max-w-3xl mx-auto">
-        <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+        <div className="rounded-md border border-border bg-card p-6 text-sm text-muted-foreground">
           <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
           Loading invoice from Supabase...
         </div>
@@ -144,7 +144,7 @@ function InvoiceDetailPage() {
   if (invoiceError) {
     return (
       <div className="p-8 max-w-3xl mx-auto">
-        <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-6">
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-6">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-1 h-5 w-5 text-destructive" />
             <div className="flex-1">
@@ -282,7 +282,7 @@ function InvoiceDetailPage() {
 
       <div className="grid lg:grid-cols-[1fr_340px] gap-6">
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-md border border-border bg-card p-5">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-serif text-lg text-gold">Items</h3>
               <Badge variant="outline">{INVOICE_STATUS_LABELS[inv.status]}</Badge>
@@ -336,7 +336,7 @@ function InvoiceDetailPage() {
           </div>
 
           {inv.orderAdjustment && (
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-md border border-border bg-card p-5">
               <h3 className="font-serif text-lg text-gold mb-3">Order Adjustments</h3>
               <div className="grid sm:grid-cols-2 gap-2 text-sm">
                 {inv.orderAdjustment.cashAdvancePaise > 0 && (
@@ -355,7 +355,7 @@ function InvoiceDetailPage() {
             </div>
           )}
 
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-md border border-border bg-card p-5">
             <h3 className="font-serif text-lg text-gold mb-3">Payments</h3>
             {inv.payments.length === 0 ? (
               <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
@@ -435,7 +435,7 @@ function InvoiceDetailPage() {
         </div>
 
         <aside className="space-y-3">
-          <div className="rounded-2xl border border-border bg-card p-5 sticky top-4">
+          <div className="rounded-md border border-border bg-card p-5 sticky top-4">
             <h3 className="font-serif text-lg text-gold mb-3">Summary</h3>
             <div className="space-y-1.5 text-sm">
               <Row k="Subtotal" v={`₹ ${paiseToRupees(inv.subtotalPaise)}`} />

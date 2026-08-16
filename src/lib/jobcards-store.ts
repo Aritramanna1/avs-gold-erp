@@ -22,10 +22,17 @@ import { nextDocumentNumber } from "./document-numbering";
  *   awaiting_gold_issue → card written, karigar assigned, gold still in the vault
  *   gold_issued         → gold is out of the vault and in the karigar's custody
  *   in_progress         → the karigar has started making the piece
- *   work_received       → piece is back with us and is being checked (weight, finish, stones)
- *   rework              → checked and sent back to the bench
- *   ready_for_billing   → passed; the piece is ours and can be invoiced
+ *   work_received       → piece is back with us and is being checked (weight, finish, stones) — QC_PENDING
+ *   rework              → QC failed (weight/finish/stone discrepancy); sent back to the bench
+ *   hallmark_pending     → QC passed; piece is ours, waiting on HUID hallmarking before it can bill
+ *   ready_for_billing   → hallmarked (or hallmarking not required); can be invoiced
  *   closed              → done
+ *
+ * `hallmark_pending` restores the master ledger's QC_PENDING → HALLMARK_PENDING →
+ * COMPLETED chain: a job cannot reach `ready_for_billing` silently — either it
+ * passed through hallmark_pending with a recorded HUID (see `hallmarkRecord`),
+ * or the card explicitly skipped hallmarking (see `skipHallmark`), so there is
+ * always a traceable answer to "was this piece hallmarked?".
  *
  * Two statuses were removed as meaningless:
  *  - `draft`: cards are now created deliberately, with a karigar chosen. A card
@@ -47,6 +54,7 @@ export type JobStatus =
   | "in_progress"
   | "work_received"
   | "rework"
+  | "hallmark_pending"
   | "ready_for_billing"
   | "closed"
   // ── Legacy, read-only. Normalized away on read; never written. ──
@@ -61,6 +69,7 @@ export const JOB_STATUS_FLOW: JobStatus[] = [
   "in_progress",
   "work_received",
   "rework",
+  "hallmark_pending",
   "ready_for_billing",
   "closed",
 ];
@@ -71,6 +80,7 @@ export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   in_progress: "Work In Progress",
   work_received: "Work Received (Checking)",
   rework: "Rework",
+  hallmark_pending: "Hallmark Pending",
   ready_for_billing: "Ready for Billing",
   closed: "Closed",
 
@@ -138,6 +148,15 @@ export interface WorkReceiptRecord {
   ledgerEntryIds: string[];
 }
 
+export interface HallmarkRecord {
+  huid: string;
+  hallmarkedAt: number;
+  centre?: string;
+  notes?: string;
+  /** True when the card explicitly skipped hallmarking (e.g. hallmark-exempt item) rather than recording a HUID. */
+  skipped?: boolean;
+}
+
 export interface JobCard {
   id: string;
   jobNo: string;
@@ -185,6 +204,8 @@ export interface JobCard {
 
   // gold movement
   workReceipt?: WorkReceiptRecord;
+  /** HUID hallmarking record — set when the card passes through `hallmark_pending`. */
+  hallmarkRecord?: HallmarkRecord;
 
   timeline: JobTimelineEvent[];
 }
@@ -204,6 +225,10 @@ interface JobCardsState {
   /** Sets the Job Card's overall status directly — replaces the old per-step-derived status transition. */
   setStatus: (jobId: string, status: JobStatus, notes?: string) => Promise<void>;
   setWorkReceipt: (jobId: string, rec: WorkReceiptRecord) => Promise<void>;
+  /** QC pass: work_received → hallmark_pending. Physical check done; awaiting HUID hallmarking. */
+  passQc: (jobId: string) => Promise<void>;
+  /** Records the HUID (or an explicit skip) and moves hallmark_pending → ready_for_billing. */
+  setHallmark: (jobId: string, rec: Omit<HallmarkRecord, "hallmarkedAt">) => Promise<void>;
   reset: () => void;
 }
 
@@ -472,5 +497,47 @@ export const useJobCards = create<JobCardsState>()((set, get) => ({
       console.error("[JobCards] Failed to audit-log work receipt:", err);
     }
   },
+  passQc: async (jobId) => {
+    const current = get().jobs.find((j) => j.id === jobId);
+    if (!current) return;
+    const now = Date.now();
+    const updated: JobCard = {
+      ...current,
+      status: "hallmark_pending",
+      updatedAt: now,
+      timeline: [
+        ...current.timeline,
+        { ts: now, label: `Status → ${JOB_STATUS_LABELS.hallmark_pending}`, note: "QC passed" },
+      ],
+    };
+    await jobCardRepository.save(updated);
+    await get().refresh();
+  },
+
+  setHallmark: async (jobId, rec) => {
+    const current = get().jobs.find((j) => j.id === jobId);
+    if (!current) return;
+    const now = Date.now();
+    const hallmarkRecord: HallmarkRecord = { ...rec, hallmarkedAt: now };
+    const updated: JobCard = {
+      ...current,
+      hallmarkRecord,
+      status: "ready_for_billing",
+      updatedAt: now,
+      timeline: [
+        ...current.timeline,
+        {
+          ts: now,
+          label: rec.skipped
+            ? "Hallmarking skipped — ready for billing"
+            : `Hallmarked · HUID ${rec.huid}`,
+          note: rec.notes,
+        },
+      ],
+    };
+    await jobCardRepository.save(updated);
+    await get().refresh();
+  },
+
   reset: () => set({ jobs: [] }),
 }));

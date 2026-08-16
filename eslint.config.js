@@ -38,6 +38,12 @@ export default tseslint.config(
       "playwright-report",
       "test-results",
       "blob-report",
+      // Same, for the QA harness: qa/**/reports-output holds Playwright's
+      // trace viewer bundle (minified codeMirror/xterm megabytes). Linting and
+      // Prettier-parsing those is what makes `eslint .` run for tens of
+      // minutes; the QA suites themselves under qa/ are still linted.
+      "qa/**/reports-output",
+      "coverage",
     ],
   },
   {

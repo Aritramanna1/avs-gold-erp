@@ -113,20 +113,20 @@ function CommunicationAnalyticsPage() {
       {analytics && (
         <>
           <div className="grid sm:grid-cols-4 gap-3 mb-6">
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="rounded-md border border-border bg-card p-4">
               <div className="text-xs text-muted-foreground">Total Logged ({windowDays}d)</div>
               <div className="text-2xl font-semibold">{analytics.totalLogged}</div>
             </div>
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="rounded-md border border-border bg-card p-4">
               <div className="text-xs text-muted-foreground">Queue Pending</div>
               <div className="text-2xl font-semibold">{analytics.queue.pending}</div>
             </div>
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="rounded-md border border-border bg-card p-4">
               <div className="text-xs text-muted-foreground">Queue Sent</div>
               <div className="text-2xl font-semibold text-green-600">{analytics.queue.sent}</div>
             </div>
             <div
-              className={`rounded-2xl border p-4 ${analytics.queue.permanentlyFailed > 0 ? "border-destructive/40 bg-destructive/5" : "border-border bg-card"}`}
+              className={`rounded-md border p-4 ${analytics.queue.permanentlyFailed > 0 ? "border-destructive/40 bg-destructive/5" : "border-border bg-card"}`}
             >
               <div className="text-xs text-muted-foreground">Permanently Failed</div>
               <div
@@ -138,7 +138,7 @@ function CommunicationAnalyticsPage() {
           </div>
 
           <div className="grid md:grid-cols-4 gap-4 mb-6">
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="rounded-md border border-border bg-card p-4">
               <div className="font-semibold text-sm mb-2">By Outcome</div>
               {Object.entries(analytics.byKind).map(([kind, count]) => (
                 <div key={kind} className="flex justify-between text-sm py-1">
@@ -152,7 +152,7 @@ function CommunicationAnalyticsPage() {
                 <div className="text-sm text-muted-foreground">No data in this window.</div>
               )}
             </div>
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="rounded-md border border-border bg-card p-4">
               <div className="font-semibold text-sm mb-2">By Template</div>
               {Object.entries(analytics.byTemplate).map(([tpl, count]) => (
                 <div key={tpl} className="flex justify-between text-sm py-1">
@@ -164,7 +164,7 @@ function CommunicationAnalyticsPage() {
                 <div className="text-sm text-muted-foreground">No data in this window.</div>
               )}
             </div>
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="rounded-md border border-border bg-card p-4">
               <div className="font-semibold text-sm mb-2">By Linked Record</div>
               {Object.entries(analytics.byLinkedType).map(([type, count]) => (
                 <div key={type} className="flex justify-between text-sm py-1 capitalize">
@@ -176,7 +176,7 @@ function CommunicationAnalyticsPage() {
                 <div className="text-sm text-muted-foreground">No data in this window.</div>
               )}
             </div>
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="rounded-md border border-border bg-card p-4">
               <div className="font-semibold text-sm mb-2">By Delivery Status</div>
               {Object.entries(analytics.byDeliveryStatus).map(([status, count]) => (
                 <div key={status} className="flex justify-between text-sm py-1 capitalize">
@@ -201,7 +201,7 @@ function CommunicationAnalyticsPage() {
         className="mb-4 max-w-sm"
       />
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="p-4 border-b border-border font-semibold flex items-center gap-2">
           <MessageSquare className="h-4 w-4" /> Communication History
         </div>

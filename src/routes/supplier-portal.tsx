@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { guardRoute } from "@/lib/permissions";
 import { useEffect, useState } from "react";
 import {
   Truck,
@@ -12,8 +13,10 @@ import {
   Wrench,
 } from "lucide-react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { fetchMyPortalContext } from "@/lib/portal/portal-context-service";
 import { Badge } from "@/components/ui/badge";
 import { formatDateMedium as fmtDate } from "@/lib/format-date";
+import { Logo } from "@/components/ui/Logo";
 
 type SupplierPortalData = {
   profile: {
@@ -46,6 +49,7 @@ type SupplierPortalData = {
 };
 
 export const Route = createFileRoute("/supplier-portal")({
+  beforeLoad: ({ location }) => guardRoute(location.pathname),
   head: () => ({
     meta: [{ title: "Supplier Portal · AVS Gold ERP" }],
   }),
@@ -63,8 +67,8 @@ function rs(paise: number) {
 }
 
 const PURCHASE_STATUS_COLORS = (due: number) => {
-  if (due <= 0) return "bg-emerald-100 text-emerald-700 border-emerald-200";
-  return "bg-amber-100 text-amber-800 border-amber-200";
+  if (due <= 0) return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+  return "bg-amber-500/10 text-amber-400 border-amber-500/30";
 };
 
 function SupplierPortal() {
@@ -85,6 +89,13 @@ function SupplierPortal() {
         return;
       }
       setAuthChecked(true);
+
+      const portalCtx = await fetchMyPortalContext("supplier");
+      if (!active) return;
+      if (!portalCtx) {
+        setError("Your supplier portal identity is not linked. Please contact the partner firm.");
+        return;
+      }
 
       // 2. Fetch supplier portal data
       const { data: result, error: queryError } = await (supabase as any).rpc(
@@ -116,10 +127,7 @@ function SupplierPortal() {
   if (!data) {
     return (
       <main className="grid min-h-[50vh] place-items-center">
-        <Loader2
-          className="h-6 w-6 animate-spin text-primary"
-          aria-label="Loading supplier portal"
-        />
+        <Loader2 className="h-6 w-6 animate-spin text-gold" aria-label="Loading supplier portal" />
       </main>
     );
   }
@@ -130,22 +138,24 @@ function SupplierPortal() {
   const totalFineGoldBought = data.purchases.reduce((sum, p) => sum + p.fine_mg, 0);
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Top bar */}
-      <header className="bg-white border-b border-border shadow-sm sticky top-0 z-40">
-        <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between gap-4">
+      <header className="bg-card border-b border-border shadow-xs sticky top-0 z-40">
+        <div className="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-600 text-white">
-              <Truck className="h-5 w-5" />
-            </div>
+            <Logo className="h-7" />
+            <div className="h-4 w-px bg-border hidden sm:block" />
             <div>
-              <div className="text-sm font-bold text-foreground">Supplier Portal</div>
+              <div className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <Truck className="h-4 w-4 text-gold" />
+                Supplier Portal
+              </div>
               <div className="text-xs text-muted-foreground">{data.profile.full_name}</div>
             </div>
           </div>
           <button
             type="button"
-            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-gold transition-colors cursor-pointer"
             onClick={() => {
               void supabase.auth.signOut().then(() => {
                 window.location.href = "/supplier-login";
@@ -164,7 +174,7 @@ function SupplierPortal() {
           <select
             value={tab}
             onChange={(e) => setTab(e.target.value as any)}
-            className="w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm font-semibold shadow-xs focus:outline-none focus:ring-1 focus:ring-gold text-foreground"
           >
             <option value="dashboard">Dashboard Overview</option>
             <option value="purchases">Purchase Vouchers ({data.purchases.length})</option>
@@ -173,7 +183,7 @@ function SupplierPortal() {
         </div>
 
         {/* Navigation - Desktop tabs */}
-        <div className="hidden md:flex gap-1 bg-white rounded-xl border border-border p-1 shadow-sm">
+        <div className="hidden md:flex gap-1 bg-card rounded-md border border-border p-1 shadow-xs">
           {[
             ["dashboard", "Overview"],
             ["purchases", `Purchase Vouchers (${data.purchases.length})`],
@@ -183,9 +193,9 @@ function SupplierPortal() {
               key={t}
               type="button"
               onClick={() => setTab(t as any)}
-              className={`flex-1 rounded-lg py-2.5 text-xs font-semibold capitalize transition-all ${
+              className={`flex-1 rounded-md py-2 text-xs font-semibold capitalize transition-all cursor-pointer ${
                 tab === t
-                  ? "bg-orange-600 text-white shadow-sm"
+                  ? "bg-gold text-black shadow-xs font-bold"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
@@ -199,25 +209,25 @@ function SupplierPortal() {
           <div className="space-y-6 font-sans">
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+              <div className="rounded-md border border-border bg-card p-4 space-y-1 shadow-xs">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">
                   Total Purchases
                 </span>
-                <div className="text-xl font-bold font-mono text-orange-950">
+                <div className="text-xl font-bold font-mono text-foreground">
                   {rs(totalPurchasesAmount)}
                 </div>
                 <span className="text-[10px] text-muted-foreground">Cumulative invoice value</span>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+              <div className="rounded-md border border-border bg-card p-4 space-y-1 shadow-xs">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">
                   Balance Due to You
                 </span>
-                <div className="text-xl font-bold font-mono text-emerald-600">
+                <div className="text-xl font-bold font-mono text-emerald-400">
                   {rs(totalDueAmount)}
                 </div>
                 <span className="text-[10px] text-muted-foreground">Unpaid settlements</span>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+              <div className="rounded-md border border-border bg-card p-4 space-y-1 shadow-xs">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">
                   Gold Supply fine
                 </span>
@@ -229,7 +239,7 @@ function SupplierPortal() {
             </div>
 
             {/* Profile */}
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <div className="rounded-md border border-border bg-card p-5 space-y-3">
               <h2 className="font-semibold text-sm text-foreground">Supplier Business Details</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 <div>
@@ -262,7 +272,7 @@ function SupplierPortal() {
             </div>
 
             {/* Recent Purchases List */}
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <div className="rounded-md border border-border bg-card p-5 space-y-3">
               <h2 className="font-semibold text-sm text-foreground">Recent Supplies</h2>
               {data.purchases.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-6 text-center italic">
@@ -306,7 +316,7 @@ function SupplierPortal() {
           <div className="space-y-4">
             <h2 className="font-semibold text-sm">Purchase Vouchers History</h2>
             {data.purchases.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-md">
                 No purchase transactions recorded yet.
               </div>
             ) : (
@@ -314,7 +324,7 @@ function SupplierPortal() {
                 {data.purchases.map((p) => (
                   <div
                     key={p.id}
-                    className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                    className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
                   >
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
@@ -337,7 +347,7 @@ function SupplierPortal() {
                       </Badge>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 text-center font-mono bg-muted/20 p-2.5 rounded-lg text-[10px]">
+                    <div className="grid grid-cols-3 gap-2 text-center font-mono bg-muted/20 p-2.5 rounded-md text-[10px]">
                       <div>
                         <span className="text-[9px] text-muted-foreground block font-sans">
                           Gross Metal
@@ -359,11 +369,11 @@ function SupplierPortal() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-center text-[10px] border-t border-border pt-2 font-mono">
-                      <div className="flex justify-between px-2 text-emerald-600 font-semibold">
+                      <div className="flex justify-between px-2 text-emerald-400 font-semibold">
                         <span>Paid:</span>
                         <span>{rs(p.paid_paise)}</span>
                       </div>
-                      <div className="flex justify-between px-2 text-amber-700 font-semibold">
+                      <div className="flex justify-between px-2 text-amber-400 font-semibold">
                         <span>Due:</span>
                         <span>{rs(p.due_paise)}</span>
                       </div>
@@ -380,7 +390,7 @@ function SupplierPortal() {
           <div className="space-y-4">
             <h2 className="font-semibold text-sm">Outside Work Challans</h2>
             {data.outside_work.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-md">
                 No outside-work jobs assigned yet.
               </div>
             ) : (
@@ -393,11 +403,11 @@ function SupplierPortal() {
                   return (
                     <div
                       key={ow.id}
-                      className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                      className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
                     >
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <span className="font-semibold text-sm text-foreground">
+                          <span className="font-semibold text-sm text-foreground font-mono">
                             Challan: {owData.challanNo || ow.id}
                           </span>
                           <span className="block text-[10px] text-muted-foreground">
@@ -405,7 +415,7 @@ function SupplierPortal() {
                           </span>
                         </div>
                         <Badge
-                          className={`${owData.status === "fully_returned" ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-amber-100 text-amber-800 border-amber-200"} border px-2 py-0.5 text-[10px] capitalize`}
+                          className={`${owData.status === "fully_returned" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-amber-500/10 text-amber-400 border-amber-500/30"} border px-2 py-0.5 text-[10px] capitalize`}
                         >
                           {owData.status || "in progress"}
                         </Badge>
@@ -413,7 +423,7 @@ function SupplierPortal() {
 
                       <div className="grid grid-cols-2 gap-2 text-[10px]">
                         <div>
-                          <span className="text-muted-foreground block text-[9px]">
+                          <span className="text-muted-foreground block text-[9px] uppercase">
                             Material sent
                           </span>
                           <span className="font-medium text-foreground">
@@ -422,15 +432,17 @@ function SupplierPortal() {
                         </div>
                         {ow.order_id && (
                           <div>
-                            <span className="text-muted-foreground block text-[9px]">
+                            <span className="text-muted-foreground block text-[9px] uppercase">
                               Linked Order
                             </span>
-                            <span className="font-medium text-foreground">{ow.order_id}</span>
+                            <span className="font-medium text-foreground font-mono">
+                              {ow.order_id}
+                            </span>
                           </div>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-center font-mono bg-muted/20 p-2.5 rounded-lg text-[10px]">
+                      <div className="grid grid-cols-2 gap-2 text-center font-mono bg-muted/20 p-2.5 rounded-md text-[10px]">
                         <div>
                           <span className="text-[9px] text-muted-foreground block font-sans">
                             Issued Fine

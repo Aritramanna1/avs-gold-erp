@@ -134,7 +134,7 @@ function JobCardPage() {
 
       {/* On-screen preview — mirrors the PDF's content, not its exact pixel layout. */}
       <div
-        className="rounded-2xl border-2 border-border bg-card p-6 mx-auto"
+        className="rounded-md border-2 border-border bg-card p-6 mx-auto"
         style={{ maxWidth: "420px" }}
       >
         <div className="flex items-start justify-between mb-3">

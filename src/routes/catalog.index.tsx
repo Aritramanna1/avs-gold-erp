@@ -148,7 +148,7 @@ function CatalogIndex() {
         ].map(([label, value]) => (
           <div
             key={String(label)}
-            className="rounded-2xl border border-border bg-card p-4 shadow-elegant"
+            className="rounded-md border border-border bg-card p-4 shadow-elegant"
           >
             <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
             <div className="mt-1 font-serif text-2xl text-gold">{value}</div>
@@ -156,7 +156,7 @@ function CatalogIndex() {
         ))}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-4 mb-4">
+      <div className="rounded-md border border-border bg-card p-4 mb-4">
         <div className="flex flex-col md:flex-row gap-3 md:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -219,7 +219,7 @@ function CatalogIndex() {
         </TabsList>
         <TabsContent value={tab} className="mt-4">
           {list.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground font-sans">
+            <div className="rounded-md border border-dashed border-border p-10 text-center text-muted-foreground font-sans">
               {t("catalog.no_designs")}{" "}
               <button
                 onClick={() => setAdding(true)}
@@ -277,7 +277,7 @@ function DesignCard({ d, customerName }: { d: Design; customerName?: string }) {
     <Link
       to="/catalog/$id"
       params={{ id: d.id }}
-      className="block rounded-2xl border border-border bg-card hover:border-gold/40 transition-colors overflow-hidden"
+      className="block rounded-md border border-border bg-card hover:border-gold/40 transition-colors overflow-hidden"
     >
       <div className="aspect-video bg-muted/40 grid place-items-center text-muted-foreground relative">
         {displaySrc ? (

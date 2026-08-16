@@ -42,5 +42,13 @@ export function getCapabilityExplanation(): string {
 }
 
 export function getFallbackClarification(): string {
-  return "I'm not sure I understood. Could you clarify if you're looking for a report, a specific customer, or help with a workflow?";
+  return "I don't have enough information to answer that confidently. You can try rephrasing, ask me about a specific workflow (e.g. 'what is fine gold?'), search for a party by name, or say 'create a support ticket' for help.";
+}
+
+export function getExplainSimplyPrompt(): string {
+  return "Of course — tell me which topic you'd like explained simply. For example: fine gold, touch, wastage, hallmarking, gold issue/receive, or how to create an invoice in Ornexa.";
+}
+
+export function getInsufficientKnowledgeResponse(): string {
+  return "I don't have enough information to answer that confidently. I can search Ornexa Help, look up a specific party or record, or help you create a support ticket. What would you like to do?";
 }

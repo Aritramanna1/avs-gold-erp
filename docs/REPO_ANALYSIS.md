@@ -37,9 +37,9 @@ Only `src/lib/report-engine.ts` implements CSV/XLSX. No duplication. Keep enforc
 
 Single definitions of `mgToGrams`, `gramsToMg`, `formatWeight` in `src/lib/gold.ts`. No duplicates found.
 
-## 6. Direct `supabase.from(...)` usage (18 files)
+## 6. Direct `supabase.from(...)` usage (historical note)
 
-Some are legitimate store `refresh()` reads; some may be write paths that should go through `createRepository` + outbox. **Action (later):** audit each of the 18 to confirm no write bypasses the outbox (offline-safety risk). Not all are defects — reads are fine.
+This old audit item was part of the retired local/offline architecture analysis. The current production architecture is Supabase-online only; active code must use the authoritative tenant data access patterns and the approved RBAC/RLS design. Historical notes are retained only for migration context and should not be interpreted as a required local-outbox or offline-safe pattern.
 
 ## 7. Dialog components (13 `*dialog*.tsx`)
 

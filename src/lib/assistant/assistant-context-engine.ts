@@ -1,4 +1,5 @@
 import { getActiveDraft } from "./conversational-action-engine";
+import type { ResolvedEntity } from "./entity-resolver";
 
 export interface ContextPackage {
   runtime: {
@@ -37,6 +38,27 @@ export interface ContextPackage {
 const sessionMemory: ContextPackage["memory"] = {};
 let sessionPreferredName: string | null = null;
 let currentRoute: string = "/";
+
+export interface PendingDisambiguation {
+  candidates: ResolvedEntity[];
+  originalQuery: string;
+  pendingToolName: string;
+  createdAt: string;
+}
+
+let pendingDisambiguation: PendingDisambiguation | null = null;
+
+export function setPendingDisambiguation(state: PendingDisambiguation): void {
+  pendingDisambiguation = state;
+}
+
+export function getPendingDisambiguation(): PendingDisambiguation | null {
+  return pendingDisambiguation;
+}
+
+export function clearPendingDisambiguation(): void {
+  pendingDisambiguation = null;
+}
 
 export function setRouteContext(path: string) {
   currentRoute = path;

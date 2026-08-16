@@ -1,204 +1,245 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { guardRoute } from "@/lib/permissions";
-import { Button } from "@/components/ui/button";
-import { Printer, Loader2 } from "lucide-react";
+import { loadPlatformPrintDocument, type PlatformPrintDoc } from "@/lib/platform-invoice-adapter";
+import { brandingToPdfInputAsync, loadPlatformBrandingSettings } from "@/lib/platform-branding";
+import { downloadPlatformBillingPdf } from "@/lib/platform-billing-pdf";
+import { PrintToolbar } from "@/components/print/PrintToolbar";
+import { printDocument } from "@/lib/print-document";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/platform/billing-print/$id")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  head: () => ({ meta: [{ title: "Invoice · AVS Gold ERP Platform" }] }),
+  head: () => ({ meta: [{ title: "Billing Document · AVS Gold ERP Platform" }] }),
   component: BillingPrintPage,
 });
-
-type Doc = {
-  id: string;
-  firm_id: string;
-  document_no: string;
-  document_type: string;
-  status: string;
-  amount_minor: number;
-  taxable_minor: number | null;
-  cgst_minor: number | null;
-  sgst_minor: number | null;
-  igst_minor: number | null;
-  gst_minor: number | null;
-  buyer_state_code: string | null;
-  seller_state_code: string | null;
-  issued_at: string | null;
-  due_at: string | null;
-  data: { description?: string; gst_rate_percent?: number } | null;
-};
 
 type Firm = { id: string; name: string; gstin: string | null; address: string | null };
 
 const DOC_TYPE_LABEL: Record<string, string> = {
-  quotation: "Quotation",
-  proforma: "Proforma Invoice",
-  tax_invoice: "Tax Invoice",
-  renewal_invoice: "Renewal Invoice",
-  credit_note: "Credit Note",
-  payment_receipt: "Payment Receipt",
+  quotation: "QUOTATION",
+  proforma: "PROFORMA INVOICE",
+  tax_invoice: "TAX INVOICE",
+  renewal_invoice: "RENEWAL INVOICE",
+  credit_note: "CREDIT NOTE",
+  payment_receipt: "PAYMENT RECEIPT",
 };
 
-function rupees(minor: number | null | undefined): string {
-  return `Rs. ${((minor ?? 0) / 100).toFixed(2)}`;
+function rs(minor: number | null | undefined): string {
+  return `₹${((minor ?? 0) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function BillingPrintPage() {
   const { id } = useParams({ from: "/platform/billing-print/$id" });
-  const [doc, setDoc] = useState<Doc | null>(null);
+  const [doc, setDoc] = useState<PlatformPrintDoc | null>(null);
   const [firm, setFirm] = useState<Firm | null>(null);
-  const [seller, setSeller] = useState({ name: "Arivahly Venture Sphere", address: "", gstin: "" });
+  const [branding, setBranding] = useState<Awaited<
+    ReturnType<typeof loadPlatformBrandingSettings>
+  > | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
-      const { data: docRow, error: docError } = await supabase
-        .from("platform_billing_documents" as never)
-        .select(
-          "id,firm_id,document_no,document_type,status,amount_minor,taxable_minor,cgst_minor,sgst_minor,igst_minor,gst_minor,buyer_state_code,seller_state_code,issued_at,due_at,data",
-        )
-        .eq("id", id)
-        .maybeSingle();
-      if (docError || !docRow) {
-        setError(docError?.message ?? "Document not found.");
+      const { doc: loaded, error: loadError } = await loadPlatformPrintDocument(id);
+      if (loadError || !loaded) {
+        setError(loadError ?? "Document not found.");
         setLoading(false);
         return;
       }
-      const doc = docRow as unknown as Doc;
-      setDoc(doc);
-      const [{ data: firmRow }, { data: settingsRows }] = await Promise.all([
+      setDoc(loaded);
+      const [{ data: firmRow }, brandSettings] = await Promise.all([
         supabase
           .from("organizations" as never)
           .select("id,name,gstin,address")
-          .eq("id", doc.firm_id)
+          .eq("id", loaded.firm_id)
           .maybeSingle(),
-        supabase
-          .from("platform_settings" as never)
-          .select("key,value")
-          .in("key", ["billing.seller_name", "billing.seller_address", "billing.seller_gstin"]),
+        loadPlatformBrandingSettings(),
       ]);
       setFirm((firmRow as Firm | null) ?? null);
-      const settingsMap = new Map(
-        ((settingsRows ?? []) as Array<{ key: string; value: unknown }>).map((r) => [
-          r.key,
-          r.value,
-        ]),
-      );
-      setSeller({
-        name: (settingsMap.get("billing.seller_name") as string) || "Arivahly Venture Sphere",
-        address: (settingsMap.get("billing.seller_address") as string) || "",
-        gstin: (settingsMap.get("billing.seller_gstin") as string) || "",
-      });
+      setBranding(brandSettings);
       setLoading(false);
     })();
   }, [id]);
 
+  const pdfInput = useMemo(() => {
+    if (!doc || !branding) return null;
+    return {
+      doc,
+      buyerName: firm?.name ?? doc.firm_id,
+      buyerAddress: firm?.address,
+      buyerGstin: firm?.gstin,
+      brandingPromise: brandingToPdfInputAsync(branding),
+    };
+  }, [doc, firm, branding]);
+
   if (loading) {
     return (
-      <div className="grid min-h-[50vh] place-items-center">
+      <div className="grid min-h-[50vh] place-items-center bg-white">
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
   }
-  if (error || !doc) {
+  if (error || !doc || !branding) {
     return (
-      <div className="mx-auto max-w-xl p-8 text-center text-sm text-muted-foreground">
+      <div className="mx-auto max-w-xl p-8 text-center text-sm text-muted-foreground bg-white">
         {error ?? "Document not found."}
       </div>
     );
   }
 
-  const isInterState = (doc.gst_minor ?? 0) > 0 && (doc.igst_minor ?? 0) > 0;
+  const isInterState = (doc.igst_minor ?? 0) > 0;
   const gstRate = doc.data?.gst_rate_percent ?? 0;
+  const logo = branding.logoDocument || branding.logoPrimary || branding.logoCompact;
+  const companyName = branding.legalName || branding.appName;
+  const docTitle = DOC_TYPE_LABEL[doc.document_type] ?? doc.document_type;
+
+  const handlePrint = () => {
+    void printDocument(`${docTitle} · ${doc.document_no}`, "Invoice");
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!pdfInput) return;
+    setDownloadingPdf(true);
+    try {
+      const brandingPdf = await pdfInput.brandingPromise;
+      await downloadPlatformBillingPdf({
+        doc: pdfInput.doc,
+        buyerName: pdfInput.buyerName,
+        buyerAddress: pdfInput.buyerAddress,
+        buyerGstin: pdfInput.buyerGstin,
+        branding: brandingPdf,
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   return (
-    <div className="mx-auto max-w-3xl p-6 print:p-0">
-      <div className="mb-4 flex justify-end gap-2 print:hidden">
-        <Button onClick={() => window.print()} className="gap-1.5">
-          <Printer className="h-4 w-4" /> Print
-        </Button>
-      </div>
-      <div className="border border-black/20 p-8 text-sm text-black bg-white">
-        <div className="flex items-start justify-between border-b border-black/20 pb-4">
-          <div>
-            <h1 className="text-lg font-semibold">{seller.name}</h1>
-            {seller.address && <p className="text-xs whitespace-pre-line">{seller.address}</p>}
-            {seller.gstin && <p className="text-xs">GSTIN: {seller.gstin}</p>}
-          </div>
-          <div className="text-right">
-            <h2 className="text-xl font-bold uppercase">
-              {DOC_TYPE_LABEL[doc.document_type] ?? doc.document_type}
-            </h2>
-            <p className="text-xs">No: {doc.document_no}</p>
-            {doc.issued_at && (
-              <p className="text-xs">Date: {new Date(doc.issued_at).toLocaleDateString("en-IN")}</p>
-            )}
-            {doc.due_at && (
-              <p className="text-xs">Due: {new Date(doc.due_at).toLocaleDateString("en-IN")}</p>
-            )}
-          </div>
-        </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <PrintToolbar
+        title={docTitle}
+        docNumber={doc.document_no}
+        onPrint={handlePrint}
+        onDownloadPdf={handleDownloadPdf}
+        downloadingPdf={downloadingPdf}
+        documentSize="a4"
+        backUrl="/platform?view=billing"
+      />
 
-        <div className="mt-4">
-          <p className="text-xs uppercase tracking-wide text-black/60">Billed to</p>
-          <p className="font-medium">{firm?.name ?? doc.firm_id}</p>
-          {firm?.address && <p className="text-xs whitespace-pre-line">{firm.address}</p>}
-          {firm?.gstin && <p className="text-xs">GSTIN: {firm.gstin}</p>}
-        </div>
-
-        <table className="mt-6 w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-y border-black/30 text-left">
-              <th className="py-2">Description</th>
-              <th className="py-2 text-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="border-b border-black/10">
-              <td className="py-2">
-                {doc.data?.description || DOC_TYPE_LABEL[doc.document_type] || doc.document_type}
-              </td>
-              <td className="py-2 text-right">{rupees(doc.taxable_minor)}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div className="mt-4 ml-auto w-64 space-y-1 text-sm">
-          <div className="flex justify-between">
-            <span>Taxable amount</span>
-            <span>{rupees(doc.taxable_minor)}</span>
-          </div>
-          {isInterState ? (
-            <div className="flex justify-between">
-              <span>IGST ({gstRate}%)</span>
-              <span>{rupees(doc.igst_minor)}</span>
+      <div className="flex-1 p-4 md:p-8 flex justify-center items-start overflow-x-auto overflow-y-auto">
+        <div
+          data-testid="print-layout-root"
+          data-print-size="a4"
+          className="bg-white text-black shadow-sm print:shadow-none"
+          style={{ width: "210mm", minHeight: "297mm", padding: "14mm", boxSizing: "border-box" }}
+        >
+          <div className="flex items-start justify-between border-b border-neutral-300 pb-4">
+            <div className="flex items-start gap-3">
+              {logo && <img src={logo} alt="Logo" className="h-14 w-auto object-contain" />}
+              <div>
+                <h1 className="text-base font-bold">{companyName}</h1>
+                {branding.address && (
+                  <p className="text-[10px] whitespace-pre-line text-neutral-600 mt-1">
+                    {branding.address}
+                  </p>
+                )}
+                {branding.gstin && (
+                  <p className="text-[10px] text-neutral-600">GSTIN: {branding.gstin}</p>
+                )}
+                {branding.email && <p className="text-[10px] text-neutral-600">{branding.email}</p>}
+              </div>
             </div>
-          ) : (
-            <>
-              <div className="flex justify-between">
-                <span>CGST ({gstRate / 2}%)</span>
-                <span>{rupees(doc.cgst_minor)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>SGST ({gstRate / 2}%)</span>
-                <span>{rupees(doc.sgst_minor)}</span>
-              </div>
-            </>
-          )}
-          <div className="flex justify-between border-t border-black/30 pt-1 font-semibold">
-            <span>Total</span>
-            <span>{rupees(doc.amount_minor)}</span>
+            <div className="text-right">
+              <h2 className="text-lg font-bold uppercase">{docTitle}</h2>
+              <p className="text-[10px]">No: {doc.document_no}</p>
+              {doc.issued_at && (
+                <p className="text-[10px]">
+                  Date: {new Date(doc.issued_at).toLocaleDateString("en-IN")}
+                </p>
+              )}
+              {doc.due_at && (
+                <p className="text-[10px]">
+                  Due: {new Date(doc.due_at).toLocaleDateString("en-IN")}
+                </p>
+              )}
+              <p className="text-[10px] font-semibold uppercase mt-1">{doc.status}</p>
+            </div>
           </div>
-        </div>
 
-        <p className="mt-8 text-[10px] text-black/50">
-          This is a system-generated{" "}
-          {(DOC_TYPE_LABEL[doc.document_type] ?? doc.document_type).toLowerCase()} for the AVS Gold
-          ERP platform subscription. Status: {doc.status}.
-        </p>
+          <div className="mt-5">
+            <p className="text-[9px] uppercase tracking-wide text-neutral-500 font-semibold">
+              Bill To
+            </p>
+            <p className="text-sm font-semibold mt-1">{firm?.name ?? doc.firm_id}</p>
+            {firm?.address && (
+              <p className="text-[10px] whitespace-pre-line text-neutral-600">{firm.address}</p>
+            )}
+            {firm?.gstin && <p className="text-[10px]">GSTIN: {firm.gstin}</p>}
+          </div>
+
+          <table className="mt-5 w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="border-y border-neutral-400 bg-neutral-50 text-left">
+                <th className="py-2 px-1">Description</th>
+                <th className="py-2 px-1 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-neutral-200">
+                <td className="py-2 px-1">
+                  {doc.data?.description || DOC_TYPE_LABEL[doc.document_type] || doc.document_type}
+                </td>
+                <td className="py-2 px-1 text-right font-mono">{rs(doc.taxable_minor)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div className="mt-4 ml-auto w-56 space-y-1 text-[11px]">
+            <div className="flex justify-between">
+              <span>Taxable Subtotal</span>
+              <span className="font-mono">{rs(doc.taxable_minor)}</span>
+            </div>
+            {isInterState ? (
+              <div className="flex justify-between">
+                <span>IGST ({gstRate}%)</span>
+                <span className="font-mono">{rs(doc.igst_minor)}</span>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between">
+                  <span>CGST ({gstRate / 2}%)</span>
+                  <span className="font-mono">{rs(doc.cgst_minor)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>SGST ({gstRate / 2}%)</span>
+                  <span className="font-mono">{rs(doc.sgst_minor)}</span>
+                </div>
+              </>
+            )}
+            <div className="flex justify-between border-t border-neutral-400 pt-2 text-sm font-bold">
+              <span>Grand Total</span>
+              <span className="font-mono">{rs(doc.amount_minor)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Amount Paid</span>
+              <span className="font-mono">{rs(doc.paid_minor)}</span>
+            </div>
+            <div className="flex justify-between font-semibold">
+              <span>Balance Due</span>
+              <span className="font-mono">
+                {rs((doc.amount_minor ?? 0) - (doc.paid_minor ?? 0))}
+              </span>
+            </div>
+          </div>
+
+          <p className="mt-10 text-[9px] text-neutral-500">
+            System-generated {DOC_TYPE_LABEL[doc.document_type]?.toLowerCase() ?? "document"} ·{" "}
+            {companyName}
+          </p>
+        </div>
       </div>
     </div>
   );

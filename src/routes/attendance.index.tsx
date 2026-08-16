@@ -211,7 +211,7 @@ function AttendancePage() {
 
 function NoWorkersHint() {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-card/40 p-10 text-center space-y-3">
+    <div className="rounded-md border border-dashed border-border bg-card/40 p-10 text-center space-y-3">
       <Hammer className="h-10 w-10 mx-auto text-gold" />
       <div className="font-serif text-xl text-gold">No karigars or workers yet</div>
       <p className="text-sm text-muted-foreground max-w-md mx-auto">
@@ -281,7 +281,7 @@ function SelectedWorkerCard({
   };
 
   return (
-    <div className="rounded-2xl border border-gold/30 bg-card p-5 shadow-gold space-y-4">
+    <div className="rounded-md border border-gold/30 bg-card p-5 shadow-gold space-y-4">
       <div>
         <Label className="text-xs text-muted-foreground">Selected Worker</Label>
         <Select value={selected.id} onValueChange={onChange}>
@@ -358,7 +358,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 function NeedsWorker() {
   return (
-    <div className="rounded-xl border border-dashed border-border bg-card/30 p-6 text-sm text-muted-foreground text-center">
+    <div className="rounded-md border border-dashed border-border bg-card/30 p-6 text-sm text-muted-foreground text-center">
       Select a worker from the right panel to continue.
     </div>
   );
@@ -486,7 +486,7 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+      <div className="rounded-md border border-border bg-card p-5 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="font-serif text-gold text-lg">Bulk Daily Attendance</div>
@@ -546,7 +546,7 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border overflow-hidden">
+        <div className="rounded-md border border-border overflow-hidden">
           <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-xs font-medium">
             <Checkbox
               checked={allSelected}
@@ -590,7 +590,7 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+      <div className="rounded-md border border-border bg-card p-5 space-y-4">
         <div className="font-serif text-gold text-lg">Worker Status</div>
         <p className="text-xs text-muted-foreground">
           Workers from West Bengal stay for weeks or months. Use <strong>Mark Arrived</strong> when
@@ -617,10 +617,7 @@ function WorkerStatusTab({ workers }: { workers: Person[] }) {
                     })
                   : "—";
                 return (
-                  <div
-                    key={w.id}
-                    className="rounded-2xl border border-border bg-card p-4 space-y-3"
-                  >
+                  <div key={w.id} className="rounded-md border border-border bg-card p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm">{w.fullName}</span>
                       <WorkerStatusBadge status={status} />
@@ -791,7 +788,7 @@ function StayHistoryTab({ workers }: { workers: Person[] }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+    <div className="rounded-md border border-border bg-card p-5 space-y-4">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div className="font-serif text-gold text-lg">Stay History</div>
         <div>
@@ -825,7 +822,7 @@ function StayHistoryTab({ workers }: { workers: Person[] }) {
               return (
                 <div
                   key={stay.id}
-                  className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                  className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm">{w?.fullName ?? "—"}</span>
@@ -964,7 +961,7 @@ function SalaryRulesTab({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-md border border-border bg-card p-5">
         <div className="font-serif text-gold text-lg mb-3">Set Salary Rule</div>
         <div className="grid gap-3 md:grid-cols-2">
           <div>
@@ -1044,7 +1041,7 @@ function SalaryRulesTab({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-md border border-border bg-card p-5">
         <div className="font-serif text-gold text-lg mb-3">Active Rules</div>
         {rules.filter((r) => r.active).length === 0 ? (
           <EmptyHint text="No salary rules set yet." />
@@ -1067,7 +1064,7 @@ function SalaryRulesTab({
                   return (
                     <div
                       key={r.id}
-                      className="rounded-xl border border-border bg-muted/20 p-3 space-y-2 text-xs"
+                      className="rounded-md border border-border bg-muted/20 p-3 space-y-2 text-xs"
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">{w?.fullName ?? "—"}</span>
@@ -1201,7 +1198,7 @@ function LoansTab({
         list={loans}
         showMode={false}
       />
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-md border border-border bg-card p-5">
         <div className="font-serif text-gold text-lg mb-3">Loans</div>
         {loans.length === 0 ? (
           <EmptyHint text="No loans recorded." />
@@ -1364,7 +1361,7 @@ function CashEventForm({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <div className="font-serif text-gold text-lg mb-3">{title}</div>
       <div className="grid gap-3 md:grid-cols-3">
         <div className="md:col-span-1">
@@ -1447,7 +1444,7 @@ function CashEventList({
   printKind: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <div className="font-serif text-gold text-lg mb-3">{title}</div>
       {items.length === 0 ? (
         <EmptyHint text="Nothing recorded yet." />
@@ -1462,7 +1459,7 @@ function CashEventList({
                 return (
                   <div
                     key={it.id}
-                    className="rounded-xl border border-border bg-muted/20 p-3 space-y-2 text-xs"
+                    className="rounded-md border border-border bg-muted/20 p-3 space-y-2 text-xs"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold">{w?.fullName ?? "—"}</span>
@@ -1736,7 +1733,7 @@ function GoldEventForm({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <div className="font-serif text-gold text-lg">{title}</div>
       <p className="text-xs text-muted-foreground mb-3">{helpText}</p>
       <div className="grid gap-3 md:grid-cols-3">
@@ -1825,7 +1822,7 @@ function GoldEventList({
   printKind: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <div className="font-serif text-gold text-lg mb-3">{title}</div>
       {items.length === 0 ? (
         <EmptyHint text="Nothing recorded yet." />
@@ -1840,7 +1837,7 @@ function GoldEventList({
                 return (
                   <div
                     key={it.id}
-                    className="rounded-xl border border-border bg-muted/20 p-3 space-y-2 text-xs"
+                    className="rounded-md border border-border bg-muted/20 p-3 space-y-2 text-xs"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold">{w?.fullName ?? "—"}</span>
@@ -2045,7 +2042,7 @@ function SettlementTab({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-md border border-border bg-card p-5">
         <div className="font-serif text-gold text-lg mb-3">Home-Going Final Settlement</div>
         <div className="grid gap-3 md:grid-cols-3">
           <div>
@@ -2079,7 +2076,7 @@ function SettlementTab({
       </div>
 
       <div className="grid gap-5 md:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
+        <div className="rounded-md border border-border bg-card p-5 space-y-2">
           <div className="font-serif text-gold text-lg mb-2">Cash Side</div>
           <Row label="Days on-site" value={totalDays.toFixed(1)} />
           <Row label="Salary earned" value={paiseToRupees(salaryEarned)} />
@@ -2106,7 +2103,7 @@ function SettlementTab({
           )}
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
+        <div className="rounded-md border border-border bg-card p-5 space-y-2">
           <div className="font-serif text-gold text-lg mb-2">Gold Side</div>
           <Row label="Gold advance (fine)" value={`${mgToGrams(goldAdvFine)} g`} />
           <Row label="− Wastage returned (fine)" value={`${mgToGrams(wastageFine)} g`} />
@@ -2202,7 +2199,7 @@ function SettlementTab({
 function PassbookTab({ selectedWorker }: { selectedWorker: Person | null }) {
   if (!selectedWorker) return <NeedsWorker />;
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-3">
         <div className="font-serif text-gold text-lg">
           Worker Passbook — {selectedWorker.fullName}
@@ -2276,7 +2273,7 @@ export function PassbookContent({ workerId }: { workerId: string }) {
                 return (
                   <div
                     key={i}
-                    className="rounded-xl border border-border bg-muted/20 p-3 space-y-2 text-xs"
+                    className="rounded-md border border-border bg-muted/20 p-3 space-y-2 text-xs"
                   >
                     <div className="flex items-center justify-between font-medium">
                       <span>{r.label}</span>
@@ -2382,7 +2379,7 @@ export function PassbookContent({ workerId }: { workerId: string }) {
 
 function SummaryTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-background/40 p-3">
+    <div className="rounded-md border border-border bg-background/40 p-3">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="font-serif text-2xl text-gold mt-1">{value}</div>
     </div>
@@ -2391,7 +2388,7 @@ function SummaryTile({ label, value }: { label: string; value: string }) {
 
 function EmptyHint({ text }: { text: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-border bg-background/30 p-6 text-sm text-muted-foreground text-center">
+    <div className="rounded-md border border-dashed border-border bg-background/30 p-6 text-sm text-muted-foreground text-center">
       <AlertTriangle className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
       {text}
     </div>

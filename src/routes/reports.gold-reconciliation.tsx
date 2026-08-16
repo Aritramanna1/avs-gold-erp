@@ -100,16 +100,16 @@ function GoldReconciliationPage() {
 
       {latest && (
         <div className="grid sm:grid-cols-3 gap-3 mb-6">
-          <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="rounded-md border border-border bg-card p-4">
             <div className="text-xs text-muted-foreground">Last Run</div>
             <div className="font-semibold">{new Date(latest.generatedAt).toLocaleString()}</div>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="rounded-md border border-border bg-card p-4">
             <div className="text-xs text-muted-foreground">Bills Checked</div>
             <div className="text-2xl font-semibold">{latest.totalChecked}</div>
           </div>
           <div
-            className={`rounded-2xl border p-4 ${latest.exceptionCount > 0 ? "border-destructive/40 bg-destructive/5" : "border-border bg-card"}`}
+            className={`rounded-md border p-4 ${latest.exceptionCount > 0 ? "border-destructive/40 bg-destructive/5" : "border-border bg-card"}`}
           >
             <div className="text-xs text-muted-foreground">Discrepancies</div>
             <div
@@ -121,7 +121,7 @@ function GoldReconciliationPage() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="p-4 border-b border-border font-semibold">Reconciliation History</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

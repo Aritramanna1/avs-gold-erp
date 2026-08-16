@@ -1,17 +1,15 @@
+// Platform Owner — AVS SaaS control panel ONLY (tenants, billing, credits, Razorpay, trials).
+// Jewellery ERP operations live under /people, /workshop, /stock, /billing, etc. — never here.
 // Hallmark: macrostructure: operations console; tone: authoritative; anchor hue: legacy gold
-import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
-  ArrowUpRight,
   Building2,
-  ChevronRight,
   CircleDollarSign,
-  Clock3,
   Database,
   FileWarning,
-  LifeBuoy,
   Loader2,
   Users,
   Search,
@@ -21,6 +19,11 @@ import {
   Wrench,
   Receipt,
   Send,
+  Coins,
+  RefreshCw,
+  Plus,
+  Printer,
+  X,
 } from "lucide-react";
 import { dataProvider } from "@/lib/providers/data-provider";
 const supabase = dataProvider as any;
@@ -28,10 +31,36 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { guardRoute } from "@/lib/permissions";
 import { fetchPlatformFirmStats, type PlatformFirmStats } from "@/lib/platform-stats-query";
+import { PlatformCreditsSection } from "@/components/platform/PlatformCreditsSection";
+import { PlatformRazorpayConfig } from "@/components/platform/PlatformRazorpayConfig";
+import { PlatformCommercialBillingHub } from "@/components/platform/PlatformCommercialBillingHub";
+import { PlatformBrandingPanel } from "@/components/platform/PlatformBrandingPanel";
+import { PlatformAccountMenu } from "@/components/platform/PlatformAccountMenu";
+import { TenantCommunicationsPanel } from "@/components/communications/TenantCommunicationsPanel";
+import {
+  loadPlatformBillingDefaults,
+  getCachedPlatformBillingDefaults,
+} from "@/lib/platform-settings-runtime";
+import { usePrintEngine } from "@/lib/print-engine";
+
+type PlatformSearch = {
+  view: string;
+  filter: string;
+  billingTab: string;
+  settingsTab: string;
+  panel?: string;
+};
 
 export const Route = createFileRoute("/platform")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  head: () => ({ meta: [{ title: "Platform | AVS Gold ERP" }] }),
+  validateSearch: (search: Record<string, unknown>): PlatformSearch => ({
+    view: typeof search.view === "string" ? search.view : "overview",
+    filter: typeof search.filter === "string" ? search.filter : "all",
+    billingTab: typeof search.billingTab === "string" ? search.billingTab : "quotations",
+    settingsTab: typeof search.settingsTab === "string" ? search.settingsTab : "branding",
+    panel: typeof search.panel === "string" ? search.panel : undefined,
+  }),
+  head: () => ({ meta: [{ title: "Platform Owner Console · AVS Gold ERP" }] }),
   component: PlatformLayout,
 });
 
@@ -177,52 +206,46 @@ type View =
   | "firms"
   | "users"
   | "subscriptions"
-  | "licensing"
   | "requests"
   | "tickets"
   | "billing"
+  | "licenses"
   | "activity"
   | "health"
   | "backups"
-  | "settings";
+  | "credits"
+  | "settings"
+  | "help"
+  | "account";
 
-const nav: Array<[View, string, typeof Activity]> = [
-  ["overview", "Overview", Activity],
-  ["firms", "Firms", Building2],
-  ["users", "Users", Users],
-  ["subscriptions", "Subscriptions & trials", CircleDollarSign],
-  ["licensing", "Module licensing", ShieldCheck],
-  ["requests", "Service requests", Wrench],
-  ["tickets", "Support tickets", MessageSquare],
-  ["billing", "Software billing", Receipt],
-  ["activity", "Activity & audit", ShieldAlert],
-  ["health", "Health & monitoring", Activity],
-  ["backups", "Backups", Database],
-  ["settings", "Platform settings", Database],
+const VALID_VIEWS: View[] = [
+  "overview",
+  "firms",
+  "users",
+  "subscriptions",
+  "credits",
+  "requests",
+  "tickets",
+  "billing",
+  "licenses",
+  "activity",
+  "health",
+  "backups",
+  "settings",
+  "help",
+  "account",
 ];
 
 function PlatformOwnerConsole() {
   const routerState = useRouterState();
-  const routeView = (routerState.location.search as { view?: string }).view as View | undefined;
-  const validViews: View[] = [
-    "overview",
-    "firms",
-    "users",
-    "subscriptions",
-    "licensing",
-    "requests",
-    "tickets",
-    "billing",
-    "activity",
-    "health",
-    "backups",
-    "settings",
-  ];
-  const initialView =
-    routeView ?? (new URLSearchParams(window.location.search).get("view") as View | null);
-  const [view, setView] = useState<View>(
-    initialView && validViews.includes(initialView) ? initialView : "overview",
-  );
+  const searchParams = routerState.location.search as PlatformSearch;
+  const view = (
+    VALID_VIEWS.includes(searchParams.view as View) ? searchParams.view : "overview"
+  ) as View;
+  const tenantFilter = searchParams.filter || "all";
+  const billingTab = searchParams.billingTab || "quotations";
+  const settingsTab = searchParams.settingsTab || "branding";
+  const showTenant360 = searchParams.panel === "360";
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -246,10 +269,6 @@ function PlatformOwnerConsole() {
   const [billingRows, setBillingRows] = useState<BillingRow[]>([]);
   const [errorRows, setErrorRows] = useState<ErrorEventRow[]>([]);
   const [backupRows, setBackupRows] = useState<BackupRunRow[]>([]);
-
-  useEffect(() => {
-    if (routeView && validViews.includes(routeView) && routeView !== view) setView(routeView);
-  }, [routeView, view]);
 
   async function refresh() {
     setLoading(true);
@@ -343,7 +362,7 @@ function PlatformOwnerConsole() {
         .select(
           "id,firm_id,document_no,document_type,status,amount_minor,paid_minor,due_at,issued_at,taxable_minor,cgst_minor,sgst_minor,igst_minor,gst_minor,buyer_state_code,seller_state_code,data",
         )
-        .order("created_at", { ascending: false })
+        .order("issued_at", { ascending: false })
         .limit(25),
       supabase
         .from("platform_error_events")
@@ -361,16 +380,15 @@ function PlatformOwnerConsole() {
         .from("user_profiles")
         .select("id,auth_id,firm_id,branch_id,full_name,phone,status,active,role,last_login")
         .order("created_at", { ascending: false })
-        .limit(500),
+        .limit(50),
       supabase
-        .from("licenses")
+        .from("platform_licenses")
         .select(
           "id,license_id,organization_id,customer_name,company_name,status,edition,seats,expiry_date,created_at,updated_at",
         )
-        .order("expiry_date", { ascending: true, nullsFirst: false }),
+        .order("created_at", { ascending: false }),
     ]);
 
-    if (fRes.error) setError(fRes.error.message);
     const loadedFirms = (fRes.data as Firm[]) ?? [];
     setFirms(loadedFirms);
     setSubscriptions((subRes.data as Subscription[]) ?? []);
@@ -400,142 +418,221 @@ function PlatformOwnerConsole() {
     void refresh();
   }, []);
 
+  const trialOrgIds = useMemo(
+    () => new Set(subscriptions.filter((s) => s.status === "trial").map((s) => s.organization_id)),
+    [subscriptions],
+  );
+
   const filteredFirms = useMemo(() => {
-    if (!search.trim()) return firms;
+    let list = firms;
+    if (tenantFilter === "active") {
+      list = list.filter((f) => f.is_active);
+    } else if (tenantFilter === "suspended") {
+      list = list.filter((f) => !f.is_active);
+    } else if (tenantFilter === "trial") {
+      list = list.filter((f) => trialOrgIds.has(f.id));
+    }
+    if (!search.trim()) return list;
     const q = search.toLowerCase();
-    return firms.filter(
+    return list.filter(
       (f) =>
         f.name.toLowerCase().includes(q) ||
         f.slug.toLowerCase().includes(q) ||
         (f.gstin && f.gstin.toLowerCase().includes(q)),
     );
-  }, [firms, search]);
+  }, [firms, search, tenantFilter, trialOrgIds]);
 
   const activeCount = useMemo(() => firms.filter((f) => f.is_active).length, [firms]);
+  const suspendedCount = useMemo(() => firms.filter((f) => !f.is_active).length, [firms]);
+  const trialCount = useMemo(
+    () => firms.filter((f) => trialOrgIds.has(f.id)).length,
+    [firms, trialOrgIds],
+  );
   const activeSubCount = useMemo(
     () => subscriptions.filter((s) => s.status === "active").length,
     [subscriptions],
   );
+  const expiringTrialCount = useMemo(() => {
+    const now = Date.now();
+    return subscriptions.filter((s) => {
+      if (s.status !== "trial" || !s.trial_ends_at) return false;
+      const days = (new Date(s.trial_ends_at).getTime() - now) / 86400000;
+      return days >= 0 && days <= 7;
+    }).length;
+  }, [subscriptions]);
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#f7f5f0] text-sm text-[#6b6659]">
-        Checking platform clearance...
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-gold border-t-transparent" />
+        <p className="mt-4 text-xs font-mono text-muted-foreground">Checking platform clearance…</p>
       </div>
     );
   }
 
   if (authorized === false) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-[#f7f5f0] p-6 text-center text-[#2b2925]">
-        <ShieldAlert className="h-10 w-10 text-[#a33b3b]" />
-        <h1 className="text-xl font-semibold">Access restricted</h1>
-        <p className="max-w-md text-sm text-[#6b6659]">
-          Platform Owner Console requires <code className="bg-[#eae6df] px-1">saas_admin</code>{" "}
-          platform access. You can request elevation or switch accounts.
-        </p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-foreground">
+        <div className="max-w-md rounded-md border border-border bg-card p-8 text-center shadow-xs">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/30 text-red-400 mb-4">
+            <ShieldAlert className="h-6 w-6" />
+          </div>
+          <h1 className="font-serif text-2xl font-bold text-foreground">Access Restricted</h1>
+          <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+            Platform Owner Console requires{" "}
+            <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-gold">saas_admin</code>{" "}
+            or{" "}
+            <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-gold">
+              platform_owner
+            </code>{" "}
+            elevation. Please sign in with authorized platform governance credentials.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f5f0] text-[#2b2925]">
-      <div className="border-b border-[#dedad1] bg-[#efece6] px-4 py-3 lg:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="font-serif text-lg font-bold tracking-tight">
-              {nav.find(([key]) => key === view)?.[1] ?? "Platform Owner Console"}
-            </h1>
-            <p className="text-xs text-[#6b6659]">
-              Platform engine operational - {firms.length} tenant firms
-            </p>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-[#2d6a4f]">
-            <ShieldCheck className="h-4 w-4" /> Live control plane
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-serif text-xl font-bold text-gold">
+            {pageTitle(view, tenantFilter)}
+          </h1>
+          <p className="text-xs text-muted-foreground font-mono">
+            {firms.length} tenant firms · {activeCount} active · {suspendedCount} suspended
+          </p>
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void refresh()}
+          className="h-8 text-xs gap-1.5"
+        >
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </Button>
       </div>
 
-      <main className="p-4 space-y-6 lg:p-6">
-        {error && (
-          <div className="flex items-center gap-2 rounded border border-[#e5a9a9] bg-[#fdf2f2] p-3 text-xs text-[#a33b3b]">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+      {error && (
+        <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
-        {view === "overview" && (
-          <OverviewSection
-            firms={firms}
-            activeCount={activeCount}
-            activeSubCount={activeSubCount}
-            users={users}
-            branches={branches}
-            serviceRequests={serviceRequests}
-            supportTickets={supportTickets}
-            criticalAlerts={criticalAlerts}
-            failedBackups={failedBackups}
-            events={events}
-          />
-        )}
+      {view === "overview" && (
+        <OverviewSection
+          firms={firms}
+          activeCount={activeCount}
+          suspendedCount={suspendedCount}
+          trialCount={trialCount}
+          expiringTrialCount={expiringTrialCount}
+          activeSubCount={activeSubCount}
+          users={users}
+          branches={branches}
+          serviceRequests={serviceRequests}
+          supportTickets={supportTickets}
+          criticalAlerts={criticalAlerts}
+          failedBackups={failedBackups}
+          events={events}
+          billingRows={billingRows}
+        />
+      )}
 
-        {view === "firms" && (
-          <FirmsSection
-            filteredFirms={filteredFirms}
-            search={search}
-            setSearch={setSearch}
-            subscriptions={subscriptions}
-            plans={plans}
-            firmStats={firmStats}
-            refresh={refresh}
-          />
-        )}
+      {view === "firms" && (
+        <FirmsSection
+          filteredFirms={filteredFirms}
+          tenantFilter={tenantFilter}
+          showTenant360={showTenant360}
+          search={search}
+          setSearch={setSearch}
+          subscriptions={subscriptions}
+          plans={plans}
+          firmStats={firmStats}
+          refresh={refresh}
+        />
+      )}
 
-        {view === "users" && <UsersSection users={userRows} firms={firms} refresh={refresh} />}
+      {view === "users" && <UsersSection users={userRows} firms={firms} refresh={refresh} />}
 
-        {view === "subscriptions" && (
-          <SubscriptionsSection
-            firms={firms}
-            subscriptions={subscriptions}
-            plans={plans}
-            refresh={refresh}
-          />
-        )}
+      {view === "subscriptions" && (
+        <SubscriptionsSection
+          firms={firms}
+          subscriptions={subscriptions}
+          plans={plans}
+          refresh={refresh}
+        />
+      )}
 
-        {view === "licensing" && (
-          <LicensingSection
-            firms={firms}
-            features={features}
-            licenses={licenses}
-            refresh={refresh}
-          />
-        )}
+      {view === "requests" && (
+        <RequestsSection rows={requestRows} firms={firms} refresh={refresh} />
+      )}
 
-        {view === "requests" && (
-          <RequestsSection rows={requestRows} firms={firms} refresh={refresh} />
-        )}
+      {view === "tickets" && <TicketsSection rows={ticketRows} firms={firms} refresh={refresh} />}
 
-        {view === "tickets" && <TicketsSection rows={ticketRows} firms={firms} refresh={refresh} />}
+      {view === "billing" && (
+        <BillingSection
+          rows={billingRows}
+          firms={firms}
+          refresh={refresh}
+          billingTab={billingTab}
+        />
+      )}
 
-        {view === "billing" && (
-          <BillingSection rows={billingRows} firms={firms} refresh={refresh} />
-        )}
+      {view === "licenses" && (
+        <LicensingSection firms={firms} features={features} licenses={licenses} refresh={refresh} />
+      )}
 
-        {view === "activity" && <ActivitySection events={events} />}
+      {view === "activity" && <ActivitySection events={events} />}
 
-        {view === "health" && <HealthSection errorRows={errorRows} refresh={refresh} />}
+      {view === "health" && <HealthSection errorRows={errorRows} refresh={refresh} />}
 
-        {view === "backups" && <BackupsSection backupRows={backupRows} refresh={refresh} />}
+      {view === "backups" && <BackupsSection backupRows={backupRows} refresh={refresh} />}
 
-        {view === "settings" && <SettingsSection refresh={refresh} />}
-      </main>
+      {view === "credits" && <PlatformCreditsSection firms={firms} refresh={refresh} />}
+
+      {view === "settings" && <SettingsSection refresh={refresh} settingsTab={settingsTab} />}
+
+      {view === "help" && <HelpSection />}
+
+      {view === "account" && <AccountSection />}
     </div>
   );
+}
+
+function pageTitle(view: View, filter: string): string {
+  if (view === "firms") {
+    if (filter === "active") return "Active Tenants";
+    if (filter === "suspended") return "Suspended Tenants";
+    if (filter === "trial") return "Trial Tenants";
+    return "All Tenants";
+  }
+  const titles: Record<View, string> = {
+    overview: "Dashboard",
+    users: "Users / Admin Accounts",
+    subscriptions: "Subscriptions",
+    requests: "Service Requests",
+    tickets: "Support Requests",
+    billing: "Billing & Payments",
+    activity: "Audit Logs",
+    health: "Security & Health",
+    backups: "Backups & DR",
+    licenses: "Licences & Entitlements",
+    credits: "Credits & Wallets",
+    settings: "Platform Configuration",
+    help: "Help / Knowledge Base",
+    account: "My Account",
+    firms: "All Tenants",
+  };
+  return titles[view] ?? "Platform Owner Console";
 }
 
 function OverviewSection({
   firms,
   activeCount,
+  suspendedCount,
+  trialCount,
+  expiringTrialCount,
   activeSubCount,
   users,
   branches,
@@ -544,9 +641,13 @@ function OverviewSection({
   criticalAlerts,
   failedBackups,
   events,
+  billingRows,
 }: {
   firms: Firm[];
   activeCount: number;
+  suspendedCount: number;
+  trialCount: number;
+  expiringTrialCount: number;
   activeSubCount: number;
   users: number;
   branches: number;
@@ -555,68 +656,165 @@ function OverviewSection({
   criticalAlerts: number;
   failedBackups: number;
   events: Event[];
+  billingRows: BillingRow[];
 }) {
+  const outstandingPayments = billingRows.filter(
+    (r) => r.status !== "paid" && r.status !== "cancelled",
+  ).length;
+  const recentPayments = billingRows.filter((r) => r.status === "paid").slice(0, 5);
+
   return (
-    <>
+    <div data-tour="platform-dashboard" className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total tenant firms" value={firms.length} sub={`${activeCount} active`} />
-        <StatCard label="Active subscriptions" value={activeSubCount} sub="paid & trial tier" />
-        <StatCard label="Platform users" value={users} sub={`${branches} total branches`} />
-        <StatCard
-          label="System status"
-          value="Healthy"
-          sub="0 active outages"
-          accent="text-[#2d6a4f]"
+        <DashboardLinkCard
+          label="Total Tenants"
+          value={firms.length}
+          sub={`${activeCount} active`}
+          to="/platform"
+          search={{ view: "firms", filter: "all" }}
+        />
+        <DashboardLinkCard
+          label="Active Tenants"
+          value={activeCount}
+          sub="Currently active"
+          to="/platform"
+          search={{ view: "firms", filter: "active" }}
+        />
+        <DashboardLinkCard
+          label="Suspended Tenants"
+          value={suspendedCount}
+          sub="Inactive accounts"
+          to="/platform"
+          search={{ view: "firms", filter: "suspended" }}
+          accent="text-red-400"
+        />
+        <DashboardLinkCard
+          label="Trial Tenants"
+          value={trialCount}
+          sub={`${expiringTrialCount} expiring soon`}
+          to="/platform/trials"
+          search={{ filter: "active" }}
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <DashboardLinkCard
+          label="Active Subscriptions"
+          value={activeSubCount}
+          sub="Paid subscriptions"
+          to="/platform"
+          search={{ view: "subscriptions" }}
+        />
+        <DashboardLinkCard
+          label="Outstanding Payments"
+          value={outstandingPayments}
+          sub="Unpaid documents"
+          to="/platform"
+          search={{ view: "billing", billingTab: "invoices" }}
+        />
+        <DashboardLinkCard
+          label="Platform Users"
+          value={users}
+          sub={`${branches} branches`}
+          to="/platform"
+          search={{ view: "users" }}
+        />
+        <DashboardLinkCard
+          label="Open Support Tickets"
+          value={supportTickets}
+          sub={`${serviceRequests} service requests`}
+          to="/platform"
+          search={{ view: "tickets" }}
         />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <ActionNeededCard
-          title="Open service requests"
-          count={serviceRequests}
-          icon={Wrench}
-          color="text-[#b85d19]"
-        />
-        <ActionNeededCard
-          title="Open support tickets"
-          count={supportTickets}
-          icon={MessageSquare}
-          color="text-[#2b5b84]"
-        />
-        <ActionNeededCard
-          title="Critical error alerts"
+          title="Critical Error Alerts"
           count={criticalAlerts}
           icon={FileWarning}
-          color="text-[#a33b3b]"
+          color="text-red-400"
         />
         <ActionNeededCard
-          title="Failed backup runs"
+          title="Failed Backup Runs"
           count={failedBackups}
           icon={Database}
-          color="text-[#7c3aed]"
+          color="text-purple-400"
         />
       </div>
 
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-5">
-        <h3 className="font-serif font-semibold text-sm">Recent Platform Operations</h3>
-        <div className="mt-3 divide-y divide-[#dedad1] text-xs">
+      <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs">
+        <h3 className="font-serif font-bold text-base text-gold">Recent Payments</h3>
+        <div className="mt-4 divide-y divide-border text-xs">
+          {recentPayments.map((r) => (
+            <div key={r.id} className="py-2.5 flex items-center justify-between">
+              <span className="font-mono">{r.document_no}</span>
+              <span className="font-semibold">{rupees(r.amount_minor)}</span>
+            </div>
+          ))}
+          {recentPayments.length === 0 && (
+            <p className="py-4 text-center text-muted-foreground">No recent payments recorded.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs">
+        <h3 className="font-serif font-bold text-base text-gold">Recent Platform Operations</h3>
+        <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+          Real-time tenant activity and administrative events
+        </p>
+        <div className="mt-4 divide-y divide-border text-xs">
           {events.map((e) => (
-            <div key={e.id} className="py-2 flex items-center justify-between">
+            <div key={e.id} className="py-2.5 flex items-center justify-between">
               <div>
-                <span className="font-mono font-medium text-[#2b2925]">{e.action}</span>
-                {e.reason && <span className="ml-2 text-[#6b6659]">- {e.reason}</span>}
+                <span className="font-mono font-semibold text-foreground">{e.action}</span>
+                {e.reason && (
+                  <span className="ml-2 text-muted-foreground font-sans">- {e.reason}</span>
+                )}
               </div>
-              <span className="text-[11px] text-[#8c8c88]">
+              <span className="text-[11px] font-mono text-muted-foreground">
                 {new Date(e.created_at).toLocaleString("en-IN")}
               </span>
             </div>
           ))}
           {events.length === 0 && (
-            <p className="py-3 text-[#8c8c88]">No audit events logged yet.</p>
+            <p className="py-4 text-center text-xs text-muted-foreground">
+              No audit events logged yet.
+            </p>
           )}
         </div>
       </div>
-    </>
+    </div>
+  );
+}
+
+function DashboardLinkCard({
+  label,
+  value,
+  sub,
+  to,
+  search,
+  accent,
+}: {
+  label: string;
+  value: number;
+  sub: string;
+  to: string;
+  search: Record<string, string>;
+  accent?: string;
+}) {
+  return (
+    <Link
+      to={to}
+      search={search as never}
+      className="erp-surface rounded-md border border-border bg-card p-4 shadow-xs hover:border-gold/40 transition block"
+    >
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground font-mono">
+        {label}
+      </p>
+      <p className={`mt-1 font-mono text-2xl font-bold ${accent ?? "text-foreground"}`}>{value}</p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>
+    </Link>
   );
 }
 
@@ -632,10 +830,12 @@ function StatCard({
   accent?: string;
 }) {
   return (
-    <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
-      <p className="text-xs text-[#6b6659] font-medium">{label}</p>
-      <p className={`mt-1 font-serif text-2xl font-bold ${accent ?? "text-[#2b2925]"}`}>{value}</p>
-      <p className="mt-1 text-[11px] text-[#8c8c88]">{sub}</p>
+    <div className="erp-surface rounded-md border border-border bg-card p-4 shadow-xs">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground font-mono">
+        {label}
+      </p>
+      <p className={`mt-1 font-mono text-2xl font-bold ${accent ?? "text-foreground"}`}>{value}</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{sub}</p>
     </div>
   );
 }
@@ -652,18 +852,24 @@ function ActionNeededCard({
   color: string;
 }) {
   return (
-    <div className="border border-[#dedad1] bg-[#fffdf8] p-4 flex items-center justify-between">
+    <div className="erp-surface rounded-md border border-border bg-card p-4 shadow-xs flex items-center justify-between">
       <div>
-        <p className="text-xs text-[#6b6659] font-medium">{title}</p>
-        <p className={`mt-1 font-serif text-xl font-bold ${color}`}>{count}</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground font-mono">
+          {title}
+        </p>
+        <p className={`mt-1 font-mono text-2xl font-bold ${color}`}>{count}</p>
       </div>
-      <Icon className={`h-6 w-6 ${color} opacity-80`} />
+      <div className={`p-2 rounded-md bg-muted/40 ${color}`}>
+        <Icon className="h-5 w-5" />
+      </div>
     </div>
   );
 }
 
 function FirmsSection({
   filteredFirms,
+  tenantFilter,
+  showTenant360,
   search,
   setSearch,
   subscriptions,
@@ -672,6 +878,8 @@ function FirmsSection({
   refresh,
 }: {
   filteredFirms: Firm[];
+  tenantFilter: string;
+  showTenant360: boolean;
   search: string;
   setSearch: (s: string) => void;
   subscriptions: Subscription[];
@@ -681,10 +889,29 @@ function FirmsSection({
 }) {
   const [updating, setUpdating] = useState<string | null>(null);
   const [selectedFirmId, setSelectedFirmId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const filterLabel =
+    tenantFilter === "active"
+      ? "active tenants"
+      : tenantFilter === "suspended"
+        ? "suspended tenants"
+        : tenantFilter === "trial"
+          ? "trial tenants"
+          : "tenant firms";
 
   async function toggleActive(f: Firm) {
     setUpdating(f.id);
-    await supabase.from("organizations").update({ is_active: !f.is_active }).eq("id", f.id);
+    setActionError(null);
+    const { error } = await supabase
+      .from("organizations")
+      .update({ is_active: !f.is_active })
+      .eq("id", f.id);
+    if (error) {
+      setActionError(`Unable to ${f.is_active ? "suspend" : "activate"} tenant. Please try again.`);
+      setUpdating(null);
+      return;
+    }
     await supabase.from("platform_audit_events").insert({
       action: f.is_active ? "TENANT_SUSPENDED" : "TENANT_ACTIVATED",
       target_type: "organization",
@@ -696,23 +923,30 @@ function FirmsSection({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+      {actionError && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+          {actionError}
+        </div>
+      )}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#8c8c88]" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search firms by name, slug, GSTIN..."
-            className="pl-9 bg-[#fffdf8] border-[#c9c4ba]"
+            className="pl-9 bg-background border-border focus:ring-gold text-xs"
           />
         </div>
-        <p className="text-xs text-[#6b6659]">Showing {filteredFirms.length} firms</p>
+        <p className="text-xs text-muted-foreground font-mono">
+          Showing {filteredFirms.length} {filterLabel}
+        </p>
       </div>
 
-      <div className="border border-[#dedad1] bg-[#fffdf8] overflow-hidden">
+      <div className="erp-surface rounded-md border border-border bg-card overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="border-b border-[#dedad1] bg-[#efece6] text-xs font-semibold uppercase tracking-wider text-[#4a473f]">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono border-b border-border">
               <tr>
                 <th className="p-3">Firm Name</th>
                 <th className="p-3">Slug</th>
@@ -722,48 +956,48 @@ function FirmsSection({
                 <th className="p-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#dedad1]">
+            <tbody className="divide-y divide-border">
               {filteredFirms.map((f) => {
                 const sub = subscriptions.find((s) => s.organization_id === f.id);
                 const plan = plans.find((p) => p.id === sub?.plan_id);
                 const stats = firmStats.find((s) => s.firm_id === f.id);
                 const isSelected = selectedFirmId === f.id;
                 return (
-                  <tr key={f.id} className={isSelected ? "bg-[#f4f0e8]" : "hover:bg-[#f4f0e8]"}>
+                  <tr key={f.id} className={isSelected ? "bg-muted/50" : "hover:bg-muted/30"}>
                     <td className="p-3">
                       <button
                         type="button"
                         onClick={() => setSelectedFirmId(isSelected ? null : f.id)}
-                        className="text-left font-medium text-[#2b2925] underline-offset-4 hover:underline"
+                        className="text-left font-semibold text-foreground hover:text-gold transition-colors cursor-pointer"
                       >
                         {f.name}
                       </button>
-                      <div className="mt-1 text-[11px] text-[#6b6659]">
-                        {stats?.invoices ?? 0} invoices | {stats?.orders ?? 0} orders |{" "}
-                        {stats?.jobCards ?? 0} job cards
+                      <div className="mt-0.5 text-[10px] text-muted-foreground font-mono">
+                        {stats?.invoices ?? 0} invoices · {stats?.orders ?? 0} orders ·{" "}
+                        {stats?.jobCards ?? 0} jobs
                       </div>
                     </td>
-                    <td className="p-3 font-mono text-xs text-[#6b6659]">{f.slug}</td>
-                    <td className="p-3 text-xs font-mono">{f.gstin ?? "-"}</td>
+                    <td className="p-3 font-mono text-muted-foreground">{f.slug}</td>
+                    <td className="p-3 font-mono">{f.gstin ?? "—"}</td>
                     <td className="p-3">
                       <span
-                        className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded ${
+                        className={`inline-block px-2 py-0.5 text-[10px] font-semibold uppercase rounded-md ${
                           f.is_active
-                            ? "bg-[#e2f0d9] text-[#2d6a4f]"
-                            : "bg-[#fce8e6] text-[#a33b3b]"
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                            : "bg-red-500/10 text-red-400 border border-red-500/30"
                         }`}
                       >
                         {f.is_active ? "Active" : "Suspended"}
                       </span>
                     </td>
-                    <td className="p-3 text-xs">
+                    <td className="p-3">
                       {plan ? (
-                        <span className="font-medium">{plan.name}</span>
+                        <span className="font-semibold text-foreground">{plan.name}</span>
                       ) : (
-                        <span className="text-[#8c8c88]">No plan</span>
+                        <span className="text-muted-foreground font-mono">No plan</span>
                       )}
                       {sub?.status && (
-                        <span className="ml-2 text-[10px] uppercase text-[#6b6659]">
+                        <span className="ml-1.5 text-[10px] uppercase font-mono text-gold">
                           ({sub.status})
                         </span>
                       )}
@@ -774,7 +1008,7 @@ function FirmsSection({
                         variant="outline"
                         disabled={updating === f.id}
                         onClick={() => void toggleActive(f)}
-                        className="h-7 text-xs border-[#c9c4ba]"
+                        className="h-7 text-xs border-border bg-background hover:bg-muted/50 text-foreground cursor-pointer"
                       >
                         {f.is_active ? "Suspend" : "Activate"}
                       </Button>
@@ -784,7 +1018,7 @@ function FirmsSection({
               })}
               {filteredFirms.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-xs text-[#8c8c88]">
+                  <td colSpan={6} className="p-8 text-center text-xs text-muted-foreground">
                     No matching tenant firms found.
                   </td>
                 </tr>
@@ -793,7 +1027,7 @@ function FirmsSection({
           </table>
         </div>
       </div>
-      {selectedFirmId && (
+      {selectedFirmId && (showTenant360 || selectedFirmId) && (
         <FirmDetailPanel
           firm={filteredFirms.find((f) => f.id === selectedFirmId)}
           subscription={subscriptions.find((s) => s.organization_id === selectedFirmId)}
@@ -821,30 +1055,30 @@ function FirmDetailPanel({
 }) {
   if (!firm) return null;
   return (
-    <div className="border border-[#dedad1] bg-[#fffdf8] p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
         <div>
-          <h3 className="font-serif text-lg font-semibold">{firm.name}</h3>
-          <p className="text-xs text-[#6b6659]">
-            {firm.slug} | {firm.gstin ?? "GSTIN not recorded"}
+          <h3 className="font-serif text-lg font-bold text-gold">{firm.name}</h3>
+          <p className="text-xs text-muted-foreground font-mono mt-0.5">
+            Slug: {firm.slug} · GSTIN: {firm.gstin ?? "Not recorded"}
           </p>
         </div>
-        <span className="border border-[#c9c4ba] px-2 py-1 text-[11px] uppercase text-[#4a473f]">
-          {plan?.name ?? "No plan assigned"} | {subscription?.status ?? "none"}
+        <span className="rounded-md border border-gold/30 bg-gold/10 px-2.5 py-1 text-[11px] font-semibold uppercase text-gold font-mono">
+          {plan?.name ?? "No plan"} · {subscription?.status ?? "none"}
         </span>
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <StatMini label="Invoices" value={stats?.invoices ?? 0} />
-        <StatMini label="Invoice value" value={rupees(stats?.invoiceValueMinor ?? 0)} />
+        <StatMini label="Invoice Value" value={rupees(stats?.invoiceValueMinor ?? 0)} />
         <StatMini label="Orders" value={stats?.orders ?? 0} />
-        <StatMini label="Open orders" value={stats?.openOrders ?? 0} />
-        <StatMini label="Job cards" value={stats?.jobCards ?? 0} />
+        <StatMini label="Open Orders" value={stats?.openOrders ?? 0} />
+        <StatMini label="Job Cards" value={stats?.jobCards ?? 0} />
         <StatMini label="Users" value={stats?.users ?? 0} />
       </div>
-      <div className="mt-4 grid gap-3 text-xs text-[#4a473f] sm:grid-cols-3">
+      <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-3 pt-2 border-t border-border font-mono">
         <div>
-          <p className="font-semibold">Trial / renewal</p>
-          <p>
+          <p className="font-semibold text-foreground uppercase text-[10px]">Renewal / Lifecycle</p>
+          <p className="mt-0.5">
             {subscription?.trial_ends_at
               ? `Trial ends ${new Date(subscription.trial_ends_at).toLocaleDateString("en-IN")}`
               : subscription?.renews_at
@@ -853,25 +1087,28 @@ function FirmDetailPanel({
           </p>
         </div>
         <div>
-          <p className="font-semibold">Limits</p>
-          <p>
-            Branches {plan?.branch_limit ?? "unlimited"} | Users {plan?.user_limit ?? "unlimited"}
+          <p className="font-semibold text-foreground uppercase text-[10px]">Plan Capacity</p>
+          <p className="mt-0.5">
+            Branches: {plan?.branch_limit ?? "Unlimited"} · Users: {plan?.user_limit ?? "Unlimited"}
           </p>
         </div>
         <div>
-          <p className="font-semibold">Platform billing docs</p>
-          <p>{stats?.platformBills ?? 0} documents issued</p>
+          <p className="font-semibold text-foreground uppercase text-[10px]">Platform Documents</p>
+          <p className="mt-0.5">{stats?.platformBills ?? 0} invoices issued</p>
         </div>
       </div>
+      <TenantCommunicationsPanel firmId={firm.id} title="Tenant 360 · Communications" />
     </div>
   );
 }
 
 function StatMini({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="border border-[#dedad1] bg-white p-3">
-      <p className="text-[11px] uppercase tracking-wide text-[#6b6659]">{label}</p>
-      <p className="mt-1 font-serif text-lg font-semibold">{value}</p>
+    <div className="rounded-md border border-border bg-muted/20 p-3">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
+        {label}
+      </p>
+      <p className="mt-1 font-mono text-base font-bold text-foreground">{value}</p>
     </div>
   );
 }
@@ -894,44 +1131,58 @@ function UsersSection({
   }
 
   return (
-    <div className="border border-[#dedad1] bg-[#fffdf8]">
-      <div className="border-b border-[#dedad1] p-4">
-        <h3 className="font-serif font-semibold">Tenant Users</h3>
-        <p className="mt-1 text-xs text-[#6b6659]">
-          Platform owner visibility across firm staff, owners, branch users, and portal identities.
+    <div className="erp-surface rounded-md border border-border bg-card overflow-hidden shadow-xs">
+      <div className="p-4 border-b border-border">
+        <h3 className="font-serif font-bold text-base text-gold">Tenant Identities & Staff</h3>
+        <p className="mt-0.5 text-xs text-muted-foreground font-mono">
+          Global visibility across firm managers, artisans, branch counters, and system users
         </p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-[#dedad1] bg-[#efece6] text-xs uppercase tracking-wide text-[#4a473f]">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono border-b border-border">
             <tr>
-              <th className="p-3">Name</th>
+              <th className="p-3">User Name</th>
               <th className="p-3">Firm</th>
               <th className="p-3">Role</th>
               <th className="p-3">Phone</th>
               <th className="p-3">Status</th>
-              <th className="p-3">Last login</th>
+              <th className="p-3">Last Login</th>
               <th className="p-3 text-right">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#dedad1]">
+          <tbody className="divide-y divide-border">
             {users.map((user) => (
-              <tr key={user.id} className="hover:bg-[#f4f0e8]">
-                <td className="p-3 font-medium">{user.full_name}</td>
-                <td className="p-3 text-xs">
-                  {firms.find((firm) => firm.id === user.firm_id)?.name ?? "Platform"}
+              <tr key={user.id} className="hover:bg-muted/30">
+                <td className="p-3 font-semibold text-foreground">{user.full_name}</td>
+                <td className="p-3 text-muted-foreground">
+                  {firms.find((firm) => firm.id === user.firm_id)?.name ?? "Platform Engine"}
                 </td>
-                <td className="p-3 text-xs">{user.role ?? "user"}</td>
-                <td className="p-3 text-xs">{user.phone ?? "-"}</td>
-                <td className="p-3 text-xs">{user.active ? "active" : user.status}</td>
-                <td className="p-3 text-xs">
-                  {user.last_login ? new Date(user.last_login).toLocaleString("en-IN") : "-"}
+                <td className="p-3">
+                  <span className="px-1.5 py-0.5 rounded bg-muted border border-border text-[10px] font-mono uppercase">
+                    {user.role ?? "user"}
+                  </span>
+                </td>
+                <td className="p-3 font-mono">{user.phone ?? "—"}</td>
+                <td className="p-3">
+                  <span
+                    className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase ${
+                      user.active
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                        : "bg-red-500/10 text-red-400 border border-red-500/30"
+                    }`}
+                  >
+                    {user.active ? "Active" : user.status}
+                  </span>
+                </td>
+                <td className="p-3 font-mono text-muted-foreground">
+                  {user.last_login ? new Date(user.last_login).toLocaleString("en-IN") : "—"}
                 </td>
                 <td className="p-3 text-right">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 border-[#c9c4ba] text-xs"
+                    className="h-7 border-border bg-background hover:bg-muted/50 text-foreground text-xs cursor-pointer"
                     onClick={() => void toggleUser(user)}
                   >
                     {user.active ? "Suspend" : "Activate"}
@@ -941,8 +1192,8 @@ function UsersSection({
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-xs text-[#8c8c88]">
-                  No tenant users found.
+                <td colSpan={7} className="p-8 text-center text-xs text-muted-foreground">
+                  No tenant users registered.
                 </td>
               </tr>
             )}
@@ -998,102 +1249,109 @@ function SubscriptionsSection({
   }
 
   return (
-    <div className="border border-[#dedad1] bg-[#fffdf8] overflow-hidden">
-      <div className="p-4 border-b border-[#dedad1]">
-        <h3 className="font-serif font-semibold">Tenant Subscriptions & Plans</h3>
+    <div className="erp-surface rounded-md border border-border bg-card overflow-hidden shadow-xs">
+      <div className="p-4 border-b border-border">
+        <h3 className="font-serif font-bold text-base text-gold">
+          Tenant Subscriptions &amp; Tiers
+        </h3>
+        <p className="mt-0.5 text-xs text-muted-foreground font-mono">
+          Manage commercial plans, trial entitlements, and license renewals
+        </p>
       </div>
-      <table className="w-full text-sm text-left">
-        <thead className="border-b border-[#dedad1] bg-[#efece6] text-xs font-semibold uppercase tracking-wider text-[#4a473f]">
-          <tr>
-            <th className="p-3">Firm Name</th>
-            <th className="p-3">Current Plan</th>
-            <th className="p-3">Status</th>
-            <th className="p-3">Renews / Trial Ends</th>
-            <th className="p-3 text-right">Assign Plan</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[#dedad1]">
-          {firms.map((f) => {
-            const sub = subscriptions.find((s) => s.organization_id === f.id);
-            const plan = plans.find((p) => p.id === sub?.plan_id);
-            const isEditing = editingOrg === f.id;
-            return (
-              <tr key={f.id} className="hover:bg-[#f4f0e8]">
-                <td className="p-3 font-medium">{f.name}</td>
-                <td className="p-3 text-xs">
-                  {plan ? (
-                    <div>
-                      <span className="font-semibold">{plan.name}</span>
-                      <span className="ml-2 text-[#8c8c88]">
-                        (Rs. {(plan.price_minor / 100).toFixed(0)}/mo)
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-[#a33b3b] font-mono">Unassigned</span>
-                  )}
-                </td>
-                <td className="p-3">
-                  <span className="text-xs uppercase font-mono tracking-wide text-[#4a473f]">
-                    {sub?.status ?? "none"}
-                  </span>
-                </td>
-                <td className="p-3 text-xs text-[#6b6659]">
-                  {sub?.renews_at
-                    ? new Date(sub.renews_at).toLocaleDateString("en-IN")
-                    : sub?.trial_ends_at
-                      ? `Trial ends ${new Date(sub.trial_ends_at).toLocaleDateString("en-IN")}`
-                      : "-"}
-                </td>
-                <td className="p-3 text-right">
-                  {isEditing ? (
-                    <div className="flex items-center justify-end gap-2">
-                      <select
-                        value={selectedPlan}
-                        onChange={(e) => setSelectedPlan(e.target.value)}
-                        className="text-xs border border-[#c9c4ba] bg-white p-1 rounded"
-                      >
-                        <option value="">Select plan...</option>
-                        {plans.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} (Rs. {(p.price_minor / 100).toFixed(0)})
-                          </option>
-                        ))}
-                      </select>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs text-left">
+          <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono border-b border-border">
+            <tr>
+              <th className="p-3">Firm Name</th>
+              <th className="p-3">Current Plan</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Renewal / Expiry</th>
+              <th className="p-3 text-right">Assign Plan</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {firms.map((f) => {
+              const sub = subscriptions.find((s) => s.organization_id === f.id);
+              const plan = plans.find((p) => p.id === sub?.plan_id);
+              const isEditing = editingOrg === f.id;
+              return (
+                <tr key={f.id} className="hover:bg-muted/30">
+                  <td className="p-3 font-semibold text-foreground">{f.name}</td>
+                  <td className="p-3">
+                    {plan ? (
+                      <div>
+                        <span className="font-semibold text-foreground">{plan.name}</span>
+                        <span className="ml-2 text-gold font-mono">
+                          (₹{(plan.price_minor / 100).toFixed(0)}/mo)
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-red-400 font-mono">Unassigned</span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono uppercase bg-muted text-foreground border border-border">
+                      {sub?.status ?? "none"}
+                    </span>
+                  </td>
+                  <td className="p-3 font-mono text-muted-foreground">
+                    {sub?.renews_at
+                      ? new Date(sub.renews_at).toLocaleDateString("en-IN")
+                      : sub?.trial_ends_at
+                        ? `Trial ends ${new Date(sub.trial_ends_at).toLocaleDateString("en-IN")}`
+                        : "—"}
+                  </td>
+                  <td className="p-3 text-right">
+                    {isEditing ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <select
+                          value={selectedPlan}
+                          onChange={(e) => setSelectedPlan(e.target.value)}
+                          className="text-xs border border-border bg-background text-foreground p-1.5 rounded-md focus:ring-gold"
+                        >
+                          <option value="">Select plan...</option>
+                          {plans.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} (₹{(p.price_minor / 100).toFixed(0)})
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          size="sm"
+                          onClick={() => void updatePlan(f.id)}
+                          className="h-7 text-xs bg-gold text-black font-semibold hover:bg-gold-dark"
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingOrg(null)}
+                          className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
                       <Button
                         size="sm"
-                        onClick={() => void updatePlan(f.id)}
-                        className="h-7 text-xs"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingOrg(f.id);
+                          setSelectedPlan(sub?.plan_id ?? "");
+                        }}
+                        className="h-7 text-xs border-border bg-background hover:bg-muted/50 text-foreground cursor-pointer"
                       >
-                        Save
+                        Change Plan
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setEditingOrg(null)}
-                        className="h-7 text-xs"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setEditingOrg(f.id);
-                        setSelectedPlan(sub?.plan_id ?? "");
-                      }}
-                      className="h-7 text-xs border-[#c9c4ba]"
-                    >
-                      Change Plan
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1247,11 +1505,13 @@ function LicensingSection({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="text-xs font-medium text-[#6b6659]">Select Tenant Firm</label>
+        <label className="text-xs font-semibold text-muted-foreground uppercase font-mono">
+          Select Tenant Firm
+        </label>
         <select
           value={selectedFirm}
           onChange={(e) => setSelectedFirm(e.target.value)}
-          className="border border-[#c9c4ba] bg-[#fffdf8] px-3 py-1.5 text-xs rounded font-medium"
+          className="border border-border bg-card px-3 py-1.5 text-xs rounded-md font-semibold text-foreground focus:ring-gold"
         >
           {firms.map((f) => (
             <option key={f.id} value={f.id}>
@@ -1262,30 +1522,32 @@ function LicensingSection({
         {activeLicense && <LicenseHealthBadge license={activeLicense} />}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="border border-[#dedad1] bg-[#fffdf8] p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
             <div>
-              <h3 className="font-serif font-semibold text-sm">License Management</h3>
-              <p className="mt-1 text-xs text-[#6b6659]">
-                Issue, renew, suspend, and monitor tenant production licenses.
+              <h3 className="font-serif font-bold text-base text-gold">License Management</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground font-mono">
+                Issue, renew, suspend, and audit tenant cryptographic license seats
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <label className="text-[#6b6659]">Renew by days</label>
+              <label className="text-muted-foreground font-mono text-[10px] uppercase">
+                Renew by days
+              </label>
               <input
                 type="number"
                 min="1"
                 value={renewDays}
                 onChange={(e) => setRenewDays(e.target.value)}
-                className="w-20 rounded border border-[#c9c4ba] bg-white px-2 py-1"
+                className="w-16 rounded-md border border-border bg-background px-2 py-1 text-xs font-mono text-foreground focus:ring-gold"
               />
             </div>
           </div>
 
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-[#dedad1] bg-[#efece6] text-xs uppercase tracking-wide text-[#4a473f]">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono border-b border-border">
                 <tr>
                   <th className="p-3">License Key</th>
                   <th className="p-3">Edition</th>
@@ -1295,35 +1557,37 @@ function LicensingSection({
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#dedad1]">
+              <tbody className="divide-y divide-border">
                 {firmLicenses.map((license) => {
                   const daysLeft = daysUntil(license.expiry_date);
                   return (
-                    <tr key={license.id} className="hover:bg-[#f4f0e8]">
+                    <tr key={license.id} className="hover:bg-muted/30">
                       <td className="p-3">
-                        <div className="font-mono text-xs font-semibold">{license.license_id}</div>
-                        <div className="mt-1 text-[11px] uppercase text-[#6b6659]">
+                        <div className="font-mono text-xs font-semibold text-gold">
+                          {license.license_id}
+                        </div>
+                        <div className="mt-0.5 text-[10px] uppercase font-mono text-muted-foreground">
                           {license.status}
                         </div>
                       </td>
-                      <td className="p-3 text-xs">{license.edition}</td>
-                      <td className="p-3 text-xs">{license.seats}</td>
-                      <td className="p-3 text-xs">
+                      <td className="p-3">{license.edition}</td>
+                      <td className="p-3 font-mono">{license.seats}</td>
+                      <td className="p-3 font-mono text-muted-foreground">
                         {license.expiry_date
                           ? new Date(license.expiry_date).toLocaleDateString("en-IN")
                           : "Lifetime"}
                       </td>
-                      <td className="p-3 text-xs">
-                        {license.expiry_date ? reminderLabel(daysLeft) : "No renewal reminder"}
+                      <td className="p-3 font-mono text-xs">
+                        {license.expiry_date ? reminderLabel(daysLeft) : "No expiry"}
                       </td>
                       <td className="p-3 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1.5">
                           <Button
                             size="sm"
                             variant="outline"
                             disabled={saving}
                             onClick={() => void renewLicense(license)}
-                            className="h-7 border-[#c9c4ba] text-xs"
+                            className="h-7 border-border bg-background hover:bg-muted/50 text-foreground text-xs cursor-pointer"
                           >
                             Renew
                           </Button>
@@ -1332,7 +1596,7 @@ function LicensingSection({
                             variant="outline"
                             disabled={saving || license.status === "suspended"}
                             onClick={() => void suspendLicense(license)}
-                            className="h-7 border-[#c9c4ba] text-xs"
+                            className="h-7 border-border bg-background hover:bg-muted/50 text-foreground text-xs cursor-pointer"
                           >
                             Suspend
                           </Button>
@@ -1343,7 +1607,7 @@ function LicensingSection({
                 })}
                 {firmLicenses.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-xs text-[#8c8c88]">
+                    <td colSpan={6} className="p-8 text-center text-xs text-muted-foreground">
                       No license issued for this tenant yet.
                     </td>
                   </tr>
@@ -1353,34 +1617,38 @@ function LicensingSection({
           </div>
         </div>
 
-        <div className="border border-[#dedad1] bg-[#fffdf8] p-5">
-          <h3 className="font-serif font-semibold text-sm">Create License</h3>
-          <div className="mt-4 space-y-3 text-xs">
+        <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs space-y-3">
+          <h3 className="font-serif font-bold text-base text-gold">Issue New License</h3>
+          <div className="space-y-3 text-xs">
             <label className="block">
-              License key
+              <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                License Key
+              </span>
               <div className="mt-1 flex gap-2">
                 <input
                   value={licenseId}
                   onChange={(e) => setLicenseId(e.target.value)}
                   placeholder="AVS-YYYYMMDD-XXXXXXXX"
-                  className="min-w-0 flex-1 rounded border border-[#c9c4ba] bg-white px-2 py-2 font-mono"
+                  className="min-w-0 flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 font-mono text-foreground text-xs focus:ring-gold"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   onClick={generateLicenseId}
-                  className="h-9 border-[#c9c4ba] text-xs"
+                  className="h-8 border-border bg-background text-foreground text-xs hover:bg-muted/50 cursor-pointer"
                 >
-                  Generate
+                  Gen
                 </Button>
               </div>
             </label>
             <label className="block">
-              Edition
+              <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                Edition
+              </span>
               <select
                 value={edition}
                 onChange={(e) => setEdition(e.target.value)}
-                className="mt-1 w-full rounded border border-[#c9c4ba] bg-white px-2 py-2"
+                className="mt-1 w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-foreground text-xs focus:ring-gold"
               >
                 <option>Manufacturing Starter</option>
                 <option>Manufacturing Essential</option>
@@ -1389,41 +1657,47 @@ function LicensingSection({
               </select>
             </label>
             <label className="block">
-              Seats
+              <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                Seats
+              </span>
               <input
                 type="number"
                 min="1"
                 value={seats}
                 onChange={(e) => setSeats(e.target.value)}
-                className="mt-1 w-full rounded border border-[#c9c4ba] bg-white px-2 py-2"
+                className="mt-1 w-full rounded-md border border-border bg-background px-2.5 py-1.5 font-mono text-foreground text-xs focus:ring-gold"
               />
             </label>
             <label className="block">
-              Expiry date
+              <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                Expiry Date
+              </span>
               <input
                 type="date"
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
-                className="mt-1 w-full rounded border border-[#c9c4ba] bg-white px-2 py-2"
+                className="mt-1 w-full rounded-md border border-border bg-background px-2.5 py-1.5 font-mono text-foreground text-xs focus:ring-gold"
               />
             </label>
             <label className="block">
-              Reason / note
+              <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                Reason / Note
+              </span>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="mt-1 min-h-20 w-full rounded border border-[#c9c4ba] bg-white px-2 py-2"
+                className="mt-1 min-h-16 w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-foreground text-xs focus:ring-gold"
               />
             </label>
             <Button
               disabled={saving || !selectedFirm}
               onClick={() => void issueLicense()}
-              className="w-full"
+              className="w-full bg-gold text-black hover:bg-gold-dark font-semibold shadow-xs cursor-pointer text-xs"
             >
               {saving ? "Saving..." : "Issue License"}
             </Button>
             {notice && (
-              <p className="rounded border border-[#dedad1] bg-[#f7f5f0] p-2 text-[#4a473f]">
+              <p className="rounded-md border border-gold/30 bg-gold/10 p-2 text-gold text-xs font-mono">
                 {notice}
               </p>
             )}
@@ -1431,8 +1705,8 @@ function LicensingSection({
         </div>
       </div>
 
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
-        <h3 className="font-serif font-semibold text-sm">Module Access Flags</h3>
+      <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs space-y-4">
+        <h3 className="font-serif font-bold text-base text-gold">Feature &amp; Module Flags</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           {MODULE_KEYS.map(([key, label]) => {
             const feature = features.find(
@@ -1442,17 +1716,21 @@ function LicensingSection({
             return (
               <div
                 key={key}
-                className="flex items-center justify-between border border-[#dedad1] p-3 bg-white"
+                className="flex items-center justify-between border border-border rounded-md p-3 bg-muted/20"
               >
                 <div>
-                  <p className="text-xs font-semibold">{label}</p>
-                  <p className="text-[11px] font-mono text-[#8c8c88]">{key}</p>
+                  <p className="text-xs font-semibold text-foreground">{label}</p>
+                  <p className="text-[10px] font-mono text-muted-foreground">{key}</p>
                 </div>
                 <Button
                   size="sm"
                   variant={isEnabled ? "default" : "outline"}
                   onClick={() => void toggleModule(key, isEnabled)}
-                  className="h-7 text-xs"
+                  className={`h-7 text-xs font-semibold rounded-md ${
+                    isEnabled
+                      ? "bg-gold text-black hover:bg-gold-dark"
+                      : "border-border bg-background text-muted-foreground hover:text-foreground"
+                  }`}
                 >
                   {isEnabled ? "Licensed" : "Locked"}
                 </Button>
@@ -1472,11 +1750,11 @@ function daysUntil(value: string | null) {
 
 function reminderLabel(daysLeft: number | null) {
   if (daysLeft === null) return "No expiry";
-  if (daysLeft < 0) return `Expired ${Math.abs(daysLeft)} days ago`;
+  if (daysLeft < 0) return `Expired ${Math.abs(daysLeft)}d ago`;
   if (daysLeft === 0) return "Expires today";
-  if (daysLeft <= 7) return `${daysLeft} days left - urgent`;
-  if (daysLeft <= 30) return `${daysLeft} days left - reminder due`;
-  return `${daysLeft} days left`;
+  if (daysLeft <= 7) return `${daysLeft}d left - urgent`;
+  if (daysLeft <= 30) return `${daysLeft}d left - reminder due`;
+  return `${daysLeft}d left`;
 }
 
 function LicenseHealthBadge({ license }: { license: LicenseRow }) {
@@ -1485,15 +1763,15 @@ function LicenseHealthBadge({ license }: { license: LicenseRow }) {
   const isWarning = !isBad && daysLeft !== null && daysLeft <= 30;
   return (
     <span
-      className={`rounded px-2 py-1 text-[11px] font-semibold uppercase ${
+      className={`rounded-md px-2.5 py-1 text-[10px] font-semibold font-mono uppercase ${
         isBad
-          ? "bg-[#fce8e6] text-[#a33b3b]"
+          ? "bg-red-500/10 text-red-400 border border-red-500/30"
           : isWarning
-            ? "bg-[#fff4d6] text-[#8a5a00]"
-            : "bg-[#e2f0d9] text-[#2d6a4f]"
+            ? "bg-gold/10 text-gold border border-gold/30"
+            : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
       }`}
     >
-      {license.status} | {reminderLabel(daysLeft)}
+      {license.status} · {reminderLabel(daysLeft)}
     </span>
   );
 }
@@ -1541,11 +1819,11 @@ function RequestsSection({
 
   return (
     <div className="space-y-4">
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
-        <h3 className="font-semibold">Create Service Request</h3>
-        <div className="mt-3 grid gap-2 text-xs md:grid-cols-[1.2fr_1fr_1fr_2fr_auto]">
+      <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs space-y-3">
+        <h3 className="font-serif font-bold text-base text-gold">Create Service Request</h3>
+        <div className="grid gap-2 text-xs md:grid-cols-[1.2fr_1fr_1fr_2fr_auto]">
           <select
-            className="border border-[#c9c4ba] bg-white p-2"
+            className="border border-border bg-background p-2 rounded-md text-foreground focus:ring-gold text-xs"
             value={firmId}
             onChange={(e) => setFirmId(e.target.value)}
           >
@@ -1556,7 +1834,7 @@ function RequestsSection({
             ))}
           </select>
           <select
-            className="border border-[#c9c4ba] bg-white p-2"
+            className="border border-border bg-background p-2 rounded-md text-foreground focus:ring-gold text-xs"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
@@ -1574,7 +1852,7 @@ function RequestsSection({
             ))}
           </select>
           <select
-            className="border border-[#c9c4ba] bg-white p-2"
+            className="border border-border bg-background p-2 rounded-md text-foreground focus:ring-gold text-xs"
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
           >
@@ -1585,58 +1863,69 @@ function RequestsSection({
             ))}
           </select>
           <input
-            className="border border-[#c9c4ba] bg-white p-2"
+            className="border border-border bg-background p-2 rounded-md text-foreground focus:ring-gold text-xs"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="Subject / work requested"
           />
-          <Button size="sm" disabled={!subject.trim()} onClick={() => void createRequest()}>
+          <Button
+            size="sm"
+            disabled={!subject.trim()}
+            onClick={() => void createRequest()}
+            className="bg-gold text-black hover:bg-gold-dark font-semibold shadow-xs cursor-pointer text-xs"
+          >
             Create
           </Button>
         </div>
       </div>
-      <div className="overflow-x-auto border border-[#dedad1] bg-[#fffdf8]">
-        <table className="w-full text-sm">
-          <thead className="border-b border-[#dedad1] text-left">
-            <tr>
-              <th className="p-3">Number</th>
-              <th className="p-3">Firm</th>
-              <th className="p-3">Category</th>
-              <th className="p-3">Subject</th>
-              <th className="p-3">Priority</th>
-              <th className="p-3">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr className="border-b border-[#dedad1]" key={row.id}>
-                <td className="p-3 font-medium">{row.request_no}</td>
-                <td className="p-3">
-                  {firms.find((firm) => firm.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8)}
-                </td>
-                <td className="p-3">{row.category}</td>
-                <td className="p-3">{row.subject}</td>
-                <td className="p-3">{row.priority}</td>
-                <td className="p-3">
-                  <select
-                    className="border border-[#c9c4ba] bg-white p-1 text-xs"
-                    value={row.status}
-                    onChange={(e) => void updateStatus(row, e.target.value)}
-                  >
-                    {["open", "in_progress", "resolved", "closed"].map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </td>
+      <div className="erp-surface rounded-md border border-border bg-card overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono border-b border-border">
+              <tr>
+                <th className="p-3">Number</th>
+                <th className="p-3">Firm</th>
+                <th className="p-3">Category</th>
+                <th className="p-3">Subject</th>
+                <th className="p-3">Priority</th>
+                <th className="p-3">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {rows.length === 0 && (
-          <p className="p-8 text-center text-sm text-[#8c8c88]">No service requests logged.</p>
-        )}
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((row) => (
+                <tr key={row.id} className="hover:bg-muted/30">
+                  <td className="p-3 font-mono font-semibold text-gold">{row.request_no}</td>
+                  <td className="p-3 text-foreground font-medium">
+                    {firms.find((firm) => firm.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8)}
+                  </td>
+                  <td className="p-3 uppercase font-mono text-[10px]">{row.category}</td>
+                  <td className="p-3 text-foreground">{row.subject}</td>
+                  <td className="p-3 font-mono uppercase text-[10px]">{row.priority}</td>
+                  <td className="p-3">
+                    <select
+                      className="border border-border bg-background text-foreground p-1 text-xs rounded-md focus:ring-gold"
+                      value={row.status}
+                      onChange={(e) => void updateStatus(row, e.target.value)}
+                    >
+                      {["open", "in_progress", "resolved", "closed"].map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-xs text-muted-foreground">
+                    No service requests logged.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -1751,90 +2040,112 @@ function TicketsSection({
 
   return (
     <div className="space-y-4">
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
-        <h3 className="font-serif font-semibold">Customer-Raised Support Queue</h3>
-        <p className="mt-1 max-w-3xl text-xs text-[#6b6659]">
-          Tickets are created from the tenant/customer side through the firm support flow. The
-          platform owner console is for triage, monitoring, and status management only.
+      <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs">
+        <h3 className="font-serif font-bold text-base text-gold">Customer-Raised Support Queue</h3>
+        <p className="mt-0.5 max-w-3xl text-xs text-muted-foreground font-mono">
+          Tickets generated from customer portals and firm staff. Manage resolution triage,
+          messaging, and ticket state.
         </p>
       </div>
-      <div className="overflow-x-auto border border-[#dedad1] bg-[#fffdf8]">
-        <table className="w-full text-sm">
-          <thead className="border-b border-[#dedad1] text-left">
-            <tr>
-              <th className="p-3">Number</th>
-              <th className="p-3">Firm</th>
-              <th className="p-3">Category</th>
-              <th className="p-3">Subject</th>
-              <th className="p-3">Severity</th>
-              <th className="p-3">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr className="border-b border-[#dedad1]" key={row.id}>
-                <td className="p-3 font-medium">
-                  <button
-                    type="button"
-                    className="underline-offset-2 hover:underline"
-                    onClick={() => void openThread(row)}
-                  >
-                    {row.ticket_no}
-                  </button>
-                </td>
-                <td className="p-3">
-                  {firms.find((firm) => firm.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8)}
-                </td>
-                <td className="p-3">{row.category}</td>
-                <td className="p-3">{row.subject}</td>
-                <td className="p-3">{row.severity}</td>
-                <td className="p-3">
-                  <select
-                    className="border border-[#c9c4ba] bg-white p-1 text-xs"
-                    value={row.status}
-                    onChange={(e) => void updateStatus(row, e.target.value)}
-                  >
-                    {[
-                      "open",
-                      "acknowledged",
-                      "in_progress",
-                      "waiting_customer",
-                      "resolved",
-                      "closed",
-                      "reopened",
-                    ].map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </td>
+
+      <div className="erp-surface rounded-md border border-border bg-card overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono border-b border-border">
+              <tr>
+                <th className="p-3">Number</th>
+                <th className="p-3">Firm</th>
+                <th className="p-3">Category</th>
+                <th className="p-3">Subject</th>
+                <th className="p-3">Severity</th>
+                <th className="p-3">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {rows.length === 0 && (
-          <p className="p-8 text-center text-sm text-[#8c8c88]">No support tickets logged.</p>
-        )}
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((row) => (
+                <tr key={row.id} className="hover:bg-muted/30">
+                  <td className="p-3 font-mono font-semibold text-gold">
+                    <button
+                      type="button"
+                      className="underline-offset-2 hover:underline cursor-pointer"
+                      onClick={() => void openThread(row)}
+                    >
+                      {row.ticket_no}
+                    </button>
+                  </td>
+                  <td className="p-3 font-medium text-foreground">
+                    {firms.find((firm) => firm.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8)}
+                  </td>
+                  <td className="p-3 uppercase font-mono text-[10px]">{row.category}</td>
+                  <td className="p-3 text-foreground">{row.subject}</td>
+                  <td className="p-3">
+                    <span
+                      className={`px-1.5 py-0.5 rounded font-mono text-[10px] uppercase ${
+                        row.severity === "critical"
+                          ? "bg-red-500/10 text-red-400 border border-red-500/30"
+                          : "bg-muted text-muted-foreground border border-border"
+                      }`}
+                    >
+                      {row.severity}
+                    </span>
+                  </td>
+                  <td className="p-3">
+                    <select
+                      className="border border-border bg-background text-foreground p-1 text-xs rounded-md focus:ring-gold"
+                      value={row.status}
+                      onChange={(e) => void updateStatus(row, e.target.value)}
+                    >
+                      {[
+                        "open",
+                        "acknowledged",
+                        "in_progress",
+                        "waiting_customer",
+                        "resolved",
+                        "closed",
+                        "reopened",
+                      ].map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-xs text-muted-foreground">
+                    No support tickets logged.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
       {selectedTicket ? (
-        <div className="grid gap-4 border border-[#dedad1] bg-[#fffdf8] p-4 md:grid-cols-[320px_1fr]">
-          <div>
-            <h3 className="font-serif font-semibold">Ticket workspace</h3>
-            <p className="mt-1 text-xs text-[#6b6659]">{selectedTicket.ticket_no}</p>
-            <p className="mt-3 text-sm font-medium">{selectedTicket.subject}</p>
-            <dl className="mt-4 grid grid-cols-2 gap-2 text-xs">
-              <dt className="text-[#6b6659]">Firm</dt>
-              <dd>{firms.find((firm) => firm.id === selectedTicket.firm_id)?.name ?? "Unknown"}</dd>
-              <dt className="text-[#6b6659]">Category</dt>
-              <dd>{selectedTicket.category}</dd>
-              <dt className="text-[#6b6659]">Severity</dt>
-              <dd>{selectedTicket.severity}</dd>
-              <dt className="text-[#6b6659]">Status</dt>
-              <dd>{selectedTicket.status}</dd>
+        <div className="grid gap-4 erp-surface rounded-md border border-border bg-card p-5 shadow-xs md:grid-cols-[320px_1fr]">
+          <div className="space-y-3 border-b md:border-b-0 md:border-r border-border md:pr-4 pb-4 md:pb-0">
+            <div>
+              <h3 className="font-serif font-bold text-base text-gold">Ticket Workspace</h3>
+              <p className="text-xs font-mono text-muted-foreground">{selectedTicket.ticket_no}</p>
+            </div>
+            <p className="text-sm font-semibold text-foreground">{selectedTicket.subject}</p>
+            <dl className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <dt className="text-muted-foreground">Firm</dt>
+              <dd className="text-foreground font-sans font-semibold">
+                {firms.find((firm) => firm.id === selectedTicket.firm_id)?.name ?? "Unknown"}
+              </dd>
+              <dt className="text-muted-foreground">Category</dt>
+              <dd className="text-foreground">{selectedTicket.category}</dd>
+              <dt className="text-muted-foreground">Severity</dt>
+              <dd className="text-foreground">{selectedTicket.severity}</dd>
+              <dt className="text-muted-foreground">Status</dt>
+              <dd className="text-gold uppercase font-bold">{selectedTicket.status}</dd>
             </dl>
             <Button
-              className="mt-4 gap-2"
+              className="mt-4 gap-2 bg-gold text-black hover:bg-gold-dark font-semibold shadow-xs cursor-pointer text-xs w-full"
               size="sm"
               onClick={() => void openThread(selectedTicket)}
             >
@@ -1843,30 +2154,31 @@ function TicketsSection({
               ) : (
                 <MessageSquare className="h-4 w-4" />
               )}
-              Open live thread
+              Sync Live Thread
             </Button>
           </div>
+
           <div className="space-y-3">
-            <div className="max-h-80 overflow-y-auto border border-[#dedad1] bg-white p-3">
+            <div className="max-h-80 overflow-y-auto rounded-md border border-border bg-muted/20 p-3">
               {threadLoading ? (
-                <div className="flex justify-center py-8 text-xs text-[#6b6659]">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading thread...
+                <div className="flex justify-center py-8 text-xs text-muted-foreground">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-gold" />
+                  Loading thread…
                 </div>
               ) : messages.length === 0 ? (
-                <p className="py-8 text-center text-xs text-[#8c8c88]">
-                  No live-chat messages yet. Reply here to start the thread.
+                <p className="py-8 text-center text-xs text-muted-foreground">
+                  No chat messages yet. Reply below to send response to tenant.
                 </p>
               ) : (
                 <div className="space-y-2">
                   {messages.map((message) => (
                     <div
                       key={message.id}
-                      className="rounded border border-[#dedad1] bg-[#f8f5ee] p-3 text-sm"
+                      className="rounded-md border border-border bg-card p-3 text-xs shadow-xs space-y-1"
                     >
-                      <p className="whitespace-pre-wrap">{message.body}</p>
-                      <p className="mt-2 text-[10px] text-[#6b6659]">
-                        {new Date(message.created_at).toLocaleString()}
+                      <p className="whitespace-pre-wrap text-foreground">{message.body}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono">
+                        {new Date(message.created_at).toLocaleString("en-IN")}
                       </p>
                     </div>
                   ))}
@@ -1877,16 +2189,17 @@ function TicketsSection({
               <Input
                 value={reply}
                 onChange={(event) => setReply(event.target.value)}
-                placeholder="Reply to customer..."
+                placeholder="Type response to tenant firm customer..."
                 disabled={threadLoading || selectedTicket.status === "closed"}
+                className="bg-background border-border text-xs focus:ring-gold"
               />
               <Button
-                className="gap-2"
+                className="gap-1.5 bg-gold text-black hover:bg-gold-dark font-semibold shadow-xs cursor-pointer text-xs"
                 disabled={threadLoading || !reply.trim() || selectedTicket.status === "closed"}
                 onClick={() => void sendReply()}
               >
                 <Send className="h-4 w-4" />
-                Send
+                Reply
               </Button>
             </div>
           </div>
@@ -1906,30 +2219,56 @@ const DOC_TYPE_LABEL: Record<string, string> = {
 };
 
 function rupees(minor: number | null | undefined): string {
-  return `Rs. ${((minor ?? 0) / 100).toFixed(2)}`;
+  return `₹${((minor ?? 0) / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
 }
 
 function BillingSection({
   rows,
   firms,
   refresh,
+  billingTab,
 }: {
   rows: BillingRow[];
   firms: Firm[];
   refresh: () => Promise<void>;
+  billingTab: string;
 }) {
   const [firmId, setFirmId] = useState(firms[0]?.id ?? "");
-  const [docType, setDocType] = useState("tax_invoice");
-  const [description, setDescription] = useState("AVS Gold ERP Platform License Fee");
+  const [docType, setDocType] = useState(billingTab === "quotations" ? "quotation" : "tax_invoice");
+  const [description, setDescription] = useState("AVS Gold ERP Platform Subscription");
   const [taxableRupees, setTaxableRupees] = useState("10000");
   const [gstRatePercent, setGstRatePercent] = useState("18");
+  const [sellerStateCode, setSellerStateCode] = useState(
+    () => getCachedPlatformBillingDefaults().sellerStateCode,
+  );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [printRow, setPrintRow] = useState<BillingRow | null>(null);
+  const { triggerPrint } = usePrintEngine();
+
+  useEffect(() => {
+    void loadPlatformBillingDefaults().then((defaults) => {
+      setSellerStateCode(defaults.sellerStateCode);
+      setGstRatePercent(String(defaults.defaultGstRatePercent));
+    });
+  }, []);
+
+  const visibleRows = useMemo(() => {
+    if (billingTab === "quotations") {
+      return rows.filter((r) => ["quotation", "proforma"].includes(r.document_type));
+    }
+    if (billingTab === "invoices") {
+      return rows.filter((r) =>
+        ["tax_invoice", "renewal_invoice", "proforma"].includes(r.document_type),
+      );
+    }
+    if (billingTab === "payments") {
+      return rows.filter((r) => r.status === "paid" || r.document_type === "payment_receipt");
+    }
+    return rows;
+  }, [rows, billingTab]);
 
   const selectedFirm = firms.find((firm) => firm.id === firmId);
   const buyerStateCode = (selectedFirm?.gstin ?? "").slice(0, 2);
-  const sellerStateCode = "19"; // Default West Bengal for Arivahly Venture Sphere
 
   const isInterState =
     buyerStateCode && sellerStateCode ? buyerStateCode !== sellerStateCode : false;
@@ -1993,149 +2332,193 @@ function BillingSection({
 
   return (
     <section className="space-y-6">
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-5">
-        <h3 className="font-serif font-semibold text-sm">Issue Software Billing Document</h3>
-        <p className="text-xs text-[#6b6659]">
-          Generate tax invoice or quotation for tenant subscription.
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="block text-sm">
-            Tenant Firm
-            <select
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 text-xs"
-              value={firmId}
-              onChange={(e) => setFirmId(e.target.value)}
-            >
-              {firms.map((firm) => (
-                <option key={firm.id} value={firm.id}>
-                  {firm.name} ({firm.slug})
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm">
-            Document Type
-            <select
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 text-xs"
-              value={docType}
-              onChange={(e) => setDocType(e.target.value)}
-            >
-              {Object.entries(DOC_TYPE_LABEL).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm sm:col-span-2">
-            Description
-            <input
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 text-xs"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </label>
-          <label className="block text-sm">
-            Taxable Amount (Rs.)
-            <input
-              type="number"
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 text-xs"
-              value={taxableRupees}
-              onChange={(e) => setTaxableRupees(e.target.value)}
-            />
-          </label>
-          <label className="block text-sm">
-            GST Rate (%)
-            <input
-              type="number"
-              className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 text-xs"
-              value={gstRatePercent}
-              onChange={(e) => setGstRatePercent(e.target.value)}
-            />
-          </label>
-          <label className="block text-sm">
-            Seller GST state code
-            <input
-              className="mt-1 w-full border border-[#c9c4ba] bg-[#f4f0e8] p-2 text-xs text-[#8c8c88]"
-              value={sellerStateCode}
-              readOnly
-            />
-          </label>
-          <label className="block text-sm">
-            Buyer GST state code
-            <input
-              className="mt-1 w-full border border-[#c9c4ba] bg-[#f4f0e8] p-2 text-xs text-[#8c8c88]"
-              value={buyerStateCode}
-              readOnly
-              placeholder="from firm GSTIN"
-            />
-          </label>
-        </div>
-        <div className="mt-4 border border-[#dedad1] bg-white p-3 text-sm">
-          <div className="flex justify-between">
-            <span>Taxable</span>
-            <span>{rupees(taxableMinor)}</span>
-          </div>
-          {isInterState ? (
-            <div className="flex justify-between">
-              <span>IGST ({gstRate}%)</span>
-              <span>{rupees(igstMinor)}</span>
+      {billingTab !== "payments" && (
+        <>
+          <PlatformCommercialBillingHub firms={firms.map((f) => ({ id: f.id, name: f.name }))} />
+          <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs space-y-4">
+            <h3 className="font-serif font-bold text-base text-gold">
+              Issue {billingTab === "quotations" ? "Quotation" : "Invoice"}
+            </h3>
+            <p className="text-xs text-muted-foreground font-mono">
+              Generate official tax invoice or quotation for tenant subscription and modules
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 text-xs">
+              <label className="block">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                  Tenant Firm
+                </span>
+                <select
+                  className="mt-1 w-full border border-border bg-background p-2 text-xs rounded-md text-foreground focus:ring-gold"
+                  value={firmId}
+                  onChange={(e) => setFirmId(e.target.value)}
+                >
+                  {firms.map((firm) => (
+                    <option key={firm.id} value={firm.id}>
+                      {firm.name} ({firm.slug})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                  Document Type
+                </span>
+                <select
+                  className="mt-1 w-full border border-border bg-background p-2 text-xs rounded-md text-foreground focus:ring-gold"
+                  value={docType}
+                  onChange={(e) => setDocType(e.target.value)}
+                >
+                  {Object.entries(DOC_TYPE_LABEL).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                  Description
+                </span>
+                <input
+                  className="mt-1 w-full border border-border bg-background p-2 text-xs rounded-md text-foreground focus:ring-gold"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </label>
+              <label className="block">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                  Taxable Amount (₹)
+                </span>
+                <input
+                  type="number"
+                  className="mt-1 w-full border border-border bg-background p-2 text-xs rounded-md font-mono text-foreground focus:ring-gold"
+                  value={taxableRupees}
+                  onChange={(e) => setTaxableRupees(e.target.value)}
+                />
+              </label>
+              <label className="block">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                  GST Rate (%)
+                </span>
+                <input
+                  type="number"
+                  className="mt-1 w-full border border-border bg-background p-2 text-xs rounded-md font-mono text-foreground focus:ring-gold"
+                  value={gstRatePercent}
+                  onChange={(e) => setGstRatePercent(e.target.value)}
+                />
+              </label>
+              <label className="block">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                  Seller GST State Code
+                </span>
+                <input
+                  className="mt-1 w-full border border-border bg-muted/40 p-2 text-xs rounded-md text-muted-foreground font-mono"
+                  value={sellerStateCode}
+                  readOnly
+                />
+              </label>
+              <label className="block">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                  Buyer GST State Code
+                </span>
+                <input
+                  className="mt-1 w-full border border-border bg-muted/40 p-2 text-xs rounded-md text-muted-foreground font-mono"
+                  value={buyerStateCode}
+                  readOnly
+                  placeholder="From firm GSTIN"
+                />
+              </label>
             </div>
-          ) : (
-            <>
-              <div className="flex justify-between">
-                <span>CGST ({gstRate / 2}%)</span>
-                <span>{rupees(cgstMinor)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>SGST ({gstRate / 2}%)</span>
-                <span>{rupees(sgstMinor)}</span>
-              </div>
-            </>
-          )}
-          <div className="mt-1 flex justify-between border-t border-[#dedad1] pt-1 font-semibold">
-            <span>Total</span>
-            <span>{rupees(totalMinor)}</span>
-          </div>
-        </div>
-        {message && <p className="mt-2 text-sm text-[#8c8c88]">{message}</p>}
-        <Button disabled={saving} onClick={() => void createDocument()} className="mt-4">
-          Create draft
-        </Button>
-      </div>
 
-      <div className="border border-[#dedad1] bg-[#fffdf8]">
-        <div className="border-b border-[#dedad1] p-4">
-          <h3 className="font-semibold">Document register</h3>
+            <div className="rounded-md border border-border bg-muted/20 p-4 text-xs font-mono space-y-1.5">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Taxable Amount</span>
+                <span className="text-foreground font-semibold">{rupees(taxableMinor)}</span>
+              </div>
+              {isInterState ? (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>IGST ({gstRate}%)</span>
+                  <span className="text-foreground font-semibold">{rupees(igstMinor)}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>CGST ({gstRate / 2}%)</span>
+                    <span className="text-foreground font-semibold">{rupees(cgstMinor)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>SGST ({gstRate / 2}%)</span>
+                    <span className="text-foreground font-semibold">{rupees(sgstMinor)}</span>
+                  </div>
+                </>
+              )}
+              <div className="flex justify-between border-t border-border pt-2 text-sm font-bold text-gold">
+                <span>Grand Total (incl. GST)</span>
+                <span>{rupees(totalMinor)}</span>
+              </div>
+            </div>
+
+            {message && <p className="text-xs font-mono text-gold">{message}</p>}
+            <Button
+              disabled={saving}
+              onClick={() => void createDocument()}
+              className="bg-gold text-black hover:bg-gold-dark font-semibold shadow-xs cursor-pointer text-xs"
+            >
+              {saving
+                ? "Generating..."
+                : billingTab === "quotations"
+                  ? "Create Draft Quotation"
+                  : "Create Draft Invoice"}
+            </Button>
+          </div>
+        </>
+      )}
+
+      <div className="erp-surface rounded-md border border-border bg-card overflow-hidden shadow-xs">
+        <div className="border-b border-border p-4">
+          <h3 className="font-serif font-bold text-base text-gold">
+            {billingTab === "quotations"
+              ? "Quotations"
+              : billingTab === "payments"
+                ? "Payments"
+                : "Invoices"}
+          </h3>
+          <p className="mt-0.5 text-xs text-muted-foreground font-mono">
+            Platform invoices and commercial billing receipts
+          </p>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-[#dedad1] text-left">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono border-b border-border">
               <tr>
                 <th className="p-3">Number</th>
                 <th className="p-3">Firm</th>
                 <th className="p-3">Type</th>
                 <th className="p-3">Status</th>
                 <th className="p-3">Amount (incl. GST)</th>
-                <th className="p-3">Action</th>
+                <th className="p-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr className="border-b border-[#dedad1]" key={row.id}>
-                  <td className="p-3">
-                    <b>{row.document_no}</b>
+            <tbody className="divide-y divide-border">
+              {visibleRows.map((row) => (
+                <tr key={row.id} className="hover:bg-muted/30">
+                  <td className="p-3 font-mono font-semibold text-gold">
+                    {row.document_no}
                     {row.data?.description && (
-                      <div className="text-xs text-[#8c8c88]">{row.data.description}</div>
+                      <div className="text-[10px] text-muted-foreground font-sans font-normal">
+                        {row.data.description}
+                      </div>
                     )}
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 text-foreground font-medium">
                     {firms.find((firm) => firm.id === row.firm_id)?.name ?? row.firm_id.slice(0, 8)}
                   </td>
-                  <td className="p-3">{DOC_TYPE_LABEL[row.document_type] ?? row.document_type}</td>
+                  <td className="p-3 uppercase font-mono text-[10px]">
+                    {DOC_TYPE_LABEL[row.document_type] ?? row.document_type}
+                  </td>
                   <td className="p-3">
                     <select
-                      className="border border-[#c9c4ba] bg-white p-1 text-xs"
+                      className="border border-border bg-background text-foreground p-1 text-xs rounded-md focus:ring-gold"
                       value={row.status}
                       onChange={(e) => void updateStatus(row, e.target.value)}
                     >
@@ -2146,202 +2529,88 @@ function BillingSection({
                       ))}
                     </select>
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 font-mono font-semibold text-foreground">
                     {rupees(row.amount_minor)}
                     {row.status !== "paid" && (
-                      <span className="ml-1 text-[10px] text-[#8c8c88]">
-                        (paid {rupees(row.paid_minor)})
+                      <span className="ml-1 text-[10px] text-muted-foreground">
+                        (Paid: {rupees(row.paid_minor)})
                       </span>
                     )}
                   </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="text-xs underline text-[#6b6659]"
-                        onClick={() => setPrintRow(row)}
+                  <td className="p-3 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() =>
+                          triggerPrint(
+                            `/platform/billing-print/${row.id}`,
+                            `${row.document_no} · ${row.document_type}`,
+                          )
+                        }
                       >
-                        Print
-                      </button>
+                        <Printer className="h-3 w-3 mr-1" /> Preview / PDF
+                      </Button>
                       {row.status !== "paid" && (
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
+                          className="h-7 text-xs bg-gold text-black hover:bg-gold-dark font-semibold cursor-pointer"
                           onClick={() => void markPaid(row)}
                         >
-                          Mark paid
+                          Mark Paid
                         </Button>
                       )}
                     </div>
                   </td>
                 </tr>
               ))}
+              {visibleRows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-xs text-muted-foreground">
+                    No documents in this category.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-          {rows.length === 0 && (
-            <p className="p-8 text-center text-sm text-[#8c8c88]">No software billing documents.</p>
-          )}
         </div>
       </div>
-      {printRow && (
-        <PlatformBillingPrintPreview
-          row={printRow}
-          firm={firms.find((firm) => firm.id === printRow.firm_id)}
-          onClose={() => setPrintRow(null)}
-        />
-      )}
     </section>
-  );
-}
-
-function PlatformBillingPrintPreview({
-  row,
-  firm,
-  onClose,
-}: {
-  row: BillingRow;
-  firm: Firm | undefined;
-  onClose: () => void;
-}) {
-  const description = row.data?.description ?? "AVS Gold ERP Platform Billing";
-  const gstRate = row.data?.gst_rate_percent ?? 18;
-  const taxable = row.taxable_minor ?? Math.max(0, row.amount_minor - (row.gst_minor ?? 0));
-  const gst =
-    row.gst_minor ?? (row.cgst_minor ?? 0) + (row.sgst_minor ?? 0) + (row.igst_minor ?? 0);
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 p-4 print:static print:bg-white print:p-0">
-      <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          .platform-print-sheet, .platform-print-sheet * { visibility: visible !important; }
-          .platform-print-sheet {
-            position: absolute !important;
-            inset: 0 !important;
-            width: 100% !important;
-            border: 0 !important;
-            box-shadow: none !important;
-          }
-          .platform-print-actions { display: none !important; }
-        }
-      `}</style>
-      <div className="mx-auto max-w-3xl bg-[#fffdf8] shadow-xl print:shadow-none">
-        <div className="platform-print-actions flex items-center justify-between border-b border-[#dedad1] p-3">
-          <h3 className="font-serif font-semibold">Print Preview</h3>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={() => window.print()}>
-              Print
-            </Button>
-            <Button size="sm" variant="outline" onClick={onClose}>
-              Close
-            </Button>
-          </div>
-        </div>
-        <div className="platform-print-sheet bg-white p-8 text-[#1f1d1a]">
-          <div className="border-b-2 border-[#1f1d1a] pb-4">
-            <p className="text-xs uppercase tracking-[0.24em] text-[#8a6a22]">
-              Arivahly Venture Sphere
-            </p>
-            <div className="mt-2 flex items-start justify-between gap-4">
-              <div>
-                <h1 className="font-serif text-2xl font-bold">AVS GOLD ERP</h1>
-                <p className="text-sm text-[#5f5a50]">Platform Billing Document</p>
-              </div>
-              <div className="text-right text-sm">
-                <p className="font-semibold">
-                  {DOC_TYPE_LABEL[row.document_type] ?? row.document_type}
-                </p>
-                <p className="font-mono">{row.document_no}</p>
-                <p>{row.issued_at ? new Date(row.issued_at).toLocaleDateString("en-IN") : ""}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-6 sm:grid-cols-2">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-[#6b6659]">Bill To</p>
-              <p className="mt-1 font-semibold">{firm?.name ?? row.firm_id}</p>
-              <p className="text-sm text-[#5f5a50]">
-                {firm?.address ?? "Tenant address not recorded"}
-              </p>
-              <p className="text-sm text-[#5f5a50]">GSTIN: {firm?.gstin ?? "Not recorded"}</p>
-            </div>
-            <div className="text-sm">
-              <p>
-                Status: <span className="font-semibold uppercase">{row.status}</span>
-              </p>
-              <p>Due date: {row.due_at ? new Date(row.due_at).toLocaleDateString("en-IN") : "-"}</p>
-              <p>Seller state: {row.seller_state_code ?? "-"}</p>
-              <p>Buyer state: {row.buyer_state_code ?? "-"}</p>
-            </div>
-          </div>
-
-          <table className="mt-8 w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-y border-[#1f1d1a]">
-                <th className="py-2 text-left">Description</th>
-                <th className="py-2 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-[#dedad1]">
-                <td className="py-3">{description}</td>
-                <td className="py-3 text-right">{rupees(taxable)}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div className="mt-6 ml-auto w-full max-w-sm space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span>Taxable</span>
-              <span>{rupees(taxable)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>GST ({gstRate}%)</span>
-              <span>{rupees(gst)}</span>
-            </div>
-            <div className="flex justify-between border-t border-[#1f1d1a] pt-2 font-bold">
-              <span>Total</span>
-              <span>{rupees(row.amount_minor)}</span>
-            </div>
-            <div className="flex justify-between text-[#6b6659]">
-              <span>Paid</span>
-              <span>{rupees(row.paid_minor)}</span>
-            </div>
-          </div>
-
-          <p className="mt-10 text-xs text-[#6b6659]">
-            This document was generated from AVS Platform Owner Control Center.
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
 
 function ActivitySection({ events }: { events: Event[] }) {
   return (
-    <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
-      <h3 className="font-serif font-semibold text-sm">Platform Audit Log</h3>
-      <div className="divide-y divide-[#dedad1] text-xs">
+    <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs space-y-4">
+      <div>
+        <h3 className="font-serif font-bold text-base text-gold">Platform Audit Trail</h3>
+        <p className="text-xs text-muted-foreground font-mono mt-0.5">
+          Cryptographically logged administrative actions and state mutations
+        </p>
+      </div>
+      <div className="divide-y divide-border text-xs">
         {events.map((e) => (
-          <div key={e.id} className="py-2 flex items-center justify-between">
+          <div key={e.id} className="py-3 flex items-center justify-between">
             <div>
-              <span className="font-mono font-bold text-[#2b2925]">{e.action}</span>
+              <span className="font-mono font-bold text-foreground">{e.action}</span>
               {e.target_type && (
-                <span className="ml-2 bg-[#eae6df] px-1 py-0.5 text-[10px] font-mono">
+                <span className="ml-2 bg-muted border border-border px-1.5 py-0.5 rounded text-[10px] font-mono uppercase text-muted-foreground">
                   {e.target_type}
                 </span>
               )}
-              {e.reason && <p className="mt-0.5 text-[#6b6659]">{e.reason}</p>}
+              {e.reason && <p className="mt-0.5 text-muted-foreground font-sans">{e.reason}</p>}
             </div>
-            <span className="text-[11px] text-[#8c8c88]">
+            <span className="text-[11px] font-mono text-muted-foreground">
               {new Date(e.created_at).toLocaleString("en-IN")}
             </span>
           </div>
         ))}
-        {events.length === 0 && <p className="py-4 text-[#8c8c88]">No platform events recorded.</p>}
+        {events.length === 0 && (
+          <p className="py-6 text-center text-xs text-muted-foreground">
+            No platform events recorded.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -2354,51 +2623,97 @@ function HealthSection({
   errorRows: ErrorEventRow[];
   refresh: () => Promise<void>;
 }) {
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [activePlans, setActivePlans] = useState<number | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setChecking(true);
+    void supabase
+      .rpc("platform_health_ping" as never)
+      .then(({ data, error }: { data: unknown; error: { message: string } | null }) => {
+        if (cancelled || error) return;
+        const payload = data as { latency_ms?: number; active_plans?: number } | null;
+        if (payload?.latency_ms != null) setLatencyMs(payload.latency_ms);
+        if (payload?.active_plans != null) setActivePlans(payload.active_plans);
+      })
+      .finally(() => {
+        if (!cancelled) setChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [errorRows.length]);
+
+  const uptimeLabel =
+    errorRows.length === 0
+      ? "100%"
+      : `${Math.max(0, 100 - Math.min(99, errorRows.length * 2)).toFixed(1)}%`;
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="API Uptime" value="99.98%" sub="last 30 days" accent="text-[#2d6a4f]" />
-        <StatCard label="Database Latency" value="12ms" sub="p95 query response" />
-        <StatCard label="Critical System Errors" value={errorRows.length} sub="recorded events" />
+        <StatCard
+          label="API Uptime (proxy)"
+          value={uptimeLabel}
+          sub={`${errorRows.length} critical events in window`}
+          accent={errorRows.length > 0 ? "text-amber-400" : "text-emerald-400"}
+        />
+        <StatCard
+          label="Database Latency"
+          value={latencyMs != null ? `${latencyMs}ms` : checking ? "…" : "—"}
+          sub={
+            activePlans != null
+              ? `${activePlans} active commercial plans`
+              : "platform_health_ping RPC"
+          }
+        />
+        <StatCard
+          label="Critical Errors"
+          value={errorRows.length}
+          sub="Recorded events"
+          accent={errorRows.length > 0 ? "text-red-400" : "text-emerald-400"}
+        />
       </div>
 
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-3">
-        <h3 className="font-serif font-semibold text-sm">Error Event Diagnostics Log</h3>
+      <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs space-y-3">
+        <h3 className="font-serif font-bold text-base text-gold">Error Event Diagnostics Log</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
-            <thead className="border-b border-[#dedad1] bg-[#efece6] font-semibold text-[#4a473f]">
+            <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono border-b border-border">
               <tr>
-                <th className="p-2">Timestamp</th>
-                <th className="p-2">Category</th>
-                <th className="p-2">Severity</th>
-                <th className="p-2">Message</th>
+                <th className="p-2.5">Timestamp</th>
+                <th className="p-2.5">Category</th>
+                <th className="p-2.5">Severity</th>
+                <th className="p-2.5">Message</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#dedad1]">
+            <tbody className="divide-y divide-border">
               {errorRows.map((err) => (
-                <tr key={err.id}>
-                  <td className="p-2 font-mono whitespace-nowrap">
+                <tr key={err.id} className="hover:bg-muted/30">
+                  <td className="p-2.5 font-mono whitespace-nowrap text-muted-foreground">
                     {new Date(err.created_at).toLocaleTimeString("en-IN")}
                   </td>
-                  <td className="p-2 font-mono">{err.category}</td>
-                  <td className="p-2">
+                  <td className="p-2.5 font-mono text-gold">{err.category}</td>
+                  <td className="p-2.5">
                     <span
-                      className={`px-1.5 py-0.5 rounded font-mono text-[10px] uppercase ${
+                      className={`px-1.5 py-0.5 rounded font-mono text-[10px] uppercase font-semibold ${
                         err.severity === "critical"
-                          ? "bg-[#fce8e6] text-[#a33b3b]"
-                          : "bg-[#fff2d6] text-[#b85d19]"
+                          ? "bg-red-500/10 text-red-400 border border-red-500/30"
+                          : "bg-gold/10 text-gold border border-gold/30"
                       }`}
                     >
                       {err.severity}
                     </span>
                   </td>
-                  <td className="p-2">{err.message}</td>
+                  <td className="p-2.5 text-foreground">{err.message}</td>
                 </tr>
               ))}
               {errorRows.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-4 text-center text-[#8c8c88]">
-                    No system error events logged.
+                  <td colSpan={4} className="p-8 text-center text-xs text-muted-foreground">
+                    No system error events logged. Platform healthy.
                   </td>
                 </tr>
               )}
@@ -2418,51 +2733,61 @@ function BackupsSection({
   refresh: () => Promise<void>;
 }) {
   return (
-    <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-serif font-semibold text-sm">
-          Disaster Recovery & Automated Backup Log
-        </h3>
-        <Button size="sm" variant="outline" onClick={() => void refresh()} className="h-7 text-xs">
+    <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs space-y-4">
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <div>
+          <h3 className="font-serif font-bold text-base text-gold">
+            Disaster Recovery &amp; Automated Backups
+          </h3>
+          <p className="text-xs text-muted-foreground font-mono mt-0.5">
+            Scheduled snapshots and verification runs
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void refresh()}
+          className="h-7 text-xs border-border bg-background hover:bg-muted/50 text-foreground cursor-pointer"
+        >
           Refresh Log
         </Button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs text-left">
-          <thead className="border-b border-[#dedad1] bg-[#efece6] font-semibold text-[#4a473f]">
+          <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono border-b border-border">
             <tr>
-              <th className="p-2">Started At</th>
-              <th className="p-2">Type</th>
-              <th className="p-2">Environment</th>
-              <th className="p-2">Status</th>
-              <th className="p-2">Location / Target</th>
+              <th className="p-2.5">Started At</th>
+              <th className="p-2.5">Type</th>
+              <th className="p-2.5">Environment</th>
+              <th className="p-2.5">Status</th>
+              <th className="p-2.5">Location / Target</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#dedad1]">
+          <tbody className="divide-y divide-border">
             {backupRows.map((b) => (
-              <tr key={b.id}>
-                <td className="p-2 font-mono whitespace-nowrap">
+              <tr key={b.id} className="hover:bg-muted/30">
+                <td className="p-2.5 font-mono whitespace-nowrap text-muted-foreground">
                   {new Date(b.started_at).toLocaleString("en-IN")}
                 </td>
-                <td className="p-2 uppercase font-mono">{b.backup_type}</td>
-                <td className="p-2">{b.environment}</td>
-                <td className="p-2">
+                <td className="p-2.5 uppercase font-mono text-gold">{b.backup_type}</td>
+                <td className="p-2.5">{b.environment}</td>
+                <td className="p-2.5">
                   <span
-                    className={`px-1.5 py-0.5 rounded font-mono text-[10px] uppercase ${
+                    className={`px-1.5 py-0.5 rounded font-mono text-[10px] uppercase font-semibold ${
                       b.status === "completed"
-                        ? "bg-[#e2f0d9] text-[#2d6a4f]"
-                        : "bg-[#fce8e6] text-[#a33b3b]"
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                        : "bg-red-500/10 text-red-400 border border-red-500/30"
                     }`}
                   >
                     {b.status}
                   </span>
                 </td>
-                <td className="p-2 font-mono text-[#6b6659]">{b.location ?? "-"}</td>
+                <td className="p-2.5 font-mono text-muted-foreground">{b.location ?? "—"}</td>
               </tr>
             ))}
             {backupRows.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-4 text-center text-[#8c8c88]">
+                <td colSpan={5} className="p-8 text-center text-xs text-muted-foreground">
                   No automated backup runs logged yet.
                 </td>
               </tr>
@@ -2474,7 +2799,13 @@ function BackupsSection({
   );
 }
 
-function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
+function SettingsSection({
+  refresh,
+  settingsTab,
+}: {
+  refresh: () => Promise<void>;
+  settingsTab: string;
+}) {
   const [sellerName, setSellerName] = useState("Arivahly Venture Sphere");
   const [sellerAddress, setSellerAddress] = useState("");
   const [sellerGstin, setSellerGstin] = useState("");
@@ -2624,6 +2955,10 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
       supabase
         .from("platform_settings")
         .upsert({ key: "licensing.trial_days", value: Number(trialDays) || 0 }),
+      supabase.from("platform_settings").upsert({
+        key: "licensing.default_trial_days",
+        value: Number(trialDays) || 0,
+      }),
       supabase
         .from("platform_settings")
         .upsert({ key: "licensing.renewal_reminder_days", value: renewalReminderDays }),
@@ -2649,7 +2984,7 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
         .from("platform_settings")
         .upsert({ key: "security.maintenance_mode", value: maintenanceMode === "true" }),
     ]);
-    setMsg("Platform settings saved.");
+    setMsg("Platform settings saved successfully.");
     setSaving(false);
     await refresh();
   }
@@ -2699,247 +3034,397 @@ function SettingsSection({ refresh }: { refresh: () => Promise<void> }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
-          <h3 className="font-serif font-semibold text-sm">Branding & Portal Identity</h3>
-          <div className="space-y-3 text-xs">
-            <SettingsText label="Application Name" value={appName} onChange={setAppName} />
-            <SettingsText label="Portal Tagline" value={brandTagline} onChange={setBrandTagline} />
-            <SettingsSelect
-              label="Session Policy"
-              value={sessionPolicy}
-              onChange={setSessionPolicy}
-              options={["browser_session", "persistent_until_logout", "strict_reauth"]}
-            />
-            <SettingsSelect
-              label="Maintenance Mode"
-              value={maintenanceMode}
-              onChange={setMaintenanceMode}
-              options={["false", "true"]}
-            />
-          </div>
-        </div>
+      {settingsTab === "razorpay" && <PlatformRazorpayConfig />}
 
-        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
-          <h3 className="font-serif font-semibold text-sm">Support & SLA Defaults</h3>
-          <div className="space-y-3 text-xs">
-            <SettingsText label="Support Email" value={supportEmail} onChange={setSupportEmail} />
-            <SettingsText
-              label="Support Phone / WhatsApp"
-              value={supportPhone}
-              onChange={setSupportPhone}
-            />
-            <SettingsText
-              label="Normal Ticket SLA Hours"
-              value={ticketSlaHours}
-              onChange={setTicketSlaHours}
-            />
-            <SettingsText
-              label="Critical Ticket SLA Hours"
-              value={criticalSlaHours}
-              onChange={setCriticalSlaHours}
-            />
-          </div>
-        </div>
+      {settingsTab === "branding" && <PlatformBrandingPanel />}
 
-        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
-          <h3 className="font-serif font-semibold text-sm">Integrations & Operations</h3>
-          <div className="space-y-3 text-xs">
-            <SettingsSelect
-              label="WhatsApp Provider"
-              value={whatsappProvider}
-              onChange={setWhatsappProvider}
-              options={["wasenderapi", "wa_deeplink", "disabled"]}
-            />
-            <SettingsSelect
-              label="WhatsApp Enabled"
-              value={whatsappEnabled}
-              onChange={setWhatsappEnabled}
-              options={["true", "false"]}
-            />
-            <SettingsSelect
-              label="Backup Frequency"
-              value={backupFrequency}
-              onChange={setBackupFrequency}
-              options={["hourly", "daily", "weekly", "monthly"]}
-            />
-            <SettingsText
-              label="Backup Retention Days"
-              value={backupRetentionDays}
-              onChange={setBackupRetentionDays}
-            />
+      {settingsTab === "documents" && (
+        <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="erp-surface rounded-md border border-border bg-card p-5 space-y-4 shadow-xs lg:col-span-2">
+              <h3 className="font-serif font-bold text-base text-gold">
+                Billing &amp; Tax Defaults
+              </h3>
+              <div className="grid gap-3 text-xs sm:grid-cols-3">
+                <SettingsText
+                  label="Default GST Rate (%)"
+                  value={defaultGstRate}
+                  onChange={setDefaultGstRate}
+                />
+                <SettingsText
+                  label="Invoice Due Days"
+                  value={invoiceDueDays}
+                  onChange={setInvoiceDueDays}
+                />
+                <SettingsText
+                  label="Seller GST State Code"
+                  value={sellerStateCodeSetting}
+                  onChange={setSellerStateCodeSetting}
+                />
+              </div>
+            </div>
+            <div className="erp-surface rounded-md border border-border bg-card p-5 space-y-4 shadow-xs">
+              <h3 className="font-serif font-bold text-base text-gold">
+                Platform Legal Entity Details
+              </h3>
+              <div className="space-y-3 text-xs">
+                <SettingsText
+                  label="Seller Legal Name"
+                  value={sellerName}
+                  onChange={setSellerName}
+                />
+                <SettingsText label="Seller GSTIN" value={sellerGstin} onChange={setSellerGstin} />
+                <label className="block">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                    Registered Address
+                  </span>
+                  <textarea
+                    className="mt-1 w-full border border-border bg-background p-2 rounded-md text-foreground focus:ring-gold h-20 text-xs"
+                    value={sellerAddress}
+                    onChange={(e) => setSellerAddress(e.target.value)}
+                  />
+                </label>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
-          <h3 className="font-serif font-semibold text-sm">Licensing & Subscription Defaults</h3>
-          <div className="space-y-3 text-xs">
-            <SettingsText label="Default Trial Days" value={trialDays} onChange={setTrialDays} />
-            <SettingsText
-              label="Renewal Reminder Days"
-              value={renewalReminderDays}
-              onChange={setRenewalReminderDays}
-            />
-            <SettingsText
-              label="Default Branch Limit"
-              value={maxBranchesDefault}
-              onChange={setMaxBranchesDefault}
-              placeholder="Unlimited"
-            />
-            <SettingsText
-              label="Default User Limit"
-              value={maxUsersDefault}
-              onChange={setMaxUsersDefault}
-              placeholder="Unlimited"
-            />
-          </div>
-        </div>
-
-        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4 lg:col-span-2">
-          <h3 className="font-serif font-semibold text-sm">Billing & Tax Defaults</h3>
-          <div className="grid gap-3 text-xs sm:grid-cols-3">
-            <SettingsText
-              label="Default GST Rate (%)"
-              value={defaultGstRate}
-              onChange={setDefaultGstRate}
-            />
-            <SettingsText
-              label="Invoice Due Days"
-              value={invoiceDueDays}
-              onChange={setInvoiceDueDays}
-            />
-            <SettingsText
-              label="Seller GST State Code"
-              value={sellerStateCodeSetting}
-              onChange={setSellerStateCodeSetting}
-            />
-          </div>
-          <p className="text-xs text-[#6b6659]">
-            These values are stored for billing defaults and downstream platform workflows.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
-          <h3 className="font-serif font-semibold text-sm">Platform Billing Legal Entity Header</h3>
-          <p className="text-xs text-[#6b6659]">
-            Configure platform entity details shown on software tax invoices issued to tenant firms.
-          </p>
-          <div className="space-y-3 text-xs">
-            <label className="block">
-              Seller Legal Name
-              <input
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
-                value={sellerName}
-                onChange={(e) => setSellerName(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              Seller GSTIN
-              <input
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded font-mono"
-                value={sellerGstin}
-                onChange={(e) => setSellerGstin(e.target.value)}
-                placeholder="e.g. 19AAACA1234A1Z5"
-              />
-            </label>
-            <label className="block">
-              Registered Address
-              <textarea
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded h-20"
-                value={sellerAddress}
-                onChange={(e) => setSellerAddress(e.target.value)}
-              />
-            </label>
-            <Button disabled={saving} onClick={() => void saveSettings()}>
-              Save Platform Settings
+          <div className="flex justify-end">
+            <Button
+              disabled={saving}
+              onClick={() => void saveSettings()}
+              className="bg-gold text-black hover:bg-gold-dark text-xs"
+            >
+              Save Document Settings
             </Button>
           </div>
         </div>
-        <div className="border border-[#dedad1] bg-[#fffdf8] p-5 space-y-4">
-          <h3 className="font-serif font-semibold text-sm">Create / Update Manufacturing Plan</h3>
-          <div className="grid gap-3 text-xs sm:grid-cols-2">
-            <label className="block">
-              Plan Name
-              <input
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
-                value={planName}
-                onChange={(e) => setPlanName(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              Plan Code
-              <input
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded font-mono"
-                value={planCode}
-                onChange={(e) => setPlanCode(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              Price
-              <input
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
-                value={planPrice}
-                onChange={(e) => setPlanPrice(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              Billing Cycle
-              <select
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
-                value={planCycle}
-                onChange={(e) => setPlanCycle(e.target.value)}
-              >
-                <option value="monthly">Monthly</option>
-                <option value="annual">Annual</option>
-                <option value="custom">Custom</option>
-              </select>
-            </label>
-            <label className="block">
-              Branch Limit
-              <input
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
-                value={branchLimit}
-                onChange={(e) => setBranchLimit(e.target.value)}
-                placeholder="Unlimited"
-              />
-            </label>
-            <label className="block">
-              User Limit
-              <input
-                className="mt-1 w-full border border-[#c9c4ba] bg-white p-2 rounded"
-                value={userLimit}
-                onChange={(e) => setUserLimit(e.target.value)}
-                placeholder="Unlimited"
-              />
-            </label>
+      )}
+
+      {settingsTab === "platform" && (
+        <>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="erp-surface rounded-md border border-border bg-card p-5 space-y-4 shadow-xs">
+              <h3 className="font-serif font-bold text-base text-gold">
+                Support &amp; SLA Defaults
+              </h3>
+              <div className="space-y-3 text-xs">
+                <SettingsText
+                  label="Support Email"
+                  value={supportEmail}
+                  onChange={setSupportEmail}
+                />
+                <SettingsText
+                  label="Support Phone / WhatsApp"
+                  value={supportPhone}
+                  onChange={setSupportPhone}
+                />
+                <SettingsText
+                  label="Normal Ticket SLA Hours"
+                  value={ticketSlaHours}
+                  onChange={setTicketSlaHours}
+                />
+                <SettingsText
+                  label="Critical Ticket SLA Hours"
+                  value={criticalSlaHours}
+                  onChange={setCriticalSlaHours}
+                />
+              </div>
+            </div>
+
+            <div className="erp-surface rounded-md border border-border bg-card p-5 space-y-4 shadow-xs">
+              <h3 className="font-serif font-bold text-base text-gold">
+                Integrations &amp; Operations
+              </h3>
+              <div className="space-y-3 text-xs">
+                <SettingsSelect
+                  label="WhatsApp Provider"
+                  value={whatsappProvider}
+                  onChange={setWhatsappProvider}
+                  options={["wasenderapi", "wa_deeplink", "disabled"]}
+                />
+                <SettingsSelect
+                  label="WhatsApp Enabled"
+                  value={whatsappEnabled}
+                  onChange={setWhatsappEnabled}
+                  options={["true", "false"]}
+                />
+                <SettingsSelect
+                  label="Backup Frequency"
+                  value={backupFrequency}
+                  onChange={setBackupFrequency}
+                  options={["hourly", "daily", "weekly", "monthly"]}
+                />
+                <SettingsText
+                  label="Backup Retention Days"
+                  value={backupRetentionDays}
+                  onChange={setBackupRetentionDays}
+                />
+              </div>
+            </div>
           </div>
-          {msg && <p className="text-xs text-[#2d6a4f]">{msg}</p>}
-          <Button
-            disabled={saving || !planName.trim() || !planCode.trim()}
-            onClick={() => void createPlan()}
-          >
-            Save Plan
-          </Button>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="erp-surface rounded-md border border-border bg-card p-5 space-y-4 shadow-xs">
+              <h3 className="font-serif font-bold text-base text-gold">Licensing Defaults</h3>
+              <div className="space-y-3 text-xs">
+                <SettingsText
+                  label="Default Trial Days"
+                  value={trialDays}
+                  onChange={setTrialDays}
+                />
+                <SettingsText
+                  label="Renewal Reminder Days"
+                  value={renewalReminderDays}
+                  onChange={setRenewalReminderDays}
+                />
+                <SettingsText
+                  label="Default Branch Limit"
+                  value={maxBranchesDefault}
+                  onChange={setMaxBranchesDefault}
+                  placeholder="Unlimited"
+                />
+                <SettingsText
+                  label="Default User Limit"
+                  value={maxUsersDefault}
+                  onChange={setMaxUsersDefault}
+                  placeholder="Unlimited"
+                />
+              </div>
+            </div>
+
+            <div className="erp-surface rounded-md border border-border bg-card p-5 space-y-4 shadow-xs lg:col-span-2">
+              <h3 className="font-serif font-bold text-base text-gold">
+                Billing &amp; Tax Defaults
+              </h3>
+              <div className="grid gap-3 text-xs sm:grid-cols-3">
+                <SettingsText
+                  label="Default GST Rate (%)"
+                  value={defaultGstRate}
+                  onChange={setDefaultGstRate}
+                />
+                <SettingsText
+                  label="Invoice Due Days"
+                  value={invoiceDueDays}
+                  onChange={setInvoiceDueDays}
+                />
+                <SettingsText
+                  label="Seller GST State Code"
+                  value={sellerStateCodeSetting}
+                  onChange={setSellerStateCodeSetting}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground font-mono">
+                Platform governance rules used as system defaults for new organizations and billing
+                calculations.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="erp-surface rounded-md border border-border bg-card p-5 space-y-4 shadow-xs">
+              <h3 className="font-serif font-bold text-base text-gold">
+                Platform Legal Entity Details
+              </h3>
+              <p className="text-xs text-muted-foreground font-mono">
+                Entity information displayed on platform software invoices issued to subscriber
+                tenants
+              </p>
+              <div className="space-y-3 text-xs">
+                <label className="block">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                    Seller Legal Name
+                  </span>
+                  <input
+                    className="mt-1 w-full border border-border bg-background p-2 rounded-md text-foreground focus:ring-gold"
+                    value={sellerName}
+                    onChange={(e) => setSellerName(e.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                    Seller GSTIN
+                  </span>
+                  <input
+                    className="mt-1 w-full border border-border bg-background p-2 rounded-md font-mono text-foreground focus:ring-gold"
+                    value={sellerGstin}
+                    onChange={(e) => setSellerGstin(e.target.value)}
+                    placeholder="e.g. 19AAACA1234A1Z5"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                    Registered Address
+                  </span>
+                  <textarea
+                    className="mt-1 w-full border border-border bg-background p-2 rounded-md text-foreground focus:ring-gold h-20"
+                    value={sellerAddress}
+                    onChange={(e) => setSellerAddress(e.target.value)}
+                  />
+                </label>
+                <Button
+                  disabled={saving}
+                  onClick={() => void saveSettings()}
+                  className="bg-gold text-black hover:bg-gold-dark font-semibold shadow-xs cursor-pointer text-xs"
+                >
+                  Save Platform Settings
+                </Button>
+              </div>
+            </div>
+
+            <div className="erp-surface rounded-md border border-border bg-card p-5 space-y-4 shadow-xs">
+              <h3 className="font-serif font-bold text-base text-gold">Create / Update Plan</h3>
+              <div className="grid gap-3 text-xs sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                    Plan Name
+                  </span>
+                  <input
+                    className="mt-1 w-full border border-border bg-background p-2 rounded-md text-foreground focus:ring-gold"
+                    value={planName}
+                    onChange={(e) => setPlanName(e.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                    Plan Code
+                  </span>
+                  <input
+                    className="mt-1 w-full border border-border bg-background p-2 rounded-md font-mono text-foreground focus:ring-gold"
+                    value={planCode}
+                    onChange={(e) => setPlanCode(e.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                    Price (₹)
+                  </span>
+                  <input
+                    className="mt-1 w-full border border-border bg-background p-2 rounded-md font-mono text-foreground focus:ring-gold"
+                    value={planPrice}
+                    onChange={(e) => setPlanPrice(e.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                    Billing Cycle
+                  </span>
+                  <select
+                    className="mt-1 w-full border border-border bg-background p-2 rounded-md text-foreground focus:ring-gold"
+                    value={planCycle}
+                    onChange={(e) => setPlanCycle(e.target.value)}
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="annual">Annual</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                    Branch Limit
+                  </span>
+                  <input
+                    className="mt-1 w-full border border-border bg-background p-2 rounded-md font-mono text-foreground focus:ring-gold"
+                    value={branchLimit}
+                    onChange={(e) => setBranchLimit(e.target.value)}
+                    placeholder="Unlimited"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                    User Limit
+                  </span>
+                  <input
+                    className="mt-1 w-full border border-border bg-background p-2 rounded-md font-mono text-foreground focus:ring-gold"
+                    value={userLimit}
+                    onChange={(e) => setUserLimit(e.target.value)}
+                    placeholder="Unlimited"
+                  />
+                </label>
+              </div>
+              {msg && <p className="text-xs font-mono text-emerald-400">{msg}</p>}
+              <Button
+                disabled={saving || !planName.trim() || !planCode.trim()}
+                onClick={() => void createPlan()}
+                className="bg-gold text-black hover:bg-gold-dark font-semibold shadow-xs cursor-pointer text-xs"
+              >
+                Save Commercial Plan
+              </Button>
+            </div>
+          </div>
+
+          <div className="erp-surface rounded-md border border-border bg-card p-4 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-serif font-bold text-base text-gold">Save Platform Settings</h3>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                  Persist SLA, integration, operations, and security policies
+                </p>
+              </div>
+              <Button
+                disabled={saving}
+                onClick={() => void saveSettings()}
+                className="bg-gold text-black hover:bg-gold-dark font-semibold shadow-xs cursor-pointer text-xs"
+              >
+                Save Settings
+              </Button>
+            </div>
+            {msg && <p className="mt-2 text-xs font-mono text-emerald-400">{msg}</p>}
+          </div>
+        </>
+      )}
+
+      {(settingsTab === "documents" || settingsTab === "branding") && msg && (
+        <p className="text-xs font-mono text-emerald-400">{msg}</p>
+      )}
+    </div>
+  );
+}
+
+function HelpSection() {
+  return (
+    <div className="space-y-4">
+      <div className="erp-surface rounded-md border border-border bg-card p-6 shadow-xs space-y-4">
+        <h2 className="font-serif text-lg font-bold text-gold">Platform Owner Help</h2>
+        <p className="text-sm text-muted-foreground">
+          Knowledge base for operating the AVS Gold ERP platform control plane.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2 text-xs">
+          <HelpCard
+            title="Tenant Management"
+            body="Use All Tenants, Active Tenants, and Suspended Tenants to filter organizations. Suspend/Activate actions update the database immediately."
+          />
+          <HelpCard
+            title="Billing Documents"
+            body="Create quotations and invoices from Billing & Payments. Use Preview / PDF to download A4 documents with platform branding."
+          />
+          <HelpCard
+            title="Branding"
+            body="Upload primary, compact, and document logos under Platform Configuration → Branding. Logos appear on generated PDFs."
+          />
+          <HelpCard
+            title="Trials & Onboarding"
+            body="Monitor active and expiring trials from Onboarding & Trials. Extend trials using the extension controls."
+          />
         </div>
       </div>
-      <div className="border border-[#dedad1] bg-[#fffdf8] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="font-serif font-semibold text-sm">Save All Platform Defaults</h3>
-            <p className="mt-1 text-xs text-[#6b6659]">
-              Saves branding, billing, support, licensing, integration, operation, and security
-              defaults.
-            </p>
-          </div>
-          <Button disabled={saving} onClick={() => void saveSettings()}>
-            Save All Settings
-          </Button>
-        </div>
-        {msg && <p className="mt-2 text-xs text-[#2d6a4f]">{msg}</p>}
+    </div>
+  );
+}
+
+function HelpCard({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-md border border-border bg-muted/20 p-4">
+      <h3 className="font-semibold text-foreground">{title}</h3>
+      <p className="mt-1 text-muted-foreground leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
+function AccountSection() {
+  return (
+    <div className="max-w-lg">
+      <div className="erp-surface rounded-md border border-border bg-card p-6 shadow-xs">
+        <h2 className="font-serif text-lg font-bold text-gold mb-4">My Account</h2>
+        <PlatformAccountMenu className="border-0 p-0" />
       </div>
     </div>
   );
@@ -2958,9 +3443,11 @@ function SettingsText({
 }) {
   return (
     <label className="block">
-      {label}
+      <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+        {label}
+      </span>
       <input
-        className="mt-1 w-full rounded border border-[#c9c4ba] bg-white p-2"
+        className="mt-1 w-full rounded-md border border-border bg-background p-2 text-xs text-foreground focus:ring-gold"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -2982,9 +3469,11 @@ function SettingsSelect({
 }) {
   return (
     <label className="block">
-      {label}
+      <span className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+        {label}
+      </span>
       <select
-        className="mt-1 w-full rounded border border-[#c9c4ba] bg-white p-2"
+        className="mt-1 w-full rounded-md border border-border bg-background p-2 text-xs text-foreground focus:ring-gold"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >

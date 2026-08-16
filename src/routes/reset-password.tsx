@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Lock, ArrowLeft, CheckCircle2, ShieldAlert, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
+import { Logo } from "@/components/ui/Logo";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({ meta: [{ title: "Update Password · AVS Gold ERP" }] }),
@@ -100,11 +101,9 @@ function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm p-6 space-y-4">
-        <div className="text-center space-y-1">
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gold/10 text-gold">
-            <Lock className="h-5 w-5" />
-          </div>
-          <h1 className="font-serif text-2xl text-gold">AVS ERP</h1>
+        <div className="text-center space-y-2">
+          <Logo className="h-8 mx-auto" />
+          <h1 className="font-serif text-2xl text-gold">AVS Gold ERP</h1>
           <p className="text-xs text-muted-foreground">Define your new credentials securely</p>
         </div>
 

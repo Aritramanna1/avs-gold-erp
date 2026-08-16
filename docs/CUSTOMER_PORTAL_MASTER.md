@@ -42,6 +42,13 @@ sequenceDiagram
 
 ## 3. Strict Security & Information Isolation Boundary
 
+> **CRITICAL SECURITY INVARIANT:**
+> A portal identity belongs to one authorized tenant context and one or more explicitly linked Party relationships. No portal request may escape that authorization boundary.
+>
+> **Implementation chain:** Authenticated User → `portal_identities` → `portal_party_links` → scoped RPCs (`get_customer_portal`, `get_karigar_portal`, `get_supplier_portal`) → RLS.
+>
+> Browser-supplied `tenant_id`, `party_id`, `customer_id`, `karigar_id`, or document IDs are never trusted. Direct URL/ID tampering must fail safely via server-side scope checks.
+
 > **CRITICAL SECURITY RULE:**
 > Under no circumstances shall any query, RPC, or view in the Customer Portal expose internal manufacturing economics.
 

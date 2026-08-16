@@ -1,0 +1,23 @@
+// Jenkins-ready QA pipeline stub — enable when Jenkins is provisioned.
+pipeline {
+  agent any
+  environment {
+    QA_BASE_URL = "${params.QA_BASE_URL ?: 'http://localhost:3000'}"
+    CI = 'true'
+  }
+  parameters {
+    string(name: 'QA_BASE_URL', defaultValue: 'http://localhost:3000', description: 'Staging URL only')
+    choice(name: 'QA_TIER', choices: ['smoke', 'full', 'release'], description: 'QA tier')
+  }
+  stages {
+    stage('Checkout') { steps { checkout scm } }
+    stage('Install') { steps { sh 'npm ci' } }
+    stage('QA') { steps { sh "npm run qa -- ${params.QA_TIER}" } }
+    stage('Archive') {
+      steps {
+        archiveArtifacts artifacts: 'qa/reports-output/**', allowEmptyArchive: true
+        junit 'qa/reports-output/junit-*.xml'
+      }
+    }
+  }
+}

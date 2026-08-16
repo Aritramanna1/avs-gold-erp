@@ -1,28 +1,25 @@
 /**
- * Settings → License & Activation. Reuses LicensePanel (same form the
- * activation gate shows) so there is one licensing UI, not two.
+ * Settings → Subscription & Billing. Replaces legacy licence-key activation.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app-shell";
-import { LicensePanel } from "@/components/license-gate";
+import { SubscriptionPanel } from "@/components/subscription-panel";
 import { guardRoute } from "@/lib/permissions";
 
 export const Route = createFileRoute("/settings/license")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  head: () => ({ meta: [{ title: "License & Activation · AVS Gold ERP" }] }),
-  component: LicenseSettingsPage,
+  head: () => ({ meta: [{ title: "Subscription & Billing · AVS Gold ERP" }] }),
+  component: SubscriptionSettingsPage,
 });
 
-function LicenseSettingsPage() {
+function SubscriptionSettingsPage() {
   return (
-    <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-6">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
       <PageHeader
-        title="License & Activation"
-        subtitle="Configure Trial, Active, Expired, and Suspended licensing for Supabase-online tenant firms. Payments are not collected in this build."
+        title="Subscription & Billing"
+        subtitle="Plans, payments, invoices, receipts, and usage credits — all in one secure place."
       />
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <LicensePanel />
-      </section>
+      <SubscriptionPanel />
     </div>
   );
 }

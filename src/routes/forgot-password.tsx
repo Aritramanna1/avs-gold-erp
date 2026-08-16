@@ -20,6 +20,8 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
 import { getAuthRedirectUrl } from "@/lib/auth-redirect";
+import { notifyPasswordReset } from "@/lib/comm/platform";
+import { useSettings } from "@/lib/settings-store";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({ meta: [{ title: "Account Recovery · AVS Gold ERP" }] }),
@@ -28,6 +30,7 @@ export const Route = createFileRoute("/forgot-password")({
 
 function ForgotPasswordPage() {
   const { t } = useLanguage();
+  const { firm } = useSettings();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [method, setMethod] = useState<"otp" | "link">("link");
@@ -60,6 +63,12 @@ function ForgotPasswordPage() {
         } else {
           setSuccess(true);
           toast.success("Recovery link sent successfully.");
+          // Branded notification via AVS Communication Platform (non-blocking)
+          void notifyPasswordReset({
+            recipient: { name: email.split("@")[0] || "User", email },
+            actionUrl: getAuthRedirectUrl("/reset-password"),
+            firmName: firm.shopName || "AVS",
+          });
         }
       } else {
         // Send OTP

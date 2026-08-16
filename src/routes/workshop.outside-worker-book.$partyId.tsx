@@ -44,7 +44,7 @@ function OutsideWorkerBookPage() {
         </Link>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5 mb-4 flex flex-wrap items-start justify-between gap-4">
+      <div className="rounded-md border border-border bg-card p-5 mb-4 flex flex-wrap items-start justify-between gap-4">
         <h1 className="font-serif text-3xl text-gold flex items-center gap-2">
           <BookOpen className="h-7 w-7" /> {book.party.fullName}
         </h1>

@@ -11,16 +11,65 @@ import { createRepository } from "./repositories/base-repository";
 import { archiveCentralPartyForPerson, syncPersonToCentralParty } from "@/lib/central-foundation";
 
 export type PersonType =
-  "customer" | "firm_customer" | "karigar" | "worker" | "employee" | "vendor" | "outside_worker";
+  | "customer"
+  | "firm_customer"
+  | "jeweller"
+  | "dealer"
+  | "supplier"
+  | "karigar"
+  | "worker"
+  | "outside_karigar"
+  | "refinery"
+  | "hallmark_vendor"
+  | "agent"
+  | "employee"
+  | "service_provider"
+  | "other"
+  // Legacy compatibility aliases (kept for backward compat)
+  | "vendor"
+  | "outside_worker";
 
 export const PERSON_TYPE_LABELS: Record<PersonType, string> = {
   customer: "Customer",
   firm_customer: "Firm / Company Customer",
+  jeweller: "Jeweller (B2B)",
+  dealer: "Dealer",
+  supplier: "Supplier",
   karigar: "Karigar",
   worker: "Worker",
+  outside_karigar: "Outside Karigar",
+  refinery: "Refinery",
+  hallmark_vendor: "Hallmark Vendor (BIS)",
+  agent: "Agent / Representative",
   employee: "Employee",
+  service_provider: "Service Provider",
+  other: "Other",
+  // Legacy aliases
   vendor: "Vendor",
   outside_worker: "Outside Worker",
+};
+
+/** Category grouping for UI tabs */
+export type PersonCategory = "customers" | "trade" | "karigars" | "employees" | "vendors";
+
+export const PERSON_TYPE_CATEGORY: Record<PersonType, PersonCategory> = {
+  customer: "customers",
+  firm_customer: "customers",
+  jeweller: "trade",
+  dealer: "trade",
+  supplier: "vendors",
+  refinery: "vendors",
+  hallmark_vendor: "vendors",
+  service_provider: "vendors",
+  karigar: "karigars",
+  worker: "karigars",
+  outside_karigar: "karigars",
+  agent: "trade",
+  employee: "employees",
+  other: "vendors",
+  // Legacy aliases
+  vendor: "vendors",
+  outside_worker: "karigars",
 };
 
 export type KycDocKey =
@@ -35,47 +84,129 @@ export const KYC_DOC_LABELS: Record<KycDocKey, string> = {
   signature: "Signature / Thumb",
 };
 
+/** A single bank account entry — persons may hold multiple */
+export interface BankAccount {
+  id: string;
+  bankName: string;
+  accountHolderName: string;
+  accountNumber: string;
+  accountType: "current" | "savings" | "cc" | "od";
+  ifscCode: string;
+  branchName?: string;
+  upiId?: string;
+  isPrimary: boolean;
+  active: boolean;
+}
+
 export interface Person {
   id: string;
   createdAt: number;
   updatedAt: number;
+  /** Primary role type — use `roles[]` for multi-role parties */
   type: PersonType;
+  /** Multiple concurrent roles (e.g. a Karigar who is also a Customer) */
+  roles?: PersonType[];
   active: boolean;
 
+  // ── Identity ──────────────────────────────────────────────────────
   fullName: string;
+  /** Trade / DBA name (displayed on invoices / documents) */
+  tradeName?: string;
+  /** Legal registered company name */
+  legalName?: string;
+  /** Primary contact person name for B2B parties */
+  contactPerson?: string;
   phone: string;
   altPhone?: string;
+  whatsapp?: string;
   email?: string;
+  website?: string;
 
+  // ── Address ───────────────────────────────────────────────────────
+  addressLine1?: string;
+  addressLine2?: string;
+  area?: string;
+  villageCity?: string;
+  district?: string;
+  state?: string;
+  pin?: string;
+  /** Legacy alias for currentAddress */
   currentAddress?: string;
   permanentAddress?: string;
-  villageCity?: string;
-  state?: string;
 
+  // ── Tax & Compliance ──────────────────────────────────────────────
   aadhaar?: string; // last 4 stored / masked on display
   pan?: string;
   gstin?: string;
+  /** MSME / Udyam Registration Number */
+  msmeUdyamNo?: string;
+  /** TAN (required for TDS deductors) */
+  tan?: string;
+  /** Business constitution: Proprietor / Partnership / Pvt Ltd / LLP etc */
+  businessType?: string;
+  /** GST Place of Supply (2-digit state code) */
+  placeOfSupply?: string;
+  /** TDS/TCS applicability flag: none / tds_applicable / tcs_applicable */
+  tdsTcsApplicability?: "none" | "tds_applicable" | "tcs_applicable";
 
+  // ── Credit & Limits ───────────────────────────────────────────────
+  /** Cash credit limit in paise (₹0 = no limit) */
+  cashCreditLimitPaise?: number;
+  /** Fine Gold Metal Credit Limit in mg (0 = no limit) */
+  goldCreditLimitMg?: number;
+  /** Legacy alias */
+  maxFineGoldCreditMg?: number;
+  /** Payment due days (e.g. 30, 45, 60) */
+  dueDays?: number;
+
+  // ── Real Opening Balances (Single Source of Truth) ────────────────
+  /** Cash opening balance in paise (positive = receivable / Dr, negative = payable / Cr) */
+  cashOpeningBalancePaise?: number;
+  /** Cash opening balance type: "receivable" (Dr) | "payable" (Cr) */
+  cashOpeningType?: "receivable" | "payable";
+  /** Gold opening gross weight in mg */
+  goldOpeningGrossMg?: number;
+  /** Gold opening touch/purity percentage (e.g. 91.6, 99.9) */
+  goldOpeningTouch?: number;
+  /** Gold opening fine gold in mg */
+  goldOpeningFineMg?: number;
+  /** Gold opening balance type: "receivable" (Dr) | "payable" (Cr) */
+  goldOpeningType?: "receivable" | "payable";
+  /** Silver opening fine weight in mg */
+  silverOpeningFineMg?: number;
+  /** Outstanding opening invoices count */
+  openingBillsCount?: number;
+  /** Opening balance date / voucher reference note */
+  openingBalanceNotes?: string;
+
+  // ── Multiple Bank Accounts ────────────────────────────────────────
+  /** Multi-bank registry — replaces legacy single bank fields */
+  bankAccounts?: BankAccount[];
+  /** @deprecated Use bankAccounts[0] instead */
+  bankAccountName?: string;
+  /** @deprecated Use bankAccounts[0] instead */
+  bankAccountNumber?: string;
+  /** @deprecated Use bankAccounts[0] instead */
+  bankIfsc?: string;
+  /** @deprecated Use bankAccounts[0] instead */
+  bankName?: string;
+
+  // ── Worker / Karigar Specific ─────────────────────────────────────
   workType?: string;
   joiningDate?: string; // YYYY-MM-DD
+  dailyWagePaise?: number;
+  skills?: string;
+  experience?: string;
+  dateOfBirth?: string; // YYYY-MM-DD
+  anniversary?: string; // YYYY-MM-DD
+  spouseName?: string;
 
-  maxFineGoldCreditMg?: number; // Fine Gold Metal Credit Limit in mg (Section 42/Audit)
-
+  // ── References & Emergency ────────────────────────────────────────
   emergencyName?: string;
   emergencyPhone?: string;
   referenceName?: string;
   referencePhone?: string;
-
-  /** Worker / karigar financial details */
-  bankAccountName?: string;
-  bankAccountNumber?: string;
-  bankIfsc?: string;
-  bankName?: string;
-  dailyWagePaise?: number; // wage per day in paise
-  skills?: string; // comma-separated or free text
-  experience?: string; // e.g. "5 years goldsmithing"
-  dateOfBirth?: string; // YYYY-MM-DD
-  anniversary?: string; // YYYY-MM-DD
+  referralPartyId?: string;
 
   notes?: string;
   branchId?: string;
@@ -280,12 +411,28 @@ export function kycComplete(p: Person): boolean {
 }
 
 export function tabsForType(type: PersonType): string {
-  // groups types into the 5 tabs
-  if (type === "customer") return "customers";
-  if (type === "firm_customer") return "firms";
-  if (type === "karigar" || type === "worker") return "karigars";
-  if (type === "employee") return "employees";
-  return "vendors"; // vendor or outside_worker
+  return PERSON_TYPE_CATEGORY[type] ?? "vendors";
+}
+
+/** Returns the primary bank account or constructs one from legacy single-bank fields */
+export function getPrimaryBankAccount(p: Person): BankAccount | null {
+  if (p.bankAccounts && p.bankAccounts.length > 0) {
+    return p.bankAccounts.find((b) => b.isPrimary && b.active) ?? p.bankAccounts[0];
+  }
+  // Legacy single-bank fallback
+  if (p.bankAccountNumber) {
+    return {
+      id: `legacy_${p.id}`,
+      bankName: p.bankName ?? "",
+      accountHolderName: p.bankAccountName ?? p.fullName,
+      accountNumber: p.bankAccountNumber,
+      accountType: "savings",
+      ifscCode: p.bankIfsc ?? "",
+      isPrimary: true,
+      active: true,
+    };
+  }
+  return null;
 }
 
 export interface MetalCreditCheckResult {

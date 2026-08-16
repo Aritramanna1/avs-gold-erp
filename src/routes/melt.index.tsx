@@ -909,7 +909,7 @@ function MeltIndex() {
             )}
 
             {/* Input Materials */}
-            <div className="rounded-xl border border-border p-4 space-y-3">
+            <div className="rounded-md border border-border p-4 space-y-3">
               <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
                 Input Materials
               </div>
@@ -1006,7 +1006,7 @@ function MeltIndex() {
             </div>
 
             {/* Recovery */}
-            <div className="rounded-xl border border-border p-4 space-y-3">
+            <div className="rounded-md border border-border p-4 space-y-3">
               <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
                 Recovery
               </div>
@@ -1051,7 +1051,7 @@ function MeltIndex() {
             </div>
 
             {/* Refinery Info */}
-            <div className="rounded-xl border border-border p-4 space-y-3">
+            <div className="rounded-md border border-border p-4 space-y-3">
               <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
                 Refinery Info (Optional)
               </div>

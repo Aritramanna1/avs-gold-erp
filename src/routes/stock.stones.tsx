@@ -62,6 +62,8 @@ function StonesPage() {
       <PageHeader
         title="Stone & Diamond Tracking"
         subtitle="Per-stone certificate, carat and cost records — linked to the finished item they're set into."
+        backTo="/stock"
+        backLabel="Back to Stock"
         actions={
           <Button onClick={() => setAdding(true)} className="gap-2">
             <Plus className="h-4 w-4" /> Add Stone
@@ -79,12 +81,12 @@ function StonesPage() {
       {/* Mobile View */}
       <div className="md:hidden space-y-3">
         {branchStones.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card p-6 text-center text-muted-foreground">
+          <div className="rounded-md border border-border bg-card p-6 text-center text-muted-foreground">
             No stone records yet.
           </div>
         ) : (
           branchStones.map((s) => (
-            <div key={s.id} className="rounded-2xl border border-border bg-card p-4 space-y-3">
+            <div key={s.id} className="rounded-md border border-border bg-card p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-sm flex items-center gap-1.5">
                   <Gem className="h-4 w-4 text-gold" />
@@ -160,7 +162,7 @@ function StonesPage() {
       </div>
 
       {/* Desktop View */}
-      <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="hidden md:block rounded-md border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

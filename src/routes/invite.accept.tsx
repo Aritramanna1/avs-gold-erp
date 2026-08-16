@@ -35,6 +35,10 @@ import {
 import { useSettings } from "@/lib/settings-store";
 import { extractEdgeFunctionError } from "@/lib/edge-function-error";
 import { toast } from "sonner";
+import { Logo } from "@/components/ui/Logo";
+import { LegalConsentFields } from "@/components/compliance/LegalConsentFields";
+import { useConsentStore } from "@/lib/compliance/consent-store";
+import { isGoogleOAuthEnabled, signInWithGoogle } from "@/lib/auth/google-oauth";
 
 export const Route = createFileRoute("/invite/accept")({
   head: () => ({ meta: [{ title: "Accept Invitation · AVS Gold ERP" }] }),
@@ -53,6 +57,20 @@ interface ResolvedInvite {
   branchId?: string;
   workshopId?: string;
   invitedBy?: string;
+  portalType?: string | null;
+  isPortalInvitation?: boolean;
+}
+
+function portalRedirectPath(invite: ResolvedInvite | null): string {
+  if (!invite) return "/";
+  const portalType = String(invite.portalType ?? "").toLowerCase();
+  const role = String(invite.role ?? "").toLowerCase();
+  if (portalType.includes("customer") || role === "customer") return "/customer-portal";
+  if (portalType.includes("karigar") || role === "karigar" || role === "worker")
+    return "/karigar-portal";
+  if (portalType.includes("supplier") || role === "supplier" || role === "vendor")
+    return "/supplier-portal";
+  return "/";
 }
 
 function AcceptInvitationPage() {
@@ -83,6 +101,10 @@ function AcceptInvitationPage() {
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const recordSignupConsent = useConsentStore((s) => s.recordSignupConsent);
 
   // Read URL params once
   const fromUrl = useRef(false);
@@ -152,6 +174,69 @@ function AcceptInvitationPage() {
     }
   }, [inviteCode, email, validateInvite]);
 
+  // Complete invite via Google when returning from OAuth with an active session.
+  useEffect(() => {
+    if (inviteStatus !== "valid" || !resolvedInvite || busy || done) return;
+    const hasOAuthReturn =
+      window.location.hash.includes("access_token") ||
+      window.location.search.includes("provider=google");
+
+    async function tryOAuthAccept() {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData.session;
+      if (!session?.user?.email) return;
+      if (!hasOAuthReturn) return;
+      const sessionEmail = session.user.email.toLowerCase();
+      if (sessionEmail !== resolvedInvite!.email.toLowerCase()) return;
+
+      setBusy(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("invite-accept", {
+          body: {
+            mode: "accept_oauth",
+            email: sessionEmail,
+            code: inviteCode,
+            name: inviteName.trim() || session.user.user_metadata?.full_name,
+            phone: invitePhone.trim(),
+          },
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (error || !data?.success) {
+          setErr(
+            error
+              ? await extractEdgeFunctionError(error, "Google account setup failed.")
+              : data?.error || "Google account setup failed.",
+          );
+          setBusy(false);
+          return;
+        }
+        setDone(true);
+        setNeedsEmailConfirm(false);
+        toast.success("Account linked with Google! Redirecting…");
+        setTimeout(() => {
+          void navigate({ to: portalRedirectPath(resolvedInvite) });
+        }, 1200);
+      } catch (ex: unknown) {
+        setErr(ex instanceof Error ? ex.message : String(ex));
+        setBusy(false);
+      }
+    }
+
+    void tryOAuthAccept();
+  }, [inviteStatus, resolvedInvite, inviteCode, inviteName, invitePhone, busy, done, navigate]);
+
+  async function handleGoogleInvite() {
+    if (!resolvedInvite) return;
+    if (!termsAccepted || !privacyAccepted) {
+      setErr("Please accept the Terms of Service and Privacy Policy.");
+      return;
+    }
+    recordSignupConsent({ termsAccepted, privacyAccepted, marketingOptIn });
+    const redirectPath = `/invite/accept?code=${encodeURIComponent(inviteCode)}&email=${encodeURIComponent(resolvedInvite.email)}`;
+    const result = await signInWithGoogle({ redirectPath });
+    if (!result.ok) toast.error(result.error ?? "Google sign-in failed.");
+  }
+
   async function handleAccept(e: React.FormEvent) {
     e.preventDefault();
     if (!resolvedInvite) return;
@@ -165,6 +250,11 @@ function AcceptInvitationPage() {
       setErr("Password must be at least 10 characters.");
       return;
     }
+    if (!termsAccepted || !privacyAccepted) {
+      setErr("Please accept the Terms of Service and Privacy Policy.");
+      return;
+    }
+    recordSignupConsent({ termsAccepted, privacyAccepted, marketingOptIn });
 
     setBusy(true);
     try {
@@ -217,9 +307,10 @@ function AcceptInvitationPage() {
       } else {
         setNeedsEmailConfirm(false);
         toast.success("Account created! Signing you in…");
+        const target = portalRedirectPath(resolvedInvite);
         setTimeout(() => {
-          void navigate({ to: "/" });
-        }, 2000);
+          void navigate({ to: target });
+        }, 1500);
       }
     } catch (ex: any) {
       setErr(ex.message ?? "An error occurred. Please try again.");
@@ -264,12 +355,10 @@ function AcceptInvitationPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-md space-y-4">
         {/* Brand header */}
-        <div className="text-center space-y-1 mb-6">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gold/10 text-gold">
-            <UserCheck className="h-6 w-6" />
-          </div>
+        <div className="text-center space-y-2 mb-6">
+          <Logo className="h-8 mx-auto" />
           <h1 className="font-serif text-2xl text-gold">{shopName}</h1>
-          <p className="text-xs text-muted-foreground">Employee Invitation Portal</p>
+          <p className="text-xs text-muted-foreground">Portal & Staff Invitation</p>
         </div>
 
         {/* ── Code entry if not in URL ─────────────────────────────────────── */}
@@ -391,7 +480,7 @@ function AcceptInvitationPage() {
         {inviteStatus === "valid" && resolvedInvite && (
           <Card className="p-6 space-y-5">
             {/* Invitation summary */}
-            <div className="rounded-xl border border-gold/30 bg-gold/5 p-4 space-y-3">
+            <div className="rounded-md border border-gold/30 bg-gold/5 p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-gold" />
                 <span className="text-sm font-semibold text-gold">Invitation Verified</span>
@@ -515,16 +604,53 @@ function AcceptInvitationPage() {
                 </div>
               </div>
 
+              <LegalConsentFields
+                termsAccepted={termsAccepted}
+                privacyAccepted={privacyAccepted}
+                marketingOptIn={marketingOptIn}
+                onTermsChange={setTermsAccepted}
+                onPrivacyChange={setPrivacyAccepted}
+                onMarketingChange={setMarketingOptIn}
+                showMarketing={false}
+              />
+
               {err && (
                 <div className="rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive leading-relaxed">
                   {err}
                 </div>
               )}
 
+              <div className="relative py-1">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+
+              {isGoogleOAuthEnabled() && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  disabled={busy || !termsAccepted || !privacyAccepted}
+                  onClick={() => void handleGoogleInvite()}
+                >
+                  Continue with Google
+                </Button>
+              )}
+
+              {!isGoogleOAuthEnabled() && (
+                <p className="text-[11px] text-muted-foreground text-center">
+                  Google sign-in is not enabled on this environment.
+                </p>
+              )}
+
               <Button
                 type="submit"
                 className="w-full bg-gold hover:bg-gold-600 text-slate-950 font-semibold gap-2"
-                disabled={busy}
+                disabled={busy || !termsAccepted || !privacyAccepted}
               >
                 {busy ? (
                   <>

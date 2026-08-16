@@ -164,16 +164,13 @@ function RepairNew() {
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
-      <div className="flex items-center gap-2 mb-4">
-        <Link to="/repair">
-          <Button variant="ghost" size="sm" className="gap-1">
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Button>
-        </Link>
-      </div>
-      <PageHeader title="New Repair Intake" subtitle="Receive a repair item from the customer." />
+      <PageHeader
+        title="New Repair Intake"
+        subtitle="Receive a repair item from the customer."
+        backTo="/repair"
+      />
 
-      <div className="rounded-2xl border border-border bg-card p-6 space-y-6">
+      <div className="erp-surface rounded-md border border-border bg-card p-6 space-y-6">
         <section>
           <h2 className="font-serif text-gold text-lg mb-3">Customer</h2>
           <div className="grid sm:grid-cols-2 gap-3">

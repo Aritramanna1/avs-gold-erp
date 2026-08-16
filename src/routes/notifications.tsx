@@ -66,7 +66,7 @@ function NotificationsPage() {
         }
       />
 
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-elegant">
+      <div className="rounded-md border border-border bg-card p-4 shadow-elegant">
         <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
           <Tabs value={tab} onValueChange={(value) => setTab(value as "all" | "unread")}>
             <TabsList>

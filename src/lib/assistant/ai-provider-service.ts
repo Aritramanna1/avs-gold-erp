@@ -39,6 +39,8 @@ import {
   getAcknowledgement,
   getHowAreYouResponse,
   getCapabilityExplanation,
+  getInsufficientKnowledgeResponse,
+  getExplainSimplyPrompt,
 } from "./conversation-library/responses";
 
 import {
@@ -51,7 +53,25 @@ import {
   getContextBudget,
   answerGeneralQuestion,
   resolvePronouns,
+  updateEntityMemory,
+  getPendingDisambiguation,
+  setPendingDisambiguation,
+  clearPendingDisambiguation,
 } from "./assistant-context-engine";
+
+import { normalizeIntent, auditIntentNormalization } from "./intent-normalization";
+import {
+  formatKnowledgeAnswer,
+  hydrateKnowledgeRepository,
+  toKnowledgeSourceRef,
+} from "./knowledge-repository";
+import { ensureLanguageAliasesLoaded } from "./language-aliases-store";
+import {
+  formatDisambiguationPrompt,
+  resolveDisambiguationChoice,
+  type EntityResolutionResult,
+} from "./entity-resolver";
+import type { KnowledgeSourceRef } from "./assistant-types";
 
 const USAGE_STORAGE_KEY = "ornexa_assistant_daily_usage";
 
@@ -436,6 +456,7 @@ export async function executeERPTool(
 
 /**
  * Process Assistant Query (Supports Text, Attached Files, Screen Context, Credits, Fallbacks)
+ * Pipeline: Raw Text → Language Detection → Typo Normalization → Terminology → Entity Resolution → Intent → Tool
  */
 export async function processAssistantQuery(
   userQuery: string,
@@ -444,6 +465,10 @@ export async function processAssistantQuery(
   attachmentFileName?: string,
   activeRouteContext?: string,
 ): Promise<AssistantMessage> {
+  // Pre-load knowledge + aliases (lazy, cached)
+  void hydrateKnowledgeRepository();
+  void ensureLanguageAliasesLoaded();
+
   const todayMetrics = getTodayUsageMetrics();
 
   // If user attached a file (multimodal flow)
@@ -482,6 +507,19 @@ export async function processAssistantQuery(
   // Active Draft Flow
   if (getActiveDraft()) {
     const draftResult = processDraftInput(resolvedQuery);
+    if (draftResult.executePayload) {
+      const { executeConfirmedAction } = await import("./assistant-tool-registry");
+      const exec = await executeConfirmedAction(draftResult.executePayload);
+      return {
+        id: `msg_${Date.now()}_draft_exec`,
+        role: "assistant",
+        content: exec.message,
+        toolName: "execute_draft",
+        tokensUsed: 0,
+        provider: config.provider,
+        createdAt: new Date().toISOString(),
+      };
+    }
     return {
       id: `msg_${Date.now()}_draft`,
       role: "assistant",
@@ -492,6 +530,48 @@ export async function processAssistantQuery(
       provider: config.provider,
       createdAt: new Date().toISOString(),
     };
+  }
+
+  // Continue pending party disambiguation (user replied with number or name)
+  const pending = getPendingDisambiguation();
+  if (pending) {
+    const chosen = resolveDisambiguationChoice(resolvedQuery, pending.candidates);
+    if (chosen) {
+      clearPendingDisambiguation();
+      updateEntityMemory("lastMentionedParty", chosen.name);
+      const queryWithParty = `${chosen.name} ${pending.originalQuery}`.trim();
+      try {
+        const card = await executeERPTool(pending.pendingToolName, queryWithParty, userRole);
+        const responseContent = card?.summary ?? `Here are the records for **${chosen.name}**.`;
+        return buildAssistantMessage({
+          content: card?.data?.primaryContent
+            ? `${responseContent}\n\n${card.data.primaryContent}`
+            : responseContent,
+          card: card ?? undefined,
+          toolName: pending.pendingToolName,
+          config,
+          normalization: {
+            rawText: userQuery,
+            normalizedText: queryWithParty,
+            corrections: [{ from: pending.originalQuery, to: chosen.name }],
+          },
+        });
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "Query execution failed.";
+        return {
+          id: `msg_${Date.now()}_disamb_err`,
+          role: "assistant",
+          content: `I could not complete that query for ${chosen.name}: ${errorMsg}`,
+          tokensUsed: 0,
+          provider: config.provider,
+          createdAt: new Date().toISOString(),
+        };
+      }
+    }
+    // User moved on — clear stale disambiguation after a non-selection reply
+    if (!/^[1-4]$/.test(resolvedQuery.trim())) {
+      clearPendingDisambiguation();
+    }
   }
 
   // Check if Cloud AI is requested and verify credit wallet
@@ -507,15 +587,59 @@ export async function processAssistantQuery(
   }
 
   try {
-    const intent = matchLocalIntent(resolvedQuery);
+    // Intent Normalization Layer
+    const normalized = await normalizeIntent(resolvedQuery);
+    void auditIntentNormalization(normalized);
+
+    const intent = normalized.intent;
+    const queryForTools = normalized.normalizedText || resolvedQuery;
+
+    const normalizationAudit = {
+      rawText: normalized.rawText,
+      normalizedText: normalized.normalizedText,
+      detectedLanguage: normalized.detectedLanguage,
+      corrections: normalized.corrections.length > 0 ? normalized.corrections : undefined,
+    };
 
     let responseContent = "";
     let card: ERPActionCard | null = null;
+    let knowledgeSources: KnowledgeSourceRef[] | undefined;
+    let isKnowledgeAnswer = false;
+
+    // Entity disambiguation — multiple close party matches
+    if (
+      normalized.entityResolution?.needsDisambiguation &&
+      normalized.entityResolution.candidates.length > 1
+    ) {
+      responseContent = formatDisambiguationPrompt(
+        normalized.entityResolution.candidates,
+        normalized.entityResolution.query,
+      );
+      card = buildDisambiguationCard(normalized.entityResolution);
+      setPendingDisambiguation({
+        candidates: normalized.entityResolution.candidates,
+        originalQuery: normalized.normalizedText,
+        pendingToolName: intent.toolName,
+        createdAt: new Date().toISOString(),
+      });
+      return buildAssistantMessage({
+        content: responseContent,
+        card,
+        toolName: "entity_disambiguation",
+        config,
+        normalization: normalizationAudit,
+      });
+    }
+
+    // Track resolved party in session memory
+    if (normalized.entityResolution?.bestMatch) {
+      updateEntityMemory("lastMentionedParty", normalized.entityResolution.bestMatch.name);
+    }
 
     if (intent.toolName.startsWith("conversation_")) {
       switch (intent.toolName) {
         case "conversation_greeting":
-          responseContent = getGreeting();
+          responseContent = getGreeting(activeContext.user.preferredName);
           break;
         case "conversation_acknowledgement":
           responseContent = getAcknowledgement();
@@ -526,20 +650,49 @@ export async function processAssistantQuery(
         case "conversation_capabilities":
           responseContent = getCapabilityExplanation();
           break;
+        case "conversation_explain_simply":
+          responseContent = getExplainSimplyPrompt();
+          break;
         default:
           responseContent = getGreeting();
       }
     } else if (intent.toolName.startsWith("action_")) {
       const actionKey = intent.toolName.replace("action_", "");
       responseContent = startActionDraft(actionKey);
-    } else if (intent.toolName === "fallback_unsupported") {
-      if (config.provider !== "local") {
-        responseContent = `I couldn't find a direct ERP tool for that. (Cloud AI Active): I am capable of answering general questions, but I cannot modify your ERP data without a structured tool. Please ask a specific question or use a known action.`;
+    } else if (intent.toolName === "query_knowledge_base") {
+      const knowledgeResult = formatKnowledgeAnswer(normalized.knowledgeHits);
+      if (knowledgeResult.confidence === "low" || !knowledgeResult.content) {
+        // Try broader search with original query
+        const { searchKnowledgeRepository } = await import("./knowledge-repository");
+        const retry = searchKnowledgeRepository(resolvedQuery, { limit: 2 });
+        const retryFormatted = formatKnowledgeAnswer(retry);
+        if (retryFormatted.content) {
+          responseContent = retryFormatted.content;
+          knowledgeSources = retry.map(toKnowledgeSourceRef);
+          isKnowledgeAnswer = true;
+        } else {
+          responseContent = getInsufficientKnowledgeResponse();
+        }
       } else {
-        responseContent = `I am not capable of doing that yet. As a local Assistant, my capabilities are strictly limited to authorized ERP functions, known workflows, and local context. You can try rephrasing, or ask me for "help".`;
+        responseContent = knowledgeResult.content;
+        knowledgeSources = knowledgeResult.sources;
+        isKnowledgeAnswer = true;
+        card = await toolQueryKnowledgeBase(queryForTools);
+      }
+    } else if (intent.toolName === "fallback_unsupported") {
+      // Last attempt: knowledge search before giving up
+      if (normalized.knowledgeHits.length > 0 && normalized.knowledgeHits[0].score >= 8) {
+        const kr = formatKnowledgeAnswer(normalized.knowledgeHits);
+        responseContent = kr.content;
+        knowledgeSources = kr.sources;
+        isKnowledgeAnswer = true;
+      } else if (config.provider !== "local") {
+        responseContent = `I couldn't find a direct ERP tool for that. Please try rephrasing or ask a specific question like "what is fine gold?" or "show outstanding for [party name]".`;
+      } else {
+        responseContent = getInsufficientKnowledgeResponse();
       }
     } else {
-      card = await executeERPTool(intent.toolName, resolvedQuery, userRole);
+      card = await executeERPTool(intent.toolName, queryForTools, userRole);
 
       responseContent = "Here are the authoritative ERP records you requested:";
       if (card) {
@@ -548,22 +701,21 @@ export async function processAssistantQuery(
           responseContent = `${card.summary}\n\n${card.data.primaryContent}`;
         }
       } else {
-        responseContent = `I searched for "${extractSearchQuery(resolvedQuery)}" in authorized records, but could not find a direct match.`;
+        responseContent = `I searched live ERP records for "${extractSearchQuery(queryForTools)}" but could not find a direct match. I don't invent balances — please check the spelling or try a more specific name.`;
       }
     }
 
     incrementUsageMetrics(0, 0);
 
-    return {
-      id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-      role: "assistant",
+    return buildAssistantMessage({
       content: responseContent,
-      erpCard: card ?? undefined,
+      card: card ?? undefined,
       toolName: intent.toolName,
-      tokensUsed: config.provider === "local" ? 0 : 350,
-      provider: config.provider,
-      createdAt: new Date().toISOString(),
-    };
+      config,
+      knowledgeSources,
+      isKnowledgeAnswer,
+      normalization: normalizationAudit,
+    });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : "Query execution failed.";
     await auditAssistantAction({
@@ -583,4 +735,54 @@ export async function processAssistantQuery(
       createdAt: new Date().toISOString(),
     };
   }
+}
+
+function buildAssistantMessage(opts: {
+  content: string;
+  card?: ERPActionCard;
+  toolName: string;
+  config: ProviderAdapterConfig;
+  knowledgeSources?: KnowledgeSourceRef[];
+  isKnowledgeAnswer?: boolean;
+  normalization?: {
+    rawText: string;
+    normalizedText: string;
+    detectedLanguage?: string;
+    corrections?: Array<{ from: string; to: string }>;
+  };
+}): AssistantMessage {
+  return {
+    id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    role: "assistant",
+    content: opts.content,
+    erpCard: opts.card,
+    toolName: opts.toolName,
+    tokensUsed: opts.config.provider === "local" ? 0 : 350,
+    provider: opts.config.provider,
+    createdAt: new Date().toISOString(),
+    knowledgeSources: opts.knowledgeSources,
+    isKnowledgeAnswer: opts.isKnowledgeAnswer,
+    normalization: opts.normalization,
+  };
+}
+
+function buildDisambiguationCard(resolution: EntityResolutionResult): ERPActionCard {
+  return {
+    type: "search_results",
+    title: "Multiple Parties Found",
+    summary: `Found ${resolution.candidates.length} parties matching "${resolution.query}". Please select the correct one.`,
+    tableColumns: [
+      { key: "name", header: "Party Name", align: "left" },
+      { key: "type", header: "Type", align: "left" },
+      { key: "phone", header: "Phone", align: "left" },
+      { key: "match", header: "Match", align: "right" },
+    ],
+    tableRows: resolution.candidates.map((c) => ({
+      name: c.name,
+      type: c.type,
+      phone: c.phone ?? "—",
+      match: `${Math.round(c.score * 100)}%`,
+    })),
+    data: { candidates: resolution.candidates, needsDisambiguation: true },
+  };
 }

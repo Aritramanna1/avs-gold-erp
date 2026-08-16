@@ -10,6 +10,8 @@
  * (display + parsing). All accounting math runs on integers.
  */
 
+import { usePurityGradesStore } from "@/lib/purity-grades-store";
+
 export type Purity = number; // per-mille, 0..999
 
 /** Convert grams (user input) to integer mg. Accepts "100", "100.000", " 12.345 ". */
@@ -112,6 +114,8 @@ export function parsePurity(input: string | number): Purity {
 }
 
 export function getCaratLabel(purity: number): string {
+  const fromMaster = usePurityGradesStore.getState().findByTouch(purity);
+  if (fromMaster) return fromMaster.karatLabel;
   if (purity === 999) return "24K (999)";
   if (purity === 995) return "995";
   if (purity === 916) return "22K (916)";
@@ -129,6 +133,8 @@ export const COMMON_PURITIES: { label: string; value: Purity }[] = [
   { label: "750 · 18K", value: 750 },
   { label: "585 · 14K", value: 585 },
 ];
+
+export { getPurityOptions } from "@/lib/purity-grades-store";
 
 export const GOLD_FORMS = [
   { value: "bar", label: "Bar" },

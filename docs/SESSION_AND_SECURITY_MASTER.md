@@ -47,6 +47,10 @@ Timeouts are not one-size-fits-all. They resolve through a 3-tier precedence hie
 | **CEO / Executive Mobile App** | **7 Days (Biometric)** | 30 Days | Biometric FaceID / Fingerprint Refresh |
 | **External Customer / Karigar Portal**| **30 Minutes** | 7 Days | Standard Password / OTP Login |
 
+### 1.2 Portal Tenant Isolation (Non-Negotiable)
+
+External portal sessions derive tenant and party scope exclusively from `portal_identities` and `portal_party_links` via SECURITY DEFINER RPCs. Direct URL or ID tampering must fail safely. No permissive `USING (true)` policies on portal-scoped data.
+
 ---
 
 ## 3. Session Lifecycle & Token Management
@@ -74,10 +78,10 @@ graph TD
 
 ### 4.1 "Clear This Browser Session" Protocol
 When a user clicks **"Clear This Browser Session"** (e.g. after using a shared computer):
-1. **Invalidate Active Token:** Calls Supabase `auth.signOut({ scope: 'local' })` to revoke the local session.
-2. **Clear Sensitive Local Storage:** Purges cached user profiles, tenant settings, and offline drafts from `localStorage` and `indexedDB`.
-3. **Preserve External Data:** Safely targets only `ornexa_*` namespaced storage keys—**never wipes unrelated browser data belonging to other websites**.
-4. **Clean Redirect:** Redirects to `/login` with an empty memory footprint.
+1. **Invalidate Active Token:** Calls Supabase `auth.signOut({ scope: 'local' })` to revoke the current client session.
+2. **Clear Sensitive Browser State:** Purges transient UI/session memory and any non-authoritative browser cache entries that are not required for the live tenant session.
+3. **Preserve External Data:** Safely targets only Ornexa-owned session state—**never wipes unrelated browser data belonging to other websites**.
+4. **Clean Redirect:** Redirects to `/login` with an empty runtime footprint.
 
 ---
 

@@ -1,6 +1,8 @@
 import { useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { useShortcutBinding } from "@/lib/keyboard/use-shortcut-binding";
+import { getShortcutDisplayLabel } from "@/lib/keyboard/shortcut-keys";
 import { useDraft } from "@/lib/drafts-store";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -91,7 +93,7 @@ import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { useScaleReading, type ScaleReading } from "@/lib/hardware-service";
 import { thermalPrinterService } from "@/lib/thermal-printer";
 import { isValidWaPhone } from "@/lib/wa-link";
-import { commService } from "@/lib/comm/service";
+import { notifyInvoiceReady } from "@/lib/comm/platform";
 import { getAttachmentSignedUrl } from "@/lib/supabase-storage";
 
 interface BillingModuleProps {
@@ -238,7 +240,7 @@ function StockPhotoImg({
       return;
     }
     if (!stockItem.imageStoragePath) return;
-    getAttachmentSignedUrl("catalog-designs", stockItem.imageStoragePath)
+    getAttachmentSignedUrl("stock-assets", stockItem.imageStoragePath)
       .then((url) => {
         if (url) setResolvedUrl(url);
       })
@@ -450,38 +452,22 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     confirmRef.current = confirm;
   });
 
-  useEffect(() => {
-    // 1. Focus listener and keyboard shortcut handler
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "F2") {
-        e.preventDefault();
-        barcodeInputRef.current?.focus();
-        barcodeInputRef.current?.select();
-      } else if (e.key === "F4") {
-        e.preventDefault();
-        customerInputRef.current?.focus();
-        customerInputRef.current?.select();
-      } else if (e.key === "F7") {
-        e.preventDefault();
-        orderInputRef.current?.focus();
-        orderInputRef.current?.select();
-      } else if (e.key === "F8") {
-        e.preventDefault();
-        addItemRef.current();
-      } else if (e.key === "F9") {
-        e.preventDefault();
-        addPaymentRowRef.current();
-      } else if (e.key === "F10" || ((e.ctrlKey || e.metaKey) && e.key === "Enter")) {
-        e.preventDefault();
-        confirmRef.current();
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, []);
+  useShortcutBinding("bill_f2_scan", () => {
+    barcodeInputRef.current?.focus();
+    barcodeInputRef.current?.select();
+  });
+  useShortcutBinding("bill_f4_customer", () => {
+    customerInputRef.current?.focus();
+    customerInputRef.current?.select();
+  });
+  useShortcutBinding("bill_f7_order", () => {
+    orderInputRef.current?.focus();
+    orderInputRef.current?.select();
+  });
+  useShortcutBinding("bill_f8_add_line", () => addItemRef.current());
+  useShortcutBinding("bill_f9_payment", () => addPaymentRowRef.current());
+  useShortcutBinding("bill_f10_save", () => confirmRef.current());
+  useShortcutBinding("bill_save_enter", () => confirmRef.current(), { allowInInputs: true });
 
   // Auto-fill whichever item weight field currently has focus when a new
   // scale reading arrives — the table-specific behavior layered on top of
@@ -1802,21 +1788,38 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         return;
       }
       setEmailSending(true);
-      await commService.sendInvoice(inv.id, branchId, "email", inv.customerName, {
-        email: custEmail,
+      const result = await notifyInvoiceReady({
+        branchId,
+        recipient: { name: inv.customerName, email: custEmail },
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNo,
+        amount: `₹ ${paiseToRupees(inv.grandTotalPaise)}`,
+        documentUrl: `${window.location.origin}/billing/print/${inv.id}`,
+        channels: ["email"],
       });
       setEmailSending(false);
+      if (result.success) toast.success("Invoice notification queued via email.");
+      else toast.error(result.errors[0] ?? "Email dispatch failed.");
     }
 
     async function handleSendWhatsApp() {
-      await commService.sendInvoice(inv.id, branchId, "whatsapp", inv.customerName, {
-        phone: custPhone,
+      const result = await notifyInvoiceReady({
+        branchId,
+        recipient: { name: inv.customerName, phone: custPhone },
+        invoiceId: inv.id,
+        invoiceNumber: inv.invoiceNo,
+        amount: `₹ ${paiseToRupees(inv.grandTotalPaise)}`,
+        documentUrl: `${window.location.origin}/billing/print/${inv.id}`,
+        channels: ["whatsapp"],
+        emailFallbackOnWhatsAppFailure: true,
       });
+      if (result.success) toast.success("Invoice notification sent.");
+      else toast.error(result.errors[0] ?? "WhatsApp dispatch failed.");
     }
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-8 space-y-6">
+        <div className="bg-card border border-border rounded-md shadow-2xl w-full max-w-md p-8 space-y-6">
           {/* Header */}
           <div className="text-center space-y-1">
             <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-emerald-500/15 flex items-center justify-center">
@@ -1827,7 +1830,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           </div>
 
           {/* Summary */}
-          <div className="rounded-xl bg-muted/30 border border-border p-4 space-y-2 text-sm">
+          <div className="rounded-md bg-muted/30 border border-border p-4 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Customer</span>
               <span className="font-medium">{inv.customerName}</span>
@@ -1930,19 +1933,21 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       />
 
       {/* Compact status bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl border border-dashed border-muted-foreground/20 bg-muted/20 text-[10px] font-mono text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-md border border-dashed border-muted-foreground/20 bg-muted/20 text-[10px] font-mono text-muted-foreground">
         <div className="flex flex-wrap gap-x-3 gap-y-1">
-          {[
-            ["F2", "Scan"],
-            ["F4", "Customer"],
-            ["F7", "Order"],
-            ["F8", "Add Item"],
-            ["F9", "Payment"],
-            ["F10", "Save & Print"],
-          ].map(([key, label]) => (
-            <span key={key}>
+          {(
+            [
+              ["bill_f2_scan", "Scan"],
+              ["bill_f4_customer", "Customer"],
+              ["bill_f7_order", "Order"],
+              ["bill_f8_add_line", "Add Item"],
+              ["bill_f9_payment", "Payment"],
+              ["bill_f10_save", "Save & Print"],
+            ] as const
+          ).map(([id, label]) => (
+            <span key={id}>
               <kbd className="bg-background border border-border px-1 py-0.5 rounded text-[9px] font-bold text-foreground mr-0.5">
-                {key}
+                {getShortcutDisplayLabel(id)}
               </kbd>
               {label}
             </span>
@@ -2114,7 +2119,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                     </div>
 
                     {showAddCustomer && (
-                      <div className="p-4 rounded-xl border border-gold/20 bg-gold/5 space-y-3">
+                      <div className="p-4 rounded-md border border-gold/20 bg-gold/5 space-y-3">
                         <div className="font-semibold text-sm text-gold">
                           Register New Customer / नवीन ग्राहक
                         </div>
@@ -2193,7 +2198,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-xl border border-gold/30 bg-gold/5 gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-md border border-gold/30 bg-gold/5 gap-3">
                     <div className="space-y-0.5">
                       <div className="font-bold text-sm flex items-center gap-2">
                         {customer?.fullName}
@@ -2299,7 +2304,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-xl border border-border bg-background/50 gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-md border border-border bg-background/50 gap-3">
                     <div className="space-y-0.5">
                       <div className="font-bold text-sm flex items-center gap-2">
                         Order #{linkedOrder?.orderNo}
@@ -2359,7 +2364,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
             {/* Display Customer Ledger Account Summary */}
             {customer && (
-              <div className="mt-4 p-3 rounded-xl border border-border/80 bg-background/40 flex flex-wrap gap-6 text-xs justify-between">
+              <div className="mt-4 p-3 rounded-md border border-border/80 bg-background/40 flex flex-wrap gap-6 text-xs justify-between">
                 {jewellerBook ? (
                   <>
                     <div>
@@ -2526,7 +2531,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             <div className="space-y-4">
               {/* Scan or Search Stock */}
               {billingType !== "advance_receipt" && billingType !== "payment_receipt" && (
-                <div className="bg-background/40 p-3 rounded-xl border border-border space-y-3">
+                <div className="bg-background/40 p-3 rounded-md border border-border space-y-3">
                   <form onSubmit={handleBarcodeSubmit} className="flex gap-2">
                     <div className="relative flex-1">
                       <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -2679,7 +2684,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             >
               <div className="space-y-3">
                 {/* Opening / LB Balance */}
-                <div className="rounded-xl border border-border bg-background/40 px-4 py-3">
+                <div className="rounded-md border border-border bg-background/40 px-4 py-3">
                   <div className="flex flex-wrap items-end gap-4">
                     <div className="flex-1 min-w-[180px] space-y-1">
                       <Label className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
@@ -2734,7 +2739,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                   return (
                     <div
                       key={e.id}
-                      className={`rounded-xl border ${color} px-3 py-2.5 grid grid-cols-2 sm:grid-cols-[1fr_80px_70px_60px_80px_32px] gap-2 items-center`}
+                      className={`rounded-md border ${color} px-3 py-2.5 grid grid-cols-2 sm:grid-cols-[1fr_80px_70px_60px_80px_32px] gap-2 items-center`}
                     >
                       <Input
                         value={e.label}
@@ -2808,7 +2813,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                     bhavPer10g > 0 ? Math.round((cashPaymentPaise / (bhavPer10g * 10)) * 10000) : 0;
                   const closingMg = netAfterLB + totalMpFineMg + bhavGoldMg;
                   return (
-                    <div className="rounded-xl border border-border bg-card p-4 space-y-2 text-sm font-mono">
+                    <div className="rounded-md border border-border bg-card p-4 space-y-2 text-sm font-mono">
                       <div className="text-[10px] uppercase tracking-wider font-black text-muted-foreground mb-2">
                         Jeweller Account Summary
                       </div>
@@ -2906,7 +2911,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                       ? Smartphone
                       : CreditCard;
                 return (
-                  <div key={p.id} className={`rounded-xl border ${modeColor} overflow-hidden`}>
+                  <div key={p.id} className={`rounded-md border ${modeColor} overflow-hidden`}>
                     <div className="flex items-center gap-3 px-4 py-3">
                       <ModeIcon
                         className={`h-4 w-4 flex-shrink-0 ${isGold ? "text-gold" : p.mode === "cash" ? "text-emerald-500" : "text-muted-foreground"}`}
@@ -3036,7 +3041,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
                     {/* Gold Payment / Gold Credit Sub-fields — fully redesigned */}
                     {(p.mode === "gold_exchange" || p.mode === "customer_gold_credit") && (
-                      <div className="mt-3 pt-3 border-t border-gold/20 bg-gradient-to-b from-gold/5 to-transparent p-4 rounded-xl space-y-3">
+                      <div className="mt-3 pt-3 border-t border-gold/20 bg-gradient-to-b from-gold/5 to-transparent p-4 rounded-md space-y-3">
                         <div className="text-[10px] font-bold uppercase tracking-wider text-gold mb-1 flex items-center gap-1.5">
                           <Sparkles className="h-3 w-3" />
                           {p.mode === "gold_exchange"
@@ -3274,13 +3279,13 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
         {/* Section 4: Invoice Summary Side Panel */}
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border bg-card p-4 space-y-4 lg:sticky lg:top-6">
+          <div className="rounded-md border border-border bg-card p-4 space-y-4 lg:sticky lg:top-6">
             <div className="text-xs uppercase tracking-wider font-black text-muted-foreground">
               Invoice Summary
             </div>
 
             {goldPaymentSelected && (
-              <div className="rounded-xl border border-gold/30 bg-gold/5 p-3 space-y-2 text-xs">
+              <div className="rounded-md border border-gold/30 bg-gold/5 p-3 space-y-2 text-xs">
                 <div className="flex items-center justify-between text-gold font-black uppercase tracking-wider">
                   <span>Gold-first total</span>
                   <span className="font-mono">₹{paiseToRupees(goldTotals.ratePerGramPaise)}/g</span>
@@ -3430,7 +3435,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
             {/* Advance Adjustment Details */}
             {adjustmentLive && (
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 space-y-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-md p-3 space-y-1.5 text-[11px] text-amber-700 dark:text-amber-400">
                 <div className="font-bold flex items-center gap-1">
                   <Sparkles className="h-3 w-3 text-amber-500" /> Advance Applied
                 </div>
@@ -3454,7 +3459,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             <Button
               onClick={confirm}
               disabled={confirming}
-              className="w-full bg-gold hover:bg-gold/90 text-white font-bold h-11 rounded-xl text-xs uppercase shadow-lg transition-all"
+              className="w-full bg-gold hover:bg-gold/90 text-white font-bold h-11 rounded-md text-xs uppercase shadow-lg transition-all"
             >
               {confirming ? "Issuing…" : "Issue Bill & Print / बिल पूर्ण करा"}
             </Button>
@@ -3464,7 +3469,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
       {/* Stock Inspector Dialog */}
       <Dialog open={!!activeInspectedStock} onOpenChange={() => setActiveInspectedStock(null)}>
-        <DialogContent className="max-w-xl rounded-2xl p-6 border-gold/20">
+        <DialogContent className="max-w-xl rounded-md p-6 border-gold/20">
           {activeInspectedStock &&
             (() => {
               const s = activeInspectedStock;
@@ -3519,7 +3524,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                 <div className="grid md:grid-cols-[180px_1fr] gap-6">
                   {/* Photo Section */}
                   <div className="space-y-2">
-                    <div className="aspect-square w-full rounded-xl overflow-hidden bg-muted/30 border border-border relative flex items-center justify-center">
+                    <div className="aspect-square w-full rounded-md overflow-hidden bg-muted/30 border border-border relative flex items-center justify-center">
                       {realPhoto ? (
                         <img
                           src={realPhoto}
@@ -3638,7 +3643,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 space-y-4 shadow-sm">
+    <div className="rounded-md border border-border bg-card p-5 space-y-4 shadow-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-sm uppercase tracking-wider font-extrabold text-foreground font-serif">
           {title}
@@ -3725,7 +3730,7 @@ function MfgItemRow({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-background/40 overflow-hidden text-xs">
+    <div className="rounded-md border border-border bg-background/40 overflow-hidden text-xs">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50 bg-muted/20">
         <span className="text-muted-foreground font-bold w-5">P{idx + 1}</span>
         <Input
@@ -3868,7 +3873,7 @@ function ReceiptItemRow({
   onChange: (diff: Partial<InvoiceItem>) => void;
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-gold/30 bg-gold/5 p-4 space-y-3">
+    <div className="rounded-md border border-dashed border-gold/30 bg-gold/5 p-4 space-y-3">
       <div className="font-semibold text-xs text-gold flex items-center gap-1.5">
         Receipt / Booking Context
       </div>
@@ -3907,7 +3912,7 @@ function ServiceItemRow({
   const [mkStr, setMkStr] = useState(paiseToRupees(it.makingChargesPaise).toString());
 
   return (
-    <div className="rounded-xl border border-border bg-background/40 p-4 space-y-3">
+    <div className="rounded-md border border-border bg-background/40 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex-1">
           <Label>Job / Article Description</Label>
@@ -4040,9 +4045,9 @@ function StandardItemRow({
     (it.diamondWeightMg || 0) > 0;
 
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden transition-all hover:shadow-md">
+    <div className="rounded-md border border-border bg-card shadow-sm overflow-hidden transition-all hover:shadow-md">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border/60">
-        <div className="w-14 h-14 rounded-xl overflow-hidden border border-border bg-muted/40 flex-shrink-0 flex items-center justify-center">
+        <div className="w-14 h-14 rounded-md overflow-hidden border border-border bg-muted/40 flex-shrink-0 flex items-center justify-center">
           {thumbnailImg ? (
             <img src={thumbnailImg} alt={it.itemName} className="h-full w-full object-cover" />
           ) : stockRef ? (

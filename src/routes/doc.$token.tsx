@@ -13,8 +13,13 @@ import { useEffect, useState } from "react";
 import { getDocumentShare, type DocumentShare } from "@/lib/document-shares";
 import { printDocument } from "@/lib/print-document";
 import { formatDateMedium as fmtDate } from "@/lib/format-date";
+import { AlertCircle, FileText, Printer, Download } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 export const Route = createFileRoute("/doc/$token")({
+  head: () => ({
+    meta: [{ title: "Document Viewer · AVS Gold ERP" }],
+  }),
   component: DocumentPortal,
 });
 
@@ -32,34 +37,22 @@ function grams(mg: number) {
 
 function Spinner() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-purple-700 border-t-transparent" />
-      <p className="mt-4 text-sm text-gray-500">Loading document…</p>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-gold border-t-transparent" />
+      <p className="mt-4 text-xs font-medium text-muted-foreground">Loading document…</p>
     </div>
   );
 }
 
 function ErrorScreen({ message }: { message: string }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-sm rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm">
-        <div className="h-12 w-12 rounded-full border-2 border-red-200 bg-red-50 flex items-center justify-center mx-auto">
-          <svg
-            className="h-6 w-6 text-red-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-            />
-          </svg>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-foreground">
+      <div className="max-w-sm rounded-md border border-border bg-card p-8 text-center shadow-xs">
+        <div className="h-12 w-12 rounded-full border border-red-500/30 bg-red-500/10 flex items-center justify-center mx-auto text-red-400">
+          <AlertCircle className="h-6 w-6" />
         </div>
-        <h2 className="mt-4 text-lg font-semibold text-gray-800">Document not available</h2>
-        <p className="mt-2 text-sm text-gray-500">{message}</p>
+        <h2 className="mt-4 text-base font-semibold text-foreground">Document not available</h2>
+        <p className="mt-2 text-xs text-muted-foreground">{message}</p>
       </div>
     </div>
   );
@@ -75,49 +68,55 @@ function InvoiceView({ doc, firm }: { doc: any; firm: any }) {
   return (
     <div className="space-y-4">
       {/* Bill-to */}
-      <div className="rounded-xl border border-purple-100 bg-purple-50/40 p-4">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-purple-700">
+      <div className="rounded-md border border-border bg-muted/20 p-4">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-gold font-mono">
           Billed To
         </div>
-        <div className="mt-1 text-base font-bold text-purple-950">{doc.customerName}</div>
+        <div className="mt-1 text-base font-bold text-foreground">{doc.customerName}</div>
         {doc.customerPhone && (
-          <div className="text-sm text-gray-600">Phone: {doc.customerPhone}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Phone: {doc.customerPhone}</div>
         )}
         {doc.customerGstin && (
-          <div className="text-xs font-mono text-purple-800">GSTIN: {doc.customerGstin}</div>
+          <div className="text-xs font-mono text-muted-foreground mt-0.5">
+            GSTIN: {doc.customerGstin}
+          </div>
         )}
       </div>
 
       {/* Items table */}
-      <div className="overflow-x-auto rounded-xl border border-purple-100">
+      <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full text-left text-xs">
-          <thead className="bg-purple-900 text-white">
+          <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono">
             <tr>
               <th className="p-2.5">Item</th>
               <th className="p-2.5 text-right">Purity</th>
               <th className="p-2.5 text-right">Gross</th>
               <th className="p-2.5 text-right">Net</th>
               <th className="p-2.5 text-right">Making</th>
-              <th className="p-2.5 text-right font-bold text-amber-300">Total</th>
+              <th className="p-2.5 text-right font-bold text-gold">Total</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-purple-50">
+          <tbody className="divide-y divide-border">
             {items.map((it, i) => (
-              <tr key={i} className="bg-white">
+              <tr key={i} className="bg-card">
                 <td className="p-2.5">
-                  <div className="font-semibold text-purple-950">{it.itemName}</div>
+                  <div className="font-semibold text-foreground">{it.itemName}</div>
                   {it.huid && (
-                    <div className="font-mono text-[9px] text-gray-400">HUID: {it.huid}</div>
+                    <div className="font-mono text-[9px] text-muted-foreground">
+                      HUID: {it.huid}
+                    </div>
                   )}
                   {it.barcode && (
-                    <div className="font-mono text-[9px] text-amber-600">Tag: {it.barcode}</div>
+                    <div className="font-mono text-[9px] text-gold">Tag: {it.barcode}</div>
                   )}
                 </td>
-                <td className="p-2.5 text-right font-mono">{it.purity}</td>
-                <td className="p-2.5 text-right font-mono">{grams(it.grossMg)}</td>
-                <td className="p-2.5 text-right font-mono">{grams(it.netMg)}</td>
-                <td className="p-2.5 text-right font-mono">{rs(it.makingChargesPaise)}</td>
-                <td className="p-2.5 text-right font-mono font-bold text-purple-950">
+                <td className="p-2.5 text-right font-mono text-foreground">{it.purity}</td>
+                <td className="p-2.5 text-right font-mono text-foreground">{grams(it.grossMg)}</td>
+                <td className="p-2.5 text-right font-mono text-foreground">{grams(it.netMg)}</td>
+                <td className="p-2.5 text-right font-mono text-foreground">
+                  {rs(it.makingChargesPaise)}
+                </td>
+                <td className="p-2.5 text-right font-mono font-bold text-gold">
                   {rs(it.lineTotalPaise)}
                 </td>
               </tr>
@@ -127,32 +126,32 @@ function InvoiceView({ doc, firm }: { doc: any; firm: any }) {
       </div>
 
       {/* Totals */}
-      <div className="rounded-xl bg-purple-950 p-4 text-white text-sm space-y-1.5 font-mono">
-        <div className="flex justify-between text-purple-200">
+      <div className="rounded-md bg-muted/30 border border-border p-4 text-foreground text-sm space-y-1.5 font-mono">
+        <div className="flex justify-between text-muted-foreground text-xs">
           <span>Subtotal</span>
-          <span>{rs(doc.subtotalPaise)}</span>
+          <span className="text-foreground">{rs(doc.subtotalPaise)}</span>
         </div>
         {hasGst && (
           <>
-            <div className="flex justify-between text-purple-300 text-xs">
+            <div className="flex justify-between text-muted-foreground text-xs">
               <span>CGST (1.5%)</span>
-              <span>{rs(doc.cgstPaise)}</span>
+              <span className="text-foreground">{rs(doc.cgstPaise)}</span>
             </div>
-            <div className="flex justify-between text-purple-300 text-xs">
+            <div className="flex justify-between text-muted-foreground text-xs">
               <span>SGST (1.5%)</span>
-              <span>{rs(doc.sgstPaise)}</span>
+              <span className="text-foreground">{rs(doc.sgstPaise)}</span>
             </div>
           </>
         )}
-        <div className="flex justify-between border-t border-amber-400/60 pt-2 text-base font-bold text-amber-300">
+        <div className="flex justify-between border-t border-border pt-2 text-base font-bold text-gold">
           <span>Grand Total</span>
           <span>{rs(doc.grandTotalPaise)}</span>
         </div>
-        <div className="flex justify-between text-emerald-400">
+        <div className="flex justify-between text-emerald-400 text-xs">
           <span>Amount Paid</span>
           <span>{rs(doc.paidPaise)}</span>
         </div>
-        <div className="flex justify-between text-rose-300 font-bold">
+        <div className="flex justify-between text-red-400 text-xs font-bold">
           <span>Balance Due</span>
           <span>{rs(doc.balancePaise)}</span>
         </div>
@@ -160,15 +159,15 @@ function InvoiceView({ doc, firm }: { doc: any; firm: any }) {
 
       {/* Payments */}
       {payments.length > 0 && (
-        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+        <div className="rounded-md border border-border bg-muted/20 p-4">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 font-mono">
             Payment Methods
           </div>
           <div className="space-y-1">
             {payments.map((p, i) => (
-              <div key={i} className="flex justify-between text-sm">
-                <span className="text-gray-600">{p.mode?.toUpperCase()}</span>
-                <span className="font-mono font-semibold">{rs(p.amountPaise)}</span>
+              <div key={i} className="flex justify-between text-xs">
+                <span className="text-muted-foreground uppercase">{p.mode}</span>
+                <span className="font-mono font-semibold text-foreground">{rs(p.amountPaise)}</span>
               </div>
             ))}
           </div>
@@ -184,27 +183,29 @@ function OrderView({ doc }: { doc: any }) {
   const items: any[] = doc.items ?? [];
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-purple-100 bg-purple-50/40 p-4 grid grid-cols-2 gap-3 text-sm">
+      <div className="rounded-md border border-border bg-muted/20 p-4 grid grid-cols-2 gap-3 text-xs">
         <div>
-          <div className="text-[11px] font-bold uppercase text-purple-700">Customer</div>
-          <div className="font-bold text-purple-950">{doc.customerName}</div>
-          {doc.customerPhone && <div className="text-gray-600">{doc.customerPhone}</div>}
+          <div className="text-[10px] font-bold uppercase text-gold font-mono">Customer</div>
+          <div className="font-bold text-foreground text-sm mt-0.5">{doc.customerName}</div>
+          {doc.customerPhone && (
+            <div className="text-muted-foreground mt-0.5">{doc.customerPhone}</div>
+          )}
         </div>
         <div>
-          <div className="text-[11px] font-bold uppercase text-purple-700">Delivery</div>
-          <div className="font-mono text-purple-950">
+          <div className="text-[10px] font-bold uppercase text-gold font-mono">Delivery</div>
+          <div className="font-mono text-foreground font-medium mt-0.5">
             {doc.deliveryDate ? fmtDate(doc.deliveryDate) : "—"}
           </div>
-          <div className="mt-1 inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 uppercase">
+          <div className="mt-1 inline-block rounded-md bg-gold/10 border border-gold/30 px-2 py-0.5 text-[10px] font-semibold text-gold uppercase">
             {doc.status ?? "pending"}
           </div>
         </div>
       </div>
 
       {items.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-purple-100">
+        <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-xs">
-            <thead className="bg-purple-900 text-white">
+            <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono">
               <tr>
                 <th className="p-2.5 text-left">Item</th>
                 <th className="p-2.5 text-right">Purity</th>
@@ -212,13 +213,17 @@ function OrderView({ doc }: { doc: any }) {
                 <th className="p-2.5 text-right">Making</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-purple-50">
+            <tbody className="divide-y divide-border">
               {items.map((it, i) => (
-                <tr key={i} className="bg-white">
-                  <td className="p-2.5 font-semibold">{it.itemName}</td>
-                  <td className="p-2.5 text-right font-mono">{it.purity ?? "—"}</td>
-                  <td className="p-2.5 text-right font-mono">{grams(it.grossMg ?? 0)}</td>
-                  <td className="p-2.5 text-right font-mono">{rs(it.makingChargesPaise ?? 0)}</td>
+                <tr key={i} className="bg-card">
+                  <td className="p-2.5 font-semibold text-foreground">{it.itemName}</td>
+                  <td className="p-2.5 text-right font-mono text-foreground">{it.purity ?? "—"}</td>
+                  <td className="p-2.5 text-right font-mono text-foreground">
+                    {grams(it.grossMg ?? 0)}
+                  </td>
+                  <td className="p-2.5 text-right font-mono text-foreground">
+                    {rs(it.makingChargesPaise ?? 0)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -227,9 +232,9 @@ function OrderView({ doc }: { doc: any }) {
       )}
 
       {doc.cashAdvancePaise > 0 && (
-        <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 flex justify-between text-sm">
-          <span className="text-emerald-700 font-semibold">Cash Advance Paid</span>
-          <span className="font-mono font-bold text-emerald-900">{rs(doc.cashAdvancePaise)}</span>
+        <div className="rounded-md bg-emerald-500/10 border border-emerald-500/30 p-4 flex justify-between text-xs">
+          <span className="text-emerald-400 font-semibold uppercase">Cash Advance Paid</span>
+          <span className="font-mono font-bold text-emerald-400">{rs(doc.cashAdvancePaise)}</span>
         </div>
       )}
     </div>
@@ -241,38 +246,42 @@ function OrderView({ doc }: { doc: any }) {
 function RepairView({ doc }: { doc: any }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-purple-100 bg-purple-50/40 p-4 space-y-2 text-sm">
+      <div className="rounded-md border border-border bg-muted/20 p-4 space-y-2 text-xs">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-[11px] font-bold uppercase text-purple-700">Customer</div>
-            <div className="font-bold text-purple-950">{doc.customerName}</div>
-            {doc.customerPhone && <div className="text-gray-600">{doc.customerPhone}</div>}
+            <div className="text-[10px] font-bold uppercase text-gold font-mono">Customer</div>
+            <div className="font-bold text-foreground text-sm mt-0.5">{doc.customerName}</div>
+            {doc.customerPhone && (
+              <div className="text-muted-foreground mt-0.5">{doc.customerPhone}</div>
+            )}
           </div>
           <div>
-            <div className="text-[11px] font-bold uppercase text-purple-700">Est. Delivery</div>
-            <div className="font-mono text-purple-950">
+            <div className="text-[10px] font-bold uppercase text-gold font-mono">Est. Delivery</div>
+            <div className="font-mono text-foreground font-medium mt-0.5">
               {doc.estimatedDelivery ? fmtDate(doc.estimatedDelivery) : "—"}
             </div>
           </div>
         </div>
         {doc.description && (
-          <div>
-            <div className="text-[11px] font-bold uppercase text-gray-500">Work Description</div>
-            <div className="mt-0.5 text-gray-700">{doc.description}</div>
+          <div className="border-t border-border/50 pt-2">
+            <div className="text-[10px] font-bold uppercase text-muted-foreground font-mono">
+              Work Description
+            </div>
+            <div className="mt-0.5 text-foreground">{doc.description}</div>
           </div>
         )}
       </div>
 
-      <div className="rounded-xl bg-purple-950 p-4 text-white font-mono text-sm space-y-1.5">
-        <div className="flex justify-between text-purple-200">
+      <div className="rounded-md bg-muted/30 border border-border p-4 text-foreground font-mono text-xs space-y-1.5">
+        <div className="flex justify-between text-muted-foreground">
           <span>Repair Charges</span>
-          <span>{rs(doc.repairChargesPaise ?? 0)}</span>
+          <span className="text-foreground">{rs(doc.repairChargesPaise ?? 0)}</span>
         </div>
         <div className="flex justify-between text-emerald-400">
           <span>Advance Paid</span>
           <span>{rs(doc.advancePaise ?? 0)}</span>
         </div>
-        <div className="flex justify-between border-t border-amber-400/60 pt-2 font-bold text-amber-300">
+        <div className="flex justify-between border-t border-border pt-2 font-bold text-gold text-sm">
           <span>Balance Due</span>
           <span>{rs((doc.repairChargesPaise ?? 0) - (doc.advancePaise ?? 0))}</span>
         </div>
@@ -287,43 +296,47 @@ function MfgBillView({ doc }: { doc: any }) {
   const items: any[] = doc.items ?? [];
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-purple-100 bg-purple-50/40 p-4 grid grid-cols-2 gap-3 text-sm">
+      <div className="rounded-md border border-border bg-muted/20 p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div>
-          <div className="text-[11px] font-bold uppercase text-purple-700">Karigar / Worker</div>
-          <div className="font-bold text-purple-950">
+          <div className="text-[10px] font-bold uppercase text-gold font-mono">
+            Karigar / Worker
+          </div>
+          <div className="font-bold text-foreground text-sm mt-0.5">
             {doc.karigarName ?? doc.workerName ?? "—"}
           </div>
         </div>
         <div>
-          <div className="text-[11px] font-bold uppercase text-purple-700">Gold Issued</div>
-          <div className="font-mono text-purple-950">{grams(doc.goldIssuedMg ?? 0)}</div>
+          <div className="text-[10px] font-bold uppercase text-gold font-mono">Gold Issued</div>
+          <div className="font-mono text-foreground mt-0.5">{grams(doc.goldIssuedMg ?? 0)}</div>
         </div>
         <div>
-          <div className="text-[11px] font-bold uppercase text-purple-700">Gold Received</div>
-          <div className="font-mono text-purple-950">{grams(doc.goldReceivedMg ?? 0)}</div>
+          <div className="text-[10px] font-bold uppercase text-gold font-mono">Gold Received</div>
+          <div className="font-mono text-foreground mt-0.5">{grams(doc.goldReceivedMg ?? 0)}</div>
         </div>
         <div>
-          <div className="text-[11px] font-bold uppercase text-purple-700">Wastage</div>
-          <div className="font-mono text-rose-600">{grams(doc.wastageMg ?? 0)}</div>
+          <div className="text-[10px] font-bold uppercase text-gold font-mono">Wastage</div>
+          <div className="font-mono text-red-400 mt-0.5">{grams(doc.wastageMg ?? 0)}</div>
         </div>
       </div>
 
       {items.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-purple-100">
+        <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-xs">
-            <thead className="bg-purple-900 text-white">
+            <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono">
               <tr>
                 <th className="p-2.5 text-left">Item</th>
                 <th className="p-2.5 text-right">Qty</th>
                 <th className="p-2.5 text-right">Net Wt</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-purple-50">
+            <tbody className="divide-y divide-border">
               {items.map((it, i) => (
-                <tr key={i} className="bg-white">
-                  <td className="p-2.5 font-semibold">{it.itemName}</td>
-                  <td className="p-2.5 text-right font-mono">{it.quantity ?? 1}</td>
-                  <td className="p-2.5 text-right font-mono">{grams(it.netMg ?? 0)}</td>
+                <tr key={i} className="bg-card">
+                  <td className="p-2.5 font-semibold text-foreground">{it.itemName}</td>
+                  <td className="p-2.5 text-right font-mono text-foreground">{it.quantity ?? 1}</td>
+                  <td className="p-2.5 text-right font-mono text-foreground">
+                    {grams(it.netMg ?? 0)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -397,27 +410,33 @@ function DocumentPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 print:bg-white">
+    <div className="min-h-screen bg-background text-foreground print:bg-white print:text-black">
       {/* Action bar — hidden on print */}
-      <div className="print:hidden sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
-        <div className="text-sm font-semibold text-gray-700">{label}</div>
+      <div className="print:hidden sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-card px-4 py-3 shadow-xs">
+        <div className="flex items-center gap-3">
+          <Logo className="h-6" />
+          <div className="h-4 w-px bg-border" />
+          <div className="text-xs font-semibold text-foreground font-mono">{label}</div>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={handlePrint}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 active:scale-95 transition-transform"
+            className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
           >
+            <Printer className="h-3.5 w-3.5" />
             Print
           </button>
           <button
             onClick={handleDownloadPdf}
-            className="rounded-lg bg-purple-700 px-4 py-1.5 text-sm font-semibold text-white hover:bg-purple-800 active:scale-95 transition-transform"
+            className="flex items-center gap-1.5 rounded-md bg-gold px-3.5 py-1.5 text-xs font-semibold text-black hover:bg-gold-dark transition-colors shadow-xs cursor-pointer"
           >
+            <Download className="h-3.5 w-3.5" />
             Download PDF
           </button>
         </div>
       </div>
       {pdfError && (
-        <div className="print:hidden border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <div className="print:hidden border-b border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">
           {pdfError}
         </div>
       )}
@@ -428,9 +447,9 @@ function DocumentPortal() {
         className="mx-auto max-w-2xl px-4 py-6 space-y-4 print:px-0 print:py-0 print:max-w-none"
       >
         {/* Firm header */}
-        <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 print:shadow-none print:border-none">
+        <div className="rounded-md bg-card border border-border shadow-xs p-6 print:shadow-none print:border-none">
           {/* Top accent */}
-          <div className="h-1.5 rounded-full bg-gradient-to-r from-purple-900 via-amber-500 to-purple-950 mb-4 print:rounded-none" />
+          <div className="h-1 rounded-full bg-gold mb-4 print:hidden" />
 
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
@@ -438,39 +457,39 @@ function DocumentPortal() {
                 <img
                   src={firm.logoUrl}
                   alt={firm.shopName}
-                  className="h-12 w-12 rounded-xl object-contain mb-2"
+                  className="h-12 w-12 rounded-md object-contain mb-2"
                 />
               )}
-              <h1 className="text-2xl font-serif font-black text-purple-950 leading-none">
+              <h1 className="text-2xl font-serif font-bold text-gold leading-none">
                 {firm.shopName}
               </h1>
               {firm.tagline && (
-                <p className="text-[10px] font-bold tracking-widest text-amber-600 uppercase mt-0.5">
+                <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase mt-1">
                   {firm.tagline}
                 </p>
               )}
-              <p className="text-xs text-gray-500 mt-1">{firm.address}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground mt-1">{firm.address}</p>
+              <p className="text-xs text-muted-foreground">
                 {firm.phone}
                 {firm.email ? ` · ${firm.email}` : ""}
               </p>
               {firm.gstin && (
-                <div className="mt-1 inline-block rounded border border-purple-100 bg-purple-50 px-2 py-0.5 font-mono text-[10px] font-bold text-purple-800 uppercase">
+                <div className="mt-1.5 inline-block rounded-md border border-gold/30 bg-gold/10 px-2 py-0.5 font-mono text-[10px] font-bold text-gold uppercase">
                   GSTIN: {firm.gstin}
                 </div>
               )}
             </div>
 
             <div className="text-right space-y-1">
-              <div className="inline-block rounded-lg bg-amber-500 px-3 py-1 text-xs font-bold text-purple-950 uppercase">
+              <div className="inline-block rounded-md bg-gold/15 border border-gold/30 px-3 py-1 text-xs font-bold text-gold uppercase">
                 {label}
               </div>
-              <div className="text-xs font-mono text-gray-600 mt-1">
-                No: <span className="font-bold text-gray-800">{docNo}</span>
+              <div className="text-xs font-mono text-muted-foreground mt-1">
+                No: <span className="font-bold text-foreground">{docNo}</span>
               </div>
               {docDate && (
-                <div className="text-xs font-mono text-gray-600">
-                  Date: <span className="font-bold text-gray-800">{docDate}</span>
+                <div className="text-xs font-mono text-muted-foreground">
+                  Date: <span className="font-bold text-foreground">{docDate}</span>
                 </div>
               )}
             </div>
@@ -478,7 +497,7 @@ function DocumentPortal() {
         </div>
 
         {/* Document body */}
-        <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-4 print:shadow-none print:border-none print:p-0">
+        <div className="rounded-md bg-card border border-border shadow-xs p-4 print:shadow-none print:border-none print:p-0">
           {(docType === "invoice" || docType === "estimate") && (
             <InvoiceView doc={doc} firm={firm} />
           )}
@@ -489,27 +508,27 @@ function DocumentPortal() {
 
         {/* Terms / footer */}
         {firm.terms && (
-          <div className="rounded-xl border border-gray-100 bg-white p-4 text-[10px] text-gray-400 print:shadow-none">
-            <div className="font-bold uppercase tracking-wider text-gray-500 mb-1">
+          <div className="rounded-md border border-border bg-card p-4 text-[10px] text-muted-foreground print:shadow-none">
+            <div className="font-bold uppercase tracking-wider text-muted-foreground mb-1 font-mono">
               Terms &amp; Conditions
             </div>
-            <p>{firm.terms}</p>
+            <p className="leading-relaxed">{firm.terms}</p>
           </div>
         )}
 
         {/* Expiry notice — hidden on print */}
-        <div className="print:hidden text-center text-xs text-gray-400 pb-6">
-          Document shared by <span className="font-semibold text-gray-600">{firm.shopName}</span>
+        <div className="print:hidden text-center text-xs text-muted-foreground pb-6">
+          Document shared by <span className="font-semibold text-foreground">{firm.shopName}</span>
           {" · "}
           Link valid until{" "}
-          <span className="font-semibold">
+          <span className="font-semibold text-foreground">
             {new Date(share.expires_at).toLocaleDateString("en-IN", { dateStyle: "medium" })}
           </span>
         </div>
       </div>
 
       {/* Print-only footer */}
-      <div className="hidden print:block text-center text-[9px] text-gray-400 pt-4 border-t border-gray-200">
+      <div className="hidden print:block text-center text-[9px] text-muted-foreground pt-4 border-t border-border">
         {firm.footerLine || `Thank you for shopping at ${firm.shopName}`}
       </div>
     </div>

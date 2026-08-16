@@ -212,7 +212,7 @@ function AuditorWorkspacePage() {
               </div>
 
               {verification && (
-                <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2 text-xs">
+                <div className="rounded-md border border-border bg-muted/20 p-4 space-y-2 text-xs">
                   <div className="flex justify-between font-mono">
                     <span className="text-muted-foreground">Checked:</span>
                     <span className="font-semibold">{verification.entriesChecked} entries</span>
@@ -272,7 +272,7 @@ function AuditorWorkspacePage() {
                   {logs.map((log) => (
                     <div
                       key={log.id}
-                      className="rounded-xl border border-border p-3 space-y-2 text-xs bg-muted/5"
+                      className="rounded-md border border-border p-3 space-y-2 text-xs bg-muted/5"
                     >
                       <div className="flex justify-between items-center flex-wrap gap-2">
                         <Badge

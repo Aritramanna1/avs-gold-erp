@@ -1,5 +1,6 @@
 import { getCloudDataClient as getRawSupabaseClient } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
+import { redactWaConfig } from "@/lib/security/client-secret-redaction";
 
 let cachedProfile: { firm_id: string; branch_id: string | null } | null = null;
 
@@ -301,7 +302,6 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
       smtp_host: rawPayload.smtpHost ?? null,
       smtp_port: rawPayload.smtpPort ?? null,
       smtp_user: rawPayload.smtpUser ?? null,
-      smtp_password: rawPayload.smtpPassword ?? null,
       smtp_from_name: rawPayload.smtpFromName ?? null,
       smtp_from_email: rawPayload.smtpFromEmail ?? null,
       wa_phone_number: rawPayload.waPhoneNumber ?? null,
@@ -313,7 +313,11 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
       receipt_template_id: rawPayload.receiptTemplateId ?? null,
       logo_url: rawPayload.logoUrl ?? null,
       logo_storage_path: rawPayload.logoStoragePath ?? null,
-      wa_config: rawPayload.wa_config ?? rawPayload.waConfig ?? null,
+      wa_config: (() => {
+        const raw = rawPayload.wa_config ?? rawPayload.waConfig ?? null;
+        if (!raw || typeof raw !== "object") return raw;
+        return redactWaConfig(raw as Record<string, unknown>);
+      })(),
       wa_automations: rawPayload.wa_automations ?? rawPayload.waAutomations ?? null,
       gold_rate_24k_override_paise: rawPayload.goldRate24KOverridePaise ?? null,
       gold_rate_22k_override_paise: rawPayload.goldRate22KOverridePaise ?? null,

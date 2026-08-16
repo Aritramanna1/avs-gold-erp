@@ -115,7 +115,7 @@ function DailyGoldFlowPage() {
 
       <div className="grid sm:grid-cols-5 gap-3 mb-6">
         {BUCKETS.map((b) => (
-          <div key={b} className="rounded-2xl border border-border bg-card p-4">
+          <div key={b} className="rounded-md border border-border bg-card p-4">
             <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
               {BUCKET_LABELS[b]}
             </div>
@@ -124,7 +124,7 @@ function DailyGoldFlowPage() {
         ))}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

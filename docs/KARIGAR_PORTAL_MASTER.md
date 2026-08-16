@@ -17,8 +17,9 @@ Artisans are invited directly from **Karigar 360** in the main ERP:
 1. **Invite from ERP:** Workshop supervisor or CEO clicks `[Invite to Karigar Portal]`.
 2. **Invitation Link:** Dispatched via Email or WhatsApp.
 3. **Password Setup:** Karigar opens link on mobile browser and creates a secure password.
-4. **Party Binding:** The account maps strictly to their `karigar_id` (Party record).
-5. **Login Options:** Supports standard Email/Phone + Password login, with optional OTP support where configured.
+4. **Party Binding:** Auth account maps to `portal_identities` + `portal_party_links` (strict tenant + party scope). Phone-only global matching is prohibited.
+
+> **Security invariant:** A portal identity belongs to one authorized tenant context and one or more explicitly linked Party relationships. No portal request may escape that authorization boundary.
 
 ---
 

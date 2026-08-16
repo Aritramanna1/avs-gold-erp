@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Printer, X, RotateCcw } from "lucide-react";
+import { Printer, X, RotateCcw, Download } from "lucide-react";
 import {
   PRINT_SIZE_LABELS,
   ARCHIVAL_SIZES,
@@ -31,7 +31,7 @@ import {
   type PrintOrientation,
 } from "@/components/print/PrintLayout";
 import { usePrintSetup, type PrintMargins } from "@/lib/print-setup-store";
-import { serializeWithInlinedImages, printHtmlInWebBrowser } from "@/lib/print-document";
+import { printHtmlInWebBrowser, buildPrintableHtmlFromDocument } from "@/lib/print-document";
 import { listAvailablePrinters, type PrinterInfo } from "@/lib/print/print-queue";
 
 // Every triggerPrint(url, ...) call site across the app (~30 of them, in
@@ -82,6 +82,7 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
   // from the URL. Defaults to "a4" only until detection runs.
   const [printSize, setPrintSize] = useState<PrintSize>("a4");
   const [iframeLoading, setIframeLoading] = useState(true);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Desktop-only: real printer selection + silent printing via Electron's
@@ -133,23 +134,28 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
   const handlePrint = async () => {
     if (!iframeRef.current) return;
     const doc = iframeRef.current.contentDocument;
-    if (doc) {
-      let attempts = 0;
-      while (
-        doc.documentElement.getAttribute("data-print-ready") !== "true" &&
-        doc.querySelector('[data-testid="print-layout-root"]') &&
-        attempts < 20
-      ) {
-        await new Promise((r) => setTimeout(r, 100));
-        attempts++;
-      }
+    if (!doc) return;
+
+    applyPageOverride();
+
+    let attempts = 0;
+    while (
+      doc.documentElement.getAttribute("data-print-ready") !== "true" &&
+      doc.querySelector('[data-testid="print-layout-root"]') &&
+      attempts < 20
+    ) {
+      await new Promise((r) => setTimeout(r, 100));
+      attempts++;
     }
 
-    if (isDesktop && iframeRef.current.contentDocument) {
+    const html = await buildPrintableHtmlFromDocument(doc);
+    if (!html) {
+      window.print();
+      return;
+    }
+
+    if (isDesktop) {
       try {
-        const html = await serializeWithInlinedImages(
-          iframeRef.current.contentDocument.documentElement,
-        );
         const desktop = (
           window as unknown as {
             mtjDesktop: {
@@ -159,18 +165,6 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
             };
           }
         ).mtjDesktop;
-        // Page setup rides along IN THE HTML: applyPageOverride() injects the
-        // `@page { size; margin }` rule into this very document, and the
-        // serializer above carries its <head> across. So the print window is
-        // governed by exactly the CSS the preview is showing — preview and
-        // paper cannot disagree.
-        //
-        // We therefore do NOT also pass orientation/margins over IPC: doing so
-        // would apply them a second time, at a different layer, and the two
-        // could contradict each other. (The old code passed `orientation` /
-        // `marginMm`, names no handler reads — so both controls were silently
-        // dropped. Hence "dummy controls".) `landscape` is still sent because
-        // Chromium needs the print job itself oriented to match the @page rule.
         const result = await desktop.print.printHtml(html, {
           silent: silentPrint,
           printerName: selectedPrinter || undefined,
@@ -186,19 +180,20 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
       }
     }
 
-    // Web Browser Mode (SaaS platform or standard web browser)
+    printHtmlInWebBrowser(html);
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!iframeRef.current?.contentDocument) return;
+    setDownloadingPdf(true);
     try {
-      if (iframeRef.current.contentDocument?.documentElement) {
-        const html = await serializeWithInlinedImages(
-          iframeRef.current.contentDocument.documentElement,
-        );
-        printHtmlInWebBrowser(html);
-      } else {
-        window.print();
-      }
-    } catch (err) {
-      console.error("Direct iframe print failed, falling back to window print:", err);
-      window.print();
+      applyPageOverride();
+      const html = await buildPrintableHtmlFromDocument(iframeRef.current.contentDocument);
+      if (!html) return;
+      // Opens the browser print dialog — user can choose "Save as PDF".
+      printHtmlInWebBrowser(html);
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -467,6 +462,17 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
         <DialogFooter className="pt-2 border-t flex flex-row items-center justify-end gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={onClose} className="gap-1.5 text-xs">
             <X className="h-4 w-4" /> Close
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf || iframeLoading}
+            className="gap-1.5 text-xs"
+            data-testid="print-preview-download-pdf"
+          >
+            <Download className="h-4 w-4" />
+            {downloadingPdf ? "Preparing…" : "Save as PDF"}
           </Button>
           <Button
             size="sm"

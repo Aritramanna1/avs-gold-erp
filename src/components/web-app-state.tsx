@@ -24,7 +24,7 @@ export function WebAppState({
   tone?: StateTone;
 }) {
   return (
-    <div className={`rounded-lg border border-dashed p-8 text-center ${toneClasses[tone]}`}>
+    <div className={`rounded-sm border border-dashed p-6 md:p-8 text-center ${toneClasses[tone]}`}>
       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-current">
         {icon ?? <AlertCircle className="h-5 w-5" />}
       </div>

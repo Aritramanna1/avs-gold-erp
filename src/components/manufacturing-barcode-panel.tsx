@@ -106,7 +106,7 @@ export function ManufacturingBarcodePanel({
 
   return (
     <div
-      className="rounded-2xl border border-border bg-card p-5"
+      className="rounded-md border border-border bg-card p-5"
       data-testid="manufacturing-barcode-panel"
     >
       <div className="flex items-center gap-2 mb-3">

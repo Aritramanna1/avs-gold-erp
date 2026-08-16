@@ -56,7 +56,7 @@ export function DataTableVirtual<T>({
   const gridTemplate = columns.map((c) => c.width ?? "1fr").join(" ");
 
   return (
-    <div className="rounded-xl border border-border overflow-hidden">
+    <div className="rounded-md border border-border overflow-hidden">
       {/* Header */}
       <div
         className="grid bg-muted/30 border-b border-border"

@@ -31,6 +31,7 @@ export interface AutomationRule {
   label: string;
   enabled: boolean;
   channels: Array<"email" | "whatsapp">;
+  emailFallbackOnWhatsAppFailure?: boolean;
 }
 
 const DEFAULT_RULES: AutomationRule[] = [

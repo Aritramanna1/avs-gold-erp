@@ -376,7 +376,7 @@ function DeliverySummaryPage() {
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-md border border-border bg-card p-5">
         <div className="flex items-center gap-2 mb-3">
           <Truck className="h-4 w-4 text-gold" />
           <h3 className="font-serif text-lg text-gold">Daily Delivery Summary — by Dealer</h3>
@@ -431,7 +431,7 @@ function DeliverySummaryPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-md border border-border bg-card p-5">
         <div className="flex items-center gap-2 mb-3">
           <Truck className="h-4 w-4 text-gold" />
           <h3 className="font-serif text-lg text-gold">Delivery Person Summary</h3>

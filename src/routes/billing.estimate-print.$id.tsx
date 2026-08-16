@@ -3,6 +3,7 @@ import { Loader2, Printer, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { paiseToRupees } from "@/lib/billing-store";
 import { useBillingDocumentById } from "@/lib/use-billing-document";
+import { printDocument } from "@/lib/print-document";
 
 export const Route = createFileRoute("/billing/estimate-print/$id")({
   head: () => ({ meta: [{ title: "Estimate Print · AVS Gold ERP" }] }),
@@ -38,11 +39,14 @@ function EstimatePrint() {
         <Link to="/billing/estimates/$id" params={{ id }}>
           <Button variant="outline">Back</Button>
         </Link>
-        <Button onClick={() => window.print()} className="gap-2">
+        <Button onClick={() => void printDocument("Estimate", "Estimate")} className="gap-2">
           <Printer className="h-4 w-4" /> Print
         </Button>
       </div>
-      <article className="rounded border border-border bg-white p-8 text-black print:border-0">
+      <article
+        data-testid="print-layout-root"
+        className="rounded border border-border bg-white p-8 text-black print:border-0"
+      >
         <h1 className="text-2xl font-semibold">Estimate / Quotation</h1>
         <p className="mt-1 font-mono text-sm">{estimate.estimateNo}</p>
         <div className="mt-6 grid grid-cols-2 gap-4 text-sm">

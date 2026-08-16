@@ -21,6 +21,11 @@
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 import type { FirmProfile } from "@/lib/settings-store";
+import {
+  resolveFirmAssetPreviewUrl,
+  shouldRenderAuthorizedSignature,
+  shouldRenderPrintStamp,
+} from "@/lib/print-engine/print-branding";
 import type {
   BalanceCardSectionConfig,
   BilledToStampSectionConfig,
@@ -111,7 +116,7 @@ export function addPremiumHeader(
   y: number,
 ): number {
   const { margin, colR } = geo;
-  const badgeTitle = formatFieldValue(getPath(data.fields, config.badgeTitlePath));
+  const badgeTitle = formatFieldValue(getPath(data.fields, config.badgeTitlePath ?? ""));
   const dateLabel = data.createdAt
     ? new Date(data.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })
     : "";
@@ -536,28 +541,54 @@ export function addBilledToStamp(
   );
 }
 
-export function addSignatureBlock(
+export async function addSignatureBlock(
   doc: jsPDF,
   geo: Geometry,
   config: SignatureBlockSectionConfig,
   data: PrintDocumentData,
   firm: FirmProfile,
   y: number,
-): number {
+): Promise<number> {
   if (!isVisible(config.showIf, data.flags)) return y;
   const { margin, colR } = geo;
   const left = config.leftLabel || firm.signatureLabelLeft || "Customer Signature";
   const right = config.rightLabel || firm.signatureLabelRight || "Authorised Signatory";
-  const ry = y + 15;
+  let ry = y + 8;
+
+  if (shouldRenderPrintStamp(firm, config.showStamp)) {
+    const stampUrl = await resolveFirmAssetPreviewUrl(firm.stampImageStoragePath);
+    if (stampUrl) {
+      try {
+        doc.addImage(stampUrl, "PNG", colR - 58, ry, 24, 24);
+        ry += 26;
+      } catch {
+        /* best-effort */
+      }
+    }
+  }
+
+  if (shouldRenderAuthorizedSignature(firm, true)) {
+    const sigUrl = await resolveFirmAssetPreviewUrl(firm.authorizedSignatureStoragePath);
+    if (sigUrl) {
+      try {
+        doc.addImage(sigUrl, "PNG", colR - 62, ry, 30, 12);
+        ry += 14;
+      } catch {
+        /* best-effort */
+      }
+    }
+  }
+
+  const lineY = ry + 4;
   doc.setDrawColor(150, 140, 130);
   doc.setLineWidth(0.3);
-  doc.line(margin, ry, margin + 60, ry);
-  doc.line(colR - 60, ry, colR, ry);
+  doc.line(margin, lineY, margin + 60, lineY);
+  doc.line(colR - 60, lineY, colR, lineY);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text(left, margin + 30, ry + 4, { align: "center" });
-  doc.text(right, colR - 30, ry + 4, { align: "center" });
-  return ry + 10;
+  doc.text(left, margin + 30, lineY + 4, { align: "center" });
+  doc.text(right, colR - 30, lineY + 4, { align: "center" });
+  return lineY + 10;
 }
 
 export async function addQr(

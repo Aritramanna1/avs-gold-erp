@@ -31,6 +31,7 @@ import { CommLogCard } from "@/components/comm-log-card";
 import { ReferenceNotesPanel } from "@/components/reference-notes/ReferenceNotesPanel";
 import {
   ArrowLeft,
+  BadgeCheck,
   BookOpen,
   CheckCircle2,
   Hammer,
@@ -39,6 +40,7 @@ import {
   Receipt,
   RotateCcw,
   Scale,
+  ShieldCheck,
   ShoppingBag,
   Trash2,
   User as UserIcon,
@@ -59,6 +61,7 @@ const STATUS_TONE: Record<JobStatus, string> = {
   in_progress: "bg-amber-500 text-black border-amber-400",
   work_received: "bg-cyan-600 text-white border-cyan-500",
   rework: "bg-red-600 text-white border-red-500",
+  hallmark_pending: "bg-purple-600 text-white border-purple-500",
   ready_for_billing: "bg-emerald-600 text-white border-emerald-500",
   closed: "bg-green-700 text-white border-green-600",
 
@@ -75,11 +78,17 @@ function JobCardDetail() {
   const update = useJobCards((s) => s.update);
   const remove = useJobCards((s) => s.remove);
   const appendTimeline = useJobCards((s) => s.appendTimeline);
+  const passQc = useJobCards((s) => s.passQc);
+  const setHallmark = useJobCards((s) => s.setHallmark);
   const people = usePeople((s) => s.people);
 
   const [reworkOpen, setReworkOpen] = useState(false);
   const [reworkNote, setReworkNote] = useState("");
   const [receiveOpen, setReceiveOpen] = useState(false);
+  const [hallmarkOpen, setHallmarkOpen] = useState(false);
+  const [huid, setHuid] = useState("");
+  const [hallmarkCentre, setHallmarkCentre] = useState("");
+  const [hallmarkNotes, setHallmarkNotes] = useState("");
 
   // Print Dialog States
 
@@ -116,6 +125,19 @@ function JobCardDetail() {
     });
     setReworkNote("");
     setReworkOpen(false);
+  }
+
+  function confirmHallmark(skip: boolean) {
+    setHallmark(job!.id, {
+      huid: skip ? "" : huid.trim(),
+      centre: hallmarkCentre.trim() || undefined,
+      notes: hallmarkNotes.trim() || undefined,
+      skipped: skip,
+    });
+    setHuid("");
+    setHallmarkCentre("");
+    setHallmarkNotes("");
+    setHallmarkOpen(false);
   }
 
   return (
@@ -162,7 +184,7 @@ function JobCardDetail() {
                 <PackageCheck className="h-4 w-4" /> Receive Work
               </Button>
             )}
-            {job.workReceipt && (
+            {job.workReceipt && (job.status === "ready_for_billing" || job.status === "closed") && (
               <Link to="/billing/new" search={{ orderId: job.orderId, jobId: job.id }}>
                 <Button className="gap-2">
                   <Receipt className="h-4 w-4" /> Go to Billing
@@ -174,7 +196,7 @@ function JobCardDetail() {
       />
 
       {/* Breadcrumb */}
-      <div className="rounded-2xl border border-border bg-card p-4 mb-6">
+      <div className="rounded-md border border-border bg-card p-4 mb-6">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {breadcrumb.map((b, i) => (
             <div key={b} className="flex items-center gap-2">
@@ -213,19 +235,39 @@ function JobCardDetail() {
           <Badge variant="outline" className={STATUS_TONE[job.status]}>
             {JOB_STATUS_LABELS[job.status]}
           </Badge>
-          {job.status !== "rework" && (
+          {job.status === "work_received" && (
             <Button
               size="sm"
-              variant="outline"
-              className="gap-1 text-red-300 border-red-500/30"
-              onClick={() => {
-                setReworkOpen(true);
-                setReworkNote("");
-              }}
+              className="gap-1 bg-purple-600 hover:bg-purple-500 text-white"
+              onClick={() => passQc(job!.id)}
             >
-              <RotateCcw className="h-3 w-3" /> Mark as Rework
+              <ShieldCheck className="h-3 w-3" /> QC Passed → Hallmark Pending
             </Button>
           )}
+          {job.status === "hallmark_pending" && (
+            <Button
+              size="sm"
+              className="gap-1 bg-purple-600 hover:bg-purple-500 text-white"
+              onClick={() => setHallmarkOpen(true)}
+            >
+              <BadgeCheck className="h-3 w-3" /> Record Hallmark (HUID)
+            </Button>
+          )}
+          {job.status !== "rework" &&
+            job.status !== "ready_for_billing" &&
+            job.status !== "closed" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1 text-red-300 border-red-500/30"
+                onClick={() => {
+                  setReworkOpen(true);
+                  setReworkNote("");
+                }}
+              >
+                <RotateCcw className="h-3 w-3" /> Mark as Rework
+              </Button>
+            )}
           <Badge variant="outline" className="ml-auto text-[10px] uppercase tracking-wider">
             Priority: {job.priority}
           </Badge>
@@ -397,6 +439,34 @@ function JobCardDetail() {
             </Section>
           )}
 
+          {/* Hallmark record */}
+          {job.hallmarkRecord && (
+            <Section title="Hallmark" icon={BadgeCheck}>
+              {job.hallmarkRecord.skipped ? (
+                <div className="text-sm text-muted-foreground">
+                  Hallmarking skipped for this job.
+                </div>
+              ) : (
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">HUID</span>
+                    <span className="font-mono">{job.hallmarkRecord.huid}</span>
+                  </div>
+                  {job.hallmarkRecord.centre && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Centre</span>
+                      <span>{job.hallmarkRecord.centre}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Hallmarked</span>
+                    <span>{new Date(job.hallmarkRecord.hallmarkedAt).toLocaleString("en-IN")}</span>
+                  </div>
+                </div>
+              )}
+            </Section>
+          )}
+
           {/* Next actions */}
           <Section title="Next actions">
             <div className="space-y-2 text-sm">
@@ -509,6 +579,51 @@ function JobCardDetail() {
         </DialogContent>
       </Dialog>
 
+      {/* Hallmark dialog */}
+      <Dialog open={hallmarkOpen} onOpenChange={(o) => !o && setHallmarkOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record Hallmark</DialogTitle>
+            <DialogDescription>
+              Enter the HUID engraved on the piece, or skip hallmarking if this item is exempt.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground">HUID</label>
+              <input
+                className="w-full mt-1 rounded-md border border-border bg-background px-3 py-2 text-sm font-mono"
+                value={huid}
+                onChange={(e) => setHuid(e.target.value)}
+                placeholder="e.g. AZ1B2C3D"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Hallmarking Centre (optional)</label>
+              <input
+                className="w-full mt-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={hallmarkCentre}
+                onChange={(e) => setHallmarkCentre(e.target.value)}
+              />
+            </div>
+            <Textarea
+              rows={2}
+              value={hallmarkNotes}
+              onChange={(e) => setHallmarkNotes(e.target.value)}
+              placeholder="Notes (optional)"
+            />
+          </div>
+          <DialogFooter className="flex-wrap gap-2">
+            <Button variant="ghost" onClick={() => confirmHallmark(true)}>
+              Skip Hallmarking
+            </Button>
+            <Button onClick={() => confirmHallmark(false)} disabled={!huid.trim()}>
+              Confirm Hallmark
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AttachmentsSection
         title="Workshop Evidence"
         description="Shop-floor audit photos — kept separate from the printable Reference Images above and never included on the Job Card print by default."
@@ -543,7 +658,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <div className="flex items-center gap-2 mb-3">
         {Icon && <Icon className="h-4 w-4 text-gold" />}
         <h3 className="font-serif text-lg text-gold">{title}</h3>

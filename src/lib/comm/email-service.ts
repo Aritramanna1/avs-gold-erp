@@ -1,8 +1,7 @@
 /**
- * Ornexa Centralized Email Service
- * Manages email template rendering, async background dispatch, delivery tracking, and provider abstraction.
+ * Central Email Service — Supabase-backed async dispatch via send-email edge function.
+ * Non-blocking: never rolls back business transactions on email failure.
  */
-
 import {
   renderEmailTemplate,
   type EmailTemplateType,
@@ -13,128 +12,98 @@ import { dataProvider as supabase } from "@/lib/providers/data-provider";
 export type EmailDeliveryStatus =
   "queued" | "sending" | "sent" | "delivered" | "failed" | "retrying";
 
-export interface QueuedEmail {
-  id: string;
-  recipientEmail: string;
-  recipientName: string;
-  templateType: EmailTemplateType;
-  subject: string;
-  status: EmailDeliveryStatus;
-  retryCount: number;
-  maxRetries: number;
-  errorMessage?: string;
-  sentAt?: string;
-  createdAt: string;
+export interface SendTemplateEmailOptions {
+  maxRetries?: number;
+  branchId?: string;
+  jobContext?: {
+    eventKey?: string;
+    referenceType?: string;
+    referenceId?: string;
+    branchId?: string;
+  };
 }
 
-const EMAIL_QUEUE_KEY = "ornexa_email_queue";
-
 export class CentralEmailService {
-  private queue: QueuedEmail[] = [];
-
-  constructor() {
-    this.loadQueue();
-  }
-
-  private loadQueue() {
-    try {
-      const raw = localStorage.getItem(EMAIL_QUEUE_KEY);
-      if (raw) {
-        this.queue = JSON.parse(raw);
-      }
-    } catch {
-      this.queue = [];
-    }
-  }
-
-  private saveQueue() {
-    try {
-      localStorage.setItem(EMAIL_QUEUE_KEY, JSON.stringify(this.queue.slice(-100)));
-    } catch {
-      // Ignore
-    }
-  }
-
-  /**
-   * Dispatches an email asynchronously without blocking caller ERP transactions.
-   */
   public async sendTemplateEmail(
     templateType: EmailTemplateType,
     vars: EmailTemplateVariables,
-    options: { maxRetries?: number } = {},
-  ): Promise<{ success: boolean; emailId: string }> {
+    options: SendTemplateEmailOptions = {},
+  ): Promise<{ success: boolean; emailId: string; error?: string }> {
     const rendered = renderEmailTemplate(templateType, vars);
-    const emailId = `eml_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const emailId = `eml_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    const queuedItem: QueuedEmail = {
-      id: emailId,
-      recipientEmail: vars.recipientEmail,
-      recipientName: vars.recipientName,
-      templateType,
-      subject: rendered.subject,
-      status: "queued",
-      retryCount: 0,
-      maxRetries: options.maxRetries ?? 3,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.queue.unshift(queuedItem);
-    this.saveQueue();
-
-    // Background asynchronous send
-    setTimeout(() => {
-      void this.processEmail(queuedItem, rendered.html, rendered.text);
-    }, 100);
+    // Process async — caller is not blocked
+    void this.dispatchEmail(emailId, templateType, rendered, vars, options);
 
     return { success: true, emailId };
   }
 
-  private async processEmail(item: QueuedEmail, html: string, text: string) {
-    item.status = "sending";
-    this.saveQueue();
+  private async dispatchEmail(
+    emailId: string,
+    templateType: EmailTemplateType,
+    rendered: { subject: string; html: string; text: string },
+    vars: EmailTemplateVariables,
+    options: SendTemplateEmailOptions,
+    attempt = 0,
+  ): Promise<void> {
+    const maxRetries = options.maxRetries ?? 3;
 
     try {
-      // Attempt dispatch via Supabase Edge Function or Provider API
-      try {
-        const { error } = await (supabase as any).functions.invoke("send-email", {
-          body: {
-            to: item.recipientEmail,
-            subject: item.subject,
-            html,
-            text,
+      const { data, error } = await (
+        supabase as unknown as {
+          functions: {
+            invoke: (
+              name: string,
+              opts: { body: Record<string, unknown> },
+            ) => Promise<{
+              data: { error?: string; messageId?: string } | null;
+              error: { message: string } | null;
+            }>;
+          };
+        }
+      ).functions.invoke("send-email", {
+        body: {
+          to: vars.recipientEmail,
+          subject: rendered.subject,
+          htmlBody: rendered.html,
+          textBody: rendered.text,
+          branchId: options.branchId ?? options.jobContext?.branchId,
+          metadata: {
+            emailId,
+            templateType,
+            eventKey: options.jobContext?.eventKey,
+            referenceType: options.jobContext?.referenceType,
+            referenceId: options.jobContext?.referenceId,
           },
-        });
-        if (error) throw error;
-      } catch (err: any) {
-        // If edge function not configured, simulate successful SMTP delivery in dev/test
-        console.info(`[EmailService] Dispatched "${item.subject}" to ${item.recipientEmail}`);
-      }
+        },
+      });
 
-      item.status = "sent";
-      item.sentAt = new Date().toISOString();
-      this.saveQueue();
-    } catch (error: any) {
-      const errStr = error?.message || "Delivery failed";
-      if (item.retryCount < item.maxRetries) {
-        item.status = "retrying";
-        item.retryCount += 1;
-        item.errorMessage = errStr;
-        this.saveQueue();
+      if (error) throw new Error(error.message ?? "Email dispatch failed");
+      if (data?.error) throw new Error(String(data.error));
 
-        // Retry in 5 seconds
+      // Log to email_outbox for delivery tracking
+      void supabase.from("email_outbox" as never).insert({
+        recipient_email: vars.recipientEmail,
+        subject: rendered.subject,
+        template_key: templateType,
+        event_key: options.jobContext?.eventKey ?? null,
+        entity_type: options.jobContext?.referenceType ?? null,
+        entity_id: options.jobContext?.referenceId ?? null,
+        status: "sent",
+        external_message_id: data?.messageId ?? emailId,
+        sent_at: new Date().toISOString(),
+      } as never);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Email delivery failed";
+      if (attempt < maxRetries) {
+        const delay = Math.min(30_000, 2_000 * 2 ** attempt);
         setTimeout(() => {
-          void this.processEmail(item, html, text);
-        }, 5000);
-      } else {
-        item.status = "failed";
-        item.errorMessage = errStr;
-        this.saveQueue();
+          void this.dispatchEmail(emailId, templateType, rendered, vars, options, attempt + 1);
+        }, delay);
+        return;
       }
+      console.error(`[EmailService] Failed after ${maxRetries} retries:`, message);
     }
-  }
-
-  public getRecentEmails(limit: number = 25): QueuedEmail[] {
-    return this.queue.slice(0, limit);
   }
 }
 

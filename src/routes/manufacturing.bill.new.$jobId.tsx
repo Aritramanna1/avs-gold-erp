@@ -749,7 +749,7 @@ function NewMfgBill() {
         </div>
 
         {/* Gold Summary */}
-        <div className="mt-4 rounded-xl bg-muted/30 border border-border p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="mt-4 rounded-md bg-muted/30 border border-border p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
           <SummaryTile
             label="Total Issued"
             value={`${MG_TO_G(bill.totalGoldIssuedFineMg)} g`}
@@ -1042,7 +1042,7 @@ function NewMfgBill() {
         </div>
 
         {/* Karigar closing balance */}
-        <div className="mt-5 rounded-xl bg-muted/30 border border-border p-4 space-y-2">
+        <div className="mt-5 rounded-md bg-muted/30 border border-border p-4 space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Opening Balance (LB):</span>
             <span className="font-mono">{MG_TO_G(bill.openingBalanceMg)} g</span>
@@ -1105,7 +1105,7 @@ function NewMfgBill() {
       </Card>
 
       {/* ── Workflow preview ──────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs space-y-2">
+      <div className="rounded-md border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs space-y-2">
         <p className="font-bold text-emerald-400 text-sm">
           On Finalise, the following will happen automatically:
         </p>
@@ -1146,7 +1146,7 @@ function NewMfgBill() {
       {/* ── Finalise Result ───────────────────────────────────────────────── */}
       {finaliseResult && (
         <div
-          className={`rounded-xl border p-4 text-sm ${finaliseResult.ok ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/30 bg-destructive/5"}`}
+          className={`rounded-md border p-4 text-sm ${finaliseResult.ok ? "border-emerald-500/30 bg-emerald-500/5" : "border-destructive/30 bg-destructive/5"}`}
         >
           <p className="font-bold mb-2">
             {finaliseResult.ok ? "✓ Finalised successfully" : "Finalisation failed"}
@@ -1200,7 +1200,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+    <div className="rounded-md border border-border bg-card p-5 space-y-4">
       <div className="flex items-center gap-2 border-b border-border pb-3">
         <Icon className={`h-4 w-4 ${color}`} />
         <h3 className="font-bold text-sm uppercase tracking-wider">{title}</h3>
@@ -1356,7 +1356,7 @@ function GoldPositionBar({
   const settled = outstandingMg === 0;
   const weOwe = outstandingMg > 0; // positive closing balance = karigar is owed gold (jama)
   return (
-    <div className="rounded-2xl border-2 border-gold/40 bg-gold/5 p-4 md:p-5">
+    <div className="rounded-md border-2 border-gold/40 bg-gold/5 p-4 md:p-5">
       <div className="text-[10px] uppercase tracking-wider font-bold text-gold mb-3">
         Gold Position — Primary Accounting Unit
       </div>

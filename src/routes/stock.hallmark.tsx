@@ -56,6 +56,8 @@ function HallmarkPage() {
       <PageHeader
         title="Hallmark Lifecycle"
         subtitle="Track batches sent to the assay/hallmarking center through to HUID receipt or rejection."
+        backTo="/stock"
+        backLabel="Back to Stock"
         actions={
           <Button onClick={() => setSending(true)} className="gap-2">
             <Plus className="h-4 w-4" /> Send Batch
@@ -65,12 +67,12 @@ function HallmarkPage() {
 
       <div className="grid gap-4">
         {branchBatches.length === 0 && (
-          <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
+          <div className="rounded-md border border-border bg-card p-8 text-center text-muted-foreground">
             No hallmark batches yet for this branch.
           </div>
         )}
         {branchBatches.map((batch) => (
-          <div key={batch.id} className="rounded-2xl border border-border bg-card p-4">
+          <div key={batch.id} className="rounded-md border border-border bg-card p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Stamp className="h-4 w-4 text-muted-foreground" />
@@ -107,7 +109,7 @@ function HallmarkPage() {
               {batch.lines.map((l) => (
                 <div
                   key={l.itemId}
-                  className="border border-border rounded-xl p-3 bg-muted/20 space-y-2"
+                  className="border border-border rounded-md p-3 bg-muted/20 space-y-2"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm">{l.itemCode}</span>

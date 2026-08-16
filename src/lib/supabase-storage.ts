@@ -33,6 +33,30 @@ async function r2SignedUrl(bucket: string, path: string): Promise<string> {
   return `${R2_PROXY_URL}/${bucket}/${path}`;
 }
 
+async function r2Delete(bucket: string, path: string): Promise<void> {
+  const res = await fetch(`${R2_PROXY_URL}/${bucket}/${path}`, {
+    method: "DELETE",
+    headers: { Authorization: await r2AuthHeader() },
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`R2 delete failed: ${res.status} ${await res.text()}`);
+  }
+}
+
+/** Deletes an object from R2 and removes matching storage_file_metadata when present. */
+export async function deleteFromSupabaseStorage(namespace: string, path: string): Promise<void> {
+  if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
+  await r2Delete(namespace, path);
+  const { error } = await (supabase as any)
+    .from("storage_file_metadata")
+    .delete()
+    .eq("bucket_id", namespace)
+    .eq("storage_path", path);
+  if (error) {
+    console.warn("[storage] metadata delete failed:", error.message);
+  }
+}
+
 /** Maps attachment entity types to the configured remote storage namespace. */
 export function getBucketForEntityType(
   entityType: AttachmentEntityType | "firm-logo" | "expense",
@@ -54,9 +78,20 @@ export function getBucketForEntityType(
       return "repair-attachments";
     case "expense":
       return "expense-receipts";
+    case "stock":
+      return "stock-assets";
     default:
       return "order-attachments";
   }
+}
+
+/** Resolves a stored object path to an authenticated R2 proxy URL. */
+export async function resolveR2ObjectUrl(
+  bucket: string,
+  storagePath: string | null | undefined,
+): Promise<string | null> {
+  if (!storagePath) return null;
+  return getAttachmentSignedUrl(bucket, storagePath);
 }
 
 let readyPromise: Promise<void> | null = null;

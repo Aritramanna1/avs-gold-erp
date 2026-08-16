@@ -1,12 +1,10 @@
 import { test, expect } from "../fixtures/base";
 
 /**
- * Disposable-account smoke test: create a test staff account via the (now
- * verified working) invite flow, sign in as them, and hit each core module
- * route once, checking for a crash / blank screen / uncaught error. This is
- * a smoke test, not a functional deep-dive per module — its job is to catch
- * "the route doesn't render at all" class bugs across the whole app in one
- * pass, the same way the invite flow surfaced two production-breaking bugs.
+ * Disposable-account smoke test: create a real invitation using the app's own
+ * Settings → Users flow, accept it as a signed-out visitor, sign in, and hit
+ * each core module route once. This avoids fake production data and validates
+ * the real invite contract end-to-end.
  */
 const MODULE_ROUTES = [
   "/",
@@ -19,13 +17,53 @@ const MODULE_ROUTES = [
   "/settings",
 ];
 
+async function createRealInvite(authedPage: any, email: string) {
+  await authedPage.goto("/settings");
+  await authedPage.getByRole("tab", { name: /users.*roles|users.*role/i }).click();
+  await expect(authedPage.getByRole("button", { name: /send invite/i })).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await authedPage.getByPlaceholder("e.g. staff@maatarajewellers.com").fill(email);
+  const roleSelect = authedPage.locator('div:has(> label:text-is("Assigned Role")) select');
+  const firstRole = await roleSelect.locator("option").first().textContent();
+  await roleSelect.selectOption(firstRole?.trim() || "Branch Manager");
+  await authedPage.getByRole("button", { name: /send invite/i }).click();
+
+  await expect
+    .poll(
+      async () => authedPage.evaluate(() => (window as any).__lastInviteLink as string | undefined),
+      { timeout: 45_000 },
+    )
+    .toContain("/invite/accept?");
+
+  const inviteLink = await authedPage.evaluate(() => {
+    const value = (window as any).__lastInviteLink as string | undefined;
+    return value || "";
+  });
+
+  expect(inviteLink, "Invite was not generated through the app UI").toContain("/invite/accept?");
+
+  const url = new URL(inviteLink);
+  return {
+    code: url.searchParams.get("code") || "",
+    email: decodeURIComponent(url.searchParams.get("email") || ""),
+    url: inviteLink,
+  };
+}
+
 test.describe("Core module smoke test (signed out -> disposable account)", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
+  test.setTimeout(120_000);
 
   test("accept a disposable staff invite, then load every core module route without crashing", async ({
     page,
+    authedPage,
   }) => {
-    await page.goto("/invite/accept?code=TEST-STAFF-003&email=e2e-staff-test%40example.com");
+    const inviteEmail = `e2e-staff-${Date.now()}@example.com`;
+    const invite = await createRealInvite(authedPage, inviteEmail);
+
+    await page.goto(invite.url);
     await expect(page.locator("#invite-name")).toBeVisible({ timeout: 20_000 });
     await page.locator("#invite-name").fill("E2E Staff Test");
     await page.locator("#invite-password").fill("TestPass!2026");

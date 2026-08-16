@@ -25,6 +25,7 @@
  *    that exact same path once folded into the Invoice at Final Settlement.
  */
 import { create } from "zustand";
+import { tryPostUniversalLedgerMirror } from "@/lib/universal-transaction-bridge";
 import { createRepository } from "./repositories/base-repository";
 import {
   useBilling,
@@ -549,6 +550,20 @@ async function finaliseNow(
   };
   await settlementRepository.save(updated);
   set((st) => ({ settlements: st.settlements.map((x) => (x.id === id ? updated : x)) }));
+
+  void tryPostUniversalLedgerMirror({
+    voucherKind: "settlement",
+    voucherNumber: s.settlementNo,
+    counterpartyId: s.customerId,
+    counterpartyName: s.customerName,
+    cashCreditPaise: invoice.grandTotalPaise,
+    metadata: {
+      settlementId: id,
+      invoiceId: invoice.id,
+      invoiceNo: invoice.invoiceNo,
+      goldSettlementId,
+    },
+  }).catch(() => undefined);
 
   // Best-effort — a logging failure must never block a settlement that has
   // already succeeded and posted its invoice (same pattern as

@@ -16,7 +16,6 @@ const AUDITED_TABLES = new Set([
   "metal_conversions",
   "workshop_process_transactions",
   "customer_gold_deposits",
-  "ready_stock_items",
 ]);
 
 const COMPATIBILITY_READ_LIMIT = 1000;

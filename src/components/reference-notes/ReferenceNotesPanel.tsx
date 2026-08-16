@@ -59,7 +59,7 @@ export function ReferenceNotesPanel({ entityType, entityId }: Props) {
 
       <div className="space-y-3">
         {notes.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-xl">
+          <div className="text-sm text-muted-foreground py-4 text-center border border-dashed rounded-md">
             No reference notes attached to this record yet.
           </div>
         ) : (

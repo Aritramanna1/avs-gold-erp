@@ -183,8 +183,18 @@ export async function sendWhatsAppText(req: WhatsAppTextRequest): Promise<WhatsA
       const { data, error } = await (supabase as any).functions.invoke("send-whatsapp", {
         body: { branchId: req.branchId ?? "MAIN", phone: req.phone, message: req.message },
       });
+      const ok = !error && data?.ok === true;
+      if (ok) {
+        // Record credit usage asynchronously
+        void (supabase as any).rpc("deduct_tenant_credits", {
+          p_service_code: "wa_utility",
+          p_units: 1,
+          p_reference_id: req.linkedId || null,
+          p_description: `WhatsApp message to ${req.phone}`,
+        });
+      }
       return {
-        ok: !error && data?.ok === true,
+        ok,
         error: error?.message || data?.error,
         via: providerType,
       };
@@ -203,6 +213,15 @@ export async function sendWhatsAppText(req: WhatsAppTextRequest): Promise<WhatsA
       },
       { textBody: req.message },
     );
+
+    if (result.success) {
+      void (supabase as any).rpc("deduct_tenant_credits", {
+        p_service_code: "wa_utility",
+        p_units: 1,
+        p_reference_id: req.linkedId || null,
+        p_description: `WhatsApp message via ${providerType} to ${req.phone}`,
+      });
+    }
 
     return {
       ok: result.success,

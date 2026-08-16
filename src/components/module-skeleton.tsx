@@ -21,7 +21,7 @@ export function ModuleSkeleton() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-2xl border border-border bg-card p-4 space-y-2">
+          <div key={i} className="rounded-md border border-border bg-card p-4 space-y-2">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-6 w-24" />
             <Skeleton className="h-3 w-16" />
@@ -30,7 +30,7 @@ export function ModuleSkeleton() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="border-b border-border bg-muted/30 px-4 py-3 flex gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-3 flex-1" />

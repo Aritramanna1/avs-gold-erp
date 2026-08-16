@@ -129,7 +129,7 @@ export function MaterialVaultPanel() {
         </Button>
       </div>
 
-      <div className="rounded-2xl border border-gold/40 bg-gold/5 p-5">
+      <div className="rounded-md border border-gold/40 bg-gold/5 p-5">
         <div className="text-xs uppercase tracking-wider text-gold font-semibold">
           Grand Total (all materials)
         </div>
@@ -143,7 +143,7 @@ export function MaterialVaultPanel() {
           const Icon = GROUP_ICONS[group];
           const cats = balances.byGroup[group];
           return (
-            <div key={group} className="rounded-2xl border border-border bg-card p-5">
+            <div key={group} className="rounded-md border border-border bg-card p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Icon className="h-4 w-4 text-gold" />
@@ -173,7 +173,7 @@ export function MaterialVaultPanel() {
         })}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-md border border-border bg-card p-5">
         <h3 className="font-serif text-lg text-gold mb-3">
           Stock Items (by material &amp; purity)
         </h3>
@@ -213,7 +213,7 @@ export function MaterialVaultPanel() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-md border border-border bg-card p-5">
         <h3 className="font-serif text-lg text-gold mb-3">Transaction History</h3>
         {sortedMovements.length === 0 ? (
           <p className="text-sm text-muted-foreground">No material vault transactions yet.</p>

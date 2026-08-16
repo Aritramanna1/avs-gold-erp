@@ -13,6 +13,7 @@ import { ARCHIVAL_SIZES } from "@/components/print/PrintLayout";
 import { usePrintSetup } from "@/lib/print-setup-store";
 import type { FirmProfile } from "@/lib/settings-store";
 import { payloadFor } from "@/lib/verify-token";
+import { shouldRenderVerificationQr } from "@/lib/print-engine/print-branding";
 import { formatDateMedium as formatDate } from "@/lib/format-date";
 import type { PrintDocumentData, PrintTemplate, SectionConfig } from "../types";
 import {
@@ -96,7 +97,7 @@ async function drawSection(
     case "thermalItemList":
       return addThermalItemList(doc, geo, section, data, y);
     case "signatureBlock":
-      return addSignatureBlock(doc, geo, section, data, firm, y);
+      return await addSignatureBlock(doc, geo, section, data, firm, y);
     case "row": {
       // PDF has no free-form multi-column layout primitive here — columns
       // are drawn sequentially (top to bottom) instead of side by side.
@@ -117,6 +118,7 @@ async function drawSection(
       doc.addPage();
       return geo.margin;
     case "qr": {
+      if (!shouldRenderVerificationQr(firm)) return y;
       const payload = payloadFor({
         docType: data.docType,
         docNumber: data.docNumber,

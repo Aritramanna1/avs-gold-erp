@@ -1,4 +1,4 @@
-import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Menu,
   Sun,
@@ -9,12 +9,7 @@ import {
   User as UserIcon,
   Settings,
   ChevronDown,
-  Home,
-  ShoppingBag,
-  Receipt,
-  BookOpen,
   AlertTriangle,
-  Sparkles,
   Sliders,
 } from "lucide-react";
 import { type ReactNode, useState, useEffect } from "react";
@@ -23,7 +18,10 @@ import { useSettings } from "@/lib/settings-store";
 import { GoldRateEditor } from "@/components/GoldRateEditor";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Logo } from "@/components/ui/Logo";
+import { Button } from "@/components/ui/button";
 import { BranchSelector } from "@/components/branch-selector";
+import { MobileBottomNav } from "@/components/mobile/MobileBottomNav";
+import { MobileAccountSheet } from "@/components/mobile/MobileAccountSheet";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -38,11 +36,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useRoles } from "@/lib/rbac";
-import { useAppLoading, markInitialLoadDone } from "@/lib/app-loading-store";
+import { useAppLoading, markCriticalLoadFailed } from "@/lib/app-loading-store";
 import { ModuleSkeleton } from "@/components/module-skeleton";
+import { StagedLoadPanel } from "@/components/staged-load-panel";
+import { useStagedLoad } from "@/hooks/use-staged-load";
+import { GuidedTourOffer } from "@/components/training/GuidedTourOffer";
 import { toast } from "sonner";
 import { NotificationBell } from "@/components/notification-bell";
 import { AssistantDrawer, openOrnexaAssistant } from "@/components/assistant/AssistantDrawer";
+import { PageHeader } from "@/components/design-system";
+import { BusinessSwitcher } from "@/components/identity/BusinessSwitcher";
+import { WorkspaceSwitcher } from "@/components/identity/WorkspaceSwitcher";
+import { prefetchLikelyRoutes } from "@/lib/performance/route-prefetch";
+import { recordRecentRoute } from "@/lib/startup-preferences";
+import { patchStartupPreferences } from "@/lib/startup-preferences";
+
+export { PageHeader };
 
 export function triggerGoldRateEditor() {
   if (typeof window !== "undefined") {
@@ -60,9 +69,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const goldRatePerGramPaise = useSettings((s) => s.goldRatePerGramPaise);
   const firm = useSettings((s) => s.firm);
   const branding = useSettings((s) => s.branding);
+  const currentUserRole = useSettings((s) => s.currentUserRole);
   const users = useSettings((s) => s.users);
   const { roles, email: currentEmail } = useRoles();
-  const navigate = useNavigate();
   const [goldRateOpen, setGoldRateOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -70,21 +79,42 @@ export function AppShell({ children }: { children: ReactNode }) {
   // background pull - so the shell + route appear as soon as the layout's own
   // data is in, and operational modules fill in progressively underneath.
   const criticalLoadDone = useAppLoading((s) => s.criticalLoadDone);
+  const criticalLoadFailed = useAppLoading((s) => s.criticalLoadFailed);
+  const criticalLoadError = useAppLoading((s) => s.criticalLoadError);
+  const stagedBoot = useStagedLoad({
+    active: !criticalLoadDone && !criticalLoadFailed,
+    done: criticalLoadDone,
+    failed: criticalLoadFailed,
+  });
 
-  // Safety valve: never let the boot skeleton trap the UI if the critical load
-  // never signals done (e.g. an unexpected boot path). The real signal almost
-  // always wins well before this.
   useEffect(() => {
-    if (criticalLoadDone) return;
-    const t = setTimeout(() => markInitialLoadDone(), 2_500);
-    return () => clearTimeout(t);
-  }, [criticalLoadDone]);
+    if (criticalLoadDone || criticalLoadFailed) return;
+    if (stagedBoot.phase === "failed") {
+      markCriticalLoadFailed(
+        "Connection timed out while loading workspace settings. Please retry.",
+      );
+    }
+  }, [stagedBoot.phase, criticalLoadDone, criticalLoadFailed]);
+
+  function retryWorkspaceLoad() {
+    void import("@/lib/data-loader").then((m) => m.retryCloudSync());
+  }
 
   const currentUser = currentEmail
     ? users.find((u) => u.email.toLowerCase() === currentEmail.toLowerCase())
     : null;
   const displayName = currentUser?.name || currentEmail?.split("@")[0] || "User";
-  const displayRole = currentUser?.role || roles[0] || "Viewer";
+  const displayRole = currentUserRole || currentUser?.role || roles[0] || "—";
+
+  useEffect(() => {
+    recordRecentRoute(pathname);
+    prefetchLikelyRoutes(displayRole);
+  }, [pathname, displayRole]);
+
+  useEffect(() => {
+    const branchId = useSettings.getState().selectedBranchId;
+    if (branchId) patchStartupPreferences({ lastActiveBranchId: branchId });
+  }, [firm]);
   const initials =
     displayName
       .split(" ")
@@ -167,11 +197,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex-1 flex flex-col min-w-0" id="main-content-wrapper">
         <header
-          className="h-16 border-b border-border bg-card/60 backdrop-blur flex items-center gap-4 px-4 md:px-8"
+          className="h-14 min-h-[var(--touch-target)] border-b border-border bg-card flex items-center gap-3 px-4 md:px-6"
           id="main-header"
         >
-          {/* Hamburger Menu Trigger for Tablets and Mobile */}
-          <div className="lg:hidden flex items-center" id="mobile-sidebar-trigger">
+          {/* Tablet only: optional module drawer. Phones use bottom nav (Home / Master / Transactions). */}
+          <div className="hidden md:flex lg:hidden items-center" id="mobile-sidebar-trigger">
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
               <SheetTrigger asChild>
                 <button
@@ -199,7 +229,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="lg:hidden flex items-center gap-2" id="mobile-branding">
             <Logo variant="svg" className="h-8 w-8 object-contain" />
-            <span className="font-serif text-gold">{shortName}</span>
+            <span className="text-sm font-semibold text-foreground">{shortName}</span>
           </div>
 
           <button
@@ -229,6 +259,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
 
           <div className="ml-auto flex items-center gap-3 shrink-0">
+            <div className="hidden md:flex items-center gap-2">
+              <WorkspaceSwitcher compact />
+              <BusinessSwitcher />
+            </div>
+            <div className="md:hidden">
+              <MobileAccountSheet />
+            </div>
             <BranchSelector />
 
             {/* Quick Language Toggle */}
@@ -276,13 +313,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={() => openOrnexaAssistant()}
-              className="relative h-9 px-2.5 flex items-center gap-1.5 rounded-md border border-gold/30 bg-gold/5 hover:bg-gold/10 hover:border-gold/60 text-gold transition-colors focus:outline-none cursor-pointer no-print"
-              aria-label="Open AI Assistant (Ctrl+J)"
+              className="relative h-9 min-w-[var(--touch-target)] px-2.5 flex items-center gap-1.5 rounded-sm border border-border bg-background hover:bg-muted text-foreground transition-colors focus:outline-none cursor-pointer no-print"
+              aria-label="Open Assistant (Ctrl+J)"
               id="header-ai-assistant-trigger"
-              title="AI Assistant (Ctrl+J)"
+              title="Assistant (Ctrl+J)"
             >
-              <Sparkles className="h-4 w-4" />
-              <span className="text-xs font-semibold hidden md:inline">Assistant</span>
+              <Logo variant="svg" className="h-4 w-4 object-contain" />
+              <span className="text-xs font-medium hidden md:inline">Assistant</span>
             </button>
             <NotificationBell />
             {/* User menu with Sign Out */}
@@ -344,44 +381,52 @@ export function AppShell({ children }: { children: ReactNode }) {
           id="main-view-scroll-container"
         >
           <MaintenanceNotice />
-          <div className="min-h-full">{children}</div>
-          {!criticalLoadDone && (
-            <div className="absolute inset-0 z-20 bg-background overflow-y-auto" aria-hidden="true">
-              <ModuleSkeleton />
-            </div>
-          )}
-        </main>
-        <nav className="mobile-bottom-nav lg:hidden" aria-label="Primary navigation">
-          {[
-            { to: "/", label: "Home", icon: Home },
-            { to: "/orders", label: "Orders", icon: ShoppingBag },
-            { to: "/billing", label: "Billing", icon: Receipt },
-            { to: "/ledger", label: "Gold book", icon: BookOpen },
-          ].map((item) => {
-            const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`mobile-bottom-nav__item ${active ? "is-active" : ""}`}
-                aria-current={active ? "page" : undefined}
+          <div className="min-h-full relative">
+            {criticalLoadFailed ? (
+              <div className="p-4 md:p-8 max-w-xl">
+                <StagedLoadPanel
+                  phase="failed"
+                  title="Workspace could not load"
+                  onRetry={retryWorkspaceLoad}
+                  onGoHome={() => {
+                    window.location.href = "/";
+                  }}
+                  onReportIssue={() => {
+                    window.location.href = `/settings/support?subject=${encodeURIComponent("Boot failure")}`;
+                  }}
+                />
+                {criticalLoadError ? (
+                  <p className="mt-3 text-xs text-muted-foreground font-mono break-all">
+                    {criticalLoadError}
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              children
+            )}
+            {!criticalLoadDone && !criticalLoadFailed && (
+              <div
+                className="absolute inset-0 z-10 bg-background/80 backdrop-blur-[1px] pointer-events-none"
+                aria-hidden="true"
               >
-                <Icon aria-hidden="true" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-          <button
-            type="button"
-            className="mobile-bottom-nav__item"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open all modules"
-          >
-            <Menu aria-hidden="true" />
-            <span>More</span>
-          </button>
-        </nav>
+                <ModuleSkeleton />
+                {(stagedBoot.phase === "slow" || stagedBoot.phase === "retry") && (
+                  <div className="absolute inset-x-0 bottom-8 flex justify-center px-4 pointer-events-auto">
+                    <div className="w-full max-w-lg">
+                      <StagedLoadPanel
+                        phase={stagedBoot.phase}
+                        title="Loading workspace"
+                        onRetry={retryWorkspaceLoad}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <GuidedTourOffer />
+        </main>
+        <MobileBottomNav />
         <GoldRateEditor open={goldRateOpen} onOpenChange={setGoldRateOpen} />
         <AssistantDrawer />
       </div>
@@ -472,28 +517,6 @@ function MaintenanceNotice() {
   );
 }
 
-export function PageHeader({
-  title,
-  subtitle,
-  actions,
-}: {
-  title: string;
-  subtitle?: string;
-  actions?: ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between mb-6">
-      <div className="min-w-0">
-        <h1 className="font-serif text-2xl md:text-3xl text-gold leading-tight">{title}</h1>
-        {subtitle ? <p className="text-sm text-muted-foreground mt-1">{subtitle}</p> : null}
-      </div>
-      {actions ? (
-        <div className="flex flex-wrap gap-2 justify-start sm:justify-end">{actions}</div>
-      ) : null}
-    </div>
-  );
-}
-
 export function PhasePlaceholder({
   phase,
   description,
@@ -504,8 +527,8 @@ export function PhasePlaceholder({
   bullets: string[];
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-8 shadow-elegant">
-      <div className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-gold">
+    <div className="rounded-sm border border-border bg-card p-6 md:p-8">
+      <div className="inline-flex items-center gap-2 rounded-sm border border-border bg-muted px-2.5 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">
         Coming in {phase}
       </div>
       <p className="mt-4 text-muted-foreground max-w-2xl">{description}</p>
@@ -513,7 +536,7 @@ export function PhasePlaceholder({
         {bullets.map((b) => (
           <li
             key={b}
-            className="flex items-start gap-2 rounded-lg border border-border bg-background/40 px-3 py-2 text-sm"
+            className="flex items-start gap-2 rounded-sm border border-border bg-background px-3 py-2 text-sm"
           >
             <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" />
             <span>{b}</span>

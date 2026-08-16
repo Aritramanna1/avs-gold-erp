@@ -1,23 +1,31 @@
 @import "tailwindcss";
 
+@keyframes ornexa-loader-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.88;
+    transform: scale(0.98);
+  }
+}
+
+.ornexa-loader-pulse {
+  animation: ornexa-loader-pulse 2s ease-in-out 1;
+}
+
 @media print {
   /* Hide all app-shell headers, navigation, sidebars, buttons, etc. */
   .no-print,
   #main-header,
-  header,
-  aside,
-  [id*="sidebar"],
-  [class*="sidebar"],
   #mobile-sidebar-trigger,
   #mobile-branding,
   .divergence-banner,
-  button,
   .btn,
-  [role="button"],
-  [role="tablist"],
   .tabs-list,
-  input,
-  select,
+  [id*="sidebar"],
   [data-testid="print-toolbar"],
   /* Overlays that live in portals outside the printed document: toasts,
      dialogs, popovers, tooltips, bug-report widgets. Without these, a toast
@@ -26,9 +34,25 @@
   [data-radix-popper-content-wrapper],
   [role="dialog"],
   [role="alertdialog"],
-  [role="tooltip"],
-  [role="status"],
-  [role="alert"] {
+  [role="tooltip"] {
+    display: none !important;
+  }
+
+  /* Generic element/role selectors, scoped so they can only ever hide app
+     chrome. print-document.ts builds the print window out of the document
+     roots alone, so there its <body> IS the document — unscoped, these would
+     erase a template's own semantic header/footer, its form controls and any
+     element whose class merely contains "sidebar". */
+  header:not([data-testid="print-layout-root"] *),
+  aside:not([data-testid="print-layout-root"] *),
+  [class*="sidebar"]:not([data-testid="print-layout-root"] *),
+  button:not([data-testid="print-layout-root"] *),
+  [role="button"]:not([data-testid="print-layout-root"] *),
+  [role="tablist"]:not([data-testid="print-layout-root"] *),
+  input:not([data-testid="print-layout-root"] *),
+  select:not([data-testid="print-layout-root"] *),
+  [role="status"]:not([data-testid="print-layout-root"] *),
+  [role="alert"]:not([data-testid="print-layout-root"] *) {
     display: none !important;
   }
 

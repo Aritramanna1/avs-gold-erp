@@ -167,6 +167,7 @@ export const useAttachments = create<State>()((set, getStore) => ({
   },
   clear: (t, id, k) => {
     const key = makeKey(t, id, k);
+    const rec = getStore().items[key];
     invalidateAttachmentUrl(t, id, k);
     set((s) => {
       const next = { ...s.items };
@@ -174,6 +175,13 @@ export const useAttachments = create<State>()((set, getStore) => ({
       return { items: next };
     });
     void attachmentsRepository.delete(key);
+    if (rec?.bucket && rec?.storagePath) {
+      void import("@/lib/supabase-storage")
+        .then(({ deleteFromSupabaseStorage }) =>
+          deleteFromSupabaseStorage(rec.bucket!, rec.storagePath!),
+        )
+        .catch((err) => console.warn("[attachments] R2 delete failed:", err));
+    }
   },
   listForEntity: (t, id) => {
     const prefix = `${t}:${id}:`;

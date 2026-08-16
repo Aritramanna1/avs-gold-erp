@@ -18,7 +18,7 @@ import { useCurrentBranchId } from "@/lib/branch-store";
 import { useBilling } from "@/lib/billing-store";
 import { useSettlements, previewSettlementTotals } from "@/lib/settlement-store";
 import { computeItemTotals, type InvoiceItem, type GstKind } from "@/lib/billing-store";
-import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
+import { gramsToMg, mgToGrams, fineGoldMg, getPurityOptions } from "@/lib/gold";
 import { ArrowLeft, FileText } from "lucide-react";
 import { toast } from "sonner";
 
@@ -190,19 +190,13 @@ function NewSettlement() {
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Link to="/billing">
-          <Button variant="ghost" size="sm" className="gap-1">
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Button>
-        </Link>
-        <PageHeader
-          title="New Settlement Draft"
-          subtitle="Not a GST Invoice — generated only after Final Settlement."
-        />
-      </div>
+      <PageHeader
+        title="New Settlement Draft"
+        subtitle="Not a GST Invoice — generated only after Final Settlement."
+        backTo="/billing"
+      />
 
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+      <div className="erp-surface rounded-md border border-border bg-card p-5 space-y-4">
         <div>
           <Label>Customer / Dealer *</Label>
           <Select value={customerId} onValueChange={setCustomerId}>
@@ -285,7 +279,7 @@ function NewSettlement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {COMMON_PURITIES.map((p) => (
+                    {getPurityOptions().map((p) => (
                       <SelectItem key={p.value} value={String(p.value)}>
                         {p.label}
                       </SelectItem>

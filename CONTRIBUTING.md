@@ -1,25 +1,26 @@
-# Contributing to AVS Gold ERP
+# Contributing to AVS Gold ERP / Ornexa
 
-We welcome contributions to AVS Gold ERP! To maintain a clean and reliable codebase, please adhere to the following contribution workflow.
+We welcome contributions to the Supabase-online Ornexa ERP. To maintain a clean and reliable codebase, contributors must follow the current production architecture and canonical rules in the docs set.
 
-## Development Standards
+## Development standards
 
-- **Clean Architecture**: Follow the established offline-first database repositories and store patterns.
-- **Strict Linting & Formatting**: Ensure code adheres to ESLint rules and Prettier formats:
+- **Clean architecture**: Follow the approved Supabase-backed repositories, services, and store patterns. Do not reintroduce local-first, local SQLite, IndexedDB-authoritative, or hybrid database patterns.
+- **Strict linting and formatting**: Ensure code adheres to ESLint rules and Prettier formatting:
   ```bash
   npm run lint
   npm run format
   ```
-- **Type Safety**: Maintain TypeScript type coverage. Run `tsc` to verify compilation.
+- **Type safety**: Maintain TypeScript type coverage and verify compilation with `npx tsc --noEmit`.
 
-## Pull Request Workflow
+## Pull request workflow
 
-1. **Branch Naming**: Use descriptive branch names:
+1. **Branch naming**: Use descriptive branch names:
    - `feature/your-feature-name`
    - `fix/bug-description`
-2. **Commit History**: Do not force-push or amend commits that have already been pushed to public staging branches. Keeping clean history ensures seamless synchronization with project editors.
-3. **Verify Tests**: All automated tests must pass before opening a Pull Request:
+2. **Commit history**: Do not force-push or amend commits that have already been pushed to shared branches.
+3. **Verification**: Validate the required build gates before opening a PR:
    ```bash
-   npx playwright test
+   npx tsc --noEmit
+   npm run build
    ```
-4. **Submitting Changes**: Open a PR with clear details explaining what the change accomplishes and how to test it.
+4. **Submitting changes**: Open a PR with clear details explaining what the change accomplishes and how it was validated.

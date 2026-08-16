@@ -26,6 +26,7 @@ import { useStock } from "@/lib/stock-store";
 import { usePeople, kycComplete } from "@/lib/people-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
+import { calculateKarigarWastageWithRuntimeRules } from "@/lib/declarative-rules-runtime";
 import { AlertTriangle, PackageCheck } from "lucide-react";
 
 function safeMg(s: string): number {
@@ -85,6 +86,32 @@ export function ReceiveWorkDialog({
     }
   }, [job]);
 
+  const finishedGrossMg = safeMg(finishedGrossStr);
+  const finishedFineMg = finishedGrossMg > 0 ? fineGoldMg(finishedGrossMg, finishedPurity) : 0;
+  const filingsGrossMg = safeMg(filingsGrossStr);
+  const filingsFineMg = filingsGrossMg > 0 ? fineGoldMg(filingsGrossMg, filingsPurity) : 0;
+  const dustFineMg = safeMg(dustStr);
+
+  const wastagePreview = useMemo(() => {
+    if (!job) return null;
+    const totalReturnedGrossMg = finishedGrossMg + filingsGrossMg;
+    const isChain = job.category.toLowerCase().includes("chain");
+    return calculateKarigarWastageWithRuntimeRules({
+      totalSubmittedNetWeightMg: totalReturnedGrossMg,
+      karigarWastagePct: wastagePct,
+      items: [
+        {
+          categoryId: job.category ?? "general",
+          categoryName: job.category ?? "General",
+          weightMg: isChain ? totalReturnedGrossMg : 0,
+          isWastageExcluded: isChain,
+        },
+      ],
+      issuedFineGoldMg: job.targetFineMg,
+      targetPurityPerMille: finishedPurity,
+    });
+  }, [job, finishedGrossMg, filingsGrossMg, finishedPurity, wastagePct]);
+
   if (!job) {
     if (!open) return null;
     return (
@@ -104,12 +131,6 @@ export function ReceiveWorkDialog({
     );
   }
 
-  const finishedGrossMg = safeMg(finishedGrossStr);
-  const finishedFineMg = finishedGrossMg > 0 ? fineGoldMg(finishedGrossMg, finishedPurity) : 0;
-  const filingsGrossMg = safeMg(filingsGrossStr);
-  const filingsFineMg = filingsGrossMg > 0 ? fineGoldMg(filingsGrossMg, filingsPurity) : 0;
-  const dustFineMg = safeMg(dustStr);
-
   async function confirm() {
     if (!job || saving) return;
     setError(null);
@@ -120,6 +141,11 @@ export function ReceiveWorkDialog({
       );
     }
     if (finishedFineMg <= 0) return setError("Finished weight is required.");
+    if (wastagePreview?.requiresApproval) {
+      return setError(
+        `Declarative business rules require approval before receiving this job: ${wastagePreview.ruleMessages.join("; ")}`,
+      );
+    }
 
     setSaving(true);
     try {
@@ -150,6 +176,8 @@ export function ReceiveWorkDialog({
         fineMg: finishedFineMg,
         reference: job.jobNo,
         notes: `Finished ${job.itemName} · ${job.jobNo}`,
+        karigarId: job.karigarId,
+        customerId: job.customerId,
       });
       ledgerIds.push(e.id);
     }
@@ -163,6 +191,7 @@ export function ReceiveWorkDialog({
         fineMg: filingsFineMg,
         reference: job.jobNo,
         notes: `Filings returned · ${job.jobNo}`,
+        karigarId: job.karigarId,
       });
       ledgerIds.push(e.id);
     }
@@ -174,6 +203,7 @@ export function ReceiveWorkDialog({
         fineMg: dustFineMg,
         reference: job.jobNo,
         notes: `Dust/sweepings returned · ${job.jobNo}`,
+        karigarId: job.karigarId,
       });
       ledgerIds.push(e.id);
     }
@@ -197,6 +227,27 @@ export function ReceiveWorkDialog({
       stockId = item.id;
     }
 
+    const returnedFineMg = finishedFineMg + filingsFineMg + dustFineMg;
+    const wastageResult =
+      wastagePreview ??
+      calculateKarigarWastageWithRuntimeRules({
+        totalSubmittedNetWeightMg: finishedGrossMg + filingsGrossMg,
+        karigarWastagePct: wastagePct,
+        items: [
+          {
+            categoryId: job.category ?? "general",
+            categoryName: job.category ?? "General",
+            weightMg: job.category.toLowerCase().includes("chain")
+              ? finishedGrossMg + filingsGrossMg
+              : 0,
+            isWastageExcluded: job.category.toLowerCase().includes("chain"),
+          },
+        ],
+        issuedFineGoldMg: job.targetFineMg,
+        targetPurityPerMille: finishedPurity,
+      });
+    const actualLossMg = Math.max(0, job.targetFineMg - returnedFineMg);
+
     const rec: WorkReceiptRecord = {
       id: ledgerIds[0] ?? `r_${Date.now()}`,
       slipNo: makeSlipNo("GR"),
@@ -214,9 +265,9 @@ export function ReceiveWorkDialog({
       filingsFineMg,
       dustFineMg,
       expectedWastagePct: wastagePct,
-      expectedLossMg: 0,
-      actualLossMg: 0,
-      overlossMg: 0,
+      expectedLossMg: wastageResult.allowedWastageFineMg,
+      actualLossMg,
+      overlossMg: wastageResult.overLossPenaltyFineMg,
       qa,
       notes: notes.trim() || undefined,
       finishedStockId: stockId,
@@ -355,6 +406,34 @@ export function ReceiveWorkDialog({
             className="max-w-xs"
           />
         </Section>
+
+        {wastagePreview && finishedFineMg > 0 ? (
+          <Section title="Wastage (runtime rules)">
+            <div className="grid sm:grid-cols-3 gap-2 text-xs">
+              <Stat
+                label="Allowed wastage"
+                value={`${mgToGrams(wastagePreview.allowedWastageFineMg)} g fine`}
+              />
+              <Stat
+                label="Actual loss"
+                value={`${mgToGrams(Math.max(0, job.targetFineMg - (finishedFineMg + filingsFineMg + dustFineMg)))} g fine`}
+              />
+              <Stat
+                label="Over-loss"
+                value={
+                  wastagePreview.isOverLoss
+                    ? `${mgToGrams(wastagePreview.overLossPenaltyFineMg)} g`
+                    : "Within limit"
+                }
+              />
+            </div>
+            {wastagePreview.ruleMessages.length > 0 ? (
+              <p className="text-[11px] text-muted-foreground mt-2">
+                {wastagePreview.ruleMessages.join(" · ")}
+              </p>
+            ) : null}
+          </Section>
+        ) : null}
 
         <Section title="QA Checklist">
           <div className="grid sm:grid-cols-2 gap-2 text-sm">

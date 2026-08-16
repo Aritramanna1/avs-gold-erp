@@ -63,7 +63,7 @@ function PolishingPage() {
     return (
       <div className="p-4 md:p-8 max-w-3xl mx-auto text-center">
         <PageHeader title="Polishing" subtitle="This module is currently disabled." />
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 mt-6">
+        <div className="rounded-md border border-dashed border-border bg-card/40 p-12 mt-6">
           <Sparkles className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 font-serif text-xl text-gold">Polishing module is off</h3>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -125,7 +125,7 @@ function PolishingPage() {
       </div>
 
       {/* Per-Polisher Ledger */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden mb-6">
+      <div className="rounded-md border border-border bg-card overflow-hidden mb-6">
         <div className="px-4 py-3 border-b border-border font-serif text-gold">
           Polishing Ledger — by Polisher
         </div>
@@ -182,7 +182,7 @@ function PolishingPage() {
 
       {/* Selected polisher's transaction history */}
       {selectedRow && (
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="rounded-md border border-border bg-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border font-serif text-gold">
             {selectedRow.polisherName} — Transaction History
           </div>
@@ -235,7 +235,7 @@ function PolishingPage() {
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "gold" }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="rounded-md border border-border bg-card p-4">
       <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={`text-lg font-mono ${tone === "gold" ? "text-gold" : ""}`}>{value}</div>
     </div>

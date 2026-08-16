@@ -15,6 +15,7 @@ import {
 import { useSettings } from "@/lib/settings-store";
 import { fetchStockPage } from "@/lib/stock-query";
 import { STOCK_STATUS_LABELS, type StockItem, type StockStatus } from "@/lib/stock-store";
+import { StockListThumbnail } from "@/components/stock/StockListThumbnail";
 
 type StockSearch = {
   q?: string;
@@ -228,34 +229,44 @@ function StockWorkspace() {
                   key={item.id}
                   to="/stock/$id"
                   params={{ id: item.id }}
-                  className="block border border-border rounded-xl p-3 bg-card hover:bg-muted/20 active:bg-muted/30 transition-colors"
+                  className="block border border-border rounded-md p-3 bg-card hover:bg-muted/20 active:bg-muted/30 transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">{item.itemName}</div>
-                      <div className="font-mono text-xs text-muted-foreground">{item.itemCode}</div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-mono text-sm text-gold">
-                        {(item.fineMg / 1000).toFixed(3)} g
+                  <div className="flex items-start gap-3">
+                    <StockListThumbnail
+                      imageStoragePath={item.imageStoragePath}
+                      alt={item.itemName}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate">{item.itemName}</div>
+                          <div className="font-mono text-xs text-muted-foreground">
+                            {item.itemCode}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="font-mono text-sm text-gold">
+                            {(item.fineMg / 1000).toFixed(3)} g
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {STOCK_STATUS_LABELS[item.status]}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {STOCK_STATUS_LABELS[item.status]}
+                      <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                        {item.barcode && (
+                          <span>
+                            BC: <span className="font-mono">{item.barcode}</span>
+                          </span>
+                        )}
+                        {item.huid && (
+                          <span>
+                            HUID: <span className="font-mono">{item.huid}</span>
+                          </span>
+                        )}
+                        {item.location && <span>{item.location}</span>}
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                    {item.barcode && (
-                      <span>
-                        BC: <span className="font-mono">{item.barcode}</span>
-                      </span>
-                    )}
-                    {item.huid && (
-                      <span>
-                        HUID: <span className="font-mono">{item.huid}</span>
-                      </span>
-                    )}
-                    {item.location && <span>{item.location}</span>}
                   </div>
                 </Link>
               ))}
@@ -266,6 +277,7 @@ function StockWorkspace() {
               <table className="erp-table w-full text-sm">
                 <thead>
                   <tr>
+                    <th className="text-left w-14" />
                     <th className="text-left">Item</th>
                     <th className="text-left">Barcode</th>
                     <th className="text-left">HUID</th>
@@ -277,6 +289,12 @@ function StockWorkspace() {
                 <tbody>
                   {items.map((item) => (
                     <tr key={item.id}>
+                      <td>
+                        <StockListThumbnail
+                          imageStoragePath={item.imageStoragePath}
+                          alt={item.itemName}
+                        />
+                      </td>
                       <td>
                         <Link to="/stock/$id" params={{ id: item.id }} className="hover:underline">
                           <span className="font-medium">{item.itemName}</span>

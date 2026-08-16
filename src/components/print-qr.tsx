@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { payloadFor } from "@/lib/verify-token";
 import type { PrintDocType } from "@/lib/printlog-store";
+import { useSettings } from "@/lib/settings-store";
+import { shouldRenderVerificationQr } from "@/lib/print-engine/print-branding";
 
 export interface PrintQRProps {
   docType: PrintDocType;
@@ -29,10 +31,16 @@ export function PrintQR({
   className,
   showCaption = true,
 }: PrintQRProps) {
+  const firm = useSettings((s) => s.firm);
+  const enabled = shouldRenderVerificationQr(firm);
   const payload = payloadFor({ docType, docNumber, recordId, createdAt });
   const [dataUrl, setDataUrl] = useState<string>("");
 
   useEffect(() => {
+    if (!enabled) {
+      setDataUrl("");
+      return;
+    }
     let cancelled = false;
     QRCode.toDataURL(payload, {
       errorCorrectionLevel: "M",
@@ -49,7 +57,9 @@ export function PrintQR({
     return () => {
       cancelled = true;
     };
-  }, [payload, size]);
+  }, [payload, size, enabled]);
+
+  if (!enabled) return null;
 
   return (
     <div

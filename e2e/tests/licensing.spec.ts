@@ -4,15 +4,16 @@ test.describe("Licensing", () => {
   test("settings license page loads and shows current license status", async ({ authedPage }) => {
     await authedPage.goto("/settings/license");
     await dismissWhatsNew(authedPage);
-    await expect(
-      authedPage.getByRole("heading", { name: "License & Activation", exact: true }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(authedPage).toHaveURL(/\/settings\/license/);
+    await expect(authedPage.getByRole("heading", { name: /Subscription|License/i })).toBeVisible({
+      timeout: 15_000,
+    });
 
     // LicensePanel always renders these two <dt> labels regardless of
     // trial/active/expired/suspended state -- confirms the license store
     // resolved (not stuck on "checking") and the panel isn't blank/errored.
     await expect(authedPage.getByText("Status", { exact: true })).toBeVisible();
-    await expect(authedPage.getByText("License Type", { exact: true })).toBeVisible();
+    await expect(authedPage.getByText("Plan", { exact: true })).toBeVisible();
 
     expectNoPageErrors(authedPage);
   });
@@ -22,9 +23,10 @@ test.describe("Licensing", () => {
   }) => {
     await authedPage.goto("/settings/license");
     await dismissWhatsNew(authedPage);
-    await expect(
-      authedPage.getByRole("heading", { name: "License & Activation", exact: true }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(authedPage).toHaveURL(/\/settings\/license/);
+    await expect(authedPage.getByRole("heading", { name: /Subscription|License/i })).toBeVisible({
+      timeout: 15_000,
+    });
 
     const keyInput = authedPage.locator(
       'input[placeholder="XXXX-XXXX-XXXX-XXXX"], input[placeholder="Enter a new key to re-activate"]',

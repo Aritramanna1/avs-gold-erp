@@ -51,7 +51,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="p-6 rounded-2xl border border-border bg-card shadow-elegant">
+    <Card className="p-6 rounded-md border border-border bg-card shadow-elegant">
       <div className="flex items-center gap-2.5 mb-5">
         <div className="text-gold">{icon}</div>
         <h2 className="font-serif text-xl text-foreground">{title}</h2>
@@ -102,7 +102,7 @@ function WeighingScaleSection() {
       </div>
 
       {/* Live Weight Display */}
-      <div className="rounded-xl border border-border bg-background/60 p-4 mb-5 text-center">
+      <div className="rounded-md border border-border bg-background/60 p-4 mb-5 text-center">
         <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-semibold">
           Live Weight
         </div>
@@ -404,7 +404,7 @@ function BarcodeScannerSection() {
         {cameraError && <p className="text-xs text-destructive mb-2">{cameraError}</p>}
 
         <div className={cameraActive ? "block" : "hidden"}>
-          <div className="relative rounded-xl overflow-hidden border border-border aspect-video bg-black">
+          <div className="relative rounded-md overflow-hidden border border-border aspect-video bg-black">
             <video ref={videoRef} muted playsInline className="w-full h-full object-cover" />
             <canvas ref={canvasRef} className="hidden" />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -457,7 +457,7 @@ function LabelPrinterSection() {
         </Badge>
       </div>
 
-      <div className="rounded-xl border border-border bg-background/60 p-1 mb-4">
+      <div className="rounded-md border border-border bg-background/60 p-1 mb-4">
         <textarea
           value={tsplCmd}
           onChange={(e) => setTsplCmd(e.target.value)}
@@ -509,6 +509,8 @@ function LabelPrinterSection() {
 // ============================================================
 // PAGE
 // ============================================================
+import { HardwareDevicesRegistry } from "@/components/hardware/HardwareDevicesRegistry";
+
 function HardwarePage() {
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
@@ -516,6 +518,9 @@ function HardwarePage() {
         title="Hardware Management"
         subtitle="Configure and test connected hardware devices — scales, printers, and scanners"
       />
+      <div className="mb-6">
+        <HardwareDevicesRegistry />
+      </div>
       <div className="grid gap-6 md:grid-cols-2">
         <WeighingScaleSection />
         <ThermalPrinterSection />

@@ -90,7 +90,7 @@ function WorkerBooksPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-4 mb-4">
+      <div className="rounded-md border border-border bg-card p-4 mb-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -104,7 +104,7 @@ function WorkerBooksPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
+        <div className="rounded-md border border-dashed border-border bg-card/40 p-12 text-center">
           <BookOpen className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 font-serif text-xl text-gold">No worker books yet</h3>
           <p className="mt-2 text-sm text-muted-foreground">

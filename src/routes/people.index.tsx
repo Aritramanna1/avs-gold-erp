@@ -31,6 +31,7 @@ import {
   type Person,
   type PersonType,
   type KycDocKey,
+  type BankAccount,
   PERSON_TYPE_LABELS,
   KYC_DOC_LABELS,
   maskAadhaar,
@@ -75,6 +76,7 @@ import { fetchPeoplePage, fetchPeopleTabCounts, type PeopleTabCounts } from "@/l
 import { EmptyState, InlineSavingState, WebAppState } from "@/components/web-app-state";
 
 import { guardRoute } from "@/lib/permissions";
+import { fineGoldMg } from "@/lib/gold";
 
 export const Route = createFileRoute("/people/")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
@@ -83,20 +85,37 @@ export const Route = createFileRoute("/people/")({
 });
 
 const TABS = [
-  { key: "customers", label: "Customers", icon: User, types: ["customer"] as PersonType[] },
-  { key: "firms", label: "Firms", icon: Building2, types: ["firm_customer"] as PersonType[] },
+  {
+    key: "customers",
+    label: "Customers",
+    icon: User,
+    types: ["customer", "firm_customer"] as PersonType[],
+  },
+  {
+    key: "firms",
+    label: "Trade / Jewellers",
+    icon: Building2,
+    types: ["jeweller", "dealer", "agent", "firm_customer"] as PersonType[],
+  },
   {
     key: "karigars",
     label: "Karigars / Workers",
     icon: Hammer,
-    types: ["karigar", "worker"] as PersonType[],
+    types: ["karigar", "worker", "outside_karigar", "outside_worker"] as PersonType[],
   },
   { key: "employees", label: "Employees", icon: Briefcase, types: ["employee"] as PersonType[] },
   {
     key: "vendors",
-    label: "Vendors / Outside Workers",
+    label: "Suppliers & Vendors",
     icon: Truck,
-    types: ["vendor", "outside_worker"] as PersonType[],
+    types: [
+      "supplier",
+      "refinery",
+      "hallmark_vendor",
+      "service_provider",
+      "other",
+      "vendor",
+    ] as PersonType[],
   },
   { key: "kyc", label: "KYC Documents", icon: FileText, types: [] as PersonType[] },
 ] as const;
@@ -558,7 +577,7 @@ function PeopleList({
         return (
           <div
             key={p.id}
-            className={`rounded-xl border bg-card p-4 transition-all ${
+            className={`rounded-md border bg-card p-4 transition-all ${
               isSel ? "border-gold shadow-gold" : "border-border hover:border-gold/40"
             }`}
           >
@@ -700,7 +719,7 @@ function KycList({
   return (
     <div className="space-y-3">
       {people.map((p) => (
-        <div key={p.id} className="rounded-xl border border-border bg-card p-4">
+        <div key={p.id} className="rounded-md border border-border bg-card p-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <button onClick={() => onSelect(p.id)} className="font-medium hover:text-gold">
               {p.fullName}{" "}
@@ -788,7 +807,7 @@ function SelectedPersonCard({
   return (
     <div
       data-testid="people-selected-card"
-      className="rounded-2xl border border-gold/30 bg-card p-5 shadow-gold space-y-4"
+      className="rounded-md border border-gold/30 bg-card p-5 shadow-gold space-y-4"
     >
       <div className="flex items-center gap-3">
         <PersonAvatar person={person} className="h-14 w-14 rounded-full text-xl" />
@@ -1134,18 +1153,49 @@ function PersonFormDialog({
 
   const empty = {
     type: defaultType ?? initial?.type ?? ("customer" as PersonType),
+    roles: initial?.roles ?? [defaultType ?? initial?.type ?? ("customer" as PersonType)],
     active: initial?.active ?? true,
     fullName: initial?.fullName ?? "",
+    tradeName: initial?.tradeName ?? "",
+    legalName: initial?.legalName ?? "",
+    contactPerson: initial?.contactPerson ?? "",
     phone: initial?.phone ?? "",
     altPhone: initial?.altPhone ?? "",
+    whatsapp: initial?.whatsapp ?? "",
     email: initial?.email ?? "",
+    addressLine1: initial?.addressLine1 ?? initial?.currentAddress ?? "",
+    addressLine2: initial?.addressLine2 ?? "",
+    area: initial?.area ?? "",
+    villageCity: initial?.villageCity ?? "",
+    district: initial?.district ?? "",
+    state: initial?.state ?? "",
+    pin: initial?.pin ?? "",
     currentAddress: initial?.currentAddress ?? "",
     permanentAddress: initial?.permanentAddress ?? "",
-    villageCity: initial?.villageCity ?? "",
-    state: initial?.state ?? "",
     aadhaar: initial?.aadhaar ?? "",
     pan: initial?.pan ?? "",
     gstin: initial?.gstin ?? "",
+    msmeUdyamNo: initial?.msmeUdyamNo ?? "",
+    tan: initial?.tan ?? "",
+    businessType: initial?.businessType ?? "proprietorship",
+    placeOfSupply: initial?.placeOfSupply ?? "",
+    tdsTcsApplicability: initial?.tdsTcsApplicability ?? ("none" as const),
+    cashCreditLimitPaise: initial?.cashCreditLimitPaise ?? (undefined as number | undefined),
+    goldCreditLimitMg:
+      initial?.goldCreditLimitMg ??
+      initial?.maxFineGoldCreditMg ??
+      (undefined as number | undefined),
+    dueDays: initial?.dueDays ?? (undefined as number | undefined),
+    // ── Real Opening Balances ──
+    cashOpeningBalancePaise: initial?.cashOpeningBalancePaise ?? (undefined as number | undefined),
+    cashOpeningType: initial?.cashOpeningType ?? ("receivable" as const),
+    goldOpeningGrossMg: initial?.goldOpeningGrossMg ?? (undefined as number | undefined),
+    goldOpeningTouch: initial?.goldOpeningTouch ?? 91.6,
+    goldOpeningFineMg: initial?.goldOpeningFineMg ?? (undefined as number | undefined),
+    goldOpeningType: initial?.goldOpeningType ?? ("receivable" as const),
+    silverOpeningFineMg: initial?.silverOpeningFineMg ?? (undefined as number | undefined),
+    openingBillsCount: initial?.openingBillsCount ?? (undefined as number | undefined),
+    openingBalanceNotes: initial?.openingBalanceNotes ?? "",
     workType: initial?.workType ?? "",
     joiningDate: initial?.joiningDate ?? "",
     emergencyName: initial?.emergencyName ?? "",
@@ -1154,28 +1204,36 @@ function PersonFormDialog({
     referencePhone: initial?.referencePhone ?? "",
     dateOfBirth: initial?.dateOfBirth ?? "",
     anniversary: initial?.anniversary ?? "",
+    spouseName: initial?.spouseName ?? "",
     skills: initial?.skills ?? "",
     experience: initial?.experience ?? "",
     dailyWagePaise: initial?.dailyWagePaise ?? (undefined as number | undefined),
+    bankAccounts:
+      initial?.bankAccounts ??
+      (initial?.bankAccountNumber
+        ? [
+            {
+              id: "b_1",
+              bankName: initial?.bankName ?? "",
+              accountHolderName: initial?.bankAccountName ?? initial?.fullName ?? "",
+              accountNumber: initial?.bankAccountNumber,
+              accountType: "savings" as const,
+              ifscCode: initial?.bankIfsc ?? "",
+              isPrimary: true,
+              active: true,
+            },
+          ]
+        : []),
     bankAccountName: initial?.bankAccountName ?? "",
     bankAccountNumber: initial?.bankAccountNumber ?? "",
     bankIfsc: initial?.bankIfsc ?? "",
     bankName: initial?.bankName ?? "",
     notes: initial?.notes ?? "",
     branchId: initial?.branchId ?? useSettings.getState().selectedBranchId ?? "",
-    // Custom fields defined in Settings. Carried in the person patch itself so
-    // they save, edit, and persist through exactly the same path as the built-in
-    // fields — no separate save step, no second source of truth.
     customForms: (initial?.customForms ?? {}) as Record<string, Record<string, any>>,
   };
   const key = (initial?.id ?? "new") + "-" + (defaultType ?? "");
   const [form, setForm, clearForm] = useDraft("mtj-person-form-" + key, () => empty);
-  // Reset when the dialog opens with a different target (e.g. "Add Karigar"
-  // clicked after "Add Customer" was previously open). `useDraft`'s internal
-  // useState only initializes once per component instance — since this
-  // dialog is always mounted (parent toggles `open`, never unmounts it), a
-  // changed `key` alone doesn't re-run that initializer, so the previous
-  // type/fields would otherwise persist into the newly-opened dialog.
   const [lastKey, setLastKey] = useState(key);
   if (open && lastKey !== key) {
     setForm(empty);
@@ -1186,13 +1244,11 @@ function PersonFormDialog({
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
-    // Clear error active for this field
     if (errors[k]) {
       setErrors((e) => ({ ...e, [k]: "" }));
     }
   };
 
-  // Custom fields defined in Settings → Forms.
   const formsMetadata = useSettings((s) => s.formsMetadata);
   const customForms = useMemo(() => peopleForms(formsMetadata), [formsMetadata]);
   const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
@@ -1210,10 +1266,57 @@ function PersonFormDialog({
     }
   };
 
-  const isFirm = form.type === "firm_customer";
-  const isWorkerish = ["karigar", "worker", "employee", "vendor", "outside_worker"].includes(
-    form.type,
-  );
+  const isB2B = [
+    "firm_customer",
+    "jeweller",
+    "dealer",
+    "supplier",
+    "refinery",
+    "hallmark_vendor",
+  ].includes(form.type);
+  const isWorkerish = [
+    "karigar",
+    "worker",
+    "employee",
+    "outside_karigar",
+    "outside_worker",
+    "vendor",
+  ].includes(form.type);
+
+  const addBankAccount = () => {
+    const nextAccount = {
+      id: `ba_${Date.now()}`,
+      bankName: "",
+      accountHolderName: form.fullName || "",
+      accountNumber: "",
+      accountType: "current" as const,
+      ifscCode: "",
+      isPrimary: (form.bankAccounts?.length ?? 0) === 0,
+      active: true,
+    };
+    set("bankAccounts", [...(form.bankAccounts || []), nextAccount]);
+  };
+
+  const updateBankAccount = (id: string, patch: Partial<BankAccount>) => {
+    set(
+      "bankAccounts",
+      (form.bankAccounts || []).map((ba) => (ba.id === id ? { ...ba, ...patch } : ba)),
+    );
+  };
+
+  const removeBankAccount = (id: string) => {
+    set(
+      "bankAccounts",
+      (form.bankAccounts || []).filter((ba) => ba.id !== id),
+    );
+  };
+
+  const setPrimaryBankAccount = (id: string) => {
+    set(
+      "bankAccounts",
+      (form.bankAccounts || []).map((ba) => ({ ...ba, isPrimary: ba.id === id })),
+    );
+  };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -1258,7 +1361,7 @@ function PersonFormDialog({
       }
     }
 
-    if (isFirm && form.gstin.trim()) {
+    if (isB2B && form.gstin.trim()) {
       const cleanGst = form.gstin.trim().toUpperCase();
       const gstinReg = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
       if (!gstinReg.test(cleanGst)) {
@@ -1266,8 +1369,6 @@ function PersonFormDialog({
       }
     }
 
-    // Required custom fields are enforced with the same weight as built-in ones —
-    // a field the workshop marked mandatory in Settings is mandatory here.
     const newCustomErrors: Record<string, string> = {};
     for (const f of customForms) {
       const values = form.customForms?.[f.id] ?? {};
@@ -1294,17 +1395,22 @@ function PersonFormDialog({
     if (submitting) return;
     if (!validate()) return;
     setSubmitting(true);
+    const payload = {
+      ...form,
+      currentAddress: form.addressLine1 || form.currentAddress,
+      maxFineGoldCreditMg: form.goldCreditLimitMg,
+    };
     if (initial) {
-      update(initial.id, form)
+      update(initial.id, payload as any)
         .then(() => {
-          onSaved({ ...initial, ...form, updatedAt: Date.now() });
+          onSaved({ ...initial, ...payload, updatedAt: Date.now() } as any);
           clearForm();
           onClose();
         })
         .catch(() => toast.error(`Failed to save ${form.fullName || "person"}. Please try again.`))
         .finally(() => setSubmitting(false));
     } else {
-      add(form)
+      add(payload as any)
         .then((created) => {
           onSaved(created);
           clearForm();
@@ -1315,71 +1421,108 @@ function PersonFormDialog({
     }
   };
 
-  // Keyboard-first (Priority 4/3): Ctrl+S saves without reaching for the mouse.
   useSaveShortcut(save, open);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif text-gold text-2xl">
-            {initial ? "Edit Person" : "Add Person"}
+            {initial ? "Edit Party Master" : "Add New Party / Account"}
           </DialogTitle>
           <DialogDescription>
-            Simple, plain details. Use the box you would normally write on paper.
+            Complete Party 360 profile with trade credentials, tax compliance, credit limits, and
+            bank registry.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label>Type</Label>
-            <Select value={form.type} onValueChange={(v) => set("type", v as PersonType)}>
-              <SelectTrigger data-testid="people-type-select">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(PERSON_TYPE_LABELS).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>
-                    {v}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Primary Party Role *</Label>
+              <Select value={form.type} onValueChange={(v) => set("type", v as PersonType)}>
+                <SelectTrigger data-testid="people-type-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PERSON_TYPE_LABELS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Assigned Branch</Label>
+              <Select value={form.branchId} onValueChange={(v) => set("branchId", v)}>
+                <SelectTrigger data-testid="people-branch-select">
+                  <SelectValue placeholder="Select branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="grid gap-2">
-            <Label>Branch</Label>
-            <Select value={form.branchId} onValueChange={(v) => set("branchId", v)}>
-              <SelectTrigger data-testid="people-branch-select">
-                <SelectValue placeholder="Select branch" />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 border-t border-border">
+            Identity & Contact Details
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Full name *" error={errors.fullName}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Full Name / Primary Display Name *" error={errors.fullName}>
               <Input
                 data-testid="people-full-name"
                 value={form.fullName}
                 onChange={(e) => set("fullName", e.target.value)}
+                placeholder="e.g. Raju Das or Maa Tara Jewellers"
               />
             </Field>
-            <Field label="Phone *" error={errors.phone} warning={warnings.phone}>
+            <Field label="Trade / Shop Name (DBA)">
+              <Input
+                value={form.tradeName}
+                onChange={(e) => set("tradeName", e.target.value)}
+                placeholder="e.g. Das Gold Works"
+              />
+            </Field>
+            <Field label="Legal Entity Name (Registered)">
+              <Input
+                value={form.legalName}
+                onChange={(e) => set("legalName", e.target.value)}
+                placeholder="e.g. Das Gold Works Pvt Ltd"
+              />
+            </Field>
+            <Field label="Contact Person Name">
+              <Input
+                value={form.contactPerson}
+                onChange={(e) => set("contactPerson", e.target.value)}
+                placeholder="e.g. Raju Das (Owner)"
+              />
+            </Field>
+            <Field label="Primary Mobile / Phone *" error={errors.phone} warning={warnings.phone}>
               <Input
                 data-testid="people-phone"
                 value={form.phone}
                 onChange={(e) => set("phone", e.target.value)}
                 inputMode="tel"
+                placeholder="10-digit mobile"
               />
             </Field>
-            <Field label="Alternate phone">
+            <Field label="WhatsApp Number">
+              <Input
+                value={form.whatsapp}
+                onChange={(e) => set("whatsapp", e.target.value)}
+                inputMode="tel"
+                placeholder="For PDF invoice delivery"
+              />
+            </Field>
+            <Field label="Alternate Phone">
               <Input
                 value={form.altPhone}
                 onChange={(e) => set("altPhone", e.target.value)}
@@ -1394,77 +1537,414 @@ function PersonFormDialog({
                 onChange={(e) => set("email", e.target.value)}
               />
             </Field>
-            <Field label="Village / City">
+          </div>
+
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 border-t border-border">
+            Address & Location
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Address Line 1 (Street / Building)">
+              <Input
+                value={form.addressLine1}
+                onChange={(e) => set("addressLine1", e.target.value)}
+                placeholder="Shop 12, Gold Market"
+              />
+            </Field>
+            <Field label="Area / Landmark">
+              <Input
+                value={form.area}
+                onChange={(e) => set("area", e.target.value)}
+                placeholder="Bowbazar"
+              />
+            </Field>
+            <Field label="City / Village">
               <Input
                 value={form.villageCity}
                 onChange={(e) => set("villageCity", e.target.value)}
+                placeholder="Kolkata"
+              />
+            </Field>
+            <Field label="District">
+              <Input
+                value={form.district}
+                onChange={(e) => set("district", e.target.value)}
+                placeholder="Kolkata"
               />
             </Field>
             <Field label="State">
-              <Input value={form.state} onChange={(e) => set("state", e.target.value)} />
-            </Field>
-            <Field label="Current address">
               <Input
-                value={form.currentAddress}
-                onChange={(e) => set("currentAddress", e.target.value)}
+                value={form.state}
+                onChange={(e) => set("state", e.target.value)}
+                placeholder="West Bengal"
               />
             </Field>
-            <Field label="Permanent / native address">
+            <Field label="PIN Code">
               <Input
-                value={form.permanentAddress}
-                onChange={(e) => set("permanentAddress", e.target.value)}
+                value={form.pin}
+                onChange={(e) => set("pin", e.target.value)}
+                placeholder="700012"
               />
             </Field>
-            <Field label="Aadhaar number" error={errors.aadhaar} warning={warnings.aadhaar}>
+          </div>
+
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 border-t border-border">
+            Tax, MSME & Statutory Compliance
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="GSTIN" error={errors.gstin}>
+              <Input
+                value={form.gstin}
+                onChange={(e) => set("gstin", e.target.value.toUpperCase())}
+                placeholder="19AAACM1234F1Z5"
+              />
+            </Field>
+            <Field label="PAN">
+              <Input
+                value={form.pan}
+                onChange={(e) => set("pan", e.target.value.toUpperCase())}
+                placeholder="AAACM1234F"
+              />
+            </Field>
+            <Field label="MSME / Udyam No.">
+              <Input
+                value={form.msmeUdyamNo}
+                onChange={(e) => set("msmeUdyamNo", e.target.value.toUpperCase())}
+                placeholder="UDYAM-WB-00-12345"
+              />
+            </Field>
+            <Field label="TAN">
+              <Input
+                value={form.tan}
+                onChange={(e) => set("tan", e.target.value.toUpperCase())}
+                placeholder="CALM12345F"
+              />
+            </Field>
+            <Field label="GST Place of Supply (State Code)">
+              <Input
+                value={form.placeOfSupply}
+                onChange={(e) => set("placeOfSupply", e.target.value)}
+                placeholder="e.g. 19 (WB), 27 (MH)"
+              />
+            </Field>
+            <Field label="Aadhaar Number" error={errors.aadhaar} warning={warnings.aadhaar}>
               <Input
                 value={form.aadhaar}
                 onChange={(e) => set("aadhaar", e.target.value)}
                 placeholder="XXXX XXXX 1234"
               />
             </Field>
-            <Field label="PAN (optional)">
-              <Input value={form.pan} onChange={(e) => set("pan", e.target.value.toUpperCase())} />
+          </div>
+
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 border-t border-border">
+            Credit Limits & Commercial Terms
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="Cash Credit Limit (₹)">
+              <Input
+                type="number"
+                min={0}
+                value={
+                  form.cashCreditLimitPaise !== undefined ? form.cashCreditLimitPaise / 100 : ""
+                }
+                onChange={(e) =>
+                  set(
+                    "cashCreditLimitPaise",
+                    e.target.value ? Math.round(parseFloat(e.target.value) * 100) : undefined,
+                  )
+                }
+                placeholder="₹ 500,000"
+              />
             </Field>
-            {isFirm && (
-              <Field label="GSTIN" error={errors.gstin}>
-                <Input
-                  value={form.gstin}
-                  onChange={(e) => set("gstin", e.target.value.toUpperCase())}
-                />
-              </Field>
+            <Field label="Fine Gold Metal Limit (Grams)">
+              <Input
+                type="number"
+                min={0}
+                step={0.001}
+                value={form.goldCreditLimitMg !== undefined ? form.goldCreditLimitMg / 1000 : ""}
+                onChange={(e) =>
+                  set(
+                    "goldCreditLimitMg",
+                    e.target.value ? Math.round(parseFloat(e.target.value) * 1000) : undefined,
+                  )
+                }
+                placeholder="e.g. 50.000 g"
+              />
+            </Field>
+            <Field label="Payment Due Term (Days)">
+              <Input
+                type="number"
+                min={0}
+                value={form.dueDays !== undefined ? form.dueDays : ""}
+                onChange={(e) =>
+                  set("dueDays", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                }
+                placeholder="30 days"
+              />
+            </Field>
+          </div>
+
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 border-t border-border flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-amber-500">
+              <Coins className="h-3.5 w-3.5" /> Opening Balances & Metal Outstandings
+            </span>
+            <Badge
+              variant="outline"
+              className="text-[10px] border-amber-500/30 text-amber-600 bg-amber-500/5"
+            >
+              Single Source of Truth
+            </Badge>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 p-3 rounded-lg border bg-muted/10">
+            {/* Cash Opening Balance */}
+            <div className="space-y-2 p-2.5 rounded bg-card border">
+              <span className="font-semibold text-xs text-foreground block">
+                Cash Opening Balance
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Balance Type</Label>
+                  <select
+                    value={form.cashOpeningType || "receivable"}
+                    onChange={(e) => set("cashOpeningType", e.target.value as any)}
+                    className="w-full h-8 rounded border border-input bg-background px-2 text-xs"
+                  >
+                    <option value="receivable">Receivable (Dr - Customer owes)</option>
+                    <option value="payable">Payable (Cr - We owe)</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Amount (₹)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={
+                      form.cashOpeningBalancePaise !== undefined
+                        ? form.cashOpeningBalancePaise / 100
+                        : ""
+                    }
+                    onChange={(e) =>
+                      set(
+                        "cashOpeningBalancePaise",
+                        e.target.value ? Math.round(parseFloat(e.target.value) * 100) : undefined,
+                      )
+                    }
+                    placeholder="0.00"
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Gold Opening Balance */}
+            <div className="space-y-2 p-2.5 rounded bg-card border">
+              <span className="font-semibold text-xs text-foreground block">
+                Gold Metal Opening Balance
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Metal Type</Label>
+                  <select
+                    value={form.goldOpeningType || "receivable"}
+                    onChange={(e) => set("goldOpeningType", e.target.value as any)}
+                    className="w-full h-8 rounded border border-input bg-background px-2 text-xs"
+                  >
+                    <option value="receivable">Receivable (Dr)</option>
+                    <option value="payable">Payable (Cr)</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Gross Wt (g)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.001}
+                    value={
+                      form.goldOpeningGrossMg !== undefined ? form.goldOpeningGrossMg / 1000 : ""
+                    }
+                    onChange={(e) => {
+                      const grossG = parseFloat(e.target.value || "0");
+                      const touch = form.goldOpeningTouch || 91.6;
+                      const grossMg = Math.round(grossG * 1000);
+                      const fineMg = fineGoldMg(grossMg, Math.min(Math.round(touch * 10), 999));
+                      set("goldOpeningGrossMg", e.target.value ? grossMg : undefined);
+                      set("goldOpeningFineMg", e.target.value ? fineMg : undefined);
+                    }}
+                    placeholder="0.000"
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">Touch (%)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={form.goldOpeningTouch || 91.6}
+                    onChange={(e) => {
+                      const touch = parseFloat(e.target.value || "91.6");
+                      const grossMg = form.goldOpeningGrossMg || 0;
+                      const fineMg = fineGoldMg(grossMg, Math.min(Math.round(touch * 10), 999));
+                      set("goldOpeningTouch", touch);
+                      set("goldOpeningFineMg", grossMg > 0 ? fineMg : undefined);
+                    }}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+              </div>
+              {form.goldOpeningFineMg !== undefined && form.goldOpeningFineMg > 0 && (
+                <div className="text-[10px] font-mono text-amber-600 pt-0.5">
+                  Calculated Pure Fine: {(form.goldOpeningFineMg / 1000).toFixed(3)} g
+                </div>
+              )}
+            </div>
+
+            {/* Silver & Notes */}
+            <div className="space-y-1 sm:col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">
+                    Silver Opening Fine Weight (g)
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.001}
+                    value={
+                      form.silverOpeningFineMg !== undefined ? form.silverOpeningFineMg / 1000 : ""
+                    }
+                    onChange={(e) =>
+                      set(
+                        "silverOpeningFineMg",
+                        e.target.value ? Math.round(parseFloat(e.target.value) * 1000) : undefined,
+                      )
+                    }
+                    placeholder="0.000 g"
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] text-muted-foreground">
+                    Opening Balance Reference / Notes
+                  </Label>
+                  <Input
+                    value={form.openingBalanceNotes || ""}
+                    onChange={(e) => set("openingBalanceNotes", e.target.value)}
+                    placeholder="e.g. Migrated from FY25-26 physical Khata book #4"
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 border-t border-border flex items-center justify-between">
+            <span>Bank Accounts Registry ({form.bankAccounts?.length || 0})</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={addBankAccount}
+              className="h-7 text-xs gap-1"
+            >
+              <Plus className="h-3 w-3" /> Add Bank A/C
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {(form.bankAccounts || []).length === 0 ? (
+              <p className="text-xs text-muted-foreground italic py-2">
+                No bank accounts registered. Click "Add Bank A/C" to register payout accounts.
+              </p>
+            ) : (
+              (form.bankAccounts || []).map((ba, idx) => (
+                <div key={ba.id} className="rounded-lg border p-3 bg-muted/20 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-foreground">
+                      Account #{idx + 1}{" "}
+                      {ba.isPrimary && <Badge className="text-[10px] ml-1.5">Primary</Badge>}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {!ba.isPrimary && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setPrimaryBankAccount(ba.id)}
+                          className="h-6 text-[11px] px-2 text-amber-500"
+                        >
+                          Make Primary
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeBankAccount(ba.id)}
+                        className="h-6 text-[11px] px-2 text-destructive hover:text-destructive"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <Input
+                      placeholder="Bank Name (e.g. HDFC Bank)"
+                      value={ba.bankName}
+                      onChange={(e) => updateBankAccount(ba.id, { bankName: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Account Holder Name"
+                      value={ba.accountHolderName}
+                      onChange={(e) =>
+                        updateBankAccount(ba.id, { accountHolderName: e.target.value })
+                      }
+                    />
+                    <Input
+                      placeholder="Account Number"
+                      value={ba.accountNumber}
+                      onChange={(e) => updateBankAccount(ba.id, { accountNumber: e.target.value })}
+                      inputMode="numeric"
+                    />
+                    <Input
+                      placeholder="IFSC Code (e.g. HDFC0001234)"
+                      value={ba.ifscCode}
+                      onChange={(e) =>
+                        updateBankAccount(ba.id, { ifscCode: e.target.value.toUpperCase() })
+                      }
+                    />
+                  </div>
+                </div>
+              ))
             )}
-            {isWorkerish && (
-              <>
-                <Field label="Work type / role *" error={errors.workType}>
+          </div>
+
+          {isWorkerish && (
+            <>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 border-t border-border">
+                Worker / Karigar Profile
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="Work Type / Role *" error={errors.workType}>
                   <Input
                     data-testid="people-work-role"
                     value={form.workType}
                     onChange={(e) => set("workType", e.target.value)}
-                    placeholder="e.g. Hand-making, Polishing, Billing"
+                    placeholder="e.g. Hand-making, Setting, Filigree"
                   />
                 </Field>
-                <Field label="Joining date">
+                <Field label="Joining Date">
                   <Input
                     type="date"
                     value={form.joiningDate}
                     onChange={(e) => set("joiningDate", e.target.value)}
                   />
                 </Field>
-                <Field label="Date of birth">
-                  <Input
-                    type="date"
-                    value={form.dateOfBirth}
-                    onChange={(e) => set("dateOfBirth", e.target.value)}
-                  />
-                </Field>
-                <Field label="Anniversary">
-                  <Input
-                    type="date"
-                    value={form.anniversary}
-                    onChange={(e) => set("anniversary", e.target.value)}
-                  />
-                </Field>
-                <Field label="Daily wage (₹)">
+                <Field label="Daily Wage (₹)">
                   <Input
                     type="number"
                     min={0}
@@ -1479,86 +1959,31 @@ function PersonFormDialog({
                     placeholder="e.g. 800"
                   />
                 </Field>
-                <Field label="Skills">
+                <Field label="Specialized Skills">
                   <Input
                     value={form.skills}
                     onChange={(e) => set("skills", e.target.value)}
-                    placeholder="e.g. Hand-making, Soldering, Filigree"
+                    placeholder="e.g. Mina, Polishing, Diamond Setting"
                   />
                 </Field>
                 <Field label="Experience">
                   <Input
                     value={form.experience}
                     onChange={(e) => set("experience", e.target.value)}
-                    placeholder="e.g. 8 years goldsmithing"
+                    placeholder="e.g. 10 years master artisan"
                   />
                 </Field>
-              </>
-            )}
-            {isWorkerish && (
-              <>
-                <div className="col-span-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 border-t border-border">
-                  Bank Account Details
-                </div>
-                <Field label="Account holder name">
+                <Field label="Spouse / Father Name">
                   <Input
-                    value={form.bankAccountName}
-                    onChange={(e) => set("bankAccountName", e.target.value)}
+                    value={form.spouseName}
+                    onChange={(e) => set("spouseName", e.target.value)}
                   />
                 </Field>
-                <Field label="Account number">
-                  <Input
-                    value={form.bankAccountNumber}
-                    onChange={(e) => set("bankAccountNumber", e.target.value)}
-                    inputMode="numeric"
-                  />
-                </Field>
-                <Field label="IFSC code">
-                  <Input
-                    value={form.bankIfsc}
-                    onChange={(e) => set("bankIfsc", e.target.value.toUpperCase())}
-                    placeholder="e.g. SBIN0001234"
-                  />
-                </Field>
-                <Field label="Bank name">
-                  <Input
-                    value={form.bankName}
-                    onChange={(e) => set("bankName", e.target.value)}
-                    placeholder="e.g. State Bank of India"
-                  />
-                </Field>
-              </>
-            )}
-            <Field label="Emergency contact name">
-              <Input
-                value={form.emergencyName}
-                onChange={(e) => set("emergencyName", e.target.value)}
-              />
-            </Field>
-            <Field label="Emergency contact phone">
-              <Input
-                value={form.emergencyPhone}
-                onChange={(e) => set("emergencyPhone", e.target.value)}
-                inputMode="tel"
-              />
-            </Field>
-            <Field label="Reference / guarantor name">
-              <Input
-                value={form.referenceName}
-                onChange={(e) => set("referenceName", e.target.value)}
-              />
-            </Field>
-            <Field label="Reference / guarantor phone">
-              <Input
-                value={form.referencePhone}
-                onChange={(e) => set("referencePhone", e.target.value)}
-                inputMode="tel"
-              />
-            </Field>
-          </div>
+              </div>
+            </>
+          )}
 
-          {/* Custom fields defined in Settings → Forms. They appear here the
-              moment they're created, with no code change and no separate save. */}
+          {/* Custom fields defined in Settings → Forms */}
           {customForms.map((f) => (
             <div key={f.id} className="grid gap-3">
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2 border-t border-border">
@@ -1575,8 +2000,13 @@ function PersonFormDialog({
             </div>
           ))}
 
-          <Field label="Notes">
-            <Textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+          <Field label="Internal Notes & Special Terms">
+            <Textarea
+              rows={2}
+              value={form.notes}
+              onChange={(e) => set("notes", e.target.value)}
+              placeholder="Terms, commission rates, or delivery instructions"
+            />
           </Field>
         </div>
 
@@ -1585,7 +2015,13 @@ function PersonFormDialog({
             Cancel
           </Button>
           <Button data-testid="people-save" onClick={save} disabled={submitting}>
-            {submitting ? <InlineSavingState /> : initial ? "Save changes" : "Add person"}
+            {submitting ? (
+              <InlineSavingState />
+            ) : initial ? (
+              "Save Party Changes"
+            ) : (
+              "Create Party Master"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

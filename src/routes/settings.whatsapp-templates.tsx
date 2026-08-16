@@ -92,7 +92,7 @@ function WaTemplatesPage({ embedded = false }: { embedded?: boolean } = {}) {
         </>
       )}
 
-      <div className="rounded-2xl border border-gold/30 bg-gold/5 p-4 mb-4 text-sm">
+      <div className="rounded-md border border-gold/30 bg-gold/5 p-4 mb-4 text-sm">
         <b className="text-gold">Placeholders</b> available:
         <code className="block mt-1 text-xs text-muted-foreground">
           {
@@ -126,7 +126,7 @@ function WaTemplatesPage({ embedded = false }: { embedded?: boolean } = {}) {
         ))}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-4 flex items-center gap-3">
+      <div className="mt-6 rounded-md border border-dashed border-border bg-card p-4 flex items-center gap-3">
         <MessageCircle className="h-4 w-4 text-gold" />
         <div className="flex-1 text-sm">Add a custom template you can reuse from any record.</div>
         <Button
@@ -170,7 +170,7 @@ function TemplateCard(props: {
   const tokens = tokensIn(props.body);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <div className="flex items-center gap-3 flex-wrap mb-3">
         <Badge variant="outline" className="text-[10px]">
           {TEMPLATE_KIND_LABELS[props.kind]}

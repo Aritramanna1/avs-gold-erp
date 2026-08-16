@@ -97,16 +97,16 @@ function GoldTrendChart() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-gold/30 bg-gold/5 p-5">
+      <div className="rounded-md border border-gold/30 bg-gold/5 p-5">
         <div className="h-4 w-72 max-w-full rounded bg-muted/30 animate-pulse mb-4" />
-        <div className="h-[180px] rounded-xl bg-muted/20 animate-pulse" />
+        <div className="h-[180px] rounded-md bg-muted/20 animate-pulse" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-700">
+      <div className="erp-surface rounded-md border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-700">
         {error}
         <button type="button" onClick={() => void load()} className="ml-3 underline">
           Retry
@@ -117,14 +117,14 @@ function GoldTrendChart() {
 
   if (data.length < 2) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+      <div className="erp-surface rounded-md border border-border bg-card p-6 text-center text-sm text-muted-foreground">
         Not enough gold ledger activity yet to chart a trend.
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-gold/30 bg-gold/5 p-5">
+    <div className="erp-surface rounded-md border border-gold/30 bg-gold/5 p-5">
       <div className="text-xs uppercase tracking-wider font-bold text-gold mb-3">
         Gold Under Management — 30 Day Trend (Fine Grams)
       </div>
@@ -185,10 +185,7 @@ function ManufacturingGoldSummaryCard() {
     return (
       <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="rounded-2xl border border-border bg-card p-4">
-            <div className="h-3 w-28 rounded bg-muted/30 animate-pulse" />
-            <div className="mt-3 h-6 w-24 rounded bg-muted/20 animate-pulse" />
-          </div>
+          <div key={i} className="h-20 rounded-md bg-muted/20 animate-pulse border border-border" />
         ))}
       </div>
     );
@@ -196,9 +193,9 @@ function ManufacturingGoldSummaryCard() {
 
   if (error || !summary) {
     return (
-      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700">
+      <div className="text-sm text-amber-700 text-center py-4 erp-surface rounded-md border border-amber-500/30 bg-amber-500/10">
         {error ?? "No manufacturing gold summary available."}
-        <button type="button" onClick={() => void load()} className="ml-3 underline">
+        <button type="button" onClick={() => void load()} className="ml-3 underline cursor-pointer">
           Retry
         </button>
       </div>
@@ -215,41 +212,47 @@ function ManufacturingGoldSummaryCard() {
       <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <Link
           to="/reports/gold-outstanding"
-          className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
+          className="erp-surface rounded-md border border-border bg-card p-4 hover:border-gold/30 transition-colors"
         >
           <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
             Gold Outstanding
           </div>
-          <div className="text-xl font-mono font-bold mt-1">
+          <div className="text-xl font-mono font-bold mt-1 text-gold">
             {mgToGrams(summary.totalOutstandingMg)} g
           </div>
         </Link>
         <Link
           to="/reports/gold-summary"
-          className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
+          className="erp-surface rounded-md border border-border bg-card p-4 hover:border-gold/30 transition-colors"
         >
           <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
             Gold Issued (Mfg)
           </div>
-          <div className="text-xl font-mono font-bold mt-1">{mgToGrams(summary.issuedMg)} g</div>
+          <div className="text-xl font-mono font-bold mt-1 text-gold">
+            {mgToGrams(summary.issuedMg)} g
+          </div>
         </Link>
         <Link
           to="/reports/gold-summary"
-          className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
+          className="erp-surface rounded-md border border-border bg-card p-4 hover:border-gold/30 transition-colors"
         >
           <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
             Gold Returned (Mfg)
           </div>
-          <div className="text-xl font-mono font-bold mt-1">{mgToGrams(summary.returnedMg)} g</div>
+          <div className="text-xl font-mono font-bold mt-1 text-gold">
+            {mgToGrams(summary.returnedMg)} g
+          </div>
         </Link>
         <Link
           to="/reports/gold-summary"
-          className="rounded-2xl border border-border bg-card p-4 hover:border-gold/30 transition-colors"
+          className="erp-surface rounded-md border border-border bg-card p-4 hover:border-gold/30 transition-colors"
         >
           <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
             Wastage (Mfg)
           </div>
-          <div className="text-xl font-mono font-bold mt-1">{mgToGrams(summary.wastageMg)} g</div>
+          <div className="text-xl font-mono font-bold mt-1 text-gold">
+            {mgToGrams(summary.wastageMg)} g
+          </div>
         </Link>
       </div>
     </div>
@@ -283,12 +286,12 @@ function ProductionPipelineChart() {
   }, [load]);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <div className="text-xs uppercase tracking-wider font-bold text-muted-foreground mb-3">
         Production Status — Job Cards by Stage
       </div>
       {loading ? (
-        <div className="h-[200px] rounded-xl bg-muted/20 animate-pulse" />
+        <div className="h-[200px] rounded-md bg-muted/20 animate-pulse" />
       ) : error ? (
         <div className="py-8 text-center text-sm text-amber-700">
           {error}
@@ -347,7 +350,7 @@ function WorkerPerformanceTable() {
   }, [load]);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="erp-surface rounded-md border border-border bg-card p-5">
       <div className="text-xs uppercase tracking-wider font-bold text-muted-foreground mb-3">
         Worker Performance — Top Active Karigars
       </div>
@@ -370,7 +373,7 @@ function WorkerPerformanceTable() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="erp-table w-full text-sm">
             <thead>
               <tr className="text-xs uppercase text-muted-foreground text-left">
                 <th className="pb-2">Karigar</th>
@@ -385,7 +388,9 @@ function WorkerPerformanceTable() {
                   <td className="py-2">{r.name}</td>
                   <td className="py-2 text-right font-mono">{r.active}</td>
                   <td className="py-2 text-right font-mono">{r.readyForBilling}</td>
-                  <td className="py-2 text-right font-mono">{mgToGrams(r.pendingGoldMg)}g</td>
+                  <td className="py-2 text-right font-mono text-gold font-semibold">
+                    {mgToGrams(r.pendingGoldMg)}g
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -432,7 +437,7 @@ function KpiTile({
 }) {
   return (
     <div
-      className={`rounded-xl border border-border bg-card/60 p-3 space-y-1 ${alert ? "border-red-500/40" : ""}`}
+      className={`rounded-md border border-border bg-card/60 p-3 space-y-1 ${alert ? "border-red-500/40" : ""}`}
     >
       <div className="flex items-center gap-1.5">
         <Icon className={`h-3.5 w-3.5 ${colorClass}`} />
@@ -498,12 +503,12 @@ function BranchPanel({ branch }: { branch: Branch }) {
   }, [load]);
 
   return (
-    <div className={`rounded-2xl border ${colors.border} ${colors.bg} p-5 space-y-4`}>
+    <div className={`erp-surface rounded-md border ${colors.border} ${colors.bg} p-5 space-y-4`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div
-            className={`h-10 w-10 rounded-xl ${colors.accent} flex items-center justify-center shrink-0`}
+            className={`h-10 w-10 rounded-md ${colors.accent} flex items-center justify-center shrink-0`}
           >
             <Building2 className={`h-5 w-5 ${colors.text}`} />
           </div>
@@ -521,7 +526,7 @@ function BranchPanel({ branch }: { branch: Branch }) {
           <button
             type="button"
             onClick={() => void load()}
-            className="h-7 w-7 rounded-lg border border-border flex items-center justify-center hover:bg-muted/30 transition-colors"
+            className="h-7 w-7 rounded-md border border-border flex items-center justify-center hover:bg-muted/30 transition-colors cursor-pointer"
             title="Refresh"
           >
             <RefreshCw
@@ -537,7 +542,7 @@ function BranchPanel({ branch }: { branch: Branch }) {
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="rounded-xl bg-muted/20 border border-border h-14 animate-pulse"
+              className="rounded-md bg-muted/20 border border-border h-14 animate-pulse"
             />
           ))}
         </div>
@@ -545,7 +550,7 @@ function BranchPanel({ branch }: { branch: Branch }) {
 
       {/* Error */}
       {error && !loading && (
-        <div className="flex items-center gap-2 text-sm text-amber-400 bg-amber-500/10 rounded-xl p-3">
+        <div className="flex items-center gap-2 text-sm text-amber-400 bg-amber-500/10 rounded-md p-3">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -707,7 +712,7 @@ function CeoDashboard() {
 
       {/* Per-Branch KPI Cards */}
       {activeBranches.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border p-12 text-center space-y-3">
+        <div className="erp-surface rounded-md border border-dashed border-border p-12 text-center space-y-3">
           <Building2 className="h-12 w-12 text-muted-foreground mx-auto" />
           <p className="text-muted-foreground text-sm">No active branches configured.</p>
           <Link to="/branches" className="text-gold text-sm underline">
@@ -723,10 +728,10 @@ function CeoDashboard() {
       )}
 
       {/* Internal Staff & User Governance */}
-      <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+      <div className="erp-surface rounded-md border border-border bg-card p-6 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-gold/15 flex items-center justify-center text-gold">
+            <div className="h-9 w-9 rounded-md bg-gold/15 flex items-center justify-center text-gold border border-gold/20">
               <Users className="h-5 w-5" />
             </div>
             <div>
@@ -738,7 +743,7 @@ function CeoDashboard() {
           </div>
           <Link
             to="/invite"
-            className="flex items-center gap-1.5 rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-black hover:bg-gold-dark transition-colors shadow-sm"
+            className="flex items-center gap-1.5 rounded-md bg-gold px-3 py-1.5 text-xs font-semibold text-black hover:bg-gold-dark transition-colors shadow-xs cursor-pointer"
           >
             <Users className="h-3.5 w-3.5" />+ Invite Internal Staff
           </Link>
@@ -840,7 +845,7 @@ function CeoDashboard() {
             <Link
               key={item.to}
               to={item.to}
-              className="flex items-center gap-2.5 rounded-xl border border-border bg-card/60 px-4 py-3 hover:border-gold/40 hover:bg-gold/5 transition-colors text-sm font-medium"
+              className="flex items-center gap-2.5 rounded-md border border-border bg-card/60 px-4 py-3 hover:border-gold/40 hover:bg-gold/5 transition-colors text-sm font-medium"
             >
               <item.icon className="h-4 w-4 text-gold shrink-0" />
               {item.label}
@@ -850,7 +855,7 @@ function CeoDashboard() {
       </div>
 
       {/* Info note */}
-      <div className="rounded-xl border border-border bg-muted/20 p-4 text-xs text-muted-foreground space-y-1">
+      <div className="rounded-md border border-border bg-muted/20 p-4 text-xs text-muted-foreground space-y-1">
         <p className="font-semibold text-foreground">CEO View — Analytics Only</p>
         <p>
           This dashboard queries each branch independently from Supabase with branch-level RLS.

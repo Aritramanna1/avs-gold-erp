@@ -84,7 +84,7 @@ function OutsideWorkReportPage() {
         }
       />
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden mt-4">
+      <div className="rounded-md border border-border bg-card overflow-hidden mt-4">
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="outside-work-report-table">
             <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">

@@ -126,21 +126,21 @@ function InventoryAgeingPage() {
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 font-sans">
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-md border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground">Total Available Items</div>
           <div className="text-2xl font-semibold">{available.length}</div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-md border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground">Total Fine Gold</div>
           <div className="text-2xl font-semibold">{fmtG(totalFineMg)}</div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-md border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground">Aged 180+ days (fine)</div>
           <div className="text-2xl font-semibold text-destructive">{fmtG(oldStockFineMg)}</div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden mb-6">
+      <div className="rounded-md border border-border bg-card overflow-hidden mb-6">
         {/* Mobile view */}
         <div className="block md:hidden divide-y divide-border">
           {buckets.map((b) => (
@@ -190,7 +190,7 @@ function InventoryAgeingPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="p-4 border-b border-border font-semibold">
           Slow-Moving Stock (180+ days)
         </div>

@@ -1,5 +1,10 @@
 import { toast } from "sonner";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import {
+  redactBullionRateProvider,
+  redactSmtpSettings,
+  redactWaConfig,
+} from "@/lib/security/client-secret-redaction";
 import { getAttachmentSignedUrl } from "@/lib/supabase-storage";
 import { usePeople, type Person } from "@/lib/people-store";
 import { useLedger, type LedgerEntry } from "@/lib/ledger-store";
@@ -29,8 +34,18 @@ import { migrateLegacyRepairsToOrders } from "@/lib/repair-migration";
 import { useCommLog, type CommEvent } from "@/lib/comm-log-store";
 import { startRealtimeSync, stopRealtimeSync } from "@/lib/realtime-sync";
 import { resolveAllSignedUrls, initializeStorage } from "@/lib/storage";
-import { markCriticalLoadDone, markInitialLoadDone } from "@/lib/app-loading-store";
-import { reportUnexpectedError } from "@/lib/error-handling";
+import {
+  markCriticalLoadDone,
+  markInitialLoadDone,
+  markCriticalLoadFailed,
+} from "@/lib/app-loading-store";
+import { recordStartupMetric } from "@/lib/performance/startup-metrics";
+import { logBackgroundError } from "@/lib/error-handling";
+import {
+  withRetryBackoff,
+  withTimeout,
+  STAGED_LOAD_THRESHOLDS_MS,
+} from "@/lib/performance/resilient-async";
 
 /**
  * Returns the branch ID to filter queries by, or null if the current user
@@ -54,7 +69,11 @@ function getActiveBranchId(): string | null {
 }
 
 const STARTUP_DETAIL_CACHE_LIMIT = 500;
-const STARTUP_LEDGER_CACHE_LIMIT = 1000;
+// Boot hydration for high-volume ledger tables is intentionally limited to a
+// recent tail. The full ledger history is still available via the dedicated
+// report/ledger queries on-demand; pulling the entire historical gold_ledger
+// payload during startup makes the app vulnerable to the 25s request timeout.
+const STARTUP_LEDGER_CACHE_LIMIT = 250;
 const STARTUP_REFERENCE_CACHE_LIMIT = 1000;
 const STARTUP_ATTACHMENT_CACHE_LIMIT = 1000;
 
@@ -88,6 +107,11 @@ export async function pullLedger(): Promise<void> {
   if (bid) q = q.filter("data->>branchId", "eq", bid) as typeof q;
   const { data, error } = await q;
   if (error) throw new Error(`gold_ledger pull: ${error.message}`);
+
+  // Keep only the recent gold ledger tail on startup. The app reads the full
+  // stock/ledger context from query-driven screens and reports on demand, so a
+  // small cache here prevents a large JSON-heavy table from tripping the shared
+  // fetch timeout while keeping the live UI responsive.
   const rows = (data ?? [])
     .map((r) => r.data as LedgerEntry | null)
     .filter((e): e is LedgerEntry => !!e && !!e.id && typeof e.netFineMg === "number");
@@ -455,8 +479,9 @@ export async function pullAppSettings(): Promise<void> {
         payload.goldRate18KPerGramPaise ?? useSettings.getState().goldRate18KPerGramPaise,
       silverRatePerGramPaise:
         payload.silverRatePerGramPaise ?? useSettings.getState().silverRatePerGramPaise,
-      bullionRateProvider:
-        payload.bullionRateProvider ?? useSettings.getState().bullionRateProvider,
+      bullionRateProvider: payload.bullionRateProvider
+        ? redactBullionRateProvider(payload.bullionRateProvider)
+        : useSettings.getState().bullionRateProvider,
       language: payload.language ?? useSettings.getState().language,
       developer: payload.developer ?? useSettings.getState().developer,
       users: updatedUsers,
@@ -472,23 +497,17 @@ export async function pullAppSettings(): Promise<void> {
       commAutomation: payload.commAutomation
         ? { ...useSettings.getState().commAutomation, ...payload.commAutomation }
         : useSettings.getState().commAutomation,
-      smtp: payload.smtp ?? useSettings.getState().smtp,
+      smtp: payload.smtp ? redactSmtpSettings(payload.smtp) : useSettings.getState().smtp,
       dropdowns: payload.dropdowns ?? useSettings.getState().dropdowns,
       disabledDropdowns: payload.disabledDropdowns ?? useSettings.getState().disabledDropdowns,
       branchSettings: payload.branchSettings ?? useSettings.getState().branchSettings,
       emailTemplates: payload.emailTemplates ?? useSettings.getState().emailTemplates,
     });
 
-    // Also refresh currentUserRole if the users list changed (e.g. after an
-    // admin updates roles via Supabase — picks it up via realtime subscription).
-    const { data: authData } = await supabase.auth.getUser();
-    const email = authData?.user?.email;
-    if (email) {
-      const matched = updatedUsers.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
-      if (matched?.role && matched.role !== useSettings.getState().currentUserRole) {
-        useSettings.getState().setCurrentUserRole(matched.role);
-      }
-    }
+    // Authoritative role lives on user_profiles — never overwrite with a stale
+    // app_settings.users[] snapshot during deployment pulls.
+    const { syncCurrentUserRoleFromProfile } = await import("@/lib/role-resolution");
+    await syncCurrentUserRoleFromProfile();
   }
 }
 
@@ -607,38 +626,77 @@ export async function pullBranchSettings(): Promise<void> {
   if (error) throw new Error(`branch_settings pull: ${error.message}`);
   if (data && data.length > 0) {
     const { hydrateWaStore } = await import("@/lib/wa-automation-store");
-    data.forEach((r: any) => {
-      if (r.wa_config || r.wa_automations) {
-        hydrateWaStore(r.branch_id, r.wa_config ?? {}, r.wa_automations ?? {});
+    const { isProviderSecretConfigured } = await import("@/lib/security/provider-secret-status");
+    for (const raw of data as Array<Record<string, unknown>>) {
+      const r = raw;
+      const rowData =
+        r.data && typeof r.data === "object" && !Array.isArray(r.data)
+          ? (r.data as Record<string, unknown>)
+          : {};
+      const rawWaConfig = rowData.wa_config ?? rowData.waConfig ?? {};
+      const rawWaAutomations = rowData.wa_automations ?? rowData.waAutomations ?? {};
+      const waConfig = redactWaConfig(rawWaConfig as Record<string, unknown>);
+      if (
+        Object.keys(rawWaConfig as object).length > 0 ||
+        Object.keys(rawWaAutomations as object).length > 0
+      ) {
+        hydrateWaStore(String(r.branch_id), waConfig, rawWaAutomations);
       }
-      useSettings.getState().setBranchSettings(r.branch_id, {
-        branchId: r.branch_id,
-        address: r.address ?? undefined,
-        phone: r.phone ?? undefined,
-        email: r.email ?? undefined,
-        gstin: r.gstin ?? undefined,
-        invoiceSeries: r.invoice_series ?? undefined,
-        receiptSeries: r.receipt_series ?? undefined,
-        barcodeSeries: r.barcode_series ?? undefined,
-        smtpHost: r.smtp_host ?? undefined,
-        smtpPort: r.smtp_port ?? undefined,
-        smtpUser: r.smtp_user ?? undefined,
-        smtpPassword: r.smtp_password ?? undefined,
-        smtpFromName: r.smtp_from_name ?? undefined,
-        smtpFromEmail: r.smtp_from_email ?? undefined,
-        waPhoneNumber: r.wa_phone_number ?? undefined,
-        thermalPrinterIp: r.thermal_printer_ip ?? undefined,
-        thermalPrinterPort: r.thermal_printer_port ?? undefined,
-        defaultKarat: r.default_karat ?? undefined,
-        goldRateSource: r.gold_rate_source ?? undefined,
-        invoiceTemplateId: r.invoice_template_id ?? undefined,
-        receiptTemplateId: r.receipt_template_id ?? undefined,
-        logoUrl: r.logo_url ?? undefined,
-        logoStoragePath: r.logo_storage_path ?? undefined,
-        goldRate24KOverridePaise: r.gold_rate_24k_override_paise ?? undefined,
-        goldRate22KOverridePaise: r.gold_rate_22k_override_paise ?? undefined,
-        goldRate18KOverridePaise: r.gold_rate_18k_override_paise ?? undefined,
-        silverRateOverridePaise: r.silver_rate_override_paise ?? undefined,
+    }
+
+    const branchRows = data as Array<Record<string, unknown>>;
+    const secretFlags = await Promise.all(
+      branchRows.map((r) =>
+        isProviderSecretConfigured(String(r.branch_id), "email_smtp").catch(() => false),
+      ),
+    );
+
+    branchRows.forEach((r, index) => {
+      const rowData =
+        r.data && typeof r.data === "object" && !Array.isArray(r.data)
+          ? (r.data as Record<string, unknown>)
+          : {};
+      const branchId = String(r.branch_id);
+      useSettings.getState().setBranchSettings(branchId, {
+        branchId,
+        address: (r.address as string | null) ?? undefined,
+        phone: (r.phone as string | null) ?? undefined,
+        email: (r.email as string | null) ?? undefined,
+        gstin: (r.gstin as string | null) ?? undefined,
+        invoiceSeries: (r.invoice_series as string | null) ?? undefined,
+        receiptSeries: (r.receipt_series as string | null) ?? undefined,
+        barcodeSeries: (r.barcode_series as string | null) ?? undefined,
+        smtpHost: (r.smtp_host as string | null) ?? undefined,
+        smtpPort: (r.smtp_port as string | null) ?? undefined,
+        smtpUser: (r.smtp_user as string | null) ?? undefined,
+        smtpPasswordConfigured: secretFlags[index] ?? false,
+        smtpFromName: (r.smtp_from_name as string | null) ?? undefined,
+        smtpFromEmail: (r.smtp_from_email as string | null) ?? undefined,
+        waPhoneNumber: (r.wa_phone_number as string | null) ?? undefined,
+        thermalPrinterIp: (r.thermal_printer_ip as string | null) ?? undefined,
+        thermalPrinterPort: (r.thermal_printer_port as string | null) ?? undefined,
+        defaultKarat: r.default_karat ? (Number(r.default_karat) as 22 | 24 | 18) : undefined,
+        goldRateSource: (r.gold_rate_source as "manual" | "api" | undefined) ?? undefined,
+        invoiceTemplateId: (r.invoice_template_id as string | null) ?? undefined,
+        receiptTemplateId: (r.receipt_template_id as string | null) ?? undefined,
+        logoUrl: (r.logo_url as string | null) ?? undefined,
+        logoStoragePath: (r.logo_storage_path as string | null) ?? undefined,
+        goldRate24KOverridePaise:
+          (r.gold_rate_24k_override_paise as number | null) ??
+          (rowData.goldRate24KOverridePaise as number | undefined) ??
+          undefined,
+        goldRate22KOverridePaise:
+          (r.gold_rate_22k_override_paise as number | null) ??
+          (rowData.goldRate22KOverridePaise as number | undefined) ??
+          undefined,
+        goldRate18KOverridePaise:
+          (r.gold_rate_18k_override_paise as number | null) ??
+          (rowData.goldRate18KOverridePaise as number | undefined) ??
+          undefined,
+        silverRateOverridePaise:
+          (r.silver_rate_override_paise as number | null) ??
+          (rowData.silverRateOverridePaise as number | undefined) ??
+          undefined,
       });
     });
   }
@@ -680,22 +738,18 @@ async function runSafe(key: string, fn: () => Promise<void>, errors: string[]): 
   try {
     await fn();
   } catch (e) {
-    const normalized = reportUnexpectedError(e, `data-loader.${key}`);
+    const normalized = logBackgroundError(e, `data-loader.${key}`);
     errors.push(`${key}: ${normalized.message} Reference: ${normalized.id}`);
   }
 }
 
-// Critical path: only what's needed to render the layout and sidebar correctly.
-// These run IN PARALLEL and must complete before the UI is shown.
-export async function pullCritical(): Promise<{ ok: boolean; errors: string[] }> {
-  const errors: string[] = [];
+async function executePullCritical(errors: string[]): Promise<void> {
   await Promise.all([
     runSafe("app_settings", pullAppSettings, errors),
     runSafe("branches", pullBranches, errors),
     runSafe("branch_settings", pullBranchSettings, errors),
     runSafe("dropdown_masters", pullDropdownMasters, errors),
   ]);
-  // Module states depend on selectedBranchId which is set by pullBranches
   await runSafe(
     "module_states",
     async () => {
@@ -705,6 +759,21 @@ export async function pullCritical(): Promise<{ ok: boolean; errors: string[] }>
     },
     errors,
   );
+}
+
+// Critical path: only what's needed to render the layout and sidebar correctly.
+export async function pullCritical(): Promise<{ ok: boolean; errors: string[] }> {
+  const errors: string[] = [];
+  try {
+    await withRetryBackoff(
+      () =>
+        withTimeout(executePullCritical(errors), STAGED_LOAD_THRESHOLDS_MS.fail, "pullCritical"),
+      { maxAttempts: 2, label: "pullCritical" },
+    );
+  } catch (e) {
+    const normalized = logBackgroundError(e, "data-loader.pullCritical");
+    errors.push(`pullCritical: ${normalized.message} Reference: ${normalized.id}`);
+  }
   return { ok: errors.length === 0, errors };
 }
 
@@ -733,6 +802,22 @@ export async function pullBackground(): Promise<{ ok: boolean; errors: string[] 
     runSafe("whatsapp_inbox", pullWhatsappInbox, errors),
     runSafe("attachments", pullAttachments, errors),
     runSafe("communication_logs", pullCommLogs, errors),
+    runSafe(
+      "party_opening_balances",
+      async () => {
+        const { hydratePartyOpeningBalances } = await import("@/lib/party-opening-balances");
+        await hydratePartyOpeningBalances();
+      },
+      errors,
+    ),
+    runSafe(
+      "declarative_rules",
+      async () => {
+        const { useDeclarativeRulesStore } = await import("@/lib/declarative-rules-store");
+        await useDeclarativeRulesStore.getState().hydrate();
+      },
+      errors,
+    ),
     runSafe(
       "crm",
       async () => {
@@ -782,6 +867,23 @@ export async function pullBackground(): Promise<{ ok: boolean; errors: string[] 
       },
       errors,
     ),
+    runSafe(
+      "purity_grades",
+      async () => {
+        const { ensurePurityGradesLoaded } = await import("@/lib/purity-grades-store");
+        await ensurePurityGradesLoaded();
+      },
+      errors,
+    ),
+    runSafe(
+      "customization_hub",
+      async () => {
+        const { ensureCustomizationHubPreferencesLoaded } =
+          await import("@/lib/customization-hub-preferences-store");
+        await ensureCustomizationHubPreferencesLoaded();
+      },
+      errors,
+    ),
     // Credit notes, debit notes, estimates, delivery challans — all four
     // "billing documents" from billing-documents-store.ts were never
     // hydrated on boot (confirmed: zero references to this file anywhere
@@ -817,10 +919,8 @@ export async function pullAll(): Promise<{ ok: boolean; errors: string[] }> {
 let starting = false;
 let isLoaded = false;
 
-export async function startCloudSync(): Promise<void> {
-  if (isLoaded || starting) {
-    // Already hydrated (e.g. HMR remount or a second auth event) — the shell
-    // must not stay stuck on the loading skeleton.
+export async function startCloudSync(force = false): Promise<void> {
+  if (!force && (isLoaded || starting)) {
     if (isLoaded) markInitialLoadDone();
     return;
   }
@@ -828,28 +928,28 @@ export async function startCloudSync(): Promise<void> {
   try {
     const critical = await pullCritical();
     if (!critical.ok) {
+      const summary = critical.errors.slice(0, 2).join("; ");
+      markCriticalLoadFailed(
+        summary || "Workspace settings could not be loaded. Check your connection and retry.",
+      );
       toast.error("Settings failed to load", {
-        description: critical.errors.slice(0, 2).join("; "),
+        description: summary,
         duration: 6000,
       });
+      // Unblock shell/dashboard with recoverable error — never infinite spinner.
+      useSettings.getState().setSettingsHydrated(true);
+      markCriticalLoadDone();
+      isLoaded = true;
+      return;
     }
-    // Unblocks routes that gate on firm.shopName (e.g. index.tsx's first-run
-    // redirect) — set regardless of critical.ok so a failed pull doesn't
-    // leave those routes waiting forever.
     useSettings.getState().setSettingsHydrated(true);
-    // Reveal the real shell + route the moment the layout's own data is in;
-    // operational modules fill in from the background pull below, each showing
-    // its own per-store skeleton until then, instead of one global gate.
     markCriticalLoadDone();
-    // Background load starts after critical — don't await so UI unblocks immediately
+    recordStartupMetric("critical_load_done", `${critical.errors.length} errors`);
     void pullBackground()
       .then(async (bg) => {
         markInitialLoadDone();
         if (!bg.ok) {
-          toast.error("Some data failed to load in background", {
-            description: bg.errors.slice(0, 2).join("; "),
-            duration: 4000,
-          });
+          console.warn("[data-loader] background partial failure:", bg.errors.slice(0, 5));
         }
         // Auto-seed demo data only for self-serve trial tenants — an empty
         // database is the NORMAL state for a real paying customer's first
@@ -872,30 +972,44 @@ export async function startCloudSync(): Promise<void> {
         }
       })
       .catch((error) => {
-        const normalized = reportUnexpectedError(error, "data-loader.background");
+        const normalized = logBackgroundError(error, "data-loader.background");
         markInitialLoadDone();
-        toast.error(normalized.title, {
-          description: `${normalized.message} Reference: ${normalized.id}`,
-          duration: 7000,
-        });
+        console.warn("[data-loader] background fatal:", normalized.id, normalized.technicalMessage);
       });
     isLoaded = true;
     startRealtimeSync();
+    const { bootCommunicationRuntime } = await import("@/lib/comm/boot-communication");
+    bootCommunicationRuntime();
     void initializeStorage()
       .then(() => {
         void migrateLegacyRepairsToOrders().catch((error) =>
-          reportUnexpectedError(error, "data-loader.repair-migration"),
+          logBackgroundError(error, "data-loader.repair-migration"),
         );
       })
-      .catch((error) => reportUnexpectedError(error, "data-loader.storage-init"));
+      .catch((error) => logBackgroundError(error, "data-loader.storage-init"));
   } finally {
     starting = false;
   }
 }
 
+/** Force a fresh boot pull after a recoverable failure. */
+export async function retryCloudSync(): Promise<void> {
+  isLoaded = false;
+  starting = false;
+  const { useAppLoading } = await import("@/lib/app-loading-store");
+  useAppLoading.setState({
+    criticalLoadFailed: false,
+    criticalLoadError: null,
+    criticalLoadDone: false,
+    initialLoadDone: false,
+  });
+  await startCloudSync(true);
+}
+
 export function stopCloudSync(): void {
   stopRealtimeSync();
   isLoaded = false;
+  starting = false;
 }
 
 /** Compatibility alias. Ornexa production has one Supabase-backed boot path. */

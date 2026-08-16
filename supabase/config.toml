@@ -5,5 +5,17 @@ project_id = "dqgrrafuoxaorvyrcuuh"
 [functions.auth-login]
 verify_jwt = false
 
+[functions.razorpay-webhook]
+verify_jwt = false
+
+[functions.tenant-purchase-plan]
+verify_jwt = true
+
+[functions.razorpay-create-order]
+verify_jwt = true
+
+[functions.platform-payment-api]
+verify_jwt = true
+
 [functions.example-api]
 verify_jwt = true # Set to false if you are using non-"user" auth modes like "publishable" or "secret"

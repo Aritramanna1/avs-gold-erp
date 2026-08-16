@@ -350,7 +350,7 @@ function OrderDetailPage() {
       </div>
 
       {/* Breadcrumb / next-action */}
-      <div className="rounded-2xl border border-border bg-card p-4 mb-6">
+      <div className="rounded-md border border-border bg-card p-4 mb-6">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {breadcrumb.map((b, i) => (
             <div key={b} className="flex items-center gap-2">
@@ -385,7 +385,7 @@ function OrderDetailPage() {
 
       {/* Dashboard Summary — display only, aggregated from Gold Ledger, Worker Gold Book, Order Issues, Worker Returns, and the Timeline */}
       <div
-        className="rounded-2xl border border-border bg-card p-4 mb-6 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3"
+        className="rounded-md border border-border bg-card p-4 mb-6 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3"
         data-testid="order-dashboard-summary"
       >
         <DashboardStat label="Gold Received" value={`${mgToGrams(order.advance.goldGrossMg)} g`} />
@@ -1033,7 +1033,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <div className="flex items-center gap-2 mb-3">
         {Icon && <Icon className="h-4 w-4 text-gold" />}
         <h3 className="font-serif text-lg text-gold">{title}</h3>

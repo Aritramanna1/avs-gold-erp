@@ -225,12 +225,8 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
     HeaderSectionConfig | undefined;
   const qrConfig = template.sections.find((s) => s.type === "qr") as QrSectionConfig | undefined;
 
-  // No explicit "qr" section and header.showQr not set to false: leave
-  // showQR/qrPosition/qrLabel undefined so PrintLayout's own defaults
-  // (showQR=true, position="header", label="Verify") apply exactly as
-  // they do for every other route — a template only needs to say
-  // something when it wants to DEVIATE from that default.
-  const showQR = qrConfig ? true : (headerConfig?.showQr ?? undefined);
+  // QR only when template explicitly requests it; PrintQR also requires tenant opt-in.
+  const showQR = qrConfig != null || headerConfig?.showQr === true ? true : false;
   const qrPosition = qrConfig
     ? qrConfig.position === "inline"
       ? "footer"

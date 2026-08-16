@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import type { StockMovement } from "@/lib/stock-store";
 import { PageHeader } from "@/components/app-shell";
 import { AttachmentsSection } from "@/components/attachments-section";
+import { StockPhotoGallery } from "@/components/stock/StockPhotoGallery";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,7 +23,11 @@ import {
 } from "@/lib/stock-store";
 import { mgToGrams, getCaratLabel } from "@/lib/gold";
 import { Barcode } from "@/components/barcode";
-import { ArrowLeft, ArrowRightLeft, Printer, Receipt, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Printer, Receipt, Trash2, Pencil } from "lucide-react";
+import { TagModifyDialog } from "@/components/stock/TagModifyDialog";
+import { useCan } from "@/lib/rbac";
+import { toast } from "sonner";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
 export const Route = createFileRoute("/stock/$id")({
   head: () => ({ meta: [{ title: "Stock Item · AVS Gold ERP" }] }),
@@ -37,7 +42,11 @@ function StockDetail() {
   const movements = useMemo(() => allMovements.filter((m) => m.itemId === id), [allMovements, id]);
   const transfer = useStock((s) => s.transfer);
   const changeStatus = useStock((s) => s.changeStatus);
+  const update = useStock((s) => s.update);
   const remove = useStock((s) => s.remove);
+  const { can } = useCan();
+  const canModifyTag = can("goldLedger.edit") || can("settings.edit");
+  const [tagModifyOpen, setTagModifyOpen] = useState(false);
   const [toLoc, setToLoc] = useState<StockLocation>("vault");
   const [toStatus, setToStatus] = useState<StockStatus>("available");
 
@@ -71,6 +80,11 @@ function StockDetail() {
                 <Printer className="h-4 w-4" /> Tag Preview
               </Button>
             </Link>
+            {canModifyTag && (
+              <Button variant="outline" className="gap-2" onClick={() => setTagModifyOpen(true)}>
+                <Pencil className="h-4 w-4" /> Modify Tag
+              </Button>
+            )}
             {item.status === "available" && (
               <Link to="/billing/new" search={{ stockId: item.id }}>
                 <Button className="gap-2">
@@ -83,7 +97,7 @@ function StockDetail() {
       />
 
       <div className="grid md:grid-cols-[1fr_320px] gap-6">
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <div className="rounded-md border border-border bg-card p-5 space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
             <Pair k="Gross Weight" v={`${mgToGrams(item.grossMg)} g`} />
             <Pair k="Net Weight" v={`${mgToGrams(item.netMg)} g`} />
@@ -203,7 +217,7 @@ function StockDetail() {
           </div>
         </div>
 
-        <aside className="rounded-2xl border border-border bg-card p-5 space-y-3">
+        <aside className="rounded-md border border-border bg-card p-5 space-y-3">
           <div className="text-xs uppercase tracking-wider text-muted-foreground">Barcode</div>
           <div className="rounded-lg bg-background/60 p-3 grid place-items-center text-foreground">
             <Barcode value={item.barcode} height={60} />
@@ -214,6 +228,8 @@ function StockDetail() {
         </aside>
       </div>
 
+      <StockPhotoGallery stockId={item.id} />
+
       <AttachmentsSection
         entityType="stock"
         entityId={item.id}
@@ -222,6 +238,30 @@ function StockDetail() {
           { key: "huid_image", label: "HUID / hallmark image" },
           { key: "tag_photo", label: "Tag photo" },
         ]}
+      />
+
+      <TagModifyDialog
+        item={item}
+        open={tagModifyOpen}
+        onOpenChange={setTagModifyOpen}
+        onSave={async (patch, audit) => {
+          await update(item.id, {
+            ...patch,
+            notes: `${item.notes ? `${item.notes}\n` : ""}[TAG_MOD ${new Date().toISOString()}] ${audit.reason}`,
+          });
+          try {
+            const { data } = await supabase.auth.getSession();
+            await supabase.from("security_audit_log" as never).insert({
+              actor_id: data.session?.user.id ?? null,
+              action: "stock.tag_modify",
+              entity_type: "stock_item",
+              entity_id: item.id,
+              metadata: { before: audit.before, after: patch, reason: audit.reason },
+            } as never);
+          } catch {
+            // audit table optional — modification still saved on item
+          }
+        }}
       />
     </div>
   );

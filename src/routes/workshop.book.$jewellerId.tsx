@@ -117,7 +117,7 @@ function JewellerBookPage() {
       </div>
 
       {/* ── Book cover: who this book belongs to ─────────────────────────── */}
-      <div className="rounded-2xl border border-border bg-card p-5 mb-4 flex flex-wrap items-start justify-between gap-4">
+      <div className="erp-surface rounded-md border border-border bg-card p-5 mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl text-gold flex items-center gap-2">
             <BookOpen className="h-7 w-7" /> {jeweller.fullName}
@@ -177,7 +177,7 @@ function JewellerBookPage() {
           v={`${formatWeight(book.goldIssuedMg)}`}
           hint="Fine, back to jeweller"
         />
-        <div className="rounded-2xl border border-border bg-card px-4 py-3">
+        <div className="erp-surface rounded-md border border-border bg-card px-4 py-3">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
             <Scale className="h-3 w-3" /> Outstanding gold
           </div>
@@ -268,7 +268,7 @@ function JewellerBookPage() {
                 const orderJobs = book.jobCards.filter((j) => j.orderId === o.id);
                 const orderBills = book.bills.filter((b) => b.orderId === o.id);
                 return (
-                  <div key={o.id} className="rounded-2xl border border-border bg-card p-4">
+                  <div key={o.id} className="rounded-md border border-border bg-card p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <Link
@@ -351,28 +351,28 @@ function JewellerBookPage() {
               body="A bill is raised when a finished piece is billed to this jeweller."
             />
           ) : (
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="erp-surface rounded-md border border-border bg-card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="erp-table w-full text-sm">
                   <thead className="bg-muted/30 text-muted-foreground">
                     <tr>
                       <th className="text-left px-4 py-3 font-medium">Bill No</th>
                       <th className="text-left px-4 py-3 font-medium">Item</th>
                       <th className="text-left px-4 py-3 font-medium">Karigar</th>
-                      <th className="text-right px-4 py-3 font-medium">Gold issued</th>
+                      <th className="text-right px-4 py-3 font-medium">Gold Issued</th>
                       <th className="text-right px-4 py-3 font-medium">Finished</th>
-                      <th className="text-right px-4 py-3 font-medium">Net cost</th>
+                      <th className="text-right px-4 py-3 font-medium">Net Cost</th>
                       <th className="text-left px-4 py-3 font-medium">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {book.bills.map((b) => (
                       <tr key={b.id} className="border-t border-border hover:bg-muted/20">
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 font-mono text-xs font-semibold">
                           <Link
                             to="/manufacturing/bill/$id"
                             params={{ id: b.id }}
-                            className="font-mono text-xs text-gold hover:underline"
+                            className="text-gold hover:underline"
                           >
                             {b.billNo}
                           </Link>
@@ -391,10 +391,10 @@ function JewellerBookPage() {
                         <td className="px-4 py-3 text-right font-mono text-xs">
                           {formatWeight(b.finishedFineMg)}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-xs">
+                        <td className="px-4 py-3 text-right font-mono text-xs font-semibold">
                           ₹{paiseToRupees(b.netMfgCostPaise)}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 text-xs">
                           <Badge variant="outline" className="text-[10px]">
                             {MFG_BILL_STATUS_LABELS[b.status]}
                           </Badge>
@@ -416,9 +416,9 @@ function JewellerBookPage() {
               body="Gold deposits, gold returns and cash settlements appear here."
             />
           ) : (
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="erp-surface rounded-md border border-border bg-card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="erp-table w-full text-sm">
                   <thead className="bg-muted/30 text-muted-foreground">
                     <tr>
                       <th className="text-left px-4 py-3 font-medium">Date</th>
@@ -465,9 +465,13 @@ function JewellerBookPage() {
 
 function Stat({ k, v, hint, tone }: { k: string; v: string; hint?: string; tone?: "red" }) {
   return (
-    <div className="rounded-2xl border border-border bg-card px-4 py-3">
+    <div className="erp-surface rounded-md border border-border bg-card px-4 py-3">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</div>
-      <div className={`mt-1 font-mono text-lg ${tone === "red" ? "text-red-300" : ""}`}>{v}</div>
+      <div
+        className={`mt-1 font-mono text-lg font-bold text-gold ${tone === "red" ? "!text-red-400" : ""}`}
+      >
+        {v}
+      </div>
       {hint && <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>}
     </div>
   );
@@ -490,7 +494,7 @@ function cashStr(paise: number): string {
 function PeriodSummary({ view, label }: { view: JewellerPeriodView; label: string }) {
   const s = view.summary;
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 mb-4">
+    <div className="erp-surface rounded-md border border-border bg-card p-4 mb-4">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3">
         Period Summary · {label}
       </div>
@@ -524,7 +528,7 @@ function SumStat({ k, v, tone }: { k: string; v: string; tone?: "gold" }) {
  */
 function PeriodLedgerTable({ lines, label }: { lines: JewellerLedgerLine[]; label: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+    <div className="rounded-md border border-border bg-card overflow-hidden">
       <div className="px-4 py-2.5 bg-muted/30 border-b border-border font-serif text-base text-gold">
         Ledger Statement · {label}
       </div>
@@ -802,7 +806,7 @@ function mfgDescription(desc: string): string {
 
 function Empty({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
+    <div className="rounded-md border border-dashed border-border bg-card/40 p-12 text-center">
       <BookOpen className="mx-auto h-10 w-10 text-muted-foreground" />
       <h3 className="mt-4 font-serif text-xl text-gold">{title}</h3>
       <p className="mt-2 text-sm text-muted-foreground">{body}</p>

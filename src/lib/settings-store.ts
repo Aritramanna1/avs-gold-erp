@@ -10,7 +10,10 @@ import {
   type BullionRateProviderConfig,
 } from "./bullion-rate/types";
 
-// ── Supabase persistence helpers ──────────────────────────────────────────────
+import {
+  redactBullionRateProvider,
+  redactSmtpSettings,
+} from "@/lib/security/client-secret-redaction";
 
 /** Saves the main firm settings blob to app_settings[id="firm"] */
 /**
@@ -28,6 +31,11 @@ import {
  */
 let lastLocalSettingsWriteAt = 0;
 let settingsWriteQueue: Promise<void> = Promise.resolve();
+
+/** Await all queued app_settings writes (e.g. before invite validation). */
+export function flushSettingsPersistence(): Promise<void> {
+  return settingsWriteQueue.catch(() => undefined);
+}
 
 /** True if `rowUpdatedAt` predates this tab's most recent settings write. */
 export function isSettingsPullStale(rowUpdatedAt: string | null | undefined): boolean {
@@ -70,6 +78,63 @@ async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<v
     // back empty on the next boot with nothing logged anywhere.
     if (error) {
       console.warn("[settings] Failed to persist to Supabase:", error.message);
+    }
+
+    // Also sync normalized dropdown masters
+    if (snapshot.dropdowns) {
+      try {
+        const ddRows: any[] = [];
+        for (const [key, items] of Object.entries(snapshot.dropdowns as Record<string, string[]>)) {
+          (items || []).forEach((val, idx) => {
+            ddRows.push({
+              id: `${firmId}_${key}_${idx}`,
+              firm_id: firmId,
+              master_key: key,
+              value: val,
+              sort_order: idx,
+              active: true,
+              updated_at: new Date().toISOString(),
+            });
+          });
+        }
+        if (ddRows.length > 0) {
+          await (supabase.from("dropdown_masters") as any).upsert(ddRows, { onConflict: "id" });
+        }
+      } catch (ddErr) {
+        console.warn("[settings] Dropdown masters relational sync:", ddErr);
+      }
+    }
+
+    // Also sync normalized custom field definitions
+    if (Array.isArray(snapshot.formsMetadata)) {
+      try {
+        const fieldRows: any[] = [];
+        for (const form of snapshot.formsMetadata as FormMetadata[]) {
+          (form.fields || []).forEach((f, idx) => {
+            fieldRows.push({
+              firm_id: firmId,
+              entity_type: form.type || form.id,
+              field_code: f.name,
+              field_label: f.label,
+              field_type: f.type,
+              options: f.options ? JSON.stringify(f.options) : null,
+              default_value: f.defaultValue ?? null,
+              is_required: !!f.required,
+              display_order: idx,
+              section_label: form.name,
+              is_active: true,
+              updated_at: new Date().toISOString(),
+            });
+          });
+        }
+        if (fieldRows.length > 0) {
+          await (supabase.from("custom_field_definitions") as any).upsert(fieldRows, {
+            onConflict: "firm_id,entity_type,field_code",
+          });
+        }
+      } catch (cfErr) {
+        console.warn("[settings] Custom fields relational sync:", cfErr);
+      }
     }
   } catch (err) {
     console.warn("[settings] Failed to persist to Supabase:", err);
@@ -194,14 +259,14 @@ function persistSettings(get: () => any, force = false): void {
     making: s.making,
     hardware: s.hardware,
     catalog: s.catalog,
-    smtp: s.smtp,
+    smtp: redactSmtpSettings(s.smtp),
     dropdowns: s.dropdowns,
     disabledDropdowns: s.disabledDropdowns,
     goldRatePerGramPaise: s.goldRatePerGramPaise,
     goldRate24KPerGramPaise: s.goldRate24KPerGramPaise,
     goldRate18KPerGramPaise: s.goldRate18KPerGramPaise,
     silverRatePerGramPaise: s.silverRatePerGramPaise,
-    bullionRateProvider: s.bullionRateProvider,
+    bullionRateProvider: redactBullionRateProvider(s.bullionRateProvider),
     language: s.language,
     developer: s.developer,
     users: s.users,
@@ -213,7 +278,12 @@ function persistSettings(get: () => any, force = false): void {
     formsMetadata: s.formsMetadata,
     campaignTemplates: s.campaignTemplates,
     commAutomation: s.commAutomation,
-    branchSettings: s.branchSettings,
+    branchSettings: (s.branchSettings ?? []).map((row: BranchSettings) => {
+      const { smtpPassword: _ignored, ...safe } = row as BranchSettings & {
+        smtpPassword?: string;
+      };
+      return safe;
+    }),
     emailTemplates: s.emailTemplates,
   };
   // Several related rate fields are updated by one dialog action. Serialize
@@ -294,7 +364,8 @@ export interface BranchSettings {
   smtpHost?: string;
   smtpPort?: string;
   smtpUser?: string;
-  smtpPassword?: string;
+  /** Write-only in UI — never hydrated from Supabase. */
+  smtpPasswordConfigured?: boolean;
   smtpFromName?: string;
   smtpFromEmail?: string;
   waPhoneNumber?: string;
@@ -347,6 +418,14 @@ export interface FirmProfile {
   tagline?: string;
   logoUrl?: string;
   logoStoragePath?: string;
+  /** R2 path — manual stamp scan; only printed when printStampEnabled. */
+  stampImageStoragePath?: string;
+  printStampEnabled?: boolean;
+  /** R2 path — authorized signatory image. */
+  authorizedSignatureStoragePath?: string;
+  printSignatureEnabled?: boolean;
+  /** Legacy verify-token QR on bills/slips — off by default. */
+  printVerificationQrEnabled?: boolean;
   legalName?: string;
   brandName?: string;
   branchAddress?: string;
@@ -360,6 +439,7 @@ export interface FirmProfile {
   socialLinks?: { instagram?: string; facebook?: string; twitter?: string };
   legalDisclaimer?: string;
   hostingerUploadUrl?: string;
+  tenant_migration_status?: "NOT_STARTED" | "DEFERRED" | "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
 }
 
 export interface Branch {
@@ -1490,6 +1570,11 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
     tagline: "Hallmarked Gold & Fine Jewellery",
     logoUrl: "",
     logoStoragePath: "",
+    stampImageStoragePath: "",
+    printStampEnabled: false,
+    authorizedSignatureStoragePath: "",
+    printSignatureEnabled: false,
+    printVerificationQrEnabled: false,
     brandName: "",
     branchAddress: "",
     stateCode: "19",
@@ -2080,7 +2165,7 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   },
   addInvitation: (invite) => {
     set({ invitations: [...get().invitations, invite] });
-    persistSettings(get);
+    persistSettings(get, true);
   },
   updateInvitation: (iid, patch) => {
     set({ invitations: get().invitations.map((i) => (i.id === iid ? { ...i, ...patch } : i)) });
@@ -2163,7 +2248,10 @@ export const useSettings = create<SettingsState>()((set, get) => ({
     }
     persistSettings(get);
   },
-  setFormsMetadata: (forms) => set({ formsMetadata: forms }),
+  setFormsMetadata: (forms) => {
+    set({ formsMetadata: forms });
+    persistSettings(get);
+  },
   addFormMetadata: (form) => {
     const newId = id("form");
     set({ formsMetadata: [...get().formsMetadata, { ...form, id: newId }] });

@@ -119,10 +119,10 @@ function WorkerBookPage() {
         </Link>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5 mb-4 flex flex-wrap items-start justify-between gap-4">
+      <div className="erp-surface rounded-md border border-border bg-card p-5 mb-4 flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4 min-w-0">
           {/* Worker profile photo from the People/KYC vault. */}
-          <div className="h-20 w-20 rounded-xl border border-border bg-muted/40 overflow-hidden shrink-0 grid place-items-center">
+          <div className="h-20 w-20 rounded-md border border-border bg-muted/40 overflow-hidden shrink-0 grid place-items-center">
             {photoUrl ? (
               <img src={photoUrl} alt={worker.fullName} className="h-full w-full object-cover" />
             ) : (
@@ -187,7 +187,7 @@ function WorkerBookPage() {
       </p>
 
       {book.purityBooks.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
+        <div className="erp-surface rounded-md border border-dashed border-border bg-card/40 p-12 text-center">
           <BookOpen className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 font-serif text-xl text-gold">No books yet</h3>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -242,7 +242,7 @@ function WorkerBookPage() {
               key={pb.purity}
               onClick={() => setOpenPurity(pb.purity)}
               data-testid={`worker-book-card-${pb.purity}`}
-              className="text-left rounded-2xl border border-border bg-card p-5 hover:border-gold/50 hover:bg-gold/5 transition-colors group"
+              className="text-left erp-surface rounded-md border border-border bg-card p-5 hover:border-gold/50 hover:bg-gold/5 transition-colors group cursor-pointer"
             >
               <div className="flex items-center justify-between">
                 <div className="font-serif text-lg text-gold flex items-center gap-2">
@@ -250,7 +250,7 @@ function WorkerBookPage() {
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-gold" />
               </div>
-              <div className="mt-3 text-2xl font-mono text-gold">
+              <div className="mt-3 text-2xl font-mono text-gold font-bold">
                 {mgToGrams(pb.currentBalanceMg)} <span className="text-sm">g fine</span>
               </div>
               <div className="text-[11px] text-muted-foreground">Current payable</div>
@@ -279,7 +279,7 @@ function WorkerBookLedger({ pb, range }: { pb: WorkerPurityBook; range: PeriodRa
   const view = buildLedgerView(workerRowsToChrono(pb.rows), range);
   return (
     <section
-      className="rounded-2xl border border-border bg-card overflow-hidden"
+      className="erp-surface rounded-md border border-border bg-card overflow-hidden"
       data-testid={`worker-purity-book-${pb.purity}`}
     >
       <div className="px-4 py-3 border-b border-border flex flex-wrap items-center justify-between gap-2 bg-muted/20">

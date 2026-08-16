@@ -11,7 +11,13 @@ import { useGoldSettlement } from "./gold-settlement-store";
 import { useMfgBills } from "./manufacturing-bill-store";
 import { useJobCards } from "./jobcards-store";
 import { useDeliveryChallans } from "./billing-documents-store";
+import { usePeople } from "./people-store";
 import { fineGoldMg, mgToGrams, parsePurity } from "./gold";
+import {
+  getPartyOpeningBalanceRows,
+  hasAuthoritativePartyOpeningBalances,
+} from "./party-opening-balances";
+import { resolveLedgerVoucherRoute } from "./ledger-voucher-routes";
 
 /**
  * Where a ledger row came from. Explicit so the Workshop books can relabel /
@@ -19,7 +25,13 @@ import { fineGoldMg, mgToGrams, parsePurity } from "./gold";
  * ("payment") to post into without the compiler having to guess from text.
  */
 export type LedgerSource =
-  "settlement" | "order" | "invoice" | "payment" | "manufacturing_bill" | "delivery_challan";
+  | "settlement"
+  | "order"
+  | "invoice"
+  | "payment"
+  | "manufacturing_bill"
+  | "delivery_challan"
+  | "opening_balance";
 
 export interface CustomerLedgerRow {
   id: string;
@@ -30,6 +42,10 @@ export interface CustomerLedgerRow {
   description: string;
   /** Origin module of this row. Defaults are set per producer below. */
   source: LedgerSource;
+  /** Canonical entity id for drill-down navigation */
+  sourceEntityId?: string;
+  /** Pre-resolved in-app route */
+  sourceRoute?: string | null;
 
   // Metal Details (optional)
   grossMg?: number;
@@ -77,8 +93,92 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
   const invoices = useBilling.getState().invoices;
   const orders = useOrders.getState().orders;
   const settlements = useGoldSettlement.getState().settlements;
+  const people = usePeople.getState().people;
 
   const rawRows: Omit<CustomerLedgerRow, "closingGoldMg" | "closingMoneyPaise">[] = [];
+
+  // --- 0. PROCESS AUTHORITATIVE OPENING BALANCES ---
+  const person = people.find((p) => p.id === customerId);
+  const authoritativeOpening = hasAuthoritativePartyOpeningBalances(customerId);
+
+  if (authoritativeOpening) {
+    for (const pob of getPartyOpeningBalanceRows(customerId)) {
+      if (pob.cashDebitPaise > 0 || pob.cashCreditPaise > 0) {
+        rawRows.push({
+          id: `op_cash_pob_${pob.id}`,
+          ts: 0,
+          date: pob.asOfDate || "Opening",
+          voucherNo: "OP-CASH",
+          type: "Opening Cash Balance",
+          description: pob.notes || "Opening cash balance (migration authority)",
+          source: "opening_balance",
+          goldInMg: 0,
+          goldOutMg: 0,
+          moneyDebitPaise: pob.cashDebitPaise,
+          moneyCreditPaise: pob.cashCreditPaise,
+        });
+      }
+      if (pob.fineGoldDebitMg > 0 || pob.fineGoldCreditMg > 0) {
+        rawRows.push({
+          id: `op_gold_pob_${pob.id}`,
+          ts: 0,
+          date: pob.asOfDate || "Opening",
+          voucherNo: "OP-GOLD",
+          type: "Opening Gold Balance",
+          description: pob.notes || "Opening gold balance (migration authority)",
+          source: "opening_balance",
+          fineMg: pob.fineGoldDebitMg || pob.fineGoldCreditMg,
+          goldInMg: pob.fineGoldCreditMg,
+          goldOutMg: pob.fineGoldDebitMg,
+          moneyDebitPaise: 0,
+          moneyCreditPaise: 0,
+        });
+      }
+    }
+  } else if (person) {
+    // Cash Opening Balance
+    if (person.cashOpeningBalancePaise && person.cashOpeningBalancePaise > 0) {
+      const isReceivable = person.cashOpeningType !== "payable";
+      rawRows.push({
+        id: `op_cash_${person.id}`,
+        ts: 0,
+        date: "Opening",
+        voucherNo: "OP-CASH",
+        type: "Opening Cash Balance",
+        description: person.openingBalanceNotes || "Opening cash balance brought forward",
+        source: "opening_balance",
+        goldInMg: 0,
+        goldOutMg: 0,
+        moneyDebitPaise: isReceivable ? person.cashOpeningBalancePaise : 0,
+        moneyCreditPaise: !isReceivable ? person.cashOpeningBalancePaise : 0,
+      });
+    }
+
+    // Gold Opening Balance
+    if (person.goldOpeningFineMg || person.goldOpeningGrossMg) {
+      const fineMg =
+        person.goldOpeningFineMg ||
+        Math.round((person.goldOpeningGrossMg || 0) * ((person.goldOpeningTouch || 91.6) / 100));
+      const isReceivable = person.goldOpeningType !== "payable";
+      if (fineMg > 0) {
+        rawRows.push({
+          id: `op_gold_${person.id}`,
+          ts: 0,
+          date: "Opening",
+          voucherNo: "OP-GOLD",
+          type: "Opening Gold Balance",
+          description: `Opening gold balance (${person.goldOpeningTouch || 91.6}% Touch)`,
+          source: "opening_balance",
+          grossMg: person.goldOpeningGrossMg,
+          fineMg: fineMg,
+          goldInMg: !isReceivable ? fineMg : 0,
+          goldOutMg: isReceivable ? fineMg : 0,
+          moneyDebitPaise: 0,
+          moneyCreditPaise: 0,
+        });
+      }
+    }
+  }
 
   // --- 1. PROCESS DIRECT GOLD SETTLEMENTS & CASH TRANSACTIONS ---
   const customerSettlements = settlements.filter(
@@ -178,6 +278,7 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
       type: typeStr,
       description: descStr,
       source: "settlement",
+      sourceEntityId: s.id,
       grossMg: gross > 0 ? gross : undefined,
       lessMg: less > 0 ? less : undefined,
       netMg: net > 0 ? net : undefined,
@@ -291,6 +392,7 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
       type: "Invoice Sale",
       description: `Billed Invoice ${i.invoiceNo} · ${i.items.map((it) => it.itemName).join(", ")}`,
       source: "invoice",
+      sourceEntityId: i.id,
       goldInMg: 0,
       goldOutMg: 0,
       moneyDebitPaise: totalTaxablePaise,
@@ -530,7 +632,44 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
   }
 
   // --- 5. CHRONOLOGICAL SORTING & RUNNING BALANCE COMPUTATION ---
-  return summariseLedgerRows(rawRows);
+  const enrichedRows = rawRows.map((row) => {
+    const sourceEntityId = row.sourceEntityId ?? deriveSourceEntityId(row);
+    return {
+      ...row,
+      sourceEntityId,
+      sourceRoute: resolveLedgerVoucherRoute({
+        source: row.source,
+        sourceEntityId,
+        voucherNo: row.voucherNo,
+        customerId,
+      }),
+    };
+  });
+  return summariseLedgerRows(enrichedRows);
+}
+
+function deriveSourceEntityId(row: { id: string }): string {
+  const suffixes = [
+    "-created",
+    "-cash-adv",
+    "-gold-adv",
+    "-sale",
+    "-cash-adj",
+    "-gold-adj",
+    "-billed",
+    "-delivered",
+    "-charges",
+    "-jobcard",
+    "-payment",
+    "-op_cash",
+    "-op_gold",
+  ];
+  for (const suffix of suffixes) {
+    if (row.id.includes(suffix)) {
+      return row.id.slice(0, row.id.indexOf(suffix));
+    }
+  }
+  return row.id;
 }
 
 /**

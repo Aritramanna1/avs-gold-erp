@@ -6,6 +6,7 @@ const srcDir = path.join(root, "src");
 const allowedLayoutSidebarImporters = new Set([
   path.normalize("src/components/app-shell.tsx"),
   path.normalize("src/components/GlobalCommandPalette.tsx"),
+  path.normalize("src/components/mobile/MobileModulesSheet.tsx"),
 ]);
 
 function walk(dir, files = []) {

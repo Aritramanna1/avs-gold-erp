@@ -58,7 +58,7 @@ export function PartyPurityBooksView({
 
   if (purityBooks.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
+      <div className="rounded-md border border-dashed border-border bg-card/40 p-12 text-center">
         <BookOpen className="mx-auto h-10 w-10 text-muted-foreground" />
         <h3 className="mt-4 font-serif text-xl text-gold">No books yet</h3>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -91,7 +91,7 @@ export function PartyPurityBooksView({
         return (
           <section
             key={pb.purity}
-            className="rounded-2xl border border-border bg-card overflow-hidden"
+            className="rounded-md border border-border bg-card overflow-hidden"
             data-testid={`party-purity-book-${pb.purity}`}
           >
             <div className="px-4 py-3 border-b border-border flex flex-wrap items-center justify-between gap-2 bg-muted/20">

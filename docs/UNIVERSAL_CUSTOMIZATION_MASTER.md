@@ -105,7 +105,7 @@ To guarantee instant page load speeds and zero UI stutter, Ornexa forbids downlo
 
 ### 4.2 Caching & Invalidation
 - All configuration metadata is stored with an immutable `config_version_hash`.
-- Client caches configuration in memory and IndexedDB.
+- Client caches configuration in memory only for the active session; the authoritative tenant configuration remains in Supabase.
 - When an administrator publishes a new configuration version, Supabase Realtime emits a `tenant_config_updated` event, prompting background cache invalidation.
 
 ---

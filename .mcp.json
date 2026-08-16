@@ -32,7 +32,7 @@
     },
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=kjfjsfhftytezsjyegmb"
+      "url": "https://mcp.supabase.com/mcp?project_ref=dqgrrafuoxaorvyrcuuh&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
     },
     "claude-flow": {
       "command": "cmd",

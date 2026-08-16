@@ -83,18 +83,15 @@ function GoldOutstandingPage() {
         <div className="space-y-4">
           <div className="grid sm:grid-cols-3 gap-3">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-24 rounded-2xl border border-border bg-card animate-pulse"
-              />
+              <div key={i} className="h-24 rounded-md border border-border bg-card animate-pulse" />
             ))}
           </div>
-          <div className="h-56 rounded-2xl border border-border bg-card animate-pulse" />
+          <div className="h-56 rounded-md border border-border bg-card animate-pulse" />
         </div>
       )}
 
       {error && !loading && (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-700">
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-700">
           <AlertTriangle className="mb-2 h-5 w-5" />
           {error}
           <button type="button" onClick={() => void load()} className="ml-3 underline">
@@ -106,20 +103,20 @@ function GoldOutstandingPage() {
       {!loading && !error && (
         <>
           {capped && (
-            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700">
+            <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700">
               Showing a bounded 1000-row report slice. Add dated server aggregates before using this
               as full-history statutory evidence.
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 font-sans">
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="rounded-md border border-border bg-card p-4">
               <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
                 Total Outstanding
               </div>
               <div className="text-2xl font-mono font-bold">{mgToGrams(totalMg)} g</div>
             </div>
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4">
               <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
                 Owed To Us (Karigars/Workers hold)
               </div>
@@ -127,7 +124,7 @@ function GoldOutstandingPage() {
                 {mgToGrams(owedToUs)} g
               </div>
             </div>
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4">
+            <div className="rounded-md border border-red-500/30 bg-red-500/5 p-4">
               <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
                 Owed By Us (Jama to karigars/workers)
               </div>
@@ -140,7 +137,7 @@ function GoldOutstandingPage() {
           {/* Mobile view */}
           <div className="block md:hidden space-y-3">
             {rows.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground italic text-xs bg-card rounded-2xl border border-border">
+              <div className="p-8 text-center text-muted-foreground italic text-xs bg-card rounded-md border border-border">
                 <AlertTriangle className="h-6 w-6 mx-auto mb-2 opacity-40" />
                 No outstanding gold anywhere. Everything is settled.
               </div>
@@ -148,7 +145,7 @@ function GoldOutstandingPage() {
               rows.map((r, i) => (
                 <div
                   key={`${r.source}-${r.reference}-${i}`}
-                  className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                  className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm">{r.name}</span>
@@ -175,7 +172,7 @@ function GoldOutstandingPage() {
           </div>
 
           {/* Desktop view */}
-          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="hidden md:block rounded-md border border-border bg-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

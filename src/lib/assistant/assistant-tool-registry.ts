@@ -13,7 +13,12 @@ import {
   fetchDeliveryChallans,
   fetchEstimates,
 } from "@/lib/billing-documents-query";
-import { queryKnowledgeBase } from "./knowledge-service";
+import {
+  queryKnowledgeBase,
+  formatKnowledgeAnswer,
+  searchKnowledgeRepository,
+} from "./knowledge-repository";
+import { resolvePartyEntities } from "./entity-resolver";
 import type {
   ERPActionCard,
   ToolDefinition,
@@ -21,6 +26,12 @@ import type {
   ProviderAdapterConfig,
 } from "./assistant-types";
 import { getContextBudget } from "./assistant-context-engine";
+import {
+  executeAssistantGoldIssue,
+  executeAssistantCreateParty,
+  executeAssistantCreateStock,
+  executeAssistantCreateExpense,
+} from "./assistant-action-executor";
 
 const supabaseAny = supabase as any;
 
@@ -285,6 +296,19 @@ export function extractIssueArgs(message: string) {
 
 async function findPerson(query: string, types?: string[]): Promise<any | null> {
   const q = query.trim();
+  if (!q) return null;
+
+  const resolution = await resolvePartyEntities(q, { types, limit: 1 });
+  if (resolution.bestMatch) {
+    const { data } = await supabase
+      .from("people")
+      .select("id,full_name,phone,type,data,updated_at")
+      .eq("id", resolution.bestMatch.id)
+      .maybeSingle();
+    return data ?? null;
+  }
+
+  // Fallback: direct ilike search
   let request = supabase
     .from("people")
     .select("id,full_name,phone,type,data,updated_at")
@@ -295,10 +319,9 @@ async function findPerson(query: string, types?: string[]): Promise<any | null> 
     request = request.in("type", types);
   }
 
-  if (q) {
-    const safe = q.replace(/[%_,]/g, " ");
-    request = request.or(`full_name.ilike.%${safe}%,phone.ilike.%${safe}%,email.ilike.%${safe}%`);
-  }
+  const safe = q.replace(/[%_,]/g, " ");
+  request = request.or(`full_name.ilike.%${safe}%,phone.ilike.%${safe}%,email.ilike.%${safe}%`);
+
   const { data, error } = await request;
   if (error) throw error;
   return data?.[0] ?? null;
@@ -1297,37 +1320,60 @@ export async function toolCreateSupportTicket(userMessage: string): Promise<ERPA
 
 // 15. Query Knowledge Base / SOPs / FAQ (Path A Local RAG)
 export async function toolQueryKnowledgeBase(userMessage: string): Promise<ERPActionCard> {
-  const results = queryKnowledgeBase(userMessage, 2);
+  const scored = searchKnowledgeRepository(userMessage, { limit: 3 });
+  const formatted = formatKnowledgeAnswer(scored);
 
-  if (results.length === 0) {
+  if (scored.length === 0 || !formatted.content) {
     return {
       type: "search_results",
       title: "Help & Knowledge Centre",
       summary:
-        "I could not find an exact SOP match in the documentation library. You can browse Help Centre or ask a specific workflow question.",
+        "I don't have enough information to answer that confidently. Browse the Help Centre or ask a more specific jewellery/Ornexa question.",
       actionRoute: "/help",
-      data: { query: userMessage },
+      data: { query: userMessage, isKnowledge: true },
     };
   }
 
-  const primary = results[0];
+  const primary = scored[0].article;
+  const tierLabel: Record<string, string> = {
+    product: "Ornexa Product",
+    industry: "Jewellery Industry",
+    india: "India Knowledge",
+    tenant: "Your Business",
+    faq: "FAQ",
+  };
+
   const card: ERPActionCard = {
     type: "search_results",
-    title: `Knowledge: ${primary.title}`,
-    summary: primary.summary,
+    title: primary.title,
+    summary: formatted.content.slice(0, 600) + (formatted.content.length > 600 ? "…" : ""),
     actionRoute: primary.relatedRoute || "/help",
     tableColumns: [
-      { key: "topic", header: "Article Topic", align: "left" },
-      { key: "source", header: "Reference Doc", align: "right" },
+      { key: "topic", header: "Related Topic", align: "left" },
+      { key: "tier", header: "Knowledge Type", align: "left" },
+      { key: "source", header: "Source", align: "right" },
     ],
-    tableRows: results.map((r) => ({
-      topic: r.title,
-      source: r.sourceDoc,
+    tableRows: scored.map((r) => ({
+      topic: r.article.title,
+      tier: tierLabel[r.article.knowledgeTier] ?? r.article.knowledgeTier,
+      source: r.article.sourceDoc ?? "Ornexa Knowledge Base",
     })),
     data: {
-      primaryContent: primary.content,
+      primaryContent: formatted.content,
       sourceDoc: primary.sourceDoc,
-      results,
+      knowledgeTier: primary.knowledgeTier,
+      knowledgeSources: scored.map((r) => ({
+        id: r.article.id,
+        title: r.article.title,
+        topic: r.article.topic,
+        knowledgeTier: r.article.knowledgeTier,
+        sourceDoc: r.article.sourceDoc,
+        relatedRoute: r.article.relatedRoute,
+        lastReviewedAt: r.article.lastReviewedAt,
+      })),
+      isKnowledge: true,
+      confidence: formatted.confidence,
+      results: scored.map((r) => r.article),
     },
   };
 
@@ -1335,7 +1381,12 @@ export async function toolQueryKnowledgeBase(userMessage: string): Promise<ERPAc
     actionKey: "query_knowledge_base",
     actionType: "read",
     requestPayload: { query: userMessage },
-    resultPayload: { matchedId: primary.id, sourceDoc: primary.sourceDoc },
+    resultPayload: {
+      matchedId: primary.id,
+      sourceDoc: primary.sourceDoc,
+      confidence: formatted.confidence,
+      tier: primary.knowledgeTier,
+    },
   });
 
   return card;
@@ -1420,27 +1471,17 @@ export async function toolPrepareWhatsAppInvoiceAction(
   };
 }
 
-// Execute confirmed action with audit log
+// Execute confirmed action with audit log and real database mutations
 export async function executeConfirmedAction(
   payload: ActionPayload,
 ): Promise<{ success: boolean; message: string }> {
   try {
+    const details = payload.details || {};
+
+    // 1. Gold Issue
     if (payload.actionType === "gold_issue") {
-      const details = payload.details;
-      await supabaseAny.from("worker_transactions").insert({
-        kind: "issue",
-        data: {
-          workerId: details.workerId,
-          karigarId: details.workerId,
-          grossMg: Math.round(details.grossGrams * 1000),
-          netMg: Math.round(details.grossGrams * 1000),
-          purity: details.purity,
-          fineMg: Math.round(details.fineGrams * 1000),
-          type: "issue",
-          description: `Issued via Assistant on ${new Date().toLocaleDateString("en-IN")}`,
-          createdAt: new Date().toISOString(),
-        },
-      });
+      const result = await executeAssistantGoldIssue(payload);
+      if (!result.success) return result;
 
       await auditAssistantAction({
         actionKey: "execute_gold_issue",
@@ -1453,49 +1494,146 @@ export async function executeConfirmedAction(
         resultPayload: { success: true },
       });
 
-      return {
-        success: true,
-        message: `Successfully posted gold issue of ${payload.details.grossGrams} g to ${payload.recipientName || "Worker"}.`,
-      };
+      void (supabase as any).rpc("deduct_tenant_credits", {
+        p_service_code: "ai_action_exec",
+        p_units: 1,
+        p_description: `Assistant gold issue to ${payload.recipientName || "Worker"}`,
+      });
+
+      return result;
     }
 
+    // 2. Create Party
+    if (payload.actionType === "create_voucher" && details.partyType) {
+      const result = await executeAssistantCreateParty(payload);
+      if (!result.success) return result;
+
+      await auditAssistantAction({
+        actionKey: "execute_create_party",
+        actionType: "mutate",
+        targetType: "people",
+        targetId: result.partyId,
+        status: "executed",
+        requiresConfirmation: true,
+        requestPayload: details,
+        resultPayload: { success: true, partyId: result.partyId },
+      });
+
+      void (supabase as any).rpc("deduct_tenant_credits", {
+        p_service_code: "ai_action_exec",
+        p_units: 1,
+        p_description: `Assistant party creation: ${details.fullName}`,
+      });
+
+      return { success: true, message: result.message };
+    }
+
+    // 3. Create Ready Stock
+    if (payload.actionType === "create_voucher" && details.itemType && details.grossWeight) {
+      const result = await executeAssistantCreateStock(payload);
+      if (!result.success) return result;
+
+      await auditAssistantAction({
+        actionKey: "execute_create_stock",
+        actionType: "mutate",
+        targetType: "inventory",
+        targetId: result.tagId,
+        status: "executed",
+        requiresConfirmation: true,
+        requestPayload: details,
+        resultPayload: { success: true, tagId: result.tagId },
+      });
+
+      void (supabase as any).rpc("deduct_tenant_credits", {
+        p_service_code: "ai_action_exec",
+        p_units: 1,
+        p_description: `Assistant inventory stock addition: ${result.tagId}`,
+      });
+
+      return { success: true, message: result.message };
+    }
+
+    // 4. Create Expense
+    if (payload.actionType === "create_voucher" && details.expenseCategory && details.amount) {
+      const result = await executeAssistantCreateExpense(payload);
+      if (!result.success) return result;
+
+      await auditAssistantAction({
+        actionKey: "execute_create_expense",
+        actionType: "mutate",
+        targetType: "payments",
+        targetId: result.expenseId,
+        status: "executed",
+        requiresConfirmation: true,
+        requestPayload: details,
+        resultPayload: { success: true, expenseId: result.expenseId },
+      });
+
+      void (supabase as any).rpc("deduct_tenant_credits", {
+        p_service_code: "ai_action_exec",
+        p_units: 1,
+        p_description: `Assistant expense booking: ₹${details.amount}`,
+      });
+
+      return { success: true, message: result.message };
+    }
+
+    // 5. WhatsApp Send
     if (payload.actionType === "whatsapp_send") {
+      const { notifyInvoiceReady } = await import("@/lib/comm/platform/avs-communication-platform");
+      const phone = String(payload.recipientPhone ?? payload.details?.recipientPhone ?? "").trim();
+      const result = await notifyInvoiceReady({
+        branchId: String(payload.details?.branchId ?? "MAIN"),
+        recipient: {
+          name: String(payload.recipientName ?? payload.details?.recipientName ?? "Customer"),
+          phone,
+        },
+        invoiceId: String(
+          payload.details?.invoiceId ?? payload.targetId ?? `assistant_${Date.now()}`,
+        ),
+        invoiceNumber: String(payload.details?.invoiceNo ?? ""),
+        amount: String(payload.details?.amount ?? ""),
+        documentUrl: payload.details?.documentUrl ? String(payload.details.documentUrl) : undefined,
+        channels: ["whatsapp"],
+      });
+
       await auditAssistantAction({
         actionKey: "execute_whatsapp_send",
         actionType: "mutate",
         targetType: payload.targetType,
         targetId: payload.targetId,
-        status: "executed",
+        status: result.success ? "executed" : "failed",
         requiresConfirmation: true,
         requestPayload: payload.details,
-        resultPayload: { simulated: true, sentTo: payload.recipientPhone },
+        resultPayload: result,
+        errorMessage: result.success ? undefined : result.errors.join("; "),
+      });
+
+      if (!result.success) {
+        return {
+          success: false,
+          message:
+            result.errors.join("; ") || "WhatsApp dispatch failed. Check communication settings.",
+        };
+      }
+
+      void (supabase as any).rpc("deduct_tenant_credits", {
+        p_service_code: "wa_utility",
+        p_units: 1,
+        p_description: `Assistant WhatsApp share to ${phone}`,
       });
 
       return {
         success: true,
-        message: `Dispatched WhatsApp message for ${payload.details.invoiceNo} to ${payload.recipientName || "Customer"} (${payload.recipientPhone || "file"}).`,
+        message: `WhatsApp message queued for ${payload.recipientName || "customer"} (${phone}).`,
       };
     }
 
-    if (payload.actionType === "create_voucher") {
-      await auditAssistantAction({
-        actionKey: "execute_create_voucher",
-        actionType: "mutate",
-        targetType: payload.targetType,
-        targetId: payload.targetId,
-        status: "executed",
-        requiresConfirmation: true,
-        requestPayload: payload.details,
-        resultPayload: { success: true },
-      });
-
-      return {
-        success: true,
-        message: `Successfully created and posted ${payload.title} to ledger.`,
-      };
-    }
-
-    return { success: true, message: "Action confirmed and logged." };
+    // Unwired action types must not report fake success.
+    return {
+      success: false,
+      message: `Action "${payload.actionType}" is not wired for automatic execution. Open the relevant ERP screen or use the confirmation card.`,
+    };
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Execution failed";
     await auditAssistantAction({

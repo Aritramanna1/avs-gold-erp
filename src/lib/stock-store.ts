@@ -5,6 +5,7 @@
  * to a Receive-Work / Opening-Stock flow in a later phase.
  */
 import { create } from "zustand";
+import { tryPostUniversalLedgerMirror } from "@/lib/universal-transaction-bridge";
 import { fineGoldMg } from "@/lib/gold";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "./settings-store";
@@ -248,6 +249,16 @@ export const useStock = create<StockState>()((set, get) => ({
     await stockMovementRepository.save(mv);
     // Optimistic local update — realtime will confirm from DB
     set((s) => ({ items: [item, ...s.items], movements: [mv, ...s.movements] }));
+
+    void tryPostUniversalLedgerMirror({
+      voucherKind: "stock_entry",
+      voucherNumber: item.itemCode,
+      grossWeightMg: item.grossMg,
+      netWeightMg: item.netMg,
+      fineGoldCreditMg: item.fineMg,
+      metadata: { stockItemId: item.id, barcode: item.barcode },
+    }).catch(() => undefined);
+
     return item;
   },
   addReadyStock: async (input, source) => {

@@ -186,7 +186,7 @@ export function BackupRecoveryPage() {
 
       {/* Layered Resilience Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+        <div className="rounded-md border border-border bg-card p-4 space-y-2">
           <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs">
             <Cloud className="h-4 w-4" />
             Layer 1: PostgreSQL WAL
@@ -199,7 +199,7 @@ export function BackupRecoveryPage() {
           </Badge>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+        <div className="rounded-md border border-border bg-card p-4 space-y-2">
           <div className="flex items-center gap-2 text-blue-600 font-bold text-xs">
             <HardDrive className="h-4 w-4" />
             Layer 3: R2 Document Store
@@ -212,7 +212,7 @@ export function BackupRecoveryPage() {
           </Badge>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+        <div className="rounded-md border border-border bg-card p-4 space-y-2">
           <div className="flex items-center gap-2 text-gold font-bold text-xs">
             <ShieldCheck className="h-4 w-4" />
             Layer 4: Encrypted Exports
@@ -245,7 +245,7 @@ export function BackupRecoveryPage() {
 
         {/* Tab 1: Export */}
         <TabsContent value="export" className="space-y-6 pt-4">
-          <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+          <div className="rounded-md border border-border bg-card p-6 space-y-4">
             <div className="flex items-start justify-between flex-wrap gap-4">
               <div className="space-y-1">
                 <h3 className="font-bold text-sm">Generate Standalone Business Archive</h3>
@@ -270,7 +270,7 @@ export function BackupRecoveryPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-6 space-y-3">
+          <div className="rounded-md border border-border bg-card p-6 space-y-3">
             <h3 className="font-bold text-sm">Recent Backup Packages</h3>
             <div className="divide-y divide-border text-xs">
               {backupHistory.map((b) => (
@@ -302,7 +302,7 @@ export function BackupRecoveryPage() {
 
         {/* Tab 2: Restore */}
         <TabsContent value="restore" className="space-y-6 pt-4">
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex gap-3 text-xs text-amber-800 dark:text-amber-300">
+          <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 flex gap-3 text-xs text-amber-800 dark:text-amber-300">
             <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
             <div>
               <strong className="block font-semibold">Controlled Restoration Guard</strong>
@@ -312,7 +312,7 @@ export function BackupRecoveryPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+          <div className="rounded-md border border-border bg-card p-6 space-y-4">
             <h3 className="font-bold text-sm">Step 1: Select &amp; Inspect Backup File</h3>
             <div className="space-y-2">
               <Label className="text-xs font-semibold">
@@ -334,7 +334,7 @@ export function BackupRecoveryPage() {
             )}
 
             {inspectionResult && (
-              <div className="p-4 bg-muted/30 rounded-xl space-y-2 text-xs border border-border">
+              <div className="p-4 bg-muted/30 rounded-md space-y-2 text-xs border border-border">
                 <div className="flex items-center gap-2 font-bold text-emerald-600">
                   <CheckCircle2 className="h-4 w-4" />
                   Package Inspection Passed
@@ -362,7 +362,7 @@ export function BackupRecoveryPage() {
           </div>
 
           {inspectionResult && !restoreDone && (
-            <div className="rounded-xl border border-red-500/30 bg-card p-6 space-y-4">
+            <div className="rounded-md border border-red-500/30 bg-card p-6 space-y-4">
               <h3 className="font-bold text-sm text-red-600 flex items-center gap-2">
                 <Lock className="h-4 w-4" />
                 Step 2: Confirm Controlled Restoration
@@ -392,7 +392,7 @@ export function BackupRecoveryPage() {
           )}
 
           {restoreDone && (
-            <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-3 text-xs">
+            <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-md space-y-3 text-xs">
               <div className="flex items-center gap-2 text-sm font-bold text-emerald-600">
                 <CheckCircle2 className="h-5 w-5" />
                 Restoration &amp; Document Reconciliation Completed!
@@ -420,7 +420,7 @@ export function BackupRecoveryPage() {
 
         {/* Tab 3: Rehearsals */}
         <TabsContent value="rehearsal" className="space-y-4 pt-4">
-          <div className="rounded-xl border border-border bg-card p-6 space-y-3">
+          <div className="rounded-md border border-border bg-card p-6 space-y-3">
             <h3 className="font-bold text-sm">Monthly Restore Rehearsal Log</h3>
             <p className="text-xs text-muted-foreground">
               Automated disaster recovery drills executed in isolated staging environments to verify

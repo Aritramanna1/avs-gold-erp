@@ -1,46 +1,31 @@
 # User Guide
 
-This guide provides basic operation workflows for AVS Gold ERP.
+This guide describes the current Supabase-backed Ornexa workflow. All business records and operational data are managed through the approved cloud ERP, not through a local-first or hybrid database runtime.
 
-## Table of Contents
+## Getting started
 
-- [Setup Wizard](#setup-wizard)
-- [Licensing](#licensing)
-- [Local First & Hybrid Deployment](#local-first--hybrid-deployment)
-- [User Management](#user-management)
-- [Manufacturing Workflow](#manufacturing-workflow)
-- [Billing & GST Calculations](#billing--gst-calculations)
+1. Sign in through the approved Supabase-authenticated tenant flow.
+2. Validate the active firm, branch, and role assignment.
+3. Configure business settings, branch policies, print profile, communication defaults, and operational preferences from the authorized Settings and Customization workspaces.
+4. Use the standard ERP workflows for people, catalog, orders, manufacturing, stock, billing, reporting, and portal access.
 
-## Setup Wizard
+## Licensing and access
 
-Upon first launching the ERP, you are presented with the Setup Wizard. This allows you to configure your business firm name, selected branches, and regional compliance settings (like HSN and Hallmark License Numbers).
+- License validation follows the approved licensing flow for the tenant and entitled devices.
+- Local development and local test hosts may bypass certain development-only checks, but the production tenant path remains authenticated and network-backed.
+- Access is governed by role, branch scope, and Supabase RLS rules.
 
-## Licensing
+## Manufacturing workflow
 
-You must enter a valid license key (format: `AVS1-XXXXX-XXXXX-XXXXX-XXXXX`) to activate the application.
+1. Create or review customer orders.
+2. Issue raw material and create job cards as needed.
+3. Record manufacturing progress through the approved workshop and ledger flows.
+4. Verify finishing, stock movement, settlement, and final billing through the canonical ERP journals and reporting layers.
 
-- Local development hosts (`localhost`, `127.0.0.1`) bypass the validation automatically to prevent lockouts during development.
-- Staging/Production environments connect to the Central Licensing server to validate seats and features.
+## Billing and GST
 
-## Local First & Hybrid Deployment
+Use the standard billing engine for invoices, payments, and settlement flows. GST and accounting calculations remain authoritative in the approved ERP logic and must not be bypassed by local or disconnected data paths.
 
-AVS Gold ERP runs with an offline-first architecture. All records are primary-written to a local SQLite database, allowing the application to work seamlessly without network connectivity. When internet access is restored in Hybrid mode, the local outbox automatically synchronizes changes back to Supabase.
+## Reporting and audit
 
-## User Management
-
-Only Super Owners and Administrators have permission to invite new users, manage roles, and review session security logs.
-
-## Manufacturing Workflow
-
-1. **Orders**: Create a new customer order with target weight and purity.
-2. **Job Cards**: Issue raw gold to a designated Karigar to initiate a job.
-3. **Receipt**: Receive finished ornaments and scrap from the Karigar, calculating wastage and fine weight.
-4. **Stock**: Finished goods are tagged and automatically moved to retail stock.
-
-## Billing & GST Calculations
-
-In the billing section, you can issue sales invoices against retail stock. GST is calculated with exact rounding to avoid cgst+sgst drift:
-
-- CGST + SGST: Split mode rounds the grand total once and splits it, guaranteeing both halves sum up exactly.
-- IGST: Single pool tax calculations are applied cleanly in inter-state invoicing.
-- TCS (Tax Collected at Source) is automatically applied when transaction values surpass configured limits.
+Reports, ledgers, and audit evidence are generated from the live Supabase-backed record set. The ERP must always reflect the authorized tenant state, not a stale browser cache or local database copy.

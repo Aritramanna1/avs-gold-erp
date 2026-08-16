@@ -4,7 +4,7 @@
  * Allows authorized staff to generate and dispatch secure, single-use
  * portal invitations for Customers, Karigars, and Suppliers from Party 360.
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,8 +25,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { Mail, Phone, Copy, Check, Send, Loader2, Sparkles } from "lucide-react";
+import { Mail, Phone, Copy, Check, Send, Loader2, UserCheck } from "lucide-react";
 import { toast } from "sonner";
+import { notifyPortalInvitation } from "@/lib/comm/platform";
+import { useSettings } from "@/lib/settings-store";
 
 interface InviteToPortalDialogProps {
   open: boolean;
@@ -41,6 +43,7 @@ interface InviteToPortalDialogProps {
 }
 
 export function InviteToPortalDialog({ open, onOpenChange, person }: InviteToPortalDialogProps) {
+  const { firm } = useSettings();
   const defaultPortal =
     person.type === "karigar" || person.type === "worker"
       ? "karigar_portal"
@@ -57,18 +60,32 @@ export function InviteToPortalDialog({ open, onOpenChange, person }: InviteToPor
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    if (open) {
+      setEmail(person.email || "");
+      setPhone(person.phone || "");
+      setGeneratedLink(null);
+    }
+  }, [open, person.email, person.phone]);
+
+  function makeInviteCode(): string {
+    const rand =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()
+        : Math.random().toString(36).substring(2, 14).toUpperCase();
+    return `INV-${rand}`;
+  }
+
   async function handleCreateInvitation() {
+    if (!email.trim() && !phone.trim()) {
+      toast.error("Email or phone is required.");
+      return;
+    }
     setBusy(true);
     try {
-      // 1. Generate invitation token code
-      const inviteCode =
-        "INV-" +
-        Math.random().toString(36).substring(2, 8).toUpperCase() +
-        "-" +
-        Date.now().toString(36).toUpperCase();
+      const inviteCode = makeInviteCode();
       const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
-      // 2. Insert invitation record into Supabase or app settings
       const { error } = await supabase.from("portal_invitations" as never).insert([
         {
           party_id: person.id,
@@ -85,12 +102,35 @@ export function InviteToPortalDialog({ open, onOpenChange, person }: InviteToPor
         } as never,
       ]);
 
+      if (error) {
+        toast.error(error.message || "Failed to save invitation.");
+        return;
+      }
+
+      const contact = email.trim() || phone.trim();
       const baseUrl = window.location.origin;
-      const directUrl = `${baseUrl}/invite/accept?code=${inviteCode}&email=${encodeURIComponent(email || phone)}`;
+      const directUrl = `${baseUrl}/invite/accept?code=${inviteCode}&email=${encodeURIComponent(contact)}`;
       setGeneratedLink(directUrl);
 
       if (channel === "email" && email) {
-        toast.success(`Invitation dispatched to ${email}`);
+        const portalMap: Record<string, "customer" | "karigar" | "supplier" | "internal"> = {
+          customer_portal: "customer",
+          karigar_portal: "karigar",
+          supplier_portal: "supplier",
+          internal_portal: "internal",
+        };
+        const portal = portalMap[portalType] ?? "customer";
+        const result = await notifyPortalInvitation({
+          portal,
+          recipient: { name: person.fullName, email: email.trim(), partyId: person.id },
+          actionUrl: directUrl,
+          firmName: firm.shopName || "AVS",
+        });
+        if (result.success) {
+          toast.success(`Invitation email queued for ${email}`);
+        } else {
+          toast.warning(`Invitation created but email failed: ${result.errors[0] ?? "unknown"}`);
+        }
       } else if (channel === "whatsapp" && phone) {
         const text = encodeURIComponent(
           `Hello ${person.fullName}, you have been invited to access the AVS Gold ERP Portal. Click here to set up your password: ${directUrl}`,
@@ -120,7 +160,7 @@ export function InviteToPortalDialog({ open, onOpenChange, person }: InviteToPor
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-gold" />
+            <UserCheck className="h-5 w-5 text-gold" />
             Invite to Portal · {person.fullName}
           </DialogTitle>
           <DialogDescription>
@@ -222,7 +262,7 @@ export function InviteToPortalDialog({ open, onOpenChange, person }: InviteToPor
           </div>
         ) : (
           <div className="space-y-4 py-3">
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-2 text-xs">
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-md space-y-2 text-xs">
               <div className="flex items-center gap-2 text-emerald-600 font-bold">
                 <Check className="h-4 w-4" />
                 Invitation Generated!

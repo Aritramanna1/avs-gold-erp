@@ -169,7 +169,7 @@ function RepairDetail() {
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-md border border-border bg-card p-5">
             <h3 className="font-serif text-gold mb-3">Item Details</h3>
             <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
               <Row k="Item Type" v={repair.itemType} />
@@ -198,7 +198,7 @@ function RepairDetail() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-md border border-border bg-card p-5">
             <h3 className="font-serif text-gold mb-3">Status Timeline</h3>
             <ol className="space-y-2 text-sm">
               {repair.timeline.map((t, i) => (
@@ -223,7 +223,7 @@ function RepairDetail() {
             </TabsList>
 
             <TabsContent value="actions">
-              <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <div className="rounded-md border border-border bg-card p-5 space-y-4">
                 <div>
                   <Label>Assign Worker</Label>
                   <div className="flex gap-2 mt-1">
@@ -286,7 +286,7 @@ function RepairDetail() {
             </TabsContent>
 
             <TabsContent value="charges">
-              <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <div className="rounded-md border border-border bg-card p-5 space-y-3">
                 <div className="grid sm:grid-cols-3 gap-3">
                   <div>
                     <Label>Final Repair Charge (₹)</Label>
@@ -355,7 +355,7 @@ function RepairDetail() {
             </TabsContent>
 
             <TabsContent value="payments">
-              <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <div className="rounded-md border border-border bg-card p-5 space-y-3">
                 <div className="text-sm">
                   <b>Advance:</b> ₹ {paiseToRupees(repair.advancePaise)}{" "}
                   {repair.advanceMode ? `· ${PAYMENT_MODE_LABELS[repair.advanceMode]}` : ""}
@@ -436,7 +436,7 @@ function RepairDetail() {
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-gold/30 bg-gold/5 p-5">
+          <div className="rounded-md border border-gold/30 bg-gold/5 p-5">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Customer</div>
             <div className="font-serif text-gold text-lg">{repair.customerName}</div>
             {repair.customerPhone && <div className="text-sm">{repair.customerPhone}</div>}
@@ -446,7 +446,7 @@ function RepairDetail() {
               </Button>
             </Link>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="rounded-md border border-border bg-card p-5">
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
               Quick Actions
             </div>

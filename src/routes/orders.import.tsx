@@ -243,7 +243,7 @@ function OrdersImportPage() {
       />
 
       {result && (
-        <div className="rounded-2xl border border-border bg-card p-4 mb-4">
+        <div className="rounded-md border border-border bg-card p-4 mb-4">
           Import finished: {result.success} succeeded
           {result.failed > 0 ? `, ${result.failed} failed` : ""}.
         </div>
@@ -268,7 +268,7 @@ function OrdersImportPage() {
               Import {validCount} Valid Rows
             </Button>
           </div>
-          <div className="rounded-2xl border border-border bg-card overflow-hidden max-h-[500px] overflow-y-auto">
+          <div className="rounded-md border border-border bg-card overflow-hidden max-h-[500px] overflow-y-auto">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -307,7 +307,7 @@ function OrdersImportPage() {
       )}
 
       {rows.length === 0 && !result && (
-        <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
+        <div className="rounded-md border border-border bg-card p-8 text-center text-muted-foreground">
           Download the template, fill in your orders (matching customers by phone), then upload the
           CSV.
         </div>

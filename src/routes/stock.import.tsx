@@ -232,7 +232,7 @@ function StockImportPage() {
       />
 
       {result && result.discrepancy === 0 && (
-        <div className="rounded-2xl border border-border bg-card p-4 mb-4 flex items-center gap-2">
+        <div className="rounded-md border border-border bg-card p-4 mb-4 flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-green-600" />
           <span>
             Import finished: {result.success} succeeded
@@ -242,7 +242,7 @@ function StockImportPage() {
       )}
 
       {result && result.discrepancy !== 0 && (
-        <div className="rounded-2xl border border-destructive bg-destructive/10 p-4 mb-4 flex items-start gap-2">
+        <div className="rounded-md border border-destructive bg-destructive/10 p-4 mb-4 flex items-start gap-2">
           <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
           <span className="text-destructive">
             Import reported {result.success} rows succeeded, but Stock only grew by{" "}
@@ -272,7 +272,7 @@ function StockImportPage() {
               Import {validCount} Valid Rows
             </Button>
           </div>
-          <div className="rounded-2xl border border-border bg-card overflow-hidden max-h-[500px] overflow-y-auto">
+          <div className="rounded-md border border-border bg-card overflow-hidden max-h-[500px] overflow-y-auto">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -325,7 +325,7 @@ function StockImportPage() {
       )}
 
       {rows.length === 0 && !result && (
-        <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
+        <div className="rounded-md border border-border bg-card p-8 text-center text-muted-foreground">
           Download the template, fill in your stock items, then upload the CSV to preview and
           import.
         </div>

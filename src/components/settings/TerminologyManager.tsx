@@ -48,7 +48,7 @@ export function TerminologyManager() {
   return (
     <div className="space-y-6">
       {/* Active Pack Selector */}
-      <div className="rounded-xl border border-border/80 bg-card p-6 shadow-sm space-y-4">
+      <div className="rounded-md border border-border/80 bg-card p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-base font-bold text-foreground flex items-center gap-2">
@@ -99,7 +99,7 @@ export function TerminologyManager() {
       </div>
 
       {/* Dictionary Search & Custom Override Grid */}
-      <div className="rounded-xl border border-border/80 bg-card p-6 shadow-sm space-y-4">
+      <div className="rounded-md border border-border/80 bg-card p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h3 className="font-semibold text-sm text-foreground">
             Trade Terms Dictionary ({filteredTerms.length} of 42)

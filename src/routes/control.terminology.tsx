@@ -5,7 +5,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { guardRoute } from "@/lib/permissions";
-import { PageHeader } from "@/components/app-shell";
+import { StandardPage } from "@/components/design-system";
 import { TerminologyManager } from "@/components/settings/TerminologyManager";
 
 export const Route = createFileRoute("/control/terminology")({
@@ -16,12 +16,11 @@ export const Route = createFileRoute("/control/terminology")({
 
 function ControlTerminologyPage() {
   return (
-    <div className="p-4 md:p-8 space-y-6 max-w-6xl mx-auto">
-      <PageHeader
-        title="Jewellery Terminology Engine (42 Terms)"
-        subtitle="Manage active trade packs (Standard, Indian Trade, Bengali, Gujarati, Manufacturer) and custom vocabulary aliases."
-      />
+    <StandardPage
+      title="Jewellery Terminology Engine (42 Terms)"
+      subtitle="Manage active trade packs and custom vocabulary aliases."
+    >
       <TerminologyManager />
-    </div>
+    </StandardPage>
   );
 }

@@ -26,6 +26,9 @@ import { AssistantCardRenderer } from "./AssistantCardRenderer";
 import { Logo } from "@/components/ui/Logo";
 import { useRoles } from "@/lib/rbac";
 import { useSettings } from "@/lib/settings-store";
+import { KEYBOARD_EVENTS } from "@/lib/keyboard/keyboard-events";
+import { useShortcutBindings } from "@/lib/keyboard/use-shortcut-binding";
+import { getShortcutDisplayLabel } from "@/lib/keyboard/shortcut-keys";
 
 const CONVERSATION_STORAGE_KEY = "ornexa_assistant_chat_history";
 
@@ -39,7 +42,9 @@ export function AssistantDrawer() {
   const [speakerEnabled, setSpeakerEnabled] = useState(true);
 
   const { roles } = useRoles();
-  const userRole = roles[0] || "Owner";
+  const currentUserRole = useSettings((s) => s.currentUserRole);
+  const branding = useSettings((s) => s.branding);
+  const userRole = currentUserRole || roles[0] || "Owner";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -96,17 +101,17 @@ export function AssistantDrawer() {
     }
   }, [messages, isOpen]);
 
-  // Global hotkey Ctrl+J / Cmd+J
+  useShortcutBindings(["nav_assistant_quick", "nav_assistant"], () => {
+    setIsOpen((prev) => !prev);
+  });
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === "j" || e.key === "J")) {
-        e.preventDefault();
-        setIsOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener(KEYBOARD_EVENTS.ASSISTANT_OPEN, handleOpen);
+    return () => window.removeEventListener(KEYBOARD_EVENTS.ASSISTANT_OPEN, handleOpen);
   }, []);
+
+  const assistantKeys = getShortcutDisplayLabel("nav_assistant_quick", "Ctrl+J");
 
   const handleSendQuery = async (queryText?: string) => {
     const textToSend = queryText || inputQuery;
@@ -229,12 +234,12 @@ export function AssistantDrawer() {
       {/* Slide-in Drawer */}
       <div
         id="ornexa-assistant-drawer"
-        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[480px] lg:w-[520px] bg-background border-l border-border shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 z-50 h-dvh max-h-dvh w-full sm:w-[480px] lg:w-[520px] bg-background border-l border-border shadow-2xl flex flex-col min-h-0 transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur">
+        {/* Header — fixed within drawer */}
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-sm bg-gold/10 text-gold flex items-center justify-center border border-gold/20 shadow-xs">
               <Logo className="h-5 w-5" />
@@ -242,14 +247,14 @@ export function AssistantDrawer() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-serif font-semibold text-sm text-foreground">
-                  Ornexa Assistant
+                  {branding.applicationName || "Ornexa"} Assistant
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   Deterministic Core
                 </span>
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Permission-Aware Business Intelligence (Ctrl+J)
+                Permission-Aware Business Intelligence ({assistantKeys})
               </p>
             </div>
           </div>
@@ -294,8 +299,8 @@ export function AssistantDrawer() {
           </div>
         </div>
 
-        {/* Message Feed */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-sm">
+        {/* Conversation — independently scrollable */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 text-sm overscroll-contain">
           {messages.map((msg) => {
             const isUser = msg.role === "user";
             return (
@@ -304,8 +309,8 @@ export function AssistantDrawer() {
                 className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
               >
                 {!isUser && (
-                  <div className="h-7 w-7 rounded-full bg-gold/10 text-gold flex items-center justify-center shrink-0 mt-0.5 border border-gold/20">
-                    <Bot className="h-4 w-4" />
+                  <div className="h-7 w-7 rounded-full bg-gold/10 text-gold flex items-center justify-center shrink-0 mt-0.5 border border-gold/20 overflow-hidden">
+                    <Logo className="h-4 w-4" />
                   </div>
                 )}
                 <div
@@ -316,6 +321,20 @@ export function AssistantDrawer() {
                   }`}
                 >
                   <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+
+                  {msg.knowledgeSources && msg.knowledgeSources.length > 0 && (
+                    <div className="mt-2 pt-1.5 border-t border-border/50 flex flex-wrap gap-1">
+                      {msg.knowledgeSources.slice(0, 2).map((src) => (
+                        <span
+                          key={src.id}
+                          className="text-[9px] text-amber-600/80 border border-amber-500/15 bg-amber-500/5 rounded-sm px-1 py-0.5"
+                          title={src.sourceDoc}
+                        >
+                          {src.title.length > 28 ? src.title.slice(0, 26) + "…" : src.title}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Rich ERP Card */}
                   {msg.erpCard && (
@@ -358,70 +377,72 @@ export function AssistantDrawer() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Quick Context Chips */}
-        <div className="px-4 py-2 border-t border-border/60 bg-card/40 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          <span className="text-[10px] uppercase font-semibold text-muted-foreground shrink-0">
-            Quick:
-          </span>
-          {getContextChips().map((chip, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => handleSendQuery(chip.query)}
-              className="shrink-0 px-2.5 py-1 rounded-full border border-border bg-background hover:border-gold/50 hover:bg-gold/5 text-[11px] text-foreground font-medium transition-colors cursor-pointer"
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
+        {/* Quick chips + composer — anchored at bottom */}
+        <div className="shrink-0 border-t border-border bg-card/80 backdrop-blur">
+          <div className="px-4 py-2 border-b border-border/60 bg-card/40 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <span className="text-[10px] uppercase font-semibold text-muted-foreground shrink-0">
+              Quick:
+            </span>
+            {getContextChips().map((chip, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSendQuery(chip.query)}
+                className="shrink-0 px-2.5 py-1 rounded-full border border-border bg-background hover:border-gold/50 hover:bg-gold/5 text-[11px] text-foreground font-medium transition-colors cursor-pointer"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
 
-        {/* Input Bar */}
-        <div className="p-3 border-t border-border bg-card/80 backdrop-blur space-y-2">
-          {isListening && (
-            <div className="flex items-center justify-center gap-2 py-1 text-xs font-semibold text-red-500 animate-pulse">
-              <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
-              Listening... Speak your business query now
+          {/* Input Bar */}
+          <div className="p-3 border-t border-border bg-card/80 backdrop-blur space-y-2">
+            {isListening && (
+              <div className="flex items-center justify-center gap-2 py-1 text-xs font-semibold text-red-500 animate-pulse">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                Listening... Speak your business query now
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              {/* Mic Toggle Button */}
+              <button
+                type="button"
+                onClick={toggleMic}
+                className={`h-9 w-9 rounded-sm border flex items-center justify-center transition-all cursor-pointer ${
+                  isListening
+                    ? "border-red-500 bg-red-500/10 text-red-500 shadow-md animate-pulse"
+                    : "border-border hover:border-gold/50 text-muted-foreground hover:text-foreground bg-background"
+                }`}
+                title={isListening ? "Stop listening" : "Start Voice Input"}
+              >
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputQuery}
+                onChange={(e) => setInputQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendQuery();
+                  }
+                }}
+                placeholder="Ask Assistant: 'Where is my gold?', 'Overdue jobs'..."
+                className="flex-1 h-9 rounded-sm border border-border bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold text-foreground"
+              />
+
+              <button
+                type="button"
+                onClick={() => handleSendQuery()}
+                disabled={!inputQuery.trim() || isLoading}
+                className="h-9 px-3 rounded-sm bg-gold text-black font-semibold text-xs flex items-center gap-1.5 hover:bg-gold/90 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+              >
+                <Send className="h-3.5 w-3.5" />
+              </button>
             </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            {/* Mic Toggle Button */}
-            <button
-              type="button"
-              onClick={toggleMic}
-              className={`h-9 w-9 rounded-sm border flex items-center justify-center transition-all cursor-pointer ${
-                isListening
-                  ? "border-red-500 bg-red-500/10 text-red-500 shadow-md animate-pulse"
-                  : "border-border hover:border-gold/50 text-muted-foreground hover:text-foreground bg-background"
-              }`}
-              title={isListening ? "Stop listening" : "Start Voice Input"}
-            >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </button>
-
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputQuery}
-              onChange={(e) => setInputQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendQuery();
-                }
-              }}
-              placeholder="Ask Assistant: 'Where is my gold?', 'Overdue jobs'..."
-              className="flex-1 h-9 rounded-sm border border-border bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold text-foreground"
-            />
-
-            <button
-              type="button"
-              onClick={() => handleSendQuery()}
-              disabled={!inputQuery.trim() || isLoading}
-              className="h-9 px-3 rounded-sm bg-gold text-black font-semibold text-xs flex items-center gap-1.5 hover:bg-gold/90 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
-            >
-              <Send className="h-3.5 w-3.5" />
-            </button>
           </div>
         </div>
       </div>
@@ -432,12 +453,6 @@ export function AssistantDrawer() {
 /** Global Helper to Trigger Assistant Drawer Open */
 export function openOrnexaAssistant() {
   if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "j",
-        ctrlKey: true,
-        bubbles: true,
-      }),
-    );
+    window.dispatchEvent(new CustomEvent(KEYBOARD_EVENTS.ASSISTANT_OPEN));
   }
 }

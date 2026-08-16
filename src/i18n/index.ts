@@ -48,6 +48,7 @@ import enReports from "./en/reports";
 import enSettings from "./en/settings";
 import enStock from "./en/stock";
 import enWorkers from "./en/workers";
+import enTour from "./en/tour";
 import enWorkshop from "./en/workshop";
 
 export type LanguageCode = "en" | "mr" | "hi" | "bn";
@@ -73,6 +74,7 @@ const enDict: TranslationDictionary = {
   reports: enReports,
   settings: enSettings,
   stock: enStock,
+  tour: enTour,
   workers: enWorkers,
   workshop: enWorkshop,
 };
@@ -113,6 +115,7 @@ async function loadHi(): Promise<TranslationDictionary> {
     reports,
     settings,
     stock,
+    tour,
     workers,
     workshop,
   ] = await Promise.all([
@@ -135,6 +138,7 @@ async function loadHi(): Promise<TranslationDictionary> {
     safeImport(() => import("./hi/reports"), enReports),
     safeImport(() => import("./hi/settings"), enSettings),
     safeImport(() => import("./hi/stock"), enStock),
+    safeImport(() => import("./hi/tour"), enTour),
     safeImport(() => import("./hi/workers"), enWorkers),
     safeImport(() => import("./hi/workshop"), enWorkshop),
   ]);
@@ -158,6 +162,7 @@ async function loadHi(): Promise<TranslationDictionary> {
     reports,
     settings,
     stock,
+    tour,
     workers,
     workshop,
   };
@@ -184,6 +189,7 @@ async function loadMr(): Promise<TranslationDictionary> {
     reports,
     settings,
     stock,
+    tour,
     workers,
     workshop,
   ] = await Promise.all([
@@ -206,6 +212,7 @@ async function loadMr(): Promise<TranslationDictionary> {
     safeImport(() => import("./mr/reports"), enReports),
     safeImport(() => import("./mr/settings"), enSettings),
     safeImport(() => import("./mr/stock"), enStock),
+    safeImport(() => import("./mr/tour"), enTour),
     safeImport(() => import("./mr/workers"), enWorkers),
     safeImport(() => import("./mr/workshop"), enWorkshop),
   ]);
@@ -229,6 +236,7 @@ async function loadMr(): Promise<TranslationDictionary> {
     reports,
     settings,
     stock,
+    tour,
     workers,
     workshop,
   };
@@ -255,6 +263,7 @@ async function loadBn(): Promise<TranslationDictionary> {
     reports,
     settings,
     stock,
+    tour,
     workers,
     workshop,
   ] = await Promise.all([
@@ -277,6 +286,7 @@ async function loadBn(): Promise<TranslationDictionary> {
     safeImport(() => import("./bn/reports"), enReports),
     safeImport(() => import("./bn/settings"), enSettings),
     safeImport(() => import("./bn/stock"), enStock),
+    safeImport(() => import("./bn/tour"), enTour),
     safeImport(() => import("./bn/workers"), enWorkers),
     safeImport(() => import("./bn/workshop"), enWorkshop),
   ]);
@@ -300,6 +310,7 @@ async function loadBn(): Promise<TranslationDictionary> {
     reports,
     settings,
     stock,
+    tour,
     workers,
     workshop,
   };

@@ -86,7 +86,7 @@ export function MigrationWizard() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="rounded-xl border border-border/80 bg-card p-6 shadow-sm">
+      <div className="rounded-md border border-border/80 bg-card p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -130,7 +130,7 @@ export function MigrationWizard() {
       {/* Main Grid: Sidebar Step Navigation + Stage Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Navigation: 13 Stages */}
-        <div className="lg:col-span-4 rounded-xl border border-border/80 bg-card p-4 space-y-2 shadow-sm">
+        <div className="lg:col-span-4 rounded-md border border-border/80 bg-card p-4 space-y-2 shadow-sm">
           <div className="flex items-center justify-between px-2 pb-2 border-b border-border/50">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Migration Stages
@@ -180,7 +180,7 @@ export function MigrationWizard() {
 
         {/* Right Content Area: Active Stage Details & Actions */}
         <div className="lg:col-span-8 space-y-6">
-          <div className="rounded-xl border border-border/80 bg-card p-6 shadow-sm space-y-6">
+          <div className="rounded-md border border-border/80 bg-card p-6 shadow-sm space-y-6">
             {/* Stage Title Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/50">
               <div>
@@ -306,7 +306,7 @@ export function MigrationWizard() {
             ) : (
               <div className="space-y-6">
                 {/* Upload Zone */}
-                <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary/50 transition-colors bg-muted/20">
+                <div className="border-2 border-dashed border-border rounded-md p-6 text-center hover:border-primary/50 transition-colors bg-muted/20">
                   <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-xs font-semibold text-foreground">
                     Upload CSV file for Stage {currentStage.stageNumber}

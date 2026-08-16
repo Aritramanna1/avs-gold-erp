@@ -21,10 +21,12 @@ graph TD
     TokenVerify --> AccountCreation["Account Creation & Password Setup"]
     
     AccountCreation --> InternalPath["Internal ERP Workspace (Scoped by Role & Branch)"]
-    AccountCreation --> CustomerPath["Customer Portal (/customer/*)"]
-    AccountCreation --> KarigarPath["Karigar Portal (/karigar/*)"]
-    AccountCreation --> SupplierPath["Supplier Portal (/supplier/*)"]
+    AccountCreation --> CustomerPath["Customer Portal (/customer/*) — portal_identities + portal_party_links"]
+    AccountCreation --> KarigarPath["Karigar Portal (/karigar/*) — portal_identities + portal_party_links"]
+    AccountCreation --> SupplierPath["Supplier Portal (/supplier/*) — portal_identities + portal_party_links"]
 ```
+
+> **Portal provisioning invariant:** External portal accounts must receive a `portal_identities` row (tenant + portal type) and at least one active `portal_party_links` row before portal RPCs succeed. Legacy `user_profiles.customer_person_id` is backfilled automatically but must not be trusted from the browser.
 
 ---
 

@@ -156,7 +156,7 @@ function DebitNotesIndex() {
         }
       />
 
-      <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="rounded-md border border-border bg-card p-4">
         <div className="relative max-w-sm mb-3">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input

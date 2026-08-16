@@ -4,13 +4,18 @@ import { lazy, Suspense, useEffect, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { PlatformShell } from "@/components/platform-shell";
+import { StagingEnvironmentBadge } from "@/components/StagingEnvironmentBadge";
+import { InteractiveGuidedTour } from "@/components/training/InteractiveGuidedTour";
 import { ModuleSkeleton } from "@/components/module-skeleton";
 import { AuthGate } from "@/components/auth-gate";
-import { LicenseGate } from "@/components/license-gate";
+import { SubscriptionGate } from "@/components/subscription-gate";
 import { WhatsNewDialog } from "@/components/whats-new-dialog";
 import { BackendGate } from "@/components/backend-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { RouteErrorFallback } from "@/components/app-error-boundary";
+import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
+import { CookieConsentBanner } from "@/components/compliance/CookieConsentBanner";
+import { KeyboardCheatSheet } from "@/components/keyboard/KeyboardCheatSheet";
 
 const PrintPreviewModal = lazy(() =>
   import("@/components/print/PrintPreviewModal").then((module) => ({
@@ -62,6 +67,7 @@ function RouteContentPending() {
   );
 }
 
+import { isPublicMarketingPath } from "@/lib/website/defaults";
 import { useSettings } from "@/lib/settings-store";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -71,7 +77,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       shopName
         .split(" ")
         .filter(Boolean)
-        .map((w) => w[0])
+        .map((w: string) => w[0])
         .join("")
         .toUpperCase() || shopName.slice(0, 3).toUpperCase();
     return {
@@ -103,6 +109,7 @@ function RootComponent() {
   const [deferredChromeReady, setDeferredChromeReady] = useState(false);
 
   const isPublic =
+    isPublicMarketingPath(currentPath) ||
     [
       "/forgot-password",
       "/reset-password",
@@ -117,6 +124,9 @@ function RootComponent() {
       "/customer-portal",
       "/supplier-login",
       "/supplier-portal",
+      "/privacy",
+      "/terms",
+      "/trial/start",
     ].includes(currentPath) ||
     currentPath.startsWith("/invite/") ||
     currentPath.startsWith("/doc/") ||
@@ -142,6 +152,9 @@ function RootComponent() {
     currentPath.includes("-print") ||
     currentPath.includes("print-log") ||
     PRINT_ROUTE_PREFIXES.some((p) => currentPath.startsWith(p));
+
+  // Global Keyboard Shortcuts Dispatcher (Ctrl+K, Alt+N, Alt+W, Alt+S, etc.)
+  useGlobalShortcuts();
 
   useEffect(() => {
     setDeferredChromeReady(true);
@@ -274,6 +287,7 @@ function RootComponent() {
                 </Suspense>
               </CatchBoundary>
             </div>
+            <CookieConsentBanner />
             <Toaster richColors position="top-right" />
           </LanguageProvider>
         </ThemeProvider>
@@ -312,9 +326,11 @@ function RootComponent() {
       <ThemeProvider>
         <LanguageProvider>
           <AuthGate>
-            <LicenseGate>
+            <SubscriptionGate>
               <BackendGate>
                 <WhatsNewDialog />
+                <StagingEnvironmentBadge />
+                <InteractiveGuidedTour />
                 {currentPath.startsWith("/platform") ? (
                   <PlatformShell>
                     <CatchBoundary
@@ -339,14 +355,16 @@ function RootComponent() {
                   </AppShell>
                 )}
               </BackendGate>
-            </LicenseGate>
+            </SubscriptionGate>
           </AuthGate>
           <Toaster richColors position="top-right" />
+          <CookieConsentBanner />
           <Suspense fallback={null}>
             {deferredChromeReady ? (
               <>
                 <SessionLockOverlay />
                 <GlobalCommandPalette />
+                <KeyboardCheatSheet />
               </>
             ) : null}
             {isOpen ? (

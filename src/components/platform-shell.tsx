@@ -1,105 +1,149 @@
-import type { ReactNode } from "react";
+/**
+ * Platform Owner — collapsible sidebar with unique active states per route.
+ */
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { ChevronDown } from "lucide-react";
 import {
-  Activity,
-  Building2,
-  CircleDollarSign,
-  Database,
-  LayoutDashboard,
-  LifeBuoy,
-  LogOut,
-  MessageSquare,
-  Receipt,
-  Settings2,
-  ShieldCheck,
-  Users,
-  Wrench,
-} from "lucide-react";
-import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { Button } from "@/components/ui/button";
+  findNavGroupForItem,
+  isPlatformNavItemActive,
+  normalizePlatformSearch,
+  platformOwnerNav,
+  type PlatformNavItem,
+} from "@/lib/platform-owner-nav";
+import { PlatformAccountMenu } from "@/components/platform/PlatformAccountMenu";
+import { cn } from "@/lib/utils";
 
-const items = [
-  ["Overview", "overview", LayoutDashboard],
-  ["Firms", "firms", Building2],
-  ["Users", "users", Users],
-  ["Subscriptions & trials", "subscriptions", CircleDollarSign],
-  ["Module licensing", "licensing", ShieldCheck],
-  ["Service requests", "requests", Wrench],
-  ["Support tickets", "tickets", MessageSquare],
-  ["Software billing", "billing", Receipt],
-  ["Activity & audit", "activity", LifeBuoy],
-  ["Health & monitoring", "health", Activity],
-  ["Backups", "backups", Database],
-  ["Platform settings", "settings", Settings2],
-] as const;
+const STORAGE_KEY = "ornexa-platform-nav-expanded";
+
+function loadExpanded(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, boolean>;
+  } catch {
+    /* ignore */
+  }
+  const defaults: Record<string, boolean> = {};
+  for (const g of platformOwnerNav) defaults[g.id] = true;
+  return defaults;
+}
 
 export function PlatformShell({ children }: { children: ReactNode }) {
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const activeView = useRouterState({
-    select: (state) => (state.location.search as { view?: string }).view ?? "overview",
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const search = useRouterState({
+    select: (s) => normalizePlatformSearch(s.location.search as Record<string, unknown>),
   });
-  async function signOut() {
-    await supabase.auth.signOut();
-    window.location.assign("/");
-  }
-  return (
-    <div className="min-h-screen bg-[#f4f0e8] text-[#09090b]">
-      <header className="border-b border-[#c9c4ba] bg-[#fffdf8] px-4 py-3 lg:px-14 print:hidden">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8c8c88]">
-              AVS Platform
-            </p>
-            <p className="font-serif text-lg">Owner Control Center</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="border border-[#b99b5a]/50 bg-[#f7f2e6] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#806738]">
-              SaaS Admin
-            </span>
-            <Button
-              variant="outline"
-              className="gap-2 border-[#b99b5a] px-3 text-xs"
-              onClick={() => void signOut()}
-              aria-label="Sign out"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Sign out</span>
-            </Button>
-          </div>
-        </div>
-      </header>
 
-      <div className="mx-auto max-w-[1600px] px-4 py-4 lg:px-14 print:hidden">
-        <div className="border border-[#dedad1] bg-[#efece6] px-7 py-5 shadow-sm">
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#6b6659]">
-            AVS / Platform Operations
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(loadExpanded);
+
+  const activeItemId = useMemo(() => {
+    for (const group of platformOwnerNav) {
+      for (const item of group.items) {
+        if (isPlatformNavItemActive(item, pathname, search)) return item.id;
+      }
+    }
+    return null;
+  }, [pathname, search]);
+
+  useEffect(() => {
+    if (!activeItemId) return;
+    const groupId = findNavGroupForItem(activeItemId);
+    if (!groupId) return;
+    setExpanded((prev) => {
+      if (prev[groupId]) return prev;
+      const next = { ...prev, [groupId]: true };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, [activeItemId]);
+
+  function toggleGroup(groupId: string) {
+    setExpanded((prev) => {
+      const next = { ...prev, [groupId]: !prev[groupId] };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex">
+      <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-card print:hidden">
+        <div className="p-4 border-b border-border">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            AVS Platform
           </p>
-          <h1 className="mt-1 font-serif text-2xl leading-tight">Owner Control Center</h1>
-          <nav className="mt-5 flex items-center gap-2 overflow-x-auto border-b border-[#c9c4ba] pb-2">
-            {items.map(([label, view, Icon]) => {
-              const active = pathname === "/platform" && activeView === view;
-              return (
-                <Link
-                  key={view}
-                  to="/platform"
-                  search={{ view } as never}
-                  aria-current={active ? "page" : undefined}
-                  className={`flex shrink-0 items-center gap-2 border-b-2 px-2 py-1.5 text-xs transition-colors ${
-                    active
-                      ? "border-[#8a6a22] text-[#09090b]"
-                      : "border-transparent text-[#6b6659] hover:border-[#c9c4ba] hover:text-[#09090b]"
-                  }`}
+          <p className="font-serif text-sm font-bold text-gold">Owner Console</p>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto p-2 space-y-1">
+          {platformOwnerNav.map((group) => {
+            const isOpen = expanded[group.id] !== false;
+            return (
+              <div key={group.id} className="rounded-md">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.id)}
+                  className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:bg-muted/40"
                 >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Link>
-              );
-            })}
-          </nav>
+                  <span>{group.title}</span>
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 transition-transform",
+                      isOpen ? "rotate-0" : "-rotate-90",
+                    )}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="mt-0.5 space-y-0.5 pb-1">
+                    {group.items.map((item) => (
+                      <NavLink key={item.id} item={item} active={activeItemId === item.id} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        <PlatformAccountMenu />
+      </aside>
+
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="border-b border-border bg-card px-4 py-3 lg:hidden print:hidden shrink-0">
+          <p className="font-serif font-bold text-gold text-sm">Platform Owner</p>
+        </header>
+        <main className="flex-1 p-4 lg:p-6 max-w-7xl w-full">{children}</main>
+        <div className="lg:hidden border-t border-border p-3 print:hidden">
+          <PlatformAccountMenu />
         </div>
       </div>
-
-      <main className="mx-auto max-w-[1600px] px-4 pb-8 lg:px-14">{children}</main>
     </div>
+  );
+}
+
+function NavLink({ item, active }: { item: PlatformNavItem; active: boolean }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      to={item.pathname}
+      search={item.search as never}
+      className={cn(
+        "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition",
+        active
+          ? "bg-gold/15 text-gold ring-1 ring-gold/25"
+          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+      )}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{item.label}</span>
+    </Link>
   );
 }

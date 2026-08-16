@@ -258,12 +258,12 @@ async function verifyEnvelope(
 
 function cacheFromPayload(payload: SignedEntitlementPayload, now: number): LicenseCache {
   let status = payload.status;
-  if (status === "active" && payload.expiresAt !== null && now > payload.expiresAt) {
+  if (payload.expiresAt !== null && now > payload.expiresAt) {
     status = "expired";
   }
   return {
     status,
-    expiry: payload.expiresAt,
+    expiry: status === "trial" ? null : payload.expiresAt,
     trialStartedAt: status === "trial" ? payload.issuedAt : null,
     trialEndsAt: status === "trial" ? payload.expiresAt : null,
     seats: payload.seats,

@@ -66,5 +66,5 @@ graph TD
 ## 4. Preference Synchronization & Performance
 
 - **Cloud Persistence:** User preferences and saved views are stored in the `user_preferences` and `user_saved_views` Supabase tables with strict user-level RLS.
-- **Instant Client Hydration:** Cached in browser LocalStorage / IndexedDB to ensure zero layout shift or theme flicker on page load.
-- **Cross-Device Fluidity:** Ergonomic preferences sync automatically when logging into a new desktop or workshop tablet.
+- **Instant Client Hydration:** Cached in browser session memory for the active runtime only, ensuring zero layout shift or theme flicker on page load without creating a local-authoritative store.
+- **Cross-Device Fluidity:** Ergonomic preferences sync automatically when logging into a new desktop or workshop tablet through the approved Supabase-backed tenant flow.

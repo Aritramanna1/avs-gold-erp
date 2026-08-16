@@ -257,7 +257,7 @@ export function AssistantWorkspace() {
     .sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
 
   return (
-    <div className="absolute inset-0 flex overflow-hidden bg-background text-foreground z-50 lg:z-auto">
+    <div className="relative h-[calc(100vh-4rem)] w-full flex overflow-hidden bg-background text-foreground">
       {/* 1. Left Conversation Sidebar */}
       <div className="hidden md:flex w-72 flex-col border-r border-border bg-card/60 backdrop-blur">
         <div className="p-3 border-b border-border/70 space-y-2.5">
@@ -434,6 +434,23 @@ export function AssistantWorkspace() {
                   }`}
                 >
                   <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+
+                  {/* Knowledge source references (not live ERP data) */}
+                  {msg.knowledgeSources && msg.knowledgeSources.length > 0 && (
+                    <div className="mt-2.5 pt-2 border-t border-border/50 flex flex-wrap gap-1.5">
+                      {msg.knowledgeSources.map((src) => (
+                        <a
+                          key={src.id}
+                          href={src.relatedRoute ?? "/help"}
+                          className="inline-flex items-center gap-1 text-[10px] text-amber-600/90 hover:text-amber-600 border border-amber-500/20 bg-amber-500/5 rounded-sm px-1.5 py-0.5 transition-colors"
+                          title={`Source: ${src.sourceDoc ?? "Ornexa Knowledge Base"}`}
+                        >
+                          <Info className="h-2.5 w-2.5" />
+                          {src.title.length > 32 ? src.title.slice(0, 30) + "…" : src.title}
+                        </a>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Rich ERP Card */}
                   {msg.erpCard && (

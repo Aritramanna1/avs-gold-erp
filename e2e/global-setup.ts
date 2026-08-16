@@ -147,6 +147,12 @@ export default async function globalSetup(config: FullConfig) {
         data[key] = window.sessionStorage.getItem(key) || "";
       }
     }
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith("sb-")) {
+        data[key] = window.localStorage.getItem(key) || "";
+      }
+    }
     return data;
   });
   fs.writeFileSync(path.join(authDir, "session.json"), JSON.stringify(sessionStorageDump, null, 2));

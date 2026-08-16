@@ -221,7 +221,7 @@ export function CustomerPersonalLedgerView({
 
       {/* Summaries Side-by-Side */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-gold/30 bg-gold/5 p-4 flex flex-col justify-between">
+        <div className="rounded-md border border-gold/30 bg-gold/5 p-4 flex flex-col justify-between">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-gold">
               Gold Account Custody
@@ -240,7 +240,7 @@ export function CustomerPersonalLedgerView({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-4 flex flex-col justify-between">
+        <div className="rounded-md border border-border bg-card p-4 flex flex-col justify-between">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Monetary Running Balance
@@ -265,7 +265,7 @@ export function CustomerPersonalLedgerView({
       {showAddForm && (
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-border bg-card p-5 space-y-4 shadow-elegant"
+          className="rounded-md border border-border bg-card p-5 space-y-4 shadow-elegant"
         >
           <div className="flex justify-between items-center border-b border-border pb-2">
             <h3 className="font-serif text-base text-gold">Record Direct Gold/Money Entry</h3>
@@ -472,7 +472,7 @@ export function CustomerPersonalLedgerView({
       )}
 
       {/* Ledger Passbook Table */}
-      <div className="rounded-2xl border border-border bg-card shadow-elegant overflow-hidden">
+      <div className="rounded-md border border-border bg-card shadow-elegant overflow-hidden">
         <div className="px-4 py-3 border-b border-border bg-muted/20 flex items-center justify-between">
           <span className="font-serif text-sm text-gold font-bold">Passbook Ledger Logs</span>
           <span className="text-[10px] font-mono text-muted-foreground">

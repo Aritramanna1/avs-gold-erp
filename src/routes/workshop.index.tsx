@@ -147,7 +147,7 @@ function WorkshopBooksPage() {
             return (
               <div
                 key={bt.key}
-                className="rounded-2xl border border-border bg-card p-4 flex gap-3 opacity-60 cursor-not-allowed"
+                className="rounded-md border border-border bg-card p-4 flex gap-3 opacity-60 cursor-not-allowed"
                 aria-disabled="true"
               >
                 {content}
@@ -158,7 +158,7 @@ function WorkshopBooksPage() {
             <Link
               key={bt.key}
               to={bt.indexRoute as never}
-              className={`rounded-2xl border p-4 flex gap-3 transition-colors ${
+              className={`rounded-md border p-4 flex gap-3 transition-colors ${
                 active
                   ? "border-gold/40 bg-gold/5 hover:bg-gold/10"
                   : "border-border bg-card hover:bg-muted/20"
@@ -193,7 +193,7 @@ function WorkshopBooksPage() {
         <Totals k="Open job cards" v={String(totals.openJobCards)} hint="Still on the bench" />
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-4 mb-4">
+      <div className="rounded-md border border-border bg-card p-4 mb-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -207,7 +207,7 @@ function WorkshopBooksPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
+        <div className="rounded-md border border-dashed border-border bg-card/40 p-12 text-center">
           <Library className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 font-serif text-xl text-gold">No jeweller books yet</h3>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -253,7 +253,7 @@ function ModuleLink({
   return (
     <Link
       to={to as never}
-      className="inline-flex items-center justify-center rounded-xl bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 px-4 py-2.5 text-sm font-semibold gap-2 transition-colors active:scale-95"
+      className="inline-flex items-center justify-center rounded-md bg-gold/10 hover:bg-gold/20 text-gold border border-gold/30 px-4 py-2.5 text-sm font-semibold gap-2 transition-colors active:scale-95"
     >
       <Icon className="h-4 w-4" /> {label}
     </Link>
@@ -272,7 +272,7 @@ function Totals({
   tone?: "gold" | "red";
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card px-4 py-3">
+    <div className="rounded-md border border-border bg-card px-4 py-3">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
         <Scale className="h-3 w-3" /> {k}
       </div>

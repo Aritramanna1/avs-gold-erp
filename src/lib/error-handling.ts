@@ -272,6 +272,13 @@ export function logAppError(error: NormalizedAppError): void {
   void reportErrorToPlatform(error);
 }
 
+/** Background hydration errors — logged, never toasted (avoids ERP-wide toast storms). */
+export function logBackgroundError(error: unknown, context?: string): NormalizedAppError {
+  const normalized = normalizeError(error, context);
+  logAppError(normalized);
+  return normalized;
+}
+
 // Best-effort telemetry so the platform owner's Health view has real data -
 // previously an error only reached the browser console, invisible from the
 // admin side entirely. Never lets a reporting failure become user-visible.

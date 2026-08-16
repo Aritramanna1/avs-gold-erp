@@ -143,7 +143,7 @@ export function EmailSendPanel(props: EmailSendPanelProps) {
 
   if (available.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
+      <div className="rounded-md border border-border bg-card p-5 text-sm text-muted-foreground">
         No active templates for this context. Add or activate one in{" "}
         <a className="text-gold underline" href="/settings">
           Settings → Email & Templates
@@ -154,7 +154,7 @@ export function EmailSendPanel(props: EmailSendPanelProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <div className="flex items-center gap-2 mb-3">
         <Mail className="h-4 w-4 text-gold" />
         <h3 className="font-serif text-lg text-gold">{props.title ?? "Send Automated Email"}</h3>

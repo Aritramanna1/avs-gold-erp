@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /platform
+Disallow: /customer-portal
+Disallow: /supplier-portal
+Disallow: /karigar-portal
+Disallow: /onboarding
+Disallow: /settings
+Disallow: /auth/
+
+Sitemap: /sitemap.xml

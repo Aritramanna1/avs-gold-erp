@@ -171,7 +171,7 @@ function WorkflowSettings() {
       </div>
 
       {/* Presets */}
-      <section className="rounded-2xl border border-border bg-card p-5 space-y-4">
+      <section className="rounded-md border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Zap className="h-4 w-4 text-gold" />
           <h3 className="font-bold text-sm uppercase tracking-wider">Quick Presets</h3>
@@ -182,7 +182,7 @@ function WorkflowSettings() {
               key={key}
               type="button"
               onClick={() => applyAndToast(key)}
-              className={`rounded-xl border p-3 text-left transition-colors hover:border-gold/40 ${
+              className={`rounded-md border p-3 text-left transition-colors hover:border-gold/40 ${
                 JSON.stringify(config) === JSON.stringify(WORKFLOW_PRESETS[key])
                   ? "border-gold/50 bg-gold/5"
                   : "border-border bg-card"
@@ -200,7 +200,7 @@ function WorkflowSettings() {
       </section>
 
       {/* Business Mode */}
-      <section className="rounded-2xl border border-border bg-card p-5 space-y-4">
+      <section className="rounded-md border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Settings className="h-4 w-4 text-gold" />
           <h3 className="font-bold text-sm uppercase tracking-wider">Business Mode</h3>
@@ -225,7 +225,7 @@ function WorkflowSettings() {
         <p className="text-xs text-muted-foreground">{MODE_LABELS[config.mode].description}</p>
 
         {config.mode === "combined_commerce_manufacturing" && (
-          <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 rounded-xl p-3">
+          <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 rounded-md p-3">
             <CheckCircle className="h-4 w-4 shrink-0" />
             Combined business mode keeps manufacturing and ready-stock billing workflows active.
           </div>
@@ -233,7 +233,7 @@ function WorkflowSettings() {
       </section>
 
       {/* Manufacturing Bill */}
-      <section className="rounded-2xl border border-border bg-card p-5 space-y-1">
+      <section className="rounded-md border border-border bg-card p-5 space-y-1">
         <div className="flex items-center gap-2 mb-4">
           <Hammer className="h-4 w-4 text-gold" />
           <h3 className="font-bold text-sm uppercase tracking-wider">Manufacturing Bill</h3>
@@ -294,7 +294,7 @@ function WorkflowSettings() {
       </section>
 
       {/* Finished Stock */}
-      <section className="rounded-2xl border border-border bg-card p-5 space-y-1">
+      <section className="rounded-md border border-border bg-card p-5 space-y-1">
         <div className="flex items-center gap-2 mb-4">
           <PackageCheck className="h-4 w-4 text-gold" />
           <h3 className="font-bold text-sm uppercase tracking-wider">Finished Stock</h3>
@@ -340,7 +340,7 @@ function WorkflowSettings() {
       </section>
 
       {/* Outside Work (External Jeweller) */}
-      <section className="rounded-2xl border border-border bg-card p-5 space-y-1">
+      <section className="rounded-md border border-border bg-card p-5 space-y-1">
         <div className="flex items-center gap-2 mb-4">
           <Hammer className="h-4 w-4 text-gold" />
           <h3 className="font-bold text-sm uppercase tracking-wider">Outside Work</h3>
@@ -405,7 +405,7 @@ function WorkflowSettings() {
       </section>
 
       {/* Payment & Delivery */}
-      <section className="rounded-2xl border border-border bg-card p-5 space-y-1">
+      <section className="rounded-md border border-border bg-card p-5 space-y-1">
         <div className="flex items-center gap-2 mb-4">
           <IndianRupee className="h-4 w-4 text-gold" />
           <h3 className="font-bold text-sm uppercase tracking-wider">Payment & Delivery</h3>
@@ -456,7 +456,7 @@ function WorkflowSettings() {
       </section>
 
       {/* Communication */}
-      <section className="rounded-2xl border border-border bg-card p-5 space-y-1">
+      <section className="rounded-md border border-border bg-card p-5 space-y-1">
         <div className="flex items-center gap-2 mb-4">
           <MessageSquare className="h-4 w-4 text-gold" />
           <h3 className="font-bold text-sm uppercase tracking-wider">Automatic Communication</h3>
@@ -490,7 +490,7 @@ function WorkflowSettings() {
           onCheckedChange={(v) => patch({ autoSendDueReminder: v })}
         />
 
-        <div className="rounded-xl bg-muted/20 border border-border p-3 text-xs text-muted-foreground mt-2">
+        <div className="rounded-md bg-muted/20 border border-border p-3 text-xs text-muted-foreground mt-2">
           <strong>Provider fallback:</strong> If WhatsApp Business API is not configured, the system
           falls back to WhatsApp Deep Link (manual sharing). Email requires SMTP or API credentials
           in Communication Settings. Billing logic never needs to know which provider is active.
@@ -498,7 +498,7 @@ function WorkflowSettings() {
       </section>
 
       {/* Financial Year Close */}
-      <section className="rounded-2xl border border-border bg-card p-5 space-y-4">
+      <section className="rounded-md border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-gold" />
           <h3 className="font-bold text-sm uppercase tracking-wider">
@@ -556,7 +556,7 @@ function WorkflowSettings() {
       </section>
 
       {/* Current config summary */}
-      <section className="rounded-2xl border border-gold/20 bg-gold/5 p-5 space-y-2">
+      <section className="rounded-md border border-gold/20 bg-gold/5 p-5 space-y-2">
         <div className="flex items-center gap-2 mb-2">
           <CheckCircle className="h-4 w-4 text-gold" />
           <h3 className="font-bold text-sm">Current Configuration</h3>

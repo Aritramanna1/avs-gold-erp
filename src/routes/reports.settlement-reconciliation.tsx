@@ -115,7 +115,7 @@ function SettlementReconciliationPage() {
         }
       />
 
-      <div className="rounded-2xl border border-border bg-card p-4 mt-4 mb-4">
+      <div className="rounded-md border border-border bg-card p-4 mt-4 mb-4">
         {loading ? (
           <div className="mb-3 text-sm text-muted-foreground">
             <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
@@ -157,7 +157,7 @@ function SettlementReconciliationPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="settlement-reconciliation-table">
             <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">

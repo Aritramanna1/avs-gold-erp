@@ -1,20 +1,81 @@
 /**
  * Unified Print Engine — core types.
  *
- * A template is DATA (this file's shapes), not code: customizing a
- * document's layout means editing a `PrintTemplate` row (section order,
- * visibility, labels, paper size, colors), never touching a renderer.
- * The section set below is closed and declarative on purpose — it's
- * derived from an inventory of every recurring shape across the 18
- * existing print routes, not a general-purpose layout DSL. `showIf`
- * references a named boolean already computed by a document's data
- * builder (see PrintDocumentData.flags) — never evaluated code — so a
- * template can never execute arbitrary logic.
+ * Authoritative type definitions for Ornexa Document & Print Engine.
+ * Master Reference: docs/DOCUMENT_TEMPLATE_ENGINE.md & docs/PRINT_PROFILE_MASTER.md
  */
 import type { PrintDocType } from "@/lib/printlog-store";
 import type { PrintSize } from "@/components/print/PrintLayout";
 
 export type { PrintDocType, PrintSize };
+
+// ── 10 Canonical Template Families ───────────────────────────────────────
+
+export type TemplateFamily =
+  | "classic_business"
+  | "modern_professional"
+  | "premium_jewellery"
+  | "compact_accounting"
+  | "manufacturing_workshop"
+  | "traditional_indian"
+  | "minimal_clean"
+  | "elegant_corporate"
+  | "dense_ledger"
+  | "customer_digital";
+
+export const TEMPLATE_FAMILY_LABELS: Record<TemplateFamily, { name: string; description: string }> =
+  {
+    classic_business: {
+      name: "Classic Business",
+      description:
+        "Traditional bordered layout, double-rule header, distinct gold weight summary boxes, formal dual signatures.",
+    },
+    modern_professional: {
+      name: "Modern Professional",
+      description:
+        "Clean asymmetric layout, structured tax & banking panels, high-contrast dark accents.",
+    },
+    premium_jewellery: {
+      name: "Premium Jewellery",
+      description:
+        "Luxury serif typography, gemstone/diamond breakdown table, HUID certificate badges, ornate stamp box.",
+    },
+    compact_accounting: {
+      name: "Compact Accounting",
+      description:
+        "Auditor-focused dense format (15+ line items per sheet), detailed debit/credit schedules, compact tax grid.",
+    },
+    manufacturing_workshop: {
+      name: "Manufacturing / Workshop",
+      description:
+        "Bench-ready job card & custody voucher, metal purity ledger, stage sign-offs, barcode / HUID tag.",
+    },
+    traditional_indian: {
+      name: "Traditional Indian Business",
+      description:
+        "Vernacular-friendly trade bill format, Jama (Credit) / Naam (Debit) columns, auspicious traditional header.",
+    },
+    minimal_clean: {
+      name: "Minimal Clean",
+      description:
+        "Borderless contemporary sans-serif layout, generous whitespace, understated divider lines.",
+    },
+    elegant_corporate: {
+      name: "Elegant Corporate",
+      description:
+        "Executive B2B layout with distinct Seller, Buyer & Ship-To panels, HSN/SAC breakdown schedule.",
+    },
+    dense_ledger: {
+      name: "Dense Ledger",
+      description:
+        "High-density multi-page ledger statement, running balances, repeating table headers across pages.",
+    },
+    customer_digital: {
+      name: "Customer-Friendly Digital",
+      description:
+        "Mobile-responsive card hierarchy, digital payment UPI QR code, clean summary with one-click download action.",
+    },
+  };
 
 // ── Section configs ─────────────────────────────────────────────────────
 
@@ -59,6 +120,9 @@ export interface HeaderSectionConfig {
   id: string;
   showQr?: boolean;
   qrLabel?: string;
+  titleOverride?: string;
+  subtitleOverride?: string;
+  alignment?: "left" | "center" | "split";
 }
 
 export interface PartySectionConfig {
@@ -69,17 +133,18 @@ export interface PartySectionConfig {
   subFields: FieldGridItem[];
   showPhoto?: boolean;
   showIf?: string;
+  badgeLabel?: string;
 }
 
 export interface FieldGridSectionConfig {
   type: "fieldGrid";
   id: string;
   title?: string;
-  columns?: 1 | 2 | 3;
+  columns?: 1 | 2 | 3 | 4;
   fields: FieldGridItem[];
   showIf?: string;
   /** "darkPanel" renders the themed dark/accent box used for tax-calculation summaries. */
-  theme?: "plain" | "darkPanel";
+  theme?: "plain" | "darkPanel" | "bordered" | "goldSummary";
 }
 
 export interface TableSectionConfig {
@@ -89,24 +154,18 @@ export interface TableSectionConfig {
   columns: TableColumnConfig[];
   /** Key into PrintDocumentData.tables. */
   rowsPath: string;
-  /** Auto-sums each footerSum column's raw numeric row values — only correct when row values are actual numbers, not pre-formatted currency/weight strings. */
+  /** Auto-sums each footerSum column's raw numeric row values */
   showFooterSums?: boolean;
   /**
    * Key into PrintDocumentData.tables for a single precomputed footer row
-   * (same column keys as the body), rendered bold instead of auto-summed.
-   * Use this whenever body rows hold pre-formatted strings (₹, g) —
-   * showFooterSums's Number(row[key]) would just read NaN from those.
    */
   footerRowPath?: string;
   /**
    * When set, an extra full-width row is drawn INSIDE the table's <thead>.
-   * The browser repeats <thead> on every printed page (display:
-   * table-header-group), so a multi-page ledger carries its report identity —
-   * shop name + these fields — on EVERY page, not just page one. Each entry is
-   * {label, valuePath into PrintDocumentData.fields}.
    */
   repeatHeaderMeta?: { label: string; valuePath: string }[];
   showIf?: string;
+  tableStyle?: "grid" | "banded" | "minimal" | "classic";
 }
 
 export interface BalanceCardSectionConfig {
@@ -130,7 +189,7 @@ export interface RichTextSectionConfig {
   staticText?: string;
   showIf?: string;
   /** "box" = bordered box (default); "inline" = single-line label:value strip (amount-in-words); "plain" = heading + text, no border/background (T&Cs). */
-  emphasis?: "box" | "inline" | "plain";
+  emphasis?: "box" | "inline" | "plain" | "callout";
 }
 
 export interface ImagesSectionConfig {
@@ -151,25 +210,21 @@ export interface SignatureBlockSectionConfig {
   /** Falls back to firm.signatureLabelLeft/Right when absent. */
   leftLabel?: string;
   rightLabel?: string;
+  centerLabel?: string;
   /** Dot-path caption printed under the left/right label, e.g. "(customer name)". */
   leftCaptionPath?: string;
   rightCaptionPath?: string;
-  /** Renders a simulated firm-name stamp above the right signature column. */
+  centerCaptionPath?: string;
+  /** When true, render the tenant's uploaded stamp image (never a fake text stamp). */
   showStamp?: boolean;
   showIf?: string;
 }
 
-/**
- * Generic side-by-side layout wrapper — each entry in `columns` is a list
- * of ordinary sections stacked vertically within that column. Used where a
- * document's approved format genuinely places two blocks side by side
- * (T&Cs beside signatures, a payment summary beside a tax panel) rather
- * than the default top-to-bottom stack every other section renders as.
- */
+/** Side-by-side layout wrapper */
 export interface RowSectionConfig {
   type: "row";
   id: string;
-  /** Relative flex weight per column, e.g. [1, 2] for a narrow-left/wide-right split. Defaults to equal widths. */
+  /** Relative flex weight per column, e.g. [1, 2]. Defaults to equal widths. */
   columnWidths?: number[];
   columns: SectionConfig[][];
   showIf?: string;
@@ -179,9 +234,10 @@ export interface PremiumHeaderSectionConfig {
   type: "premiumHeader";
   id: string;
   /** Dot-path for the badge text, e.g. "Tax Invoice (3% GST)" vs "Retail Cash Memo". */
-  badgeTitlePath: string;
+  badgeTitlePath?: string;
+  titleText?: string;
   /** "compact" drops the logo/badge/QR-inline layout for a small centered thermal-style header. */
-  variant?: "premium" | "compact";
+  variant?: "premium" | "compact" | "centered" | "split" | "minimal";
   showQr?: boolean;
   qrLabel?: string;
   qrSize?: number;
@@ -204,7 +260,7 @@ export interface TagCardsSectionConfig {
   showIf?: string;
 }
 
-/** A compact, two-line-per-row item list for thermal receipts — visually distinct from `table`'s bordered grid. */
+/** A compact, two-line-per-row item list for thermal receipts */
 export interface ThermalItemListSectionConfig {
   type: "thermalItemList";
   id: string;
@@ -216,11 +272,11 @@ export interface DataListSectionConfig {
   type: "dataList";
   id: string;
   title?: string;
-  /** Key into PrintDocumentData.tables — a runtime-variable-length list, unlike fieldGrid's fixed fields. */
+  /** Key into PrintDocumentData.tables */
   rowsPath: string;
   labelKey: string;
   valueKey: string;
-  /** Optional bracketed sub-label next to the label, e.g. a payment reference. */
+  /** Optional bracketed sub-label next to the label */
   subKey?: string;
   showIf?: string;
 }
@@ -239,6 +295,69 @@ export interface PageBreakSectionConfig {
   id: string;
 }
 
+export interface WeightSummarySectionConfig {
+  type: "weightSummary";
+  id: string;
+  title?: string;
+  showIf?: string;
+  grossPath?: string;
+  lessPath?: string;
+  netPath?: string;
+  purityPath?: string;
+  finePath?: string;
+  wastagePath?: string;
+  scrapPath?: string;
+}
+
+export interface TaxBreakdownSectionConfig {
+  type: "taxBreakdown";
+  id: string;
+  title?: string;
+  showIf?: string;
+  taxableValuePath: string;
+  cgstPath?: string;
+  sgstPath?: string;
+  igstPath?: string;
+  totalTaxPath: string;
+  amountInWordsPath?: string;
+}
+
+export interface BankDetailsSectionConfig {
+  type: "bankDetails";
+  id: string;
+  title?: string;
+  showIf?: string;
+  showUpiQr?: boolean;
+}
+
+export interface BarcodeSectionConfig {
+  type: "barcode";
+  id: string;
+  valuePath: string;
+  format?: "CODE128" | "QR" | "EAN13";
+  height?: number;
+  showHumanReadable?: boolean;
+  showIf?: string;
+}
+
+export interface CustomFieldSectionConfig {
+  type: "customField";
+  id: string;
+  label: string;
+  valuePath: string;
+  showIf?: string;
+  variant?: "inline" | "badge" | "box";
+}
+
+export interface PageFooterSectionConfig {
+  type: "pageFooter";
+  id: string;
+  showPageNumbers?: boolean;
+  showTimestamp?: boolean;
+  showMicroAuditHash?: boolean;
+  customText?: string;
+}
+
 export type SectionConfig =
   | HeaderSectionConfig
   | PartySectionConfig
@@ -255,7 +374,13 @@ export type SectionConfig =
   | TagCardsSectionConfig
   | DataListSectionConfig
   | ThermalItemListSectionConfig
-  | RowSectionConfig;
+  | RowSectionConfig
+  | WeightSummarySectionConfig
+  | TaxBreakdownSectionConfig
+  | BankDetailsSectionConfig
+  | BarcodeSectionConfig
+  | CustomFieldSectionConfig
+  | PageFooterSectionConfig;
 
 export type SectionType = SectionConfig["type"];
 
@@ -272,6 +397,7 @@ export interface PrintTemplate {
   id: string;
   docType: PrintDocType;
   name: string;
+  family?: TemplateFamily;
   /** Seeded, ships with the app — cannot be deleted, only edited/reset. */
   isBuiltin: boolean;
   paperSize: PrintSize;
@@ -280,21 +406,54 @@ export interface PrintTemplate {
   fontSize?: "xs" | "sm" | "base" | "lg";
   primaryColor?: string;
   accentColor?: string;
+  borderStyle?: "grid" | "clean" | "classic" | "minimal";
+  watermark?: string;
   /**
-   * "printLayout" (default) mounts sections inside the shared PrintLayout
-   * chrome, same as every other migrated document. "custom" is for a
-   * document whose approved format is its own bespoke shell (the GST/
-   * retail invoice never used PrintLayout even before migration) — see
-   * CustomShell.tsx. Still ONE PrintEngine, ONE section registry, ONE
-   * PDF/audit/queue path either way; only the outer wrapper differs.
+   * "printLayout" (default) mounts sections inside the shared PrintLayout chrome.
+   * "custom" is for a document whose format is its own bespoke shell.
    */
   shell?: "printLayout" | "custom";
   sections: SectionConfig[];
   version: number;
-  /** History, most recent first. Capped — see TEMPLATE_VERSION_HISTORY_LIMIT. */
+  /** History, most recent first. Capped. */
   versions: TemplateVersion[];
   createdAt: number;
   updatedAt: number;
+}
+
+// ── Print Profile ─────────────────────────────────────────────────────────
+
+export interface PrintProfile {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  paperSize: PrintSize;
+  orientation: "portrait" | "landscape";
+  margins: { top: number; right: number; bottom: number; left: number };
+  scale: number; // 25 to 200
+  copies: number;
+  printerClass?: "laser" | "thermal" | "tag" | "label" | "dotmatrix" | "dot_matrix";
+  colorMode: "color" | "grayscale" | "monochrome";
+  headerFooterRepeat: "all_pages" | "first_page_only" | "last_page_only";
+  fitToPage: boolean;
+  labelDimensions?: { widthMm: number; heightMm: number };
+  labelWidthMm?: number;
+  labelHeightMm?: number;
+  watermarkText?: string;
+  targetDocTypes?: PrintDocType[];
+  branchId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ── Template Package (.ornexa-template JSON) ──────────────────────────────
+
+export interface OrnexaTemplatePackage {
+  format: "ornexa-template";
+  schemaVersion: "3.1.0";
+  exportedAt: number;
+  exportedBy?: string;
+  template: Omit<PrintTemplate, "id" | "isBuiltin" | "versions">;
 }
 
 // ── Document data — what a docType's data builder produces ────────────────

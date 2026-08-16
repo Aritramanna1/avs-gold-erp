@@ -296,62 +296,6 @@ export async function sendGenericEmail(payload: EmailPayload): Promise<EmailDisp
       throw new Error("Email delivery requires the server-side SMTP relay configuration.");
     }
     await dispatchViaSmtpRelay(payload);
-    /* Legacy direct-provider implementation retained below only for migration reference.
-    if ((configuredApiProvider as string) === "resend") {
-      if (!smtp.apiKey) throw new Error("Resend API key not configured");
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${smtp.apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: `${fromName} <${fromEmail}>`,
-          to: [payload.to],
-          subject: payload.subject,
-          html: payload.htmlBody,
-          ...(payload.attachments?.length
-            ? {
-                attachments: payload.attachments.map((a) => ({
-                  filename: a.filename,
-                  content: a.contentBase64,
-                })),
-              }
-            : {}),
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(`Resend API error ${res.status}: ${err}`);
-      }
-    } else if ((configuredApiProvider as string) === "sendgrid") {
-      if (!smtp.apiKey) throw new Error("SendGrid API key not configured");
-      const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${smtp.apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: payload.to }], subject: payload.subject }],
-          from: { email: fromEmail, name: fromName },
-          content: [{ type: "text/html", value: payload.htmlBody }],
-          ...(payload.attachments?.length
-            ? {
-                attachments: payload.attachments.map((a) => ({
-                  content: a.contentBase64,
-                  filename: a.filename,
-                  type: a.contentType ?? "application/pdf",
-                  disposition: "attachment",
-                })),
-              }
-            : {}),
-        }),
-      });
-      if (!res.ok && res.status !== 202) {
-        const err = await res.text();
-        throw new Error(`SendGrid API error ${res.status}: ${err}`);
-      }
-    } else {
-      // "smtp", "mock_api", "supabase", or any unrecognized provider — every
-      // one of these dispatches through the single Nodemailer SMTP relay.
-      await dispatchViaSmtpRelay(payload);
-    }
-    */
 
     settings.addSecurityLog(
       "permission changed",

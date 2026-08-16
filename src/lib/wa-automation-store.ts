@@ -7,53 +7,73 @@ import { create } from "zustand";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
 
+/**
+ * 11 canonical WhatsApp automation events per WHATSAPP_META_PARTNER_MASTER.md §3.
+ * Default ON = utility (always on); Default OPTIONAL = marketing/low-priority.
+ */
 export type WaAutomationKey =
-  | "orderConfirmation"
-  | "orderReady"
-  | "manufacturingComplete"
-  | "invoiceGenerated"
-  | "paymentReceived"
-  | "outstandingReminder"
-  | "goldDueReminder"
-  | "repairReady"
-  | "deliveryReminder"
-  | "birthdayWishes"
-  | "festivalGreetings"
-  | "anniversaryWishes";
+  /** Tax Invoice Ready — sends PDF link via WhatsApp [DEFAULT ON] */
+  | "taxInvoiceReady"
+  /** Payment Receipt Confirmation [DEFAULT ON] */
+  | "paymentReceiptConfirmation"
+  /** Payment / Due Date Reminder [DEFAULT OPTIONAL] */
+  | "paymentDueReminder"
+  /** Order Confirmed & Progress Update [DEFAULT ON] */
+  | "orderProgressUpdate"
+  /** CAD Design Approval Request [DEFAULT ON] */
+  | "cadApprovalRequest"
+  /** Curated Catalogue Collection Share [DEFAULT ON] */
+  | "catalogCollectionShare"
+  /** Ready for Collection Notice [DEFAULT ON] */
+  | "readyForCollection"
+  /** Karigar Job Assignment Reminder [DEFAULT OPTIONAL] */
+  | "karigarJobReminder"
+  /** Supplier Purchase Order Memo [DEFAULT OPTIONAL] */
+  | "supplierPurchaseOrder"
+  /** Hallmark Outward & Return Memo [DEFAULT OPTIONAL] */
+  | "hallmarkMemo"
+  /** Repair Ready for Pickup [DEFAULT ON] */
+  | "repairReady";
 
 export const WA_AUTOMATION_LABELS: Record<WaAutomationKey, string> = {
-  orderConfirmation: "Order Confirmation",
-  orderReady: "Order Ready for Pickup",
-  manufacturingComplete: "Manufacturing Complete",
-  invoiceGenerated: "Invoice Generated",
-  paymentReceived: "Payment Received",
-  outstandingReminder: "Outstanding Payment Reminder",
-  goldDueReminder: "Gold Due Reminder",
-  repairReady: "Repair Ready",
-  deliveryReminder: "Delivery Reminder",
-  birthdayWishes: "Birthday Wishes",
-  festivalGreetings: "Festival Greetings",
-  anniversaryWishes: "Anniversary Wishes",
+  taxInvoiceReady: "Tax Invoice Ready (with PDF link)",
+  paymentReceiptConfirmation: "Payment Receipt Confirmation",
+  paymentDueReminder: "Payment / Due Date Reminder",
+  orderProgressUpdate: "Order Confirmed & Progress Update",
+  cadApprovalRequest: "CAD Design Approval Request",
+  catalogCollectionShare: "Curated Catalogue / Collection Share",
+  readyForCollection: "Ready for Collection Notice",
+  karigarJobReminder: "Karigar Job Assignment Reminder",
+  supplierPurchaseOrder: "Supplier Purchase Order Memo",
+  hallmarkMemo: "Hallmark Outward & Return Memo",
+  repairReady: "Repair Ready for Pickup",
 };
 
 export const WA_AUTOMATION_DEFAULTS: Record<WaAutomationKey, boolean> = {
-  orderConfirmation: true,
-  orderReady: true,
-  manufacturingComplete: false,
-  invoiceGenerated: true,
-  paymentReceived: true,
-  outstandingReminder: false,
-  goldDueReminder: false,
+  taxInvoiceReady: true,
+  paymentReceiptConfirmation: true,
+  paymentDueReminder: false,
+  orderProgressUpdate: true,
+  cadApprovalRequest: true,
+  catalogCollectionShare: true,
+  readyForCollection: true,
+  karigarJobReminder: false,
+  supplierPurchaseOrder: false,
+  hallmarkMemo: false,
   repairReady: true,
-  deliveryReminder: false,
-  birthdayWishes: false,
-  festivalGreetings: false,
-  anniversaryWishes: false,
 };
 
 export type WaAutomations = Record<WaAutomationKey, boolean>;
 
 export interface WaConfig {
+  /**
+   * Commercial deployment mode per WHATSAPP_META_PARTNER_MASTER.md §2:
+   * A = WhatsApp OFF (use Email/in-app only)
+   * B = Managed Partner Service (messages through Ornexa's Meta credit line)
+   * C = Client-Owned WABA (tenant connects own Meta Business via Embedded Signup)
+   * D = Custom Connector (third-party aggregator)
+   */
+  waMode: "A" | "B" | "C" | "D";
   providerType:
     | "whatsapp_deep_link"
     | "whatsapp_cloud_api"
@@ -64,7 +84,11 @@ export interface WaConfig {
   enabled: boolean;
   phoneNumberId: string;
   accessToken: string;
+  /** WhatsApp Business Account ID (from Meta Embedded Signup for Mode C) */
+  wabaId: string;
   businessAccountId: string;
+  /** Status returned from Meta after Embedded Signup */
+  businessVerificationStatus?: "verified" | "pending" | "rejected" | "not_started";
   apiVersion: string;
   apiBaseUrl: string;
   webhookVerifyToken: string;
@@ -88,11 +112,14 @@ export interface WaConfig {
 }
 
 export const WA_CONFIG_DEFAULTS: WaConfig = {
+  waMode: "A",
   providerType: "whatsapp_deep_link",
-  enabled: true,
+  enabled: false,
   phoneNumberId: "",
   accessToken: "",
+  wabaId: "",
   businessAccountId: "",
+  businessVerificationStatus: "not_started",
   apiVersion: "v19.0",
   apiBaseUrl: "https://graph.facebook.com",
   webhookVerifyToken: "",
@@ -215,32 +242,6 @@ export const useWaAutomation = create<WaAutomationState>((set, get) => ({
       };
     }
     return { ok: true, message: secureResult.message || "WhatsApp connection verified." };
-    /*
-    const cfg = get().getConfig(branchId);
-    if (cfg.providerType !== "whatsapp_cloud_api") {
-      return { ok: true, message: "Deep-link / BSP providers do not require a connection test." };
-    }
-    if (!cfg.phoneNumberId || !cfg.accessToken) {
-      return { ok: false, message: "Phone Number ID and Access Token are required." };
-    }
-    try {
-      const url = `${cfg.apiBaseUrl}/${cfg.apiVersion}/${cfg.phoneNumberId}?fields=display_phone_number,verified_name,status`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${cfg.accessToken}` },
-        signal: AbortSignal.timeout(cfg.timeoutMs),
-      });
-      const data = (await res.json()) as any;
-      if (!res.ok) {
-        return { ok: false, message: data?.error?.message ?? `HTTP ${res.status}` };
-      }
-      const name = data.verified_name ?? "Unknown";
-      const phone = data.display_phone_number ?? cfg.phoneNumberId;
-      const status = data.status ?? "unknown";
-      return { ok: true, message: `Connected ✓  ${name} (${phone}) — Status: ${status}` };
-    } catch (e: unknown) {
-      return { ok: false, message: e instanceof Error ? e.message : String(e) };
-    }
-    */
   },
 }));
 

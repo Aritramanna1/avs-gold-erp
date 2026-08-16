@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { guardRoute } from "@/lib/permissions";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   FileText,
@@ -15,8 +16,14 @@ import {
   Plus,
 } from "lucide-react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { fetchMyPortalContext } from "@/lib/portal/portal-context-service";
+import { BusinessSwitcher } from "@/components/identity/BusinessSwitcher";
+import { useTenantContext } from "@/lib/identity/tenant-context-store";
 import { Badge } from "@/components/ui/badge";
 import { formatDateMedium as fmtDate } from "@/lib/format-date";
+import { R2ObjectImage } from "@/components/storage/R2ObjectImage";
+import { getPortalHubPreferences } from "@/lib/customization-hub-preferences-store";
+import { Logo } from "@/components/ui/Logo";
 
 type PortalData = {
   profile: {
@@ -103,6 +110,7 @@ interface CatalogDesign {
 
 // Public route — authenticated via customer email OTP (not ERP staff session).
 export const Route = createFileRoute("/customer-portal")({
+  beforeLoad: ({ location }) => guardRoute(location.pathname),
   head: () => ({
     meta: [{ title: "Customer Portal · AVS Gold ERP" }],
   }),
@@ -120,34 +128,34 @@ function rs(paise: number) {
 }
 
 const INVOICE_STATUS_COLORS: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700 border-gray-200",
-  finalised: "bg-blue-100 text-blue-700 border-blue-200",
-  delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  paid: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  unpaid: "bg-rose-100 text-rose-700 border-rose-200",
-  partial: "bg-amber-100 text-amber-800 border-amber-200",
+  draft: "bg-muted text-muted-foreground border-border",
+  finalised: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+  delivered: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  paid: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  unpaid: "bg-red-500/10 text-red-400 border-red-500/30",
+  partial: "bg-amber-500/10 text-amber-400 border-amber-500/30",
 };
 
 const ORDER_STATUS_COLORS: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-800 border-amber-200",
-  approved: "bg-blue-100 text-blue-700 border-blue-200",
-  in_production: "bg-purple-100 text-purple-700 border-purple-200",
-  ready: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  cancelled: "bg-rose-100 text-rose-700 border-rose-200",
+  pending: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+  approved: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+  in_production: "bg-gold/10 text-gold border-gold/30",
+  ready: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  delivered: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  cancelled: "bg-red-500/10 text-red-400 border-red-500/30",
 };
 
 const REPAIR_STATUS_COLORS: Record<string, string> = {
-  received: "bg-blue-100 text-blue-700 border-blue-200",
-  in_progress: "bg-amber-100 text-amber-800 border-amber-200",
-  ready: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  received: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+  in_progress: "bg-gold/10 text-gold border-gold/30",
+  ready: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  delivered: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
 };
 
 const TICKET_STATUS_COLORS: Record<string, string> = {
-  open: "bg-amber-100 text-amber-800 border-amber-200",
-  resolved: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  closed: "bg-gray-100 text-gray-700 border-gray-200",
+  open: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+  resolved: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  closed: "bg-muted text-muted-foreground border-border",
 };
 
 function CustomerPortal() {
@@ -155,15 +163,32 @@ function CustomerPortal() {
   const [data, setData] = useState<PortalData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-
-  // Tab states
   const [tab, setTab] = useState<
     "dashboard" | "invoices" | "orders" | "repairs" | "ledger" | "catalog" | "support"
   >("dashboard");
 
+  const portalPrefs = getPortalHubPreferences();
+
   // Catalog state
   const [catalog, setCatalog] = useState<CatalogDesign[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
+
+  const tabItems = [
+    ["dashboard", "Overview"] as const,
+    ["invoices", `Invoices (${data?.invoices.length ?? 0})`] as const,
+    portalPrefs.customerOrders
+      ? (["orders", `Orders (${data?.orders.length ?? 0})`] as const)
+      : null,
+    ["repairs", `Repairs (${data?.repairs.length ?? 0})`] as const,
+    portalPrefs.customerLedger ? (["ledger", "Wallet Ledger"] as const) : null,
+    ["catalog", `Catalog (${catalog.length})`] as const,
+    ["support", "Help & Support"] as const,
+  ].filter((item) => item !== null) as Array<readonly [string, string]>;
+
+  useEffect(() => {
+    if (tab === "ledger" && !portalPrefs.customerLedger) setTab("dashboard");
+    if (tab === "orders" && !portalPrefs.customerOrders) setTab("dashboard");
+  }, [tab, portalPrefs.customerLedger, portalPrefs.customerOrders]);
 
   // Ticket creation states
   const [subject, setSubject] = useState("");
@@ -174,10 +199,15 @@ function CustomerPortal() {
   const [threadReply, setThreadReply] = useState("");
   const [threadBusy, setThreadBusy] = useState(false);
 
+  const loadMemberships = useTenantContext((s) => s.loadMemberships);
+
+  useEffect(() => {
+    void loadMemberships({ portalType: "customer" });
+  }, [loadMemberships]);
+
   useEffect(() => {
     let active = true;
     void (async () => {
-      // 1. Check Supabase session — redirect to customer login if not authenticated
       const { data: sessionData } = await supabase.auth.getSession();
       if (!active) return;
       if (!sessionData.session) {
@@ -197,14 +227,42 @@ function CustomerPortal() {
         .select("role")
         .eq("user_id", sessionData.session.user.id);
 
-      const hasCompanyRole =
-        Boolean((profile as any)?.role) || ((userRoles as any[]) ?? []).length > 0;
-      if (hasCompanyRole) {
+      // Only redirect ERP staff who lack a customer portal identity.
+      const portalCtx = await fetchMyPortalContext("customer");
+      if (!active) return;
+
+      const staffAppRoles = new Set([
+        "owner",
+        "manager",
+        "billing",
+        "vault",
+        "workshop",
+        "accountant",
+        "viewer",
+        "saas_admin",
+        "super_owner",
+        "admin",
+        "ceo",
+      ]);
+      const roleList = ((userRoles as { role?: string }[]) ?? []).map((r) =>
+        String(r.role ?? "").toLowerCase(),
+      );
+      const profileRole = String((profile as { role?: string } | null)?.role ?? "").toLowerCase();
+      const hasStaffAppRole =
+        roleList.some((r) => staffAppRoles.has(r)) ||
+        (profileRole && staffAppRoles.has(profileRole));
+
+      if (!portalCtx && hasStaffAppRole) {
         void navigate({ to: "/" });
         return;
       }
 
       setAuthChecked(true);
+
+      if (!portalCtx) {
+        setError("Your customer portal identity is not linked. Please contact the firm.");
+        return;
+      }
 
       // 2. Fetch portal data via RPC (uses caller's JWT to scope results)
       const { data: result, error: queryError } = await (supabase as any).rpc(
@@ -319,30 +377,35 @@ function CustomerPortal() {
   const totalInvoiced = data.invoices.reduce((sum, inv) => sum + (inv.grand_total_paise || 0), 0);
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Top bar */}
-      <header className="bg-white border-b border-border shadow-sm sticky top-0 z-40">
-        <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between gap-4">
+      <header className="bg-card border-b border-border shadow-xs sticky top-0 z-40">
+        <div className="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Coins className="h-5 w-5" />
-            </div>
+            <Logo className="h-7" />
+            <div className="h-4 w-px bg-border hidden sm:block" />
             <div>
-              <div className="text-sm font-bold text-foreground">Customer Account Portal</div>
+              <div className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <Coins className="h-4 w-4 text-gold" />
+                Customer Portal
+              </div>
               <div className="text-xs text-muted-foreground">{data.profile.full_name}</div>
             </div>
           </div>
-          <button
-            type="button"
-            className="text-xs text-muted-foreground hover:text-foreground underline"
-            onClick={() => {
-              void supabase.auth.signOut().then(() => {
-                window.location.href = "/customer-login";
-              });
-            }}
-          >
-            Sign out
-          </button>
+          <div className="flex items-center gap-2">
+            <BusinessSwitcher compact />
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-gold underline cursor-pointer"
+              onClick={() => {
+                void supabase.auth.signOut().then(() => {
+                  window.location.href = "/customer-login";
+                });
+              }}
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -352,36 +415,26 @@ function CustomerPortal() {
           <select
             value={tab}
             onChange={(e) => setTab(e.target.value as any)}
-            className="w-full bg-white border border-border rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm font-semibold shadow-xs focus:outline-none focus:ring-1 focus:ring-gold text-foreground"
           >
-            <option value="dashboard">Dashboard Overview</option>
-            <option value="invoices">Invoice History ({data.invoices.length})</option>
-            <option value="orders">Orders Tracking ({data.orders.length})</option>
-            <option value="repairs">Repairs &amp; Service ({data.repairs.length})</option>
-            <option value="ledger">Gold &amp; Cash Wallet Ledger</option>
-            <option value="catalog">View Catalog Designs ({catalog.length})</option>
-            <option value="support">Support Tickets &amp; Help</option>
+            {tabItems.map(([t, label]) => (
+              <option key={t} value={t}>
+                {label}
+              </option>
+            ))}
           </select>
         </div>
 
         {/* Navigation - Desktop tabs */}
-        <div className="hidden md:flex gap-1 bg-white rounded-xl border border-border p-1 shadow-sm">
-          {[
-            ["dashboard", "Overview"],
-            ["invoices", `Invoices (${data.invoices.length})`],
-            ["orders", `Orders (${data.orders.length})`],
-            ["repairs", `Repairs (${data.repairs.length})`],
-            ["ledger", "Wallet Ledger"],
-            ["catalog", `Catalog (${catalog.length})`],
-            ["support", "Help & Support"],
-          ].map(([t, label]) => (
+        <div className="hidden md:flex gap-1 bg-card rounded-md border border-border p-1 shadow-xs">
+          {tabItems.map(([t, label]) => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t as any)}
-              className={`flex-1 rounded-lg py-2.5 text-xs font-semibold capitalize transition-all ${
+              className={`flex-1 rounded-md py-2 text-xs font-semibold capitalize transition-all cursor-pointer ${
                 tab === t
-                  ? "bg-primary text-primary-foreground shadow-sm"
+                  ? "bg-gold text-black shadow-xs font-bold"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
@@ -395,7 +448,7 @@ function CustomerPortal() {
           <div className="space-y-6">
             {/* KPI Overview */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+              <div className="rounded-md border border-border bg-card p-4 space-y-1">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">
                   Gold Wallet Balance
                 </span>
@@ -404,7 +457,7 @@ function CustomerPortal() {
                 </div>
                 <span className="text-[10px] text-muted-foreground">Fine gold deposit</span>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+              <div className="rounded-md border border-border bg-card p-4 space-y-1">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">
                   Outstanding Balance
                 </span>
@@ -413,7 +466,7 @@ function CustomerPortal() {
                 </div>
                 <span className="text-[10px] text-muted-foreground">Total money due</span>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+              <div className="rounded-md border border-border bg-card p-4 space-y-1">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">
                   Active Orders
                 </span>
@@ -425,7 +478,7 @@ function CustomerPortal() {
                 </div>
                 <span className="text-[10px] text-muted-foreground">Jobs currently at work</span>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+              <div className="rounded-md border border-border bg-card p-4 space-y-1">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">
                   Active Repairs
                 </span>
@@ -437,7 +490,7 @@ function CustomerPortal() {
             </div>
 
             {/* Quick Profile Information */}
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <div className="rounded-md border border-border bg-card p-5 space-y-3">
               <h2 className="font-semibold text-sm text-foreground">Linked Customer Profile</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 <div>
@@ -470,7 +523,7 @@ function CustomerPortal() {
             </div>
 
             {/* Recent Activity */}
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <div className="rounded-md border border-border bg-card p-5 space-y-3">
               <h2 className="font-semibold text-sm text-foreground">Recent Activities</h2>
               <div className="divide-y divide-border text-xs">
                 {[
@@ -539,7 +592,7 @@ function CustomerPortal() {
               </span>
             </div>
             {data.invoices.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-md">
                 No invoices issued yet.
               </div>
             ) : (
@@ -547,7 +600,7 @@ function CustomerPortal() {
                 {data.invoices.map((inv) => (
                   <div
                     key={inv.id}
-                    className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                    className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
                   >
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
@@ -637,7 +690,7 @@ function CustomerPortal() {
           <div className="space-y-4">
             <h2 className="font-semibold text-sm">Order Status &amp; Tracking</h2>
             {data.orders.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-md">
                 No orders placed yet.
               </div>
             ) : (
@@ -645,7 +698,7 @@ function CustomerPortal() {
                 {data.orders.map((ord) => (
                   <div
                     key={ord.id}
-                    className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                    className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
                   >
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
@@ -695,7 +748,7 @@ function CustomerPortal() {
           <div className="space-y-4">
             <h2 className="font-semibold text-sm">Repair &amp; Refurbishing Jobs</h2>
             {data.repairs.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-md">
                 No repair items in service.
               </div>
             ) : (
@@ -703,7 +756,7 @@ function CustomerPortal() {
                 {data.repairs.map((rep) => (
                   <div
                     key={rep.id}
-                    className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                    className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
                   >
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
@@ -774,7 +827,7 @@ function CustomerPortal() {
               </div>
 
               {data.gold_entries.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+                <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-md">
                   No gold deposits or transactions on record.
                 </div>
               ) : (
@@ -782,7 +835,7 @@ function CustomerPortal() {
                   {data.gold_entries.map((e) => (
                     <div
                       key={e.id}
-                      className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                      className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
                     >
                       <div className="flex items-center justify-between">
                         <span className="rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-[10px] text-gold font-medium">
@@ -845,7 +898,7 @@ function CustomerPortal() {
               </div>
 
               {data.cash_ledger.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+                <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-md">
                   No cash transactions or payments recorded yet.
                 </div>
               ) : (
@@ -853,7 +906,7 @@ function CustomerPortal() {
                   {data.cash_ledger.map((c) => (
                     <div
                       key={c.id}
-                      className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                      className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-sm text-foreground capitalize">
@@ -905,7 +958,7 @@ function CustomerPortal() {
               </div>
             )}
             {!loadingCatalog && catalog.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-2xl">
+              <div className="p-8 text-center text-muted-foreground italic bg-card border border-border rounded-md">
                 No catalog designs listed in the registry.
               </div>
             ) : (
@@ -915,15 +968,15 @@ function CustomerPortal() {
                   return (
                     <div
                       key={cat.id}
-                      className="rounded-2xl border border-border bg-card p-3 space-y-2 text-xs flex flex-col justify-between"
+                      className="rounded-md border border-border bg-card p-3 space-y-2 text-xs flex flex-col justify-between"
                     >
                       <div className="space-y-1">
-                        <div className="aspect-square bg-muted/40 rounded-xl flex items-center justify-center text-muted-foreground relative overflow-hidden">
+                        <div className="aspect-square bg-muted/40 rounded-md flex items-center justify-center text-muted-foreground relative overflow-hidden">
                           {d.imageStoragePath ? (
-                            <img
-                              src={`${supabase.storage.from("catalog-images").getPublicUrl(d.imageStoragePath).data.publicUrl}`}
+                            <R2ObjectImage
+                              bucket="catalog-designs"
+                              storagePath={d.imageStoragePath}
                               alt={cat.name}
-                              className="object-cover w-full h-full"
                             />
                           ) : (
                             <LayoutGrid className="h-6 w-6 opacity-30" />
@@ -949,7 +1002,7 @@ function CustomerPortal() {
         {/* Tab content: Support */}
         {tab === "support" && (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <div className="rounded-md border border-border bg-card p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <MessageCircle className="h-5 w-5 text-primary" />
                 <h2 className="font-semibold text-sm text-foreground font-serif">
@@ -964,7 +1017,7 @@ function CustomerPortal() {
                 )}
                 {data.support_tickets.map((ticket) => (
                   <button
-                    className="flex w-full items-center justify-between rounded-xl border border-border p-3 text-left text-xs hover:bg-muted/40 transition-colors"
+                    className="flex w-full items-center justify-between rounded-md border border-border p-3 text-left text-xs hover:bg-muted/40 transition-colors"
                     key={ticket.id}
                     onClick={() => void openThread(ticket.id)}
                     type="button"
@@ -987,7 +1040,7 @@ function CustomerPortal() {
               </div>
 
               {thread && (
-                <div className="mt-4 rounded-xl border border-border p-4 space-y-3 bg-muted/10">
+                <div className="mt-4 rounded-md border border-border p-4 space-y-3 bg-muted/10">
                   <div className="flex items-center justify-between gap-3 border-b border-border pb-2">
                     <h3 className="font-semibold text-sm text-foreground">
                       {thread.ticket.subject}
@@ -1003,7 +1056,7 @@ function CustomerPortal() {
                   <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
                     {(thread.messages ?? []).map((message: any) => (
                       <div
-                        className="rounded-xl bg-card border border-border p-3 text-xs space-y-1"
+                        className="rounded-md bg-card border border-border p-3 text-xs space-y-1"
                         key={message.id}
                       >
                         <div className="flex justify-between items-center text-[10px] text-muted-foreground border-b border-border/50 pb-1">
@@ -1021,7 +1074,7 @@ function CustomerPortal() {
                     onSubmit={sendThreadReply}
                   >
                     <input
-                      className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold placeholder:text-muted-foreground"
                       maxLength={10000}
                       required
                       value={threadReply}
@@ -1029,7 +1082,7 @@ function CustomerPortal() {
                       placeholder="Type your message reply..."
                     />
                     <button
-                      className="rounded-lg bg-primary px-4 py-2 text-xs text-primary-foreground font-semibold disabled:opacity-50"
+                      className="rounded-md bg-gold px-4 py-2 text-xs text-black font-semibold hover:bg-gold-dark disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
                       disabled={threadBusy}
                       type="submit"
                     >
@@ -1040,21 +1093,21 @@ function CustomerPortal() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
-              <h2 className="font-semibold text-sm text-foreground flex items-center gap-1.5">
-                <Plus className="h-4 w-4 text-primary" /> Create Support Request
+            <div className="rounded-md border border-border bg-card p-5 space-y-3">
+              <h2 className="font-semibold text-sm text-foreground flex items-center gap-1.5 font-serif">
+                <Plus className="h-4 w-4 text-gold" /> Create Support Request
               </h2>
               <form className="space-y-4" onSubmit={submitTicket}>
                 <div className="space-y-1">
                   <label
                     htmlFor="ticket-subject"
-                    className="text-xs font-semibold text-muted-foreground"
+                    className="text-xs font-semibold text-muted-foreground uppercase"
                   >
                     Subject
                   </label>
                   <input
                     id="ticket-subject"
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold placeholder:text-muted-foreground"
                     minLength={3}
                     maxLength={160}
                     required
@@ -1066,13 +1119,13 @@ function CustomerPortal() {
                 <div className="space-y-1">
                   <label
                     htmlFor="ticket-desc"
-                    className="text-xs font-semibold text-muted-foreground"
+                    className="text-xs font-semibold text-muted-foreground uppercase"
                   >
                     Detailed Description
                   </label>
                   <textarea
                     id="ticket-desc"
-                    className="min-h-24 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold placeholder:text-muted-foreground"
                     minLength={10}
                     maxLength={10000}
                     required
@@ -1082,7 +1135,7 @@ function CustomerPortal() {
                   />
                 </div>
                 <button
-                  className="rounded-lg bg-primary px-4 py-2.5 text-xs text-primary-foreground font-semibold disabled:opacity-50"
+                  className="rounded-md bg-gold px-4 py-2.5 text-xs text-black font-semibold hover:bg-gold-dark disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
                   disabled={submitting}
                   type="submit"
                 >

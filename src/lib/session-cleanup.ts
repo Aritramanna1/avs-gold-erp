@@ -11,6 +11,25 @@
 import { useSettlements } from "@/lib/settlement-store";
 import { useWorkers } from "@/lib/workers-store";
 
+/** Clear tenant-scoped browser state on business switch (not full sign-out). */
+export function clearTenantScopedClientState(): void {
+  if (typeof window === "undefined") return;
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < window.sessionStorage.length; i++) {
+    const key = window.sessionStorage.key(i);
+    if (!key) continue;
+    if (
+      key.startsWith("license-") ||
+      key.startsWith("branch-") ||
+      key.startsWith("report-filter-") ||
+      key.startsWith("selected-")
+    ) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach((k) => window.sessionStorage.removeItem(k));
+}
+
 export async function resetAllBusinessStores(): Promise<void> {
   const [
     { usePeople },

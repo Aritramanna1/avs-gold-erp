@@ -7,8 +7,10 @@ import { useSettings } from "@/lib/settings-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import { DEFAULT_PLATFORM_SEARCH } from "@/lib/platform-search";
+
 export const Route = createFileRoute("/saas-admin")({
-  component: () => <Navigate to="/platform" replace />,
+  component: () => <Navigate to="/platform" search={DEFAULT_PLATFORM_SEARCH} replace />,
 });
 
 type Organization = {

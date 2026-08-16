@@ -7,8 +7,16 @@
  */
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { guardRoute } from "@/lib/permissions";
+import { lazy, Suspense } from "react";
 import { z } from "zod";
-import { CustomizationHub } from "@/components/customization/CustomizationHub";
+import { StandardPage } from "@/components/design-system";
+import { ModuleSkeleton } from "@/components/module-skeleton";
+
+const CustomizationHub = lazy(() =>
+  import("@/components/customization/CustomizationHub").then((m) => ({
+    default: m.CustomizationHub,
+  })),
+);
 
 const SearchSchema = z.object({
   tab: z.string().optional(),
@@ -23,5 +31,15 @@ export const Route = createFileRoute("/control/customization")({
 
 function ControlCustomizationPage() {
   const { tab } = useSearch({ from: "/control/customization" });
-  return <CustomizationHub activeTab={tab} />;
+  return (
+    <StandardPage
+      title="Customization Workspace"
+      subtitle="Adapt business language, books, rules, entities, and transaction definitions."
+      maxWidth="full"
+    >
+      <Suspense fallback={<ModuleSkeleton />}>
+        <CustomizationHub activeTab={tab} />
+      </Suspense>
+    </StandardPage>
+  );
 }

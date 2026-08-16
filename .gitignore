@@ -86,4 +86,19 @@ tsconfig.tsbuildinfo
 claude-obsidian/
 central-licensing/
 licensing-tool/
-.reconciliation/
+# QA outputs (artifacts — not source)
+/qa/reports-output/*
+!/qa/reports-output/defects/
+!/qa/reports-output/defects/DEFECTS.json
+/qa/config/qa.env
+/qa/security/strix/accounts.env
+/qa/visual/baselines/
+/strix_runs/
+# Playwright writes its report bundle next to the QA config it ran with
+/qa/e2e/qa/reports-output/
+# Deploy fallback bundles produced when the Hostinger upload fails
+/dist_*.zip
+/build_out.txt
+/_migration_temp.sql
+/_migration_apply_temp.sql
+

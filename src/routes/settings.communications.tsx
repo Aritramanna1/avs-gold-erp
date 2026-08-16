@@ -43,6 +43,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useState as useReactState } from "react";
+import { TenantCommunicationsPanel } from "@/components/communications/TenantCommunicationsPanel";
 
 export const Route = createFileRoute("/settings/communications")({
   head: () => ({ meta: [{ title: "Communication Settings · AVS Gold ERP" }] }),
@@ -185,6 +186,8 @@ function CommunicationSettings() {
         subtitle="Configure Email, WhatsApp, and SMS providers per branch. Switch providers without changing code."
       />
 
+      <TenantCommunicationsPanel title="Connection Status" />
+
       {/* Branch Selector */}
       {accessible.length > 1 && (
         <div className="flex items-center gap-3">
@@ -221,7 +224,7 @@ function CommunicationSettings() {
         const availableProviders = CHANNEL_PROVIDERS[channel];
 
         return (
-          <div key={channel} className="rounded-2xl border border-border bg-card p-6 space-y-5">
+          <div key={channel} className="rounded-md border border-border bg-card p-6 space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Icon className="h-4 w-4 text-gold" />
@@ -265,7 +268,7 @@ function CommunicationSettings() {
             )}
 
             {channel === "whatsapp" && (
-              <div className="text-xs text-muted-foreground bg-muted/30 rounded-xl p-3 flex items-center justify-between gap-3">
+              <div className="text-xs text-muted-foreground bg-muted/30 rounded-md p-3 flex items-center justify-between gap-3">
                 <span>
                   <strong>Advanced WA settings</strong> (automations, template mapping, rate limits,
                   webhook):
@@ -361,22 +364,24 @@ function ProviderCard({
   // ── Test SMTP Connection (server-side handshake, no email sent) ──────────────
   async function testSmtpConnection() {
     const s = local.settings;
-    if (!s["host"] || !s["username"] || !s["password"]) {
-      toast.error("Host, Username and Password are required to test the SMTP connection.");
+    if (!s["host"] || !s["username"]) {
+      toast.error("Host and Username are required to test the SMTP connection.");
       return;
     }
     setTesting(true);
     setTestResult(null);
     try {
-      const { error: secretError } = await supabase.functions.invoke("save-provider-secret", {
-        body: {
-          branchId: local.branchId,
-          providerType: local.providerType,
-          secretData: { password: s["password"], username: s["username"] },
-        },
-      });
-      if (secretError) {
-        throw new Error(await extractEdgeFunctionError(secretError, "Secret storage failed."));
+      if (s["password"]?.trim()) {
+        const { error: secretError } = await supabase.functions.invoke("save-provider-secret", {
+          body: {
+            branchId: local.branchId,
+            providerType: local.providerType,
+            secretData: { password: s["password"], username: s["username"] },
+          },
+        });
+        if (secretError) {
+          throw new Error(await extractEdgeFunctionError(secretError, "Secret storage failed."));
+        }
       }
       const { data, error } = await supabase.functions.invoke("send-email", {
         body: {
@@ -442,30 +447,26 @@ function ProviderCard({
         return;
       }
 
-      const provider = createProvider(local.providerType);
-      provider.configure(local);
-      const req: CommRequest = {
-        channel: "email",
-        template: "promotional",
-        branchId: local.branchId,
-        recipient: { name: "Test Recipient", email: testRecipient.trim() },
-        linkedId: "test",
-        linkedType: "invoice",
-      };
-      const content: ResolvedContent = {
-        subject: "AVS ERP - Test Email",
-        htmlBody:
-          "<div style='font-family:sans-serif'><h2>AVS ERP</h2><p>This is a <strong>test email</strong> sent from Settings → Communications to verify your provider configuration.</p><p>If you received this, your email provider is working correctly.</p></div>",
-        textBody:
-          "AVS ERP - This is a test email sent from Settings → Communications to verify your provider configuration.",
-      };
-      const result = await provider.send(req, content);
-      if (result.success) {
-        const msg = `Test email queued to ${testRecipient.trim()} via ${result.provider}.`;
+      const { data, error } = await supabase.functions.invoke("send-email", {
+        body: {
+          to: testRecipient.trim(),
+          branchId: local.branchId,
+          subject: "AVS ERP - Test Email",
+          htmlBody:
+            "<div style='font-family:sans-serif'><h2>AVS ERP</h2><p>This is a <strong>test email</strong> sent from Settings → Communications.</p></div>",
+          textBody: "AVS ERP - Test email from Communications settings.",
+        },
+      });
+      if (error) {
+        const msg = await extractEdgeFunctionError(error, "Failed to send test email.");
+        throw new Error(msg);
+      }
+      if (data?.success) {
+        const msg = `Test email sent to ${testRecipient.trim()}.`;
         setTestResult({ ok: true, message: msg });
         toast.success(msg);
       } else {
-        const msg = result.error || "Failed to send test email.";
+        const msg = data?.error || "Failed to send test email.";
         setTestResult({ ok: false, message: msg });
         toast.error(msg);
       }
@@ -478,18 +479,8 @@ function ProviderCard({
     }
   }
 
-  // ── Send Test WhatsApp message (Meta hello_world template — universally approved) ─
   async function sendTestWhatsApp() {
-    const s = local.settings;
-    const phoneNumberId = s["phone_number_id"];
-    const accessToken = s["access_token"];
-    const apiVersion = s["api_version"] || "v18.0";
-    const apiBase = (s["api_base_url"] || "https://graph.facebook.com").replace(/\/+$/, "");
     const to = (testRecipient || "").replace(/\D/g, "");
-    if (!phoneNumberId || !accessToken) {
-      toast.error("Phone Number ID and Access Token are required to send a test message.");
-      return;
-    }
     if (!to) {
       toast.error("Enter a recipient phone number (with country code) to send the test.");
       return;
@@ -497,28 +488,44 @@ function ProviderCard({
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch(`${apiBase}/${apiVersion}/${phoneNumberId}/messages`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
+      const secretData = Object.fromEntries(
+        Object.entries(local.settings).filter(
+          ([key, value]) =>
+            ["access_token", "api_key", "password", "webhook_verify_token"].includes(key) &&
+            String(value).trim(),
+        ),
+      );
+      if (Object.keys(secretData).length > 0) {
+        const { error: secretError } = await supabase.functions.invoke("save-provider-secret", {
+          body: {
+            branchId: local.branchId,
+            providerType: local.providerType,
+            secretData,
+          },
+        });
+        if (secretError) {
+          throw new Error(await extractEdgeFunctionError(secretError, "Secret storage failed."));
+        }
+      }
+      const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+        body: {
+          branchId: local.branchId,
+          phone: to,
+          message: "AVS ERP test message from Communications settings.",
         },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to,
-          type: "template",
-          template: { name: "hello_world", language: { code: "en_US" } },
-        }),
       });
-      const data = (await res.json()) as { error?: { message?: string } };
-      if (!res.ok) {
-        const msg = data?.error?.message ?? `HTTP ${res.status}`;
+      if (error) {
+        const msg = await extractEdgeFunctionError(error, "Test message failed.");
         setTestResult({ ok: false, message: msg });
         toast.error(`Test message failed: ${msg}`);
-      } else {
-        const msg = `Test "hello_world" template sent to ${to}. Check the recipient's WhatsApp.`;
+      } else if (data?.ok) {
+        const msg = `Test message queued to ${to}.`;
         setTestResult({ ok: true, message: msg });
         toast.success(msg);
+      } else {
+        const msg = data?.error || "Test message failed.";
+        setTestResult({ ok: false, message: msg });
+        toast.error(msg);
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -530,31 +537,46 @@ function ProviderCard({
   }
 
   async function testCloudApi() {
-    const s = local.settings;
-    const phoneNumberId = s["phone_number_id"];
-    const accessToken = s["access_token"];
-    const apiVersion = s["api_version"] || "v19.0";
-    if (!phoneNumberId || !accessToken) {
-      toast.error("Phone Number ID and Access Token are required to test.");
-      return;
-    }
     setTesting(true);
     setTestResult(null);
     try {
-      const url = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}?fields=display_phone_number,verified_name,status`;
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-      const data = (await res.json()) as any;
-      if (!res.ok) {
-        const msg = data?.error?.message ?? `HTTP ${res.status}`;
+      const secretData = Object.fromEntries(
+        Object.entries(local.settings).filter(
+          ([key, value]) => key === "access_token" && String(value).trim(),
+        ),
+      );
+      if (Object.keys(secretData).length > 0) {
+        const { error: secretError } = await supabase.functions.invoke("save-provider-secret", {
+          body: {
+            branchId: local.branchId,
+            providerType: local.providerType,
+            secretData,
+          },
+        });
+        if (secretError) {
+          throw new Error(await extractEdgeFunctionError(secretError, "Secret storage failed."));
+        }
+      }
+      const { data, error } = await supabase.functions.invoke("send-whatsapp", {
+        body: { branchId: local.branchId, verifyOnly: true },
+      });
+      if (error) {
+        const msg = await extractEdgeFunctionError(error, "Connection test failed.");
         setTestResult({ ok: false, message: msg });
         toast.error(`Connection failed: ${msg}`);
-      } else {
-        const msg = `Connected ✓  ${data.verified_name ?? ""} (${data.display_phone_number ?? phoneNumberId}) — ${data.status ?? ""}`;
+      } else if (data?.ok) {
+        const msg = data.message || "Connected successfully.";
         setTestResult({ ok: true, message: msg });
         toast.success(msg);
+      } else {
+        const msg = data?.error || "Connection test failed.";
+        setTestResult({ ok: false, message: msg });
+        toast.error(msg);
       }
-    } catch (e: any) {
-      setTestResult({ ok: false, message: e.message });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setTestResult({ ok: false, message: msg });
+      toast.error(msg);
     } finally {
       setTesting(false);
     }
@@ -562,7 +584,7 @@ function ProviderCard({
 
   return (
     <div
-      className={`rounded-xl border p-4 space-y-4 ${config.isActive ? "border-gold/30 bg-gold/5" : "border-border bg-muted/10 opacity-60"}`}
+      className={`rounded-md border p-4 space-y-4 ${config.isActive ? "border-gold/30 bg-gold/5" : "border-border bg-muted/10 opacity-60"}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between gap-3">

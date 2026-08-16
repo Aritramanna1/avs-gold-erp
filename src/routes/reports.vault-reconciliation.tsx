@@ -57,13 +57,13 @@ function VaultReconciliationPage() {
       />
 
       <div className="grid sm:grid-cols-2 gap-4 mt-4">
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-md border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
             Book Vault Balance (Gold Ledger)
           </div>
           <div className="text-2xl font-mono font-bold mt-1">{mgToGrams(bookVaultMg)} g</div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-md border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
             Last Physical Count Shortage
           </div>
@@ -78,7 +78,7 @@ function VaultReconciliationPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5 mt-4">
+      <div className="rounded-md border border-border bg-card p-5 mt-4">
         {!latestCount ? (
           <div className="text-sm text-muted-foreground flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" /> No completed Physical Stock Count exists yet — run

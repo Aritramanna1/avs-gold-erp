@@ -234,14 +234,14 @@ function WhatsAppIntegrationPage({ embedded = false }: { embedded?: boolean } = 
       )}
 
       {!bridgeAvailable && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm text-amber-200">
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-4 text-sm text-amber-200">
           The WasenderAPI integration requires the desktop app (token security runs in the Electron
           main process). In the browser build the ERP falls back to WhatsApp deep links.
         </div>
       )}
 
       {/* Enable + credentials */}
-      <section className="rounded-2xl border border-border bg-card p-5 space-y-4">
+      <section className="rounded-md border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <div className="font-serif text-lg text-gold">Enable WhatsApp Integration</div>
@@ -415,7 +415,7 @@ function WhatsAppIntegrationPage({ embedded = false }: { embedded?: boolean } = 
 
       {/* Sessions */}
       {sessions.length > 0 && (
-        <section className="rounded-2xl border border-border bg-card p-5 space-y-3">
+        <section className="rounded-md border border-border bg-card p-5 space-y-3">
           <div className="font-serif text-lg text-gold">Sessions</div>
           {sessions.map((sess) => {
             const badge = STATUS_BADGE[sess.status];
@@ -520,7 +520,7 @@ function WhatsAppIntegrationPage({ embedded = false }: { embedded?: boolean } = 
 
       {/* QR modal-ish inline */}
       {qr && (
-        <section className="rounded-2xl border border-border bg-card p-5 text-center space-y-3">
+        <section className="rounded-md border border-border bg-card p-5 text-center space-y-3">
           <div className="font-serif text-lg text-gold">
             Scan to Connect — Session {String(qr.id)}
           </div>

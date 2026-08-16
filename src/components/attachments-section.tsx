@@ -26,7 +26,7 @@ export function AttachmentsSection({
 }) {
   const items = useAttachments((s) => s.items);
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+    <div className="rounded-md border border-border bg-card p-5 space-y-4">
       <div className="flex items-center gap-2">
         <Paperclip className="h-4 w-4 text-gold" />
         <h3 className="font-serif text-lg text-gold">{title}</h3>

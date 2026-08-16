@@ -62,7 +62,7 @@ export function AttachmentPlaceholderModal({
   const [fileMissing, setFileMissing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const helpText =
-    "Documents and photographs are stored in the configured Supabase-backed document storage and linked to this ERP record.";
+    "Documents and photographs are stored in Cloudflare R2 via the central storage adapter and linked to this ERP record.";
 
   // Reset local state whenever the modal opens for a (possibly different) record.
   useEffect(() => {
@@ -298,7 +298,7 @@ export function AttachmentPlaceholderModal({
                 type="button"
                 disabled={isUploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full border-2 border-dashed border-border/80 rounded-xl py-6 px-4 bg-card/20 hover:bg-card/40 hover:border-gold/30 transition-all text-center cursor-pointer flex flex-col items-center gap-2 group"
+                className="w-full border-2 border-dashed border-border/80 rounded-md py-6 px-4 bg-card/20 hover:bg-card/40 hover:border-gold/30 transition-all text-center cursor-pointer flex flex-col items-center gap-2 group"
               >
                 <div className="p-2.5 rounded-full bg-sidebar-accent/80 group-hover:scale-110 transition-transform">
                   <Upload className="h-5 w-5 text-muted-foreground group-hover:text-gold" />

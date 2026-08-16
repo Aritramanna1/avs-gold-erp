@@ -11,12 +11,22 @@
 import { useSettings } from "@/lib/settings-store";
 import { PrintQR } from "@/components/print-qr";
 import { Logo } from "@/components/ui/Logo";
+import { R2ObjectImage } from "@/components/storage/R2ObjectImage";
+import {
+  shouldRenderAuthorizedSignature,
+  shouldRenderPrintStamp,
+  shouldRenderVerificationQr,
+} from "@/lib/print-engine/print-branding";
 import type {
   BalanceCardSectionConfig,
+  BankDetailsSectionConfig,
+  BarcodeSectionConfig,
   BilledToStampSectionConfig,
+  CustomFieldSectionConfig,
   DataListSectionConfig,
   FieldGridSectionConfig,
   ImagesSectionConfig,
+  PageFooterSectionConfig,
   PartySectionConfig,
   PremiumHeaderSectionConfig,
   PrintDocumentData,
@@ -27,7 +37,9 @@ import type {
   SignatureBlockSectionConfig,
   TableSectionConfig,
   TagCardsSectionConfig,
+  TaxBreakdownSectionConfig,
   ThermalItemListSectionConfig,
+  WeightSummarySectionConfig,
 } from "@/lib/print-engine/types";
 import { formatFieldValue, getPath, isVisible } from "@/lib/print-engine/resolve";
 
@@ -89,7 +101,7 @@ function FieldGridSection({
 
   if (config.theme === "darkPanel") {
     return (
-      <div className="mb-4 rounded-xl bg-purple-950 text-white p-5 space-y-2 font-mono text-xs shadow-md">
+      <div className="mb-4 rounded-md bg-purple-950 text-white p-5 space-y-2 font-mono text-xs shadow-md">
         {config.title && (
           <div className="text-[10px] uppercase tracking-wider text-purple-300 mb-1">
             {config.title}
@@ -104,6 +116,58 @@ function FieldGridSection({
               {f.label}:
             </span>
             <span className={f.emphasis ? "text-amber-300" : ""}>
+              {formatFieldValue(getPath(data.fields, f.valuePath))}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (config.theme === "goldSummary") {
+    return (
+      <div className="mb-4 rounded-md border-2 border-amber-500/50 bg-amber-50/40 p-4 space-y-2 text-xs shadow-sm">
+        {config.title && (
+          <div className="text-[10px] font-bold font-serif uppercase tracking-wider text-amber-900 border-b border-amber-200 pb-1 mb-2">
+            {config.title}
+          </div>
+        )}
+        {fields.map((f) => (
+          <div
+            key={f.label}
+            className={`flex justify-between items-center ${f.emphasis ? "border-t border-amber-300 pt-2 font-bold text-sm text-amber-950" : "text-amber-900"}`}
+          >
+            <span className="font-medium">{f.label}:</span>
+            <span
+              className={
+                f.emphasis
+                  ? "font-mono text-base font-bold text-amber-950"
+                  : "font-mono font-semibold"
+              }
+            >
+              {formatFieldValue(getPath(data.fields, f.valuePath))}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (config.theme === "bordered") {
+    return (
+      <div className="mb-4 rounded-lg border border-stone-300 bg-stone-50/50 p-4 space-y-1.5 text-xs">
+        {config.title && (
+          <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700 border-b border-stone-200 pb-1 mb-2">
+            {config.title}
+          </div>
+        )}
+        {fields.map((f) => (
+          <div
+            key={f.label}
+            className={`flex justify-between items-center ${f.emphasis ? "border-t border-stone-300 pt-1.5 font-bold text-stone-950 text-sm" : "text-stone-700"}`}
+          >
+            <span>{f.label}:</span>
+            <span className={f.emphasis ? "font-mono font-bold text-stone-900" : "font-mono"}>
               {formatFieldValue(getPath(data.fields, f.valuePath))}
             </span>
           </div>
@@ -468,10 +532,12 @@ function SignatureBlockSection({
   config: SignatureBlockSectionConfig;
   data: PrintDocumentData;
 }) {
-  const { firm, branding } = useSettings();
+  const { firm } = useSettings();
   if (!isVisible(config.showIf, data.flags)) return null;
   const left = config.leftLabel || firm.signatureLabelLeft || "Customer Signature";
   const right = config.rightLabel || firm.signatureLabelRight || "Authorised Signatory";
+  const showStampImage = shouldRenderPrintStamp(firm, config.showStamp);
+  const showSignatureImage = shouldRenderAuthorizedSignature(firm, true);
   const leftCaption = config.leftCaptionPath
     ? formatFieldValue(getPath(data.fields, config.leftCaptionPath))
     : undefined;
@@ -487,9 +553,24 @@ function SignatureBlockSection({
         {leftCaption && <p className="text-[9px] text-stone-400 mt-0.5">({leftCaption})</p>}
       </div>
       <div className="flex flex-col justify-end min-h-[60px]">
-        {config.showStamp && (
-          <div className="mx-auto mb-2 font-serif text-[11px] text-purple-950 font-black tracking-widest border border-purple-950/30 px-2.5 py-0.5 rounded opacity-60 -rotate-2">
-            {branding.printHeader || firm.shopName || branding.applicationName}
+        {showStampImage && firm.stampImageStoragePath && (
+          <div className="mx-auto mb-2 h-14 w-28">
+            <R2ObjectImage
+              bucket="firm-assets"
+              storagePath={firm.stampImageStoragePath}
+              alt="Company stamp"
+              className="object-contain w-full h-full"
+            />
+          </div>
+        )}
+        {showSignatureImage && firm.authorizedSignatureStoragePath && (
+          <div className="mx-auto mb-1 h-10 w-32">
+            <R2ObjectImage
+              bucket="firm-assets"
+              storagePath={firm.authorizedSignatureStoragePath}
+              alt="Authorized signature"
+              className="object-contain w-full h-full"
+            />
           </div>
         )}
         <div className="border-t border-stone-400 pt-1.5 font-semibold text-stone-800 uppercase tracking-wide">
@@ -509,7 +590,9 @@ function SignatureBlockSection({
 // simply never include a `qr` section in their template.
 
 function QrSection({ config, data }: { config: QrSectionConfig; data: PrintDocumentData }) {
+  const firm = useSettings((s) => s.firm);
   if (!isVisible(config.showIf, data.flags)) return null;
+  if (!shouldRenderVerificationQr(firm)) return null;
   return (
     <div className="flex flex-col items-center justify-center pt-1 text-center space-y-1.5">
       <PrintQR
@@ -534,7 +617,7 @@ function PremiumHeaderSection({
   data: PrintDocumentData;
 }) {
   const { firm, branding } = useSettings();
-  const badgeTitle = formatFieldValue(getPath(data.fields, config.badgeTitlePath));
+  const badgeTitle = formatFieldValue(getPath(data.fields, config.badgeTitlePath ?? ""));
   const dateLabel = data.createdAt
     ? new Date(data.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })
     : "";
@@ -564,9 +647,9 @@ function PremiumHeaderSection({
       <div className="space-y-2">
         <div className="flex items-center gap-3">
           {firm.logoUrl ? (
-            <Logo variant="png" className="h-12 w-12 object-contain flex-shrink-0 rounded-xl" />
+            <Logo variant="png" className="h-12 w-12 object-contain flex-shrink-0 rounded-md" />
           ) : (
-            <div className="h-12 w-12 rounded-xl bg-purple-950 flex items-center justify-center border border-amber-400 shrink-0 shadow-md" />
+            <div className="h-12 w-12 rounded-md bg-purple-950 flex items-center justify-center border border-amber-400 shrink-0 shadow-md" />
           )}
           <div>
             <h1 className="font-serif text-2xl font-black text-purple-950 tracking-tight leading-none">
@@ -626,7 +709,7 @@ function PremiumHeaderSection({
             </div>
           )}
         </div>
-        {config.showQr && (
+        {config.showQr && shouldRenderVerificationQr(firm) && (
           <div className="pt-1 flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded p-1">
             <PrintQR
               docType={data.docType}
@@ -655,7 +738,7 @@ function BilledToStampSection({
   if (!isVisible(config.showIf, data.flags)) return null;
   const name = formatFieldValue(getPath(data.fields, config.namePath));
   return (
-    <div className="grid grid-cols-2 gap-6 bg-purple-50/40 rounded-xl border border-purple-100 p-4 mb-6">
+    <div className="grid grid-cols-2 gap-6 bg-purple-50/40 rounded-md border border-purple-100 p-4 mb-6">
       <div>
         <span className="text-[10px] font-bold uppercase tracking-wider text-purple-900 font-mono">
           Billed To (Customer Details)
@@ -843,6 +926,247 @@ function RowSection({ config, data }: { config: RowSectionConfig; data: PrintDoc
   );
 }
 
+function WeightSummarySection({
+  config,
+  data,
+}: {
+  config: WeightSummarySectionConfig;
+  data: PrintDocumentData;
+}) {
+  if (!isVisible(config.showIf, data.flags)) return null;
+  const gross = config.grossPath ? formatFieldValue(getPath(data.fields, config.grossPath)) : "";
+  const less = config.lessPath ? formatFieldValue(getPath(data.fields, config.lessPath)) : "";
+  const net = config.netPath ? formatFieldValue(getPath(data.fields, config.netPath)) : "";
+  const purity = config.purityPath ? formatFieldValue(getPath(data.fields, config.purityPath)) : "";
+  const fine = config.finePath ? formatFieldValue(getPath(data.fields, config.finePath)) : "";
+
+  return (
+    <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50/50 p-3 text-xs">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-amber-900 mb-2 font-mono">
+        {config.title || "Precious Metal & Weight Summary"}
+      </div>
+      <div className="grid grid-cols-5 gap-2 text-center font-mono">
+        <div className="border-r border-amber-200 pr-1">
+          <span className="text-[9px] uppercase text-amber-700 block">Gross Wt</span>
+          <span className="font-bold text-amber-950">{gross || "—"}</span>
+        </div>
+        <div className="border-r border-amber-200 pr-1">
+          <span className="text-[9px] uppercase text-amber-700 block">Less / Stone</span>
+          <span className="font-bold text-amber-950">{less || "—"}</span>
+        </div>
+        <div className="border-r border-amber-200 pr-1">
+          <span className="text-[9px] uppercase text-amber-700 block">Net Metal</span>
+          <span className="font-bold text-amber-950">{net || "—"}</span>
+        </div>
+        <div className="border-r border-amber-200 pr-1">
+          <span className="text-[9px] uppercase text-amber-700 block">Purity</span>
+          <span className="font-bold text-amber-950">{purity || "—"}</span>
+        </div>
+        <div>
+          <span className="text-[9px] uppercase text-amber-700 block font-bold">Fine Gold</span>
+          <span className="font-bold text-amber-950">{fine || "—"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TaxBreakdownSection({
+  config,
+  data,
+}: {
+  config: TaxBreakdownSectionConfig;
+  data: PrintDocumentData;
+}) {
+  if (!isVisible(config.showIf, data.flags)) return null;
+  const taxable = formatFieldValue(getPath(data.fields, config.taxableValuePath));
+  const cgst = config.cgstPath ? formatFieldValue(getPath(data.fields, config.cgstPath)) : "";
+  const sgst = config.sgstPath ? formatFieldValue(getPath(data.fields, config.sgstPath)) : "";
+  const igst = config.igstPath ? formatFieldValue(getPath(data.fields, config.igstPath)) : "";
+  const totalTax = formatFieldValue(getPath(data.fields, config.totalTaxPath));
+  const words = config.amountInWordsPath
+    ? formatFieldValue(getPath(data.fields, config.amountInWordsPath))
+    : "";
+
+  return (
+    <div className="mb-4 rounded-lg border border-stone-300 bg-stone-50/70 p-3 text-xs space-y-2">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-stone-700 font-mono">
+        {config.title || "GST Tax Schedule & Statutory Breakdown"}
+      </div>
+      <div className="grid grid-cols-4 gap-2 font-mono text-center">
+        <div className="bg-white p-2 rounded border border-stone-200">
+          <span className="text-[9px] text-stone-500 uppercase block">Taxable Value</span>
+          <span className="font-bold text-stone-900">{taxable}</span>
+        </div>
+        {cgst && cgst !== "—" && (
+          <div className="bg-white p-2 rounded border border-stone-200">
+            <span className="text-[9px] text-stone-500 uppercase block">CGST (1.5%)</span>
+            <span className="font-bold text-stone-900">{cgst}</span>
+          </div>
+        )}
+        {sgst && sgst !== "—" && (
+          <div className="bg-white p-2 rounded border border-stone-200">
+            <span className="text-[9px] text-stone-500 uppercase block">SGST (1.5%)</span>
+            <span className="font-bold text-stone-900">{sgst}</span>
+          </div>
+        )}
+        {igst && igst !== "—" && (
+          <div className="bg-white p-2 rounded border border-stone-200">
+            <span className="text-[9px] text-stone-500 uppercase block">IGST (3.0%)</span>
+            <span className="font-bold text-stone-900">{igst}</span>
+          </div>
+        )}
+        <div className="bg-white p-2 rounded border border-stone-200">
+          <span className="text-[9px] text-stone-500 uppercase block">Total GST</span>
+          <span className="font-bold text-stone-900">{totalTax}</span>
+        </div>
+      </div>
+      {words && words !== "—" && (
+        <div className="text-[11px] text-stone-700 italic border-t border-stone-200 pt-1.5">
+          Tax in words: <span className="font-medium not-italic">{words}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BankDetailsSection({
+  config,
+  data,
+}: {
+  config: BankDetailsSectionConfig;
+  data: PrintDocumentData;
+}) {
+  const { firm } = useSettings();
+  if (!isVisible(config.showIf, data.flags)) return null;
+
+  return (
+    <div className="mb-4 rounded-lg border border-stone-200 bg-stone-50 p-3 text-xs flex justify-between items-center gap-4">
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-stone-600 mb-1 font-mono">
+          {config.title || "Bank & Remittance Details"}
+        </div>
+        <div className="space-y-0.5 text-stone-800 font-mono text-[11px]">
+          <div>
+            Bank:{" "}
+            <span className="font-bold">{firm.bankDetails?.bankName || "State Bank of India"}</span>
+          </div>
+          <div>
+            A/C No:{" "}
+            <span className="font-bold">{firm.bankDetails?.accountNo || "XXXXXXXXXXXX"}</span>
+          </div>
+          <div>
+            IFSC: <span className="font-bold">{firm.bankDetails?.ifsc || "SBIN0000000"}</span> ·
+            Branch: {firm.bankDetails?.branch || "Main Branch"}
+          </div>
+          {firm.upiQr && (
+            <div>
+              UPI: <span className="font-bold text-purple-900">Verified</span>
+            </div>
+          )}
+        </div>
+      </div>
+      {config.showUpiQr && (
+        <div className="shrink-0 text-center">
+          <PrintQR
+            docType={data.docType}
+            docNumber={data.docNumber}
+            recordId={data.recordId}
+            size={48}
+          />
+          <span className="text-[8px] text-stone-500 block mt-0.5 uppercase">UPI Pay</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BarcodeSection({
+  config,
+  data,
+}: {
+  config: BarcodeSectionConfig;
+  data: PrintDocumentData;
+}) {
+  if (!isVisible(config.showIf, data.flags)) return null;
+  const val = formatFieldValue(getPath(data.fields, config.valuePath));
+  if (!val || val === "—") return null;
+
+  return (
+    <div className="my-2 inline-block text-center border border-stone-300 rounded p-2 bg-white">
+      <div className="font-mono text-base font-bold tracking-widest px-4 py-1 bg-stone-100 rounded">
+        *{val}*
+      </div>
+      {config.showHumanReadable !== false && (
+        <div className="text-[9px] font-mono text-stone-600 mt-1 uppercase tracking-wider">
+          {val}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CustomFieldSection({
+  config,
+  data,
+}: {
+  config: CustomFieldSectionConfig;
+  data: PrintDocumentData;
+}) {
+  if (!isVisible(config.showIf, data.flags)) return null;
+  const val = formatFieldValue(getPath(data.fields, config.valuePath));
+  if (!val || val === "—") return null;
+
+  if (config.variant === "badge") {
+    return (
+      <div className="mb-2 inline-flex items-center gap-2">
+        <span className="text-[10px] text-stone-500 uppercase">{config.label}:</span>
+        <span className="px-2 py-0.5 rounded border border-amber-400 bg-amber-50 text-amber-900 text-xs font-semibold">
+          {val}
+        </span>
+      </div>
+    );
+  }
+
+  if (config.variant === "box") {
+    return (
+      <div className="mb-2 rounded border border-stone-200 bg-stone-50 p-2 text-xs">
+        <span className="text-[10px] text-stone-500 uppercase block">{config.label}</span>
+        <span className="font-medium text-stone-900">{val}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-2 text-xs flex gap-2">
+      <span className="text-stone-500 uppercase text-[10px]">{config.label}:</span>
+      <span className="font-medium text-stone-900">{val}</span>
+    </div>
+  );
+}
+
+function PageFooterSection({
+  config,
+  data,
+}: {
+  config: PageFooterSectionConfig;
+  data: PrintDocumentData;
+}) {
+  const hash = data.recordId ? data.recordId.slice(0, 8).toUpperCase() : "SEC-001";
+  return (
+    <div className="mt-6 pt-3 border-t border-stone-200 flex justify-between items-center text-[9px] text-stone-400 font-mono">
+      <div>
+        {config.customText || `Document Ref: ${data.docNumber}`}
+        {config.showMicroAuditHash !== false && ` · SHA: ${hash}`}
+      </div>
+      <div>
+        {config.showTimestamp !== false && `Generated: ${new Date().toLocaleDateString("en-IN")}`}
+        {config.showPageNumbers !== false && " · Page 1 of 1"}
+      </div>
+    </div>
+  );
+}
+
 // ── registry ─────────────────────────────────────────────────────────────
 
 /**
@@ -883,6 +1207,18 @@ export function renderSection(config: SectionConfig, data: PrintDocumentData) {
       return <ThermalItemListSection key={config.id} config={config} data={data} />;
     case "row":
       return <RowSection key={config.id} config={config} data={data} />;
+    case "weightSummary":
+      return <WeightSummarySection key={config.id} config={config} data={data} />;
+    case "taxBreakdown":
+      return <TaxBreakdownSection key={config.id} config={config} data={data} />;
+    case "bankDetails":
+      return <BankDetailsSection key={config.id} config={config} data={data} />;
+    case "barcode":
+      return <BarcodeSection key={config.id} config={config} data={data} />;
+    case "customField":
+      return <CustomFieldSection key={config.id} config={config} data={data} />;
+    case "pageFooter":
+      return <PageFooterSection key={config.id} config={config} data={data} />;
     case "header":
       return null; // rendered by PrintLayout, see PrintEngine.tsx
     default:

@@ -286,7 +286,7 @@ function SettlementView() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+      <div className="rounded-md border border-border bg-card p-5 space-y-3">
         <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
           Items ({s.items.length})
         </div>
@@ -373,7 +373,7 @@ function SettlementView() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
+      <div className="rounded-md border border-border bg-card p-5 space-y-2">
         <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
           Delivery Status
         </div>
@@ -431,7 +431,7 @@ function SettlementView() {
           );
           if (availableGoldMg <= 0 && availableCashPaise <= 0) return null;
           return (
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-3">
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-5 space-y-3">
               <div className="text-sm font-bold uppercase tracking-wider text-emerald-400">
                 Existing Credit Detected
               </div>
@@ -479,7 +479,7 @@ function SettlementView() {
           );
         })()}
 
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
+      <div className="rounded-md border border-border bg-card p-5 space-y-2">
         <div className="text-sm font-bold uppercase tracking-wider text-gold">Preview Totals</div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div>
@@ -506,7 +506,7 @@ function SettlementView() {
       </div>
 
       {!isFinalised && (
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+        <div className="rounded-md border border-border bg-card p-5 space-y-3">
           <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
             Record Payment
           </div>
@@ -568,7 +568,7 @@ function SettlementView() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border font-serif text-gold">
           Payments Recorded
         </div>

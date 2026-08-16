@@ -9,12 +9,15 @@ import fs from "node:fs";
 //
 // NOTE: this file runs as ESM (package.json has "type": "module"), so
 // `__dirname` is not defined here — use import.meta.dirname instead.
-const envFilePath = path.resolve(import.meta.dirname, ".env.e2e");
-if (fs.existsSync(envFilePath)) {
-  process.loadEnvFile(envFilePath);
+const envFiles = [".env", ".env.test.local", ".env.e2e"] as const;
+for (const fileName of envFiles) {
+  const envFilePath = path.resolve(import.meta.dirname, fileName);
+  if (fs.existsSync(envFilePath)) {
+    process.loadEnvFile(envFilePath);
+  }
 }
-// If .env.e2e doesn't exist, that's fine for unauthenticated-only runs —
-// authenticated fixtures raise their own explicit error when actually used.
+// Load the repo's shipped .env files first so CI/local E2E credentials and
+// feature flags are available without requiring a separate manual export.
 
 const PORT = Number(process.env.PORT) || 3000;
 const BASE_URL = process.env.E2E_BASE_URL || `http://localhost:${PORT}`;

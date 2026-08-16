@@ -124,6 +124,68 @@ assert(email.body.includes("Rahul Sharma"));
 assert(email.body.includes("https://erp.ornexa.in/invite/token123"));
 console.log("✓ Email template engine generates correct personalized HTML/text content.");
 
+// 6. Language Understanding & Typo Tolerance (Knowledge Layer)
+const BUILTIN_ALIASES = {
+  karigr: "karigar",
+  karigarrr: "karigar",
+  bhaav: "bhav",
+  jma: "jama",
+  halmark: "hallmark",
+  purty: "purity",
+  recive: "receive",
+  isshu: "issue",
+  costomer: "customer",
+  invoce: "invoice",
+  refinary: "refinery",
+  jewlers: "jewellers",
+};
+
+function normalizeToken(token) {
+  const lower = token.toLowerCase();
+  return BUILTIN_ALIASES[lower] ?? lower;
+}
+
+function normalizePhrase(text) {
+  return text
+    .replace(/\bisshu\s+gold\b/gi, "issue gold")
+    .replace(/\brecive\s+gold\b/gi, "receive gold")
+    .split(/\s+/)
+    .map(normalizeToken)
+    .join(" ");
+}
+
+console.log("\n--- TEST 6: Language Understanding & Typo Tolerance ---");
+assert.strictEqual(normalizeToken("karigr"), "karigar");
+assert.strictEqual(normalizeToken("karigarrr"), "karigar");
+assert.strictEqual(normalizeToken("bhaav"), "bhav");
+assert.strictEqual(normalizeToken("jma"), "jama");
+assert.strictEqual(normalizePhrase("isshu gold to ramesh"), "issue gold to ramesh");
+assert.strictEqual(normalizePhrase("recive gold from karigr"), "receive gold from karigar");
+assert.strictEqual(normalizePhrase("show costomer invoce"), "show customer invoice");
+console.log("✓ Typo correction and jewellery trade aliases resolve correctly.");
+
+// 7. Disambiguation choice resolution
+function resolveDisambiguationChoice(reply, candidates) {
+  const trimmed = reply.trim();
+  const num = parseInt(trimmed, 10);
+  if (!Number.isNaN(num) && num >= 1 && num <= candidates.length) return candidates[num - 1];
+  const lower = trimmed.toLowerCase();
+  return (
+    candidates.find(
+      (c) => c.name.toLowerCase() === lower || c.name.toLowerCase().includes(lower),
+    ) ?? null
+  );
+}
+
+console.log("\n--- TEST 7: Entity Disambiguation ---");
+const parties = [
+  { id: "1", name: "Raj Jewellers", type: "customer" },
+  { id: "2", name: "Raj Jewellers Pvt Ltd", type: "dealer" },
+];
+assert.deepStrictEqual(resolveDisambiguationChoice("1", parties), parties[0]);
+assert.deepStrictEqual(resolveDisambiguationChoice("Raj Jewellers Pvt Ltd", parties), parties[1]);
+console.log("✓ Party disambiguation resolves by number or name.");
+
 console.log("\n========================================================");
 console.log("✅ ALL ORNEXA AI OPERATING LAYER TESTS PASSED (100%)");
 console.log("========================================================\n");

@@ -89,15 +89,15 @@ function ExceptionReportPage() {
       />
 
       <div className="grid sm:grid-cols-3 gap-3 mb-6">
-        <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-4">
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
           <div className="text-xs text-muted-foreground">High Severity</div>
           <div className="text-2xl font-semibold text-destructive">{counts.high ?? 0}</div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-md border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground">Medium Severity</div>
           <div className="text-2xl font-semibold">{counts.medium ?? 0}</div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="rounded-md border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground">Low Severity</div>
           <div className="text-2xl font-semibold">{counts.low ?? 0}</div>
         </div>
@@ -127,7 +127,7 @@ function ExceptionReportPage() {
         })}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

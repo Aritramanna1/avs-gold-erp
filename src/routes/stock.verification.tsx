@@ -111,10 +111,12 @@ function StockVerificationPage() {
       <PageHeader
         title="Physical Stock Verification"
         subtitle="Reconcile physical stock-take against system inventory. Every gram short is traceable to a specific item."
+        backTo="/stock"
+        backLabel="Back to Stock"
       />
 
       {!active && (
-        <div className="rounded-2xl border border-border bg-card p-6 mb-6 flex items-center justify-between">
+        <div className="rounded-md border border-border bg-card p-6 mb-6 flex items-center justify-between">
           <div>
             <div className="font-semibold">No count in progress for this branch</div>
             <div className="text-sm text-muted-foreground">
@@ -133,7 +135,7 @@ function StockVerificationPage() {
       )}
 
       {active && (
-        <div className="rounded-2xl border border-border bg-card p-4 mb-6">
+        <div className="rounded-md border border-border bg-card p-4 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="font-semibold">
               Count in progress — {scannedCount}/{totalCount} scanned
@@ -188,7 +190,7 @@ function StockVerificationPage() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="p-4 border-b border-border font-semibold">Past Counts</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

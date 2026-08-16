@@ -6,6 +6,9 @@
  * GST Dual-Currency calculations, and Multi-Unit Weight conversions.
  */
 
+import { fineGoldMg } from "./gold";
+import { evaluateBusinessRules, type BusinessRuleDefinition } from "./formula-engine";
+
 export interface FineGoldCalculationInput {
   netWeightMg: number;
   purityPerMille: number; // e.g. 916 for 22K, 750 for 18K, 1000 for 24K
@@ -89,15 +92,17 @@ export interface UnitConversionResult {
  */
 export function calculateFineGold(input: FineGoldCalculationInput): FineGoldCalculationResult {
   const { netWeightMg, purityPerMille } = input;
-  const fineGoldMg = Math.round(netWeightMg * (purityPerMille / 1000));
-  const fineGoldGrams = Number((fineGoldMg / 1000).toFixed(3));
+  // Routes through gold.ts's fineGoldMg() — the single source of truth for
+  // this shop's gross*purity/999 convention. Never reimplement with /1000.
+  const fineGoldMgValue = fineGoldMg(netWeightMg, Math.min(purityPerMille, 999));
+  const fineGoldGrams = Number((fineGoldMgValue / 1000).toFixed(3));
 
   return {
     netWeightMg,
     purityPerMille,
-    fineGoldMg,
+    fineGoldMg: fineGoldMgValue,
     fineGoldGrams,
-    explanation: `${netWeightMg}mg Net Wt * (${purityPerMille}/1000 Purity) = ${fineGoldMg}mg Fine Gold (${fineGoldGrams}g)`,
+    explanation: `${netWeightMg}mg Net Wt * (${purityPerMille}/999 Purity) = ${fineGoldMgValue}mg Fine Gold (${fineGoldGrams}g)`,
   };
 }
 
@@ -128,13 +133,16 @@ export function calculateKarigarWastage(input: KarigarWastageInput): KarigarWast
 
   // 2. Allowed Wastage Calculation
   const allowedWastageMg = Math.round(eligibleWeightMg * (karigarWastagePct / 100));
-  const allowedWastageFineMg = Math.round(allowedWastageMg * (targetPurityPerMille / 1000));
+  const allowedWastageFineMg = fineGoldMg(allowedWastageMg, Math.min(targetPurityPerMille, 999));
   explanation.push(
     `Allowed Wastage (${karigarWastagePct}% on ${eligibleWeightMg}mg): ${allowedWastageMg}mg (${allowedWastageFineMg}mg Fine)`,
   );
 
   // 3. Submitted Fine Weight
-  const submittedFineMg = Math.round(totalSubmittedNetWeightMg * (targetPurityPerMille / 1000));
+  const submittedFineMg = fineGoldMg(
+    totalSubmittedNetWeightMg,
+    Math.min(targetPurityPerMille, 999),
+  );
   explanation.push(`Submitted Fine Gold: ${submittedFineMg}mg`);
 
   // 4. Net Due Fine Calculation
@@ -145,7 +153,11 @@ export function calculateKarigarWastage(input: KarigarWastageInput): KarigarWast
   const overLossPenaltyFineMg = isOverLoss ? Math.abs(netDueFineMg) : 0;
 
   // 5. Refund in Original Purity
-  const refundMetalWeightMg = Math.round((Math.abs(netDueFineMg) * 1000) / targetPurityPerMille);
+  // Inverse of fineGoldMg()'s gross*purity/999: fine*999/purity, keeping the
+  // same shop convention rather than an ad-hoc /1000.
+  const refundMetalWeightMg = Math.round(
+    (Math.abs(netDueFineMg) * 999) / Math.min(targetPurityPerMille, 999),
+  );
   explanation.push(
     isOverLoss
       ? `Karigar Over-Loss detected: ${overLossPenaltyFineMg}mg Fine (${refundMetalWeightMg}mg in ${targetPurityPerMille / 10}K purity)`
@@ -537,5 +549,81 @@ export function resolveMakingCharge(
     resolvedRate: input.ratePerUnitPaise ?? 0,
     totalChargePaise: labour.totalLabourChargePaise,
     explanation: labour.explanation,
+  };
+}
+
+export interface DeclarativeRuleApplicationResult {
+  record: Record<string, number | string | boolean>;
+  requiresApproval: boolean;
+  approvalRole?: string;
+  messages: string[];
+  triggeredRuleNames: string[];
+}
+
+/**
+ * Applies tenant declarative business rules to a calculation record context.
+ * Used by workshop, billing, and custom book formula columns at runtime.
+ */
+export function applyDeclarativeBusinessRules(
+  record: Record<string, number | string | boolean>,
+  rules: BusinessRuleDefinition[],
+): DeclarativeRuleApplicationResult {
+  const result = evaluateBusinessRules(rules, record);
+  const enriched = { ...record };
+  for (const [field, value] of Object.entries(result.calculatedOverrides)) {
+    enriched[field] = value;
+  }
+  return {
+    record: enriched,
+    requiresApproval: result.requiresApproval,
+    approvalRole: result.approvalRole,
+    messages: result.messages,
+    triggeredRuleNames: result.triggeredRules.map((r) => r.name),
+  };
+}
+
+/**
+ * Karigar wastage with declarative rule overrides applied to eligible weight.
+ */
+export function calculateKarigarWastageWithRules(
+  input: KarigarWastageInput,
+  rules: BusinessRuleDefinition[],
+): KarigarWastageResult & { ruleMessages: string[]; requiresApproval: boolean } {
+  const baseRecord: Record<string, number | string | boolean> = {
+    gross_weight: input.totalSubmittedNetWeightMg / 1000,
+    net_weight: input.totalSubmittedNetWeightMg / 1000,
+    chain_weight:
+      input.items.filter((i) => i.isWastageExcluded).reduce((s, i) => s + i.weightMg, 0) / 1000,
+    loss_percentage:
+      input.issuedFineGoldMg > 0
+        ? Math.max(
+            0,
+            ((input.issuedFineGoldMg -
+              fineGoldMg(input.totalSubmittedNetWeightMg, input.targetPurityPerMille)) /
+              input.issuedFineGoldMg) *
+              100,
+          )
+        : 0,
+  };
+
+  const ruleResult = applyDeclarativeBusinessRules(baseRecord, rules);
+  const adjustedItems = [...input.items];
+  const chainOverride = ruleResult.record.worker_eligible_weight;
+  if (typeof chainOverride === "number") {
+    const excludedMg = Math.max(
+      0,
+      input.totalSubmittedNetWeightMg - Math.round(chainOverride * 1000),
+    );
+    const chainIdx = adjustedItems.findIndex((i) => i.isWastageExcluded);
+    if (chainIdx >= 0) {
+      adjustedItems[chainIdx] = { ...adjustedItems[chainIdx], weightMg: excludedMg };
+    }
+  }
+
+  const wastage = calculateKarigarWastage({ ...input, items: adjustedItems });
+  return {
+    ...wastage,
+    ruleMessages: ruleResult.messages,
+    requiresApproval: ruleResult.requiresApproval,
   };
 }

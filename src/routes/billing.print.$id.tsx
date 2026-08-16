@@ -22,7 +22,7 @@ function InvoicePrint() {
 
   if (loading && !inv) {
     return (
-      <div className="p-8 bg-background max-w-md mx-auto my-12 border border-border rounded-xl text-center space-y-3">
+      <div className="p-8 bg-background max-w-md mx-auto my-12 border border-border rounded-md text-center space-y-3">
         <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
         <p className="text-xs text-muted-foreground">Loading invoice print data...</p>
       </div>
@@ -31,7 +31,7 @@ function InvoicePrint() {
 
   if (!inv) {
     return (
-      <div className="p-8 text-rose-500 bg-background max-w-md mx-auto my-12 border border-rose-500/20 rounded-xl text-center space-y-3">
+      <div className="p-8 text-rose-500 bg-background max-w-md mx-auto my-12 border border-rose-500/20 rounded-md text-center space-y-3">
         <h2 className="text-lg font-serif font-semibold">Invoice Loading Failure</h2>
         <p className="text-xs text-muted-foreground">
           {error ?? "The requested invoice could not be found."}

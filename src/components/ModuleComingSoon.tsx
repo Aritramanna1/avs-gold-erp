@@ -16,8 +16,8 @@ export function ModuleComingSoon({ title, message, icon: Icon = Sparkles }: Modu
       aria-labelledby={titleId}
       className="mx-auto flex min-h-[55vh] max-w-3xl items-center justify-center p-4 md:p-8"
     >
-      <div className="w-full rounded-2xl border border-border/80 bg-card p-8 text-center shadow-elegant motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-200 md:p-12">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-gold/25 bg-gold/5 shadow-sm">
+      <div className="w-full rounded-md border border-border/80 bg-card p-8 text-center shadow-elegant motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:duration-200 md:p-12">
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-md border border-gold/25 bg-gold/5 shadow-sm">
           <Icon className="h-7 w-7 text-gold" aria-hidden="true" />
         </div>
         <div className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">

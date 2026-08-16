@@ -151,6 +151,59 @@ export async function syncPersonToCentralParty(person: Person): Promise<void> {
       throw new Error(`central party contacts save failed: ${contactError.message}`);
   }
 
+  if (firmId && person.bankAccounts && person.bankAccounts.length > 0) {
+    try {
+      await centralDb.from("party_bank_accounts").delete().eq("party_id", person.id);
+      const baRows = person.bankAccounts.map((ba) => ({
+        firm_id: firmId,
+        party_id: person.id,
+        bank_name: ba.bankName || "",
+        account_holder_name: ba.accountHolderName || person.fullName,
+        account_number: ba.accountNumber || "",
+        account_type: ba.accountType || "current",
+        ifsc_code: ba.ifscCode || "",
+        branch_name: ba.branchName || null,
+        upi_id: ba.upiId || null,
+        is_primary: ba.isPrimary ?? false,
+        is_verified: (ba as any).isVerified ?? false,
+        metadata: { source: "people" },
+      }));
+      await (centralDb as any).from("party_bank_accounts").insert(baRows);
+    } catch (e) {
+      console.warn("Could not sync party_bank_accounts:", e);
+    }
+  }
+
+  if (firmId) {
+    try {
+      await centralDb.from("party_role_profiles").upsert(
+        {
+          firm_id: firmId,
+          party_id: person.id,
+          role_type: person.type,
+          credit_limit_paise: person.cashCreditLimitPaise || 0,
+          metal_limit_mg: person.goldCreditLimitMg || person.maxFineGoldCreditMg || 0,
+          credit_days: person.dueDays || 0,
+          is_active: person.active ?? true,
+          settings: {
+            roles: person.roles,
+            tradeName: person.tradeName,
+            legalName: person.legalName,
+            gstin: person.gstin,
+            pan: person.pan,
+            tan: person.tan,
+            msmeUdyamNo: person.msmeUdyamNo,
+            placeOfSupply: person.placeOfSupply,
+            tdsTcsApplicability: person.tdsTcsApplicability,
+          },
+        },
+        { onConflict: "id" },
+      );
+    } catch (e) {
+      console.warn("Could not sync party_role_profiles:", e);
+    }
+  }
+
   const { error: activityError } = await centralDb.rpc("central_track_activity", {
     p_entity_type: "party",
     p_entity_id: centralPartyId,
@@ -182,6 +235,104 @@ export async function archiveCentralPartyForPerson(personId: string): Promise<vo
     .update({ status: "archived", archived_at: new Date().toISOString() })
     .eq("id", id);
   if (updateError) throw new Error(`central party archive failed: ${updateError.message}`);
+}
+
+export interface PartyActivityEvent {
+  id: string;
+  eventType: string;
+  title: string;
+  description: string | null;
+  severity: string;
+  occurredAt: string;
+}
+
+export interface PartyMessage {
+  id: string;
+  threadId: string;
+  threadSubject: string | null;
+  channel: string;
+  direction: string;
+  body: string | null;
+  createdAt: string;
+}
+
+export interface PartyTimelineData {
+  centralPartyId: string | null;
+  events: PartyActivityEvent[];
+  messages: PartyMessage[];
+}
+
+// Resolve the central_parties.id synced for a People-registry person.
+async function resolveCentralPartyId(personId: string): Promise<string | null> {
+  const { data, error } = await centralDb
+    .from("central_parties")
+    .select("id")
+    .eq("party_code", personId)
+    .maybeSingle();
+  if (error) throw new Error(`central party lookup failed: ${error.message}`);
+  return (data as { id?: string } | null)?.id ?? null;
+}
+
+// Party 360 Timeline tab: activity events + message threads for a person.
+// ponytail: two sequential queries after id lookup, no client-side join framework needed for this volume.
+export async function getPartyTimelineData(personId: string): Promise<PartyTimelineData> {
+  const centralPartyId = await resolveCentralPartyId(personId);
+  if (!centralPartyId) return { centralPartyId: null, events: [], messages: [] };
+
+  const [eventsRes, threadsRes] = await Promise.all([
+    centralDb
+      .from("central_activity_events")
+      .select("id,event_type,title,description,severity,occurred_at")
+      .or(`entity_id.eq.${centralPartyId},related_party_id.eq.${centralPartyId}`)
+      .order("occurred_at", { ascending: false })
+      .limit(50),
+    centralDb
+      .from("central_message_threads")
+      .select("id,subject,channel")
+      .eq("party_id", centralPartyId),
+  ]);
+  if (eventsRes.error) throw new Error(`activity timeline load failed: ${eventsRes.error.message}`);
+  if (threadsRes.error) throw new Error(`message thread load failed: ${threadsRes.error.message}`);
+
+  const threads = (threadsRes.data ?? []) as {
+    id: string;
+    subject: string | null;
+    channel: string;
+  }[];
+  const threadById = new Map(threads.map((t) => [t.id, t]));
+  let messages: PartyMessage[] = [];
+  if (threads.length > 0) {
+    const { data: msgData, error: msgError } = await centralDb
+      .from("central_messages")
+      .select("id,thread_id,direction,body,created_at")
+      .in(
+        "thread_id",
+        threads.map((t) => t.id),
+      )
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (msgError) throw new Error(`message load failed: ${msgError.message}`);
+    messages = (msgData ?? []).map((m: any) => ({
+      id: m.id,
+      threadId: m.thread_id,
+      threadSubject: threadById.get(m.thread_id)?.subject ?? null,
+      channel: threadById.get(m.thread_id)?.channel ?? "in_app",
+      direction: m.direction,
+      body: m.body,
+      createdAt: m.created_at,
+    }));
+  }
+
+  const events: PartyActivityEvent[] = ((eventsRes.data ?? []) as any[]).map((e) => ({
+    id: e.id,
+    eventType: e.event_type,
+    title: e.title,
+    description: e.description,
+    severity: e.severity,
+    occurredAt: e.occurred_at,
+  }));
+
+  return { centralPartyId, events, messages };
 }
 
 export async function findPersonIdForCentralParty(centralPartyId: string): Promise<string | null> {

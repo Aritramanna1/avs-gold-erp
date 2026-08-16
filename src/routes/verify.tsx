@@ -579,7 +579,7 @@ function VerifyPage() {
       />
 
       <div className="space-y-4">
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-md border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <Camera className="h-4 w-4 text-muted-foreground" />
@@ -625,7 +625,7 @@ function VerifyPage() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-md border border-border bg-card p-5">
           <div className="flex items-center gap-2 mb-2">
             <ClipboardPaste className="h-4 w-4 text-muted-foreground" />
             <h3 className="font-medium">Or enter document number / paste payload</h3>
@@ -668,7 +668,7 @@ function VerifyPage() {
       </div>
 
       {loading && (
-        <div className="mt-8 flex flex-col items-center justify-center p-8 bg-card border border-border rounded-2xl gap-3 animate-pulse">
+        <div className="mt-8 flex flex-col items-center justify-center p-8 bg-card border border-border rounded-md gap-3 animate-pulse">
           <Loader2 className="h-8 w-8 animate-spin text-gold" />
           <p className="text-sm font-medium text-gold">Checking the secure ERP records...</p>
           <p className="text-xs text-muted-foreground">
@@ -711,7 +711,7 @@ function ValidCard({
 }) {
   const d = outcome.doc;
   return (
-    <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-5">
+    <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-5">
       <div className="flex items-center gap-2">
         <ShieldCheck className="h-5 w-5 text-emerald-300" />
         <h3 className="font-serif text-lg text-emerald-200">Valid document</h3>
@@ -746,7 +746,7 @@ function InvalidCard({ outcome }: { outcome: Extract<VerifyOutcome, { ok: false 
         : "Tampered: payload exists but checksum does not match current ERP data.";
   const Icon = outcome.reason === "tampered" ? ShieldX : ShieldAlert;
   return (
-    <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-5">
+    <div className="rounded-md border border-red-500/40 bg-red-500/10 p-5">
       <div className="flex items-center gap-2">
         <Icon className="h-5 w-5 text-red-300" />
         <h3 className="font-serif text-lg text-red-200">

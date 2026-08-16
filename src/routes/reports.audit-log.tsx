@@ -121,7 +121,7 @@ function AuditLogPage() {
 
       {verification && (
         <div
-          className={`rounded-2xl border p-4 mb-4 flex items-start gap-3 ${
+          className={`rounded-md border p-4 mb-4 flex items-start gap-3 ${
             verification.ok
               ? "border-green-600/40 bg-green-600/5"
               : "border-destructive/40 bg-destructive/5"
@@ -156,7 +156,7 @@ function AuditLogPage() {
         className="mb-4 max-w-md"
       />
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

@@ -237,7 +237,7 @@ function OrdersListPage() {
         }
       />
 
-      <div className="rounded-2xl border border-border bg-card p-4 mb-4 flex flex-col sm:flex-row gap-3">
+      <div className="rounded-md border border-border bg-card p-4 mb-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -291,7 +291,7 @@ function OrdersListPage() {
           action={{ label: "Retry", onClick: () => updateSearch({ page }) }}
         />
       ) : pageOrders.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
+        <div className="rounded-md border border-dashed border-border bg-card/40 p-12 text-center">
           {query || statusF !== "all" || typeF !== "all" ? (
             <EmptyState
               title="No orders match this view"
@@ -311,7 +311,7 @@ function OrdersListPage() {
           </Link>
         </div>
       ) : (
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="rounded-md border border-border bg-card overflow-hidden">
           {/* ── Mobile card view ── */}
           <div className="block md:hidden divide-y divide-border">
             {pageOrders.map((o) => {

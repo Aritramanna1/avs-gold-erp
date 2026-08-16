@@ -10,7 +10,9 @@ import {
   type GoldSummaryReportResult,
 } from "@/lib/gold-summary-report-query";
 import { exportToCSV, triggerPrint } from "@/lib/report-engine";
-import { AlertTriangle, Coins, Download, Printer } from "lucide-react";
+import { saveReportSnapshot } from "@/lib/report-snapshot";
+import { AlertTriangle, Coins, Download, Printer, Save } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports/gold-summary")({
   head: () => ({ meta: [{ title: "Manufacturing Gold Summary · AVS Gold ERP" }] }),
@@ -22,6 +24,7 @@ function GoldSummaryPage() {
   const [report, setReport] = useState<GoldSummaryReportResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -84,6 +87,25 @@ function GoldSummaryPage() {
     ]);
   }
 
+  async function handleSaveSnapshot() {
+    if (!report) return;
+    setSaving(true);
+    try {
+      await saveReportSnapshot({
+        reportType: "gold-summary",
+        branchId: selectedBranchId || null,
+        params: { branchId: selectedBranchId || null },
+        computedRows: { bills: report.bills, custody: report.custody },
+        totals: report.totals,
+      });
+      toast.success("Report snapshot saved as verified.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save report snapshot.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <PageHeader
@@ -91,6 +113,15 @@ function GoldSummaryPage() {
         subtitle="Gold is the primary accounting unit. Every figure below is fine gold, not cash."
         actions={
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleSaveSnapshot}
+              disabled={!report || saving}
+            >
+              <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save as Verified"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -111,18 +142,15 @@ function GoldSummaryPage() {
         <div className="space-y-4">
           <div className="grid sm:grid-cols-4 gap-3">
             {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="h-24 rounded-2xl border border-border bg-card animate-pulse"
-              />
+              <div key={i} className="h-24 rounded-md border border-border bg-card animate-pulse" />
             ))}
           </div>
-          <div className="h-64 rounded-2xl border border-border bg-card animate-pulse" />
+          <div className="h-64 rounded-md border border-border bg-card animate-pulse" />
         </div>
       )}
 
       {error && !loading && (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-700">
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-700">
           <AlertTriangle className="mb-2 h-5 w-5" />
           {error}
           <button type="button" onClick={() => void load()} className="ml-3 underline">
@@ -134,7 +162,7 @@ function GoldSummaryPage() {
       {!loading && !error && report && (
         <>
           {report.capped && (
-            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700">
+            <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700">
               Showing the latest 1000 manufacturing bills. Narrow by branch or add a dated aggregate
               export before using this as a statutory full-history report.
             </div>
@@ -183,14 +211,14 @@ function GoldSummaryPage() {
           {/* Mobile view */}
           <div className="block md:hidden space-y-3 mb-8">
             {report.custody.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground italic text-xs bg-card rounded-2xl border border-border">
+              <div className="p-8 text-center text-muted-foreground italic text-xs bg-card rounded-md border border-border">
                 No karigar gold custody data yet.
               </div>
             ) : (
               report.custody.map((c) => (
                 <div
                   key={c.karigarId}
-                  className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                  className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm">{c.karigarName}</span>
@@ -238,7 +266,7 @@ function GoldSummaryPage() {
           </div>
 
           {/* Desktop view */}
-          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden mb-8">
+          <div className="hidden md:block rounded-md border border-border bg-card overflow-hidden mb-8">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -289,7 +317,7 @@ function GoldSummaryPage() {
           {/* Mobile view */}
           <div className="block md:hidden space-y-3">
             {report.bills.filter((b) => b.outstandingMg !== 0).length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground italic text-xs bg-card rounded-2xl border border-border">
+              <div className="p-8 text-center text-muted-foreground italic text-xs bg-card rounded-md border border-border">
                 Every manufacturing bill is fully settled in gold. No outstanding balances.
               </div>
             ) : (
@@ -299,7 +327,7 @@ function GoldSummaryPage() {
                 .map((b) => (
                   <div
                     key={b.id}
-                    className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+                    className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm">{b.billNo}</span>
@@ -346,7 +374,7 @@ function GoldSummaryPage() {
           </div>
 
           {/* Desktop view */}
-          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="hidden md:block rounded-md border border-border bg-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -408,7 +436,7 @@ function GoldStatCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="rounded-md border border-border bg-card p-4">
       <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
         {label}
       </div>

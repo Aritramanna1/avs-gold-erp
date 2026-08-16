@@ -17,7 +17,10 @@ Suppliers are onboarded via secure invitations generated directly from **Supplie
 1. **Invite from ERP:** Inventory/Purchasing manager or CEO clicks `[Invite to Supplier Portal]`.
 2. **Invitation Link:** Dispatched via Email or WhatsApp.
 3. **Password Setup:** Vendor opens link, verifies token, and creates a secure password.
-4. **Party Binding:** The account maps strictly to their `supplier_id` (Party record).
+4. **Party Binding:** Account maps via `portal_identities` + `portal_party_links` to the supplier party row within the tenant.
+
+> **Security invariant:** A portal identity belongs to one authorized tenant context and one or more explicitly linked Party relationships. No portal request may escape that authorization boundary.
+
 5. **Login Options:** Supports standard Email/Phone + Password login, with optional OTP support where configured.
 
 ---

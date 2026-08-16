@@ -8,6 +8,8 @@
 import { useEffect, useState } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
+import { readSupabaseAuthTokenRaw } from "@/lib/auth/auth-storage";
+import { displayRoleToAppRoles, fetchAuthoritativeUserRole } from "@/lib/role-resolution";
 
 export type AppRole =
   | "saas_admin" // Platform control-plane administrator; never a company role
@@ -93,50 +95,36 @@ export function useRoles(): { roles: AppRole[]; email: string | null; ready: boo
       return { roles: [] as AppRole[], email: null as string | null, ready: false };
     }
     try {
-      let tokenKey = "";
-      for (let i = 0; i < window.sessionStorage.length; i++) {
-        const key = window.sessionStorage.key(i);
-        if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
-          tokenKey = key;
-          break;
-        }
-      }
-      if (tokenKey) {
-        const raw = window.sessionStorage.getItem(tokenKey);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          const accessToken = parsed.access_token;
-          if (accessToken) {
-            const parts = accessToken.split(".");
-            if (parts.length === 3) {
-              const payload = JSON.parse(
-                window.atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")),
-              );
-              const email = payload.email || null;
-              const qaRole = payload.user_metadata?.qa_role || payload.app_metadata?.role || null;
-              const finalRoles: AppRole[] = [];
-              if (qaRole) {
-                const rLower = String(qaRole).toLowerCase();
-                if (rLower === "saas_admin" || rLower === "saas-admin") {
-                  finalRoles.push("saas_admin");
-                } else if (rLower === "firm-owner" || rLower === "owner" || rLower === "manager") {
-                  ["owner", "manager", "vault", "workshop", "accountant"].forEach((r) =>
-                    finalRoles.push(r as AppRole),
-                  );
-                } else if (rLower === "employee" || rLower === "billing") {
-                  finalRoles.push("billing");
-                }
+      const raw = readSupabaseAuthTokenRaw();
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const accessToken = parsed.access_token;
+        if (accessToken) {
+          const parts = accessToken.split(".");
+          if (parts.length === 3) {
+            const payload = JSON.parse(window.atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+            const email = payload.email || null;
+            const qaRole = payload.user_metadata?.qa_role || payload.app_metadata?.role || null;
+            const finalRoles: AppRole[] = [];
+            if (qaRole) {
+              const rLower = String(qaRole).toLowerCase();
+              if (rLower === "saas_admin" || rLower === "saas-admin") {
+                finalRoles.push("saas_admin");
+              } else if (rLower === "firm-owner" || rLower === "owner" || rLower === "manager") {
+                ["owner", "manager", "vault", "workshop", "accountant"].forEach((r) =>
+                  finalRoles.push(r as AppRole),
+                );
+              } else if (rLower === "employee" || rLower === "billing") {
+                finalRoles.push("billing");
               }
-              if (finalRoles.length === 0) {
-                finalRoles.push("viewer");
-              }
-              return { roles: finalRoles, email, ready: true };
             }
+            // Do not default to viewer from JWT alone — wait for user_profiles.
+            return { roles: finalRoles, email, ready: finalRoles.length > 0 };
           }
         }
       }
     } catch (e) {
-      console.warn("[useRoles] Synchronous sessionStorage hydration failed:", e);
+      console.warn("[useRoles] Synchronous auth token hydration failed:", e);
     }
     return { roles: [] as AppRole[], email: null as string | null, ready: false };
   });
@@ -175,7 +163,16 @@ export function useRoles(): { roles: AppRole[]; email: string | null; ready: boo
         setEmail(userEmail);
       }
 
-      let dbRoles: AppRole[] = [];
+      const finalRoles = new Set<AppRole>();
+
+      // Authoritative: user_profiles.role (set by AuthGate) and live profile fetch.
+      const profileRole = await fetchAuthoritativeUserRole(userId, userEmail ?? "");
+      const settingsRole = useSettings.getState().currentUserRole;
+      const displayRole = profileRole ?? settingsRole;
+      if (displayRole) {
+        displayRoleToAppRoles(displayRole).forEach((r) => finalRoles.add(r));
+      }
+
       try {
         const { data, error } = await supabase
           .from("user_roles")
@@ -185,82 +182,19 @@ export function useRoles(): { roles: AppRole[]; email: string | null; ready: boo
         if (error) {
           console.error("[useRoles] user_roles query returned error:", error);
         } else if (data) {
-          dbRoles = data.map((r) => r.role as AppRole);
+          data.forEach((row) => {
+            const mapped = displayRoleToAppRoles(String(row.role));
+            if (mapped.length) mapped.forEach((r) => finalRoles.add(r));
+            else finalRoles.add(row.role as AppRole);
+          });
         }
       } catch (err) {
         if (cancelled) return;
         console.error("[useRoles] user_roles query threw exception:", err);
       }
 
-      // Look up defined users from store as fallback or overriding role authority
-      const registeredUsers = useSettings.getState().users;
-      const matched = registeredUsers.find(
-        (ru) => ru.email.toLowerCase() === userEmail?.toLowerCase(),
-      );
-
-      const finalRoles: AppRole[] = [];
-
-      // Map any existing DB roles or fallback matching
-      dbRoles.forEach((r) => {
-        const rLower = r.toLowerCase();
-        if (rLower === "saas_admin" || rLower === "saas admin") {
-          if (!finalRoles.includes("saas_admin")) finalRoles.push("saas_admin");
-        } else if (
-          rLower.includes("owner") ||
-          rLower.includes("manager") ||
-          rLower.includes("admin") ||
-          rLower.includes("accountant")
-        ) {
-          const ownerSuite: AppRole[] = ["owner", "manager", "vault", "workshop", "accountant"];
-          ownerSuite.forEach((role) => {
-            if (!finalRoles.includes(role)) finalRoles.push(role);
-          });
-        } else if (
-          rLower.includes("billing") ||
-          rLower.includes("counter") ||
-          rLower.includes("assistant")
-        ) {
-          if (!finalRoles.includes("billing")) finalRoles.push("billing");
-        } else {
-          if (!finalRoles.includes(r)) finalRoles.push(r);
-        }
-      });
-
-      if (matched && matched.active) {
-        const roleLabel = matched.role.toLowerCase();
-        if (roleLabel === "saas_admin" || roleLabel === "saas admin") {
-          if (!finalRoles.includes("saas_admin")) finalRoles.push("saas_admin");
-        } else if (
-          roleLabel.includes("owner") ||
-          roleLabel.includes("manager") ||
-          roleLabel.includes("admin")
-        ) {
-          const ownerSuite: AppRole[] = ["owner", "manager", "vault", "workshop", "accountant"];
-          ownerSuite.forEach((role) => {
-            if (!finalRoles.includes(role)) finalRoles.push(role);
-          });
-        } else if (
-          roleLabel.includes("counter") ||
-          roleLabel.includes("assistant") ||
-          roleLabel.includes("billing")
-        ) {
-          if (!finalRoles.includes("billing")) finalRoles.push("billing");
-        } else {
-          if (!finalRoles.includes("viewer")) finalRoles.push("viewer");
-        }
-      }
-
-      // Default fallback if no roles
-      if (finalRoles.length === 0) {
-        if (dbRoles.length > 0) {
-          dbRoles.forEach((r) => finalRoles.push(r));
-        } else {
-          finalRoles.push("viewer");
-        }
-      }
-
       if (!cancelled) {
-        setRoles(finalRoles.length > 0 ? finalRoles : ["viewer"]);
+        setRoles(finalRoles.size > 0 ? [...finalRoles] : []);
         isReady = true;
         setReady(true);
       }

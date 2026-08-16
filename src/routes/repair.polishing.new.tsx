@@ -102,7 +102,7 @@ function PolishingNew() {
         </Link>
       </div>
       <PageHeader title="New Polishing Job" subtitle="Quick polishing / rhodium intake." />
-      <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+      <div className="rounded-md border border-border bg-card p-6 space-y-4">
         <div className="grid sm:grid-cols-2 gap-3">
           <div>
             <Label>Customer</Label>

@@ -38,7 +38,7 @@ function BenchCustodyPage() {
 
   const summaries = useMemo(
     () => karigarCustodySummaries(jobs),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [jobs],
   );
 
@@ -84,7 +84,7 @@ function BenchCustodyPage() {
         <Totals k="Karigars holding gold" v={String(totals.karigars)} />
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-4 mb-4">
+      <div className="rounded-md border border-border bg-card p-4 mb-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -98,7 +98,7 @@ function BenchCustodyPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
+        <div className="rounded-md border border-dashed border-border bg-card/40 p-12 text-center">
           <Scale className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 font-serif text-xl text-gold">No custody to show</h3>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -106,7 +106,7 @@ function BenchCustodyPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="rounded-md border border-border bg-card overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="h-8">
@@ -206,7 +206,7 @@ function Totals({
   tone?: "gold" | "red";
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card px-4 py-3">
+    <div className="rounded-md border border-border bg-card px-4 py-3">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
         <Scale className="h-3 w-3" /> {k}
       </div>

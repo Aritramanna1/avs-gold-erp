@@ -43,7 +43,7 @@ function AutomationSettingsPage() {
         subtitle="Every automated message is off by default. Turning one on here is a deliberate decision — nothing sends automatically until you enable it."
       />
 
-      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 mb-6 flex items-start gap-3 text-sm">
+      <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 mb-6 flex items-start gap-3 text-sm">
         <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
         <div>
           <b>Financial &amp; gold reminders stay manual by default.</b> Enabling "Gold Settlement
@@ -53,7 +53,7 @@ function AutomationSettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden mb-6">
+      <div className="rounded-md border border-border bg-card overflow-hidden mb-6">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -135,7 +135,7 @@ function AutomationSettingsPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="rounded-md border border-border bg-card p-5">
         <Label className="mb-2 block">Business Report Recipient Email</Label>
         <div className="text-xs text-muted-foreground mb-2">
           Daily/weekly/monthly business summaries have no single "customer" to address — sent here

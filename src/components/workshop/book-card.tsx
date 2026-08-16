@@ -59,7 +59,7 @@ export function BookCard({
     <div
       onClick={onSelect}
       onDoubleClick={onOpen}
-      className={`cursor-pointer rounded-2xl border bg-card p-4 transition-all ${
+      className={`cursor-pointer rounded-md border bg-card p-4 transition-all ${
         selected ? "border-gold shadow-gold" : "border-border hover:border-gold/40"
       }`}
       data-testid="book-card"

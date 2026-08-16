@@ -1,0 +1,24 @@
+{
+  "description": "Domains/patterns where active QA (ZAP, k6, destructive, payment mutation, security attacks) MUST NOT run. Hard block — no CLI override in normal orchestrator paths.",
+  "blockedHostPatterns": [
+    "^maatarajewellers\\.shop$",
+    "^www\\.maatarajewellers\\.shop$",
+    "^app\\.maatarajewellers\\.shop$",
+    "^ornexa\\.arivahly\\.in$",
+    "^www\\.ornexa\\.arivahly\\.in$"
+  ],
+  "blockedUrlSubstrings": [
+    "maatarajewellers.shop",
+    "production.ornexa"
+  ],
+  "allowedStagingHints": [
+    "localhost",
+    "127.0.0.1",
+    "staging",
+    "preview",
+    "lovable",
+    "vercel.app",
+    "netlify.app",
+    "supabase.co"
+  ]
+}

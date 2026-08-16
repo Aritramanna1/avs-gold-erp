@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -35,6 +35,7 @@ import {
   Printer,
   Download,
   Store,
+  FileSpreadsheet,
 } from "lucide-react";
 import { PrintHeader } from "@/components/print-header";
 import { AvsPrintFooter } from "@/components/AvsPrintFooter";
@@ -46,7 +47,14 @@ import { useJobCards, JOB_STATUS_ACTIVE, normalizeJobStatus } from "@/lib/jobcar
 import { useOrders, normalizeOrderStatus } from "@/lib/orders-store";
 import { usePeople } from "@/lib/people-store";
 import { getPartyGoldBalance, getPartyCashBalance } from "@/lib/customer-account-ledger";
-import { paiseToRupees } from "@/lib/billing-store";
+import { useBilling, paiseToRupees } from "@/lib/billing-store";
+import {
+  compileCompanyCashLedger,
+  companyCashLedgerToExportRows,
+  type CompanyCashLedgerRow,
+} from "@/lib/company-cash-ledger";
+import { useCustomizationHubPreferences } from "@/lib/customization-hub-preferences-store";
+import { resolveGoldLedgerEntryRoute } from "@/lib/ledger-voucher-routes";
 
 import { guardRoute } from "@/lib/permissions";
 
@@ -59,8 +67,11 @@ export const Route = createFileRoute("/ledger")({
 function LedgerPage() {
   const entries = useLedger((s) => s.entries);
   const [tab, setTab] = useState("balance");
+  const defaultExport = useCustomizationHubPreferences((s) => s.reports.defaultExport);
   const balance = useMemo(() => computeBalances(entries), [entries]);
   const people = usePeople((s) => s.people);
+  const invoices = useBilling((s) => s.invoices);
+  const cashRows = useMemo(() => compileCompanyCashLedger(), [people, invoices, entries]);
   // This dashboard was fine-gold-only — a real dual-currency ERP shows cash
   // alongside metal, not metal alone (see JWELLY_COMPLETE_ERP_AUDIT.md §9).
   // Per-party cash/gold already exists on the People detail page; this is
@@ -94,6 +105,40 @@ function LedgerPage() {
     exportToCSV("gold-material-ledger.csv", [header, ...data]);
   }
 
+  function handleMovementsXLSX() {
+    const header = [
+      "Date",
+      "Type",
+      "Net Fine (g)",
+      "Gross (g)",
+      "Purity",
+      "Form",
+      "Reference",
+      "Notes",
+    ];
+    const data = entries.map((e) => [
+      new Date(e.createdAt).toLocaleString("en-IN"),
+      MOVEMENT_LABELS[e.type] ?? e.type,
+      mgToGrams(e.netFineMg),
+      e.grossMg ? mgToGrams(e.grossMg) : "",
+      e.purity ?? "",
+      e.form ?? "",
+      e.reference ?? "",
+      e.notes ?? "",
+    ]);
+    exportToXLSX("gold-material-ledger.xlsx", { Ledger: [header, ...data] });
+  }
+
+  function handleCashExport(format: "csv" | "xlsx") {
+    const rows = companyCashLedgerToExportRows(cashRows);
+    if (format === "csv") exportToCSV("company-cash-ledger.csv", rows);
+    else exportToXLSX("company-cash-ledger.xlsx", { Ledger: rows });
+  }
+
+  function handleCashPrint() {
+    void printDocument("Company Cash Ledger", "Ledger");
+  }
+
   return (
     <div
       data-testid="print-layout-root"
@@ -115,9 +160,12 @@ function LedgerPage() {
         title="Our Gold Stock"
         subtitle="Management overview of all gold and manufacturing materials owned or managed by the company. Click a card to drill down. Movements are recorded in their operational modules — this dashboard reflects them in real time."
         actions={
-          <div className="flex gap-2 no-print">
+          <div className="flex flex-wrap gap-2 no-print">
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCSV}>
               <Download className="h-4 w-4" /> Export CSV
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleMovementsXLSX}>
+              <FileSpreadsheet className="h-4 w-4" /> Export XLSX
             </Button>
             <Button
               variant="outline"
@@ -126,6 +174,11 @@ function LedgerPage() {
               onClick={() => void printDocument("Gold Material Ledger", "Ledger")}
             >
               <Printer className="h-4 w-4" /> Print Ledger
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Link to="/control/tally-export">
+                <FileSpreadsheet className="h-4 w-4" /> Tally Export
+              </Link>
             </Button>
           </div>
         }
@@ -143,6 +196,7 @@ function LedgerPage() {
               <SelectItem value="material-vault">Material Vault</SelectItem>
               <SelectItem value="opening">Opening Vault</SelectItem>
               <SelectItem value="movements">Gold Movements ({entries.length})</SelectItem>
+              <SelectItem value="cash-ledger">Company Cash Ledger ({cashRows.length})</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -155,6 +209,9 @@ function LedgerPage() {
           </TabsTrigger>
           <TabsTrigger value="opening">Opening Vault</TabsTrigger>
           <TabsTrigger value="movements">Gold Movements ({entries.length})</TabsTrigger>
+          <TabsTrigger value="cash-ledger" data-testid="tab-cash-ledger">
+            Company Cash Ledger ({cashRows.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="balance">
@@ -174,6 +231,26 @@ function LedgerPage() {
 
         <TabsContent value="movements">
           <MovementsList entries={entries} />
+        </TabsContent>
+
+        <TabsContent value="cash-ledger">
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2 no-print">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => handleCashExport(defaultExport === "csv" ? "csv" : "xlsx")}
+              >
+                <Download className="h-4 w-4" />
+                Export {defaultExport === "csv" ? "CSV" : "XLSX"}
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCashPrint}>
+                <Printer className="h-4 w-4" /> Print Cash Ledger
+              </Button>
+            </div>
+            <CompanyCashLedgerTable rows={cashRows} />
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -207,7 +284,7 @@ function BucketCard({
       tabIndex={onOpen ? 0 : undefined}
       onClick={onOpen}
       onKeyDown={(e) => onOpen && (e.key === "Enter" || e.key === " ") && onOpen()}
-      className={`rounded-2xl border border-border bg-card p-5 shadow-elegant flex flex-col justify-between ${
+      className={`rounded-md border border-border bg-card p-5 shadow-elegant flex flex-col justify-between ${
         onOpen ? "cursor-pointer hover:border-gold/50 transition-colors no-print" : ""
       }`}
     >
@@ -225,7 +302,7 @@ function BucketCard({
               </div>
             )}
           </div>
-          <div className="h-10 w-10 rounded-xl bg-accent/60 grid place-items-center shrink-0 ml-2">
+          <div className="h-10 w-10 rounded-md bg-accent/60 grid place-items-center shrink-0 ml-2">
             <Icon className="h-5 w-5 text-gold" />
           </div>
         </div>
@@ -280,7 +357,7 @@ function BalanceSheetView({
   return (
     <div className="space-y-6">
       <div
-        className={`rounded-2xl border p-5 flex items-center gap-4 ${
+        className={`rounded-md border p-5 flex items-center gap-4 ${
           balanced ? "border-success/40 bg-success/5" : "border-destructive/50 bg-destructive/5"
         }`}
       >
@@ -306,7 +383,7 @@ function BalanceSheetView({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border p-5 flex items-center gap-4">
+      <div className="rounded-md border border-border p-5 flex items-center gap-4">
         <Store className="h-8 w-8 text-gold shrink-0" />
         <div>
           <div className="text-sm text-muted-foreground">
@@ -348,7 +425,7 @@ function BalanceSheetView({
           onOpen={() => setDrill("jeweller")}
         />
         <BucketCard label="Scrap / Dust Gold" breakdown={bucketBreakdowns.scrap} icon={Recycle} />
-        <div className="rounded-2xl border border-gold/40 bg-gold/5 p-5 shadow-gold flex flex-col justify-between">
+        <div className="rounded-md border border-gold/40 bg-gold/5 p-5 shadow-gold flex flex-col justify-between">
           <div>
             <div className="text-xs uppercase tracking-wider text-gold font-semibold">
               Total Under Management
@@ -369,7 +446,7 @@ function BalanceSheetView({
       </div>
 
       {entryCount === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-background/40 p-6 text-center text-sm text-muted-foreground">
+        <div className="rounded-md border border-dashed border-border bg-background/40 p-6 text-center text-sm text-muted-foreground">
           No gold recorded yet. Open the <span className="text-gold">Opening Vault</span> tab to
           record your first entry.
         </div>
@@ -524,7 +601,7 @@ function DrillDownPanel({
   }
 
   return (
-    <div className="rounded-2xl border border-gold/40 bg-card shadow-elegant overflow-hidden">
+    <div className="rounded-md border border-gold/40 bg-card shadow-elegant overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-4">
         <h3 className="font-serif text-lg text-gold">{table.title}</h3>
         <div className="flex gap-2 no-print">
@@ -639,7 +716,7 @@ function OpeningVaultForm() {
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <form
         onSubmit={submit}
-        className="rounded-2xl border border-border bg-card p-6 shadow-elegant space-y-5"
+        className="rounded-md border border-border bg-card p-6 shadow-elegant space-y-5"
       >
         <div>
           <h2 className="font-serif text-xl text-gold">Record Opening Vault Gold</h2>
@@ -744,7 +821,7 @@ function OpeningVaultForm() {
         </div>
       </form>
 
-      <aside className="rounded-2xl border border-gold/30 bg-gradient-to-br from-card to-background p-6 shadow-elegant">
+      <aside className="rounded-md border border-gold/30 bg-gradient-to-br from-card to-background p-6 shadow-elegant">
         <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
           Live preview
         </div>
@@ -782,9 +859,12 @@ function OpeningVaultForm() {
 }
 
 function MovementsList({ entries }: { entries: LedgerEntry[] }) {
+  const jobs = useJobCards((s) => s.jobs);
+  const jobByNo = useMemo(() => new Map(jobs.map((j) => [j.jobNo, j])), [jobs]);
+
   if (entries.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-background/40 p-10 text-center text-sm text-muted-foreground">
+      <div className="rounded-md border border-dashed border-border bg-background/40 p-10 text-center text-sm text-muted-foreground">
         No ledger movements yet.
       </div>
     );
@@ -795,52 +875,62 @@ function MovementsList({ entries }: { entries: LedgerEntry[] }) {
     <div className="space-y-3">
       {/* Mobile View */}
       <div className="block md:hidden space-y-3">
-        {sorted.map((e) => (
-          <div
-            key={e.id}
-            className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
-          >
-            <div className="flex items-center justify-between">
-              <span className="rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-[10px] text-gold font-medium">
-                {MOVEMENT_LABELS[e.type]}
-              </span>
-              <span className="text-muted-foreground text-[10px]">
-                {new Date(e.createdAt).toLocaleString()}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-4 gap-1.5 bg-muted/20 p-2 rounded-lg text-center font-mono text-[9px]">
-              <div>
-                <span className="text-[8px] text-muted-foreground block font-sans">Gross</span>
-                <span>{e.grossMg != null ? `${mgToGrams(e.grossMg)}g` : "—"}</span>
-              </div>
-              <div>
-                <span className="text-[8px] text-muted-foreground block font-sans">Purity</span>
-                <span>{e.purity ?? "—"}</span>
-              </div>
-              <div>
-                <span className="text-[8px] text-muted-foreground block font-sans">Fine</span>
-                <span className="text-gold font-semibold">
-                  {e.fineMg != null ? `${mgToGrams(e.fineMg)}g` : "—"}
+        {sorted.map((e) => {
+          const route = resolveGoldLedgerEntryRoute(e, { jobByNo });
+          const refLabel = e.reference ?? e.notes;
+          return (
+            <div
+              key={e.id}
+              className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-[10px] text-gold font-medium">
+                  {MOVEMENT_LABELS[e.type]}
+                </span>
+                <span className="text-muted-foreground text-[10px]">
+                  {new Date(e.createdAt).toLocaleString()}
                 </span>
               </div>
-              <div>
-                <span className="text-[8px] text-muted-foreground block font-sans">Net Sys</span>
-                <span className="font-semibold">{mgToGrams(e.netFineMg, { sign: true })}g</span>
-              </div>
-            </div>
 
-            {e.notes || e.reference ? (
-              <div className="text-[10px] text-muted-foreground bg-muted/40 p-1.5 rounded">
-                {e.notes ?? e.reference}
+              <div className="grid grid-cols-4 gap-1.5 bg-muted/20 p-2 rounded-lg text-center font-mono text-[9px]">
+                <div>
+                  <span className="text-[8px] text-muted-foreground block font-sans">Gross</span>
+                  <span>{e.grossMg != null ? `${mgToGrams(e.grossMg)}g` : "—"}</span>
+                </div>
+                <div>
+                  <span className="text-[8px] text-muted-foreground block font-sans">Purity</span>
+                  <span>{e.purity ?? "—"}</span>
+                </div>
+                <div>
+                  <span className="text-[8px] text-muted-foreground block font-sans">Fine</span>
+                  <span className="text-gold font-semibold">
+                    {e.fineMg != null ? `${mgToGrams(e.fineMg)}g` : "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[8px] text-muted-foreground block font-sans">Net Sys</span>
+                  <span className="font-semibold">{mgToGrams(e.netFineMg, { sign: true })}g</span>
+                </div>
               </div>
-            ) : null}
-          </div>
-        ))}
+
+              {refLabel ? (
+                <div className="text-[10px] text-muted-foreground bg-muted/40 p-1.5 rounded">
+                  {route ? (
+                    <Link to={route} className="text-primary hover:underline">
+                      {refLabel}
+                    </Link>
+                  ) : (
+                    refLabel
+                  )}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
 
       {/* Desktop View */}
-      <div className="hidden md:block rounded-2xl border border-border bg-card shadow-elegant overflow-hidden">
+      <div className="hidden md:block rounded-md border border-border bg-card shadow-elegant overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-background/60 text-muted-foreground text-xs uppercase tracking-wider">
@@ -851,39 +941,107 @@ function MovementsList({ entries }: { entries: LedgerEntry[] }) {
                 <th className="text-right px-4 py-3">Purity</th>
                 <th className="text-right px-4 py-3">Fine (g)</th>
                 <th className="text-right px-4 py-3">Net to system</th>
-                <th className="text-left px-4 py-3">Notes</th>
+                <th className="text-left px-4 py-3">Reference</th>
               </tr>
             </thead>
             <tbody>
-              {sorted.map((e) => (
-                <tr key={e.id} className="border-t border-border">
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                    {new Date(e.createdAt).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-[11px] text-gold">
-                      {MOVEMENT_LABELS[e.type]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {e.grossMg != null ? mgToGrams(e.grossMg) : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">{e.purity ?? "—"}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-gold">
-                    {e.fineMg != null ? mgToGrams(e.fineMg) : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {mgToGrams(e.netFineMg, { sign: true })}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {e.notes ?? e.reference ?? "—"}
-                  </td>
-                </tr>
-              ))}
+              {sorted.map((e) => {
+                const route = resolveGoldLedgerEntryRoute(e, { jobByNo });
+                const refLabel = e.reference ?? e.notes ?? "—";
+                return (
+                  <tr key={e.id} className="border-t border-border">
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                      {new Date(e.createdAt).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-[11px] text-gold">
+                        {MOVEMENT_LABELS[e.type]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {e.grossMg != null ? mgToGrams(e.grossMg) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">{e.purity ?? "—"}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-gold">
+                      {e.fineMg != null ? mgToGrams(e.fineMg) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {mgToGrams(e.netFineMg, { sign: true })}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {route && refLabel !== "—" ? (
+                        <Link to={route} className="text-primary hover:underline">
+                          {refLabel}
+                        </Link>
+                      ) : (
+                        refLabel
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CompanyCashLedgerTable({ rows }: { rows: CompanyCashLedgerRow[] }) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-8 text-center">
+        No cash ledger movements recorded yet. Party receipts, payments, and billing post here
+        automatically.
+      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-border overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead className="bg-muted text-muted-foreground border-b">
+          <tr>
+            <th className="py-2 px-3 text-left">Date</th>
+            <th className="py-2 px-3 text-left">Voucher</th>
+            <th className="py-2 px-3 text-left">Party</th>
+            <th className="py-2 px-3 text-left">Type</th>
+            <th className="py-2 px-3 text-left">Description</th>
+            <th className="py-2 px-3 text-right">Debit (₹)</th>
+            <th className="py-2 px-3 text-right">Credit (₹)</th>
+            <th className="py-2 px-3 text-right">Balance (₹)</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {rows.map((r) => (
+            <tr key={r.id} className="hover:bg-muted/30">
+              <td className="py-2 px-3">{r.date}</td>
+              <td className="py-2 px-3 font-mono">
+                {r.sourceRoute ? (
+                  <Link to={r.sourceRoute} className="text-primary hover:underline">
+                    {r.voucherNo}
+                  </Link>
+                ) : (
+                  r.voucherNo
+                )}
+              </td>
+              <td className="py-2 px-3">{r.partyName}</td>
+              <td className="py-2 px-3 capitalize">{r.type}</td>
+              <td className="py-2 px-3">{r.description}</td>
+              <td className="py-2 px-3 text-right font-mono">
+                {r.debitPaise ? paiseToRupees(r.debitPaise) : "—"}
+              </td>
+              <td className="py-2 px-3 text-right font-mono">
+                {r.creditPaise ? paiseToRupees(r.creditPaise) : "—"}
+              </td>
+              <td className="py-2 px-3 text-right font-mono font-semibold">
+                ₹{paiseToRupees(r.closingPaise)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

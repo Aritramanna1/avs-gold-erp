@@ -205,13 +205,13 @@ function DailyClosePage() {
       />
 
       {snapshotLoading && (
-        <div className="rounded-xl border border-border bg-card p-4 mb-4 text-sm text-muted-foreground">
+        <div className="rounded-md border border-border bg-card p-4 mb-4 text-sm text-muted-foreground">
           Loading Daily Close snapshot from Supabase...
         </div>
       )}
 
       {snapshotError && (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 mb-4 flex items-start gap-3 text-sm">
+        <div className="rounded-md border border-red-500/40 bg-red-500/10 p-4 mb-4 flex items-start gap-3 text-sm">
           <AlertTriangle className="h-5 w-5 text-red-400 shrink-0" />
           <div>
             <b>Daily Close snapshot could not load.</b> {snapshotError}
@@ -220,7 +220,7 @@ function DailyClosePage() {
       )}
 
       {snapshotCapped && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 mb-4 flex items-start gap-3 text-sm">
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 mb-4 flex items-start gap-3 text-sm">
           <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
           <div>
             This close is showing a capped Supabase preview. Full-history aggregate RPC evidence is
@@ -230,7 +230,7 @@ function DailyClosePage() {
       )}
 
       {!closeSnapshot.balanceSheetBalanced && (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 mb-4 flex items-start gap-3 text-sm">
+        <div className="rounded-md border border-red-500/40 bg-red-500/10 p-4 mb-4 flex items-start gap-3 text-sm">
           <AlertTriangle className="h-5 w-5 text-red-400 shrink-0" />
           <div>
             <b>Gold difference found.</b> Please reconcile before closing. Discrepancy:{" "}
@@ -240,7 +240,7 @@ function DailyClosePage() {
       )}
 
       {isPeriodLocked(selectedBranchId || "MAIN", date) && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 mb-4 flex items-start gap-3 text-sm">
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 mb-4 flex items-start gap-3 text-sm">
           <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
           <div>
             <b>{date.slice(0, 7)} is locked for month-end close.</b> Saving a new close for this
@@ -253,7 +253,7 @@ function DailyClosePage() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-card p-5 mb-4">
+      <div className="rounded-md border border-border bg-card p-5 mb-4">
         <div className="flex flex-wrap gap-3 items-end">
           <div>
             <Label>Close Date</Label>
@@ -417,7 +417,7 @@ function DailyClosePage() {
       </div>
 
       {todaysCloses.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-5 mt-4">
+        <div className="rounded-md border border-border bg-card p-5 mt-4">
           <h3 className="font-serif text-gold mb-3">Saved Closes — {date}</h3>
           <ul className="space-y-2 text-sm">
             {todaysCloses.map((c) => (
@@ -450,7 +450,7 @@ function DailyClosePage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-md border border-border bg-card p-5">
       <h3 className="font-serif text-gold mb-3">{title}</h3>
       <div className="space-y-1 text-sm">{children}</div>
     </div>

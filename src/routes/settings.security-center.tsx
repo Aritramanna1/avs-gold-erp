@@ -10,7 +10,15 @@ import {
 } from "@/lib/security/device-registry";
 import { rotateEncryptionKey } from "@/lib/security/key-management";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { ShieldCheck, ShieldOff, KeyRound, Loader2, RefreshCw } from "lucide-react";
+import {
+  ShieldCheck,
+  ShieldOff,
+  KeyRound,
+  Loader2,
+  RefreshCw,
+  MonitorSmartphone,
+  LogOut,
+} from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings/security-center")({
@@ -23,6 +31,16 @@ function SecurityCenterPage() {
   const [loading, setLoading] = useState(true);
   const [rotating, setRotating] = useState(false);
   const [busyDeviceId, setBusyDeviceId] = useState<string | null>(null);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [sessionExpires, setSessionExpires] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function refreshSession() {
+    const { data } = await supabase.auth.getSession();
+    setSessionEmail(data.session?.user.email ?? null);
+    const exp = data.session?.expires_at;
+    setSessionExpires(exp ? new Date(exp * 1000).toLocaleString("en-IN") : null);
+  }
 
   async function refresh() {
     setLoading(true);
@@ -42,6 +60,7 @@ function SecurityCenterPage() {
 
   useEffect(() => {
     void refresh();
+    void refreshSession();
   }, []);
 
   async function handleToggleTrust(d: DeviceInfo) {
@@ -57,6 +76,26 @@ function SecurityCenterPage() {
     }
   }
 
+  async function handleSignOutOthers() {
+    if (!window.confirm("Sign out all other devices and sessions? This device stays signed in."))
+      return;
+    setSigningOut(true);
+    try {
+      await supabase.auth.signOut({ scope: "others" });
+      toast.success("Other sessions revoked.");
+      await refreshSession();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not revoke other sessions");
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
+  async function handleSignOutAll() {
+    if (!window.confirm("Sign out everywhere including this device?")) return;
+    await supabase.auth.signOut({ scope: "global" });
+    window.location.href = "/";
+  }
   async function handleRotateKey() {
     if (
       !window.confirm(
@@ -94,7 +133,7 @@ function SecurityCenterPage() {
         }
       />
 
-      <div className="rounded-2xl border border-border bg-card p-5 mb-6 flex items-center justify-between">
+      <div className="rounded-md border border-border bg-card p-5 mb-6 flex items-center justify-between">
         <div>
           <div className="font-semibold flex items-center gap-2">
             <KeyRound className="h-4 w-4" /> Supabase Security Key Check
@@ -114,7 +153,40 @@ function SecurityCenterPage() {
         </Button>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card p-5 mb-6">
+        <div className="font-semibold flex items-center gap-2 mb-2">
+          <MonitorSmartphone className="h-4 w-4" /> Active Auth Session
+        </div>
+        <p className="text-sm text-muted-foreground mb-3">
+          Supabase manages session tokens securely. Uncheck &quot;Keep me signed in&quot; on login
+          for session-only access on shared devices.
+        </p>
+        <div className="text-xs space-y-1 mb-4 font-mono">
+          <div>Account: {sessionEmail ?? "—"}</div>
+          <div>Access token refresh: {sessionExpires ?? "—"}</div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1"
+            disabled={signingOut}
+            onClick={() => void handleSignOutOthers()}
+          >
+            <LogOut className="h-3.5 w-3.5" /> Revoke Other Sessions
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1 text-destructive"
+            onClick={() => void handleSignOutAll()}
+          >
+            <LogOut className="h-3.5 w-3.5" /> Sign Out Everywhere
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="p-4 border-b border-border font-semibold">Registered Devices</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

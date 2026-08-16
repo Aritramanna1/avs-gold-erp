@@ -78,40 +78,22 @@ class CommunicationService {
         configs = wasenderConfig && wasenderConfig.isActive ? [wasenderConfig] : [];
       } else {
         const { useWaAutomation } = await import("@/lib/wa-automation-store");
-        const { WHATSAPP_KEYS } = await import("./types");
         const waConfig = useWaAutomation.getState().getConfig(req.branchId || "MAIN");
-        const settings: Record<string, string> = {
-          [WHATSAPP_KEYS.phoneNumberId]: waConfig.phoneNumberId || "",
-          [WHATSAPP_KEYS.accessToken]: waConfig.accessToken || "",
-          [WHATSAPP_KEYS.businessAccountId]: waConfig.businessAccountId || "",
-          [WHATSAPP_KEYS.webhookVerifyToken]: waConfig.webhookVerifyToken || "",
-          [WHATSAPP_KEYS.apiBaseUrl]: waConfig.apiBaseUrl || "",
-          [WHATSAPP_KEYS.apiVersion]: waConfig.apiVersion || "",
-          [WHATSAPP_KEYS.apiKey]: waConfig.accessToken || "",
-          [WHATSAPP_KEYS.apiUrl]: waConfig.apiBaseUrl || "",
-          [WHATSAPP_KEYS.senderPhone]: waConfig.phoneNumberId || "",
-          template_invoice: waConfig.templateInvoice || "",
-          template_receipt: waConfig.templateReceipt || "",
-          template_order_ready: waConfig.templateOrderReady || "",
-          template_repair_ready: waConfig.templateRepairReady || "",
-          template_payment_reminder: waConfig.templatePaymentReminder || "",
-          template_mfg_bill: waConfig.templateMfgBill || "",
-          template_gold_issue: waConfig.templateGoldIssue || "",
-          template_birthday: waConfig.templateBirthday || "",
-          template_festival: waConfig.templateFestival || "",
-          template_order_confirm: waConfig.templateOrderConfirm || "",
-        };
-        configs = [
-          {
-            id: "wa_automation",
-            branchId: req.branchId || "MAIN",
-            channel: "whatsapp",
-            providerType,
-            isActive: true,
-            priority: 0,
-            settings,
-          },
-        ];
+        if (!waConfig.enabled || waConfig.providerType === "whatsapp_deep_link") {
+          configs = [];
+        } else {
+          configs = [
+            {
+              id: "wa_automation",
+              branchId: req.branchId || "MAIN",
+              channel: "whatsapp",
+              providerType,
+              isActive: true,
+              priority: 0,
+              settings: {},
+            },
+          ];
+        }
       }
     } else {
       configs = useCommSettings.getState().getActiveProviders(req.branchId, req.channel);
@@ -177,20 +159,44 @@ class CommunicationService {
           if (result.success) return result;
           continue;
         }
-        const provider = createProvider(config.providerType);
-        provider.configure(config);
-        // Every channel funnels through the same throttle — a bulk reminder
-        // sweep (e.g. 200 outstanding-balance reminders) must not fire
-        // faster than the underlying provider's rate limit tolerates, or
-        // WhatsApp/SMTP/SES providers will start throttling or banning.
-        const result = await withRateLimit(req.channel, () => provider.send(req, content));
 
-        this.log(req, result, content.textBody ?? "");
+        if (req.channel === "email" && config.providerType.startsWith("email_")) {
+          const { data: edgeResult, error: edgeError } = await (supabase as any).functions.invoke(
+            "send-email",
+            {
+              body: {
+                branchId: req.branchId || "MAIN",
+                to: req.recipient.email,
+                subject: content.subject,
+                htmlBody: content.htmlBody,
+                textBody: content.textBody,
+              },
+            },
+          );
+          const result: CommResult = {
+            success: !edgeError && edgeResult?.success === true,
+            provider: config.providerType,
+            channel: req.channel,
+            error: edgeError?.message || edgeResult?.error,
+            status: edgeError || edgeResult?.success !== true ? "failed" : "queued",
+          };
+          this.log(req, result, content.textBody ?? "");
+          if (result.success) return result;
+          continue;
+        }
 
-        if (result.success) return result;
+        if (config.providerType === "whatsapp_deep_link") {
+          const provider = createProvider(config.providerType);
+          provider.configure(config);
+          const result = await withRateLimit(req.channel, () => provider.send(req, content));
+          this.log(req, result, content.textBody ?? "");
+          if (result.success) return result;
+          continue;
+        }
 
-        // Provider failed — try next in priority order
-        console.warn(`[CommService] ${config.providerType} failed:`, result.error, "— trying next");
+        console.warn(
+          `[CommService] Skipping client-side provider ${config.providerType} — use edge relay.`,
+        );
       } catch (err: unknown) {
         console.error(`[CommService] Provider ${config.providerType} threw:`, err);
       }
@@ -210,7 +216,9 @@ class CommunicationService {
       await enqueueForRetry(req, logEvent?.id).catch((err) =>
         console.error("[CommService] Failed to enqueue for retry:", err),
       );
-      toast.error(`Failed to send ${req.template} via ${req.channel} — queued for automatic retry`);
+      toast.error(
+        `Failed to send ${req.template} via ${req.channel} — saved to communication_jobs for retry`,
+      );
     } else {
       toast.error(`Retry failed: ${req.template} via ${req.channel}`);
     }

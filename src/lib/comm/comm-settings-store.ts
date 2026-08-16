@@ -93,7 +93,9 @@ export const useCommSettings = create<CommSettingsState>()((set, get) => ({
 
   async refresh() {
     const saved = await appSettingsRepository.read("comm_configs").catch(() => null);
-    const configs = Array.isArray(saved?.configs) ? (saved.configs as ProviderConfig[]) : [];
+    const configs = Array.isArray(saved?.configs)
+      ? (saved.configs as ProviderConfig[]).map(redactProviderSecrets)
+      : [];
     set({ configs });
   },
 

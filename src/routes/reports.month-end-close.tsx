@@ -13,7 +13,8 @@ import {
 } from "@/lib/financial-lock-store";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { exportToCSV, triggerPrint } from "@/lib/report-engine";
-import { Lock, LockOpen, Loader2, Download, Printer } from "lucide-react";
+import { saveReportSnapshot } from "@/lib/report-snapshot";
+import { Lock, LockOpen, Loader2, Download, Printer, Save } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reports/month-end-close")({
@@ -44,6 +45,7 @@ function MonthEndClosePage() {
   const [period, setPeriod] = useState(thisMonth());
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     void loadFinancialLocks();
@@ -96,6 +98,25 @@ function MonthEndClosePage() {
     exportToCSV("month-end-close-locks.csv", [header, ...data]);
   }
 
+  async function handleSaveSnapshot() {
+    const currentLock = lockFor(branchId, period);
+    setSaving(true);
+    try {
+      await saveReportSnapshot({
+        reportType: "month-end-close",
+        branchId,
+        params: { branchId, period },
+        computedRows: locks,
+        totals: { locked: currentLock ? 1 : 0 },
+      });
+      toast.success("Report snapshot saved as verified.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save report snapshot.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
       <PageHeader
@@ -103,6 +124,15 @@ function MonthEndClosePage() {
         subtitle="Lock a financial period once close-out is verified. Locked periods block dated postings."
         actions={
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleSaveSnapshot}
+              disabled={saving}
+            >
+              <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save as Verified"}
+            </Button>
             <Button variant="outline" size="sm" className="gap-2" onClick={handleCSV}>
               <Download className="h-4 w-4" /> CSV
             </Button>
@@ -113,7 +143,7 @@ function MonthEndClosePage() {
         }
       />
 
-      <div className="rounded-2xl border border-border bg-card p-4 mb-6 flex flex-wrap gap-4 items-end">
+      <div className="rounded-md border border-border bg-card p-4 mb-6 flex flex-wrap gap-4 items-end">
         <div className="flex flex-col gap-1">
           <Label>Branch</Label>
           <select
@@ -160,7 +190,7 @@ function MonthEndClosePage() {
         </Button>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

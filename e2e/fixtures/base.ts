@@ -118,6 +118,23 @@ function loadSeedIds(): SeedIds {
   return JSON.parse(fs.readFileSync(seedPath, "utf8"));
 }
 
+function isExpiredAuthToken(tokenValue: string | undefined): boolean {
+  if (!tokenValue) return true;
+  try {
+    const parsed = JSON.parse(tokenValue);
+    const accessToken = parsed.access_token || parsed.token;
+    if (!accessToken) return true;
+    const payloadPart = accessToken.split(".")[1];
+    if (!payloadPart) return true;
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(Buffer.from(normalized, "base64").toString("utf8"));
+    const expiresAt = Number(payload.exp ?? payload.expires_at ?? 0);
+    return Number.isFinite(expiresAt) && expiresAt * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
 export const test = base.extend<Fixtures>({
   // Worker-scoped, same as Playwright's own default browser fixture — the
   // only difference is *attaching* to an already-running Chrome (the one
@@ -169,6 +186,16 @@ export const test = base.extend<Fixtures>({
       }
     }
 
+    if (sessionData) {
+      const authTokenValue = Object.entries(sessionData).find(
+        ([key]) => key.startsWith("sb-") && key.endsWith("-auth-token"),
+      )?.[1];
+      const expired = isExpiredAuthToken(authTokenValue);
+      if (expired) {
+        sessionData = null;
+      }
+    }
+
     await page.addInitScript((data) => {
       window.sessionStorage.setItem("whats-new-seen-1.1.1", "shown");
       window.sessionStorage.setItem("whats-new-seen-2026-08-11", "shown");
@@ -196,6 +223,15 @@ export const test = base.extend<Fixtures>({
           break;
         }
       }
+      if (!tokenExists) {
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+            tokenExists = true;
+            break;
+          }
+        }
+      }
 
       // If we already injected the session once, but now the token is missing,
       // it means the user logged out. Do not re-inject it.
@@ -206,7 +242,11 @@ export const test = base.extend<Fixtures>({
       if (data && typeof data === "object") {
         for (const [key, val] of Object.entries(data)) {
           if (typeof val === "string") {
-            window.sessionStorage.setItem(key, val);
+            if (key.startsWith("sb-")) {
+              window.localStorage.setItem(key, val);
+            } else {
+              window.sessionStorage.setItem(key, val);
+            }
           }
         }
       }
@@ -242,6 +282,23 @@ export const test = base.extend<Fixtures>({
       }
     }, sessionData);
 
+    if (!sessionData) {
+      await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
+      const alreadySignedIn = !(await page
+        .getByTestId("auth-form")
+        .isVisible()
+        .catch(() => false));
+      if (!alreadySignedIn) {
+        await expect(page.getByTestId("auth-form")).toBeVisible({ timeout: 15_000 });
+        await page.getByTestId("auth-email").fill(requireEnv("E2E_EMAIL"), { timeout: 15_000 });
+        await page
+          .getByTestId("auth-password")
+          .fill(requireEnv("E2E_PASSWORD"), { timeout: 15_000 });
+        await page.getByTestId("auth-submit").click({ timeout: 15_000 });
+        await expect(page.getByTestId("auth-form")).toBeHidden({ timeout: 30_000 });
+      }
+    }
+
     // In-memory mock database for Supabase simulation
     const mockDb: Record<string, any[]> = {};
 
@@ -255,6 +312,10 @@ export const test = base.extend<Fixtures>({
     });
 
     await page.route("**/rest/v1/user_roles*", async (route) => {
+      if (process.env.E2E_LIVE_DATA === "true") {
+        await route.continue();
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -263,6 +324,10 @@ export const test = base.extend<Fixtures>({
     });
 
     await page.route("**/rest/v1/user_profiles*", async (route) => {
+      if (process.env.E2E_LIVE_DATA === "true") {
+        await route.continue();
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",

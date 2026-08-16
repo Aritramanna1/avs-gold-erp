@@ -27,6 +27,7 @@ export interface Env {
 const ALLOWED_ORIGINS = new Set([
   "https://maatarajewellers.shop",
   "https://maatarajewellers.in",
+  "https://avs-erp-preview-20260806.hostingersite.com",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ]);

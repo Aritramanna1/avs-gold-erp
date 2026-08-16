@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AssistantWorkspace } from "@/components/assistant/AssistantWorkspace";
+import { MobileAssistant } from "@/components/mobile/MobileAssistant";
+import { AdaptiveView } from "@/components/adaptive/AdaptiveView";
 
 export const Route = createFileRoute("/assistant")({
   head: () => ({ meta: [{ title: "AI Assistant Workspace · Ornexa ERP" }] }),
@@ -7,5 +9,5 @@ export const Route = createFileRoute("/assistant")({
 });
 
 function AssistantPage() {
-  return <AssistantWorkspace />;
+  return <AdaptiveView mobile={<MobileAssistant />} desktop={<AssistantWorkspace />} />;
 }

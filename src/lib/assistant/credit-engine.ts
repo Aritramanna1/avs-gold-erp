@@ -1,7 +1,8 @@
 /**
  * Ornexa Unified Credit Engine
- * Commercial usage & wallet infrastructure for variable-cost platform services (Cloud AI, WhatsApp, Premium OCR).
+ * Production wallet + ledger via Supabase RPC; local fallback for dev-only surfaces.
  */
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 
 export interface CreditRateCard {
   service: "cloud_ai" | "whatsapp" | "premium_ocr" | "sms";
@@ -101,6 +102,37 @@ export function getCreditTransactions(tenantId: string = "default_firm"): Credit
 }
 
 export function deductCredits(
+  service: "cloud_ai" | "whatsapp" | "premium_ocr",
+  amount: number,
+  reason: string,
+  referenceId?: string,
+  tenantId: string = "default_firm",
+): { success: boolean; newBalance: number; error?: string } {
+  const serviceCode =
+    service === "cloud_ai" ? "ai_query" : service === "premium_ocr" ? "ai_doc_ocr" : "wa_utility";
+
+  void (async () => {
+    try {
+      const { data, error } = await (supabase as any).rpc("deduct_tenant_credits", {
+        p_service_code: serviceCode,
+        p_units: amount,
+        p_reference_id: referenceId ?? null,
+        p_description: reason,
+        p_metadata: { legacy_service: service, tenant_id: tenantId },
+      });
+      if (error) console.warn("[CreditEngine] Supabase deduction failed:", error.message);
+      else if (data && !(data as { success?: boolean }).success) {
+        console.warn("[CreditEngine] Insufficient credits:", (data as { error?: string }).error);
+      }
+    } catch {
+      // fall through to local dev wallet below
+    }
+  })();
+
+  return deductCreditsLocal(service, amount, reason, referenceId, tenantId);
+}
+
+function deductCreditsLocal(
   service: "cloud_ai" | "whatsapp" | "premium_ocr",
   amount: number,
   reason: string,

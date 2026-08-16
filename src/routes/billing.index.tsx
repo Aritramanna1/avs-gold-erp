@@ -197,6 +197,11 @@ function BillingIndex() {
                 Delivery Challans
               </Button>
             </Link>
+            <Link to="/billing/purchases">
+              <Button variant="outline" size="sm">
+                Supplier Purchases
+              </Button>
+            </Link>
             {can("billing.create") ? (
               <Link to="/settlement/new">
                 <Button variant="outline" data-testid="billing-create-settlement" className="gap-2">
@@ -233,7 +238,7 @@ function BillingIndex() {
         {/* Mobile View: Select Dropdown to keep layout clean */}
         <div className="block md:hidden mb-4">
           <Select value={activeTab} onValueChange={setActiveTab}>
-            <SelectTrigger className="w-full bg-white border border-border rounded-xl px-4 py-3 text-sm font-semibold shadow-sm focus:ring-2 focus:ring-gold focus:ring-offset-1 focus:border-transparent">
+            <SelectTrigger className="w-full bg-white border border-border rounded-md px-4 py-3 text-sm font-semibold shadow-sm focus:ring-2 focus:ring-gold focus:ring-offset-1 focus:border-transparent">
               <SelectValue placeholder="Select billing view" />
             </SelectTrigger>
             <SelectContent>
@@ -266,7 +271,7 @@ function BillingIndex() {
         </TabsList>
 
         <TabsContent value="invoices" className="mt-4">
-          <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="rounded-md border border-border bg-card p-4">
             <div className="relative max-w-sm mb-3">
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -304,7 +309,7 @@ function BillingIndex() {
                   {pageInvoices.map((i) => (
                     <div
                       key={i.id}
-                      className="border border-border rounded-xl p-4 bg-card shadow-sm space-y-2"
+                      className="border border-border rounded-md p-4 bg-card shadow-sm space-y-2"
                     >
                       <div className="flex justify-between items-center">
                         <span className="font-mono text-xs font-semibold text-gold">
@@ -455,7 +460,7 @@ function BillingIndex() {
         </TabsContent>
 
         <TabsContent value="outstanding" className="mt-4">
-          <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="rounded-md border border-border bg-card p-4">
             {loadingOutstanding ? (
               <WebAppState
                 title="Loading outstanding balances"
@@ -479,7 +484,7 @@ function BillingIndex() {
                   {outstandingRows.map((o) => (
                     <div
                       key={o.customerId}
-                      className="border border-border rounded-xl p-4 bg-card shadow-sm space-y-2"
+                      className="border border-border rounded-md p-4 bg-card shadow-sm space-y-2"
                     >
                       <div className="flex justify-between items-center">
                         <span className="font-semibold text-sm">{o.customerName}</span>
@@ -582,7 +587,7 @@ function CustomerSettlementsList() {
 
   if (sorted.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-6 text-center rounded-2xl border border-border bg-card">
+      <p className="text-sm text-muted-foreground py-6 text-center rounded-md border border-border bg-card">
         No settlement drafts yet. Use "New Settlement" above to create one before delivering
         jewellery to a customer.
       </p>
@@ -590,13 +595,13 @@ function CustomerSettlementsList() {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="rounded-md border border-border bg-card p-4">
       {/* Mobile View: Cards */}
       <div className="block md:hidden space-y-3">
         {sorted.map((s) => (
           <div
             key={s.id}
-            className="border border-border rounded-xl p-4 bg-background/50 shadow-sm space-y-2"
+            className="border border-border rounded-md p-4 bg-background/50 shadow-sm space-y-2"
           >
             <div className="flex justify-between items-center">
               <span className="font-mono text-xs font-semibold text-gold">{s.settlementNo}</span>
@@ -730,7 +735,7 @@ function CustomerLedgerView({
 
   if (billing.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-6 text-center rounded-2xl border border-border bg-card">
+      <p className="text-sm text-muted-foreground py-6 text-center rounded-md border border-border bg-card">
         No customer ledgers yet. They appear after an invoice or gold settlement voucher is created.
       </p>
     );
@@ -738,7 +743,7 @@ function CustomerLedgerView({
 
   return (
     <div className="grid md:grid-cols-[260px_1fr] gap-4">
-      <div className="rounded-2xl border border-border bg-card p-2 space-y-1 max-h-[500px] overflow-y-auto">
+      <div className="rounded-md border border-border bg-card p-2 space-y-1 max-h-[500px] overflow-y-auto">
         {billing.map((c) => (
           <button
             key={c.id}
@@ -750,7 +755,7 @@ function CustomerLedgerView({
           </button>
         ))}
       </div>
-      <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="rounded-md border border-border bg-card p-4">
         {loadingLedger ? (
           <WebAppState
             title="Loading customer ledger"
@@ -835,7 +840,7 @@ function CustomerLedgerView({
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-background/40 px-4 py-3">
+    <div className="rounded-md border border-border bg-background/40 px-4 py-3">
       <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={`font-serif text-2xl ${tone ?? "text-gold"}`}>{value}</div>
     </div>

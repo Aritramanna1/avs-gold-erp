@@ -134,16 +134,16 @@ function DesignPage() {
 
       <div className="grid md:grid-cols-[260px_1fr] gap-6">
         {photoUrl ? (
-          <div className="aspect-square rounded-2xl border border-border bg-card overflow-hidden flex items-center justify-center relative p-2 shadow-sm">
+          <div className="aspect-square rounded-md border border-border bg-card overflow-hidden flex items-center justify-center relative p-2 shadow-sm">
             <img
               src={photoUrl}
               alt={d.designName}
-              className="object-contain max-h-full max-w-full rounded-xl"
+              className="object-contain max-h-full max-w-full rounded-md"
               referrerPolicy="no-referrer"
             />
           </div>
         ) : (
-          <div className="aspect-square rounded-2xl border border-dashed border-border bg-card grid place-items-center text-muted-foreground p-4 text-center">
+          <div className="aspect-square rounded-md border border-dashed border-border bg-card grid place-items-center text-muted-foreground p-4 text-center">
             <div className="space-y-3">
               <ImageIcon className="h-8 w-8 mx-auto opacity-50" />
               <div>
@@ -163,7 +163,7 @@ function DesignPage() {
           </div>
         )}
 
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <div className="rounded-md border border-border bg-card p-5 space-y-4">
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">{t(`catalog.source_${cur.source}`)}</Badge>
             <Badge variant="outline">{t(`catalog.difficulty_${cur.difficulty}`)}</Badge>

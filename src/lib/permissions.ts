@@ -1,6 +1,8 @@
 import { useSettings } from "@/lib/settings-store";
 import { useBranch } from "@/lib/branch-store";
-import { redirect } from "@tanstack/react-router";
+import { notFound } from "@tanstack/react-router";
+import { useAuthorizationContext } from "@/lib/identity/authorization-context-store";
+import { canAccessPath, isPublicAuthPath } from "@/lib/identity/route-access";
 
 /**
  * Route-level RBAC permission matrix.
@@ -229,7 +231,12 @@ export function hasRoutePermission(role: string | null | undefined, path: string
     return ["customer", "Customer"].includes(role ?? "");
   }
   if (path.startsWith("/saas-admin") || path.startsWith("/platform")) {
-    return role === "saas_admin" || role === "SaaS Admin";
+    return (
+      role === "saas_admin" ||
+      role === "SaaS Admin" ||
+      role === "platform_owner" ||
+      role === "Platform Owner"
+    );
   }
   if (path.startsWith("/company-admin")) {
     return ["owner", "admin", "ceo", "Owner", "Administrator", "CEO (View Only)"].includes(
@@ -327,8 +334,11 @@ export function roleLabel(role: string): string {
  * role here means "not resolved yet", not "denied".
  */
 export function guardRoute(pathname: string): void {
-  const role: string | null = useSettings.getState().currentUserRole;
-  if (role !== null && !hasRoutePermission(role, pathname)) {
-    throw redirect({ to: "/" });
+  if (isPublicAuthPath(pathname)) return;
+  const ctx = useAuthorizationContext.getState().context;
+  const ready = useAuthorizationContext.getState().ready;
+  if (!ready || !ctx) return;
+  if (!canAccessPath(ctx, pathname)) {
+    throw notFound();
   }
 }

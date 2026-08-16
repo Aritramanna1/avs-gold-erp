@@ -1,53 +1,46 @@
 # Installation Guide
 
-This guide details the installation process for the production-ready **AVS Gold ERP** (Version 1.1.0) on Windows environments.
+This guide documents the current Supabase-online installation path for AVS Gold ERP / Ornexa. Offline, local-first, hybrid, and local SQLite deployment modes are retired and must not be used as production setup instructions.
 
-## Desktop Installer Setup
+## Prerequisites
 
-1. **Download the Installer**:
-   Obtain the latest production installer file (`AVS-Gold-ERP-Setup-1.1.0.exe`) from the repository releases page.
+- Node.js 20+
+- npm 10+
+- Access to the approved Supabase project for the tenant
+- Valid organization/tenant authentication and authorization in Supabase Auth
 
-2. **Run the Executable**:
-   Double-click the `.exe` setup file. Follow the installation wizard prompts to choose the installation location and create desktop shortcuts.
+## Development setup
 
-3. **Launch the Application**:
-   Once setup is complete, launch AVS Gold ERP. On the first startup:
-   - The application automatically initializes the local SQLite database.
-   - If running in Online or Hybrid mode, it connects to the central cloud synchronization API.
-   - Enter your issued **License Key** to unlock all features.
+1. Clone the repository.
+2. Install dependencies:
 
-## Developer Setup
+```bash
+npm install
+```
 
-If you wish to run the project from source or compile the package manually, follow these steps:
+3. Configure the environment variables for the approved Supabase project in the local `.env` file or the deployment environment:
 
-### Prerequisites
+```bash
+VITE_SUPABASE_URL="https://<project-ref>.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY="<anon-or-approved-key>"
+VITE_SUPABASE_PROJECT_ID="<project-ref>"
+```
 
-- Node.js (v20 or higher recommended)
-- npm (v10 or higher)
+4. Start the application:
 
-### Setup Instructions
+```bash
+npm run dev -- --host 0.0.0.0
+```
 
-1. Clone the repository and install all dependencies:
+5. Validate with the required build gates:
 
-   ```bash
-   npm install
-   ```
+```bash
+npx tsc --noEmit
+npm run build
+```
 
-2. Start the local Vite development server:
+## Production deployment
 
-   ```bash
-   npm run dev
-   ```
+Production deployment must use the approved Supabase-backed tenant configuration and frontend runtime. No local database initialization, detached SQLite state, or hybrid sync boot path is permitted for authority-critical ERP operations.
 
-3. Build the production assets:
-
-   ```bash
-   npm run build
-   npm run build:electron
-   ```
-
-4. Package the desktop app into the installer executable:
-   ```bash
-   npx electron-builder --win
-   ```
-   The compiled installer will be output to the `release-build/` or `dist/` directory.
+Use the canonical guides in [docs/README.md](docs/README.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current operator workflow.

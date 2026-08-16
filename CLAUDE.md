@@ -1,50 +1,54 @@
-﻿# AVS Gold ERP Development Guide
+﻿# AVS Gold ERP / Ornexa
 
-Read this file and every required document in `docs/` before changing code.
+Read this file and the authoritative documents in `docs/` and `docs/MASTER/` before changing code.
 
 ## Product
 
-AVS Gold ERP is an offline-first Jewellery Manufacturing ERP. It handles factory gold, worker issue and return, manufacturing, stock, orders, billing, reporting, print, export, and communication. It is not a retail jewellery POS.
+AVS Gold ERP / Ornexa is a Supabase-online jewellery manufacturing ERP for web, desktop, and mobile surfaces. It handles factory gold, worker issue and return, manufacturing, stock, orders, billing, reporting, print, export, communication, and licensing. It is not a retail jewellery POS.
 
-Gold Vault is the accounting source of truth. Gold balances derive from vault movements and reconciliation services; do not create independent balance calculations or mutable balance fields.
+Gold Vault remains the accounting source of truth. Gold balances derive from approved vault and ledger flows inside the Supabase-backed ERP; do not create independent mutable balance fields or local-authoritative copies.
 
-## Stack And Runtime
+## Stack and runtime
 
-- Browser web app (Electron removed 2026-07-24): React 19 + TypeScript + Vite, TanStack Router/Query, Zustand, Tailwind, Radix UI.
-- Three runtime modes via `src/lib/deployment-mode.ts` / `src/lib/providers/data-provider.ts`: `offline` (local sql.js only), `hybrid` (sql.js primary + Supabase sync), `online` (Supabase-managed, no local DB). The web build (`maatarajewellers.shop`) sets `VITE_DEFAULT_DEPLOYMENT_MODE=online` — always import data access through `src/lib/providers/data-provider.ts`, never the raw Supabase client, so this stays swappable.
-- Local database (offline/hybrid modes only): `sql.js`, a SQLite-compatible WebAssembly database, with an outbox for offline writes.
-- Remote persistence: Supabase Postgres, RLS, Storage, Edge Functions. There is no Express server in this repository.
-- Universal Print Engine: `src/lib/print-engine/` plus `src/components/print-engine/`; all printable documents use it.
-- Universal Export Engine: `src/lib/report-engine.ts`; all CSV/XLSX exports use it.
+- Browser web app: React 19 + TypeScript + Vite, TanStack Router/Query, Zustand, Tailwind, Radix UI.
+- Production authority: Supabase Auth, PostgreSQL, RLS, RPCs, Storage, and approved cloud services.
+- Runtime principle: all production operations must use the same authenticated Supabase-backed data plane across Web, Desktop, Mobile, and portal clients.
+- Retired legacy paths: local SQLite, local-first sync, IndexedDB primary persistence, local auth, dual-database execution, and hybrid-as-authoritative runtime logic are not authorized in production.
+- Universal Print Engine and Universal Export Engine remain the supported document/report pipelines.
 
-## Required Reading
+## Required reading
 
-Read relevant documents: `docs/ARCHITECTURE.md`, `DATABASE.md`, `MODULES.md`, `PRINT_ENGINE.md`, `EXPORT_ENGINE.md`, `SETTINGS.md`, `WHATSAPP.md`, `LICENSING.md`, `WORKFLOW_RULES.md`, `NAMING.md`, `SECURITY.md`, `CODING_STANDARDS.md`, `UI_GUIDELINES.md`, `ROADMAP.md`, `CHANGELOG.md`.
+Read the current authoritative documents before implementation, especially:
 
-## Architecture Rules
+- `docs/ARCHITECTURE.md`
+- `docs/DATABASE_AND_SUPABASE_MASTER.md`
+- `docs/MASTER/ORNEXA_PRODUCT_CONSTITUTION.md`
+- `docs/MASTER/FINAL_ERP_COMPLETION_GOAL.md`
+- `docs/MASTER/ORNEXA_DECISION_LOG.md`
 
-- Inspect existing components, stores, services, utilities, routes first. Reuse them.
-- Keep routes thin. Put domain behavior in existing `src/lib` services/stores. Use `createRepository` for persisted domain records where its contract fits.
-- Use `src/lib/local-db.ts`, `sync-engine.ts`, `supabase-write.ts` for offline persistence/sync. Never bypass outbox with ad hoc remote writes.
-- Store gold as integer milligrams, purity as integer per-mille, money as integer paise. Never use floats for accounting.
-- Migrations: `supabase/migrations/`, timestamp-prefixed, append-only, forward-safe, RLS-aware.
-- Use universal print/export engines. Do not call `window.print`, add a parallel PDF pipeline, or build another CSV/XLSX utility.
-- WasenderAPI uses `src/lib/comm` providers only. Renderer code never reads secrets.
-- Branding and WhatsApp configuration live under `/settings`; keep runtime identity, provider behavior, templates, retries, and automation configurable through the established stores. Do not add parallel settings pages or top-level settings navigation.
+## Architecture rules
 
-## Engineering Rules
+- Inspect existing components, stores, services, utilities, and routes first. Reuse and extend them.
+- Keep routes thin. Put domain behavior in the existing `src/lib` services and state stores.
+- Use the Supabase-backed data provider and RBAC/RLS patterns. Never add local-authoritative database logic.
+- Store gold as integer milligrams, purity as integer per-mille, and money as integer paise. Never use floats for accounting.
+- Migrations live under `supabase/migrations/` and must be append-only, forward-safe, and RLS-aware.
+- Use the universal print/export engines. Do not add a parallel local printing or export stack.
+- WasenderAPI and communication secrets remain in the approved secure cloud/runtime configuration path. Renderer code never reads secrets.
+- Branding, configuration, and tenant behavior live under the approved Settings and Customization surfaces, not in parallel local-only configuration.
 
-- Strict TypeScript, named domain types, boundary validation. No new `any`.
-- Follow `docs/NAMING.md`, `CODING_STANDARDS.md`, `UI_GUIDELINES.md`.
-- Add focused tests or runnable self-check for non-trivial logic. Run Playwright (`npm run test:e2e`, or a scoped ad hoc script) after every critical implementation — auth, billing, gold ledger, licensing/activation, anything touching money or stock — to verify the flow actually works end to end, not just that it typechecks and builds.
+## Engineering rules
+
+- Strict TypeScript, named domain types, boundary validation. Avoid new `any` unless a justified migration case is documented.
+- Do not reintroduce offline or hybrid business-state architecture.
+- For non-trivial logic, add focused verification and validate the app with the required TypeScript and build checks.
 - Never edit generated `src/routeTree.gen.ts` manually.
-- Always run `npm run dev` and check the app in a browser after implementation for manual verification.
-- Update documents with architecture/schema/module/print/export/workflow changes. Append release-facing changes to `docs/CHANGELOG.md`.
-- GitFlow: branch from `develop`, use `feature/<area>-<summary>`, review before merge. Never force-push, rebase, amend, or squash already-pushed Lovable history.
+- Update canonical docs and changelog entries when architecture or workflow behavior changes.
+- GitFlow: branch from the active development branch and avoid rewriting published history.
 
-## Planning And Tools
+## Planning and tools
 
 - Serena: symbol lookup, references, semantic search, incremental indexing.
-- Context7: current React, Electron, TypeScript, Node.js, SQLite, Express, Vite docs.
-- Sequential Thinking: complex, multi-module planning before implementation.
-- Native Git CLI: Git history/state. Project memory: durable decisions only; never credentials/customer data.
+- Context7: current React, TypeScript, Vite, and Supabase guidance.
+- Sequential Thinking: use for complex multi-module implementation planning.
+- Native Git CLI: manage git history and state responsibly.

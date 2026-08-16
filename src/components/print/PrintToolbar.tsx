@@ -237,7 +237,7 @@ export function PrintToolbar({
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
             {onLayoutSizeChange && layoutSize && (
-              <div className="flex bg-muted rounded-xl p-0.5 border border-border mr-1">
+              <div className="flex bg-muted rounded-md p-0.5 border border-border mr-1">
                 {(["a4", "a5", "thermal", "thermal58", "tag"] as const).map((sz) => {
                   let label = sz.toUpperCase();
                   if (sz === "thermal") label = "80mm Thermal";

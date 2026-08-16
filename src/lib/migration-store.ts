@@ -601,8 +601,146 @@ export const useMigrationStore = create<MigrationStore>()(
           frozenBy: ceoName,
         };
 
-        // Persist to central Supabase migration audit table if accessible
         try {
+          // 1. Resolve firm_id
+          const { data: userResult } = await supabase.auth.getUser();
+          let firmId: string | null = null;
+          if (userResult?.user?.id) {
+            const { data: profile } = await supabase
+              .from("user_profiles")
+              .select("firm_id")
+              .eq("auth_id", userResult.user.id)
+              .maybeSingle();
+            firmId = profile?.firm_id ?? null;
+          }
+
+          // 2. Persist migrated parties to people table
+          const partyRows = batch.stagesData.parties_profiles?.rows || [];
+          for (const r of partyRows) {
+            const partyCode = r.party_code || `P-${Date.now()}`;
+            const partyName = r.party_name || "Unnamed Party";
+            const partyType = (r.party_type || "customer").toLowerCase();
+            const phone = r.phone || "";
+            const gstin = r.gstin || "";
+            const pan = r.pan || "";
+
+            await supabase.from("people").upsert(
+              {
+                id: partyCode,
+                full_name: partyName,
+                phone: phone,
+                type: partyType,
+                active: true,
+                firm_id: firmId,
+                data: {
+                  id: partyCode,
+                  fullName: partyName,
+                  type: partyType,
+                  phone,
+                  gstin,
+                  pan,
+                  city: r.city || "",
+                  state: r.state || "",
+                  active: true,
+                  createdAt: Date.now(),
+                  updatedAt: Date.now(),
+                },
+              },
+              { onConflict: "id" },
+            );
+          }
+
+          // 3. Persist opening financial and metal balances
+          const finRows = batch.stagesData.opening_financial_balances?.rows || [];
+          const metalRows = batch.stagesData.opening_metal_balances?.rows || [];
+
+          for (const r of finRows) {
+            const partyCode = r.party_code || "";
+            const amtPaise = Math.round(parseFloat(r.amount_inr || "0") * 100);
+            const isDebit =
+              r.balance_type?.toLowerCase().includes("debit") ||
+              r.balance_type?.toLowerCase().includes("receivable");
+
+            if (partyCode && amtPaise > 0) {
+              await (supabase as any).from("party_opening_balances").insert({
+                firm_id: firmId,
+                party_id: partyCode,
+                migration_batch_id: batch.id,
+                as_of_date: batch.asOfDate || new Date().toISOString().split("T")[0],
+                cash_debit_paise: isDebit ? amtPaise : 0,
+                cash_credit_paise: isDebit ? 0 : amtPaise,
+                notes: `Migrated via batch ${batch.batchNumber}`,
+                metadata: { source: "migration_wizard", stage: "opening_financial_balances" },
+              });
+            }
+          }
+
+          for (const r of metalRows) {
+            const partyCode = r.party_code || "";
+            const grossG = parseFloat(r.gross_weight_g || "0");
+            const fineG =
+              parseFloat(r.fine_weight_g || "0") ||
+              grossG * (parseFloat(r.touch_pct || "91.6") / 100);
+            const fineMg = Math.round(fineG * 1000);
+            const isOwed =
+              r.balance_direction?.toLowerCase().includes("receive") ||
+              r.balance_direction?.toLowerCase().includes("we_are_owed");
+
+            if (partyCode && fineMg > 0) {
+              await (supabase as any).from("party_opening_balances").insert({
+                firm_id: firmId,
+                party_id: partyCode,
+                migration_batch_id: batch.id,
+                as_of_date: batch.asOfDate || new Date().toISOString().split("T")[0],
+                fine_gold_debit_mg: isOwed ? fineMg : 0,
+                fine_gold_credit_mg: isOwed ? 0 : fineMg,
+                notes: `Migrated metal balance via batch ${batch.batchNumber}`,
+                metadata: { source: "migration_wizard", stage: "opening_metal_balances" },
+              });
+            }
+          }
+
+          // 4. Persist opening stock inventory
+          const stockRows = batch.stagesData.opening_stock_inventory?.rows || [];
+          for (const r of stockRows) {
+            const tagNumber = r.tag_number || `TAG-${Date.now()}`;
+            const itemName = r.item_name || "Migrated Stock";
+            const grossG = parseFloat(r.gross_wt_g || r.gross_weight_g || "0");
+            const netG = parseFloat(r.net_wt_g || r.net_weight_g || "0") || grossG;
+            const purity = Math.round(parseFloat(r.purity || "91.6") * 10);
+            const grossMg = Math.round(grossG * 1000);
+            const netMg = Math.round(netG * 1000);
+
+            if (grossMg > 0) {
+              await (supabase as any).from("inventory").upsert(
+                {
+                  id: tagNumber,
+                  item_name: itemName,
+                  gross_mg: grossMg,
+                  net_mg: netMg,
+                  purity: purity,
+                  huid: r.huid || null,
+                  status: "in_stock",
+                  firm_id: firmId,
+                  data: {
+                    id: tagNumber,
+                    itemName,
+                    grossWeightMg: grossMg,
+                    netWeightMg: netMg,
+                    purity,
+                    huid: r.huid || "",
+                    location: r.location_vault || "Main Vault",
+                    status: "in_stock",
+                    migratedBatchId: batch.id,
+                    createdAt: Date.now(),
+                  },
+                },
+                { onConflict: "id" },
+              );
+            }
+          }
+
+          // 5. Persist to central Supabase migration audit table
           await (supabase as any).from("migration_batches").upsert({
             id: batch.id,
             batch_number: batch.batchNumber,
@@ -610,14 +748,18 @@ export const useMigrationStore = create<MigrationStore>()(
             status: "FROZEN_LIVE",
             frozen_at: new Date().toISOString(),
             frozen_by: ceoName,
+            firm_id: firmId,
             metadata: {
               stages: batch.stagesData,
               simulation: batch.dryRunSimulation,
             },
           });
-        } catch {
-          // Local fallback handled by Zustand persist
+        } catch (err) {
+          console.error("Supabase migration persistence error:", err);
         }
+
+        const { useSettings } = await import("@/lib/settings-store");
+        useSettings.getState().setFirm({ tenant_migration_status: "COMPLETED" });
 
         set({ activeBatch: updatedBatch });
         return { success: true, batchId: batch.id };

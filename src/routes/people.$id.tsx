@@ -15,6 +15,7 @@ import {
   getPartyGoldBalance,
   getPartyCashBalance,
 } from "@/lib/customer-account-ledger";
+import { exportToCSV, exportToXLSX } from "@/lib/report-engine";
 import { mgToGrams } from "@/lib/gold";
 import {
   ArrowLeft,
@@ -32,8 +33,15 @@ import {
   Mail,
   MapPin,
   Clock,
+  Coins,
+  History,
+  MessageSquare,
+  Download,
+  FileSpreadsheet,
 } from "lucide-react";
 import { InviteToPortalDialog } from "@/components/invite-to-portal-dialog";
+import { PortalInvitationsPanel } from "@/components/portal/PortalInvitationsPanel";
+import { getPartyTimelineData, type PartyTimelineData } from "@/lib/central-foundation";
 
 export const Route = createFileRoute("/people/$id")({
   head: () => ({ meta: [{ title: "Party 360 Workspace · Ornexa ERP" }] }),
@@ -45,6 +53,9 @@ function Party360WorkspacePage() {
   const navigate = useNavigate();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [timeline, setTimeline] = useState<PartyTimelineData | null>(null);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
 
   const people = usePeople((s) => s.people);
   const refreshPeople = usePeople((s) => s.refresh);
@@ -68,6 +79,16 @@ function Party360WorkspacePage() {
     refreshInvoices();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (activeTab !== "timeline" || !id || timeline || timelineLoading) return;
+    setTimelineLoading(true);
+    setTimelineError(null);
+    getPartyTimelineData(id)
+      .then(setTimeline)
+      .catch((e) => setTimelineError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setTimelineLoading(false));
+  }, [activeTab, id, timeline, timelineLoading]);
 
   const person = useMemo(() => people.find((p) => p.id === id), [people, id]);
 
@@ -121,6 +142,26 @@ function Party360WorkspacePage() {
           <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Party Directory
         </Button>
         <div className="flex items-center gap-3">
+          {(person.whatsapp || person.phone) && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() =>
+                navigate({
+                  to: "/whatsapp",
+                  search: {
+                    tab: "inbox",
+                    phone: (person.whatsapp || person.phone || "").replace(/\D/g, ""),
+                  },
+                })
+              }
+            >
+              <MessageSquare className="h-3.5 w-3.5 text-emerald-500" />
+              Message on WhatsApp
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -141,7 +182,7 @@ function Party360WorkspacePage() {
       </div>
 
       {/* Header Summary Card */}
-      <div className="rounded-xl border border-border/80 bg-card p-6 shadow-sm">
+      <div className="rounded-md border border-border/80 bg-card p-6 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-3">
@@ -211,6 +252,7 @@ function Party360WorkspacePage() {
           fullName: person.fullName,
           phone: person.phone,
           type: person.type,
+          email: person.email,
         }}
       />
 
@@ -237,37 +279,63 @@ function Party360WorkspacePage() {
           <TabsTrigger value="vault" className="text-xs gap-1.5">
             <FileText className="h-3.5 w-3.5" /> Document Vault
           </TabsTrigger>
+          <TabsTrigger value="timeline" className="text-xs gap-1.5">
+            <History className="h-3.5 w-3.5" /> Timeline & Comms
+          </TabsTrigger>
+          <TabsTrigger value="portal" className="text-xs gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5" /> Portal Access
+          </TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Overview */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Identity & Address Card */}
-            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-4 shadow-sm">
+            <div className="rounded-md border border-border/80 bg-card p-5 space-y-4 shadow-sm">
               <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" /> Contact & Address Profile
               </h3>
               <div className="text-xs space-y-2">
-                <div>
-                  <span className="text-muted-foreground">Current Address: </span>
-                  <span className="text-foreground">
-                    {person.currentAddress || "Not specified"}
-                  </span>
-                </div>
-                {person.permanentAddress && (
+                {person.tradeName && (
                   <div>
-                    <span className="text-muted-foreground">Permanent Address: </span>
-                    <span className="text-foreground">{person.permanentAddress}</span>
+                    <span className="text-muted-foreground">Trade / Shop Name: </span>
+                    <span className="font-semibold text-foreground">{person.tradeName}</span>
+                  </div>
+                )}
+                {person.legalName && (
+                  <div>
+                    <span className="text-muted-foreground">Legal Entity: </span>
+                    <span className="text-foreground">{person.legalName}</span>
+                  </div>
+                )}
+                {person.contactPerson && (
+                  <div>
+                    <span className="text-muted-foreground">Contact Person: </span>
+                    <span className="text-foreground">{person.contactPerson}</span>
                   </div>
                 )}
                 <div>
-                  <span className="text-muted-foreground">City / Village: </span>
-                  <span className="text-foreground">{person.villageCity || "—"}</span>
+                  <span className="text-muted-foreground">Address: </span>
+                  <span className="text-foreground">
+                    {[
+                      person.addressLine1 || person.currentAddress,
+                      person.addressLine2,
+                      person.area,
+                      person.villageCity,
+                      person.district,
+                      person.state,
+                      person.pin,
+                    ]
+                      .filter(Boolean)
+                      .join(", ") || "Not specified"}
+                  </span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">State: </span>
-                  <span className="text-foreground">{person.state || "—"}</span>
-                </div>
+                {person.whatsapp && (
+                  <div>
+                    <span className="text-muted-foreground">WhatsApp: </span>
+                    <span className="text-foreground">{person.whatsapp}</span>
+                  </div>
+                )}
                 {person.altPhone && (
                   <div>
                     <span className="text-muted-foreground">Alternate Phone: </span>
@@ -278,27 +346,33 @@ function Party360WorkspacePage() {
             </div>
 
             {/* Credit Limits & Commercial Terms */}
-            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-4 shadow-sm">
+            <div className="rounded-md border border-border/80 bg-card p-5 space-y-4 shadow-sm">
               <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-muted-foreground" /> Commercial Terms & Credit
                 Controls
               </h3>
               <div className="text-xs space-y-2.5">
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-muted-foreground">Max Gold Credit Limit:</span>
+                  <span className="text-muted-foreground">Max Cash Credit Limit:</span>
                   <span className="font-semibold text-foreground">
-                    {person.maxFineGoldCreditMg
-                      ? `${mgToGrams(person.maxFineGoldCreditMg)} g`
-                      : "Unlimited / Standard"}
+                    {person.cashCreditLimitPaise
+                      ? `₹${paiseToRupees(person.cashCreditLimitPaise)}`
+                      : "Standard / Unlimited"}
                   </span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-muted-foreground">Credit Period:</span>
-                  <span className="font-semibold text-foreground">15 Days Standard</span>
+                  <span className="text-muted-foreground">Max Gold Credit Limit:</span>
+                  <span className="font-semibold text-foreground">
+                    {person.goldCreditLimitMg || person.maxFineGoldCreditMg
+                      ? `${mgToGrams(person.goldCreditLimitMg || person.maxFineGoldCreditMg || 0)} g`
+                      : "Standard / Unlimited"}
+                  </span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-muted-foreground">Default Price Tier:</span>
-                  <span className="font-semibold text-foreground">Tier 1 Wholesale</span>
+                  <span className="text-muted-foreground">Payment Due Term:</span>
+                  <span className="font-semibold text-foreground">
+                    {person.dueDays ? `${person.dueDays} Days` : "Immediate / Standard"}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Portal Status:</span>
@@ -308,13 +382,111 @@ function Party360WorkspacePage() {
                 </div>
               </div>
             </div>
+
+            {/* Opening Balances & Outstandings Card */}
+            {(person.cashOpeningBalancePaise ||
+              person.goldOpeningGrossMg ||
+              person.silverOpeningFineMg) && (
+              <div className="col-span-1 md:col-span-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-5 space-y-3 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                    <Coins className="h-4 w-4 text-amber-500" /> Opening Balances & Metal
+                    Outstandings
+                  </h3>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/10"
+                  >
+                    Single Source of Truth
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
+                  {person.cashOpeningBalancePaise !== undefined && (
+                    <div className="rounded-lg border p-3 bg-card">
+                      <span className="text-[11px] text-muted-foreground font-sans block">
+                        Cash Opening (
+                        {person.cashOpeningType === "payable" ? "Payable / Cr" : "Receivable / Dr"}
+                        ):
+                      </span>
+                      <span className="font-bold text-foreground text-sm">
+                        ₹{paiseToRupees(person.cashOpeningBalancePaise)}
+                      </span>
+                    </div>
+                  )}
+
+                  {person.goldOpeningGrossMg !== undefined && (
+                    <div className="rounded-lg border p-3 bg-card">
+                      <span className="text-[11px] text-muted-foreground font-sans block">
+                        Gold Opening (
+                        {person.goldOpeningType === "payable" ? "Payable / Cr" : "Receivable / Dr"}
+                        ):
+                      </span>
+                      <span className="font-bold text-amber-500 text-sm">
+                        {mgToGrams(person.goldOpeningGrossMg)} g ({person.goldOpeningTouch || 91.6}%
+                        Touch)
+                      </span>
+                      {person.goldOpeningFineMg && (
+                        <div className="text-[10px] text-muted-foreground pt-0.5">
+                          Pure Fine (999): {mgToGrams(person.goldOpeningFineMg)} g
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {person.silverOpeningFineMg !== undefined && (
+                    <div className="rounded-lg border p-3 bg-card">
+                      <span className="text-[11px] text-muted-foreground font-sans block">
+                        Silver Opening Fine:
+                      </span>
+                      <span className="font-bold text-foreground text-sm">
+                        {mgToGrams(person.silverOpeningFineMg)} g
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {person.openingBalanceNotes && (
+                  <p className="text-[11px] text-muted-foreground italic pt-1">
+                    Notes: {person.openingBalanceNotes}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Dynamic Custom Fields & KYC Dossier Card */}
+            {person.customForms && Object.keys(person.customForms).length > 0 && (
+              <div className="col-span-1 md:col-span-2 rounded-md border border-border/80 bg-card p-5 space-y-4 shadow-sm">
+                <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" /> Configured Custom Fields &
+                  Extended Metadata
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                  {Object.entries(person.customForms).flatMap(([formKey, formValues]) =>
+                    Object.entries(formValues || {}).map(([fieldKey, val]) => (
+                      <div
+                        key={`${formKey}_${fieldKey}`}
+                        className="rounded-lg border p-2.5 bg-muted/20"
+                      >
+                        <span className="text-muted-foreground block text-[11px] font-medium capitalize">
+                          {fieldKey.replace(/([A-Z])/g, " $1")}
+                        </span>
+                        <span className="font-semibold text-foreground mt-0.5 block">
+                          {String(val) || "—"}
+                        </span>
+                      </div>
+                    )),
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </TabsContent>
 
         {/* Tab 2: Dual Ledger */}
         <TabsContent value="ledger" className="space-y-4">
-          <div className="rounded-xl border border-border/80 bg-card p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="rounded-md border border-border/80 bg-card p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <h3 className="font-semibold text-sm text-foreground">
                   Authoritative Running Dual Ledger
@@ -323,13 +495,73 @@ function Party360WorkspacePage() {
                   Cash (₹) and Fine Metal (g) synchronized transaction log
                 </p>
               </div>
-              <Link
-                to="/people/ledger-print/$id"
-                params={{ id: person.id }}
-                className="text-xs inline-flex items-center gap-1 text-primary hover:underline"
-              >
-                Print Official Statement
-              </Link>
+              <div className="flex items-center gap-2">
+                {ledger && ledger.rows.length > 0 && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs gap-1"
+                      onClick={() => {
+                        const header = [
+                          "Date",
+                          "Voucher",
+                          "Type",
+                          "Description",
+                          "Gold Bal (g)",
+                          "Cash Bal (₹)",
+                        ];
+                        const data = ledger.rows.map((r) => [
+                          r.date,
+                          r.voucherNo,
+                          r.type,
+                          r.description,
+                          mgToGrams(r.closingGoldMg),
+                          paiseToRupees(r.closingMoneyPaise),
+                        ]);
+                        exportToCSV(`party-ledger-${person.id}.csv`, [header, ...data]);
+                      }}
+                    >
+                      <Download className="h-3.5 w-3.5" /> CSV
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs gap-1"
+                      onClick={() => {
+                        const header = [
+                          "Date",
+                          "Voucher",
+                          "Type",
+                          "Description",
+                          "Gold Bal (g)",
+                          "Cash Bal (₹)",
+                        ];
+                        const data = ledger.rows.map((r) => [
+                          r.date,
+                          r.voucherNo,
+                          r.type,
+                          r.description,
+                          mgToGrams(r.closingGoldMg),
+                          paiseToRupees(r.closingMoneyPaise),
+                        ]);
+                        exportToXLSX(`party-ledger-${person.id}.xlsx`, {
+                          Ledger: [header, ...data],
+                        });
+                      }}
+                    >
+                      <FileSpreadsheet className="h-3.5 w-3.5" /> XLSX
+                    </Button>
+                  </>
+                )}
+                <Link
+                  to="/people/ledger-print/$id"
+                  params={{ id: person.id }}
+                  className="text-xs inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  Print Official Statement
+                </Link>
+              </div>
             </div>
 
             {!ledger || ledger.rows.length === 0 ? (
@@ -350,16 +582,24 @@ function Party360WorkspacePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {ledger.rows.map((r) => (
-                      <tr key={r.id} className="hover:bg-muted/40">
-                        <td className="py-2 px-3 whitespace-nowrap">{r.date}</td>
-                        <td className="py-2 px-3 font-mono">{r.voucherNo}</td>
-                        <td className="py-2 px-3 capitalize">{r.type}</td>
-                        <td className="py-2 px-3">{r.description}</td>
-                        <td className="py-2 px-3 text-right font-medium text-amber-500">
-                          {mgToGrams(r.closingGoldMg)}
+                    {ledger.rows.map((r, i) => (
+                      <tr key={i} className="hover:bg-muted/40">
+                        <td className="py-2 px-3">{r.date}</td>
+                        <td className="py-2 px-3 font-mono">
+                          {r.sourceRoute ? (
+                            <Link to={r.sourceRoute} className="text-primary hover:underline">
+                              {r.voucherNo}
+                            </Link>
+                          ) : (
+                            r.voucherNo
+                          )}
                         </td>
-                        <td className="py-2 px-3 text-right font-medium text-foreground">
+                        <td className="py-2 px-3 capitalize">{r.type.replace("_", " ")}</td>
+                        <td className="py-2 px-3">{r.description}</td>
+                        <td className="py-2 px-3 text-right font-mono font-semibold text-amber-500">
+                          {mgToGrams(r.closingGoldMg)} g
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-semibold">
                           ₹{paiseToRupees(r.closingMoneyPaise)}
                         </td>
                       </tr>
@@ -375,28 +615,27 @@ function Party360WorkspacePage() {
         <TabsContent value="orders_jobs" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Orders Section */}
-            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-3 shadow-sm">
+            <div className="rounded-md border border-border/80 bg-card p-5 space-y-3 shadow-sm">
               <h3 className="font-semibold text-sm flex items-center justify-between text-foreground">
                 <span className="flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4" /> Active Orders
+                  <ClipboardList className="h-4 w-4" /> Retail & Custom Orders
                 </span>
                 <Badge variant="outline" className="text-xs">
                   {partyOrders.length}
                 </Badge>
               </h3>
               {partyOrders.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No orders recorded for this party.</p>
+                <p className="text-xs text-muted-foreground">No orders on record.</p>
               ) : (
                 <ul className="divide-y text-xs">
                   {partyOrders.map((o) => (
                     <li key={o.id} className="py-2.5 flex items-center justify-between">
-                      <Link
-                        to="/orders/$id"
-                        params={{ id: o.id }}
-                        className="font-medium hover:underline text-primary"
-                      >
-                        {o.orderNo} · {o.item.itemName}
-                      </Link>
+                      <div>
+                        <span className="font-medium">{o.orderNo}</span> ·{" "}
+                        <span className="text-muted-foreground">
+                          {new Date(o.createdAt).toLocaleDateString("en-IN")}
+                        </span>
+                      </div>
                       <Badge variant="outline" className="text-[10px]">
                         {ORDER_STATUS_LABELS[o.status]}
                       </Badge>
@@ -407,7 +646,7 @@ function Party360WorkspacePage() {
             </div>
 
             {/* Job Cards Section */}
-            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-3 shadow-sm">
+            <div className="rounded-md border border-border/80 bg-card p-5 space-y-3 shadow-sm">
               <h3 className="font-semibold text-sm flex items-center justify-between text-foreground">
                 <span className="flex items-center gap-2">
                   <Hammer className="h-4 w-4" /> Job Cards & Custody
@@ -440,7 +679,7 @@ function Party360WorkspacePage() {
         <TabsContent value="bills_settlements" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Manufacturing Bills */}
-            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-3 shadow-sm">
+            <div className="rounded-md border border-border/80 bg-card p-5 space-y-3 shadow-sm">
               <h3 className="font-semibold text-sm flex items-center justify-between text-foreground">
                 <span className="flex items-center gap-2">
                   <Receipt className="h-4 w-4" /> Manufacturing Bills
@@ -466,7 +705,7 @@ function Party360WorkspacePage() {
             </div>
 
             {/* Gold Settlement Vouchers */}
-            <div className="rounded-xl border border-border/80 bg-card p-5 space-y-3 shadow-sm">
+            <div className="rounded-md border border-border/80 bg-card p-5 space-y-3 shadow-sm">
               <h3 className="font-semibold text-sm flex items-center justify-between text-foreground">
                 <span className="flex items-center gap-2">
                   <Wallet className="h-4 w-4" /> Gold Settlements
@@ -495,92 +734,258 @@ function Party360WorkspacePage() {
 
         {/* Tab 5: Bank & Compliance */}
         <TabsContent value="bank_compliance" className="space-y-6">
-          <div className="rounded-xl border border-border/80 bg-card p-5 space-y-4 shadow-sm">
+          <div className="rounded-md border border-border/80 bg-card p-5 space-y-4 shadow-sm">
             <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-muted-foreground" /> Tax & Statutory Compliance
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="rounded-lg border p-3 bg-muted/20 space-y-1">
+                <span className="text-muted-foreground">GSTIN: </span>
+                <span className="font-mono font-semibold text-foreground">
+                  {person.gstin || "Unregistered"}
+                </span>
+              </div>
+              <div className="rounded-lg border p-3 bg-muted/20 space-y-1">
+                <span className="text-muted-foreground">PAN: </span>
+                <span className="font-mono font-semibold text-foreground">
+                  {person.pan || "Not provided"}
+                </span>
+              </div>
+              <div className="rounded-lg border p-3 bg-muted/20 space-y-1">
+                <span className="text-muted-foreground">MSME Udyam No: </span>
+                <span className="font-mono font-semibold text-foreground">
+                  {person.msmeUdyamNo || "Not registered"}
+                </span>
+              </div>
+              <div className="rounded-lg border p-3 bg-muted/20 space-y-1">
+                <span className="text-muted-foreground">TAN: </span>
+                <span className="font-mono font-semibold text-foreground">{person.tan || "—"}</span>
+              </div>
+              <div className="rounded-lg border p-3 bg-muted/20 space-y-1">
+                <span className="text-muted-foreground">Place of Supply: </span>
+                <span className="font-semibold text-foreground">
+                  {person.placeOfSupply || "State 19 (WB)"}
+                </span>
+              </div>
+              <div className="rounded-lg border p-3 bg-muted/20 space-y-1">
+                <span className="text-muted-foreground">TDS / TCS Applicability: </span>
+                <span className="font-semibold text-foreground capitalize">
+                  {person.tdsTcsApplicability || "None"}
+                </span>
+              </div>
+            </div>
+
+            <h3 className="font-semibold text-sm text-foreground flex items-center gap-2 pt-2 border-t border-border">
               <Building2 className="h-4 w-4 text-muted-foreground" /> Verified Bank Accounts &
               Payout Registry
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="rounded-lg border p-4 bg-muted/20 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-foreground">Primary Bank Account</span>
-                  <Badge variant="default" className="text-[10px]">
-                    Primary
-                  </Badge>
+              {person.bankAccounts && person.bankAccounts.length > 0 ? (
+                person.bankAccounts.map((ba, idx) => (
+                  <div key={ba.id} className="rounded-lg border p-4 bg-muted/20 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-foreground">
+                        {ba.bankName || `Account #${idx + 1}`}
+                      </span>
+                      {ba.isPrimary && (
+                        <Badge variant="default" className="text-[10px]">
+                          Primary
+                        </Badge>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Account Holder: </span>
+                      <span className="text-foreground">
+                        {ba.accountHolderName || person.fullName}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Account Number: </span>
+                      <span className="font-mono text-foreground">{ba.accountNumber || "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">IFSC Code: </span>
+                      <span className="font-mono text-foreground">{ba.ifscCode || "—"}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-lg border p-4 bg-muted/20 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-foreground">Primary Bank Account</span>
+                    <Badge variant="default" className="text-[10px]">
+                      Primary
+                    </Badge>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Bank Name: </span>
+                    <span className="text-foreground">
+                      {person.bankName || "State Bank of India"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Account Holder: </span>
+                    <span className="text-foreground">
+                      {person.bankAccountName || person.fullName}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Account Number: </span>
+                    <span className="font-mono text-foreground">
+                      {person.bankAccountNumber
+                        ? `••••${person.bankAccountNumber.slice(-4)}`
+                        : "Not provided"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">IFSC Code: </span>
+                    <span className="font-mono text-foreground">
+                      {person.bankIfsc || "SBIN0001234"}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Bank Name: </span>
-                  <span className="text-foreground">
-                    {person.bankName || "State Bank of India"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Account Holder: </span>
-                  <span className="text-foreground">
-                    {person.bankAccountName || person.fullName}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Account Number: </span>
-                  <span className="font-mono text-foreground">
-                    {person.bankAccountNumber
-                      ? `••••${person.bankAccountNumber.slice(-4)}`
-                      : "Not provided"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">IFSC Code: </span>
-                  <span className="font-mono text-foreground">
-                    {person.bankIfsc || "SBIN0001234"}
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </TabsContent>
 
         {/* Tab 6: Document Vault */}
         <TabsContent value="vault" className="space-y-4">
-          <div className="rounded-xl border border-border/80 bg-card p-5 space-y-4 shadow-sm">
+          <div className="rounded-md border border-border/80 bg-card p-5 space-y-4 shadow-sm">
             <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" /> Party Document Vault & KYC
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
               <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
                 <p className="font-medium text-foreground">PAN Card</p>
-                <Badge variant={person.docs.pan ? "default" : "outline"} className="text-[10px]">
-                  {person.docs.pan ? "On File" : "Missing"}
+                <Badge variant={person.docs?.pan ? "default" : "outline"} className="text-[10px]">
+                  {person.docs?.pan ? "On File" : "Missing"}
                 </Badge>
               </div>
               <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
                 <p className="font-medium text-foreground">Aadhaar Front</p>
                 <Badge
-                  variant={person.docs.aadhaar_front ? "default" : "outline"}
+                  variant={person.docs?.aadhaar_front ? "default" : "outline"}
                   className="text-[10px]"
                 >
-                  {person.docs.aadhaar_front ? "On File" : "Missing"}
+                  {person.docs?.aadhaar_front ? "On File" : "Missing"}
                 </Badge>
               </div>
               <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
                 <p className="font-medium text-foreground">Address Proof</p>
                 <Badge
-                  variant={person.docs.address_proof ? "default" : "outline"}
+                  variant={person.docs?.address_proof ? "default" : "outline"}
                   className="text-[10px]"
                 >
-                  {person.docs.address_proof ? "On File" : "Missing"}
+                  {person.docs?.address_proof ? "On File" : "Missing"}
                 </Badge>
               </div>
               <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
                 <p className="font-medium text-foreground">Signature / Stamp</p>
                 <Badge
-                  variant={person.docs.signature ? "default" : "outline"}
+                  variant={person.docs?.signature ? "default" : "outline"}
                   className="text-[10px]"
                 >
-                  {person.docs.signature ? "On File" : "Missing"}
+                  {person.docs?.signature ? "On File" : "Missing"}
                 </Badge>
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        {/* Tab 7: Activity Timeline & Communication */}
+        <TabsContent value="timeline" className="space-y-4">
+          {timelineLoading && <p className="text-xs text-muted-foreground">Loading timeline…</p>}
+          {timelineError && (
+            <p className="text-xs text-destructive">Failed to load timeline: {timelineError}</p>
+          )}
+          {!timelineLoading && !timelineError && timeline && !timeline.centralPartyId && (
+            <p className="text-xs text-muted-foreground">
+              This party has not been synced to the central directory yet, so no activity or
+              messages are available.
+            </p>
+          )}
+          {!timelineLoading && timeline?.centralPartyId && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="rounded-md border border-border/80 bg-card p-5 space-y-3 shadow-sm">
+                <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                  <History className="h-4 w-4 text-muted-foreground" /> Activity Timeline (
+                  {timeline.events.length})
+                </h3>
+                {timeline.events.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No activity recorded yet.</p>
+                ) : (
+                  <ul className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                    {timeline.events.map((ev) => (
+                      <li key={ev.id} className="text-xs border-l-2 border-border pl-3 py-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-foreground">{ev.title}</span>
+                          <Badge
+                            variant={
+                              ev.severity === "critical" || ev.severity === "error"
+                                ? "destructive"
+                                : "outline"
+                            }
+                            className="text-[10px] capitalize"
+                          >
+                            {ev.eventType}
+                          </Badge>
+                        </div>
+                        {ev.description && (
+                          <p className="text-muted-foreground mt-0.5">{ev.description}</p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> {new Date(ev.occurredAt).toLocaleString()}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="rounded-md border border-border/80 bg-card p-5 space-y-3 shadow-sm">
+                <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" /> Communication (
+                  {timeline.messages.length})
+                </h3>
+                {timeline.messages.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No WhatsApp, email, or in-app messages logged for this party yet.
+                  </p>
+                ) : (
+                  <ul className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                    {timeline.messages.map((msg) => (
+                      <li key={msg.id} className="text-xs border-l-2 border-border pl-3 py-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-[10px] capitalize">
+                            {msg.channel}
+                          </Badge>
+                          <Badge variant="secondary" className="text-[10px] capitalize">
+                            {msg.direction}
+                          </Badge>
+                          {msg.threadSubject && (
+                            <span className="text-muted-foreground">{msg.threadSubject}</span>
+                          )}
+                        </div>
+                        {msg.body && <p className="text-foreground mt-0.5">{msg.body}</p>}
+                        <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> {new Date(msg.createdAt).toLocaleString()}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="portal" className="space-y-4">
+          <PortalInvitationsPanel
+            partyId={person.id}
+            partyName={person.fullName}
+            onInvite={() => setInviteOpen(true)}
+          />
         </TabsContent>
       </Tabs>
     </div>

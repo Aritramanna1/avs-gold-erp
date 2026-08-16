@@ -67,8 +67,8 @@ function ITC04ReportPage() {
           <CardContent className="p-4 flex items-center gap-3">
             <AlertTriangle className="h-6 w-6 text-red-600 shrink-0" />
             <div>
-              <p className="font-semibold">
-                ⚠️ {overdueCount} Job-Work Challan(s) Approaching 1-Year Threshold!
+              <p className="font-semibold text-red-600">
+                {overdueCount} Job-Work Challan(s) Approaching 1-Year Threshold!
               </p>
               <p className="text-xs text-red-700">
                 Under CGST Section 143, inputs sent to job-workers must be returned within 1 year.

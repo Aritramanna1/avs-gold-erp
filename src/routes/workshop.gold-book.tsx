@@ -39,10 +39,28 @@ import {
  * until their posting, audit, and document gates pass.
  */
 const MATERIAL_BOOKS = [
-  { key: "worker", label: "Worker Gold Book", icon: Users, available: true },
-  { key: "outside", label: "Outside Work", icon: Truck, available: true },
-  { key: "meena", label: "Meena Book", icon: Gem, available: false },
-  { key: "polishing", label: "Polishing Book", icon: Sparkles, available: false },
+  {
+    key: "worker",
+    label: "Worker Gold Book",
+    icon: Users,
+    available: true,
+    to: "/workshop/gold-book",
+  },
+  {
+    key: "outside",
+    label: "Outside Work",
+    icon: Truck,
+    available: true,
+    to: "/workshop/outside-work",
+  },
+  {
+    key: "polishing",
+    label: "Polishing Book",
+    icon: Sparkles,
+    available: true,
+    to: "/workshop/polishing",
+  },
+  { key: "meena", label: "Meena Book", icon: Gem, available: false, to: null },
 ] as const;
 type MaterialBookKey = (typeof MATERIAL_BOOKS)[number]["key"];
 
@@ -415,23 +433,24 @@ function WorkerGoldBookPage() {
             return (
               <button
                 key={b.key}
+                type="button"
                 onClick={() => {
-                  if (b.key === "outside") {
-                    window.location.assign("/workshop/outside-work");
+                  if (b.to && b.key !== "worker") {
+                    window.location.assign(b.to);
                     return;
                   }
                   setSelectedBook(b.key);
                 }}
-                className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
+                className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-xs md:text-sm font-semibold transition-all cursor-pointer ${
                   active
-                    ? "border-gold bg-gold/10 text-gold"
+                    ? "border-gold bg-gold/10 text-gold shadow-xs"
                     : "border-border text-muted-foreground hover:text-foreground hover:border-gold/40"
                 }`}
               >
                 <Icon className="h-4 w-4" />
                 {b.label}
                 {!b.available && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                     <Lock className="h-2.5 w-2.5" /> Planned
                   </span>
                 )}
@@ -499,7 +518,7 @@ function WorkerGoldBookPage() {
           {activeTab === "ledger" && (
             <div className="space-y-6">
               {/* Filters card */}
-              <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+              <div className="bg-card border border-border rounded-md p-4 shadow-sm">
                 <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border">
                   <Filter className="h-4 w-4 text-gold" />
                   <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
@@ -516,7 +535,7 @@ function WorkerGoldBookPage() {
                     <select
                       value={workerFilter}
                       onChange={(e) => setWorkerFilter(e.target.value)}
-                      className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold"
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-gold"
                     >
                       <option value="all">All Workers</option>
                       {workers.map((w) => (
@@ -552,7 +571,7 @@ function WorkerGoldBookPage() {
                     <select
                       value={typeFilter}
                       onChange={(e) => setTypeFilter(e.target.value as "all" | "given" | "return")}
-                      className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold"
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-gold"
                     >
                       <option value="all">All Entries</option>
                       <option value="given">Issue / Given</option>
@@ -616,7 +635,7 @@ function WorkerGoldBookPage() {
               </div>
 
               {/* Ledger — mobile + desktop */}
-              <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-card border border-border rounded-md shadow-sm overflow-hidden">
                 {/* ── Mobile card view ── */}
                 <div className="block md:hidden divide-y divide-border">
                   {filteredEntries.length === 0 ? (
@@ -815,7 +834,7 @@ function WorkerGoldBookPage() {
                   return (
                     <div
                       key={item.worker.id}
-                      className="bg-card border border-border rounded-2xl p-5 shadow-sm hover:border-gold/30 transition-all flex flex-col justify-between"
+                      className="bg-card border border-border rounded-md p-5 shadow-sm hover:border-gold/30 transition-all flex flex-col justify-between"
                     >
                       <div>
                         {/* Worker basic profile card */}
@@ -847,7 +866,7 @@ function WorkerGoldBookPage() {
 
                         {/* Numeric breakdown */}
                         <div className="grid grid-cols-3 gap-3 text-center mb-4">
-                          <div className="bg-muted/30 border border-border/50 p-2 rounded-xl">
+                          <div className="bg-muted/30 border border-border/50 p-2 rounded-md">
                             <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider mb-0.5">
                               Total Given
                             </span>
@@ -858,7 +877,7 @@ function WorkerGoldBookPage() {
                               {item.totalGivenQty} pcs
                             </span>
                           </div>
-                          <div className="bg-muted/30 border border-border/50 p-2 rounded-xl">
+                          <div className="bg-muted/30 border border-border/50 p-2 rounded-md">
                             <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider mb-0.5">
                               Total Returned
                             </span>
@@ -869,7 +888,7 @@ function WorkerGoldBookPage() {
                               {item.totalReturnedQty} pcs
                             </span>
                           </div>
-                          <div className="bg-amber-500/5 border border-amber-550/20 p-2 rounded-xl">
+                          <div className="bg-amber-500/5 border border-amber-550/20 p-2 rounded-md">
                             <span className="text-[10px] text-amber-500 block font-bold uppercase tracking-wider mb-0.5">
                               Pending
                             </span>
@@ -888,7 +907,7 @@ function WorkerGoldBookPage() {
                             <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider mb-1.5 block">
                               Material Balance Breakdown
                             </span>
-                            <div className="bg-muted/20 border border-border/40 rounded-xl px-3 py-2 space-y-1.5 max-h-[140px] overflow-y-auto">
+                            <div className="bg-muted/20 border border-border/40 rounded-md px-3 py-2 space-y-1.5 max-h-[140px] overflow-y-auto">
                               {item.materialBalances.map((m, idx) => (
                                 <div
                                   key={idx}
@@ -982,7 +1001,7 @@ function WorkerGoldBookPage() {
           {/* ==================== TAB CONTENT: DAILY MATERIAL SLIPS ==================== */}
           {activeTab === "daily_slips" && (
             <div className="space-y-4">
-              <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+              <div className="bg-card border border-border rounded-md p-4 shadow-sm">
                 <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
                   Reprint by Slip Number or Worker
                 </label>
@@ -1001,7 +1020,7 @@ function WorkerGoldBookPage() {
                 </p>
               </div>
 
-              <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-card border border-border rounded-md shadow-sm overflow-hidden">
                 {/* Mobile view */}
                 <div className="block md:hidden divide-y divide-border">
                   {dailySlips.length === 0 ? (
@@ -1141,14 +1160,14 @@ function WorkerGoldBookPage() {
           {/* ==================== TAB CONTENT: NEW ENTRY FORM ==================== */}
           {activeTab === "new_entry" && (
             <div className="max-w-2xl mx-auto">
-              <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-card border border-border rounded-md shadow-sm overflow-hidden">
                 {/* Form Title & Entry toggle */}
                 <div className="border-b border-border p-5 bg-muted/25">
                   <h2 className="text-lg font-serif font-bold text-foreground mb-4">
                     Record Worker Custody Voucher
                   </h2>
 
-                  <div className="grid grid-cols-2 gap-2 bg-background border border-border p-1 rounded-xl">
+                  <div className="grid grid-cols-2 gap-2 bg-background border border-border p-1 rounded-md">
                     <button
                       type="button"
                       onClick={() => handleEntryTypeChange("given")}
@@ -1169,7 +1188,7 @@ function WorkerGoldBookPage() {
                 {/* Form fields */}
                 <form onSubmit={handleSubmitEntry} className="p-6 space-y-4">
                   {formError && (
-                    <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-sm font-semibold rounded-xl">
+                    <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-sm font-semibold rounded-md">
                       {formError}
                     </div>
                   )}
@@ -1182,7 +1201,7 @@ function WorkerGoldBookPage() {
                     <select
                       value={formWorkerId}
                       onChange={(e) => handleWorkerChange(e.target.value)}
-                      className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold"
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-gold"
                       required
                     >
                       <option value="">-- Choose Worker --</option>
@@ -1204,7 +1223,7 @@ function WorkerGoldBookPage() {
                       <select
                         value={formParticulars}
                         onChange={(e) => setFormParticulars(e.target.value)}
-                        className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold"
+                        className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-gold"
                         required
                       >
                         <option value="">-- Select Material --</option>
@@ -1264,7 +1283,7 @@ function WorkerGoldBookPage() {
                       <select
                         value={formPurity}
                         onChange={(e) => setFormPurity(e.target.value)}
-                        className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold"
+                        className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-gold"
                       >
                         <option value="0">Non-Gold / Accessory</option>
                         {COMMON_PURITIES.map((p) => (
@@ -1307,7 +1326,7 @@ function WorkerGoldBookPage() {
                     {/* Real-time Fine Gold display if purity > 0 */}
                     {((formPurity !== "custom" && Number(formPurity) > 0) ||
                       (formPurity === "custom" && Number(formCustomPurity) > 0)) && (
-                      <div className="sm:col-span-2 bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between">
+                      <div className="sm:col-span-2 bg-amber-500/5 border border-amber-500/20 rounded-md p-3 flex items-center justify-between">
                         <div>
                           <strong className="text-xs text-amber-500 block font-semibold uppercase tracking-wider">
                             Estimated Fine Gold Impact
@@ -1379,7 +1398,7 @@ function WorkerGoldBookPage() {
                       placeholder="Provide detailed description of manufacturing requirements, die number, ball wire size..."
                       value={formNotes}
                       onChange={(e) => setFormNotes(e.target.value)}
-                      className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold h-20 resize-none"
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-gold h-20 resize-none"
                     />
                   </div>
 
@@ -1409,7 +1428,7 @@ function ComingSoonBook({ bookKey }: { bookKey: MaterialBookKey }) {
   return (
     <div className="grid place-items-center py-24">
       <div className="max-w-md text-center space-y-4">
-        <div className="mx-auto h-16 w-16 rounded-2xl bg-gold/10 grid place-items-center text-gold">
+        <div className="mx-auto h-16 w-16 rounded-md bg-gold/10 grid place-items-center text-gold">
           <Icon className="h-8 w-8" />
         </div>
         <h2 className="font-serif text-2xl text-gold">{book?.label}</h2>

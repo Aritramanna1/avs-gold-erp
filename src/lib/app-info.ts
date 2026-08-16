@@ -7,7 +7,7 @@
 import pkg from "../../package.json";
 
 export const APP_NAME = "Ornexa ERP";
-export const APP_TAGLINE = "Professional Jewellery Manufacturing ERP";
+export const APP_TAGLINE = "Jewellery Ecosystem";
 export const APP_DESCRIPTION = "Professional Jewellery Manufacturing ERP";
 export const COMPANY_NAME = "Arivahly Venture Sphere";
 export const APP_VERSION = pkg.version;

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { KEYBOARD_EVENTS } from "@/lib/keyboard/keyboard-events";
+import { getShortcutDisplayLabel } from "@/lib/keyboard/shortcut-keys";
 import {
   CommandDialog,
   CommandEmpty,
@@ -63,24 +65,15 @@ export function GlobalCommandPalette() {
   const moduleResults = navigationItems.filter((item) => hasRoutePermission(role, item.to));
 
   useEffect(() => {
-    function isEditableTarget(target: EventTarget | null): boolean {
-      if (!(target instanceof HTMLElement)) return false;
-      const tag = target.tagName;
-      return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
-    }
-
-    function onKeyDown(e: KeyboardEvent) {
-      const isFindCombo = (e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F");
-      const isPaletteCombo = (e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K");
-      if (!isFindCombo && !isPaletteCombo) return;
-      if (isFindCombo && isEditableTarget(e.target)) return; // don't steal in-field find/select
-      e.preventDefault();
+    function onOpen() {
       setOpen(true);
     }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener(KEYBOARD_EVENTS.COMMAND_PALETTE, onOpen);
+    return () => window.removeEventListener(KEYBOARD_EVENTS.COMMAND_PALETTE, onOpen);
   }, []);
+
+  const paletteKeys = getShortcutDisplayLabel("nav_command_palette", "Ctrl+K");
+  const findKeys = getShortcutDisplayLabel("nav_find", "Ctrl+F");
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -118,7 +111,7 @@ export function GlobalCommandPalette() {
       }}
     >
       <CommandInput
-        placeholder="Search modules or records... (Ctrl+F)"
+        placeholder={`Search modules or records... (${findKeys} / ${paletteKeys})`}
         autoFocus
         value={query}
         onValueChange={setQuery}

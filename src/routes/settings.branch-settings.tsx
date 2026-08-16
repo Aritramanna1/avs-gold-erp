@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSettings } from "@/lib/settings-store";
 import { saveBranchSettings } from "@/lib/services/branch-settings-service";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings/branch-settings")({
@@ -18,6 +19,7 @@ function BranchSettingsPage() {
   const s = useSettings();
   const branches = s.branches ?? [];
   const [activeBranchId, setActiveBranchId] = useState(branches[0]?.id ?? "MAIN");
+  const [smtpPasswordDraft, setSmtpPasswordDraft] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     identity: true,
     series: false,
@@ -177,12 +179,23 @@ function BranchSettingsPage() {
           <Field label="SMTP Host" field="smtpHost" placeholder="smtp.gmail.com" />
           <Field label="SMTP Port" field="smtpPort" placeholder="587" />
           <Field label="SMTP Username" field="smtpUser" placeholder="user@gmail.com" />
-          <Field
-            label="SMTP Password"
-            field="smtpPassword"
-            placeholder="app-password"
-            type="password"
-          />
+          <div className="grid gap-1.5">
+            <Label className="text-xs">SMTP Password</Label>
+            <Input
+              type="password"
+              value={smtpPasswordDraft}
+              onChange={(e) => setSmtpPasswordDraft(e.target.value)}
+              placeholder={
+                bs.smtpPasswordConfigured ? "Saved securely — enter only to rotate" : "app-password"
+              }
+            />
+          </div>
+          {bs.smtpPasswordConfigured ? (
+            <p className="text-[11px] text-muted-foreground md:col-span-2">
+              SMTP password is stored in the secure provider vault. It is never shown in the
+              browser.
+            </p>
+          ) : null}
           <Field label="From Name" field="smtpFromName" placeholder="Your Shop Name" />
           <Field
             label="From Email"
@@ -277,6 +290,21 @@ function BranchSettingsPage() {
         onClick={async () => {
           const bs2 = s.getBranchSettings(activeBranchId);
           try {
+            if (smtpPasswordDraft.trim()) {
+              const { error } = await supabase.functions.invoke("save-provider-secret", {
+                body: {
+                  branchId: activeBranchId,
+                  providerType: "email_smtp",
+                  secretData: {
+                    password: smtpPasswordDraft.trim(),
+                    username: bs2.smtpUser ?? "",
+                  },
+                },
+              });
+              if (error) throw new Error(error.message);
+              s.setBranchSettings(activeBranchId, { smtpPasswordConfigured: true });
+              setSmtpPasswordDraft("");
+            }
             await saveBranchSettings(bs2);
             toast.success(`Branch settings saved for ${branch?.name ?? activeBranchId}`);
           } catch (error) {

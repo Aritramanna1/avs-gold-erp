@@ -9,8 +9,10 @@
  * the caller's JWT to find their karigar record by phone/email.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { guardRoute } from "@/lib/permissions";
 import { useEffect, useState, type FormEvent } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { fetchMyPortalContext } from "@/lib/portal/portal-context-service";
 import {
   Hammer,
   Loader2,
@@ -22,10 +24,13 @@ import {
   LogOut,
   PackageCheck,
   Send,
+  CheckCircle2,
 } from "lucide-react";
 import { formatDateMedium as fmtDate } from "@/lib/format-date";
+import { Logo } from "@/components/ui/Logo";
 
 export const Route = createFileRoute("/karigar-portal")({
+  beforeLoad: ({ location }) => guardRoute(location.pathname),
   head: () => ({
     meta: [{ title: "Karigar Portal · AVS Gold ERP" }],
   }),
@@ -145,22 +150,24 @@ function StatCard({
   label: string;
   value: string;
   sub?: string;
-  accent?: "emerald" | "rose" | "amber";
+  accent?: "emerald" | "rose" | "gold";
 }) {
   const colors = {
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    rose: "bg-rose-50 text-rose-700 border-rose-200",
-    amber: "bg-amber-50 text-amber-800 border-amber-200",
+    emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+    rose: "bg-red-500/10 text-red-400 border-red-500/30",
+    gold: "bg-gold/10 text-gold border-gold/30",
   };
-  const cls = accent ? colors[accent] : "bg-gray-50 text-gray-700 border-gray-200";
+  const cls = accent ? colors[accent] : "bg-card text-foreground border-border";
   return (
-    <div className={`rounded-xl border p-4 ${cls}`}>
+    <div className={`rounded-md border p-4 shadow-xs ${cls}`}>
       <div className="flex items-center gap-2 mb-2">
         <Icon className="h-4 w-4 shrink-0" />
-        <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
       </div>
       <div className="text-2xl font-bold font-mono leading-tight">{value}</div>
-      {sub && <div className="text-xs mt-0.5 opacity-70">{sub}</div>}
+      {sub && <div className="text-xs mt-0.5 text-muted-foreground">{sub}</div>}
     </div>
   );
 }
@@ -203,6 +210,13 @@ function KarigarPortal() {
       }
 
       // Fetch karigar data via RPC
+      const portalCtx = await fetchMyPortalContext("karigar");
+      if (!active) return;
+      if (!portalCtx) {
+        setError("Your karigar portal identity is not linked. Please contact your firm.");
+        return;
+      }
+
       const { data: result, error: rpcError } = await (supabase as any).rpc("get_karigar_portal");
       if (!active) return;
       if (rpcError) {
@@ -358,10 +372,10 @@ function KarigarPortal() {
   // ── Loading ──
   if (!data && !error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-orange-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
-          <Loader2 className="h-8 w-8 animate-spin text-orange-600 mx-auto" />
-          <p className="text-sm text-orange-700">Loading your portal…</p>
+          <Loader2 className="h-8 w-8 animate-spin text-gold mx-auto" />
+          <p className="text-sm text-muted-foreground">Loading your portal…</p>
         </div>
       </div>
     );
@@ -370,22 +384,22 @@ function KarigarPortal() {
   // ── Error ──
   if (error || !data?.found) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-orange-50 px-4">
-        <div className="max-w-sm w-full bg-white rounded-2xl border border-orange-200 shadow p-8 text-center space-y-4">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="max-w-sm w-full bg-card rounded-md border border-border shadow-xs p-8 text-center space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-gold/10 text-gold border border-gold/20">
             <Hammer className="h-6 w-6" />
           </div>
-          <h2 className="text-lg font-semibold text-gray-900">Profile Not Found</h2>
-          <p className="text-sm text-gray-500">
+          <h2 className="text-lg font-semibold text-foreground">Profile Not Found</h2>
+          <p className="text-sm text-muted-foreground">
             {error ?? data?.message ?? "Your karigar profile is not linked to this account yet."}
           </p>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-muted-foreground">
             Please ask your firm administrator to link your email address.
           </p>
           <button
             type="button"
             onClick={handleSignOut}
-            className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50"
+            className="w-full rounded-md border border-border px-4 py-2 text-sm hover:bg-muted cursor-pointer transition-colors"
           >
             Sign Out
           </button>
@@ -397,23 +411,25 @@ function KarigarPortal() {
   const bal = data.goldBalance;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Top bar */}
-      <header className="bg-white border-b border-orange-100 shadow-sm">
-        <div className="mx-auto max-w-3xl px-4 py-4 flex items-center justify-between gap-4">
+      <header className="bg-card border-b border-border shadow-xs sticky top-0 z-40">
+        <div className="mx-auto max-w-3xl px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-600 text-white">
-              <Hammer className="h-5 w-5" />
-            </div>
+            <Logo className="h-7" />
+            <div className="h-4 w-px bg-border hidden sm:block" />
             <div>
-              <div className="text-sm font-bold text-orange-900">Karigar Portal</div>
-              <div className="text-xs text-gray-500">{data.profile.name}</div>
+              <div className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <Hammer className="h-4 w-4 text-gold" />
+                Karigar Workbench
+              </div>
+              <div className="text-xs text-muted-foreground">{data.profile.name}</div>
             </div>
           </div>
           <button
             type="button"
             onClick={handleSignOut}
-            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-gold transition-colors cursor-pointer"
           >
             <LogOut className="h-3.5 w-3.5" />
             Sign out
@@ -424,7 +440,7 @@ function KarigarPortal() {
       <main className="mx-auto max-w-3xl px-4 py-6 space-y-6">
         {/* Gold balance summary */}
         <section>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+          <h2 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
             Gold Balance Summary
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -445,21 +461,21 @@ function KarigarPortal() {
               label="Balance Held by You"
               value={mg(bal.balanceMg)}
               sub="approx — settlement at delivery"
-              accent="amber"
+              accent="gold"
             />
           </div>
         </section>
 
         {/* Tab navigation */}
-        {/* Mobile View: Select Dropdown to keep layout clean */}
+        {/* Mobile View */}
         <div className="block sm:hidden mb-4">
           <select
             value={tab}
             onChange={(e) => setTab(e.target.value as any)}
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm font-semibold shadow-xs focus:outline-none focus:ring-1 focus:ring-gold text-foreground"
           >
             <option value="gold">Gold Ledger Summary</option>
-            <option value="jobs">Your Active Bench Jobs</option>
+            <option value="jobs">Your Active Bench Jobs ({jobCards.length})</option>
             <option value="qc">QC Rejections</option>
             <option value="return">Submit Completed Work &amp; Scrap</option>
             <option value="wages">Wages &amp; Payments Ledger</option>
@@ -468,22 +484,22 @@ function KarigarPortal() {
         </div>
 
         {/* Desktop View: Full horizontal tabs triggers bar */}
-        <div className="hidden sm:flex gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm">
+        <div className="hidden sm:flex gap-1 bg-card rounded-md border border-border p-1 shadow-xs">
           {(["gold", "jobs", "qc", "return", "wages", "attendance"] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className={`flex-1 rounded-lg py-2 text-xs font-semibold capitalize transition-colors ${
+              className={`flex-1 rounded-md py-2 text-xs font-semibold capitalize transition-all cursor-pointer ${
                 tab === t
-                  ? "bg-orange-600 text-white shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-gold text-black shadow-xs font-bold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
               {t === "gold"
                 ? "Gold Ledger"
                 : t === "jobs"
-                  ? "Active Jobs"
+                  ? `Active Jobs (${jobCards.length})`
                   : t === "qc"
                     ? "QC Rejected"
                     : t === "return"
@@ -497,28 +513,35 @@ function KarigarPortal() {
 
         {/* Tab: Gold Ledger */}
         {tab === "gold" && (
-          <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-800">Gold Ledger (Last 90 Days)</h3>
+          <section className="bg-card rounded-md border border-border shadow-xs overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground font-serif">
+                Gold Ledger (Last 90 Days)
+              </h3>
+              <span className="text-[10px] font-mono text-muted-foreground uppercase">
+                Fine Gold Records
+              </span>
             </div>
             {data.goldEntries.length === 0 ? (
-              <div className="p-8 text-center text-sm text-gray-400">No entries found.</div>
+              <div className="p-8 text-center text-sm text-muted-foreground italic">
+                No entries found.
+              </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-border">
                 {data.goldEntries.map((e) => (
                   <div key={e.id} className="px-4 py-3 flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="text-sm font-medium text-gray-900 truncate">
+                      <div className="text-sm font-medium text-foreground truncate">
                         {e.narration || e.type}
                       </div>
-                      <div className="text-xs text-gray-500 mt-0.5">
+                      <div className="text-xs text-muted-foreground mt-0.5 font-mono">
                         {fmtDate(e.ts)}
                         {e.slipNo && ` · Slip: ${e.slipNo}`}
                       </div>
                     </div>
                     <div
                       className={`text-sm font-mono font-bold shrink-0 ${
-                        (e.netFineMg ?? 0) < 0 ? "text-rose-600" : "text-emerald-600"
+                        (e.netFineMg ?? 0) < 0 ? "text-red-400" : "text-emerald-400"
                       }`}
                     >
                       {(e.netFineMg ?? 0) < 0 ? "−" : "+"}
@@ -533,68 +556,72 @@ function KarigarPortal() {
 
         {/* Tab: Active Jobs */}
         {tab === "jobs" && (
-          <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
+          <section className="bg-card rounded-md border border-border shadow-xs overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-gray-800">Active Bench Jobs</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Jobs assigned to you by the firm.</p>
+                <h3 className="text-sm font-semibold text-foreground font-serif">
+                  Active Bench Jobs
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Jobs assigned to you by the firm.
+                </p>
               </div>
-              <span className="rounded-full bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700">
+              <span className="rounded-md bg-gold/10 border border-gold/30 px-2 py-0.5 text-xs font-semibold text-gold font-mono">
                 {jobCards.length}
               </span>
             </div>
             {loadingJobs ? (
               <div className="p-6 space-y-3">
                 {[0, 1, 2].map((item) => (
-                  <div key={item} className="h-20 animate-pulse rounded-lg bg-orange-50" />
+                  <div key={item} className="h-20 animate-pulse rounded-md bg-muted/40" />
                 ))}
               </div>
             ) : jobsError ? (
-              <div className="p-8 text-center text-sm text-rose-600">{jobsError}</div>
+              <div className="p-8 text-center text-sm text-red-400">{jobsError}</div>
             ) : jobCards.length === 0 ? (
-              <div className="p-8 text-center text-sm text-gray-400">
+              <div className="p-8 text-center text-sm text-muted-foreground italic">
                 No active jobs are assigned right now.
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-border">
                 {jobCards.map((job) => (
                   <div key={job.id} className="px-4 py-4 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-sm font-semibold text-gray-900">
+                        <div className="text-sm font-semibold text-foreground font-mono">
                           {job.jobNo || job.id}
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
+                        <div className="text-xs text-muted-foreground mt-0.5">
                           {job.itemName || "Manufacturing job"}
                           {job.customerName ? ` for ${job.customerName}` : ""}
                         </div>
                       </div>
-                      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold capitalize text-gray-600">
+                      <span className="shrink-0 rounded-md bg-muted border border-border px-2 py-0.5 text-xs font-semibold capitalize text-muted-foreground">
                         {job.status?.replace(/_/g, " ") || "active"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                      <div className="rounded-lg bg-gray-50 p-2">
-                        <div className="text-gray-400">Gross</div>
-                        <div className="font-mono font-semibold">
+                      <div className="rounded-md bg-muted/20 border border-border/50 p-2">
+                        <div className="text-[10px] text-muted-foreground uppercase">Gross</div>
+                        <div className="font-mono font-semibold text-foreground">
                           {job.grossMg != null ? mg(job.grossMg) : "-"}
                         </div>
                       </div>
-                      <div className="rounded-lg bg-gray-50 p-2">
-                        <div className="text-gray-400">Fine</div>
-                        <div className="font-mono font-semibold">
+                      <div className="rounded-md bg-muted/20 border border-border/50 p-2">
+                        <div className="text-[10px] text-muted-foreground uppercase">Fine</div>
+                        <div className="font-mono font-semibold text-foreground">
                           {job.fineMg != null ? mg(job.fineMg) : "-"}
                         </div>
                       </div>
-                      <div className="rounded-lg bg-gray-50 p-2">
-                        <div className="text-gray-400">Purity</div>
-                        <div className="font-mono font-semibold">
+                      <div className="rounded-md bg-muted/20 border border-border/50 p-2">
+                        <div className="text-[10px] text-muted-foreground uppercase">Purity</div>
+                        <div className="font-mono font-semibold text-foreground">
                           {job.purity != null ? job.purity : "-"}
                         </div>
                       </div>
-                      <div className="rounded-lg bg-gray-50 p-2">
-                        <div className="text-gray-400">Due</div>
-                        <div className="font-semibold">{fmtDate(job.dueDate)}</div>
+                      <div className="rounded-md bg-muted/20 border border-border/50 p-2">
+                        <div className="text-[10px] text-muted-foreground uppercase">Due</div>
+                        <div className="font-semibold text-foreground">{fmtDate(job.dueDate)}</div>
                       </div>
                     </div>
                     <button
@@ -603,9 +630,9 @@ function KarigarPortal() {
                         setSelectedJobId(job.id);
                         setTab("return");
                       }}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 sm:w-auto"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-gold px-4 py-2 text-xs font-semibold text-black shadow-xs hover:bg-gold-dark transition-colors sm:w-auto cursor-pointer"
                     >
-                      <PackageCheck className="h-4 w-4" />
+                      <PackageCheck className="h-3.5 w-3.5" />
                       Return work
                     </button>
                   </div>
@@ -617,75 +644,78 @@ function KarigarPortal() {
 
         {/* Tab: QC Rejections */}
         {tab === "qc" && (
-          <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <section className="bg-card rounded-md border border-border shadow-xs overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-gray-800">QC Rejected — Needs Rework</h3>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <h3 className="text-sm font-semibold text-foreground font-serif">
+                  QC Rejected — Needs Rework
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Jobs returned by QC. Review rejection notes and start rework.
                 </p>
               </div>
-              <span className="rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
+              <span className="rounded-md bg-red-500/10 border border-red-500/30 px-2 py-0.5 text-xs font-semibold text-red-400 font-mono">
                 {jobCards.filter((j) => j.status === "qc_rejected" && !reworkDone.has(j.id)).length}
               </span>
             </div>
             {loadingJobs ? (
               <div className="p-6 space-y-3">
                 {[0, 1].map((i) => (
-                  <div key={i} className="h-20 animate-pulse rounded-lg bg-red-50" />
+                  <div key={i} className="h-20 animate-pulse rounded-md bg-red-500/10" />
                 ))}
               </div>
             ) : jobCards.filter((j) => j.status === "qc_rejected").length === 0 ? (
               <div className="p-8 text-center space-y-2">
-                <div className="text-2xl">✅</div>
-                <div className="text-sm text-gray-400">
+                <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
+                <div className="text-sm text-muted-foreground">
                   No QC rejections. All jobs are in good standing.
                 </div>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-border">
                 {jobCards
                   .filter((j) => j.status === "qc_rejected")
                   .map((job) => (
                     <div key={job.id} className="px-4 py-4 space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="text-sm font-semibold text-gray-900">
+                          <div className="text-sm font-semibold text-foreground font-mono">
                             {job.jobNo || job.id}
                           </div>
-                          <div className="text-xs text-gray-500 mt-0.5">
+                          <div className="text-xs text-muted-foreground mt-0.5">
                             {job.itemName || "Manufacturing job"}
                             {job.customerName ? ` for ${job.customerName}` : ""}
                           </div>
                         </div>
-                        <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                        <span className="shrink-0 rounded-md bg-red-500/10 text-red-400 border border-red-500/30 px-2 py-0.5 text-xs font-semibold">
                           QC Rejected
                         </span>
                       </div>
-                      <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2">
-                        <div className="text-xs font-semibold text-red-700 mb-0.5">
+                      <div className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2">
+                        <div className="text-xs font-semibold text-red-400 mb-0.5 uppercase tracking-wide">
                           Rejection Reason
                         </div>
-                        <div className="text-xs text-red-600">
+                        <div className="text-xs text-red-300">
                           Please contact your supervisor for rejection details and rework
                           instructions.
                         </div>
                       </div>
                       {reworkDone.has(job.id) ? (
-                        <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs text-emerald-700 font-semibold">
-                          ✅ Rework acknowledged — supervisor notified.
+                        <div className="rounded-md bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Rework acknowledged — supervisor
+                          notified.
                         </div>
                       ) : (
                         <button
                           type="button"
                           disabled={reworkBusy === job.id}
                           onClick={() => void handleAcknowledgeRework(job.id)}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-orange-300 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-60"
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-gold/40 bg-gold/10 px-4 py-2 text-xs font-semibold text-gold hover:bg-gold/20 disabled:opacity-60 transition-colors cursor-pointer"
                         >
                           {reworkBusy === job.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : (
-                            <PackageCheck className="h-4 w-4" />
+                            <PackageCheck className="h-3.5 w-3.5" />
                           )}
                           Acknowledge &amp; Start Rework
                         </button>
@@ -699,12 +729,12 @@ function KarigarPortal() {
 
         {/* Tab: Work Return */}
         {tab === "return" && (
-          <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-800">
+          <section className="bg-card rounded-md border border-border shadow-xs overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground font-serif">
                 Submit Completed Work &amp; Scrap
               </h3>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Send finished work, scrap, and filings to the firm for review.
               </p>
             </div>
@@ -712,7 +742,7 @@ function KarigarPortal() {
               <div>
                 <label
                   htmlFor="return-job"
-                  className="block text-xs font-semibold text-gray-600 mb-1"
+                  className="block text-xs font-semibold text-muted-foreground uppercase mb-1"
                 >
                   Job
                 </label>
@@ -721,7 +751,7 @@ function KarigarPortal() {
                   value={selectedJobId}
                   onChange={(e) => setSelectedJobId(e.target.value)}
                   disabled={loadingJobs || jobCards.length === 0}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold disabled:bg-muted"
                 >
                   {jobCards.length === 0 ? (
                     <option value="">No active jobs</option>
@@ -739,7 +769,7 @@ function KarigarPortal() {
                 <div>
                   <label
                     htmlFor="finished-gross"
-                    className="block text-xs font-semibold text-gray-600 mb-1"
+                    className="block text-xs font-semibold text-muted-foreground uppercase mb-1"
                   >
                     Finished gross (g)
                   </label>
@@ -751,13 +781,13 @@ function KarigarPortal() {
                     type="number"
                     min="0"
                     step="0.001"
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="scrap-gross"
-                    className="block text-xs font-semibold text-gray-600 mb-1"
+                    className="block text-xs font-semibold text-muted-foreground uppercase mb-1"
                   >
                     Scrap (g)
                   </label>
@@ -769,13 +799,13 @@ function KarigarPortal() {
                     type="number"
                     min="0"
                     step="0.001"
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="filings-gross"
-                    className="block text-xs font-semibold text-gray-600 mb-1"
+                    className="block text-xs font-semibold text-muted-foreground uppercase mb-1"
                   >
                     Filings (g)
                   </label>
@@ -787,14 +817,14 @@ function KarigarPortal() {
                     type="number"
                     min="0"
                     step="0.001"
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold"
                   />
                 </div>
               </div>
               <div>
                 <label
                   htmlFor="return-notes"
-                  className="block text-xs font-semibold text-gray-600 mb-1"
+                  className="block text-xs font-semibold text-muted-foreground uppercase mb-1"
                 >
                   Notes
                 </label>
@@ -803,28 +833,28 @@ function KarigarPortal() {
                   value={returnNotes}
                   onChange={(e) => setReturnNotes(e.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold placeholder:text-muted-foreground"
                 />
               </div>
               {submitError && (
-                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
                   {submitError}
                 </div>
               )}
               {submitSuccess && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
                   Work return submitted. The firm can review it in Supabase-backed records.
                 </div>
               )}
               <button
                 type="submit"
                 disabled={submitBusy || jobCards.length === 0}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-gold px-4 py-2.5 text-xs font-semibold text-black shadow-xs hover:bg-gold-dark disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto transition-colors cursor-pointer"
               >
                 {submitBusy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3.5 w-3.5" />
                 )}
                 Submit return
               </button>
@@ -834,29 +864,35 @@ function KarigarPortal() {
 
         {/* Tab: Wages */}
         {tab === "wages" && (
-          <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-800">
+          <section className="bg-card rounded-md border border-border shadow-xs overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground font-serif">
                 Wages &amp; Payments (Last 90 Days)
               </h3>
             </div>
             {data.wages.length === 0 ? (
-              <div className="p-8 text-center text-sm text-gray-400">No wage records found.</div>
+              <div className="p-8 text-center text-sm text-muted-foreground italic">
+                No wage records found.
+              </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-border">
                 {data.wages.map((w) => (
                   <div key={w.id} className="px-4 py-3 flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="text-sm font-medium text-gray-900 capitalize">
+                      <div className="text-sm font-medium text-foreground capitalize">
                         {w.kind.replace(/_/g, " ")}
                       </div>
                       {w.notes && (
-                        <div className="text-xs text-gray-500 mt-0.5 truncate">{w.notes}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                          {w.notes}
+                        </div>
                       )}
-                      <div className="text-xs text-gray-400">{fmtDate(w.ts)}</div>
+                      <div className="text-xs text-muted-foreground/70 font-mono">
+                        {fmtDate(w.ts)}
+                      </div>
                     </div>
-                    <div className="text-sm font-mono font-bold text-gray-900 shrink-0">
-                      <Coins className="h-3.5 w-3.5 inline-block mr-1 text-amber-600" />
+                    <div className="text-sm font-mono font-bold text-gold shrink-0">
+                      <Coins className="h-3.5 w-3.5 inline-block mr-1 text-gold" />
                       {rs(w.amount ?? 0)}
                     </div>
                   </div>
@@ -868,38 +904,40 @@ function KarigarPortal() {
 
         {/* Tab: Attendance */}
         {tab === "attendance" && (
-          <section className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-800">Attendance (Last 30 Days)</h3>
+          <section className="bg-card rounded-md border border-border shadow-xs overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground font-serif">
+                Attendance (Last 30 Days)
+              </h3>
             </div>
             {data.attendance.length === 0 ? (
-              <div className="p-8 text-center text-sm text-gray-400">
+              <div className="p-8 text-center text-sm text-muted-foreground italic">
                 No attendance records found.
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-border">
                 {data.attendance.map((a, i) => (
                   <div key={i} className="px-4 py-3 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <CalendarDays className="h-4 w-4 text-gray-400 shrink-0" />
+                      <CalendarDays className="h-4 w-4 text-gold shrink-0" />
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{fmtDate(a.date)}</div>
+                        <div className="text-sm font-medium text-foreground">{fmtDate(a.date)}</div>
                         {(a.inTime || a.outTime) && (
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-muted-foreground font-mono">
                             {a.inTime || "—"} → {a.outTime || "—"}
                           </div>
                         )}
                       </div>
                     </div>
                     <span
-                      className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${
                         a.status === "present"
-                          ? "bg-emerald-100 text-emerald-700"
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
                           : a.status === "absent"
-                            ? "bg-rose-100 text-rose-700"
+                            ? "bg-red-500/10 text-red-400 border-red-500/30"
                             : a.status === "half_day"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-gray-100 text-gray-500"
+                              ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                              : "bg-muted text-muted-foreground border-border"
                       }`}
                     >
                       {a.status?.replace(/_/g, " ") ?? "—"}
@@ -912,8 +950,8 @@ function KarigarPortal() {
         )}
 
         {/* Footer */}
-        <footer className="text-center text-xs text-gray-400 pb-4">
-          Powered by <span className="font-semibold text-orange-700">AVS Gold ERP</span>
+        <footer className="text-center text-xs text-muted-foreground pb-4">
+          Powered by <span className="font-semibold text-gold">AVS Gold ERP</span>
           {" - "}Work returns are submitted to your firm for review.
         </footer>
       </main>

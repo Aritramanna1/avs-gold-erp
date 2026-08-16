@@ -136,7 +136,7 @@ export function PrintLayout({
   recordId,
   createdAt,
   size: declaredSize = "a4",
-  showQR = true,
+  showQR = false,
   qrLabel = "Verify",
   qrPosition = "header",
   footerLine,
@@ -262,7 +262,15 @@ export function PrintLayout({
             print-color-adjust: exact !important;
             font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
           }
-          .no-print, [data-testid="print-toolbar"], header, footer, nav, aside {
+          .no-print, [data-testid="print-toolbar"] {
+            display: none !important;
+          }
+          /* App chrome only — never the document's own semantic header/footer,
+             which is what these selectors would hit inside the print window. */
+          header:not(#${rootId} *),
+          footer:not(#${rootId} *),
+          nav:not(#${rootId} *),
+          aside:not(#${rootId} *) {
             display: none !important;
           }
           /* The on-screen sheet is sized in mm so the preview is physically

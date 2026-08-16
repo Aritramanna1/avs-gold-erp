@@ -10,17 +10,16 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const SESSION_STORAGE_KEY = "mtj-app-theme";
+const THEME_STORAGE_KEY = "mtj-app-theme";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
-      const stored = window.sessionStorage.getItem(SESSION_STORAGE_KEY) as Theme | null;
+      const stored = window.localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
       if (stored === "light" || stored === "dark" || stored === "system") {
         return stored;
       }
     }
-    // Default theme must be "light" according to the instructions
     return "light";
   });
 
@@ -75,7 +74,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     if (typeof window !== "undefined") {
-      window.sessionStorage.setItem(SESSION_STORAGE_KEY, newTheme);
+      window.localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+      import("@/lib/startup-preferences").then((m) =>
+        m.patchStartupPreferences({ theme: newTheme }),
+      );
     }
   };
 

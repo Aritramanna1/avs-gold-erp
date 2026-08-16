@@ -4,6 +4,7 @@
  * Falls back gracefully to browser window.print() when WebUSB is unavailable.
  */
 import { useSettings } from "./settings-store";
+import { printDocument } from "./print-document";
 
 declare global {
   type USBDevice = any;
@@ -94,7 +95,7 @@ class ThermalPrinterService {
   async sendRaw(data: Uint8Array): Promise<boolean> {
     if (!this.device || !this.endpoint) {
       console.warn("[ThermalPrinter] Not connected, falling back to browser print");
-      window.print();
+      void printDocument("Thermal Receipt", "Receipt");
       return false;
     }
     try {
@@ -135,7 +136,7 @@ class ThermalPrinterService {
 
   /** Fallback to browser print if no physical printer */
   printViaBrowser(): void {
-    window.print();
+    void printDocument("Thermal Receipt", "Receipt");
   }
 
   /**

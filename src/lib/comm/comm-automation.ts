@@ -1,37 +1,28 @@
 /**
- * Event-Driven Communication Automation (Plan 1 Step 9).
- *
- * The single entry point every business-event trigger calls into —
- * `emitBusinessEvent()`. It never sends anything itself; it only decides
- * WHETHER to send (per useAutomationSettings' per-event toggle) and on
- * WHICH channels, then delegates the actual send to commService.send() so
- * every automated message goes through the exact same provider-fallback +
- * retry-queue + logging path as a manually-triggered one.
- *
- * Business modules should call ONLY this function (or, for a manual
- * override, commService.send() directly) — never construct a CommRequest
- * and reach into a specific provider themselves.
+ * Event-Driven Communication Automation — routes through AVS Communication Platform.
  */
-import { commService } from "./service";
+import { dispatchCommunicationEvent } from "./platform/avs-communication-platform";
+import type { CommunicationEventKey, CommunicationChannel } from "./platform/communication-events";
+import { fetchNotificationPreferences } from "./platform/notification-preferences-store";
 import { useAutomationSettings, type AutomationEventKey } from "./automation-settings-store";
-import type { CommChannel, CommRequest, MessageTemplate } from "./types";
+import type { CommRequest } from "./types";
 
-const EVENT_TEMPLATE: Record<AutomationEventKey, MessageTemplate> = {
-  invoice_created: "invoice",
-  invoice_paid: "receipt",
-  payment_received: "receipt",
-  payment_reminder: "payment_reminder",
-  order_confirmation: "order_confirmation",
-  order_ready: "order_ready",
-  order_delivered: "order_delivered",
-  manufacturing_update: "manufacturing_bill",
-  repair_update: "repair_ready",
-  gold_settlement_reminder: "gold_settlement_reminder",
-  outstanding_reminder: "payment_reminder",
-  daily_summary: "business_report",
-  weekly_business_report: "business_report",
-  monthly_business_report: "business_report",
-  monthly_ledger_statement: "business_report",
+const EVENT_MAP: Partial<Record<AutomationEventKey, CommunicationEventKey>> = {
+  invoice_created: "invoice.ready",
+  invoice_paid: "payment.received",
+  payment_received: "payment.received",
+  payment_reminder: "payment.due",
+  order_confirmation: "order.created",
+  order_ready: "order.ready",
+  order_delivered: "order.ready",
+  manufacturing_update: "document.ready",
+  repair_update: "order.ready",
+  gold_settlement_reminder: "payment.due",
+  outstanding_reminder: "payment.due",
+  daily_summary: "report.daily",
+  weekly_business_report: "report.weekly",
+  monthly_business_report: "report.monthly",
+  monthly_ledger_statement: "report.monthly",
 };
 
 export interface BusinessEventInput {
@@ -42,39 +33,56 @@ export interface BusinessEventInput {
   variables?: Record<string, string | number>;
 }
 
-/**
- * Evaluates automation rules for `eventKey` and fires commService.send() for
- * every enabled channel. Never throws — a communication failure must never
- * block or roll back the business action that triggered it (invoice
- * creation succeeds whether or not the WhatsApp send does); errors are
- * caught, logged, and — via commService's own queue — retried in the
- * background.
- */
 export async function emitBusinessEvent(
   eventKey: AutomationEventKey,
   input: BusinessEventInput,
 ): Promise<void> {
   const settings = useAutomationSettings.getState();
-  if (!settings.isEnabled(eventKey)) return;
+  const platformEvent = EVENT_MAP[eventKey];
+  if (!platformEvent) {
+    console.warn(`[CommAutomation] No platform mapping for ${eventKey}`);
+    return;
+  }
 
-  const channels = settings.channelsFor(eventKey);
-  const template = EVENT_TEMPLATE[eventKey];
+  const prefs = await fetchNotificationPreferences({ branchId: input.branchId });
+  const pref = prefs.find((p) => p.eventKey === platformEvent);
+  const legacyEnabled = settings.isEnabled(eventKey);
+  const enabled = pref ? pref.enabled : legacyEnabled;
+  if (!enabled) return;
 
-  await Promise.all(
-    channels.map(async (channel: CommChannel) => {
-      try {
-        await commService.send({
-          channel,
-          template,
-          branchId: input.branchId,
-          recipient: input.recipient,
-          linkedId: input.linkedId,
-          linkedType: input.linkedType,
-          variables: input.variables,
-        });
-      } catch (err) {
-        console.error(`[CommAutomation] emitBusinessEvent(${eventKey}, ${channel}) failed:`, err);
-      }
-    }),
-  );
+  const channels: CommunicationChannel[] = pref
+    ? pref.channels
+    : (settings.channelsFor(eventKey) as CommunicationChannel[]);
+  if (channels.length === 0) return;
+
+  const rule = settings.rules.find((r) => r.eventKey === eventKey);
+  const emailFallback =
+    rule?.emailFallbackOnWhatsAppFailure ??
+    settings.rules.find((r) => r.eventKey === eventKey)?.emailFallbackOnWhatsAppFailure ??
+    true;
+
+  try {
+    await dispatchCommunicationEvent({
+      eventKey: platformEvent,
+      branchId: input.branchId,
+      recipient: input.recipient,
+      channels,
+      referenceType: input.linkedType,
+      referenceId: input.linkedId,
+      emailFallbackOnWhatsAppFailure: emailFallback !== false,
+      payload: {
+        ...Object.fromEntries(
+          Object.entries(input.variables ?? {}).map(([k, v]) => [k, String(v)]),
+        ),
+        document_number: String(
+          input.variables?.invoiceNo ?? input.variables?.documentNumber ?? input.linkedId,
+        ),
+        amount: String(input.variables?.amount ?? input.variables?.reportBody ?? ""),
+        body: String(input.variables?.reportBody ?? ""),
+        title: String(input.variables?.reportTitle ?? eventKey),
+      },
+    });
+  } catch (err) {
+    console.error(`[CommAutomation] emitBusinessEvent(${eventKey}) failed:`, err);
+  }
 }

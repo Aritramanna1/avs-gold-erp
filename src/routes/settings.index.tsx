@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch, useNavigate } from "@tanstack/react-router";
 import { guardRoute } from "@/lib/permissions";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { useDraft } from "@/lib/drafts-store";
@@ -35,6 +35,7 @@ import {
   exportPilotData,
   importPilotData,
   clearBrowserSessionResidue,
+  flushSettingsPersistence,
   PILOT_STORAGE_KEYS,
   type DropdownKey,
   type PrinterProfile,
@@ -47,6 +48,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useModuleStore, ERP_MODULES, type ERPModuleKey } from "@/lib/module-store";
 import { hardwareService } from "@/lib/hardware-service";
 import { CashDrawerButton } from "@/components/hardware/CashDrawerButton";
+import { HardwareDevicesRegistry } from "@/components/hardware/HardwareDevicesRegistry";
 import {
   Trash2,
   Plus,
@@ -65,6 +67,19 @@ import {
   Check,
   Eye,
   EyeOff,
+  Sliders,
+  KeyRound,
+  MessageSquare,
+  Printer,
+  Hammer,
+  UserCheck,
+  ShieldCheck,
+  FolderArchive,
+  Archive,
+  Lock,
+  LifeBuoy,
+  HardDriveDownload,
+  Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme, type Theme } from "@/contexts/ThemeContext";
@@ -76,6 +91,8 @@ import {
 import { updateFirmProfile } from "@/lib/supabase-services";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { getAuthRedirectUrl } from "@/lib/auth-redirect";
+import { FirmPortalInvitationsPanel } from "@/components/settings/FirmPortalInvitationsPanel";
+import { staffDepartments, staffRoleLabels, useStaffRoleTemplates } from "@/lib/staff-role-config";
 import { extractEdgeFunctionError } from "@/lib/edge-function-error";
 import { useDbStatus, getDbStatusLabel } from "@/lib/db-status";
 import { useRoles } from "@/lib/rbac";
@@ -88,8 +105,8 @@ import { useBullionRate } from "@/lib/bullion-rate-service";
 import { Route as WhatsAppIntegrationRoute } from "@/routes/settings.integrations.whatsapp";
 import { Route as WhatsAppSettingsRoute } from "@/routes/settings.whatsapp";
 import { Route as WaTemplatesRoute } from "@/routes/settings.whatsapp-templates";
-import { TerminologyManager } from "@/components/settings/TerminologyManager";
-import { MigrationWizard } from "@/components/migration/MigrationWizard";
+import { CustomizationDeepLink } from "@/components/settings/CustomizationDeepLink";
+import { CreditsTab } from "@/components/settings/CreditsTab";
 
 const SearchSchema = z.object({
   tab: z.string().optional(),
@@ -111,15 +128,20 @@ const WaTemplatesPage = WaTemplatesRoute.options.component as EmbeddedWhatsAppPa
 
 function SettingsPage() {
   const s = useSettings();
+  const navigate = useNavigate();
   const { tab, waSection } = useSearch({ from: "/settings/" });
   const [activeTab, setActiveTab] = useState(tab || "firm");
   const [isFactoryResetOpen, setIsFactoryResetOpen] = useState(false);
 
   useEffect(() => {
+    if (tab === "terminology") {
+      void navigate({ to: "/control/terminology", replace: true });
+      return;
+    }
     if (tab) {
       setActiveTab(tab);
     }
-  }, [tab]);
+  }, [tab, navigate]);
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
@@ -142,10 +164,10 @@ function SettingsPage() {
         <Link
           to="/settings"
           search={{ tab: "branding" }}
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            🔌
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <Sliders className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm">Brand Settings</div>
@@ -156,25 +178,25 @@ function SettingsPage() {
         </Link>
         <Link
           to="/settings/license"
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            🔑
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <KeyRound className="h-4 w-4" />
           </span>
           <div className="flex-1">
-            <div className="font-medium text-sm">License &amp; Activation</div>
+            <div className="font-medium text-sm">Subscription &amp; Billing</div>
             <div className="text-xs text-muted-foreground">
-              Online activation server, license key, and entitlement policies.
+              Plans, invoices, secure payments, receipts, and usage credits.
             </div>
           </div>
         </Link>
         <Link
           to="/settings"
           search={{ tab: "whatsapp", waSection: "business" }}
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            💬
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <MessageSquare className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm">WhatsApp Settings</div>
@@ -185,10 +207,10 @@ function SettingsPage() {
         </Link>
         <Link
           to="/settings/print-templates"
-          className="rounded-xl border border-border bg-gold/5 border-gold/20 hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-gold/5 border-gold/20 hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            🖨️
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <Printer className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm text-gold font-semibold">Printing Module</div>
@@ -199,10 +221,10 @@ function SettingsPage() {
         </Link>
         <Link
           to="/karigar-login"
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            🔨
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <Hammer className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Karigar Portal</div>
@@ -213,10 +235,10 @@ function SettingsPage() {
         </Link>
         <Link
           to="/customer-login"
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            👤
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <UserCheck className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Customer Portal</div>
@@ -227,10 +249,10 @@ function SettingsPage() {
         </Link>
         <Link
           to="/verify"
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            🛡️
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <ShieldCheck className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm">Security · Verify Receipt</div>
@@ -241,10 +263,10 @@ function SettingsPage() {
         </Link>
         <Link
           to="/settings/storage-diagnostics"
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            📂
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <FolderArchive className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Storage &amp; File Diagnostics</div>
@@ -255,10 +277,10 @@ function SettingsPage() {
         </Link>
         <Link
           to="/settings/document-vault"
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            🗄️
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <Archive className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Document Vault</div>
@@ -269,10 +291,10 @@ function SettingsPage() {
         </Link>
         <Link
           to="/settings/security-center"
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            🔐
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <Lock className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Security Center</div>
@@ -283,10 +305,10 @@ function SettingsPage() {
         </Link>
         <Link
           to="/settings/support"
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            🛟
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <LifeBuoy className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Support</div>
@@ -297,10 +319,10 @@ function SettingsPage() {
         </Link>
         <Link
           to="/settings/backup-recovery"
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            💾
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <HardDriveDownload className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Backup &amp; Disaster Recovery</div>
@@ -311,10 +333,10 @@ function SettingsPage() {
         </Link>
         <Link
           to="/communications"
-          className="rounded-xl border border-border bg-gold/5 border-gold/20 hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-gold/5 border-gold/20 hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            ✉️
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <Mail className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm text-gold font-semibold">Communications Hub</div>
@@ -325,10 +347,10 @@ function SettingsPage() {
         </Link>
         <Link
           to="/settings/automation"
-          className="rounded-xl border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
+          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
         >
-          <span className="h-9 w-9 rounded-full bg-gold/15 grid place-items-center text-gold">
-            🔔
+          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
+            <Bell className="h-4 w-4" />
           </span>
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Communication Automation</div>
@@ -344,7 +366,7 @@ function SettingsPage() {
         {/* Mobile View: Select Dropdown to keep layout clean */}
         <div className="block md:hidden mb-4">
           <Select value={activeTab} onValueChange={setActiveTab}>
-            <SelectTrigger className="w-full bg-white border border-border rounded-xl px-4 py-3 text-sm font-semibold shadow-sm focus:ring-2 focus:ring-gold focus:ring-offset-1 focus:border-transparent">
+            <SelectTrigger className="w-full bg-white border border-border rounded-md px-4 py-3 text-sm font-semibold shadow-sm focus:ring-2 focus:ring-gold focus:ring-offset-1 focus:border-transparent">
               <SelectValue placeholder="Select settings section" />
             </SelectTrigger>
             <SelectContent>
@@ -363,20 +385,12 @@ function SettingsPage() {
               {useModuleStore.getState().isModuleEnabled("gst") && (
                 <SelectItem value="gst">GST Registration</SelectItem>
               )}
-              <SelectItem value="purity">Purity &amp; Fineness</SelectItem>
-              <SelectItem value="workshop">Workshop Processes</SelectItem>
-              <SelectItem value="rate">Bullion Gold Rates</SelectItem>
-              <SelectItem value="making">Making &amp; Labour rules</SelectItem>
               <SelectItem value="hardware">Hardware Scales</SelectItem>
-              <SelectItem value="catalog">Catalog Settings</SelectItem>
-              <SelectItem value="dropdowns">Custom Dropdowns</SelectItem>
               <SelectItem value="language">Language Preference</SelectItem>
-              <SelectItem value="terminology">Trade Terminology (42 Terms)</SelectItem>
-              <SelectItem value="migration">13-Stage Migration</SelectItem>
+              <SelectItem value="credits">Credits &amp; Usage Wallet</SelectItem>
               <SelectItem value="modules">Modules Manager</SelectItem>
               <SelectItem value="email">Email &amp; SMTP</SelectItem>
               <SelectItem value="backup">Data Backup &amp; Sync</SelectItem>
-              <SelectItem value="db">Database Administration</SelectItem>
               <SelectItem value="about">About ERP</SelectItem>
             </SelectContent>
           </Select>
@@ -399,20 +413,12 @@ function SettingsPage() {
           {useModuleStore.getState().isModuleEnabled("gst") && (
             <TabsTrigger value="gst">GST</TabsTrigger>
           )}
-          <TabsTrigger value="purity">Purity</TabsTrigger>
-          <TabsTrigger value="workshop">Workshop Processes</TabsTrigger>
-          <TabsTrigger value="rate">Rates</TabsTrigger>
-          <TabsTrigger value="making">Making</TabsTrigger>
           <TabsTrigger value="hardware">Hardware</TabsTrigger>
-          <TabsTrigger value="catalog">Catalog</TabsTrigger>
-          <TabsTrigger value="dropdowns">Dropdowns</TabsTrigger>
           <TabsTrigger value="language">Language</TabsTrigger>
-          <TabsTrigger value="terminology">Terminology</TabsTrigger>
-          <TabsTrigger value="migration">Migration Wizard</TabsTrigger>
+          <TabsTrigger value="credits">Credits Wallet</TabsTrigger>
           <TabsTrigger value="modules">Modules Manager</TabsTrigger>
           <TabsTrigger value="email">Email &amp; SMTP</TabsTrigger>
           <TabsTrigger value="backup">Backup</TabsTrigger>
-          <TabsTrigger value="db">Database</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
         </TabsList>
 
@@ -432,13 +438,25 @@ function SettingsPage() {
           <AppearanceTab />
         </TabsContent>
         <TabsContent value="print">
-          <PrintTab />
+          <CustomizationDeepLink
+            title="Print & Stamp Configuration"
+            description="Company logo, authorized signature, stamp images, and print profiles."
+            tab="print"
+          />
         </TabsContent>
         <TabsContent value="printers">
-          <PrintersTab />
+          <CustomizationDeepLink
+            title="Printer Profiles"
+            description="Printer routing, margins, and device-specific print profiles."
+            tab="print"
+          />
         </TabsContent>
         <TabsContent value="templates">
-          <TemplatesTab />
+          <CustomizationDeepLink
+            title="Document Templates"
+            description="Invoice layouts, ledger formats, and document template designer."
+            tab="documents"
+          />
         </TabsContent>
         <TabsContent value="compliance">
           <ComplianceTab />
@@ -458,34 +476,67 @@ function SettingsPage() {
           </TabsContent>
         )}
         <TabsContent value="purity">
-          <PurityTab />
+          <CustomizationDeepLink
+            title="Purity & Fineness"
+            description="Configure purity grades, fineness rules, and hallmark mappings for your manufacturing books."
+            tab="purity"
+          />
         </TabsContent>
         <TabsContent value="workshop">
-          <WorkshopProcessTab />
+          <CustomizationDeepLink
+            title="Workshop Processes"
+            description="Define workshop stages, WIP rules, and manufacturing process definitions."
+            tab="workshop"
+          />
         </TabsContent>
         <TabsContent value="rate">
-          <RatesTab />
+          <CustomizationDeepLink
+            title="Rates & Bullion Rules"
+            description="Daily bhav, metal rate policies, and branch rate override rules."
+            tab="rates"
+          />
         </TabsContent>
         <TabsContent value="making">
-          <MakingTab />
+          <CustomizationDeepLink
+            title="Making & Labour Rules"
+            description="Making charge slabs, labour rules, and wastage policies."
+            tab="making"
+          />
         </TabsContent>
         <TabsContent value="hardware">
           <HardwareTab />
         </TabsContent>
         <TabsContent value="catalog">
-          <CatalogTab />
+          <CustomizationDeepLink
+            title="Catalog Settings"
+            description="Catalog categories, design attributes, and product classification."
+            tab="catalog"
+          />
         </TabsContent>
         <TabsContent value="dropdowns">
-          <DropdownsTab />
+          <CustomizationDeepLink
+            title="Custom Dropdowns & Fields"
+            description="Dropdown masters, custom fields, and business vocabulary aliases."
+            tab="dropdowns"
+          />
         </TabsContent>
         <TabsContent value="language">
           <LanguageTab />
         </TabsContent>
-        <TabsContent value="terminology">
-          <TerminologyManager />
+        <TabsContent value="credits">
+          <CreditsTab />
         </TabsContent>
         <TabsContent value="migration">
-          <MigrationWizard />
+          <Card className="p-6 space-y-4">
+            <h3 className="font-serif text-lg text-gold">Data Import & Migration</h3>
+            <p className="text-sm text-muted-foreground">
+              Historical data migration runs from the dedicated import area. After completion or
+              choosing Start Fresh, the onboarding prompt will not reappear on your dashboard.
+            </p>
+            <Button asChild className="bg-gold hover:bg-gold/90 text-black">
+              <Link to="/control/migration">Open Migration Tools</Link>
+            </Button>
+          </Card>
         </TabsContent>
         <TabsContent value="modules">
           <ModulesManagerTab />
@@ -497,7 +548,17 @@ function SettingsPage() {
           <BackupTab />
         </TabsContent>
         <TabsContent value="db">
-          <DbTab />
+          <Card className="p-6 space-y-3">
+            <h3 className="font-serif text-lg text-gold">Platform Administration</h3>
+            <p className="text-sm text-muted-foreground">
+              Database administration, provider secrets, and infrastructure controls are managed in
+              the Platform Owner console — not in tenant ERP Settings.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              For connection status and business integrations, use WhatsApp, Email, and Hardware
+              tabs above.
+            </p>
+          </Card>
         </TabsContent>
         <TabsContent value="about">
           <AboutTab />
@@ -582,7 +643,7 @@ function LogoUploader({ logoUrl, logoStoragePath, onLogoChange, onClearLogo }: L
   };
 
   return (
-    <div className="flex flex-col gap-3 p-4 border border-input rounded-xl bg-muted/20">
+    <div className="flex flex-col gap-3 p-4 border border-input rounded-md bg-muted/20">
       <div className="flex items-center gap-4">
         <div className="h-16 w-16 rounded-lg bg-card border border-border flex items-center justify-center overflow-hidden relative shadow-sm">
           {logoUrl ? (
@@ -1038,7 +1099,7 @@ function FirmTab() {
         </Field>
       </Card>
 
-      <div className="flex items-center gap-3 justify-end bg-card p-4 rounded-xl border border-border mt-1 shadow-sm">
+      <div className="flex items-center gap-3 justify-end bg-card p-4 rounded-md border border-border mt-1 shadow-sm">
         {isDirty && (
           <span className="text-xs text-amber-500 font-medium mr-auto flex items-center gap-1.5 animate-pulse">
             You have unsaved changes in profile settings
@@ -1133,7 +1194,7 @@ function AppearanceTab() {
                 setTheme(t.id);
                 toast.success(`Theme changed to ${t.name}`);
               }}
-              className={`flex flex-col text-left rounded-xl border p-4 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+              className={`flex flex-col text-left rounded-md border p-4 transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 ${
                 isActive
                   ? "border-primary bg-primary/5 shadow-sm"
                   : "border-border bg-background/40 hover:border-primary/40 hover:bg-background/80"
@@ -1179,7 +1240,7 @@ function AppearanceTab() {
       </div>
 
       {/* Print behaviors disclaimer */}
-      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex gap-3 text-sm text-foreground/90">
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-4 flex gap-3 text-sm text-foreground/90">
         <span className="text-gold select-none mt-0.5">ℹ️</span>
         <div className="space-y-1">
           <p className="font-medium">Automatic Print-to-Light Override</p>
@@ -1514,7 +1575,6 @@ import {
   ShieldAlert,
   CheckSquare,
   Square,
-  ShieldCheck,
   RefreshCw,
   Search,
   FileText,
@@ -1524,11 +1584,13 @@ import {
   Activity,
   Edit,
   Key,
-  Lock,
 } from "lucide-react";
 
 function UsersTab() {
   const { can, email: currentEmail, ready } = useCan();
+  const staffRoleTemplates = useStaffRoleTemplates();
+  const rolesAvailable = staffRoleLabels(staffRoleTemplates);
+  const departmentsAvailable = staffDepartments(staffRoleTemplates);
   const {
     users,
     invitations,
@@ -1547,7 +1609,7 @@ function UsersTab() {
   const [creationTab, setCreationTab] = useState<"invite" | "instant">("invite");
 
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("Manager");
+  const [inviteRole, setInviteRole] = useState(rolesAvailable[0] ?? "Branch Manager");
   const [inviteBranchId, setInviteBranchId] = useState("MAIN");
   const [inviteWorkshopId, setInviteWorkshopId] = useState("");
   const [inviteDept, setInviteDept] = useState("Management");
@@ -1559,7 +1621,7 @@ function UsersTab() {
   const [instantName, setInstantName] = useState("");
   const [instantEmail, setInstantEmail] = useState("");
   const [instantPhone, setInstantPhone] = useState("");
-  const [instantRole, setInstantRole] = useState("Counter Staff");
+  const [instantRole, setInstantRole] = useState(rolesAvailable[0] ?? "Retail Staff");
   const [instantBranchId, setInstantBranchId] = useState("MAIN");
   const [instantWorkshopId, setInstantWorkshopId] = useState("");
   const [instantDept, setInstantDept] = useState("Retail");
@@ -1601,28 +1663,6 @@ function UsersTab() {
       </Card>
     );
   }
-
-  const rolesAvailable = [
-    "Super Owner",
-    "CEO (View Only)",
-    "Branch Manager",
-    "Workshop Manager",
-    "Retail Staff",
-    "Manufacturing Staff",
-    "Accountant",
-    "Sales Executive",
-    "CRM Executive",
-    "Administrator",
-  ];
-
-  const departmentsAvailable = [
-    "Management",
-    "Retail Counter",
-    "Manufacturing / Workshop",
-    "Accounts & Finance",
-    "CRM & Communications",
-    "Administration",
-  ];
 
   function getDefaultPermissionsForRole(role: string): Record<string, boolean> {
     const perms: Record<string, boolean> = {};
@@ -1731,6 +1771,20 @@ function UsersTab() {
       invitedBy: currentEmail ?? undefined,
     };
 
+    // Persist invitation immediately — email delivery is best-effort and must
+    // never block the admin from getting the code/link (send-email can hang on
+    // staging when SMTP is not configured).
+    addInvitation(newInvite);
+    setGeneratedCode(code);
+    (window as any).__lastInviteLink = acceptLink;
+    setInviteEmail("");
+    addSecurityLog(
+      "user created",
+      `Invitation ${code} generated for ${emailToInvite} (${inviteRole}) — branch: ${branchName}`,
+      currentEmail || "System",
+    );
+    await flushSettingsPersistence();
+
     setIsSendingEmail(true);
     setEmailSuccess(null);
 
@@ -1795,20 +1849,9 @@ This invitation expires in 7 days.`,
     } finally {
       setIsSendingEmail(false);
     }
-
-    addInvitation(newInvite);
-    setGeneratedCode(code);
-    (window as any).__lastInviteLink = acceptLink;
-    setInviteEmail("");
-
-    addSecurityLog(
-      "user created",
-      `Invitation ${code} generated for ${emailToInvite} (${inviteRole}) — branch: ${branchName}`,
-      currentEmail || "System",
-    );
   };
 
-  const handleInstantCreateUser = (e: React.FormEvent) => {
+  const handleInstantCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     const emailToCreate = instantEmail.trim().toLowerCase();
     if (!instantName.trim() || !emailToCreate) return;
@@ -1818,35 +1861,61 @@ This invitation expires in 7 days.`,
       return;
     }
 
-    const newUser = {
-      id: `usr_${Date.now()}`,
-      name: instantName.trim(),
+    const code = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
+    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    const acceptLink = getAuthRedirectUrl(
+      `/invite/accept?code=${code}&email=${encodeURIComponent(emailToCreate)}`,
+    );
+    const firmName = firm?.shopName || "AVS ERP";
+
+    const newInvite: import("@/lib/settings-store").InvitationItem = {
+      id: `inv_${Date.now()}`,
       email: emailToCreate,
-      phone: instantPhone.trim(),
       role: instantRole,
+      code,
+      createdAt: Date.now(),
+      expiresAt,
+      status: "pending" as const,
       branchId: instantBranchId,
       workshopId: instantWorkshopId || undefined,
-      department: instantDept,
-      active: true,
-      createdAt: Date.now(),
-      permissions: getDefaultPermissionsForRole(instantRole),
-      landingDashboard: instantRole.includes("Workshop") ? "/workshop" : "/dashboard",
-      locked: false,
+      invitedBy: currentEmail ?? undefined,
     };
 
-    addUser(newUser);
-
+    addInvitation(newInvite);
+    setGeneratedCode(code);
+    (window as any).__lastInviteLink = acceptLink;
+    setCreationTab("invite");
+    setInviteEmail("");
     setInstantName("");
     setInstantEmail("");
     setInstantPhone("");
     setInstantWorkshopId("");
-    toast.success(
-      `Employee ${newUser.name} created instantly with default ${newUser.role} permissions!`,
-    );
+    await flushSettingsPersistence();
+
+    try {
+      const { sendGenericEmail } = await import("@/lib/email-service");
+      await sendGenericEmail({
+        to: emailToCreate,
+        subject: `[Invitation] Access Granted to ${firmName} ERP`,
+        htmlBody: `
+          <p>Hello ${instantName.trim()},</p>
+          <p>You have been invited to join <strong>${firmName}</strong> as <strong>${instantRole}</strong>.</p>
+          <p><a href="${acceptLink}">Accept invitation and create your account</a></p>
+          <p>Invitation code: <strong>${code}</strong></p>
+        `,
+      });
+      toast.success(
+        `Invitation sent to ${emailToCreate}. They must accept the link to create a Supabase account.`,
+      );
+    } catch {
+      toast.success(
+        `Invitation created for ${emailToCreate}. Copy the link below — email delivery is optional.`,
+      );
+    }
 
     addSecurityLog(
       "user created",
-      `Instantly created pre-activated user ${newUser.name} (${newUser.role}) assigned to branch ${instantBranchId}`,
+      `Staff invite ${code} for ${instantName.trim()} (${instantRole}) — account activates on acceptance`,
       currentEmail || "Superowner",
     );
   };
@@ -2076,6 +2145,11 @@ This invitation expires in 7 days.`,
             Add Staff Instantly (Pre-Activated)
           </button>
         </div>
+
+        <p className="text-[11px] text-muted-foreground mb-3 -mt-2">
+          All staff accounts are created when the invitee accepts the link (password or Google). No
+          local-only users are created without Supabase Auth.
+        </p>
 
         {creationTab === "invite" ? (
           <form onSubmit={handleGenerateInvite} className="grid md:grid-cols-6 gap-3 items-end">
@@ -2682,6 +2756,8 @@ This invitation expires in 7 days.`,
           </div>
         </Card>
       )}
+
+      <FirmPortalInvitationsPanel />
     </div>
   );
 }
@@ -3950,6 +4026,7 @@ function HardwareTab() {
 
   return (
     <Card className="p-6 mt-4 space-y-6">
+      <HardwareDevicesRegistry />
       <div>
         <h3 className="font-serif text-lg text-gold font-bold">Hardware Connectivity Hub</h3>
         <p className="text-xs text-muted-foreground">
@@ -3972,7 +4049,7 @@ function HardwareTab() {
         ).map((d) => (
           <div
             key={d.name}
-            className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2"
+            className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2"
           >
             <span className="text-sm font-medium">{d.name}</span>
             <span
@@ -4037,7 +4114,7 @@ function HardwareTab() {
           </Field>
 
           {/* Live Scanner Test */}
-          <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-2">
+          <div className="rounded-md border border-border/50 bg-muted/20 p-3.5 space-y-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Laser Scanner Live Signal Test
             </span>
@@ -4125,12 +4202,12 @@ function HardwareTab() {
           )}
 
           {/* Scale telemetry visualizer */}
-          <div className="rounded-xl border border-gold/30 bg-gold/5 p-4 space-y-2">
+          <div className="rounded-md border border-gold/30 bg-gold/5 p-4 space-y-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-gold">
               Scale Telemetry Diagnostics
             </span>
 
-            <div className="bg-black/90 p-4 rounded-xl border border-emerald-500/40 flex items-center justify-between font-mono">
+            <div className="bg-black/90 p-4 rounded-md border border-emerald-500/40 flex items-center justify-between font-mono">
               <div className="flex flex-col">
                 <span className="text-[9px] text-emerald-500/60 uppercase font-bold tracking-wider">
                   {currentReading
@@ -4424,7 +4501,7 @@ function LanguageTab() {
       </div>
       <div className="md:col-span-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {ALL_LANGUAGES.map((code) => (
-          <div key={code} className="rounded-xl border border-border bg-muted/20 p-3">
+          <div key={code} className="rounded-md border border-border bg-muted/20 p-3">
             <div className="font-medium">{LANGUAGE_INFO[code].native}</div>
             <div className="mt-1 text-xs text-muted-foreground">
               {LANGUAGE_INFO[code].coveragePct}% {t("settings.localizedCoverage")}
@@ -5202,7 +5279,7 @@ function BranchesTab() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl border border-gold/20 bg-gold/5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-md border border-gold/20 bg-gold/5">
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-gold uppercase tracking-wider">
             Gold Booking Mode
@@ -5271,7 +5348,7 @@ function BranchesTab() {
         {branches.map((b) => (
           <div
             key={b.id}
-            className="p-4 rounded-xl border border-border bg-slate-900/40 space-y-3 relative overflow-hidden"
+            className="p-4 rounded-md border border-border bg-slate-900/40 space-y-3 relative overflow-hidden"
             id={`branch-card-${b.id}`}
           >
             <div className="flex items-start justify-between gap-4">
@@ -5852,7 +5929,7 @@ function TemplatesTab() {
               <button
                 key={t.id}
                 onClick={() => setSelectedId(t.id)}
-                className={`px-3 py-2 text-left rounded-xl text-xs font-medium transition whitespace-nowrap lg:whitespace-normal border ${
+                className={`px-3 py-2 text-left rounded-md text-xs font-medium transition whitespace-nowrap lg:whitespace-normal border ${
                   t.id === selectedId
                     ? "bg-gold/10 border-gold/30 text-gold"
                     : "bg-card border-border hover:border-border/80 text-muted-foreground"
@@ -6452,7 +6529,7 @@ function FormsTab() {
                 </Label>
               </div>
 
-              <div className="space-y-2 p-3 bg-secondary/20 rounded-xl border border-border/40">
+              <div className="space-y-2 p-3 bg-secondary/20 rounded-md border border-border/40">
                 <h5 className="font-semibold text-muted-foreground text-[10px] uppercase">
                   Form Field Constructor
                 </h5>

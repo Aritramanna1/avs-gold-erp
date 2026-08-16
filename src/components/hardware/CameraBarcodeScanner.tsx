@@ -103,7 +103,7 @@ export function CameraBarcodeScanner({
   }, [onDetected]);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+    <div className="rounded-md border border-border bg-card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <Camera className="h-4 w-4 text-gold" /> Live Camera Scan

@@ -223,7 +223,7 @@ function MfgBillView() {
           document, so outstanding gold is never hidden behind a scroll or a
           print action. Gold is the primary accounting unit here; cash is a
           secondary/reference figure shown further down. ── */}
-      <div className="print:hidden rounded-2xl border-2 border-gold/40 bg-gold/5 p-4 md:p-5">
+      <div className="print:hidden rounded-md border-2 border-gold/40 bg-gold/5 p-4 md:p-5">
         <div className="text-[10px] uppercase tracking-wider font-bold text-gold mb-3">
           Gold Position — Primary Accounting Unit
         </div>
@@ -286,7 +286,7 @@ function MfgBillView() {
         bill.orderReturnedFineMg > 0 ||
         bill.outsideWorkIssuedFineMg > 0 ||
         bill.outsideWorkReturnedFineMg > 0) && (
-        <div className="print:hidden rounded-2xl border border-border bg-card p-4 md:p-5">
+        <div className="print:hidden rounded-md border border-border bg-card p-4 md:p-5">
           <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-3">
             Order-Level Gold (Auto-Collected)
           </div>
@@ -321,7 +321,7 @@ function MfgBillView() {
       )}
 
       {/* ── Final Position — Gold First, Cash Secondary (on-screen) ───────── */}
-      <div className="print:hidden rounded-2xl border border-border bg-card p-4 md:p-5">
+      <div className="print:hidden rounded-md border border-border bg-card p-4 md:p-5">
         <div className="text-[10px] uppercase tracking-wider font-bold text-gold mb-2">
           Final Gold Position
         </div>

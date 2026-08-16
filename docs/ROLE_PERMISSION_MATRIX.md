@@ -36,6 +36,16 @@ Ornexa enforces strict action-level, data-level, and branch-scoped security acro
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### 1.1 External Portal Data Boundaries
+
+External portal roles (`customer`, `karigar`, `supplier`) never receive tenant-wide ERP permissions. Authorization resolves through:
+
+1. `portal_identities` — authenticated user → single tenant + portal type
+2. `portal_party_links` — explicit party rows the user may access
+3. SECURITY DEFINER portal RPCs — all reads/writes scoped server-side
+
+> **Invariant:** A portal identity belongs to one authorized tenant context and one or more explicitly linked Party relationships. No portal request may escape that authorization boundary.
+
 ---
 
 ## 2. Action-Level RBAC Matrix

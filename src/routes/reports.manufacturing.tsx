@@ -249,7 +249,7 @@ function ManufacturingReport() {
           </div>
         )}
         {!loading && !error && rows.length === 0 && (
-          <div className="p-6 bg-card border border-border rounded-xl text-center text-muted-foreground text-xs">
+          <div className="p-6 bg-card border border-border rounded-md text-center text-muted-foreground text-xs">
             No manufacturing bills in this period.
           </div>
         )}
@@ -258,7 +258,7 @@ function ManufacturingReport() {
           rows.map((b) => (
             <div
               key={b.id}
-              className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+              className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
             >
               <div className="flex items-center justify-between">
                 <span className="font-mono text-gold font-semibold">{b.billNo}</span>

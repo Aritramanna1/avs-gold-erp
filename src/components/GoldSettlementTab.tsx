@@ -626,6 +626,19 @@ export function GoldSettlementTab() {
       }
 
       toast.success(`Government-traceable voucher ${voucherNo} stored successfully.`);
+      void import("@/lib/gold-lineage-emitter").then(({ emitGoldLineageEvent }) =>
+        emitGoldLineageEvent({
+          eventType: "settlement",
+          voucherRef: voucherNo,
+          fineGoldMg: Math.abs(
+            items.reduce((sum, it) => sum + Math.round((it.fineGrams ?? 0) * 1000), 0),
+          ),
+          fromLocation: partyType === "customer" ? resolvedPartyName : "Vault",
+          toLocation: partyType === "customer" ? "Vault" : resolvedPartyName,
+          partyName: resolvedPartyName,
+          notes: `Gold settlement voucher ${voucherNo}`,
+        }),
+      );
       setOpen(false);
       setItems([]);
       setNotes("");
@@ -665,18 +678,18 @@ export function GoldSettlementTab() {
             value={filterParty}
             onChange={(e) => setFilterParty(e.target.value)}
             placeholder="Search voucher, party, notes..."
-            className="pl-9 w-full rounded-xl bg-card border-border"
+            className="pl-9 w-full rounded-md bg-card border-border"
           />
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2 w-full sm:w-auto bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white font-medium shadow-md transition-all rounded-xl cursor-pointer">
+              <Button className="gap-2 w-full sm:w-auto bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white font-medium shadow-md transition-all rounded-md cursor-pointer">
                 <Plus className="h-4 w-4" /> Create Gold Payment Voucher
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto rounded-3xl border border-border bg-card p-6 shadow-2xl">
+            <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto rounded-md border border-border bg-card p-6 shadow-2xl">
               <DialogHeader>
                 <DialogTitle className="font-serif text-xl text-yellow-600 flex items-center gap-2">
                   <Coins className="h-6 w-6 text-gold animate-bounce" /> MTJ Gold Payment &
@@ -686,7 +699,7 @@ export function GoldSettlementTab() {
 
               <form onSubmit={handleVoucherSubmit} className="space-y-6 pt-2">
                 {/* Header Info */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-muted/40 p-4 rounded-2xl border border-border">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-muted/40 p-4 rounded-md border border-border">
                   <div>
                     <Label className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
                       Date
@@ -823,7 +836,7 @@ export function GoldSettlementTab() {
                 </div>
 
                 {linkUse === "invoice" && partyType === "customer" && (
-                  <div className="grid grid-cols-1 gap-4 border border-amber-500/20 pb-4 bg-amber-500/5 p-4 rounded-2xl">
+                  <div className="grid grid-cols-1 gap-4 border border-amber-500/20 pb-4 bg-amber-500/5 p-4 rounded-md">
                     <div>
                       <Label className="text-xs text-amber-600 uppercase font-bold tracking-wider">
                         Select Unpaid Invoice to Apply Payment
@@ -852,7 +865,7 @@ export function GoldSettlementTab() {
                 )}
 
                 {/* Previous Balances (Separate Cash & Gold) — locked, system-computed */}
-                <div className="bg-amber-500/5 p-4 rounded-2xl border border-yellow-500/20 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-amber-500/5 p-4 rounded-md border border-yellow-500/20 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <div className="flex justify-between items-center">
                       <Label className="text-xs font-bold text-yellow-600 uppercase">
@@ -893,7 +906,7 @@ export function GoldSettlementTab() {
                 </div>
 
                 {/* Item Active Row Editor */}
-                <div className="bg-muted/30 p-4 rounded-2xl border border-border space-y-4">
+                <div className="bg-muted/30 p-4 rounded-md border border-border space-y-4">
                   <div className="flex justify-between items-center border-b border-border pb-2">
                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                       Add Transaction Line
@@ -1136,7 +1149,7 @@ export function GoldSettlementTab() {
 
                 {/* Items Table Queue inside modal */}
                 {items.length > 0 && (
-                  <div className="border border-border rounded-2xl overflow-hidden bg-background">
+                  <div className="border border-border rounded-md overflow-hidden bg-background">
                     <div className="bg-muted px-4 py-2 font-semibold text-xs text-muted-foreground border-b border-border uppercase tracking-widest flex justify-between items-center">
                       <span>Voucher Bill Items ({items.length})</span>
                       <span className="font-mono text-[10px]">No calculations mix cash & gold</span>
@@ -1228,7 +1241,7 @@ export function GoldSettlementTab() {
                 {/* Balances & Net Summary Widgets */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Gold Summary */}
-                  <div className="bg-gradient-to-br from-amber-500/5 to-yellow-500/10 p-5 rounded-2xl border border-yellow-500/15 space-y-3">
+                  <div className="bg-gradient-to-br from-amber-500/5 to-yellow-500/10 p-5 rounded-md border border-yellow-500/15 space-y-3">
                     <div className="flex items-center gap-2 text-yellow-600 font-semibold text-sm border-b border-yellow-500/10 pb-2">
                       <Scale className="h-4 w-4" /> Fine Gold Summary (Grams)
                     </div>
@@ -1270,7 +1283,7 @@ export function GoldSettlementTab() {
                   </div>
 
                   {/* Cash Summary */}
-                  <div className="bg-gradient-to-br from-indigo-500/5 to-emerald-500/10 p-5 rounded-2xl border border-border space-y-3">
+                  <div className="bg-gradient-to-br from-indigo-500/5 to-emerald-500/10 p-5 rounded-md border border-border space-y-3">
                     <div className="flex items-center gap-2 text-emerald-500 font-semibold text-sm border-b border-border pb-2">
                       <DollarSign className="h-4 w-4" /> Cash Transacted Summary (Rupees)
                     </div>
@@ -1346,7 +1359,7 @@ export function GoldSettlementTab() {
       </div>
 
       {/* Voucher Records List */}
-      <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="rounded-md border border-border bg-card p-4">
         {loading ? (
           <p className="text-center py-8 text-sm text-muted-foreground animate-pulse">
             Loading settlements and balances...

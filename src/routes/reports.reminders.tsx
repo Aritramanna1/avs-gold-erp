@@ -107,7 +107,7 @@ function RemindersPage() {
       />
 
       {overdueMonthEndBranches.length > 0 && (
-        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-5 mb-4">
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-5 mb-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-serif text-lg flex items-center gap-2">
               <Calendar className="h-4 w-4 text-amber-400" /> Monthly Reminder: Month-End Close Due
@@ -163,7 +163,7 @@ function ReminderSection({
   onSend: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 mb-4">
+    <div className="rounded-md border border-border bg-card p-5 mb-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-serif text-lg">
           {title} <Badge variant="secondary">{list.length}</Badge>

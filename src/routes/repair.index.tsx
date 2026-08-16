@@ -142,7 +142,7 @@ function RepairIndex() {
 
 function Card({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="rounded-md border border-border bg-card p-4">
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="text-2xl font-serif text-gold mt-1">{value}</div>
     </div>
@@ -152,7 +152,7 @@ function Card({ label, value }: { label: string; value: number }) {
 function RepairTable({ rows, polishing }: { rows: Repair[]; polishing?: boolean }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-10 text-center text-muted-foreground">
+      <div className="rounded-md border border-border bg-card p-10 text-center text-muted-foreground">
         <Wrench className="h-6 w-6 mx-auto mb-2 opacity-60" />
         No records yet.
       </div>
@@ -167,7 +167,7 @@ function RepairTable({ rows, polishing }: { rows: Repair[]; polishing?: boolean 
           return (
             <div
               key={r.id}
-              className="rounded-2xl border border-border bg-card p-4 space-y-3 text-xs"
+              className="rounded-md border border-border bg-card p-4 space-y-3 text-xs"
             >
               <div className="flex items-center justify-between">
                 <span className="font-mono text-gold font-semibold">{r.repairNo}</span>
@@ -216,7 +216,7 @@ function RepairTable({ rows, polishing }: { rows: Repair[]; polishing?: boolean 
       </div>
 
       {/* Desktop view */}
-      <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="hidden md:block rounded-md border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/30 text-left text-xs uppercase tracking-wider text-muted-foreground">

@@ -54,7 +54,7 @@ function EstimateDetail() {
           </div>
         }
       />
-      <section className="rounded-xl border border-border bg-card p-5">
+      <section className="rounded-md border border-border bg-card p-5">
         <div className="mb-5 grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <span className="text-muted-foreground">Customer</span>

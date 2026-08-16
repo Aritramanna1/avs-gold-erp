@@ -21,7 +21,18 @@ Offline setup still requires one online activation: Full Name, Email, Password, 
 
 Offline validity is bounded by the signed `offlineValidUntil` value (or the configured grace policy). Clock rollback, device mismatch, malformed cache, invalid signature, Expired, or Suspended status fails closed. Renewals and lifetime licenses are new signed entitlements; lifetime removes subscription expiry but retains device/status/signature controls.
 
-## Licensing API contract
+## Subscription & Identity Architecture (V1)
+
+**LEGACY LICENCE-KEY ACTIVATION = RETIRED**
+
+Runtime access authority:
+`Supabase Auth → Tenant/Product Memberships → Active Business Context → Subscription/Trial → Plan → Entitlements → Access`
+
+Payment chain: `Razorpay → Webhook → AVS Billing → Subscription State → Entitlements` (not licence keys, not Razorpay on every login).
+
+One auth identity may belong to multiple firms; each firm has its own subscription state. Business switcher changes active context without re-login; RLS enforces tenant isolation server-side.
+
+See migration `20260815280000_multi_tenant_identity_subscription_access.sql`. API contract
 
 `POST` receives `licenseKey`, `deviceId`, and `deploymentMode`. A successful response contains `valid`, `edition`, `expiry`, `enabledFeatures`, `maximumDevices`, `customerStatus`, `entitlement`, `signature`, and an optional `message`. The canonical entitlement must include the same edition/device-limit fields plus status, device binding, issued-at, not-before, expiry, offline-valid-until, enabled features, and signing-key id.
 

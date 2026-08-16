@@ -57,7 +57,7 @@ function BarcodeScannerPage() {
     return (
       <div className="p-4 md:p-8 max-w-3xl mx-auto text-center">
         <PageHeader title="Barcode Scanner" subtitle="This module is currently disabled." />
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 mt-6">
+        <div className="rounded-md border border-dashed border-border bg-card/40 p-12 mt-6">
           <ScanLine className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 font-serif text-xl text-gold">Barcode module is off</h3>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -77,7 +77,7 @@ function BarcodeScannerPage() {
         subtitle="Scan (or type) a finished-product barcode, QR, or tag number to open it instantly."
       />
 
-      <div className="rounded-2xl border border-border bg-card p-5 mb-6 space-y-3">
+      <div className="rounded-md border border-border bg-card p-5 mb-6 space-y-3">
         <div className="flex items-center gap-2">
           <BarcodeInput
             value={code}
@@ -107,14 +107,14 @@ function BarcodeScannerPage() {
       </div>
 
       {notFound && (
-        <div className="rounded-xl border border-dashed border-border bg-background/40 p-6 text-center text-sm text-muted-foreground mb-6">
+        <div className="rounded-md border border-dashed border-border bg-background/40 p-6 text-center text-sm text-muted-foreground mb-6">
           No finished-product barcode matches "{code}".
         </div>
       )}
 
       {found && (
         <div
-          className="rounded-2xl border border-gold/40 bg-gold/5 p-5 space-y-4"
+          className="rounded-md border border-gold/40 bg-gold/5 p-5 space-y-4"
           data-testid="scanner-result"
         >
           <div className="flex items-center justify-between">

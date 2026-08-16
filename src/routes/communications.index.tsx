@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { PageHeader } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -77,15 +77,18 @@ import {
   Play,
   RotateCcw,
 } from "lucide-react";
+import { NotificationPreferencesPanel } from "@/components/communications/NotificationPreferencesPanel";
+import { EmailTemplateEditorPanel } from "@/components/communications/EmailTemplateEditorPanel";
+import { TenantEmailConfigForm } from "@/components/communications/TenantEmailConfigForm";
+import { WhatsAppOnboardingPanel } from "@/components/communications/WhatsAppOnboardingPanel";
+import { ScheduledReportsPanel } from "@/components/communications/ScheduledReportsPanel";
+import { ModuleSkeleton } from "@/components/module-skeleton";
+
+const LazyCommunicationCentre = lazy(async () => ({
+  default: (await import("@/components/communications/CommunicationCentre")).CommunicationCentre,
+}));
 import { toast } from "sonner";
 import { paiseToRupees, rupeesToPaise } from "@/lib/billing-store";
-import { ModuleComingSoon } from "@/components/ModuleComingSoon";
-import {
-  CRM_PIPELINE_COMING_SOON_MESSAGE,
-  CRM_PIPELINE_COMING_SOON_DETAIL,
-  MARKETING_CAMPAIGNS_COMING_SOON_MESSAGE,
-  MARKETING_CAMPAIGNS_COMING_SOON_DETAIL,
-} from "@/lib/pilot-config";
 import { waMobileUrl, isValidWaPhone } from "@/lib/wa-link";
 
 export const Route = createFileRoute("/communications/")({
@@ -96,8 +99,8 @@ export const Route = createFileRoute("/communications/")({
 // Workshop V1.1 scope: CRM pipeline and bulk marketing campaigns aren't part
 // of the first production release — see src/lib/pilot-config.ts. The real
 // implementations below stay in the file untouched; flip these to re-enable.
-const CRM_PIPELINE_ENABLED = false;
-const MARKETING_CAMPAIGNS_ENABLED = false;
+const CRM_PIPELINE_ENABLED = true;
+const MARKETING_CAMPAIGNS_ENABLED = true;
 
 const PIPELINE_STAGES: { key: OpportunityStage; label: string; color: string }[] = [
   { key: "lead", label: "New Lead", color: "bg-muted text-muted-foreground" },
@@ -705,6 +708,9 @@ function CommunicationsDashboardPage() {
           <TabsTrigger value="providers" className="gap-2 text-xs">
             Provider Settings
           </TabsTrigger>
+          <TabsTrigger value="centre" className="gap-2 text-xs">
+            Communication Centre
+          </TabsTrigger>
           <TabsTrigger value="history" className="gap-2 text-xs">
             History Logs
           </TabsTrigger>
@@ -958,7 +964,7 @@ function CommunicationsDashboardPage() {
                 </div>
 
                 {/* Profile Card Sidebar */}
-                <aside className="bg-muted/10 border border-border rounded-xl p-4 space-y-4">
+                <aside className="bg-muted/10 border border-border rounded-md p-4 space-y-4">
                   <div>
                     <h4 className="font-serif text-gold font-bold text-sm">
                       {selectedPerson.fullName}
@@ -1007,7 +1013,7 @@ function CommunicationsDashboardPage() {
                   return (
                     <div
                       key={col.key}
-                      className="flex-1 min-w-[220px] bg-card/40 rounded-xl border border-border p-3 flex flex-col gap-3"
+                      className="flex-1 min-w-[220px] bg-card/40 rounded-md border border-border p-3 flex flex-col gap-3"
                     >
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">
@@ -1092,12 +1098,7 @@ function CommunicationsDashboardPage() {
                 })}
               </div>
             </div>
-          ) : (
-            <ModuleComingSoon
-              title={CRM_PIPELINE_COMING_SOON_MESSAGE}
-              message={CRM_PIPELINE_COMING_SOON_DETAIL}
-            />
-          )}
+          ) : null}
         </TabsContent>
 
         {/* 4. FOLLOW-UPS */}
@@ -1171,7 +1172,7 @@ function CommunicationsDashboardPage() {
                 );
               })}
             {tasks.filter((t) => t.branchId === branchId).length === 0 && (
-              <div className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
+              <div className="rounded-md border border-dashed border-border py-16 text-center text-muted-foreground">
                 No pending follow-ups.
               </div>
             )}
@@ -1243,7 +1244,7 @@ function CommunicationsDashboardPage() {
                   />
                 </div>
 
-                <div className="rounded-xl border border-border bg-muted/20 p-3">
+                <div className="rounded-md border border-border bg-muted/20 p-3">
                   <span className="font-bold">Total Target Receivers:</span> {campaignTargetsCount}{" "}
                   people
                 </div>
@@ -1259,7 +1260,7 @@ function CommunicationsDashboardPage() {
 
                 {/* WA queue: popup-blocker-safe sequential sending */}
                 {waQueue.length > 0 && (
-                  <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+                  <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-gold">
                         WhatsApp Queue ({waQueueIdx}/{waQueue.length} sent)
@@ -1298,164 +1299,25 @@ function CommunicationsDashboardPage() {
                 )}
               </div>
             </Card>
-          ) : (
-            <ModuleComingSoon
-              title={MARKETING_CAMPAIGNS_COMING_SOON_MESSAGE}
-              message={MARKETING_CAMPAIGNS_COMING_SOON_DETAIL}
-            />
-          )}
+          ) : null}
         </TabsContent>
 
-        {/* 6. AUTOMATION */}
-        <TabsContent value="automation" className="mt-4">
-          <Card className="p-5 border-border bg-card space-y-4 max-w-2xl mx-auto">
-            <h3 className="font-semibold text-sm">Event-driven Auto Notifications</h3>
-            <p className="text-xs text-muted-foreground">
-              Configure templates to be auto-sent instantly on trigger events.
-            </p>
-
-            <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between border-b border-border/45 pb-3">
-                <div>
-                  <h4 className="font-medium text-xs">Automated Birthday Wishes</h4>
-                  <p className="text-[10px] text-muted-foreground">
-                    Sends greeting wish at 10 AM on customer's birth day.
-                  </p>
-                </div>
-                <Switch
-                  checked={autoBirthday}
-                  onCheckedChange={(v) => setCommAutomation({ birthday: v })}
-                />
-              </div>
-              <div className="flex items-center justify-between border-b border-border/45 pb-3">
-                <div>
-                  <h4 className="font-medium text-xs">Anniversary Greetings</h4>
-                  <p className="text-[10px] text-muted-foreground">
-                    Auto greeting message to wedding anniversary segments.
-                  </p>
-                </div>
-                <Switch
-                  checked={autoAnniversary}
-                  onCheckedChange={(v) => setCommAutomation({ anniversary: v })}
-                />
-              </div>
-              <div className="flex items-center justify-between border-b border-border/45 pb-3">
-                <div>
-                  <h4 className="font-medium text-xs">New Invoice Created</h4>
-                  <p className="text-[10px] text-muted-foreground">
-                    Instantly delivers PDF invoice links on finalising bill.
-                  </p>
-                </div>
-                <Switch
-                  checked={autoInvoice}
-                  onCheckedChange={(v) => setCommAutomation({ invoice: v })}
-                />
-              </div>
-              <div className="flex items-center justify-between border-b border-border/45 pb-3">
-                <div>
-                  <h4 className="font-medium text-xs">Payment Receipt Alerts</h4>
-                  <p className="text-[10px] text-muted-foreground">
-                    Auto receipt generated instantly on collecting payments.
-                  </p>
-                </div>
-                <Switch
-                  checked={autoPayment}
-                  onCheckedChange={(v) => setCommAutomation({ payment: v })}
-                />
-              </div>
-              <div className="flex items-center justify-between border-b border-border/45 pb-3">
-                <div>
-                  <h4 className="font-medium text-xs">Order Ready Alerts</h4>
-                  <p className="text-[10px] text-muted-foreground">
-                    Alerts customer to pickup gold when order finishes.
-                  </p>
-                </div>
-                <Switch
-                  checked={autoOrderReady}
-                  onCheckedChange={(v) => setCommAutomation({ orderReady: v })}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-xs">Repair Jobs Completed</h4>
-                  <p className="text-[10px] text-muted-foreground">
-                    Alerts user when polishing/repair scale jobs are ready.
-                  </p>
-                </div>
-                <Switch
-                  checked={autoRepairReady}
-                  onCheckedChange={(v) => setCommAutomation({ repairReady: v })}
-                />
-              </div>
-            </div>
-          </Card>
+        {/* 6. AUTOMATION — AVS notification preferences */}
+        <TabsContent value="automation" className="mt-4 space-y-4">
+          <NotificationPreferencesPanel branchId={branchId} />
+          <ScheduledReportsPanel branchId={branchId} />
         </TabsContent>
 
-        {/* 7. TEMPLATES */}
+        {/* 7. TEMPLATES — Email template editor */}
         <TabsContent value="templates" className="mt-4">
-          <Card className="p-5 border-border bg-card space-y-4 max-w-2xl mx-auto">
-            <h3 className="font-semibold text-sm">Editable Message Templates</h3>
-            <p className="text-xs text-muted-foreground">
-              Edit message copies. Variables like &#123;&#123;customer_name&#125;&#125;,
-              &#123;&#123;due_amount&#125;&#125; are replaced at runtime.
-            </p>
-
-            <div className="space-y-4 text-xs">
-              <div className="space-y-1">
-                <Label>WhatsApp Invoice Notification Template</Label>
-                <Textarea
-                  value={templateWaInvoice}
-                  onChange={(e) => setTemplateWaInvoice(e.target.value)}
-                  rows={2}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Email Invoice Notification HTML Body</Label>
-                <Textarea
-                  value={templateEmailInvoice}
-                  onChange={(e) => setTemplateEmailInvoice(e.target.value)}
-                  rows={2}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>WhatsApp Birthday Greeting Copy</Label>
-                <Textarea
-                  value={templateWaBirthday}
-                  onChange={(e) => setTemplateWaBirthday(e.target.value)}
-                  rows={2}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Email Birthday Wishing Template</Label>
-                <Textarea
-                  value={templateEmailBirthday}
-                  onChange={(e) => setTemplateEmailBirthday(e.target.value)}
-                  rows={2}
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button
-                  className="bg-gold text-primary-foreground font-semibold"
-                  onClick={() => {
-                    setCampaignTemplates({
-                      emailInvoice: templateEmailInvoice,
-                      waInvoice: templateWaInvoice,
-                      emailBirthday: templateEmailBirthday,
-                      waBirthday: templateWaBirthday,
-                    });
-                    toast.success("Campaign templates saved");
-                  }}
-                >
-                  Save Templates
-                </Button>
-              </div>
-            </div>
-          </Card>
+          <EmailTemplateEditorPanel branchId={branchId} />
         </TabsContent>
 
         {/* 8. PROVIDER SETTINGS */}
         <TabsContent value="providers" className="mt-4">
           <div className="space-y-4">
+            <TenantEmailConfigForm branchId={branchId} />
+            <WhatsAppOnboardingPanel branchId={branchId} />
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="font-bold text-sm uppercase tracking-wider">
                 Configure Branch Providers
@@ -1482,12 +1344,9 @@ function CommunicationsDashboardPage() {
               </Select>
             </div>
 
-            <div className="rounded-xl border border-dashed border-border bg-muted/10 px-3 py-2 text-[11px] text-muted-foreground flex items-center gap-2">
-              <Badge variant="outline" className="text-[9px] px-1 py-0">
-                Soon
-              </Badge>
-              Email and WhatsApp providers are configured per branch below. Automated delivery
-              remains opt-in in Communication Automation settings.
+            <div className="rounded-md border border-dashed border-border bg-muted/10 px-3 py-2 text-[11px] text-muted-foreground">
+              Legacy branch provider configs below. Prefer Tenant Email Sender and WhatsApp panels
+              above for AVS Communication Platform.
             </div>
 
             <div className="space-y-4">
@@ -1535,6 +1394,12 @@ function CommunicationsDashboardPage() {
         </TabsContent>
 
         {/* 9. HISTORY LOGS */}
+        <TabsContent value="centre" className="mt-4">
+          <Suspense fallback={<ModuleSkeleton />}>
+            <LazyCommunicationCentre />
+          </Suspense>
+        </TabsContent>
+
         <TabsContent value="history" className="mt-4">
           <Card className="overflow-hidden border border-border">
             <div className="overflow-x-auto">

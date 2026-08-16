@@ -21,9 +21,18 @@ graph TD
     ActionChoice -->|2. Launch Portal Workspace| HomeLaunchpad["Home Screen: Portals & Workspaces Launchpad<br>• Open CEO Executive Portal (/ceo/*)<br>• Open Customer VIP Portal (/customer/*)<br>• Open Karigar Workshop Portal (/karigar/*)<br>• Open Supplier Bullion Portal (/supplier/*)"]
 ```
 
+## 2. Portal Identity Tables (August 2026)
+
+| Table | Purpose |
+|---|---|
+| `portal_identities` | Maps `auth.users.id` → tenant (`firm_id`) + portal type |
+| `portal_party_links` | Maps portal identity → authorized `people.id` party rows |
+
+> **Invariant:** A portal identity belongs to one authorized tenant context and one or more explicitly linked Party relationships. No portal request may escape that authorization boundary.
+
 ---
 
-## 2. Home Screen Portal Launchpad (`/home`)
+## 3. Home Screen Portal Launchpad (`/home`)
 
 For authorized internal staff and executives, the Home screen features a dedicated **Portals & Workspaces Launchpad**:
 

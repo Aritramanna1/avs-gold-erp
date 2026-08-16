@@ -47,6 +47,8 @@ function LotsPage() {
       <PageHeader
         title="Lot & Batch Management"
         subtitle="Group stock items received or manufactured together for traceability and hallmark batches."
+        backTo="/stock"
+        backLabel="Back to Stock"
         actions={
           <Button onClick={() => setCreating(true)} className="gap-2">
             <Plus className="h-4 w-4" /> New Lot
@@ -56,14 +58,14 @@ function LotsPage() {
 
       <div className="grid gap-4">
         {branchLots.length === 0 && (
-          <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
+          <div className="rounded-md border border-border bg-card p-8 text-center text-muted-foreground">
             No lots created yet for this branch.
           </div>
         )}
         {branchLots.map((lot) => {
           const summary = summarizeLot(lot.id);
           return (
-            <div key={lot.id} className="rounded-2xl border border-border bg-card p-4">
+            <div key={lot.id} className="rounded-md border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />

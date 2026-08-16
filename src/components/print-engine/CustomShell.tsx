@@ -57,8 +57,8 @@ export function CustomShell({
     paperSize === "tag"
       ? "flex flex-col gap-3 mx-auto items-center"
       : paperSize === "thermal" || paperSize === "thermal58"
-        ? `${paperSize === "thermal58" ? "w-[58mm] p-2" : "w-[80mm] p-4"} mx-auto bg-white text-slate-900 border border-neutral-200 shadow-lg rounded-xl print:border-none print:shadow-none print:p-0 print:rounded-none font-mono text-[10px] leading-snug space-y-4`
-        : `${paperSize === "a4" ? "p-10" : "p-6"} mx-auto bg-white text-slate-800 border border-neutral-200 shadow-xl rounded-2xl relative overflow-hidden print:border-none print:shadow-none print:p-0 print:rounded-none`;
+        ? `${paperSize === "thermal58" ? "w-[58mm] p-2" : "w-[80mm] p-4"} mx-auto bg-white text-slate-900 border border-neutral-200 shadow-lg rounded-md print:border-none print:shadow-none print:p-0 print:rounded-none font-mono text-[10px] leading-snug space-y-4`
+        : `${paperSize === "a4" ? "p-10" : "p-6"} mx-auto bg-white text-slate-800 border border-neutral-200 shadow-xl rounded-md relative overflow-hidden print:border-none print:shadow-none print:p-0 print:rounded-none`;
 
   return (
     <div className="min-h-screen bg-muted/15 flex flex-col font-sans">

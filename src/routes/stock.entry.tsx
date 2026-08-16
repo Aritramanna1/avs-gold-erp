@@ -106,7 +106,7 @@ function ReadyStockEntry() {
           </Button>
         }
       />
-      <form onSubmit={submit} className="erp-surface space-y-4 rounded-xl p-4 md:p-6">
+      <form onSubmit={submit} className="erp-surface space-y-4 rounded-md p-4 md:p-6">
         <FormStatus
           status={saving ? "saving" : serverError ? "error" : "idle"}
           title={saving ? "Saving ready stock" : "Ready stock was not saved"}

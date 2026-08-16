@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDraft } from "@/lib/drafts-store";
+import { useSaveShortcut } from "@/lib/keyboard/use-save-shortcut";
 import { PageHeader } from "@/components/app-shell";
 import { AttachmentButton } from "@/components/attachment-placeholder-modal";
 import { Button } from "@/components/ui/button";
@@ -491,23 +492,17 @@ function NewOrderPage() {
     }
   }
 
-  // Keyboard-first: Ctrl+S saves, Esc returns to the orders list. Tab/Enter
-  // are native — inputs tab through in DOM order, and the surrounding <form>
-  // submits on Enter from any single-line input (not from the Remarks
-  // textarea, where Enter correctly inserts a newline instead).
+  useSaveShortcut(() => submit(), true);
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        submit();
-      } else if (e.key === "Escape") {
+      if (e.key === "Escape") {
         navigate({ to: "/orders" });
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canSubmit, submitting, form]);
+  }, [navigate]);
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
@@ -634,7 +629,7 @@ function NewOrderPage() {
           {lines.map((line, i) => (
             <div
               key={line.lineId}
-              className="rounded-xl border border-border bg-background/40 p-4 space-y-4"
+              className="rounded-md border border-border bg-background/40 p-4 space-y-4"
               data-testid="order-line"
             >
               <div className="flex items-center justify-between">
@@ -983,7 +978,7 @@ function NewOrderPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+    <div className="rounded-md border border-border bg-card p-5 space-y-4">
       <h2 className="font-serif text-lg text-gold">{title}</h2>
       {children}
     </div>
@@ -1001,7 +996,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function SelectedPersonChip({ person, onClear }: { person: Person; onClear: () => void }) {
   return (
-    <div className="rounded-xl border border-gold/40 bg-gold/5 p-4 flex items-start justify-between gap-3">
+    <div className="rounded-md border border-gold/40 bg-gold/5 p-4 flex items-start justify-between gap-3">
       <div className="flex items-start gap-3 min-w-0">
         <div className="h-10 w-10 rounded-full gradient-gold grid place-items-center text-primary-foreground font-serif shrink-0">
           {person.fullName.slice(0, 1)}

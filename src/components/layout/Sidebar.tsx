@@ -1,116 +1,92 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  Home,
-  Users,
-  ClipboardCheck,
-  ShoppingBag,
-  Sparkles,
-  Hammer,
-  Wrench,
-  Package,
-  ScanLine,
-  Receipt,
-  Scale,
-  BookOpen,
-  BarChart3,
-  Settings as SettingsIcon,
-  MessageSquare,
-  LifeBuoy,
-  Building2,
-  TrendingDown,
-  Mail,
-  Cpu,
-  Sliders,
-} from "lucide-react";
 import { useSettings } from "@/lib/settings-store";
 import { Logo } from "@/components/ui/Logo";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  navigationGroups,
+  itemRouteKey,
+  type NavGroupDef,
+  type NavItemDef,
+} from "@/lib/navigation-groups";
+import { hasRoutePermission } from "@/lib/permissions";
+import { useTerminology } from "@/lib/terminology-engine-store";
+import { ChevronDown } from "lucide-react";
 
-// Manufacturing Mode pilot: ordered to follow the production workflow
-// (intake â†’ job execution â†’ finished goods â†’ materials/gold â†’ money â†’
-// supporting/admin) rather than the prior alphabetical-ish grouping.
-export const navigationItems = [
-  { to: "/", label: "Home", icon: Home },
-  { to: "/assistant", label: "AI Assistant", icon: Sparkles },
-  { to: "/people", label: "People / KYC", icon: Users },
-  { to: "/orders", label: "Orders", icon: ShoppingBag },
-  { to: "/catalog", label: "Catalog", icon: Sparkles },
-  { to: "/workshop/gold-book", label: "Worker Gold Book", icon: BookOpen },
-  { to: "/workshop", label: "Manufacturing Books", icon: Hammer },
-  { to: "/barcode", label: "Barcode & Tagging", icon: ScanLine },
-  { to: "/conversion", label: "Metal Conversion", icon: Scale },
-  { to: "/stock", label: "Ready Stock", icon: Package },
-  { to: "/billing", label: "Billing", icon: Receipt },
-  { to: "/ledger", label: "Gold Stock", icon: BookOpen },
-  {
-    to: "/communications",
-    label: "Communications",
-    icon: MessageSquare,
-  },
-  { to: "/repair", label: "Repair Orders", icon: ShoppingBag },
-  {
-    to: "/attendance",
-    label: "Attendance & Payroll",
-    icon: ClipboardCheck,
-  },
-  { to: "/expenses", label: "Expenses", icon: TrendingDown },
-  { to: "/dashboard/ceo", label: "CEO Dashboard", icon: Building2 },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
-  { to: "/branches", label: "Branches", icon: Building2 },
-  { to: "/manufacturing", label: "Manufacturing", icon: Wrench },
-  { to: "/hardware", label: "Hardware Integrations", icon: Cpu },
-  { to: "/control/customization", label: "Customization", icon: Sliders },
-  { to: "/settings", label: "Settings", icon: SettingsIcon },
-  { to: "/help", label: "Help & Guide", icon: LifeBuoy },
-] as const;
+export { navigationGroups, navigationItems } from "@/lib/navigation-items";
 
-const labelKeys: Record<string, string> = {
-  "/": "home",
-  "/assistant": "assistant",
-  "/people": "peopleKyc",
-  "/communications": "communications",
-  "/orders": "orders",
-  "/catalog": "catalog",
-  "/workshop": "workshop",
-  "/workshop/gold-book": "workerGoldBook",
-  "/stock": "stock",
-  "/barcode": "barcodeTagging",
-  "/billing": "billing",
-  "/ledger": "ledger",
-  "/expenses": "expenses",
-  "/branches": "branches",
-  "/reports": "reports",
-  "/hardware": "hardware",
-  "/control/customization": "customization",
-  "/settings": "settings",
-  "/help": "helpGuide",
-};
+const STORAGE_KEY = "ornexa_sidebar_groups_v1";
 
 interface SidebarProps {
   onOpenGoldRateEditor: () => void;
   className?: string;
 }
 
+function loadOpenGroups(): Record<string, boolean> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function isItemActive(pathname: string, item: NavItemDef, visibleItems: NavItemDef[]): boolean {
+  const matches =
+    item.to === "/" ? pathname === "/" : pathname === item.to || pathname.startsWith(`${item.to}/`);
+  if (!matches) return false;
+  return !visibleItems.some(
+    (candidate) =>
+      candidate.to !== item.to &&
+      candidate.to.length > item.to.length &&
+      (pathname === candidate.to || pathname.startsWith(`${candidate.to}/`)),
+  );
+}
+
 export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) {
   const { t } = useLanguage();
+  const tTerm = useTerminology((s) => s.tTerm);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  // Narrow selectors: the sidebar must not re-render on every unrelated
-  // setState the startup pull storm fires - only these three slices matter.
   const goldRatePerGramPaise = useSettings((s) => s.goldRatePerGramPaise);
   const goldRate24KPerGramPaise = useSettings((s) => s.goldRate24KPerGramPaise);
   const firm = useSettings((s) => s.firm);
   const branding = useSettings((s) => s.branding);
-  const filteredItems = useMemo(() => {
-    const isDeferred = (item: (typeof navigationItems)[number]) =>
-      ("comingSoon" in item && item.comingSoon) || ("retailOnly" in item && item.retailOnly);
-    // Stable partition: deferred/placeholder modules sink to the bottom,
-    // active modules keep their production-workflow order above them.
-    return [
-      ...navigationItems.filter((i) => !isDeferred(i)),
-      ...navigationItems.filter(isDeferred),
-    ];
-  }, []);
+  const role = useSettings((s) => s.currentUserRole);
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(loadOpenGroups);
+
+  const filteredGroups = useMemo(() => {
+    return navigationGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => hasRoutePermission(role, item.to)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [role]);
+
+  const flatVisibleItems = useMemo(() => filteredGroups.flatMap((g) => g.items), [filteredGroups]);
+
+  useEffect(() => {
+    const activeGroup = filteredGroups.find((group) =>
+      group.items.some((item) => isItemActive(pathname, item, flatVisibleItems)),
+    );
+    if (activeGroup && !openGroups[activeGroup.id]) {
+      setOpenGroups((prev) => {
+        const next = { ...prev, [activeGroup.id]: true };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+    }
+  }, [pathname, filteredGroups, flatVisibleItems, openGroups]);
+
+  function toggleGroup(group: NavGroupDef) {
+    setOpenGroups((prev) => {
+      const next = { ...prev, [group.id]: !prev[group.id] };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
 
   const shopInitials = firm?.shopName
     ? firm.shopName
@@ -133,10 +109,10 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
 
   return (
     <aside
+      data-tour="sidebar"
       className={`flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground ${className}`}
       id="app-sidebar-main"
     >
-      {/* Branding Header & Environment Badge */}
       <div className="flex flex-col border-b border-sidebar-border px-5 py-4" id="sidebar-branding">
         <div className="flex items-center gap-3">
           <Logo variant="svg" className="h-10 w-10 object-contain animate-fade-in" />
@@ -154,9 +130,8 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
         </div>
       </div>
 
-      {/* Gold Rate Widget */}
       <div
-        className="px-4 py-3 mx-3 mt-3 rounded-xl bg-sidebar-accent/40 border border-sidebar-border/60 hover:border-gold/30 transition-all group"
+        className="px-4 py-3 mx-3 mt-3 rounded-md bg-sidebar-accent/40 border border-sidebar-border/60 hover:border-gold/30 transition-all group"
         id="sidebar-gold-widget"
       >
         <div className="flex items-center justify-between mb-1.5">
@@ -196,55 +171,94 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
         </div>
       </div>
 
-      {/* Navigation Links */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5" id="sidebar-navigation">
-        {filteredItems.map((item) => {
-          const active =
-            item.to === "/"
-              ? pathname === "/"
-              : (pathname === item.to || pathname.startsWith(`${item.to}/`)) &&
-                !filteredItems.some(
-                  (candidate) =>
-                    candidate.to !== item.to &&
-                    candidate.to.length > item.to.length &&
-                    (pathname === candidate.to || pathname.startsWith(`${candidate.to}/`)),
-                );
-          const Icon = item.icon;
-          const translationKey = labelKeys[item.to];
-          const translatedLabel = translationKey
-            ? String(t(`navigation.${translationKey}`))
-            : String(item.label);
-          const isComingSoonPlaceholder = Boolean(
-            ("retailOnly" in item && item.retailOnly) || ("comingSoon" in item && item.comingSoon),
+      <nav
+        className="flex-1 overflow-y-auto px-2 py-3 space-y-1"
+        id="sidebar-navigation"
+        aria-label="ERP navigation"
+      >
+        {filteredGroups.map((group) => {
+          const GroupIcon = group.icon;
+          const isOpen = openGroups[group.id] ?? group.id === "home";
+          const groupActive = group.items.some((item) =>
+            isItemActive(pathname, item, flatVisibleItems),
           );
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              aria-current={active ? "page" : undefined}
-              className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 ${
-                isComingSoonPlaceholder
-                  ? "text-sidebar-foreground/60 italic hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-                  : active
+          const singleItem = group.items.length === 1 ? group.items[0] : null;
+
+          if (singleItem) {
+            const Icon = singleItem.icon;
+            const active = isItemActive(pathname, singleItem, flatVisibleItems);
+            return (
+              <Link
+                key={group.id}
+                to={singleItem.to}
+                search={singleItem.search}
+                aria-current={active ? "page" : undefined}
+                className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 ${
+                  active
                     ? "bg-sidebar-accent text-gold font-medium shadow-[inset_3px_0_0_0_#d4af37]"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-              }`}
-            >
-              <Icon
-                className={`h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110 ${isComingSoonPlaceholder ? "text-sidebar-foreground/40" : active ? "text-gold" : "text-muted-foreground"}`}
-              />
-              <span className="min-w-0 flex-1 truncate">{translatedLabel}</span>
-              {isComingSoonPlaceholder && (
-                <span className="shrink-0 rounded-full border border-gold/25 bg-gold/10 px-1.5 py-0.5 text-[8px] font-bold not-italic uppercase tracking-wider text-gold">
-                  Soon
-                </span>
+                }`}
+              >
+                <Icon
+                  className={`h-4 w-4 shrink-0 ${active ? "text-gold" : "text-muted-foreground"}`}
+                />
+                <span className="min-w-0 flex-1 truncate">{singleItem.label}</span>
+              </Link>
+            );
+          }
+
+          return (
+            <div key={group.id} className="rounded-lg">
+              <button
+                type="button"
+                onClick={() => toggleGroup(group)}
+                className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide transition-colors ${
+                  groupActive ? "text-gold" : "text-muted-foreground hover:text-sidebar-foreground"
+                }`}
+                aria-expanded={isOpen}
+              >
+                <GroupIcon className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 truncate">{group.label}</span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {isOpen && (
+                <div className="mt-0.5 space-y-0.5 pl-1">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const active = isItemActive(pathname, item, flatVisibleItems);
+                    const termKey =
+                      item.to === "/people" && item.search?.tab === "customers"
+                        ? "party_customer"
+                        : undefined;
+                    const label = termKey ? tTerm(termKey, item.label) : item.label;
+                    return (
+                      <Link
+                        key={itemRouteKey(item)}
+                        to={item.to}
+                        search={item.search}
+                        aria-current={active ? "page" : undefined}
+                        className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-150 ${
+                          active
+                            ? "bg-sidebar-accent text-gold font-medium shadow-[inset_3px_0_0_0_#d4af37]"
+                            : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <Icon
+                          className={`h-3.5 w-3.5 shrink-0 ${active ? "text-gold" : "text-muted-foreground"}`}
+                        />
+                        <span className="min-w-0 flex-1 truncate">{label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
-            </Link>
+            </div>
           );
         })}
       </nav>
 
-      {/* Footer */}
       <div
         className="px-5 py-3 border-t border-sidebar-border text-[11px] text-muted-foreground/75 flex items-center justify-between"
         id="sidebar-info-footer"

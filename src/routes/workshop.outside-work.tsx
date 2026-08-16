@@ -17,7 +17,7 @@ import {
   computeOutsideWorkLabourPosition,
 } from "@/lib/outside-work-labour-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
-import { mgToGrams } from "@/lib/gold";
+import { mgToGrams, formatWeight } from "@/lib/gold";
 import { paiseToRupees } from "@/lib/orders-store";
 import { OutsideWorkIssueDialog } from "@/components/outside-work-issue-dialog";
 import { OutsideWorkReceiveDialog } from "@/components/outside-work-receive-dialog";
@@ -134,6 +134,8 @@ function OutsideWorkPage() {
       <PageHeader
         title="Outside Work"
         subtitle="Gold, labour, billing and settlement for external jewellers (chain makers, ball makers, KDM suppliers)."
+        backTo="/workshop"
+        backLabel="Back to Workshop"
         actions={
           <div className="flex flex-wrap gap-2 justify-end">
             <Button
@@ -218,7 +220,7 @@ function OutsideWorkPage() {
       </div>
 
       {overdueIssues.length > 0 && (
-        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 mb-6">
+        <div className="erp-surface rounded-md border border-amber-500/40 bg-amber-500/10 p-4 mb-6">
           <div className="font-serif text-gold">External work follow-up due</div>
           <div className="mt-1 text-sm text-muted-foreground">
             {overdueIssues.length} outside-work issue{overdueIssues.length === 1 ? "" : "s"} passed
@@ -228,7 +230,7 @@ function OutsideWorkPage() {
       )}
 
       {jewellers.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
+        <div className="erp-surface rounded-md border border-dashed border-border bg-card/40 p-12 text-center">
           <Wallet className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 font-serif text-xl text-gold">No outside jewellers yet</h3>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -238,7 +240,7 @@ function OutsideWorkPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-2xl border border-border bg-card p-4 mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="erp-surface rounded-md border border-border bg-card p-4 mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1">
               <Select value={selectedId} onValueChange={setSelectedId}>
                 <SelectTrigger data-testid="outside-work-jeweller-filter">
@@ -300,7 +302,7 @@ function OutsideWorkPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card overflow-hidden mb-6">
+          <div className="erp-surface rounded-md border border-border bg-card overflow-hidden mb-6">
             <div className="px-4 py-3 border-b border-border font-serif text-gold">
               Transaction History
             </div>
@@ -349,7 +351,7 @@ function OutsideWorkPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card overflow-hidden mb-6">
+          <div className="erp-surface rounded-md border border-border bg-card overflow-hidden mb-6">
             <div className="px-4 py-3 border-b border-border font-serif text-gold">
               Labour Charges / Bills
             </div>
@@ -407,7 +409,7 @@ function OutsideWorkPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card overflow-hidden mb-6">
+          <div className="erp-surface rounded-md border border-border bg-card overflow-hidden mb-6">
             <div className="px-4 py-3 border-b border-border font-serif text-gold">Payments</div>
             {jewellerPayments.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
@@ -437,7 +439,7 @@ function OutsideWorkPage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="erp-surface rounded-md border border-border bg-card overflow-hidden">
             <div className="px-4 py-3 border-b border-border font-serif text-gold">
               Settlement History
             </div>
@@ -452,19 +454,16 @@ function OutsideWorkPage() {
                     key={s.id}
                     className="px-4 py-3 flex items-center justify-between gap-3 text-sm"
                   >
-                    <span>{new Date(s.settlement_date).toLocaleDateString("en-IN")}</span>
-                    <span className="text-muted-foreground">
-                      {s.settlement_type === "outside_work_gold_settlement"
-                        ? "Gold Settlement"
-                        : s.settlement_type === "outside_work_labour_settlement"
-                          ? "Labour Settlement"
-                          : s.settlement_type}
-                    </span>
-                    <span className="font-mono">
-                      {s.settlement_type === "outside_work_gold_settlement"
-                        ? `${mgToGrams(s.net_mg ?? 0)} g`
-                        : `Rs. ${paiseToRupees(s.amount_paise ?? 0)}`}
-                    </span>
+                    <div className="min-w-0">
+                      <div>
+                        {s.settlement_type.replace(/_/g, " ")} - {formatWeight(s.net_mg)} net
+                      </div>
+                      <div className="text-[11px] text-muted-foreground truncate">
+                        {new Date(s.settlement_date).toLocaleDateString("en-IN")}
+                        {s.purity ? ` - Touch ${s.purity}` : ""}
+                        {s.notes ? ` - ${s.notes}` : ""}
+                      </div>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -520,9 +519,11 @@ function OutsideWorkPage() {
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "gold" }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className="erp-surface rounded-md border border-border bg-card p-4">
       <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`text-lg font-mono ${tone === "gold" ? "text-gold" : ""}`}>{value}</div>
+      <div className={`text-lg font-mono font-bold ${tone === "gold" ? "text-gold" : ""}`}>
+        {value}
+      </div>
     </div>
   );
 }

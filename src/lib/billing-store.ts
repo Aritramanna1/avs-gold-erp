@@ -15,6 +15,9 @@
  */
 
 import { create } from "zustand";
+import { tryPostUniversalLedgerMirror } from "@/lib/universal-transaction-bridge";
+import { postInvoiceGoldLedgerForSale } from "@/lib/invoice-gold-ledger";
+import { emitGoldLineageEvent } from "@/lib/gold-lineage-emitter";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "./settings-store";
 import { useModuleStore } from "./module-store";
@@ -685,9 +688,34 @@ export const useBilling = create<BillingState>()((set, get) => ({
       // Optimistic local update — realtime will confirm from DB
       set((s) => ({ invoices: [inv, ...s.invoices] }));
 
-      // Event-driven communication automation (Plan 1 Step 9) — no-op unless
-      // the "invoice_created" rule is enabled in Communication Automation
-      // Settings; never blocks or can fail the invoice creation itself.
+      const saleLedgerEntryId = await postInvoiceGoldLedgerForSale(inv).catch(() => undefined);
+      if (saleLedgerEntryId) {
+        const withLedger: Invoice = { ...inv, saleLedgerEntryId };
+        await invoiceRepository.save(withLedger);
+        set((s) => ({
+          invoices: s.invoices.map((row) => (row.id === inv.id ? withLedger : row)),
+        }));
+        void emitGoldLineageEvent({
+          eventType: "billing",
+          voucherRef: inv.invoiceNo,
+          fineGoldMg: inv.items.reduce((sum, item) => sum + (item.fineMg ?? 0), 0),
+          fromLocation: "Workshop Finished Goods",
+          toLocation: `Customer (${inv.customerName})`,
+          partyName: inv.customerName,
+          notes: `Invoice ${inv.invoiceNo}`,
+        });
+      }
+
+      void tryPostUniversalLedgerMirror({
+        voucherKind: "invoice",
+        voucherNumber: inv.invoiceNo,
+        counterpartyId: inv.customerId,
+        counterpartyName: inv.customerName,
+        cashCreditPaise: inv.grandTotalPaise,
+        metadata: { invoiceId: inv.id, branchId: inv.branchId },
+      }).catch(() => undefined);
+
+      // Event-driven communication automation
       import("@/lib/people-store")
         .then(({ usePeople }) => {
           const person = usePeople.getState().people.find((p) => p.id === (inv as any).customerId);

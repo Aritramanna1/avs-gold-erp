@@ -1,4 +1,4 @@
-import { ERPActionCard, AssistantMessage } from "./assistant-types";
+import { ERPActionCard, AssistantMessage, type ActionPayload } from "./assistant-types";
 
 export interface DraftState {
   actionKey: string;
@@ -189,7 +189,23 @@ const REGISTRY: Record<string, ActionDefinition> = {
         title: "Issue Gold",
         description: "Confirm gold transfer from vault to worker.",
         requiresConfirmation: true,
-        details: draft.extractedFields,
+        details: {
+          ...draft.extractedFields,
+          workerId: draft.extractedFields.karigarId ?? draft.extractedFields.workerId,
+          karigarId: draft.extractedFields.karigarId ?? draft.extractedFields.workerId,
+          grossGrams: Number(
+            draft.extractedFields.grossWeight ?? draft.extractedFields.grossGrams ?? 0,
+          ),
+          fineGrams: Number(
+            draft.extractedFields.fineGrams ??
+              (draft.extractedFields.grossWeight && draft.extractedFields.purity
+                ? (Number(draft.extractedFields.grossWeight) *
+                    Number(draft.extractedFields.purity)) /
+                  1000
+                : (draft.extractedFields.grossWeight ?? 0)),
+          ),
+          purity: Number(draft.extractedFields.purity ?? 0),
+        },
       },
       kpis: [
         { label: "Karigar", value: draft.extractedFields.karigarId },
@@ -287,6 +303,7 @@ export function processDraftInput(userInput: string): {
   reply: string;
   card?: ERPActionCard;
   completed: boolean;
+  executePayload?: ActionPayload;
 } {
   if (!activeDraft) return { reply: "No active draft.", completed: true };
 
@@ -321,11 +338,20 @@ export function processDraftInput(userInput: string): {
       userInput.toLowerCase().includes("yes") ||
       userInput.toLowerCase().includes("create")
     ) {
-      activeDraft.status = "confirmed";
-      // Simulate Service Call
-      const finalMsg = `Successfully created ${def.actionKey} record.`;
+      const card = def.generatePreviewCard(activeDraft);
+      const payload = card.actionPayload;
       activeDraft = null;
-      return { reply: finalMsg, completed: true };
+      if (!payload) {
+        return {
+          reply: "Could not execute — draft action payload is missing.",
+          completed: true,
+        };
+      }
+      return {
+        reply: "Executing confirmed action…",
+        completed: true,
+        executePayload: payload,
+      };
     }
   }
 

@@ -70,7 +70,7 @@ function ManufacturingReconciliationPage() {
         }
       />
 
-      <div className="rounded-2xl border border-border bg-card p-4 mt-4 mb-4">
+      <div className="rounded-md border border-border bg-card p-4 mt-4 mb-4">
         {exceptions.length === 0 ? (
           <div className="text-sm text-emerald-500 flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4" /> Every bill's stored wastage figure agrees with its
@@ -84,7 +84,7 @@ function ManufacturingReconciliationPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-md border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="manufacturing-reconciliation-table">
             <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">

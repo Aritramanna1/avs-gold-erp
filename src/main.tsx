@@ -6,8 +6,16 @@ import { router } from "./router";
 import { AppErrorBoundary } from "./components/app-error-boundary";
 import { BrandRuntime } from "./components/brand-runtime";
 import { installGlobalRendererErrorHandlers, reportUnexpectedError } from "./lib/error-handling";
+import { initStartupMetrics } from "./lib/performance/startup-metrics";
 
 installGlobalRendererErrorHandlers();
+initStartupMetrics();
+
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  });
+}
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {
