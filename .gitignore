@@ -102,3 +102,4 @@ licensing-tool/
 /_migration_temp.sql
 /_migration_apply_temp.sql
 
+/tsc_out.txt
