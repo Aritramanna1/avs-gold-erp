@@ -5,41 +5,37 @@
 # Platform Access + MTG — QA Matrix
 
 Date: 2026-08-27  
-Branch: `main`  
-Rollback zip: `dist_go_20260826_190800.zip`
+Branch: `main` @ `61dd2f7` (on top of GO `8dc1c43`)  
+Rollback zip: `dist_go_20260826_190800.zip` → `index-CVsE73i6.js`
 
 ## Automated
 
 | Check | Result |
 |-------|--------|
+| Master reset Hostinger to GO | PASS (`index-CVsE73i6.js`) |
+| `origin/main` = `8dc1c43` then additive commit | PASS |
 | `npm run typecheck` | PASS |
-| `vitest` ma-tara + gold + entitlement-route-map | PASS |
-| Catalog migration seeded 8 AVS_* plans | PASS (live DB) |
-| Entitlement RLS + legacy bootstrap migrations | PASS (applied) |
+| `vitest` ma-tara + gold + entitlement-route-map | PASS (22) |
+| Catalog + entitlement migrations live | PASS (`20260827013000`–`22000` local=remote) |
+| Build + deploy from `main` | PASS |
+| Live index after deploy | `index--O40jwhI.js` |
+| GO rollback zip retained | PASS |
 
 ## Manual (Platform Owner)
 
 | Case | Steps | Expected | Result |
 |------|-------|----------|--------|
-| Set price | Platform → Plans → AVS catalog edit ₹ | Public/tenant sees new amount without redeploy | |
-| Assign AVS_10K_RETAIL | Change Plan on firm | Features sync; retail-oriented nav | |
-| Assign AVS_10K_MFG | Change Plan | Manufacturing modules enabled | |
-| Assign AVS_20K_RETAIL | Change Plan | Mid retail pack | |
-| Assign AVS_20K_MFG | Change Plan | Mid mfg pack | |
-| Assign AVS_30K_RETAIL | Change Plan | Top retail pack | |
-| Assign AVS_30K_MFG | Change Plan | Top mfg pack | |
-| Assign AVS_50K_FULL | Change Plan | Full core modules | |
-| Assign AVS_MTG | Change Plan | `/mtg` simple shell; AppShell not used | |
-| Suspend / Activate | Subscriptions row | Status persists; audit event | |
-| Disabled module deep-link | Open gated URL | 404/hide + write deny | |
-| Firm isolation | Firm A session | Cannot read Firm B | |
-| Refresh session | Reload | Entitlements reload | |
+| Set price | Platform → Plans → AVS catalog edit ₹ | Public/tenant sees new amount without redeploy | PENDING owner |
+| Assign AVS_* / AVS_MTG | Change Plan | Features sync; MTG → `/mtg` shell | PENDING owner |
+| Suspend / Activate | Subscriptions row | Status persists | PENDING owner |
+| Disabled module deep-link | Open gated URL | 404/hide + write deny | PENDING owner |
+| Firm isolation | Firm A session | Cannot read Firm B | PENDING owner |
 
 ## Deploy
 
 | Item | Value |
 |------|-------|
 | Target | maatarajewellers.shop |
-| Live index hash (before) | index-CVsE73i6.js (GO) |
-| Live index hash (after) | _(fill after deploy)_ |
-| Rollback | Restore `dist_go_20260826_190800.zip` |
+| Live index hash (GO restore) | index-CVsE73i6.js |
+| Live index hash (after main deploy) | index--O40jwhI.js |
+| Rollback | Restore `dist_go_20260826_190800.zip` via `scripts/restore-hostinger-from-zip.mjs` |
