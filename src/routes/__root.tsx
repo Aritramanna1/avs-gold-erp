@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, Link, CatchBoundary, createRootRouteWithContext } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { PlatformShell } from "@/components/platform-shell";
+import { MtgShell } from "@/components/mtg/MtgShell";
 import { StagingEnvironmentBadge } from "@/components/StagingEnvironmentBadge";
 import { InteractiveGuidedTour } from "@/components/training/InteractiveGuidedTour";
 import { ModuleSkeleton } from "@/components/module-skeleton";
@@ -16,6 +17,7 @@ import { RouteErrorFallback } from "@/components/app-error-boundary";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { CookieConsentBanner } from "@/components/compliance/CookieConsentBanner";
 import { KeyboardCheatSheet } from "@/components/keyboard/KeyboardCheatSheet";
+import { useTenantEntitlements } from "@/lib/tenant-entitlements";
 
 const PrintPreviewModal = lazy(() =>
   import("@/components/print/PrintPreviewModal").then((module) => ({
@@ -99,6 +101,13 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useRouterState } from "@tanstack/react-router";
 import { usePrintEngine } from "@/lib/print-engine";
 import { reportUnexpectedError, showErrorToast } from "@/lib/error-handling";
+
+/** MTG firms get the simple shell only; all other editions keep AppShell. */
+function TenantErpChrome({ children }: { children: ReactNode }) {
+  const isMtg = useTenantEntitlements((s) => s.isMtg);
+  if (isMtg) return <MtgShell>{children}</MtgShell>;
+  return <AppShell>{children}</AppShell>;
+}
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -343,7 +352,7 @@ function RootComponent() {
                     </CatchBoundary>
                   </PlatformShell>
                 ) : (
-                  <AppShell>
+                  <TenantErpChrome>
                     <CatchBoundary
                       getResetKey={() => currentPath}
                       errorComponent={RouteErrorFallback}
@@ -352,7 +361,7 @@ function RootComponent() {
                         <Outlet />
                       </Suspense>
                     </CatchBoundary>
-                  </AppShell>
+                  </TenantErpChrome>
                 )}
               </BackendGate>
             </SubscriptionGate>

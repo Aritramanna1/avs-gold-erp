@@ -8,11 +8,49 @@
  *
  * Never store weights or money as floating point. Convert only at I/O boundaries
  * (display + parsing). All accounting math runs on integers.
+ *
+ * Pure-gold reference (owner-locked default 995) is read from firm policy via
+ * {@link getPureGoldReferencePermille}. Do not reimplement fine math elsewhere.
+ * Posted historical fineMg values must not be silently rewritten when the
+ * reference changes — pass an explicit override only for audited replay.
  */
 
 import { usePurityGradesStore } from "@/lib/purity-grades-store";
+import { DEFAULT_PURE_GOLD_REFERENCE_PERMILLE } from "@/lib/ma-tara-workshop-policy";
 
 export type Purity = number; // per-mille, 0..999
+
+export type FineGoldOptions = {
+  /** Explicit reference for audited replay; omit to use firm policy / default. */
+  pureGoldReferencePermille?: number;
+};
+
+let pureGoldReferenceResolver: () => number = () => DEFAULT_PURE_GOLD_REFERENCE_PERMILLE;
+
+/** Wire firm settings so fineGoldMg reads one configuration source. */
+export function setPureGoldReferenceResolver(fn: () => number): void {
+  pureGoldReferenceResolver = fn;
+}
+
+/** Current pure-gold reference per-mille (default 995). */
+export function getPureGoldReferencePermille(): number {
+  const n = Number(pureGoldReferenceResolver());
+  if (!Number.isInteger(n) || n < 900 || n > 999) {
+    return DEFAULT_PURE_GOLD_REFERENCE_PERMILLE;
+  }
+  return n;
+}
+
+function resolvePureGoldReference(options?: FineGoldOptions): number {
+  const explicit = options?.pureGoldReferencePermille;
+  if (explicit !== undefined) {
+    if (!Number.isInteger(explicit) || explicit < 900 || explicit > 999) {
+      throw new Error("pureGoldReferencePermille must be integer 900..999");
+    }
+    return explicit;
+  }
+  return getPureGoldReferencePermille();
+}
 
 /** Convert grams (user input) to integer mg. Accepts "100", "100.000", " 12.345 ". */
 export function gramsToMg(input: string | number): number {
@@ -71,21 +109,39 @@ export function formatWeight(mg: number, opts: { sign?: boolean } = {}): string 
 }
 
 /**
- * Fine gold = gross × purity / 999, rounded to nearest mg — this shop's
- * convention expresses purity as a fraction of practical-maximum (999 touch),
- * not literal parts-per-1000. This is the ONLY place this formula should be
- * implemented; every other call site must import fineGoldMg() rather than
- * reimplementing the arithmetic, or it will silently disagree with the
- * ledger by using /1000 instead.
+ * Fine gold = round(gross × purity / pureGoldReferencePermille).
+ *
+ * Owner-locked default reference = 995 (firm policy `maTaraWorkshopPolicy`).
+ * At-or-above the configured pure reference counts as full fine (= gross).
+ * This is the ONLY place this formula should be implemented; every other
+ * call site must import fineGoldMg() rather than reimplementing arithmetic.
+ *
+ * Do not use this to rewrite posted historical fineMg — stored results remain
+ * authoritative. Pass `options.pureGoldReferencePermille` only for audited replay.
  */
-export function fineGoldMg(grossMg: number, purity: Purity): number {
+export function fineGoldMg(grossMg: number, purity: Purity, options?: FineGoldOptions): number {
   if (!Number.isInteger(grossMg) || grossMg < 0)
     throw new Error("grossMg must be non-negative integer");
   if (!Number.isInteger(purity) || purity < 0 || purity > 999)
     throw new Error("purity must be 0..999");
-  if (purity >= 999) return grossMg;
+  const pureRef = resolvePureGoldReference(options);
+  if (purity >= pureRef) return grossMg;
   const product = grossMg * purity;
-  return Math.round(product / 999);
+  return Math.round(product / pureRef);
+}
+
+/**
+ * Inverse of {@link fineGoldMg}: approximate gross from fine at a purity,
+ * using the same pure-gold reference (default 995).
+ */
+export function grossFromFineMg(fineMg: number, purity: Purity, options?: FineGoldOptions): number {
+  if (!Number.isInteger(fineMg) || fineMg < 0)
+    throw new Error("fineMg must be non-negative integer");
+  if (!Number.isInteger(purity) || purity <= 0 || purity > 999)
+    throw new Error("purity must be 1..999");
+  const pureRef = resolvePureGoldReference(options);
+  if (purity >= pureRef) return fineMg;
+  return Math.round((fineMg * pureRef) / purity);
 }
 
 /**
@@ -126,8 +182,8 @@ export function getCaratLabel(purity: number): string {
 }
 
 export const COMMON_PURITIES: { label: string; value: Purity }[] = [
+  { label: "995 · Pure (default reference)", value: 995 },
   { label: "999 · Fine", value: 999 },
-  { label: "995", value: 995 },
   { label: "916 · 22K", value: 916 },
   { label: "875 · 21K", value: 875 },
   { label: "750 · 18K", value: 750 },

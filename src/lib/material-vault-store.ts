@@ -31,6 +31,11 @@ export interface MaterialCategoryDef {
   key: string;
   label: string;
   group: MaterialGroup;
+  /**
+   * Optional display hint only. Authoritative payable flag lives in
+   * `maTaraWorkshopPolicy.materialPayableByCategoryKey` (default PAYABLE).
+   */
+  payable?: boolean;
 }
 
 /**
