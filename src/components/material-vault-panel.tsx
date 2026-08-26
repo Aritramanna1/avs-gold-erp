@@ -508,12 +508,14 @@ function CategorySelect({
 /**
  * Manage Materials - admin-configurable material list. New materials persist and
  * appear in every material dropdown. Built-ins can't be removed; admin-defined
- * ones can. Nothing about the material list is hard-coded.
+ * ones can. Payable/non-payable extends existing categories (default PAYABLE).
  */
 function MaterialManageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const categories = useMaterialVault((s) => s.categories);
   const registerCategory = useMaterialVault((s) => s.registerCategory);
   const removeCategory = useMaterialVault((s) => s.removeCategory);
+  const maTaraWorkshopPolicy = useSettings((s) => s.maTaraWorkshopPolicy);
+  const setMaTaraWorkshopPolicy = useSettings((s) => s.setMaTaraWorkshopPolicy);
   const [name, setName] = useState("");
   const [group, setGroup] = useState<MaterialGroup>("manufacturing_materials");
 
@@ -529,9 +531,15 @@ function MaterialManageDialog({ open, onClose }: { open: boolean; onClose: () =>
       toast.error("A material with this name already exists.");
       return;
     }
-    registerCategory({ key, label, group });
+    registerCategory({ key, label, group, payable: true });
     setName("");
     toast.success(`Material "${label}" added.`);
+  }
+
+  function setPayable(key: string, payable: boolean) {
+    setMaTaraWorkshopPolicy({
+      materialPayableByCategoryKey: { [key]: payable },
+    });
   }
 
   return (
@@ -571,6 +579,42 @@ function MaterialManageDialog({ open, onClose }: { open: boolean; onClose: () =>
             <Button onClick={add} data-testid="material-add">
               Add
             </Button>
+          </div>
+
+          <div>
+            <Label className="text-xs">Payable status (existing materials)</Label>
+            <p className="text-[11px] text-muted-foreground mt-0.5 mb-1">
+              Default PAYABLE keeps current behaviour. NON-PAYABLE excludes the material from payout
+              / wastage-eligible metal. Does not invent which items are non-payable.
+            </p>
+            <div className="mt-1 space-y-1 max-h-56 overflow-y-auto">
+              {categories.map((c) => {
+                const payable =
+                  maTaraWorkshopPolicy.materialPayableByCategoryKey?.[c.key] !== false;
+                return (
+                  <div
+                    key={c.key}
+                    className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-3 py-1.5 text-sm gap-2"
+                  >
+                    <span className="min-w-0 truncate">
+                      {c.label}{" "}
+                      <span className="text-[11px] text-muted-foreground">
+                        - {MATERIAL_GROUP_LABELS[c.group]}
+                      </span>
+                    </span>
+                    <select
+                      className="h-7 rounded-md border border-input bg-background px-2 text-xs shrink-0"
+                      value={payable ? "payable" : "non_payable"}
+                      onChange={(e) => setPayable(c.key, e.target.value === "payable")}
+                      data-testid={`material-payable-${c.key}`}
+                    >
+                      <option value="payable">Payable</option>
+                      <option value="non_payable">Non-payable</option>
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <div>

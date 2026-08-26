@@ -1,5 +1,5 @@
 /** Shared, integer-safe composition calculations for every precious metal. */
-import { fineGoldMg } from "./gold";
+import { fineGoldMg, grossFromFineMg } from "./gold";
 
 export interface CompositionComponent {
   metal: string;
@@ -33,9 +33,7 @@ export function fineMetalMg(weightMg: number, purityPermille: number): number {
     throw new Error("Weight must be a non-negative integer in milligrams.");
   if (!Number.isSafeInteger(purityPermille) || purityPermille <= 0 || purityPermille > 1000)
     throw new Error("Purity must be between 1 and 1000 per-mille.");
-  // Routes through gold.ts's fineGoldMg() — the single source of truth for
-  // this shop's gross*purity/999 convention. 1000 is treated as full-fine
-  // (== 999 touch), same as fineGoldMg's own purity>=999 shortcut.
+  // Routes through gold.ts's fineGoldMg() — single SoT (default pure ref 995).
   return fineGoldMg(weightMg, Math.min(purityPermille, 999));
 }
 
@@ -45,9 +43,10 @@ export function calculateComposition(input: {
   formula: MetalCompositionFormula;
 }): ConversionCalculation {
   const inputFineMg = fineMetalMg(input.inputWeightMg, input.sourcePurityPermille);
-  // Inverse of fineMetalMg's gross*purity/999 convention: fine*999/purity.
-  const targetFineMg = Math.round(
-    (inputFineMg * 999) / Math.min(input.formula.targetPurityPermille, 999),
+  // Inverse via grossFromFineMg — same pure-gold reference as fineGoldMg.
+  const targetFineMg = grossFromFineMg(
+    inputFineMg,
+    Math.min(input.formula.targetPurityPermille, 999),
   );
   const alloyTotalMg = Math.max(0, targetFineMg - inputFineMg);
   const components = input.formula.components.map((component) => ({

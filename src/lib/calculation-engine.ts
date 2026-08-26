@@ -6,7 +6,7 @@
  * GST Dual-Currency calculations, and Multi-Unit Weight conversions.
  */
 
-import { fineGoldMg } from "./gold";
+import { fineGoldMg, getPureGoldReferencePermille, grossFromFineMg } from "./gold";
 import { evaluateBusinessRules, type BusinessRuleDefinition } from "./formula-engine";
 
 export interface FineGoldCalculationInput {
@@ -92,8 +92,8 @@ export interface UnitConversionResult {
  */
 export function calculateFineGold(input: FineGoldCalculationInput): FineGoldCalculationResult {
   const { netWeightMg, purityPerMille } = input;
-  // Routes through gold.ts's fineGoldMg() — the single source of truth for
-  // this shop's gross*purity/999 convention. Never reimplement with /1000.
+  // Routes through gold.ts's fineGoldMg() — single SoT; default pure ref = 995.
+  const pureRef = getPureGoldReferencePermille();
   const fineGoldMgValue = fineGoldMg(netWeightMg, Math.min(purityPerMille, 999));
   const fineGoldGrams = Number((fineGoldMgValue / 1000).toFixed(3));
 
@@ -102,7 +102,7 @@ export function calculateFineGold(input: FineGoldCalculationInput): FineGoldCalc
     purityPerMille,
     fineGoldMg: fineGoldMgValue,
     fineGoldGrams,
-    explanation: `${netWeightMg}mg Net Wt * (${purityPerMille}/999 Purity) = ${fineGoldMgValue}mg Fine Gold (${fineGoldGrams}g)`,
+    explanation: `${netWeightMg}mg Net Wt * (${purityPerMille}/${pureRef} Purity) = ${fineGoldMgValue}mg Fine Gold (${fineGoldGrams}g)`,
   };
 }
 
@@ -153,10 +153,10 @@ export function calculateKarigarWastage(input: KarigarWastageInput): KarigarWast
   const overLossPenaltyFineMg = isOverLoss ? Math.abs(netDueFineMg) : 0;
 
   // 5. Refund in Original Purity
-  // Inverse of fineGoldMg()'s gross*purity/999: fine*999/purity, keeping the
-  // same shop convention rather than an ad-hoc /1000.
-  const refundMetalWeightMg = Math.round(
-    (Math.abs(netDueFineMg) * 999) / Math.min(targetPurityPerMille, 999),
+  // Inverse of fineGoldMg via grossFromFineMg (same pure-gold reference).
+  const refundMetalWeightMg = grossFromFineMg(
+    Math.abs(netDueFineMg),
+    Math.min(targetPurityPerMille, 999),
   );
   explanation.push(
     isOverLoss

@@ -12,7 +12,9 @@ export interface CommercialPlanConfig {
   name: string;
   code: string;
   tagline: string;
+  /** Display-only placeholder. Live amount comes from platform_plans.price_minor. */
   pricingMonthlyINR: number;
+  /** Display-only placeholder. Live amount comes from platform_plans / commercial fee tables. */
   pricingAnnualINR: number;
   maxSeats: number;
   maxBranches: number; // 1 base branch included, extra as add-ons
@@ -21,14 +23,18 @@ export interface CommercialPlanConfig {
   features: string[];
 }
 
+/**
+ * Structural tier definitions only — never bake commercial ₹ into app logic.
+ * Prices must be loaded/saved via platform_plans.price_minor (Plan Builder / Commercial Pricing).
+ */
 export const COMMERCIAL_PLANS: Record<CommercialPlanTier, CommercialPlanConfig> = {
   basic: {
     id: "basic",
     name: "Basic Plan",
     code: "ORNEXA_BASIC",
     tagline: "Essential jewellery workshop and ledger accounting",
-    pricingMonthlyINR: 1999,
-    pricingAnnualINR: 19990,
+    pricingMonthlyINR: 0,
+    pricingAnnualINR: 0,
     maxSeats: 2,
     maxBranches: 1,
     allowedSurfaces: ["client.web", "client.desktop"],
@@ -47,8 +53,8 @@ export const COMMERCIAL_PLANS: Record<CommercialPlanTier, CommercialPlanConfig> 
     name: "Growth Plan",
     code: "ORNEXA_GROWTH",
     tagline: "Complete single-branch workshop and retail billing",
-    pricingMonthlyINR: 3999,
-    pricingAnnualINR: 39990,
+    pricingMonthlyINR: 0,
+    pricingAnnualINR: 0,
     maxSeats: 5,
     maxBranches: 1,
     allowedSurfaces: ["client.web", "client.desktop", "client.mobile"],
@@ -69,8 +75,8 @@ export const COMMERCIAL_PLANS: Record<CommercialPlanTier, CommercialPlanConfig> 
     name: "Professional Plan",
     code: "ORNEXA_PRO",
     tagline: "Multi-device manufacturing with outside work & assays",
-    pricingMonthlyINR: 7999,
-    pricingAnnualINR: 79990,
+    pricingMonthlyINR: 0,
+    pricingAnnualINR: 0,
     maxSeats: 12,
     maxBranches: 1,
     allowedSurfaces: ["client.web", "client.desktop", "client.mobile"],
@@ -95,8 +101,8 @@ export const COMMERCIAL_PLANS: Record<CommercialPlanTier, CommercialPlanConfig> 
     name: "Scale Plan",
     code: "ORNEXA_SCALE",
     tagline: "High-throughput manufacturing & wholesale operations",
-    pricingMonthlyINR: 14999,
-    pricingAnnualINR: 149990,
+    pricingMonthlyINR: 0,
+    pricingAnnualINR: 0,
     maxSeats: 25,
     maxBranches: 1,
     allowedSurfaces: ["client.web", "client.desktop", "client.mobile"],
@@ -123,8 +129,8 @@ export const COMMERCIAL_PLANS: Record<CommercialPlanTier, CommercialPlanConfig> 
     name: "Max Enterprise Plan",
     code: "ORNEXA_MAX",
     tagline: "Unrestricted enterprise ERP with full AI runtime & custom formulas",
-    pricingMonthlyINR: 24999,
-    pricingAnnualINR: 249990,
+    pricingMonthlyINR: 0,
+    pricingAnnualINR: 0,
     maxSeats: 100,
     maxBranches: 1,
     allowedSurfaces: ["client.web", "client.desktop", "client.mobile"],

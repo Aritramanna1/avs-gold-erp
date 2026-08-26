@@ -32,6 +32,7 @@ import { Route as OtpLoginRouteImport } from './routes/otp-login'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as MtgRouteImport } from './routes/mtg'
 import { Route as MeltRouteImport } from './routes/melt'
 import { Route as MasterRouteImport } from './routes/master'
 import { Route as ManufacturingRouteImport } from './routes/manufacturing'
@@ -341,6 +342,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MtgRoute = MtgRouteImport.update({
+  id: '/mtg',
+  path: '/mtg',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MeltRoute = MeltRouteImport.update({
@@ -1375,6 +1381,7 @@ export interface FileRoutesByFullPath {
   '/manufacturing': typeof ManufacturingRouteWithChildren
   '/master': typeof MasterRoute
   '/melt': typeof MeltRouteWithChildren
+  '/mtg': typeof MtgRoute
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/orders': typeof OrdersRouteWithChildren
@@ -1589,6 +1596,7 @@ export interface FileRoutesByTo {
   '/ledger': typeof LedgerRoute
   '/login': typeof LoginRoute
   '/master': typeof MasterRoute
+  '/mtg': typeof MtgRoute
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/otp-login': typeof OtpLoginRoute
@@ -1803,6 +1811,7 @@ export interface FileRoutesById {
   '/manufacturing': typeof ManufacturingRouteWithChildren
   '/master': typeof MasterRoute
   '/melt': typeof MeltRouteWithChildren
+  '/mtg': typeof MtgRoute
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
   '/orders': typeof OrdersRouteWithChildren
@@ -2025,6 +2034,7 @@ export interface FileRouteTypes {
     | '/manufacturing'
     | '/master'
     | '/melt'
+    | '/mtg'
     | '/notifications'
     | '/onboarding'
     | '/orders'
@@ -2239,6 +2249,7 @@ export interface FileRouteTypes {
     | '/ledger'
     | '/login'
     | '/master'
+    | '/mtg'
     | '/notifications'
     | '/onboarding'
     | '/otp-login'
@@ -2452,6 +2463,7 @@ export interface FileRouteTypes {
     | '/manufacturing'
     | '/master'
     | '/melt'
+    | '/mtg'
     | '/notifications'
     | '/onboarding'
     | '/orders'
@@ -2673,6 +2685,7 @@ export interface RootRouteChildren {
   ManufacturingRoute: typeof ManufacturingRouteWithChildren
   MasterRoute: typeof MasterRoute
   MeltRoute: typeof MeltRouteWithChildren
+  MtgRoute: typeof MtgRoute
   NotificationsRoute: typeof NotificationsRoute
   OnboardingRoute: typeof OnboardingRoute
   OrdersRoute: typeof OrdersRouteWithChildren
@@ -2899,6 +2912,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mtg': {
+      id: '/mtg'
+      path: '/mtg'
+      fullPath: '/mtg'
+      preLoaderRoute: typeof MtgRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/melt': {
@@ -4718,6 +4738,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManufacturingRoute: ManufacturingRouteWithChildren,
   MasterRoute: MasterRoute,
   MeltRoute: MeltRouteWithChildren,
+  MtgRoute: MtgRoute,
   NotificationsRoute: NotificationsRoute,
   OnboardingRoute: OnboardingRoute,
   OrdersRoute: OrdersRouteWithChildren,

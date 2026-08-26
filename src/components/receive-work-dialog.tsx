@@ -27,6 +27,9 @@ import { usePeople, kycComplete } from "@/lib/people-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
 import { calculateKarigarWastageWithRuntimeRules } from "@/lib/declarative-rules-runtime";
+import { isMaterialCategoryPayable } from "@/lib/ma-tara-workshop-policy";
+import { materialKeyFromName } from "@/lib/material-vault-store";
+import { useSettings } from "@/lib/settings-store";
 import { AlertTriangle, PackageCheck } from "lucide-react";
 
 function safeMg(s: string): number {
@@ -76,6 +79,7 @@ export function ReceiveWorkDialog({
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const maTaraWorkshopPolicy = useSettings((s) => s.maTaraWorkshopPolicy);
 
   useEffect(() => {
     if (job) {
@@ -95,22 +99,27 @@ export function ReceiveWorkDialog({
   const wastagePreview = useMemo(() => {
     if (!job) return null;
     const totalReturnedGrossMg = finishedGrossMg + filingsGrossMg;
-    const isChain = job.category.toLowerCase().includes("chain");
+    const cat = job.category ?? "general";
+    const isChain = cat.toLowerCase().includes("chain");
+    const materialKey = materialKeyFromName(cat) || cat;
+    const markedNonPayable = !isMaterialCategoryPayable(materialKey, maTaraWorkshopPolicy);
+    const chainsNonPayable = isChain && !isMaterialCategoryPayable("chains", maTaraWorkshopPolicy);
+    const isWastageExcluded = isChain || markedNonPayable || chainsNonPayable;
     return calculateKarigarWastageWithRuntimeRules({
       totalSubmittedNetWeightMg: totalReturnedGrossMg,
       karigarWastagePct: wastagePct,
       items: [
         {
-          categoryId: job.category ?? "general",
-          categoryName: job.category ?? "General",
-          weightMg: isChain ? totalReturnedGrossMg : 0,
-          isWastageExcluded: isChain,
+          categoryId: cat,
+          categoryName: cat,
+          weightMg: isWastageExcluded ? totalReturnedGrossMg : 0,
+          isWastageExcluded,
         },
       ],
       issuedFineGoldMg: job.targetFineMg,
       targetPurityPerMille: finishedPurity,
     });
-  }, [job, finishedGrossMg, filingsGrossMg, finishedPurity, wastagePct]);
+  }, [job, finishedGrossMg, filingsGrossMg, finishedPurity, wastagePct, maTaraWorkshopPolicy]);
 
   if (!job) {
     if (!open) return null;
@@ -228,6 +237,12 @@ export function ReceiveWorkDialog({
     }
 
     const returnedFineMg = finishedFineMg + filingsFineMg + dustFineMg;
+    const cat = job.category ?? "general";
+    const isChain = cat.toLowerCase().includes("chain");
+    const materialKey = materialKeyFromName(cat) || cat;
+    const markedNonPayable = !isMaterialCategoryPayable(materialKey, maTaraWorkshopPolicy);
+    const chainsNonPayable = isChain && !isMaterialCategoryPayable("chains", maTaraWorkshopPolicy);
+    const isWastageExcluded = isChain || markedNonPayable || chainsNonPayable;
     const wastageResult =
       wastagePreview ??
       calculateKarigarWastageWithRuntimeRules({
@@ -235,12 +250,10 @@ export function ReceiveWorkDialog({
         karigarWastagePct: wastagePct,
         items: [
           {
-            categoryId: job.category ?? "general",
-            categoryName: job.category ?? "General",
-            weightMg: job.category.toLowerCase().includes("chain")
-              ? finishedGrossMg + filingsGrossMg
-              : 0,
-            isWastageExcluded: job.category.toLowerCase().includes("chain"),
+            categoryId: cat,
+            categoryName: cat,
+            weightMg: isWastageExcluded ? finishedGrossMg + filingsGrossMg : 0,
+            isWastageExcluded,
           },
         ],
         issuedFineGoldMg: job.targetFineMg,

@@ -101,6 +101,9 @@ type Plan = {
   branch_limit: number | null;
   user_limit: number | null;
   workshop_limit?: number | null;
+  business_edition?: string | null;
+  price_band_code?: string | null;
+  edition_family?: string | null;
 };
 type Event = {
   id: string;
@@ -320,7 +323,7 @@ function PlatformOwnerConsole() {
       supabase
         .from("platform_plans")
         .select(
-          "id,name,code,price_minor,billing_cycle,is_active,branch_limit,user_limit,workshop_limit",
+          "id,name,code,price_minor,billing_cycle,is_active,branch_limit,user_limit,workshop_limit,business_edition,price_band_code,edition_family",
         )
         .order("created_at", { ascending: false }),
       supabase
@@ -1248,6 +1251,21 @@ function SubscriptionsSection({
     await refresh();
   }
 
+  async function setSubscriptionStatus(orgId: string, status: "active" | "suspended") {
+    const existing = subscriptions.find((s) => s.organization_id === orgId);
+    if (!existing) return;
+    await supabase
+      .from("organization_subscriptions")
+      .update({ status })
+      .eq("organization_id", orgId);
+    await supabase.from("platform_audit_events").insert({
+      action: status === "suspended" ? "SUBSCRIPTION_SUSPENDED" : "SUBSCRIPTION_ACTIVATED",
+      target_type: "organization",
+      reason: `Subscription ${status} for firm ID ${orgId}`,
+    });
+    await refresh();
+  }
+
   return (
     <div className="erp-surface rounded-md border border-border bg-card overflow-hidden shadow-xs">
       <div className="p-4 border-b border-border">
@@ -1282,8 +1300,17 @@ function SubscriptionsSection({
                       <div>
                         <span className="font-semibold text-foreground">{plan.name}</span>
                         <span className="ml-2 text-gold font-mono">
-                          (₹{(plan.price_minor / 100).toFixed(0)}/mo)
+                          {plan.price_minor > 0
+                            ? `(₹${(plan.price_minor / 100).toFixed(0)}/mo)`
+                            : "(price unset)"}
                         </span>
+                        {(plan.business_edition || plan.edition_family) && (
+                          <div className="mt-0.5 text-[10px] font-mono text-muted-foreground">
+                            {[plan.edition_family, plan.business_edition, plan.price_band_code]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <span className="text-red-400 font-mono">Unassigned</span>
@@ -1312,7 +1339,12 @@ function SubscriptionsSection({
                           <option value="">Select plan...</option>
                           {plans.map((p) => (
                             <option key={p.id} value={p.id}>
-                              {p.name} (₹{(p.price_minor / 100).toFixed(0)})
+                              {p.code}
+                              {p.business_edition ? ` · ${p.business_edition}` : ""}
+                              {p.edition_family === "mtg" ? " · MTG" : ""}
+                              {p.price_minor > 0
+                                ? ` (₹${(p.price_minor / 100).toFixed(0)})`
+                                : " (set price)"}
                             </option>
                           ))}
                         </select>
@@ -1333,17 +1365,34 @@ function SubscriptionsSection({
                         </Button>
                       </div>
                     ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditingOrg(f.id);
-                          setSelectedPlan(sub?.plan_id ?? "");
-                        }}
-                        className="h-7 text-xs border-border bg-background hover:bg-muted/50 text-foreground cursor-pointer"
-                      >
-                        Change Plan
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingOrg(f.id);
+                            setSelectedPlan(sub?.plan_id ?? "");
+                          }}
+                          className="h-7 text-xs border-border bg-background hover:bg-muted/50 text-foreground cursor-pointer"
+                        >
+                          Change Plan
+                        </Button>
+                        {sub ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              void setSubscriptionStatus(
+                                f.id,
+                                sub.status === "suspended" ? "active" : "suspended",
+                              )
+                            }
+                            className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            {sub.status === "suspended" ? "Activate" : "Suspend"}
+                          </Button>
+                        ) : null}
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -1408,7 +1457,7 @@ function LicensingSection({
         organization_id: selectedFirm,
         feature_key: featureKey,
         enabled: true,
-        source: "platform_override",
+        source: "manual",
       });
     }
     await refresh();

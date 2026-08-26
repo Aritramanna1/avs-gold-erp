@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-08-27 — Master reset to GO baseline; re-apply additive Platform/MTG/995 on `main`
+
+### Ops
+
+- Restored Hostinger to GO zip `dist_go_20260826_190800.zip` (`index-CVsE73i6.js`).
+- Canonical `main` / `origin/main` = `8dc1c43` (`stable/production-last-known-good-20260827`).
+- Drift salvage: `archive/drift-platform-mtg-20260827`.
+- DB audit: `docs/MASTER_RESET_DB_AUDIT_20260827.md` — no data wipe; live additive migrations kept.
+
+### Re-applied on restored `main` (additive)
+
+- Pure gold reference 995 + Ma Tara workshop policy / material payable.
+- AVS plan × edition catalog FE + Platform Access wiring; MTG-only shell.
+- Entitlement boot / route deny / Plan Builder `plan_features` sync.
+
+## 2026-08-27 — Platform Access + MTG edition (additive on `main`)
+
+### Added
+
+- AVS Price Plan × Business Edition catalog: `AVS_10K_*` / `AVS_20K_*` / `AVS_30K_*` / `AVS_50K_FULL` + `AVS_MTG` with Owner-editable `price_minor` (no hardcoded ₹).
+- Entitlement matrix doc: `docs/AVS_ERP_PLAN_EDITION_ENTITLEMENT_MATRIX.md`.
+- Tenant boot via `get_my_tenant_entitlements` → nav filter + module_states sync + deep-link deny.
+- MTG-only simple shell (`/mtg`, `MtgShell`) — other editions keep AppShell.
+- Plan Builder writes `plan_features` on save; Platform AVS catalog price editor; subscription Suspend/Activate.
+
+### Database
+
+- `20260827020000_avs_plan_edition_catalog_mtg.sql`
+- `20260827021000_entitlement_write_path_parity.sql` (RESTRICTIVE write-path policies)
+- `20260827022000_entitlement_legacy_bootstrap_safe.sql` (legacy empty-features bootstrap + backfill)
+
+### Ops
+
+- Hostinger rollback artifact retained: `dist_go_20260826_190800.zip`.
+
+## 2026-08-27 — Rollback economics deploy; continue on `main` only
+
+### Ops
+
+- Hostinger rolled back to GO zip `dist_go_20260826_190800.zip` — live `index-CVsE73i6.js`.
+- Local `feat/jwelly-economics-config-spine` deleted. Working branch is **`main`** (fast-forwarded to GO freeze `8dc1c43`).
+- **Owner rule:** all further work is on `main` only.
+
+### Additive re-apply on `main` (not yet redeployed)
+
+- `maTaraWorkshopPolicy` + `fineGoldMg` default 995; material payable flags (default PAYABLE).
+- Live DB seed from earlier migration remains valid; frontend stays on GO until owner approves a `main` deploy.
+
 ## 2026-08-12 — Branch gold-rate overrides, old-gold melt-loss deduction, metal ledger indexes
 
 ### Database

@@ -2,6 +2,7 @@ import type { AuthorizationContext, WorkspaceType } from "@/lib/identity/authori
 
 const ERP_PREFIXES = [
   "/app",
+  "/mtg",
   "/people",
   "/orders",
   "/workshop",
@@ -56,6 +57,7 @@ export function workspaceHomeRoute(type: WorkspaceType): string {
 
 export function isErpPath(pathname: string): boolean {
   if (pathname === "/app" || pathname.startsWith("/app/")) return true;
+  if (pathname === "/mtg" || pathname.startsWith("/mtg/")) return true;
   return ERP_PREFIXES.filter((p) => p !== "/app").some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );

@@ -14,6 +14,12 @@ import {
   redactBullionRateProvider,
   redactSmtpSettings,
 } from "@/lib/security/client-secret-redaction";
+import {
+  DEFAULT_MA_TARA_WORKSHOP_POLICY,
+  normalizeMaTaraWorkshopPolicy,
+  type MaTaraWorkshopPolicy,
+} from "@/lib/ma-tara-workshop-policy";
+import { setPureGoldReferenceResolver } from "@/lib/gold";
 
 /** Saves the main firm settings blob to app_settings[id="firm"] */
 /**
@@ -253,6 +259,7 @@ function persistSettings(get: () => any, force = false): void {
     print: s.print,
     gst: s.gst,
     makingCharge: s.makingCharge,
+    maTaraWorkshopPolicy: s.maTaraWorkshopPolicy,
     purities: s.purities,
     workshopProcesses: s.workshopProcesses,
     alloyFormulas: s.alloyFormulas,
@@ -833,6 +840,11 @@ export interface SettingsState {
   print: PrintTemplateSettings;
   gst: GstSettings;
   makingCharge: MakingChargeSettings;
+  /**
+   * Ma Tara / firm workshop policy. Owner-locked default:
+   * pureGoldReferencePermille = 995. Other fields stay blocked until approved.
+   */
+  maTaraWorkshopPolicy: MaTaraWorkshopPolicy;
   purities: Purity[];
   workshopProcesses: WorkshopProcessConfig[];
   alloyFormulas: AlloyFormula[];
@@ -934,6 +946,7 @@ export interface SettingsState {
   setPrint: (p: Partial<PrintTemplateSettings>) => void;
   setGst: (p: Partial<GstSettings>) => void;
   setMakingCharge: (p: Partial<MakingChargeSettings>) => void;
+  setMaTaraWorkshopPolicy: (p: Partial<MaTaraWorkshopPolicy>) => void;
   setHardware: (p: Partial<HardwareSettings>) => void;
   setCatalog: (p: Partial<CatalogSettings>) => void;
   setGoldRate: (paise: number) => void;
@@ -1647,6 +1660,7 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
     defaultRatePerUnitPaise: 0,
     categoryOverrides: {},
   },
+  maTaraWorkshopPolicy: { ...DEFAULT_MA_TARA_WORKSHOP_POLICY },
   purities: DEFAULT_PURITIES,
   workshopProcesses: DEFAULT_WORKSHOP_PROCESSES,
   alloyFormulas: DEFAULT_ALLOY_FORMULAS,
@@ -1866,6 +1880,7 @@ type Functions = Pick<
   | "setPrint"
   | "setGst"
   | "setMakingCharge"
+  | "setMaTaraWorkshopPolicy"
   | "setHardware"
   | "setBullionRateProvider"
   | "setCatalog"
@@ -1962,6 +1977,20 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   },
   setMakingCharge: (p) => {
     set({ makingCharge: { ...get().makingCharge, ...p } });
+    persistSettings(get);
+  },
+  setMaTaraWorkshopPolicy: (p) => {
+    const prev = get().maTaraWorkshopPolicy;
+    set({
+      maTaraWorkshopPolicy: normalizeMaTaraWorkshopPolicy({
+        ...prev,
+        ...p,
+        materialPayableByCategoryKey: {
+          ...(prev.materialPayableByCategoryKey ?? {}),
+          ...(p.materialPayableByCategoryKey ?? {}),
+        },
+      }),
+    });
     persistSettings(get);
   },
   setHardware: (p) => {
@@ -2345,3 +2374,18 @@ export async function clearBrowserSessionResidue(): Promise<void> {
     window.sessionStorage.clear();
   }
 }
+
+/**
+ * Bind fineGoldMg() to firm policy so every module shares one pure-gold reference.
+ * Call once at module load; resolver always reads latest store state.
+ */
+setPureGoldReferenceResolver(() => {
+  try {
+    return (
+      useSettings.getState().maTaraWorkshopPolicy?.pureGoldReferencePermille ??
+      DEFAULT_MA_TARA_WORKSHOP_POLICY.pureGoldReferencePermille
+    );
+  } catch {
+    return DEFAULT_MA_TARA_WORKSHOP_POLICY.pureGoldReferencePermille;
+  }
+});
