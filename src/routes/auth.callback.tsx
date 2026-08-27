@@ -3,11 +3,59 @@ import { useEffect, useState } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Card } from "@/components/ui/card";
 import { Loader2, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { fetchAuthorizationContext } from "@/lib/identity/authorization-context-service";
+import { pickDefaultRoute } from "@/lib/identity/route-access";
+import { DEFAULT_PLATFORM_SEARCH } from "@/lib/platform-search";
 
 export const Route = createFileRoute("/auth/callback")({
   head: () => ({ meta: [{ title: "Secure Login Redirect · AVS Gold ERP" }] }),
   component: AuthCallbackPage,
 });
+
+/**
+ * Post-OAuth destination.
+ * Never send authenticated users to `/` (marketing can 404 / bypass AuthGate).
+ * Prefer: recovery/invite → explicit flows; else auth-context default (platform/portal/ERP).
+ */
+async function resolvePostAuthDestination(input: {
+  type: string | null;
+  sessionTokenType: string | null;
+}): Promise<{ path: string; platformSearch?: boolean }> {
+  if (input.type === "recovery" || input.sessionTokenType === "recovery") {
+    return { path: "/reset-password" };
+  }
+  if (
+    input.type === "signup" ||
+    input.type === "invite" ||
+    input.sessionTokenType === "signup" ||
+    input.sessionTokenType === "invite"
+  ) {
+    return { path: "/invite/accept" };
+  }
+
+  // Optional deep-link: /auth/callback?next=/orders (must be same-origin path)
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (next && next.startsWith("/") && !next.startsWith("//") && next !== "/") {
+    return { path: next };
+  }
+
+  try {
+    const ctx = await fetchAuthorizationContext();
+    if (ctx) {
+      const route = pickDefaultRoute(ctx);
+      if (route.startsWith("/platform")) {
+        return { path: "/platform", platformSearch: true };
+      }
+      if (route && route !== "/") {
+        return { path: route };
+      }
+    }
+  } catch (err) {
+    console.warn("[AuthCallback] authorization context unavailable; falling back to /app", err);
+  }
+
+  return { path: "/app" };
+}
 
 function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -50,12 +98,13 @@ function AuthCallbackPage() {
           if (exchangeError) throw exchangeError;
         }
 
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
+        // Brief retry — session can lag one tick after hash/implicit or detectSessionInUrl.
+        let session = (await supabase.auth.getSession()).data.session;
+        if (!session) {
+          await new Promise((r) => setTimeout(r, 250));
+          session = (await supabase.auth.getSession()).data.session;
+        }
 
-        if (error) throw error;
         if (!active) return;
 
         if (session) {
@@ -83,27 +132,23 @@ function AuthCallbackPage() {
             }
           }
 
-          // Never send authenticated users to `/` — marketing home can throw 404 when
-          // homepage flag is off, and `/` bypasses AuthGate (public marketing path).
-          if (type === "recovery" || sessionTokenType === "recovery") {
-            setMsg("Recovery session identified. Opening password reset…");
-            void navigate({ to: "/reset-password", replace: true });
-          } else if (
-            type === "signup" ||
-            type === "invite" ||
-            sessionTokenType === "signup" ||
-            sessionTokenType === "invite"
-          ) {
-            setMsg("Invitation authenticated. Opening invite acceptance…");
-            void navigate({ to: "/invite/accept", replace: true });
+          setMsg("Signed in. Loading your workspace…");
+          const dest = await resolvePostAuthDestination({ type, sessionTokenType });
+          if (!active) return;
+
+          if (dest.platformSearch) {
+            void navigate({
+              to: "/platform",
+              search: DEFAULT_PLATFORM_SEARCH,
+              replace: true,
+            });
           } else {
-            setMsg("Signed in. Loading your workspace…");
-            void navigate({ to: "/app", replace: true });
+            void navigate({ to: dest.path as "/", replace: true });
           }
         } else {
           setStatus("error");
           setMsg(
-            "No session was established after Google redirect. Confirm the callback URL is allowed in Supabase Auth settings, then try again.",
+            "No session was established after Google redirect. Confirm Site URL and Redirect URLs in Supabase Auth include https://maatarajewellers.shop/auth/callback, then try again.",
           );
         }
       } catch (err: unknown) {

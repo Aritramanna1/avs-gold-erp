@@ -1,9 +1,17 @@
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { getProductionPublicOrigin, isLocalOrDevOrigin } from "@/lib/public-origin";
 
 export type GoogleOAuthOptions = {
   /** Path after auth callback, e.g. `/invite/accept?code=...` */
   redirectPath?: string;
 };
+
+/** Exact production callback URL (Supabase Redirect URLs allowlist). */
+export const PRODUCTION_GOOGLE_OAUTH_CALLBACK = "https://maatarajewellers.shop/auth/callback";
+
+/** Supabase Auth Google provider callback (Authorized redirect URI in Google Cloud). */
+export const SUPABASE_GOOGLE_PROVIDER_CALLBACK =
+  "https://dqgrrafuoxaorvyrcuuh.supabase.co/auth/v1/callback";
 
 /** True when Google OAuth is explicitly enabled for this build (staging/production config). */
 export function isGoogleOAuthEnabled(): boolean {
@@ -15,10 +23,28 @@ export function isGoogleOAuthEnabled(): boolean {
 }
 
 /**
+ * Canonical redirectTo for Google OAuth.
+ * On the live production host always use the locked Site URL callback so Supabase
+ * allowlists never mismatch. Elsewhere prefer current origin (local/staging).
+ */
+export function resolveGoogleOAuthRedirectTo(redirectPath = "/auth/callback"): string {
+  const path = redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`;
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname.toLowerCase();
+    if (host === "maatarajewellers.shop" || host === "www.maatarajewellers.shop") {
+      return `https://maatarajewellers.shop${path === "/auth/callback" ? "/auth/callback" : path}`;
+    }
+    const origin = window.location.origin;
+    if (!isLocalOrDevOrigin(origin) || import.meta.env.DEV) {
+      return `${origin}${path}`;
+    }
+  }
+  return `${getProductionPublicOrigin()}${path}`;
+}
+
+/**
  * Start Supabase Google OAuth.
- * Uses the *current* browser origin for redirectTo so OAuth never lands on a
- * mismatched host (which produced Hostinger/SPA 404s when VITE_PUBLIC_APP_URL
- * disagreed with the live site). Email magic-links still use getAuthRedirectUrl.
+ * Uses resolveGoogleOAuthRedirectTo so production never sends a localhost/mismatched redirect.
  */
 export async function signInWithGoogle(options: GoogleOAuthOptions = {}): Promise<{
   ok: boolean;
@@ -26,13 +52,16 @@ export async function signInWithGoogle(options: GoogleOAuthOptions = {}): Promis
   /** Present when ok — caller should navigate (keeps "Redirecting to Google…" UI visible). */
   url?: string;
 }> {
-  const path = options.redirectPath ?? "/auth/callback";
-  const redirectTo = `${window.location.origin}${path.startsWith("/") ? path : `/${path}`}`;
+  const redirectTo = resolveGoogleOAuthRedirectTo(options.redirectPath ?? "/auth/callback");
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo,
       skipBrowserRedirect: true,
+      queryParams: {
+        // Force account chooser so returning users aren't silently stuck on wrong Google identity.
+        prompt: "select_account",
+      },
     },
   });
   if (error) return { ok: false, error: error.message };
