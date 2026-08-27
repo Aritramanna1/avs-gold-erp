@@ -66,8 +66,8 @@ async function getFiles(dir, baseDir = dir) {
 const distFiles = await getFiles(path.join(root, "dist"));
 let count = 0;
 let fail = 0;
-for (const file of distFiles) {
-  count++;
+
+async function uploadOne(file, attempt = 1) {
   const fileStats = fs.statSync(file.fullPath);
   const fileBuffer = fs.readFileSync(file.fullPath);
   const targetFileUrl = `${cleanUrl}/${file.relativePath}?override=true`;
@@ -77,17 +77,43 @@ for (const file of distFiles) {
     "upload-length": fileStats.size.toString(),
     "upload-offset": "0",
   };
-  const preflight = await fetch(targetFileUrl, { method: "POST", headers });
-  if (preflight.status === 201 || preflight.status === 200 || preflight.status === 204) {
-    const patch = await fetch(targetFileUrl, {
-      method: "PATCH",
-      headers: { ...headers, "Content-Type": "application/offset+octet-stream" },
-      body: fileBuffer,
-    });
-    if (!patch.ok && patch.status !== 204) fail++;
-  } else {
-    fail++;
+  try {
+    const preflight = await fetch(targetFileUrl, { method: "POST", headers });
+    if (preflight.status === 201 || preflight.status === 200 || preflight.status === 204) {
+      const patch = await fetch(targetFileUrl, {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/offset+octet-stream" },
+        body: fileBuffer,
+      });
+      if (!patch.ok && patch.status !== 204) {
+        if (attempt < 4) {
+          await new Promise((r) => setTimeout(r, 1500 * attempt));
+          return uploadOne(file, attempt + 1);
+        }
+        return false;
+      }
+      return true;
+    }
+    if (attempt < 4) {
+      await new Promise((r) => setTimeout(r, 1500 * attempt));
+      return uploadOne(file, attempt + 1);
+    }
+    return false;
+  } catch (err) {
+    if (attempt < 4) {
+      console.warn(`  retry ${attempt} ${file.relativePath}: ${err?.cause?.code || err.message}`);
+      await new Promise((r) => setTimeout(r, 2000 * attempt));
+      return uploadOne(file, attempt + 1);
+    }
+    console.error(`  FAIL ${file.relativePath}: ${err?.cause?.code || err.message}`);
+    return false;
   }
+}
+
+for (const file of distFiles) {
+  count++;
+  const ok = await uploadOne(file);
+  if (!ok) fail++;
   if (count % 25 === 0 || count === distFiles.length) {
     console.log(`  Uploaded ${count}/${distFiles.length} (fail=${fail})`);
   }
