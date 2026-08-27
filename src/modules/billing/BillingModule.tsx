@@ -1394,13 +1394,14 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     // of being recorded as their credit/advance with the shop.
     const goldSurplusGrams = Math.max(0, goldReceivedGrams - goldRequiredGrams);
 
+    const exchangePurity = Math.min(999, Math.max(0, goldPayment?.goldPurity ?? 916));
     const goldShortfallFineMg =
       isGoldExchange && goldShortfallGrams > 0
-        ? Math.round(goldShortfallGrams * 1000 * ((goldPayment.goldPurity ?? 916) / 1000))
+        ? fineGoldMg(Math.round(goldShortfallGrams * 1000), exchangePurity)
         : 0;
     const goldSurplusFineMg =
       isGoldExchange && goldSurplusGrams > 0
-        ? Math.round(goldSurplusGrams * 1000 * ((goldPayment.goldPurity ?? 916) / 1000))
+        ? fineGoldMg(Math.round(goldSurplusGrams * 1000), exchangePurity)
         : 0;
 
     const isPhysicalGoldExchange = goldPayment?.mode === "gold_exchange";

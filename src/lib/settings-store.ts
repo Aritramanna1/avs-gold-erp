@@ -260,6 +260,7 @@ function persistSettings(get: () => any, force = false): void {
     makingCharge: s.makingCharge,
     maTaraWorkshopPolicy: s.maTaraWorkshopPolicy,
     mtjDefaultBundleAppliedAt: s.mtjDefaultBundleAppliedAt,
+    printDocumentPrefs: s.printDocumentPrefs,
     purities: s.purities,
     workshopProcesses: s.workshopProcesses,
     alloyFormulas: s.alloyFormulas,
@@ -847,6 +848,14 @@ export interface SettingsState {
   maTaraWorkshopPolicy: MaTaraWorkshopPolicy;
   /** ISO timestamp when MTJ Default Bundle was auto-applied (once). */
   mtjDefaultBundleAppliedAt: string | null;
+  /**
+   * Print document preferences (customization). Hisab remains available as its
+   * own document type; this only controls whether metal+cash Hisab appears on
+   * customer-facing retail/sale invoices.
+   */
+  printDocumentPrefs: {
+    hideCustomerHisabOnInvoice: boolean;
+  };
   purities: Purity[];
   workshopProcesses: WorkshopProcessConfig[];
   alloyFormulas: AlloyFormula[];
@@ -950,6 +959,7 @@ export interface SettingsState {
   setMakingCharge: (p: Partial<MakingChargeSettings>) => void;
   setMaTaraWorkshopPolicy: (p: Partial<MaTaraWorkshopPolicy>) => void;
   setMtjDefaultBundleAppliedAt: (iso: string | null) => void;
+  setPrintDocumentPrefs: (p: Partial<{ hideCustomerHisabOnInvoice: boolean }>) => void;
   setHardware: (p: Partial<HardwareSettings>) => void;
   setCatalog: (p: Partial<CatalogSettings>) => void;
   setGoldRate: (paise: number) => void;
@@ -1665,6 +1675,7 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
   },
   maTaraWorkshopPolicy: { ...DEFAULT_MA_TARA_WORKSHOP_POLICY },
   mtjDefaultBundleAppliedAt: null,
+  printDocumentPrefs: { hideCustomerHisabOnInvoice: true },
   purities: DEFAULT_PURITIES,
   workshopProcesses: DEFAULT_WORKSHOP_PROCESSES,
   alloyFormulas: DEFAULT_ALLOY_FORMULAS,
@@ -1886,6 +1897,7 @@ type Functions = Pick<
   | "setMakingCharge"
   | "setMaTaraWorkshopPolicy"
   | "setMtjDefaultBundleAppliedAt"
+  | "setPrintDocumentPrefs"
   | "setHardware"
   | "setBullionRateProvider"
   | "setCatalog"
@@ -2000,6 +2012,15 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   },
   setMtjDefaultBundleAppliedAt: (iso) => {
     set({ mtjDefaultBundleAppliedAt: iso });
+    persistSettings(get);
+  },
+  setPrintDocumentPrefs: (p) => {
+    set({
+      printDocumentPrefs: {
+        ...get().printDocumentPrefs,
+        ...p,
+      },
+    });
     persistSettings(get);
   },
   setHardware: (p) => {

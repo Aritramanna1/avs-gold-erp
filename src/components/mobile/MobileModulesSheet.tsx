@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Search, ChevronRight, LayoutGrid } from "lucide-react";
 import { navigationGroups, itemRouteKey } from "@/lib/navigation-groups";
@@ -7,12 +7,15 @@ import { useSettings } from "@/lib/settings-store";
 import { hasRoutePermission } from "@/lib/permissions";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
-/** Full ERP module browser — grouped navigation on mobile. */
+/** Full ERP module browser — same grouped IA as desktop Sidebar. */
 export function MobileModulesSheet({
   triggerClassName,
+  triggerContent,
   onNavigate,
 }: {
   triggerClassName?: string;
+  /** Custom trigger body (e.g. bottom-nav "More" icon+label). */
+  triggerContent?: ReactNode;
   onNavigate?: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -47,21 +50,29 @@ export function MobileModulesSheet({
       <SheetTrigger asChild>
         <button
           type="button"
+          aria-label="All ERP modules"
           className={
             triggerClassName ??
             "flex w-full items-center gap-3 min-h-[var(--touch-target)] rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted/50"
           }
         >
-          <LayoutGrid className="h-4 w-4 text-gold" />
-          <span className="flex-1 text-left">All ERP Modules</span>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          {triggerContent ?? (
+            <>
+              <LayoutGrid className="h-4 w-4 text-gold" />
+              <span className="flex-1 text-left">All ERP Modules</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </>
+          )}
         </button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="h-[min(85vh,640px)] rounded-t-xl p-0 flex flex-col">
+      <SheetContent
+        side="bottom"
+        className="h-[min(85vh,640px)] rounded-t-xl p-0 flex flex-col safe-area-pb"
+      >
         <SheetHeader className="px-4 pt-4 pb-2 border-b border-border">
           <SheetTitle className="text-left font-serif">All Modules</SheetTitle>
           <p className="text-xs text-muted-foreground text-left">
-            Grouped navigation — same permissions as desktop.
+            Same navigation groups as desktop — filtered by your permissions.
           </p>
           <div className="relative mt-2">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />

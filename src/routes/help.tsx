@@ -372,7 +372,7 @@ const COURSES: CourseModule[] = [
 const FAQS = [
   {
     q: "How does Ornexa calculate Fine Gold from alloyed metal?",
-    a: "Ornexa uses the standard formula: Fine Weight (g) = Gross Weight (g) × (Purity / 1000). For example, 10.000g of 916 gold equals exactly 9.160g of Fine Gold. Both the physical gross weight and pure fine gold balances are maintained simultaneously in real-time.",
+    a: "Ornexa uses fineGoldMg: Fine Weight (mg) = round(Gross Weight (mg) × Purity ÷ 999). Purity is per-mille (e.g. 916, 995). The MTG default purity is 995, but whatever purity you select drives the calculation. Both physical gross and pure fine balances are kept in milligrams.",
   },
   {
     q: "Can a customer also be a supplier or karigar in the system?",

@@ -475,6 +475,16 @@ export async function pullAppSettings(): Promise<void> {
         (payload as { maTaraWorkshopPolicy?: Partial<MaTaraWorkshopPolicy> })
           .maTaraWorkshopPolicy ?? useSettings.getState().maTaraWorkshopPolicy,
       ),
+      printDocumentPrefs: {
+        hideCustomerHisabOnInvoice:
+          (payload as { printDocumentPrefs?: { hideCustomerHisabOnInvoice?: boolean } })
+            .printDocumentPrefs?.hideCustomerHisabOnInvoice ??
+          useSettings.getState().printDocumentPrefs?.hideCustomerHisabOnInvoice ??
+          true,
+      },
+      mtjDefaultBundleAppliedAt:
+        (payload as { mtjDefaultBundleAppliedAt?: string | null }).mtjDefaultBundleAppliedAt ??
+        useSettings.getState().mtjDefaultBundleAppliedAt,
       purities: payload.purities ?? useSettings.getState().purities,
       making: payload.making ?? useSettings.getState().making,
       hardware: payload.hardware ?? useSettings.getState().hardware,
@@ -934,6 +944,14 @@ export async function startCloudSync(force = false): Promise<void> {
   }
   starting = true;
   try {
+    // If auth-gate already warmed app_settings/branches, unblock the shell immediately
+    // while pullCritical revalidates — same data, no mock shortcuts.
+    const alreadyWarm = Boolean(useSettings.getState().firm?.shopName);
+    if (alreadyWarm) {
+      useSettings.getState().setSettingsHydrated(true);
+      markCriticalLoadDone();
+    }
+
     const critical = await pullCritical();
     if (!critical.ok) {
       const summary = critical.errors.slice(0, 2).join("; ");

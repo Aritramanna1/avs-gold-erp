@@ -128,6 +128,17 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
       if (_bootstrappedUserId === s.user.id && authReady) return;
       _bootstrappedUserId = s.user.id;
 
+      // Warm critical settings in parallel with authorization RPC — does not
+      // change business behaviour; startCloudSync still revalidates via pullCritical.
+      void import("@/lib/data-loader").then((loader) => {
+        void Promise.allSettled([
+          loader.pullAppSettings(),
+          loader.pullBranches(),
+          loader.pullBranchSettings(),
+          loader.pullDropdownMasters(),
+        ]);
+      });
+
       let ctx = await resolveAuth();
       if (!mounted) return;
 
@@ -156,6 +167,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
 
       const workspaceType = ctx.active_workspace?.workspace_type ?? active?.workspace_type;
       if (workspaceType === "erp" || workspaceType === "ceo") {
+        // Fire sync + entitlements together — neither blocks the other.
         void startCloudSync();
         void useTenantEntitlements
           .getState()
@@ -186,6 +198,7 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
         "/customer-login",
         "/supplier-login",
         "/karigar-login",
+        "/auth/callback",
       ];
       if (landingPaths.includes(currentPath) || isLegacyPortalLoginPath(currentPath)) {
         if (defaultRoute.startsWith("/platform")) {

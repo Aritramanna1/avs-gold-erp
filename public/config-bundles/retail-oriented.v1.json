@@ -5,6 +5,7 @@
   "label": "Retail-oriented Configuration",
   "exportedAt": "2026-08-27T00:00:00.000Z",
   "notes": "Retail-leaning defaults for AVS retail editions.",
+  "editionFamily": "RETAIL",
   "mtjSimplifiedWorkflow": false,
   "activeTerminologyPack": "indian_trade",
   "maTaraWorkshopPolicy": {

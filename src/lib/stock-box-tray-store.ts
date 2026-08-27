@@ -48,6 +48,7 @@ interface StockBoxTrayState {
   trays: StockBoxTray[];
   loading: boolean;
   hydrated: boolean;
+  lastError: string | null;
   hydrate: (branchId?: string) => Promise<void>;
   upsert: (input: Omit<StockBoxTray, "id" | "createdAt"> & { id?: string }) => Promise<void>;
   remove: (id: string) => Promise<void>;
@@ -57,9 +58,10 @@ export const useStockBoxTrays = create<StockBoxTrayState>()((set, get) => ({
   trays: [],
   loading: false,
   hydrated: false,
+  lastError: null,
 
   hydrate: async (branchId) => {
-    set({ loading: true });
+    set({ loading: true, lastError: null });
     try {
       let query = supabase
         .from("stock_box_trays" as never)
@@ -74,10 +76,12 @@ export const useStockBoxTrays = create<StockBoxTrayState>()((set, get) => ({
         trays: ((data ?? []) as unknown as Row[]).map(fromRow),
         hydrated: true,
         loading: false,
+        lastError: null,
       });
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       console.warn("[stock-box-tray] hydrate failed:", err);
-      set({ hydrated: true, loading: false });
+      set({ hydrated: true, loading: false, lastError: message });
     }
   },
 

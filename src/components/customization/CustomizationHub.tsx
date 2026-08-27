@@ -1308,9 +1308,9 @@ function AdvancedContent() {
               size="sm"
               variant="outline"
               className="text-xs h-8"
-              onClick={() => void handleLoadPreset("/config-bundles/mtj-default.v1.json")}
+              onClick={() => void handleLoadPreset("/config-bundles/mtg-default.v1.json")}
             >
-              Load MTJ Default
+              Load MTG Default
             </Button>
             <Button
               size="sm"
@@ -1318,7 +1318,7 @@ function AdvancedContent() {
               className="text-xs h-8"
               onClick={() => void handleLoadPreset("/config-bundles/retail-oriented.v1.json")}
             >
-              Load Retail
+              Load Retail Default
             </Button>
             <Button
               size="sm"
@@ -1328,7 +1328,7 @@ function AdvancedContent() {
                 void handleLoadPreset("/config-bundles/manufacturing-oriented.v1.json")
               }
             >
-              Load Manufacturing
+              Load Manufacturing Default
             </Button>
           </div>
         </div>
@@ -1376,6 +1376,26 @@ function AdvancedContent() {
           ) : (
             <p className="text-muted-foreground">No bundle staged.</p>
           )}
+        </div>
+
+        <div className="rounded-lg border p-4 bg-muted/20 space-y-3 sm:col-span-2">
+          <h4 className="font-semibold text-foreground">Invoice print — Customer Hisab</h4>
+          <p className="text-muted-foreground">
+            Customer Hisab (metal + cash) remains available as its own manufacturing/settlement
+            document. It is hidden from customer-facing retail/sale invoices by default.
+          </p>
+          <label className="flex items-center gap-2 text-foreground">
+            <input
+              type="checkbox"
+              checked={settings.printDocumentPrefs?.hideCustomerHisabOnInvoice !== false}
+              onChange={(e) =>
+                settings.setPrintDocumentPrefs({
+                  hideCustomerHisabOnInvoice: e.target.checked,
+                })
+              }
+            />
+            Hide Customer Hisab on retail / sale invoices
+          </label>
         </div>
 
         <div className="rounded-lg border p-4 bg-muted/20 space-y-3">

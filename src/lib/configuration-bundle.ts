@@ -13,18 +13,25 @@ import {
 export const CONFIG_BUNDLE_SCHEMA = "ornexa.configuration_bundle";
 export const CONFIG_BUNDLE_VERSION = "1.0.0";
 
+export type PrintDocumentPrefs = {
+  /** When true, customer metal+cash Hisab must not appear on retail/sale invoices. */
+  hideCustomerHisabOnInvoice: boolean;
+};
+
 export type ConfigurationBundle = {
   schema: typeof CONFIG_BUNDLE_SCHEMA;
   version: string;
   bundleId: string;
   label: string;
   exportedAt?: string;
+  editionFamily?: string;
   dropdowns?: Partial<Record<DropdownKey, string[]>>;
   formsMetadata?: FormMetadata[];
   terminologyOverrides?: Record<string, string>;
   activeTerminologyPack?: TerminologyPackId;
   /** Firm/MTJ policy defaults — config only; does not change fineGoldMg formula. */
   maTaraWorkshopPolicy?: Partial<MaTaraWorkshopPolicy>;
+  printDefaults?: Partial<PrintDocumentPrefs>;
   /** Soft flags for simplified MTJ chrome (edition UI still driven by plan). */
   mtjSimplifiedWorkflow?: boolean;
   notes?: string;
@@ -32,6 +39,23 @@ export type ConfigurationBundle = {
 
 export type BundleValidationResult =
   { ok: true; bundle: ConfigurationBundle } | { ok: false; errors: string[] };
+
+const ALLOWED_EDITION_FAMILIES = new Set([
+  "MTG",
+  "RETAIL",
+  "MANUFACTURING",
+  "FULL",
+  "AVS_MTG",
+  "AVS_RETAIL",
+  "AVS_MANUFACTURING",
+  "AVS_FULL",
+]);
+
+function versionMajorCompatible(version: string): boolean {
+  const major = Number(String(version).split(".")[0]);
+  const expected = Number(CONFIG_BUNDLE_VERSION.split(".")[0]);
+  return Number.isFinite(major) && major === expected;
+}
 
 export function validateConfigurationBundle(raw: unknown): BundleValidationResult {
   const errors: string[] = [];
@@ -44,12 +68,23 @@ export function validateConfigurationBundle(raw: unknown): BundleValidationResul
   }
   if (typeof o.version !== "string" || !o.version.trim()) {
     errors.push("Missing version");
+  } else if (!versionMajorCompatible(o.version)) {
+    errors.push(
+      `Incompatible bundle version ${o.version} (this app supports ${CONFIG_BUNDLE_VERSION} major)`,
+    );
   }
   if (typeof o.bundleId !== "string" || !o.bundleId.trim()) {
     errors.push("Missing bundleId");
   }
   if (typeof o.label !== "string" || !o.label.trim()) {
     errors.push("Missing label");
+  }
+  if (o.editionFamily !== undefined) {
+    if (typeof o.editionFamily !== "string" || !ALLOWED_EDITION_FAMILIES.has(o.editionFamily)) {
+      errors.push(
+        `Unsupported editionFamily (allowed: ${[...ALLOWED_EDITION_FAMILIES].join(", ")})`,
+      );
+    }
   }
   if (
     o.dropdowns !== undefined &&
@@ -66,6 +101,20 @@ export function validateConfigurationBundle(raw: unknown): BundleValidationResul
   ) {
     errors.push("terminologyOverrides must be an object");
   }
+  if (
+    o.printDefaults !== undefined &&
+    (typeof o.printDefaults !== "object" ||
+      Array.isArray(o.printDefaults) ||
+      o.printDefaults === null)
+  ) {
+    errors.push("printDefaults must be an object");
+  }
+  if (
+    o.maTaraWorkshopPolicy !== undefined &&
+    (typeof o.maTaraWorkshopPolicy !== "object" || Array.isArray(o.maTaraWorkshopPolicy))
+  ) {
+    errors.push("maTaraWorkshopPolicy must be an object");
+  }
   if (errors.length) return { ok: false, errors };
   return { ok: true, bundle: o as unknown as ConfigurationBundle };
 }
@@ -80,6 +129,9 @@ export function buildExportConfigurationBundle(
       pureGoldReferencePermille: DEFAULT_PURE_GOLD_REFERENCE_PERMILLE,
     },
   );
+  const printPrefs = settings.printDocumentPrefs ?? {
+    hideCustomerHisabOnInvoice: true,
+  };
   return {
     schema: CONFIG_BUNDLE_SCHEMA,
     version: CONFIG_BUNDLE_VERSION,
@@ -91,12 +143,12 @@ export function buildExportConfigurationBundle(
     terminologyOverrides: terminology.customOverrides,
     activeTerminologyPack: terminology.activePack,
     maTaraWorkshopPolicy: policy,
+    printDefaults: printPrefs,
     notes: "Exported from live firm customization. Apply via Import Configuration Bundle.",
   };
 }
 
 export type ApplyBundleOptions = {
-  /** When true, replace dropdown keys present in bundle; when false, merge unique values. */
   mode: "merge" | "replace";
 };
 
@@ -170,6 +222,14 @@ export function applyConfigurationBundle(
       setPolicy(normalizeMaTaraWorkshopPolicy(bundle.maTaraWorkshopPolicy));
     }
   }
+  if (bundle.printDefaults) {
+    settings.setPrintDocumentPrefs?.({
+      hideCustomerHisabOnInvoice:
+        bundle.printDefaults.hideCustomerHisabOnInvoice ??
+        settings.printDocumentPrefs?.hideCustomerHisabOnInvoice ??
+        true,
+    });
+  }
 }
 
 export async function loadBundledJson(url: string): Promise<ConfigurationBundle> {
@@ -181,10 +241,11 @@ export async function loadBundledJson(url: string): Promise<ConfigurationBundle>
   return v.bundle;
 }
 
+const MTG_DEFAULT_BUNDLE_PATH = "/config-bundles/mtg-default.v1.json";
 const MTJ_DEFAULT_BUNDLE_PATH = "/config-bundles/mtj-default.v1.json";
 
 /**
- * Apply MTJ Default Bundle once per firm session flag in settings.
+ * Apply MTG Default Bundle once per firm session flag in settings.
  * DEFAULT ≠ LOCKED — subsequent customization persists.
  */
 export async function ensureMtjDefaultBundleAppliedOnce(): Promise<boolean> {
@@ -198,7 +259,12 @@ export async function ensureMtjDefaultBundleAppliedOnce(): Promise<boolean> {
   } catch {
     /* ignore */
   }
-  const bundle = await loadBundledJson(MTJ_DEFAULT_BUNDLE_PATH);
+  let bundle: ConfigurationBundle;
+  try {
+    bundle = await loadBundledJson(MTG_DEFAULT_BUNDLE_PATH);
+  } catch {
+    bundle = await loadBundledJson(MTJ_DEFAULT_BUNDLE_PATH);
+  }
   applyConfigurationBundle(bundle, { mode: "merge" });
   settings.setMtjDefaultBundleAppliedAt(new Date().toISOString());
   try {

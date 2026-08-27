@@ -43,6 +43,7 @@ import { useMeltStore, calcMeltJob, type MeltJob } from "@/lib/melt-store";
 import { usePeople } from "@/lib/people-store";
 import { useSettings } from "@/lib/settings-store";
 import { mgToGrams, gramsToMg } from "@/lib/gold";
+import { DEFAULT_PURE_GOLD_REFERENCE_PERMILLE } from "@/lib/ma-tara-workshop-policy";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/melt/")({
@@ -102,7 +103,7 @@ const EMPTY_FORM: FormState = {
   date: todayISO(),
   karigarId: "",
   scrapGross: "",
-  scrapPurity: "916",
+  scrapPurity: String(DEFAULT_PURE_GOLD_REFERENCE_PERMILLE),
   dustGross: "",
   dustPurity: "500",
   otherGross: "",
@@ -256,7 +257,7 @@ function MeltIndex() {
         karigarName: karigar?.fullName,
         status: form.status,
         scrapInputGrossMg: safeGramsToMg(form.scrapGross),
-        scrapInputPurity: parseInt(form.scrapPurity) || 916,
+        scrapInputPurity: parseInt(form.scrapPurity) || DEFAULT_PURE_GOLD_REFERENCE_PERMILLE,
         dustInputGrossMg: safeGramsToMg(form.dustGross),
         dustInputPurity: parseInt(form.dustPurity) || 500,
         otherInputGrossMg: safeGramsToMg(form.otherGross),

@@ -3052,8 +3052,9 @@ function GstTab() {
         <div className="border-b border-border pb-3 space-y-0.5">
           <h3 className="text-sm font-bold text-foreground">Pure gold reference</h3>
           <p className="text-xs text-muted-foreground">
-            Owner-locked default 995. New fine calculations use gross × purity ÷ this reference via
-            fineGoldMg(). Posted historical fine values are not rewritten.
+            Default purity/reference for new entries is 995 (editable). Fine gold math is always
+            gross × selected purity ÷ 999 via fineGoldMg() — this setting chooses the default purity
+            value, it does not change the divisor. Posted historical fine values are not rewritten.
           </p>
         </div>
         <Field label="Pure gold reference (per-mille)">

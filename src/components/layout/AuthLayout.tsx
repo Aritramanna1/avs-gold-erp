@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Card } from "@/components/ui/card";
@@ -106,6 +107,7 @@ export function AuthLayout({ prefilledError, onClearError, onSuccess }: AuthLayo
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [googleRedirecting, setGoogleRedirecting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [rememberDevice, setRememberDeviceState] = useState(() => isRememberDeviceEnabled());
@@ -350,12 +352,38 @@ export function AuthLayout({ prefilledError, onClearError, onSuccess }: AuthLayo
   async function handleGoogleSignIn() {
     setErr(null);
     setBusy(true);
+    flushSync(() => {
+      setGoogleRedirecting(true);
+    });
     const result = await signInWithGoogle({ redirectPath: "/auth/callback" });
-    setBusy(false);
-    if (!result.ok) {
+    if (!result.ok || !result.url) {
+      setGoogleRedirecting(false);
+      setBusy(false);
       setErr(result.error ?? "Google sign-in failed.");
       toast.error(result.error ?? "Google sign-in failed.");
+      return;
     }
+    // Keep "Redirecting to Google…" visible until the browser leaves this page.
+    window.location.assign(result.url);
+  }
+
+  if (googleRedirecting) {
+    return (
+      <div
+        className="min-h-screen w-full flex items-center justify-center bg-background px-4 py-8"
+        data-testid="auth-google-redirecting"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <Card className="w-full max-w-sm p-6 space-y-4 text-center border-border shadow-elegant bg-card/85 backdrop-blur-md">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-gold" />
+          <h1 className="font-serif text-lg text-gold">Redirecting to Google…</h1>
+          <p className="text-xs text-muted-foreground">
+            You will be asked to choose a Google account, then return here to finish sign-in.
+          </p>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -507,7 +535,7 @@ export function AuthLayout({ prefilledError, onClearError, onSuccess }: AuthLayo
               <Button
                 type="button"
                 variant="outline"
-                className="w-full h-10 gap-2"
+                className="w-full h-10 gap-2 min-h-[var(--touch-target)]"
                 disabled={busy || !!lockedUntil}
                 onClick={() => void handleGoogleSignIn()}
                 data-testid="auth-google"

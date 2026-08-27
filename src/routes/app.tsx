@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   fetchHomeDashboardSummary,
+  fetchHomeDashboardOrderBuckets,
   type HomeDashboardOrder,
   type HomeDashboardPerson,
   type HomeDashboardSummary,
@@ -104,7 +105,27 @@ function Home() {
       setSummary(data);
       setDashboardPhase("critical");
       recordStartupMetric("dashboard_critical", undefined, "dashboard_critical");
-      requestAnimationFrame(() => setDashboardPhase("ready"));
+
+      // Progressive: KPIs first (RPC), then real order buckets without blocking first paint.
+      void fetchHomeDashboardOrderBuckets()
+        .then((extra) => {
+          setSummary((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  buckets: extra.buckets,
+                  people: extra.people,
+                  capped: prev.capped || extra.capped,
+                }
+              : prev,
+          );
+        })
+        .catch((err) => {
+          console.warn("[dashboard] order buckets deferred load failed:", err);
+        })
+        .finally(() => {
+          requestAnimationFrame(() => setDashboardPhase("ready"));
+        });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Could not load daily dashboard from Supabase.";

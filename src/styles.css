@@ -296,10 +296,6 @@
   transform: translateY(1px);
 }
 
-.mobile-bottom-nav--three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 @media (min-width: 1024px) {
   .mobile-bottom-nav {
     display: none;
@@ -307,11 +303,7 @@
 }
 
 @media (max-width: 767px) {
-  /* Mobile ERP: hide desktop sidebar drawer trigger — action-first bottom nav only */
-  #mobile-sidebar-trigger {
-    display: none;
-  }
-  /* Mobile routes use dedicated shell — reduce double chrome padding */
+  /* Dedicated mobile-erp shell routes hide duplicate chrome; AppShell keeps hamburger + bottom nav. */
   body[data-mobile-erp="true"] #main-header,
   body[data-mobile-erp="true"] .mobile-bottom-nav {
     display: none;

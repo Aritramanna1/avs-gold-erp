@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useSupplierPurchases, type SupplierPurchase } from "@/lib/supplier-purchases-store";
 import { postUniversalTransaction } from "@/lib/transaction-types-store";
-import { gramsToMg, mgToGrams } from "@/lib/gold";
+import { gramsToMg, mgToGrams, fineGoldMg } from "@/lib/gold";
 import { paiseToRupees } from "@/lib/billing-store";
 import { toast } from "sonner";
 
@@ -62,7 +62,7 @@ function PurchaseReturnPage() {
     const grossMg = gramsToMg(parseFloat(returnGrossG) || 0);
     const amountPaise = Math.round((parseFloat(returnAmountRs) || 0) * 100);
     const purity = selected.purityPermille ?? 916;
-    const fineMg = Math.round((grossMg * purity) / 1000);
+    const fineMg = fineGoldMg(grossMg, Math.min(999, Math.max(0, purity)));
     const voucherNumber = makeReturnNo();
     setSaving(true);
     try {

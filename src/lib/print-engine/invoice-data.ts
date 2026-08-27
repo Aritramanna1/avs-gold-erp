@@ -16,6 +16,7 @@ import { PAYMENT_MODE_LABELS, paiseToRupees } from "@/lib/billing-store";
 import { mgToGrams } from "@/lib/gold";
 import { useCatalog } from "@/lib/catalog-store";
 import { useStock } from "@/lib/stock-store";
+import { useSettings } from "@/lib/settings-store";
 import type { PrintDocumentData } from "./types";
 
 function getItemPhoto(it: InvoiceItem, orderId?: string): string | null {
@@ -310,6 +311,11 @@ export function buildInvoicePrintData(inv: Invoice): PrintDocumentData {
       hasIgstOnly: isGst3 && !hasCgstSgst,
       isNotGst3: !isGst3,
       hasAdjustment: inv.adjustmentPaise > 0,
+      // Customer Hisab (metal+cash) is a separate document — never auto-print on invoice.
+      showCustomerHisab:
+        useSettings.getState().printDocumentPrefs?.hideCustomerHisabOnInvoice === false,
+      hideCustomerHisab:
+        useSettings.getState().printDocumentPrefs?.hideCustomerHisabOnInvoice !== false,
     },
     images: {},
     balances: {},
