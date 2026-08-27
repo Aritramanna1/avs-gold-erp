@@ -4,7 +4,7 @@
   "bundleId": "mtj-default.v1",
   "label": "MTG Default Configuration (legacy id mtj-default)",
   "exportedAt": "2026-08-27T00:00:00.000Z",
-  "notes": "Alias of MTG DEFAULT. Same Offline ERP baseline. DEFAULT ≠ LOCKED. pureGoldReferencePermille=995 is config only; production fineGoldMg formula unchanged (÷999).",
+  "notes": "Alias of MTG DEFAULT. Same Offline ERP baseline. DEFAULT ≠ LOCKED. pureGoldReferencePermille=995 is config only; production fineGoldMg formula unchanged (÷999). Commercial ladder SoT: AVS_ERP_PRODUCT_EDITION_PLANNING.docx (10/30/50 + MTG).",
   "editionFamily": "MTG",
   "mtjSimplifiedWorkflow": true,
   "activeTerminologyPack": "indian_trade",
@@ -19,10 +19,57 @@
     "making_charge": "Labour"
   },
   "dropdowns": {
-    "itemCategory": ["Ring", "Chain", "Earring", "Pendant", "Bangle", "Necklace", "Bracelet", "Nose Pin", "Other"],
-    "orderType": ["Custom", "Repair", "Polishing", "Ready Stock", "Wholesale"],
-    "workerRole": ["Master Karigar", "Helper", "Polisher", "Stone Setter", "Finisher"],
-    "stockLocation": ["Showroom", "Vault", "Display", "Workshop", "Repair Bench"],
-    "paymentMode": ["Cash", "UPI", "Bank Transfer", "Card", "Gold Exchange"]
-  }
+    "itemCategory": [
+      "Ring",
+      "Chain",
+      "Earring",
+      "Pendant",
+      "Bangle",
+      "Necklace",
+      "Bracelet",
+      "Nose Pin",
+      "Other"
+    ],
+    "orderType": [
+      "Custom",
+      "Repair",
+      "Polishing",
+      "Ready Stock",
+      "Wholesale"
+    ],
+    "workerRole": [
+      "Master Karigar",
+      "Helper",
+      "Polisher",
+      "Stone Setter",
+      "Finisher"
+    ],
+    "stockLocation": [
+      "Showroom",
+      "Vault",
+      "Display",
+      "Workshop",
+      "Repair Bench"
+    ],
+    "paymentMode": [
+      "Cash",
+      "UPI",
+      "Bank Transfer",
+      "Card",
+      "Gold Exchange"
+    ]
+  },
+  "hiddenByDefaultModules": [
+    "scheme",
+    "boolean_ledger",
+    "stock_boxes"
+  ],
+  "docxEditionLadder": [
+    "AVS_10K_RETAIL",
+    "AVS_10K_MFG",
+    "AVS_30K_RETAIL",
+    "AVS_30K_MFG",
+    "AVS_50K_FULL",
+    "AVS_MTG"
+  ]
 }

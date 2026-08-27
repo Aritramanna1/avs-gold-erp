@@ -13,4 +13,6 @@
 
 SHA-256 (locked copy): `ECCCD3B9D0D14B5F1BEE2392B3610FE797C1F85A15F9CA57C4BEFF77CECB2EF1`
 
-Committed on `main` in `2ed26c1` and verified identical to Owner download `AVS_ERP_PRODUCT_EDITION_PLANNING.docx`.
+Verified identical to Owner download `AVS_ERP_PRODUCT_EDITION_PLANNING.docx`.
+Committed on `main` (see `git log -- docs/AVS_ERP_PRODUCT_EDITION_PLANNING.docx`).
+Commercial ladder authority: **₹10k / ₹30k / ₹50k + MTJ/MTG** (docx). Do **not** invent separate ₹15k/₹20k edition SKUs.

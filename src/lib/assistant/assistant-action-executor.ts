@@ -26,7 +26,7 @@ export async function executeAssistantGoldIssue(
   const details = payload.details ?? {};
   const workerId = String(details.workerId ?? payload.targetId ?? "");
   const grossGrams = Number(details.grossGrams ?? details.grossWeight ?? 0);
-  const purity = Number(details.purity ?? 916);
+  const purity = Number(details.purity ?? 995);
   const grossMg = Math.round(grossGrams * 1000);
   const fineMg = Math.round(Number(details.fineGrams ?? 0) * 1000) || fineGoldMg(grossMg, purity);
 
@@ -92,7 +92,9 @@ export async function executeAssistantCreateParty(
 
   const openingGold = parseFloat(String(details.openingGoldBalance ?? "0"));
   if (openingGold > 0) {
-    const fineMg = Math.round(openingGold * 1000 * 0.916);
+    const purity = Number(details.purity ?? details.purityPermille ?? 995);
+    const grossMg = Math.round(openingGold * 1000);
+    const fineMg = fineGoldMg(grossMg, purity);
     const opening = await insertPartyOpeningGoldCredit({
       partyId: person.id,
       fineGoldCreditMg: fineMg,
