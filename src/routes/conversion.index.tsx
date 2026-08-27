@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 import { useMetalConversion } from "@/lib/metal-conversion-store";
 import { useSettings } from "@/lib/settings-store";
-import { mgToGrams, gramsToMg } from "@/lib/gold";
+import { mgToGrams, gramsToMg, fineGoldMgFromTouchPercent } from "@/lib/gold";
 import {
   useGoldInventoryStore,
   type PhysicalForm,
@@ -120,13 +120,16 @@ function ConversionIndex() {
     }
   }, [selectedLot, sourceGrossInput]);
 
-  // Calculations for real conversion
+  // Preview uses same ÷999 engine as ledger (touch % → per-mille → fineGoldMg).
   const parsedSourceGross = parseFloat(sourceGrossInput || "0");
-  const sourceFineGoldG = selectedLot ? (parsedSourceGross * selectedLot.touchPurity) / 100 : 0;
+  const sourceFineGoldG = selectedLot
+    ? fineGoldMgFromTouchPercent(gramsToMg(parsedSourceGross), selectedLot.touchPurity) / 1000
+    : 0;
   const parsedAlloyAdded = parseFloat(alloyAddedG || "0");
   const parsedLoss = parseFloat(expectedLossG || "0");
   const expectedTotalGrossOutput = Math.max(0, parsedSourceGross + parsedAlloyAdded - parsedLoss);
-  const expectedTotalFineOutput = (expectedTotalGrossOutput * targetTouch) / 100;
+  const expectedTotalFineOutput =
+    fineGoldMgFromTouchPercent(gramsToMg(expectedTotalGrossOutput), targetTouch) / 1000;
 
   function resetForm() {
     setSelectedSourceLotId("");

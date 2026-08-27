@@ -13,13 +13,15 @@ export const SYSTEM_KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
     language: "en-IN",
     summary:
       "Fine gold is the pure 24K (99.9% / 1000 touch) gold content inside an alloy, calculated deterministically from net weight and purity.",
-    content: `Fine Gold is the weight of pure gold contained in a piece of jewellery or bullion, expressed in milligrams (mg) in Ornexa.
+    content: `Fine Gold is the weight of pure gold contained in a piece of jewellery or bullion, expressed in milligrams (mg) in Ornexa / AVS ERP.
 
-**Formula (authoritative):**
-Fine Weight (mg) = Net Weight (mg) × (Purity Touch ÷ 1000)
+**Formula (authoritative — do not use ÷1000):**
+Fine Weight (mg) = round(Net Weight (mg) × Purity (per-mille) ÷ 999)
 
-**Example:** A 10g (10,000 mg) 22K ornament at 916 touch contains:
-10,000 × 916/1000 = 9,160 mg fine gold = 9.16g fine.
+**Example:** A 10g (10,000 mg) ornament at 916 purity contains:
+round(10,000 × 916 / 999) = 9,169 mg fine gold ≈ 9.169g fine.
+
+MTG default **selected** purity is 995; the divisor remains 999. Never silently substitute another purity.
 
 Ornexa never uses floats for accounting. All gold is stored as integer milligrams. The Assistant and ERP core use the same calculation engine — never approximate fine gold mentally.`,
     keywords: ["fine gold", "fine weight", "pure gold", "24k content", "fine mg", "999"],

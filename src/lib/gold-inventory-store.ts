@@ -7,7 +7,7 @@
  */
 import { create } from "zustand";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { gramsToMg, mgToGrams } from "@/lib/gold";
+import { gramsToMg, mgToGrams, fineGoldMgFromTouchPercent } from "@/lib/gold";
 import { tryPostUniversalLedgerMirror } from "@/lib/universal-transaction-bridge";
 import { toast } from "sonner";
 
@@ -307,7 +307,7 @@ export const useGoldInventoryStore = create<GoldInventoryState>()((set, get) => 
 
   recordCustomerGoldDeposit: async (params) => {
     const grossMg = gramsToMg(params.grossWeightG);
-    const fineMg = Math.round((grossMg * params.touchPurity) / 100);
+    const fineMg = fineGoldMgFromTouchPercent(grossMg, params.touchPurity);
     const lotNumber = `LOT-CUST-${params.voucherRef.replace(/[^A-Z0-9]/gi, "")}`;
     const now = new Date().toISOString();
 

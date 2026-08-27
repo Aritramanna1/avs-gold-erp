@@ -20,6 +20,12 @@ resolve development problems.
 branches and Pull Requests. Only explicit Product Owner release approval allows
 a new version to enter `main`.
 
+**Production foundation (locked):** Live Hostinger LKG is **`index-CVsE73i6.js`**
+(git **`8dc1c43`**). Default site is **`https://maatarajewellers.shop`**. Do not
+migrate domain/hosting and do not redeploy over CVsE73i6 without Owner approve.
+Additive work continues on `main`; second production rollbacks require explicit
+Owner order and the recovery zip.
+
 Before any materially risky Git operation, record the current commit SHA,
 verify the branch, verify the remote, inspect the working tree, and create a
 recovery branch or tag where appropriate. If there is uncertainty, stop and ask.

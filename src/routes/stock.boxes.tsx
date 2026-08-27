@@ -136,7 +136,13 @@ function StockBoxesPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => void remove(tray.id)}
+                  onClick={() => {
+                    void remove(tray.id).catch((err: unknown) => {
+                      const message =
+                        err instanceof Error ? err.message : "Could not remove box/tray.";
+                      toast.error(message);
+                    });
+                  }}
                   aria-label="Remove tray"
                 >
                   <Trash2 className="h-4 w-4" />

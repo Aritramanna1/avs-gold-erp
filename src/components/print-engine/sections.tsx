@@ -646,11 +646,7 @@ function PremiumHeaderSection({
     <div className="flex justify-between items-start border-b border-neutral-200 pb-6 mb-6 mt-2">
       <div className="space-y-2">
         <div className="flex items-center gap-3">
-          {firm.logoUrl ? (
-            <Logo variant="png" className="h-12 w-12 object-contain flex-shrink-0 rounded-md" />
-          ) : (
-            <div className="h-12 w-12 rounded-md bg-purple-950 flex items-center justify-center border border-amber-400 shrink-0 shadow-md" />
-          )}
+          <Logo variant="png" className="h-12 w-12 object-contain flex-shrink-0 rounded-md" />
           <div>
             <h1 className="font-serif text-2xl font-black text-purple-950 tracking-tight leading-none">
               {branding.printHeader || firm.shopName || branding.applicationName}

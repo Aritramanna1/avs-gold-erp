@@ -2,16 +2,29 @@
 
 ## Do not deploy yet
 
-Live production remains **`index-CVsE73i6.js`** until Product Owner explicitly approves.
+Live production remains **`index-CVsE73i6.js`** on **`https://maatarajewellers.shop`** until Product Owner explicitly approves.
+
+Default site truth: maatarajewellers.shop — no domain migration in this program.
 
 ## Required before deploy
 
-1. `npm run typecheck`
-2. `npm run build`
-3. Playwright: responsive-nav-oauth, public-qr-verify, mobile-nav-ia (local `E2E_BASE_URL=http://localhost:3000`)
-4. Manual smoke: Platform Owner login → `/platform`; MTG firm → `/mtg`; Google redirect UX; melt calc with purity 995/916; Print Preview → Print vs Download PDF; scan QR on a generated invoice (incognito → `/doc/...` or `/verify?payload=...`)
-5. Commit message must include `[release-approved]` for Version Safety CI
-6. Keep CVsE73i6 recovery zip available
+1. `npm run typecheck` — PASS (completion wave)
+2. `npm run build` — required
+3. Playwright (local `E2E_BASE_URL=http://localhost:3000`, `PLAYWRIGHT_UNAUTH_ONLY=1` as needed):
+   - `e2e/tests/responsive-nav-oauth.spec.ts`
+   - `e2e/tests/public-qr-verify.spec.ts`
+   - `e2e/tests/mobile-nav-ia.spec.ts` (needs auth state)
+4. Manual smoke:
+   - Platform Owner → `/platform`
+   - MTG firm → `/mtg`
+   - Google → “Redirecting to Google…” → `/auth/callback` → `/app` (not marketing `/`)
+   - Melt: change purity 995/916 → live fine recalc (`fineGoldMg` ÷999)
+   - Print Preview → **Print** (OS dialog) vs **Download PDF**
+   - Invoice QR: enable `printVerificationQrEnabled` → scan → incognito `/doc/{token}` (no localhost)
+   - Customer Hisab: default **hidden** on retail invoice; opt-in via Customization print prefs
+5. Apply pending migration if not yet on live DB: `20260827180000_fix_conversion_fine_gold_div999.sql`
+6. Commit message must include `[release-approved]` for Version Safety CI
+7. Keep CVsE73i6 recovery zip available
 
 ## After Owner says “deploy”
 

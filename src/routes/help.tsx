@@ -112,17 +112,18 @@ const COURSES: CourseModule[] = [
     category: "Bullion",
     icon: Coins,
     summary:
-      "Formula-based fine gold conversion (Fine = Gross × Touch), 999 200g rule, and market rate propagation.",
+      "Formula-based fine gold conversion (Fine = Gross × Purity ÷ 999), MTG default purity 995, and market rate propagation.",
     duration: "15 mins",
     targetRole: "Owners / Counter Managers",
     sopSteps: [
       "Set the Daily Desk Bhav at morning opening under Control → Daily Bhav Rate Book.",
       "Apply live bullion feeds or manually configure 24K, 22K (916), 18K (750), 14K (585), and Silver.",
-      "Verify purity math on all scrap gold receipts using Touch = Purity / 1000.",
+      "Verify purity math on scrap receipts: Fine (mg) = Gross (mg) × selected purity ÷ 999.",
     ],
     keyRules: [
-      "200.000g of 999 gold equals exactly 199.800g Pure Fine Gold (200 × 0.999).",
-      "10.000g of 916 gold debits exactly 9.160g Pure Fine Gold from vault inventory.",
+      "200.000g of 999 gold equals exactly 200.000g Fine (purity ≥ 999).",
+      "10.000g of 916 gold = round(10000 × 916 / 999) mg Fine ≈ 9.169g (not ×0.916).",
+      "MTG default selected purity is 995; the divisor stays 999.",
     ],
   },
   {

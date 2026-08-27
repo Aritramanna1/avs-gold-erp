@@ -89,6 +89,21 @@ export function fineGoldMg(grossMg: number, purity: Purity): number {
 }
 
 /**
+ * Inventory/conversion lots store touch as percent of 100 (e.g. 91.6 for 22K).
+ * Values already in the 100–999 range are treated as per-mille.
+ * Always routes through fineGoldMg (÷999) — never ÷1000.
+ */
+export function touchPercentToPurityPermille(touchPercent: number): Purity {
+  if (!Number.isFinite(touchPercent) || touchPercent < 0) return 0;
+  if (touchPercent > 100) return Math.min(999, Math.round(touchPercent)) as Purity;
+  return Math.min(999, Math.round(touchPercent * 10)) as Purity;
+}
+
+export function fineGoldMgFromTouchPercent(grossMg: number, touchPercent: number): number {
+  return fineGoldMg(grossMg, touchPercentToPurityPermille(touchPercent));
+}
+
+/**
  * Net weight (metal only, after removing stone/gemstone weight) can never
  * exceed gross weight (metal + stones) for the same piece — if it does,
  * gross and net were entered swapped, or net was mistakenly set to a

@@ -3,16 +3,18 @@
 ## Locked live foundation
 
 - Hostinger production remains **`index-CVsE73i6.js`** / git **`8dc1c43`**.
+- Default production site: **`https://maatarajewellers.shop`** (do not migrate in this program).
 - Do **not** redeploy until Product Owner explicitly approves after QA.
-- Recovery artifact reference: keep existing `dist_*` rollback zips; do not overwrite LKG.
+- Recovery: keep existing `dist_*` / Hostinger rollback zips; do not overwrite LKG.
 
 ## Current code line
 
-- Git tip: **`f21ec07`** (MTJ/Platform/MTG additive on CVsE73i6 foundation).
-- Session work retained (not yet committed unless Owner asks): mobile/tablet nav IA, Google OAuth redirect UX, login/dashboard perf.
+- Git tip (additive on foundation): **`53ba62c`** — mobile/OAuth, calc discipline, config, public QR (`[release-approved]`).
+- Ancestor MTJ/Platform wave: **`f21ec07`** on **`8dc1c43`**.
 
 ## Non-goals this wave
 
 - Domain/hosting migration
 - Second ERP / shell / WebView
 - Second rollback of production
+- Mass remote branch deletion (preserve `prod-go-20260826` / `prod/locked-20260827` tags)

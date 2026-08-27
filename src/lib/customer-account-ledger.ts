@@ -12,7 +12,7 @@ import { useMfgBills } from "./manufacturing-bill-store";
 import { useJobCards } from "./jobcards-store";
 import { useDeliveryChallans } from "./billing-documents-store";
 import { usePeople } from "./people-store";
-import { fineGoldMg, mgToGrams, parsePurity } from "./gold";
+import { fineGoldMg, fineGoldMgFromTouchPercent, mgToGrams, parsePurity } from "./gold";
 import {
   getPartyOpeningBalanceRows,
   hasAuthoritativePartyOpeningBalances,
@@ -158,7 +158,7 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
     if (person.goldOpeningFineMg || person.goldOpeningGrossMg) {
       const fineMg =
         person.goldOpeningFineMg ||
-        Math.round((person.goldOpeningGrossMg || 0) * ((person.goldOpeningTouch || 91.6) / 100));
+        fineGoldMgFromTouchPercent(person.goldOpeningGrossMg || 0, person.goldOpeningTouch || 91.6);
       const isReceivable = person.goldOpeningType !== "payable";
       if (fineMg > 0) {
         rawRows.push({

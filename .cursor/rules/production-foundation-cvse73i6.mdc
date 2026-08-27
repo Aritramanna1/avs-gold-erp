@@ -1,0 +1,15 @@
+---
+description: Locked AVS production foundation — CVsE73i6 / maatarajewellers.shop
+alwaysApply: true
+---
+
+# Production foundation (truth)
+
+- **Live site (default):** `https://maatarajewellers.shop` — do not migrate domain/hosting in routine work.
+- **Live LKG bundle:** `index-CVsE73i6.js` corresponding to git **`8dc1c43`**.
+- **Development line:** `main` additive commits on that foundation (MTG/Platform/config/mobile/OAuth). Do **not** roll back production again unless Product Owner explicitly orders a Hostinger restore from the locked zip.
+- **No second ERP**, shell, WebView, launcher, or parallel gold/ULE/print/item engines.
+- **fineGoldMg lock:** `round(grossMg × purityPermille / 999)`. MTG **default selected purity** = **995** (numerator). Never silently substitute purity. Do **not** change the divisor to 995.
+- **Hide ≠ delete:** MTG/edition disables features via entitlement/config; keep code.
+- **Deploy:** Hostinger only after explicit Owner approve + `[release-approved]` commit message. Keep CVsE73i6 recovery zip.
+- **Offline WinForms** (`03-offline-winforms-erp`) = MTG **behaviour** reference only, not architecture to copy.
