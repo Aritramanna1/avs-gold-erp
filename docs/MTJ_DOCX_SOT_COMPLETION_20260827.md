@@ -21,3 +21,6 @@
 ## Phase D — Deploy
 - Rollback forever: `dist_go_20260826_190800.zip` / `index-CVsE73i6.js`
 - Live claim only with matching build hash from `main`
+- **2026-08-27 deploy:** `main` `fc555e8` → live **`index-CuBFxtvZ.js`** (verified match)
+- Playwright production OAuth smoke: **3/3 PASS** (button → locked `redirect_to` → Google; cancel → gateway not 404)
+- Full interactive Google password → workspace: **Owner-gated** — set `GOOGLE_E2E_EMAIL` / `GOOGLE_E2E_PASSWORD` for an invited Google identity
