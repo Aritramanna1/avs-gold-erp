@@ -93,13 +93,8 @@ for (const file of distFiles) {
   }
 }
 
-const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-const zipName = `dist_main_platform_mtg_${stamp}.zip`;
-execSync(
-  `powershell -NoProfile -Command "Compress-Archive -Path 'dist\\*' -DestinationPath '${zipName}' -Force"`,
-  { cwd: root, stdio: "inherit" },
-);
-
 const html = fs.readFileSync(path.join(root, "dist/index.html"), "utf8");
 const m = html.match(/assets\/(index-[^"']+\.js)/);
-console.log(`DONE. Built asset=${m?.[1] ?? "unknown"} zip=${zipName} fails=${fail}`);
+console.log(
+  `DONE. Built asset=${m?.[1] ?? "unknown"} fails=${fail}. Rollback SoT remains dist_go_20260826_190800.zip (CVsE73i6) — do not replace.`,
+);
