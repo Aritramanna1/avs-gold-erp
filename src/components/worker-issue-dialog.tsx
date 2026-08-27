@@ -73,7 +73,7 @@ export function WorkerIssueDialog({
 
   const [workerId, setWorkerId] = useState("");
   const [material, setMaterial] = useState("Gold");
-  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? 916));
+  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? 995));
   const [weightStr, setWeightStr] = useState("");
   const [remarks, setRemarks] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +84,7 @@ export function WorkerIssueDialog({
     if (open) {
       setWorkerId("");
       setMaterial("Gold");
-      setPurityStr(String(defaultPurity ?? 916));
+      setPurityStr(String(defaultPurity ?? 995));
       setWeightStr("");
       setRemarks("");
       setError(null);

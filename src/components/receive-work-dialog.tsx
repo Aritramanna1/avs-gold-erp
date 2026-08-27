@@ -58,13 +58,13 @@ export function ReceiveWorkDialog({
   const addStock = useStock((s) => s.add);
 
   const [finishedGrossStr, setFinishedGrossStr] = useState("0.000");
-  const [finishedPurity, setFinishedPurity] = useState<number>(job?.purity ?? 916);
+  const [finishedPurity, setFinishedPurity] = useState<number>(job?.purity ?? 995);
   // Scrap is NOT captured here. Scrap and wastage are settled against the
   // worker's own account in the Worker Gold Book / worker ledger, where they
   // belong: this screen records what came back for THIS job. Capturing scrap in
   // two places is how the same gold gets counted twice.
   const [filingsGrossStr, setFilingsGrossStr] = useState("0.000");
-  const [filingsPurity, setFilingsPurity] = useState<number>(job?.purity ?? 916);
+  const [filingsPurity, setFilingsPurity] = useState<number>(job?.purity ?? 995);
   const [dustStr, setDustStr] = useState("0.000");
   const [wastagePct, setWastagePct] = useState<number>(job?.expectedWastagePct ?? 5);
   const [qa, setQa] = useState({

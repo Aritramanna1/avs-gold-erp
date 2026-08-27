@@ -1,0 +1,28 @@
+{
+  "schema": "ornexa.configuration_bundle",
+  "version": "1.0.0",
+  "bundleId": "mtj-default.v1",
+  "label": "MTG Default Configuration (legacy id mtj-default)",
+  "exportedAt": "2026-08-27T00:00:00.000Z",
+  "notes": "Alias of MTG DEFAULT. Same Offline ERP baseline. DEFAULT ≠ LOCKED. pureGoldReferencePermille=995 is config only; production fineGoldMg formula unchanged (÷999).",
+  "editionFamily": "MTG",
+  "mtjSimplifiedWorkflow": true,
+  "activeTerminologyPack": "indian_trade",
+  "maTaraWorkshopPolicy": {
+    "pureGoldReferencePermille": 995,
+    "materialPayableByCategoryKey": {}
+  },
+  "terminologyOverrides": {
+    "karigar": "Karigar",
+    "job_card": "Issue / Receive",
+    "outside_work": "Outside Work",
+    "making_charge": "Labour"
+  },
+  "dropdowns": {
+    "itemCategory": ["Ring", "Chain", "Earring", "Pendant", "Bangle", "Necklace", "Bracelet", "Nose Pin", "Other"],
+    "orderType": ["Custom", "Repair", "Polishing", "Ready Stock", "Wholesale"],
+    "workerRole": ["Master Karigar", "Helper", "Polisher", "Stone Setter", "Finisher"],
+    "stockLocation": ["Showroom", "Vault", "Display", "Workshop", "Repair Bench"],
+    "paymentMode": ["Cash", "UPI", "Bank Transfer", "Card", "Gold Exchange"]
+  }
+}

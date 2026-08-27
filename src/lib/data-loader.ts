@@ -29,6 +29,10 @@ import { useDailyCloses, type DailyClose as DailyCloseRecord } from "@/lib/daily
 import { usePrintLog, type PrintEvent as PrintLogRecord } from "@/lib/printlog-store";
 import { useWhatsapp, type WhatsappMessage } from "@/lib/whatsapp-store";
 import { useSettings, isSettingsPullStale } from "@/lib/settings-store";
+import {
+  normalizeMaTaraWorkshopPolicy,
+  type MaTaraWorkshopPolicy,
+} from "@/lib/ma-tara-workshop-policy";
 import { useAttachments, hydrateAttachmentsFromLocal } from "@/lib/attachments-store";
 import { migrateLegacyRepairsToOrders } from "@/lib/repair-migration";
 import { useCommLog, type CommEvent } from "@/lib/comm-log-store";
@@ -467,6 +471,20 @@ export async function pullAppSettings(): Promise<void> {
       print: payload.print ?? useSettings.getState().print,
       gst: payload.gst ?? useSettings.getState().gst,
       makingCharge: payload.makingCharge ?? useSettings.getState().makingCharge,
+      maTaraWorkshopPolicy: normalizeMaTaraWorkshopPolicy(
+        (payload as { maTaraWorkshopPolicy?: Partial<MaTaraWorkshopPolicy> })
+          .maTaraWorkshopPolicy ?? useSettings.getState().maTaraWorkshopPolicy,
+      ),
+      printDocumentPrefs: {
+        hideCustomerHisabOnInvoice:
+          (payload as { printDocumentPrefs?: { hideCustomerHisabOnInvoice?: boolean } })
+            .printDocumentPrefs?.hideCustomerHisabOnInvoice ??
+          useSettings.getState().printDocumentPrefs?.hideCustomerHisabOnInvoice ??
+          true,
+      },
+      mtjDefaultBundleAppliedAt:
+        (payload as { mtjDefaultBundleAppliedAt?: string | null }).mtjDefaultBundleAppliedAt ??
+        useSettings.getState().mtjDefaultBundleAppliedAt,
       purities: payload.purities ?? useSettings.getState().purities,
       making: payload.making ?? useSettings.getState().making,
       hardware: payload.hardware ?? useSettings.getState().hardware,
@@ -926,6 +944,14 @@ export async function startCloudSync(force = false): Promise<void> {
   }
   starting = true;
   try {
+    // If auth-gate already warmed app_settings/branches, unblock the shell immediately
+    // while pullCritical revalidates — same data, no mock shortcuts.
+    const alreadyWarm = Boolean(useSettings.getState().firm?.shopName);
+    if (alreadyWarm) {
+      useSettings.getState().setSettingsHydrated(true);
+      markCriticalLoadDone();
+    }
+
     const critical = await pullCritical();
     if (!critical.ok) {
       const summary = critical.errors.slice(0, 2).join("; ");

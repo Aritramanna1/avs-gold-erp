@@ -188,10 +188,45 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
     setDownloadingPdf(true);
     try {
       applyPageOverride();
-      const html = await buildPrintableHtmlFromDocument(iframeRef.current.contentDocument);
-      if (!html) return;
-      // Opens the browser print dialog — user can choose "Save as PDF".
-      printHtmlInWebBrowser(html);
+      const doc = iframeRef.current.contentDocument;
+      const root = doc.querySelector<HTMLElement>('[data-testid="print-layout-root"]') ?? doc.body;
+      if (!root) return;
+
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+
+      const canvas = await html2canvas(root, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: effectiveOrientation === "landscape" ? "landscape" : "portrait",
+        unit: "mm",
+        format: effectiveSize === "a5" ? "a5" : "a4",
+      });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * pageW) / canvas.width;
+      let heightLeft = imgH;
+      let position = 0;
+      pdf.addImage(imgData, "PNG", 0, position, imgW, imgH);
+      heightLeft -= pageH;
+      while (heightLeft > 0) {
+        position = heightLeft - imgH;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgW, imgH);
+        heightLeft -= pageH;
+      }
+      const safeTitle = (title || "document").replace(/[^\w.-]+/g, "_").slice(0, 80);
+      pdf.save(`${safeTitle}.pdf`);
+    } catch (err) {
+      console.error("[Print] PDF download failed:", err);
     } finally {
       setDownloadingPdf(false);
     }

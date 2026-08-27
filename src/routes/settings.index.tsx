@@ -2889,7 +2889,14 @@ function SecurityLogsTab() {
 }
 
 function GstTab() {
-  const { gst, setGst, makingCharge, setMakingCharge } = useSettings();
+  const {
+    gst,
+    setGst,
+    makingCharge,
+    setMakingCharge,
+    maTaraWorkshopPolicy,
+    setMaTaraWorkshopPolicy,
+  } = useSettings();
   const [newOverrideCategory, setNewOverrideCategory] = useState("");
   const [newOverrideBasis, setNewOverrideBasis] =
     useState<typeof makingCharge.defaultBasis>("percentage");
@@ -3039,6 +3046,31 @@ function GstTab() {
             </div>
           </Field>
         </div>
+      </Card>
+
+      <Card className="p-5 space-y-4">
+        <div className="border-b border-border pb-3 space-y-0.5">
+          <h3 className="text-sm font-bold text-foreground">Pure gold reference</h3>
+          <p className="text-xs text-muted-foreground">
+            Default purity/reference for new entries is 995 (editable). Fine gold math is always
+            gross × selected purity ÷ 999 via fineGoldMg() — this setting chooses the default purity
+            value, it does not change the divisor. Posted historical fine values are not rewritten.
+          </p>
+        </div>
+        <Field label="Pure gold reference (per-mille)">
+          <select
+            className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm max-w-md"
+            value={String(maTaraWorkshopPolicy.pureGoldReferencePermille)}
+            onChange={(e) =>
+              setMaTaraWorkshopPolicy({
+                pureGoldReferencePermille: Number(e.target.value),
+              })
+            }
+          >
+            <option value="995">995 — owner default (PURE)</option>
+            <option value="999">999 — fine / 24K convention</option>
+          </select>
+        </Field>
       </Card>
 
       <Card className="p-5 space-y-6">

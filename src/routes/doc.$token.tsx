@@ -11,6 +11,7 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getDocumentShare, type DocumentShare } from "@/lib/document-shares";
+import { consumePublicRateLimit } from "@/lib/public-rate-limit";
 import { printDocument } from "@/lib/print-document";
 import { formatDateMedium as fmtDate } from "@/lib/format-date";
 import { AlertCircle, FileText, Printer, Download } from "lucide-react";
@@ -357,6 +358,15 @@ function DocumentPortal() {
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   useEffect(() => {
+    const rl = consumePublicRateLimit(`doc:${token.slice(0, 16)}`, {
+      limit: 30,
+      windowMs: 60_000,
+    });
+    if (!rl.allowed) {
+      setError("Too many requests. Please wait a moment and try again.");
+      setLoading(false);
+      return;
+    }
     getDocumentShare(token)
       .then((s) => {
         if (!s) setError("This link has expired or is not valid.");

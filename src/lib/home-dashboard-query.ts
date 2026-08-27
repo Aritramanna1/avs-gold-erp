@@ -89,6 +89,45 @@ export async function fetchHomeDashboardSummary(): Promise<HomeDashboardSummary>
   return fetchHomeDashboardSummaryFallback();
 }
 
+/** Progressive second stage: order buckets + people (real DB). KPIs already shown from RPC. */
+export async function fetchHomeDashboardOrderBuckets(): Promise<{
+  buckets: HomeDashboardBuckets;
+  people: HomeDashboardPerson[];
+  capped: boolean;
+}> {
+  const today = todayYmd();
+  const tomorrow = tomorrowYmd();
+  const [orderRowsResult, linkedJobsResult] = await Promise.all([
+    (supabase as any)
+      .from("orders")
+      .select("id,order_no,status,type,customer_id,karigar_id,expected_delivery,data")
+      .neq("status", "delivered")
+      .neq("status", "cancelled")
+      .order("expected_delivery", { ascending: true, nullsFirst: false })
+      .limit(HOME_ROW_LIMIT),
+    (supabase as any)
+      .from("job_cards")
+      .select("order_id")
+      .not("order_id", "is", null)
+      .limit(HOME_ROW_LIMIT),
+  ]);
+  if (orderRowsResult.error) throw orderRowsResult.error;
+  if (linkedJobsResult.error) throw linkedJobsResult.error;
+  const linkedOrderIds = new Set<string>(
+    (linkedJobsResult.data ?? []).map((row: any) => String(row.order_id)).filter(Boolean),
+  );
+  const orders = (orderRowsResult.data ?? []).map(mapOrderRow);
+  const buckets = buildBuckets(orders, linkedOrderIds, today, tomorrow);
+  const people = await fetchDashboardPeople(orders);
+  return {
+    buckets,
+    people,
+    capped:
+      (orderRowsResult.data?.length ?? 0) >= HOME_ROW_LIMIT ||
+      (linkedJobsResult.data?.length ?? 0) >= HOME_ROW_LIMIT,
+  };
+}
+
 function mapRpcSummary(row: any): HomeDashboardSummary {
   return {
     buckets: emptyBuckets(),

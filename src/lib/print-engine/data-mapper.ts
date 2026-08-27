@@ -11,7 +11,7 @@ import {
   useDeliveryChallans,
   useEstimates,
 } from "@/lib/billing-documents-store";
-import { mgToGrams } from "@/lib/gold";
+import { mgToGrams, fineGoldMg } from "@/lib/gold";
 import { paiseToRupees, useBilling } from "@/lib/billing-store";
 import { useOrders, orderItems, orderTotals } from "@/lib/orders-store";
 import { usePeople } from "@/lib/people-store";
@@ -339,7 +339,11 @@ const builders: Record<PrintDocType, PrintContextBuilder> = {
           grossWt: `${(it.grossMg / 1000).toFixed(3)} g`,
           netWt: `${(it.netMg / 1000).toFixed(3)} g`,
           purity: it.purity,
-          fine: `${((it.netMg * it.purity) / 1_000_000).toFixed(3)} g`,
+          fine: `${mgToGrams(
+            typeof (it as { fineMg?: number }).fineMg === "number"
+              ? (it as { fineMg: number }).fineMg
+              : fineGoldMg(it.netMg, it.purity),
+          )} g`,
           amount: it.amountRupees ? `₹${it.amountRupees.toFixed(2)}` : "—",
         })),
       },

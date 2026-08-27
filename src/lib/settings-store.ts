@@ -14,6 +14,11 @@ import {
   redactBullionRateProvider,
   redactSmtpSettings,
 } from "@/lib/security/client-secret-redaction";
+import {
+  DEFAULT_MA_TARA_WORKSHOP_POLICY,
+  normalizeMaTaraWorkshopPolicy,
+  type MaTaraWorkshopPolicy,
+} from "@/lib/ma-tara-workshop-policy";
 
 /** Saves the main firm settings blob to app_settings[id="firm"] */
 /**
@@ -253,6 +258,9 @@ function persistSettings(get: () => any, force = false): void {
     print: s.print,
     gst: s.gst,
     makingCharge: s.makingCharge,
+    maTaraWorkshopPolicy: s.maTaraWorkshopPolicy,
+    mtjDefaultBundleAppliedAt: s.mtjDefaultBundleAppliedAt,
+    printDocumentPrefs: s.printDocumentPrefs,
     purities: s.purities,
     workshopProcesses: s.workshopProcesses,
     alloyFormulas: s.alloyFormulas,
@@ -833,6 +841,21 @@ export interface SettingsState {
   print: PrintTemplateSettings;
   gst: GstSettings;
   makingCharge: MakingChargeSettings;
+  /**
+   * Firm workshop policy (config). Default pureGoldReferencePermille = 995.
+   * Does not rewrite production fineGoldMg formula.
+   */
+  maTaraWorkshopPolicy: MaTaraWorkshopPolicy;
+  /** ISO timestamp when MTJ Default Bundle was auto-applied (once). */
+  mtjDefaultBundleAppliedAt: string | null;
+  /**
+   * Print document preferences (customization). Hisab remains available as its
+   * own document type; this only controls whether metal+cash Hisab appears on
+   * customer-facing retail/sale invoices.
+   */
+  printDocumentPrefs: {
+    hideCustomerHisabOnInvoice: boolean;
+  };
   purities: Purity[];
   workshopProcesses: WorkshopProcessConfig[];
   alloyFormulas: AlloyFormula[];
@@ -934,6 +957,9 @@ export interface SettingsState {
   setPrint: (p: Partial<PrintTemplateSettings>) => void;
   setGst: (p: Partial<GstSettings>) => void;
   setMakingCharge: (p: Partial<MakingChargeSettings>) => void;
+  setMaTaraWorkshopPolicy: (p: Partial<MaTaraWorkshopPolicy>) => void;
+  setMtjDefaultBundleAppliedAt: (iso: string | null) => void;
+  setPrintDocumentPrefs: (p: Partial<{ hideCustomerHisabOnInvoice: boolean }>) => void;
   setHardware: (p: Partial<HardwareSettings>) => void;
   setCatalog: (p: Partial<CatalogSettings>) => void;
   setGoldRate: (paise: number) => void;
@@ -1647,6 +1673,9 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
     defaultRatePerUnitPaise: 0,
     categoryOverrides: {},
   },
+  maTaraWorkshopPolicy: { ...DEFAULT_MA_TARA_WORKSHOP_POLICY },
+  mtjDefaultBundleAppliedAt: null,
+  printDocumentPrefs: { hideCustomerHisabOnInvoice: true },
   purities: DEFAULT_PURITIES,
   workshopProcesses: DEFAULT_WORKSHOP_PROCESSES,
   alloyFormulas: DEFAULT_ALLOY_FORMULAS,
@@ -1667,7 +1696,7 @@ const DEFAULTS: Omit<SettingsState, keyof Functions> = {
   catalog: {
     categories: ["Ring", "Chain", "Earring", "Pendant", "Bangle", "Necklace"],
     tags: ["Bestseller", "New", "Festival", "Bridal"],
-    defaultPurity: "22K / 916",
+    defaultPurity: "24K / 995",
     defaultWeightMinG: 2,
     defaultWeightMaxG: 25,
   },
@@ -1866,6 +1895,9 @@ type Functions = Pick<
   | "setPrint"
   | "setGst"
   | "setMakingCharge"
+  | "setMaTaraWorkshopPolicy"
+  | "setMtjDefaultBundleAppliedAt"
+  | "setPrintDocumentPrefs"
   | "setHardware"
   | "setBullionRateProvider"
   | "setCatalog"
@@ -1962,6 +1994,33 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   },
   setMakingCharge: (p) => {
     set({ makingCharge: { ...get().makingCharge, ...p } });
+    persistSettings(get);
+  },
+  setMaTaraWorkshopPolicy: (p) => {
+    const prev = get().maTaraWorkshopPolicy;
+    set({
+      maTaraWorkshopPolicy: normalizeMaTaraWorkshopPolicy({
+        ...prev,
+        ...p,
+        materialPayableByCategoryKey: {
+          ...(prev.materialPayableByCategoryKey ?? {}),
+          ...(p.materialPayableByCategoryKey ?? {}),
+        },
+      }),
+    });
+    persistSettings(get);
+  },
+  setMtjDefaultBundleAppliedAt: (iso) => {
+    set({ mtjDefaultBundleAppliedAt: iso });
+    persistSettings(get);
+  },
+  setPrintDocumentPrefs: (p) => {
+    set({
+      printDocumentPrefs: {
+        ...get().printDocumentPrefs,
+        ...p,
+      },
+    });
     persistSettings(get);
   },
   setHardware: (p) => {

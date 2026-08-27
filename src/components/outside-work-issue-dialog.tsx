@@ -67,7 +67,7 @@ export function OutsideWorkIssueDialog({
   const [jewellerId, setJewellerId] = useState("");
   const [orderId, setOrderId] = useState("none");
   const [materialType, setMaterialType] = useState("Gold");
-  const [purityStr, setPurityStr] = useState("916");
+  const [purityStr, setPurityStr] = useState("995");
   const [weightStr, setWeightStr] = useState("");
   const [expectedReturnDate, setExpectedReturnDate] = useState("");
   const [remarks, setRemarks] = useState("");
@@ -80,7 +80,7 @@ export function OutsideWorkIssueDialog({
       setJewellerId(defaultJewellerId ?? "");
       setOrderId(defaultOrderId ?? "none");
       setMaterialType("Gold");
-      setPurityStr("916");
+      setPurityStr("995");
       setWeightStr("");
       setExpectedReturnDate("");
       setRemarks("");

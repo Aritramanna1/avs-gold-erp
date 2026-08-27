@@ -65,7 +65,7 @@ export function OutsideWorkReceiveDialog({
   const [jewellerId, setJewellerId] = useState("");
   const [orderId, setOrderId] = useState("none");
   const [materialType, setMaterialType] = useState<string>("Finished Product");
-  const [purityStr, setPurityStr] = useState("916");
+  const [purityStr, setPurityStr] = useState("995");
   const [weightStr, setWeightStr] = useState("");
   const [remarks, setRemarks] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
@@ -80,7 +80,7 @@ export function OutsideWorkReceiveDialog({
       setJewellerId(defaultJewellerId ?? "");
       setOrderId(defaultOrderId ?? "none");
       setMaterialType("Finished Product");
-      setPurityStr("916");
+      setPurityStr("995");
       setWeightStr("");
       setRemarks("");
       setPhotoDataUrl(null);

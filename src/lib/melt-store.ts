@@ -32,7 +32,7 @@ export interface MeltJob {
   // Input weights (mg)
   scrapInputGrossMg: number;
   scrapInputPurity: number; // per-mille
-  scrapInputFineMg: number; // computed: round(gross * purity / 1000)
+  scrapInputFineMg: number; // computed via fineGoldMg(gross, purity) — ÷999 convention
 
   dustInputGrossMg: number;
   dustInputPurity: number;

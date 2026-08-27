@@ -200,21 +200,21 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="h-14 min-h-[var(--touch-target)] border-b border-border bg-card flex items-center gap-3 px-4 md:px-6"
           id="main-header"
         >
-          {/* Tablet only: optional module drawer. Phones use bottom nav (Home / Master / Transactions). */}
-          <div className="hidden md:flex lg:hidden items-center" id="mobile-sidebar-trigger">
+          {/* Phones + tablets: same Sidebar IA as desktop (sheet). Bottom nav mirrors primary groups. */}
+          <div className="flex lg:hidden items-center shrink-0" id="mobile-sidebar-trigger">
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
               <SheetTrigger asChild>
                 <button
                   type="button"
                   aria-label="Open navigation menu"
-                  className="p-2 rounded-lg border border-border hover:border-gold/50 cursor-pointer bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 transition-colors active:scale-95"
+                  className="min-h-[var(--touch-target)] min-w-[var(--touch-target)] p-2 rounded-lg border border-border hover:border-gold/50 cursor-pointer bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 transition-colors active:scale-95 inline-flex items-center justify-center"
                 >
                   <Menu className="h-5 w-5 text-gold" />
                 </button>
               </SheetTrigger>
               <SheetContent
                 side="left"
-                className="p-0 bg-sidebar border-r border-sidebar-border w-64 h-full"
+                className="p-0 bg-sidebar border-r border-sidebar-border w-[min(20rem,92vw)] h-full max-h-[100dvh] overflow-y-auto"
               >
                 <Sidebar
                   onOpenGoldRateEditor={() => {
@@ -377,7 +377,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main
-          className="flex-1 overflow-y-auto relative page-enter pb-16 lg:pb-0"
+          className="flex-1 overflow-y-auto relative page-enter pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-0"
           id="main-view-scroll-container"
         >
           <MaintenanceNotice />

@@ -64,7 +64,7 @@ function NewSettlement() {
   const [invoiceId, setInvoiceId] = useState("none");
   const [itemName, setItemName] = useState("");
   const [grossStr, setGrossStr] = useState("");
-  const [purityStr, setPurityStr] = useState("916");
+  const [purityStr, setPurityStr] = useState("995");
   const [makingStr, setMakingStr] = useState("");
   const [gst, setGst] = useState<GstKind>("none");
   const [saving, setSaving] = useState(false);

@@ -16,6 +16,8 @@ import { PAYMENT_MODE_LABELS, paiseToRupees } from "@/lib/billing-store";
 import { mgToGrams } from "@/lib/gold";
 import { useCatalog } from "@/lib/catalog-store";
 import { useStock } from "@/lib/stock-store";
+import { useSettings } from "@/lib/settings-store";
+import { usePeople } from "@/lib/people-store";
 import type { PrintDocumentData } from "./types";
 
 function getItemPhoto(it: InvoiceItem, orderId?: string): string | null {
@@ -257,6 +259,16 @@ export function buildInvoicePrintData(inv: Invoice): PrintDocumentData {
     { label: "OUTSTANDING DUE", value: rupees(inv.balancePaise) },
   ];
 
+  const showCustomerHisab =
+    useSettings.getState().printDocumentPrefs?.hideCustomerHisabOnInvoice === false;
+  const customer = inv.customerId
+    ? usePeople.getState().people.find((p) => p.id === inv.customerId)
+    : undefined;
+  const openingFine = customer?.goldOpeningFineMg ?? 0;
+  const openingCash = customer?.cashOpeningBalancePaise ?? 0;
+  const goldOutThisBill = inv.items.reduce((s, it) => s + (it.fineMg || 0), 0);
+  const cashOutThisBill = inv.grandTotalPaise;
+
   return {
     docType,
     docNumber: inv.invoiceNo,
@@ -310,8 +322,26 @@ export function buildInvoicePrintData(inv: Invoice): PrintDocumentData {
       hasIgstOnly: isGst3 && !hasCgstSgst,
       isNotGst3: !isGst3,
       hasAdjustment: inv.adjustmentPaise > 0,
+      // Customer Hisab off by default; only when print prefs explicitly allow.
+      showCustomerHisab,
+      hideCustomerHisab: !showCustomerHisab,
     },
     images: {},
-    balances: {},
+    balances: showCustomerHisab
+      ? {
+          gold: {
+            previous: openingFine,
+            in: inv.orderAdjustment?.goldFineMg ?? 0,
+            out: goldOutThisBill,
+            closing: openingFine - goldOutThisBill,
+          },
+          cash: {
+            previous: openingCash,
+            in: inv.paidPaise,
+            out: cashOutThisBill,
+            closing: openingCash + inv.paidPaise - cashOutThisBill,
+          },
+        }
+      : {},
   };
 }

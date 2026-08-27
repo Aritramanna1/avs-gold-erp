@@ -288,11 +288,11 @@ export function buildBillFromJobCard(
   const wr = jobCard.workReceipt;
 
   const goldIssuedGrossMg = 0;
-  const goldIssuedPurity = 916;
+  const goldIssuedPurity = 995;
   const goldIssuedFineMg = 0;
 
   const finishedGrossMg = wr?.finishedGrossMg ?? 0;
-  const finishedPurity = wr?.finishedPurity ?? 916;
+  const finishedPurity = wr?.finishedPurity ?? 995;
   const finishedFineMg = wr?.finishedFineMg ?? 0;
   const scrapGrossMg = wr?.scrapGrossMg ?? 0;
   const scrapPurity = wr?.scrapPurity ?? 300;

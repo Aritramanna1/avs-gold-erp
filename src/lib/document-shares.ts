@@ -103,9 +103,7 @@ export async function createDocumentShareLink(
       return null;
     }
 
-    const origin =
-      import.meta.env.VITE_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ||
-      (typeof window !== "undefined" ? window.location.origin : "");
+    const origin = (await import("@/lib/public-origin")).getProductionPublicOrigin();
     return `${origin}/doc/${token}`;
   } catch (err) {
     console.warn("[DocumentShares] Share creation error:", err);

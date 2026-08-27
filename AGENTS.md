@@ -14,11 +14,14 @@
 ## Release Safety Rule
 
 Never reset, overwrite, force-push, rollback, or replace `main` merely to
-resolve development problems.
+resolve development problems (except explicit Product Owner baseline reset).
 
-`main` is the current approved AVS ERP release. All development happens through
-branches and Pull Requests. Only explicit Product Owner release approval allows
-a new version to enter `main`.
+**Production foundation (locked):** `main` starts from exact CVsE73i6 baseline
+(`8dc1c43` = `index-CVsE73i6.js` = `dist_go_20260826_190800.zip`). Live:
+`https://maatarajewellers.shop`. Keep the recovery zip forever. Backup refs:
+`production-baseline-cvse73i6` / `backup/production-baseline-cvse73i6`. All new
+AVS/MTJ work is additive on `main` only: implement → migrate → test → build →
+deploy → live verify. Do not continue on another feature branch.
 
 Before any materially risky Git operation, record the current commit SHA,
 verify the branch, verify the remote, inspect the working tree, and create a

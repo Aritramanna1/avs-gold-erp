@@ -430,6 +430,15 @@ function VerifyPage() {
     detect: (el: HTMLVideoElement) => Promise<{ rawValue: string }[]>;
   } | null>(null);
 
+  // Public QR links: /verify?payload=AVS|... — works logged-out without ERP chrome.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = params.get("payload") || params.get("p");
+    if (fromQuery) {
+      void executeVerification(fromQuery);
+    }
+  }, []);
+
   async function executeVerification(codeParam: string) {
     if (!codeParam) return;
     setLoading(true);

@@ -174,6 +174,15 @@ const classicBusinessSections: SectionConfig[] = [
     textPath: "amountInWordsText",
   },
   {
+    type: "balanceCard",
+    id: "customerHisab",
+    title: "Customer Hisab (Metal + Cash)",
+    goldKey: "gold",
+    cashKey: "cash",
+    labelMode: "jama_naam",
+    showIf: "showCustomerHisab",
+  },
+  {
     type: "richText",
     id: "tnc",
     title: "Terms & Conditions",

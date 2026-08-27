@@ -102,7 +102,7 @@ const EMPTY_FORM: FormState = {
   date: todayISO(),
   karigarId: "",
   scrapGross: "",
-  scrapPurity: "916",
+  scrapPurity: "995",
   dustGross: "",
   dustPurity: "500",
   otherGross: "",
@@ -927,7 +927,7 @@ function MeltIndex() {
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">Purity (‰)</label>
                   <Input
-                    placeholder="916"
+                    placeholder="995"
                     value={form.scrapPurity}
                     onChange={(e) => updateForm("scrapPurity", e.target.value)}
                   />

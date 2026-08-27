@@ -81,7 +81,7 @@ export function SendToPolishingDialog({
   const [polisherId, setPolisherId] = useState("");
   const [product, setProduct] = useState("");
   const [weightStr, setWeightStr] = useState("");
-  const [purityStr, setPurityStr] = useState("916");
+  const [purityStr, setPurityStr] = useState("995");
   const [expectedReturnDate, setExpectedReturnDate] = useState("");
   const [remarks, setRemarks] = useState("");
   const [approvedBy, setApprovedBy] = useState("");
@@ -94,7 +94,7 @@ export function SendToPolishingDialog({
       setPolisherId("");
       setProduct("");
       setWeightStr("");
-      setPurityStr("916");
+      setPurityStr("995");
       setExpectedReturnDate("");
       setRemarks("");
       setApprovedBy("");

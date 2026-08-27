@@ -74,7 +74,7 @@ export function ReceiveFromPolishingDialog({
   const [polisherId, setPolisherId] = useState("");
   const [product, setProduct] = useState("");
   const [weightStr, setWeightStr] = useState("");
-  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? 916));
+  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? 995));
   const [chargesStr, setChargesStr] = useState("");
   const [remarks, setRemarks] = useState("");
   const [approvedBy, setApprovedBy] = useState("");
@@ -90,7 +90,7 @@ export function ReceiveFromPolishingDialog({
       setPolisherId("");
       setProduct("");
       setWeightStr("");
-      setPurityStr(String(defaultPurity ?? 916));
+      setPurityStr(String(defaultPurity ?? 995));
       setChargesStr("");
       setRemarks("");
       setApprovedBy("");

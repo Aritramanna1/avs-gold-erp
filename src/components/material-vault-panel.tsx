@@ -295,7 +295,7 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
   );
   const [metal, setMetal] = useState("Gold");
   const [category, setCategory] = useState("kdm_balls");
-  const [purity, setPurity] = useState("916");
+  const [purity, setPurity] = useState("995");
   const [action, setAction] = useState<(typeof STOCK_ACTIONS)[number]["value"]>("purchase");
   const [weightG, setWeightG] = useState("");
   const [reference, setReference] = useState("");
@@ -306,7 +306,7 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
     if (open) {
       setCategory("kdm_balls");
       setMetal("Gold");
-      setPurity("916");
+      setPurity("995");
       setAction("purchase");
       setWeightG("");
       setReference("");

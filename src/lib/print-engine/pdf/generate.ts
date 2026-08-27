@@ -12,7 +12,7 @@ import { jsPDF } from "jspdf";
 import { ARCHIVAL_SIZES } from "@/components/print/PrintLayout";
 import { usePrintSetup } from "@/lib/print-setup-store";
 import type { FirmProfile } from "@/lib/settings-store";
-import { payloadFor } from "@/lib/verify-token";
+import { resolveDocumentVerifyQrContent } from "@/lib/print-engine/document-verify-url";
 import { shouldRenderVerificationQr } from "@/lib/print-engine/print-branding";
 import { formatDateMedium as formatDate } from "@/lib/format-date";
 import type { PrintDocumentData, PrintTemplate, SectionConfig } from "../types";
@@ -119,13 +119,13 @@ async function drawSection(
       return geo.margin;
     case "qr": {
       if (!shouldRenderVerificationQr(firm)) return y;
-      const payload = payloadFor({
+      const { content } = await resolveDocumentVerifyQrContent({
         docType: data.docType,
         docNumber: data.docNumber,
         recordId: data.recordId,
         createdAt: data.createdAt,
       });
-      return addQr(doc, geo, payload, y);
+      return addQr(doc, geo, content, y);
     }
     case "images":
       // Reference photos / KYC pages are a concern once a doc type that

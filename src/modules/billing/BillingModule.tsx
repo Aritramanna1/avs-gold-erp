@@ -612,7 +612,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         }
         const updated = { ...payment };
         if (!updated.goldPurityStr) {
-          updated.goldPurityStr = "916";
+          updated.goldPurityStr = "995";
           changed = true;
         }
         if (!updated.goldRateManuallyOverridden && updated.goldRateStr !== defaultRate) {
@@ -1168,7 +1168,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       mode,
       ...(isGold
         ? {
-            goldPurityStr: payment.goldPurityStr || "916",
+            goldPurityStr: payment.goldPurityStr || "995",
             goldRateStr: payment.goldRateStr || paiseToRupees(currentGoldRatePaise),
             goldRateManuallyOverridden: payment.goldRateManuallyOverridden ?? false,
           }
@@ -1176,7 +1176,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     });
     if (isGold && payment.goldGramsStr) {
       autoFillFromGold(idx, {
-        goldPurityStr: payment.goldPurityStr || "916",
+        goldPurityStr: payment.goldPurityStr || "995",
         goldRateStr: payment.goldRateStr || paiseToRupees(currentGoldRatePaise),
       });
     }
@@ -1396,11 +1396,11 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
     const goldShortfallFineMg =
       isGoldExchange && goldShortfallGrams > 0
-        ? Math.round(goldShortfallGrams * 1000 * ((goldPayment.goldPurity ?? 916) / 1000))
+        ? fineGoldMg(Math.round(goldShortfallGrams * 1000), goldPayment.goldPurity ?? 995)
         : 0;
     const goldSurplusFineMg =
       isGoldExchange && goldSurplusGrams > 0
-        ? Math.round(goldSurplusGrams * 1000 * ((goldPayment.goldPurity ?? 916) / 1000))
+        ? fineGoldMg(Math.round(goldSurplusGrams * 1000), goldPayment.goldPurity ?? 995)
         : 0;
 
     const isPhysicalGoldExchange = goldPayment?.mode === "gold_exchange";
@@ -1430,7 +1430,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           // advance with us instead of gold they still owe us, exactly
           // backwards from reality.
           settlement_type: "gold_shortfall_receivable",
-          purity: goldPayment.goldPurity ?? 916,
+          purity: goldPayment.goldPurity ?? 995,
           gross_mg: Math.round(goldShortfallGrams * 1000),
           net_mg: Math.round(goldShortfallGrams * 1000),
           wastage_mg: 0,
@@ -1490,7 +1490,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           party_id: customerId,
           branch_id: useSettings.getState().selectedBranchId || "MAIN",
           settlement_type: "gold_received",
-          purity: goldPayment.goldPurity ?? 916,
+          purity: goldPayment.goldPurity ?? 995,
           gross_mg: Math.round(goldSurplusGrams * 1000),
           net_mg: Math.round(goldSurplusGrams * 1000),
           wastage_mg: 0,
@@ -1517,7 +1517,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           party_id: customerId,
           branch_id: useSettings.getState().selectedBranchId || "MAIN",
           settlement_type: "gold_given",
-          purity: goldPayment.goldPurity ?? 916,
+          purity: goldPayment.goldPurity ?? 995,
           gross_mg: goldPayment.goldGrossMg ?? 0,
           net_mg: goldPayment.goldFineMg ?? 0,
           wastage_mg: 0,
@@ -1755,7 +1755,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     const blank: Omit<InvoiceItem, "id" | "goldValuePaise" | "lineTotalPaise"> = {
       itemName: "",
       category: "Other",
-      purity: 916,
+      purity: 995,
       grossMg: 0,
       netMg: 0,
       fineMg: 0,
@@ -3109,7 +3109,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                                 patchPayment(idx, { goldPurityStr: e.target.value });
                                 autoFillFromGold(idx, { goldPurityStr: e.target.value });
                               }}
-                              placeholder="916"
+                              placeholder="995"
                               className="h-8 text-xs font-mono border-gold/30 focus-visible:border-gold"
                             />
                           </div>

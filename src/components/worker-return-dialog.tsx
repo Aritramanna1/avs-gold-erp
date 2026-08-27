@@ -87,7 +87,7 @@ export function WorkerReturnDialog({
   const [workerId, setWorkerId] = useState("");
   const [materialReturned, setMaterialReturned] = useState<string>("Finished Product");
   const [description, setDescription] = useState("");
-  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? 916));
+  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? 995));
   const [weightStr, setWeightStr] = useState("");
   const [remarks, setRemarks] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
@@ -102,7 +102,7 @@ export function WorkerReturnDialog({
       setWorkerId(autoWorkerId);
       setMaterialReturned("Finished Product");
       setDescription("");
-      setPurityStr(String(defaultPurity ?? 916));
+      setPurityStr(String(defaultPurity ?? 995));
       setWeightStr("");
       setRemarks("");
       setPhotoDataUrl(null);

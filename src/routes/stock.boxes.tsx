@@ -32,7 +32,7 @@ export const Route = createFileRoute("/stock/boxes")({
 
 function StockBoxesPage() {
   const branchId = useSettings((s) => s.selectedBranchId || "MAIN");
-  const { trays, loading, hydrate, upsert, remove } = useStockBoxTrays();
+  const { trays, loading, hydrate, upsert, remove, lastError } = useStockBoxTrays();
   const stockItems = useStock((s) => s.items);
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -97,6 +97,12 @@ function StockBoxesPage() {
         }
       />
 
+      {lastError ? (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+          Box/tray load failed: {lastError}
+        </div>
+      ) : null}
+
       {loading && branchTrays.length === 0 ? (
         <p className="text-sm text-muted-foreground">Loading trays…</p>
       ) : branchTrays.length === 0 ? (
@@ -130,7 +136,13 @@ function StockBoxesPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => void remove(tray.id)}
+                  onClick={() => {
+                    void remove(tray.id).catch((err: unknown) => {
+                      const message =
+                        err instanceof Error ? err.message : "Could not remove box/tray.";
+                      toast.error(message);
+                    });
+                  }}
                   aria-label="Remove tray"
                 >
                   <Trash2 className="h-4 w-4" />

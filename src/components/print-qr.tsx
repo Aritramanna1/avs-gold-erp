@@ -1,23 +1,22 @@
 /**
- * MTJ ERP — QR code component for print receipts.
- * Wraps the `qrcode` library and renders a small <img> that prints crisp.
+ * AVS ERP — QR code for print receipts.
+ * Encodes a public verification URL (/doc/{token} or /verify?payload=…), never a private ERP route.
  */
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { payloadFor } from "@/lib/verify-token";
 import type { PrintDocType } from "@/lib/printlog-store";
 import { useSettings } from "@/lib/settings-store";
 import { shouldRenderVerificationQr } from "@/lib/print-engine/print-branding";
+import { resolveDocumentVerifyQrContent } from "@/lib/print-engine/document-verify-url";
 
 export interface PrintQRProps {
   docType: PrintDocType;
   docNumber: string;
   recordId: string;
   createdAt?: number | string | Date;
-  size?: number; // px, default 96
-  label?: string; // small caption under code
+  size?: number;
+  label?: string;
   className?: string;
-  /** Set false to omit the label/docNumber caption — for space-constrained contexts like jewellery tags. Default true. */
   showCaption?: boolean;
 }
 
@@ -33,7 +32,6 @@ export function PrintQR({
 }: PrintQRProps) {
   const firm = useSettings((s) => s.firm);
   const enabled = shouldRenderVerificationQr(firm);
-  const payload = payloadFor({ docType, docNumber, recordId, createdAt });
   const [dataUrl, setDataUrl] = useState<string>("");
 
   useEffect(() => {
@@ -42,22 +40,29 @@ export function PrintQR({
       return;
     }
     let cancelled = false;
-    QRCode.toDataURL(payload, {
-      errorCorrectionLevel: "M",
-      margin: 1,
-      width: size * 3, // crisp on print
-      color: { dark: "#000000", light: "#FFFFFFFF" },
-    })
-      .then((url) => {
+    void (async () => {
+      try {
+        const { content } = await resolveDocumentVerifyQrContent({
+          docType,
+          docNumber,
+          recordId,
+          createdAt,
+        });
+        const url = await QRCode.toDataURL(content, {
+          errorCorrectionLevel: "M",
+          margin: 1,
+          width: size * 3,
+          color: { dark: "#000000", light: "#FFFFFFFF" },
+        });
         if (!cancelled) setDataUrl(url);
-      })
-      .catch(() => {
+      } catch {
         /* ignore */
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, [payload, size, enabled]);
+  }, [docType, docNumber, recordId, createdAt, size, enabled]);
 
   if (!enabled) return null;
 

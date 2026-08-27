@@ -1,0 +1,34 @@
+---
+description: ONE baseline / ONE branch — main equals CVsE73i6 until Owner-approved deploy
+alwaysApply: true
+---
+
+# Production source of truth (FINAL)
+
+## Equation (confirm before feature work)
+
+```
+MAIN
+  = EXACT PRODUCTION BASELINE
+  = index-CVsE73i6.js
+  = git 8dc1c43 (production-baseline-cvse73i6)
+  = dist_go_20260826_190800.zip
+```
+
+Live: `https://maatarajewellers.shop` — do not migrate domain/hosting.
+Do **not** rollback again unless Owner explicitly orders restore from the zip.
+
+## One development branch
+
+- **`main` only** for implementation.
+- Restore-only: `backup/production-baseline-cvse73i6` (same SHA).
+- Discarded tip (never merge): `archive/discarded-main-pre-cvse73i6-reset`.
+
+## Hard locks
+
+- Keep `dist_go_20260826_190800.zip` forever; never delete or silently replace.
+- **fineGoldMg:** `round(grossMg × purityPermille / 999)`. Default selected purity **995**. Never change divisor to 995.
+- Hide ≠ delete. No second ERP/shell/WebView/parallel gold/ULE/print engines.
+- Deploy only after Owner approve + `[release-approved]`.
+- Path: `main` → implement → migrate → test → build → deploy → live QA.
+- Offline WinForms (`03-offline-winforms-erp`) = behaviour reference only.
