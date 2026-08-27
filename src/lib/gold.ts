@@ -71,6 +71,12 @@ export function formatWeight(mg: number, opts: { sign?: boolean } = {}): string 
 }
 
 /**
+ * Locked fine-gold denominator. NEVER change to 995 — 995 is a purity /
+ * reference grade, not the divisor. Selected purity drives the numerator.
+ */
+export const FINE_GOLD_DIVISOR = 999 as const;
+
+/**
  * Fine gold = gross × purity / 999, rounded to nearest mg — this shop's
  * convention expresses purity as a fraction of practical-maximum (999 touch),
  * not literal parts-per-1000. This is the ONLY place this formula should be
@@ -85,7 +91,7 @@ export function fineGoldMg(grossMg: number, purity: Purity): number {
     throw new Error("purity must be 0..999");
   if (purity >= 999) return grossMg;
   const product = grossMg * purity;
-  return Math.round(product / 999);
+  return Math.round(product / FINE_GOLD_DIVISOR);
 }
 
 /**

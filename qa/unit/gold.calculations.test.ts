@@ -14,6 +14,7 @@ const FINE_GOLD_CASES: Array<{
   expectedFineMg: number;
   note: string;
 }> = [
+  { grossMg: 10_000, purity: 995, expectedFineMg: 9960, note: "MTJ default purity 995 still ÷999" },
   { grossMg: 10_000, purity: 916, expectedFineMg: 9169, note: "22K standard issue" },
   { grossMg: 10_000, purity: 999, expectedFineMg: 10_000, note: "fine / 24K touch" },
   { grossMg: 1, purity: 916, expectedFineMg: 1, note: "minimum gross rounding" },

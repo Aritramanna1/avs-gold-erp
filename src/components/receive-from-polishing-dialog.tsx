@@ -24,6 +24,7 @@ import { usePolishing, findOldestPendingSend } from "@/lib/polishing-store";
 import { useBusinessRules } from "@/lib/business-rules-store";
 import { generateImageThumbnail } from "@/lib/attachments-store";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
+import { getDefaultPurityPermille } from "@/lib/ma-tara-workshop-policy";
 import { rupeesToPaise, useOrders } from "@/lib/orders-store";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { PackageCheck, AlertTriangle, ImagePlus } from "lucide-react";
@@ -74,7 +75,7 @@ export function ReceiveFromPolishingDialog({
   const [polisherId, setPolisherId] = useState("");
   const [product, setProduct] = useState("");
   const [weightStr, setWeightStr] = useState("");
-  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? 995));
+  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? getDefaultPurityPermille()));
   const [chargesStr, setChargesStr] = useState("");
   const [remarks, setRemarks] = useState("");
   const [approvedBy, setApprovedBy] = useState("");
@@ -90,7 +91,7 @@ export function ReceiveFromPolishingDialog({
       setPolisherId("");
       setProduct("");
       setWeightStr("");
-      setPurityStr(String(defaultPurity ?? 995));
+      setPurityStr(String(defaultPurity ?? getDefaultPurityPermille()));
       setChargesStr("");
       setRemarks("");
       setApprovedBy("");

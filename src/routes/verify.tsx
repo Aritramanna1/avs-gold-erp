@@ -27,6 +27,7 @@ import {
   findReceiptRecordByNumber,
   type ReceiptRecord,
 } from "@/lib/services/receipt-record-service";
+import { consumePublicRateLimitAsync } from "@/lib/public-rate-limit";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -441,6 +442,14 @@ function VerifyPage() {
 
   async function executeVerification(codeParam: string) {
     if (!codeParam) return;
+    const rl = await consumePublicRateLimitAsync("public:verify", {
+      limit: 40,
+      windowMs: 60_000,
+    });
+    if (!rl.allowed) {
+      setError(`Too many verification attempts. Retry in ${Math.ceil(rl.retryAfterMs / 1000)}s.`);
+      return;
+    }
     setLoading(true);
     setResult(null);
     setError(null);

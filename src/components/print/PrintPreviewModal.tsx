@@ -507,7 +507,7 @@ export function PrintPreviewModal({ isOpen, onClose, title, printUrl }: PrintPre
             data-testid="print-preview-download-pdf"
           >
             <Download className="h-4 w-4" />
-            {downloadingPdf ? "Preparing…" : "Save as PDF"}
+            {downloadingPdf ? "Preparing…" : "Download PDF"}
           </Button>
           <Button
             size="sm"

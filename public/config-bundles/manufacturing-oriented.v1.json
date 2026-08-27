@@ -4,14 +4,20 @@
   "bundleId": "manufacturing-oriented.v1",
   "label": "Manufacturing-oriented Configuration",
   "exportedAt": "2026-08-27T00:00:00.000Z",
-  "notes": "Manufacturing-leaning defaults aligned with Offline Dhadi/Jangad vocabulary mapped to AVS labels.",
+  "notes": "Manufacturing-leaning defaults for AVS_10K_MFG / AVS_30K_MFG (Docx SoT). Offline Dhadi/Jangad vocabulary mapped to AVS labels. pureGoldReferencePermille=995; fineGoldMg ÷999 locked. Gold-first manufacturing; cash secondary.",
   "editionFamily": "MANUFACTURING",
   "mtjSimplifiedWorkflow": false,
   "activeTerminologyPack": "indian_trade",
+  "hiddenByDefaultModules": ["scheme", "boolean_ledger"],
+  "printDefaults": {
+    "hideCustomerHisabOnInvoice": true
+  },
+  "docxEditionLadder": ["AVS_10K_MFG", "AVS_30K_MFG", "AVS_50K_FULL", "AVS_MTG"],
   "maTaraWorkshopPolicy": {
     "pureGoldReferencePermille": 995,
     "materialPayableByCategoryKey": {}
   },
+  "primaryActions": ["STOCK", "ORDER", "ISSUE", "RECEIVE", "MELTING", "POLISHING", "KARIGAR", "SETTLEMENT", "REPORTS"],
   "terminologyOverrides": {
     "karigar": "Karigar",
     "job_card": "Issue / Receive",
@@ -23,6 +29,7 @@
     "orderType": ["Custom", "Repair", "Polishing", "Wholesale"],
     "workerRole": ["Master Karigar", "Helper", "Polisher", "Stone Setter", "Finisher"],
     "repairType": ["Soldering", "Polish", "Re-size", "Re-string", "Tip Change", "Stone Setting"],
-    "stockLocation": ["Vault", "Workshop", "Repair Bench", "Showroom"]
+    "stockLocation": ["Vault", "Workshop", "Repair Bench", "Showroom"],
+    "paymentMode": ["Cash", "UPI", "Bank Transfer", "Gold Settlement"]
   }
 }

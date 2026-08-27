@@ -7,6 +7,8 @@
  *
  * Material payable map: missing key ⇒ PAYABLE. Do not invent non-payable lists.
  */
+import { useSettings } from "@/lib/settings-store";
+
 export interface MaTaraWorkshopPolicy {
   /** Firm default pure-gold reference (config). Does not change live fineGoldMg math. */
   pureGoldReferencePermille: number;
@@ -19,6 +21,22 @@ export const DEFAULT_MA_TARA_WORKSHOP_POLICY: MaTaraWorkshopPolicy = {
   pureGoldReferencePermille: DEFAULT_PURE_GOLD_REFERENCE_PERMILLE,
   materialPayableByCategoryKey: {},
 };
+
+/**
+ * Firm-configured default purity for form auto-fill (MTJ default = 995).
+ * Never used as fineGoldMg divisor — that stays FINE_GOLD_DIVISOR (999).
+ */
+export function getDefaultPurityPermille(): number {
+  try {
+    const n = useSettings.getState().maTaraWorkshopPolicy?.pureGoldReferencePermille;
+    if (Number.isInteger(n) && (n as number) >= 900 && (n as number) <= 999) {
+      return n as number;
+    }
+  } catch {
+    /* settings not ready */
+  }
+  return DEFAULT_PURE_GOLD_REFERENCE_PERMILLE;
+}
 
 export function normalizeMaTaraWorkshopPolicy(
   raw: Partial<MaTaraWorkshopPolicy> | null | undefined,

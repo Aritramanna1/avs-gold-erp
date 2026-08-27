@@ -118,11 +118,11 @@ const COURSES: CourseModule[] = [
     sopSteps: [
       "Set the Daily Desk Bhav at morning opening under Control → Daily Bhav Rate Book.",
       "Apply live bullion feeds or manually configure 24K, 22K (916), 18K (750), 14K (585), and Silver.",
-      "Verify purity math on all scrap gold receipts using Touch = Purity / 1000.",
+      "Verify purity math on all scrap gold receipts using Fine = Gross × Purity / 999 (selected purity is the numerator).",
     ],
     keyRules: [
-      "200.000g of 999 gold equals exactly 199.800g Pure Fine Gold (200 × 0.999).",
-      "10.000g of 916 gold debits exactly 9.160g Pure Fine Gold from vault inventory.",
+      "200.000g of 999 gold equals exactly 200.000g Pure Fine Gold (999/999).",
+      "10.000g of 916 gold = round(10000 × 916 / 999) mg Pure Fine from vault inventory.",
     ],
   },
   {

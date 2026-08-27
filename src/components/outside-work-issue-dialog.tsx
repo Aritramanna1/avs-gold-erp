@@ -29,6 +29,7 @@ import {
 } from "@/lib/material-vault-sync";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
+import { getDefaultPurityPermille } from "@/lib/ma-tara-workshop-policy";
 import { Truck, AlertTriangle } from "lucide-react";
 
 /**
@@ -67,7 +68,7 @@ export function OutsideWorkIssueDialog({
   const [jewellerId, setJewellerId] = useState("");
   const [orderId, setOrderId] = useState("none");
   const [materialType, setMaterialType] = useState("Gold");
-  const [purityStr, setPurityStr] = useState("995");
+  const [purityStr, setPurityStr] = useState(String(getDefaultPurityPermille()));
   const [weightStr, setWeightStr] = useState("");
   const [expectedReturnDate, setExpectedReturnDate] = useState("");
   const [remarks, setRemarks] = useState("");

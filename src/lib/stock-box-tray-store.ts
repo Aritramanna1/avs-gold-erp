@@ -86,28 +86,59 @@ export const useStockBoxTrays = create<StockBoxTrayState>()((set, get) => ({
   },
 
   upsert: async (input) => {
+    const code = input.code.trim().toUpperCase();
+    const name = input.name.trim();
+    if (!code || !name) {
+      throw new Error("Code and name are required.");
+    }
+    if (!input.branchId?.trim()) {
+      throw new Error("Branch is required before saving a box/tray.");
+    }
     const payload = {
-      branch_id: input.branchId,
-      code: input.code.trim().toUpperCase(),
-      name: input.name.trim(),
+      branch_id: input.branchId.trim(),
+      code,
+      name,
       tray_type: input.trayType,
-      stock_location: input.stockLocation,
+      stock_location: input.stockLocation || "counter",
       capacity_items: input.capacityItems,
       notes: input.notes,
       is_active: input.isActive,
       updated_at: new Date().toISOString(),
     };
-    if (input.id) {
-      const { error } = await supabase
-        .from("stock_box_trays" as never)
-        .update(payload as never)
-        .eq("id", input.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from("stock_box_trays" as never).insert(payload as never);
-      if (error) throw error;
+    try {
+      if (input.id) {
+        const { data, error } = await supabase
+          .from("stock_box_trays" as never)
+          .update(payload as never)
+          .eq("id", input.id)
+          .select(
+            "id,branch_id,code,name,tray_type,stock_location,capacity_items,notes,is_active,created_at",
+          )
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error("Update returned no row (check RLS / firm scope).");
+      } else {
+        const { data, error } = await supabase
+          .from("stock_box_trays" as never)
+          .insert(payload as never)
+          .select(
+            "id,branch_id,code,name,tray_type,stock_location,capacity_items,notes,is_active,created_at",
+          )
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) {
+          throw new Error(
+            "Insert returned no row. Confirm you are signed in to a firm (my_firm_id) and RLS allows stock_box_trays.",
+          );
+        }
+      }
+      set({ lastError: null });
+      await get().hydrate(input.branchId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ lastError: message });
+      throw err instanceof Error ? err : new Error(message);
     }
-    await get().hydrate(input.branchId);
   },
 
   remove: async (id) => {
@@ -115,7 +146,11 @@ export const useStockBoxTrays = create<StockBoxTrayState>()((set, get) => ({
       .from("stock_box_trays" as never)
       .delete()
       .eq("id", id);
-    if (error) throw error;
-    set((s) => ({ trays: s.trays.filter((t) => t.id !== id) }));
+    if (error) {
+      const message = error.message || "Could not remove box/tray.";
+      set({ lastError: message });
+      throw new Error(message);
+    }
+    set((s) => ({ trays: s.trays.filter((t) => t.id !== id), lastError: null }));
   },
 }));

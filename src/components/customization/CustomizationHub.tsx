@@ -1316,6 +1316,14 @@ function AdvancedContent() {
               size="sm"
               variant="outline"
               className="text-xs h-8"
+              onClick={() => void handleLoadPreset("/config-bundles/mtj-default.v1.json")}
+            >
+              Load MTJ Default
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-8"
               onClick={() => void handleLoadPreset("/config-bundles/retail-oriented.v1.json")}
             >
               Load Retail Default
@@ -1407,10 +1415,25 @@ function AdvancedContent() {
             size="sm"
             variant="outline"
             onClick={() => {
-              if (confirm("Reset customization defaults to factory settings?")) {
-                terminology.resetCustomOverrides();
-                toast.success("Factory terminology overrides cleared.");
-              }
+              void (async () => {
+                if (
+                  !confirm(
+                    "Reset customization to MTG/MTJ factory defaults?\n\nThis replaces listed configuration keys with the approved default bundle (995 reference, simplified workflow). Gold ledger math (/999) is never rewritten.",
+                  )
+                ) {
+                  return;
+                }
+                try {
+                  terminology.resetCustomOverrides();
+                  const bundle = await loadBundledJson("/config-bundles/mtg-default.v1.json");
+                  applyConfigurationBundle(bundle, { mode: "replace" });
+                  toast.success("Factory defaults restored from MTG/MTJ default bundle.");
+                } catch (err: unknown) {
+                  toast.error(
+                    err instanceof Error ? err.message : "Could not restore factory defaults",
+                  );
+                }
+              })();
             }}
             className="text-xs h-8 text-destructive hover:text-destructive"
           >

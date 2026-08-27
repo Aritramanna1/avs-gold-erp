@@ -30,6 +30,7 @@ import {
 } from "@/lib/material-vault-sync";
 import { generateImageThumbnail } from "@/lib/attachments-store";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
+import { getDefaultPurityPermille } from "@/lib/ma-tara-workshop-policy";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { PackageCheck, AlertTriangle, ImagePlus } from "lucide-react";
 
@@ -87,7 +88,7 @@ export function WorkerReturnDialog({
   const [workerId, setWorkerId] = useState("");
   const [materialReturned, setMaterialReturned] = useState<string>("Finished Product");
   const [description, setDescription] = useState("");
-  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? 995));
+  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? getDefaultPurityPermille()));
   const [weightStr, setWeightStr] = useState("");
   const [remarks, setRemarks] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
@@ -102,7 +103,7 @@ export function WorkerReturnDialog({
       setWorkerId(autoWorkerId);
       setMaterialReturned("Finished Product");
       setDescription("");
-      setPurityStr(String(defaultPurity ?? 995));
+      setPurityStr(String(defaultPurity ?? getDefaultPurityPermille()));
       setWeightStr("");
       setRemarks("");
       setPhotoDataUrl(null);

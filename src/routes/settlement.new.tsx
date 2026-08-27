@@ -19,6 +19,7 @@ import { useBilling } from "@/lib/billing-store";
 import { useSettlements, previewSettlementTotals } from "@/lib/settlement-store";
 import { computeItemTotals, type InvoiceItem, type GstKind } from "@/lib/billing-store";
 import { gramsToMg, mgToGrams, fineGoldMg, getPurityOptions } from "@/lib/gold";
+import { getDefaultPurityPermille } from "@/lib/ma-tara-workshop-policy";
 import { ArrowLeft, FileText } from "lucide-react";
 import { toast } from "sonner";
 
@@ -64,7 +65,7 @@ function NewSettlement() {
   const [invoiceId, setInvoiceId] = useState("none");
   const [itemName, setItemName] = useState("");
   const [grossStr, setGrossStr] = useState("");
-  const [purityStr, setPurityStr] = useState("995");
+  const [purityStr, setPurityStr] = useState(String(getDefaultPurityPermille()));
   const [makingStr, setMakingStr] = useState("");
   const [gst, setGst] = useState<GstKind>("none");
   const [saving, setSaving] = useState(false);

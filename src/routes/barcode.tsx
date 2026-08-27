@@ -82,6 +82,18 @@ function BarcodeWorkspace() {
                 <ScanLine className="mr-2 h-4 w-4" />
                 Scanner desk
               </Link>
+              <Link
+                to="/stock"
+                className="inline-flex items-center rounded-md border px-3 py-2 text-sm hover:bg-accent"
+              >
+                Open stock
+              </Link>
+              <Link
+                to="/billing"
+                className="inline-flex items-center rounded-md border px-3 py-2 text-sm hover:bg-accent"
+              >
+                Sale / bill
+              </Link>
             </div>
           </div>
         </section>

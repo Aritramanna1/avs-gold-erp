@@ -38,6 +38,7 @@ import {
 } from "@/lib/billing-store";
 import { useCurrentBranchId } from "@/lib/branch-store";
 import { mgToGrams, gramsToMg, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
+import { getDefaultPurityPermille } from "@/lib/ma-tara-workshop-policy";
 import { useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { ArrowLeft, Printer, CheckCircle2, Truck, Coins } from "lucide-react";
 import { toast } from "sonner";
@@ -66,14 +67,14 @@ function SettlementView() {
   const [payMode, setPayMode] = useState<PaymentMode>("cash");
   const [payAmt, setPayAmt] = useState("");
   const [goldGramsStr, setGoldGramsStr] = useState("");
-  const [goldPurityStr, setGoldPurityStr] = useState("995");
+  const [goldPurityStr, setGoldPurityStr] = useState(String(getDefaultPurityPermille()));
   const [payRef, setPayRef] = useState("");
   const [deliveryPersonName, setDeliveryPersonName] = useState("");
   const [finalising, setFinalising] = useState(false);
   const [finaliseConfirmOpen, setFinaliseConfirmOpen] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemGrossG, setNewItemGrossG] = useState("");
-  const [newItemPurity, setNewItemPurity] = useState("995");
+  const [newItemPurity, setNewItemPurity] = useState(String(getDefaultPurityPermille()));
   const [newItemMaking, setNewItemMaking] = useState("");
   const [addingItem, setAddingItem] = useState(false);
 

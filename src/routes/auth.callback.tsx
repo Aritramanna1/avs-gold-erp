@@ -46,6 +46,25 @@ async function resolvePostAuthDestination(input: {
       if (route.startsWith("/platform")) {
         return { path: "/platform", platformSearch: true };
       }
+      // MTG / MTJ edition: land directly on simplified shell (not /app then bounce).
+      if (route === "/app" || route === "/mtg" || !route || route === "/") {
+        try {
+          const { data: ent } = await supabase.rpc("get_my_tenant_entitlements");
+          const payload = (ent ?? {}) as Record<string, unknown>;
+          const features = (payload.features ?? {}) as Record<string, unknown>;
+          const editionFamily =
+            (payload.edition_family as string | null) ??
+            ((payload.plan as Record<string, unknown> | null)?.edition_family as string | null) ??
+            null;
+          const isMtg =
+            payload.is_mtg === true || editionFamily === "mtg" || features["edition.mtg"] === true;
+          if (isMtg) {
+            return { path: "/mtg" };
+          }
+        } catch (entErr) {
+          console.warn("[AuthCallback] entitlements unavailable for MTG land:", entErr);
+        }
+      }
       if (route && route !== "/") {
         return { path: route };
       }

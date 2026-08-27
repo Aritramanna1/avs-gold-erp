@@ -82,6 +82,7 @@ const MTG_ALLOWED_PREFIXES = [
   "/attendance",
   "/customer-portal",
   "/karigar-portal",
+  "/barcode",
 ];
 
 /** Explicit MTG denylist (hide ≠ delete — routes remain for other editions). */

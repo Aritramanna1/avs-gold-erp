@@ -36,6 +36,9 @@ dist-ssr
 .env.local
 .env.*.local
 .env.e2e
+/secrets/
+/.cursor/secrets/
+/supabase/.temp/
 
 # Playwright
 /e2e/report/
@@ -103,3 +106,18 @@ licensing-tool/
 /_migration_apply_temp.sql
 
 /tsc_out.txt
+
+# Frozen CVsE73i6 production baseline — bulky local mirror + extract.
+# Track only the freeze contract files + exact production JS hash witness.
+# Full immutable backup lives outside the repo:
+#   C:\avs-test-install\AVS_PRODUCTION_BASELINE_CVsE73i6_IMMUTABLE_BACKUP
+#   C:\avs-test-install\AVS_PRODUCTION_BASELINE_CVsE73i6_IMMUTABLE_BACKUP_20260827.zip
+/AVS_PRODUCTION_BASELINE_CVsE73i6/source/
+/AVS_PRODUCTION_BASELINE_CVsE73i6/approved-docs/
+/AVS_PRODUCTION_BASELINE_CVsE73i6/configuration/
+/AVS_PRODUCTION_BASELINE_CVsE73i6/migrations-ref/
+/AVS_PRODUCTION_BASELINE_CVsE73i6/print-customization-refs/
+/AVS_PRODUCTION_BASELINE_CVsE73i6/mtj-offline-erp-refs/
+/AVS_PRODUCTION_BASELINE_CVsE73i6/qa-evidence/
+/AVS_PRODUCTION_BASELINE_CVsE73i6/production-artifact/dist_go_20260826_190800.zip
+/AVS_PRODUCTION_BASELINE_CVsE73i6/production-artifact/dist-extract/

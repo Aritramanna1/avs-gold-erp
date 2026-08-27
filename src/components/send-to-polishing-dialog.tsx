@@ -24,6 +24,7 @@ import { usePolishing } from "@/lib/polishing-store";
 import { useOrders } from "@/lib/orders-store";
 import { useBusinessRules } from "@/lib/business-rules-store";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
+import { getDefaultPurityPermille } from "@/lib/ma-tara-workshop-policy";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Sparkles, AlertTriangle } from "lucide-react";
 
@@ -81,7 +82,7 @@ export function SendToPolishingDialog({
   const [polisherId, setPolisherId] = useState("");
   const [product, setProduct] = useState("");
   const [weightStr, setWeightStr] = useState("");
-  const [purityStr, setPurityStr] = useState("995");
+  const [purityStr, setPurityStr] = useState(String(getDefaultPurityPermille()));
   const [expectedReturnDate, setExpectedReturnDate] = useState("");
   const [remarks, setRemarks] = useState("");
   const [approvedBy, setApprovedBy] = useState("");

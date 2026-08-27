@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 
-/** Compatibility route: scanner diagnostics live in the unified hardware workspace. */
+/** Compatibility route: manufacturing barcode desk is the stock-backed scanner. */
 export const Route = createFileRoute("/coming-soon/barcode-scanner")({
   head: () => ({ meta: [{ title: "Barcode Scanner · AVS Gold ERP" }] }),
-  component: () => <Navigate to="/hardware" replace />,
+  component: () => <Navigate to="/workshop/barcode-scanner" replace />,
 });

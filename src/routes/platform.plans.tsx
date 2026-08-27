@@ -192,6 +192,19 @@ function PlatformPlanBuilderPage() {
         <>
           <AvsCatalogPricingPanel />
 
+          <Card className="shadow-sm border-amber-500/30">
+            <CardContent className="p-4 text-xs text-muted-foreground space-y-1">
+              <p className="font-semibold text-foreground">
+                Commercial assignment SoT = Docx AVS catalog (₹10k / ₹30k / ₹50k + MTG)
+              </p>
+              <p>
+                Edit assignable prices in the panel above (`AVS_*` / `platform_plans.price_minor`).
+                The ORNEXA Basic→Max grid below is the structural capability ladder only — do not
+                invent ₹15k/₹20k SKUs; historical 20K rows stay hidden (not deleted).
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Tier Selection Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {(Object.keys(plans) as CommercialPlanTier[]).map((tierKey) => {

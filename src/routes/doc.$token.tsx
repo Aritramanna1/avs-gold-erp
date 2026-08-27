@@ -11,7 +11,7 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getDocumentShare, type DocumentShare } from "@/lib/document-shares";
-import { consumePublicRateLimit } from "@/lib/public-rate-limit";
+import { consumePublicRateLimitAsync } from "@/lib/public-rate-limit";
 import { printDocument } from "@/lib/print-document";
 import { formatDateMedium as fmtDate } from "@/lib/format-date";
 import { AlertCircle, FileText, Printer, Download } from "lucide-react";
@@ -358,22 +358,32 @@ function DocumentPortal() {
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   useEffect(() => {
-    const rl = consumePublicRateLimit(`doc:${token.slice(0, 16)}`, {
-      limit: 30,
-      windowMs: 60_000,
-    });
-    if (!rl.allowed) {
-      setError("Too many requests. Please wait a moment and try again.");
-      setLoading(false);
-      return;
-    }
-    getDocumentShare(token)
-      .then((s) => {
+    let cancelled = false;
+    void (async () => {
+      const rl = await consumePublicRateLimitAsync(`doc:${token.slice(0, 16)}`, {
+        limit: 30,
+        windowMs: 60_000,
+      });
+      if (cancelled) return;
+      if (!rl.allowed) {
+        setError("Too many requests. Please wait a moment and try again.");
+        setLoading(false);
+        return;
+      }
+      try {
+        const s = await getDocumentShare(token);
+        if (cancelled) return;
         if (!s) setError("This link has expired or is not valid.");
         else setShare(s);
-      })
-      .catch(() => setError("Unable to load the document. Please try again."))
-      .finally(() => setLoading(false));
+      } catch {
+        if (!cancelled) setError("Unable to load the document. Please try again.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   if (loading) return <Spinner />;

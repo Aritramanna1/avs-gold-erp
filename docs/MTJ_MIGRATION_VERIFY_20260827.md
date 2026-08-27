@@ -3,18 +3,29 @@
 ## Rule
 CREATE → APPLY → VERIFY → TEST. Do **not** blindly replay historical migrations.
 
-## Local additive migrations (present on `main`)
-- `20260827013000_ma_tara_pure_gold_reference_995.sql`
-- `20260827020000_avs_plan_edition_catalog_mtg.sql`
-- `20260827021000_entitlement_write_path_parity.sql`
-- `20260827022000_entitlement_legacy_bootstrap_safe.sql`
-- `20260827030000_platform_access_gap_closure.sql`
-- `20260827180000_fix_conversion_fine_gold_div999.sql`
+## Additive migrations (on `main` + applied to live `dqgrrafuoxaorvyrcuuh`)
 
-## Remote status
-`supabase db push --linked` reports remote history versions that are **not** in this baseline's local `supabase/migrations/` tree (pre-existing Hostinger/Supabase history drift). Repairing hundreds of remote versions is out of scope for this additive wave and risks production schema churn.
+| Version | Purpose | Applied |
+|---------|---------|---------|
+| `20260827013000` | Ma Tara pure gold reference 995 | Yes (remote history) |
+| `20260827020000` | AVS plan/edition catalog + MTG | Yes (remote history) |
+| `20260827021000` | Entitlement write-path parity | Yes (remote history) |
+| `20260827022000` | Entitlement legacy bootstrap | Yes (remote history) |
+| `20260827030000` | Platform access gap closure | Yes (remote history) |
+| `20260827180000` | Inventory conversion fine /999 (10-arg) | **Yes — 2026-08-27 via linked CLI** |
+| `20260827210000` | Docx SoT plan ladder 10/30/50 | **Yes — 2026-08-27 via linked CLI** |
+| `20260827220000` | Public verify rate-limit RPC | **Yes — 2026-08-27 via linked CLI** |
+| `20260827230000` | Alloy-lines conversion fine /999 | **Yes — 2026-08-27 via linked CLI** |
 
-These `20260827*` migrations were previously applied during the discarded tip work on the same Supabase project (`dqgrrafuoxaorvyrcuuh`). Treat as **verify-first**: confirm plan/edition/entitlement RPCs in Platform UI before re-applying.
+## Verify snapshots (post-apply)
 
-## Operator action if Platform plans missing
-Apply only the six files above via SQL editor / targeted `supabase db execute` after confirming they are absent — never `migration repair` mass-revert without Owner order.
+- `platform_plans`: AVS_10K_* = 1000000 paise assignable; AVS_30K_* = 3000000; AVS_50K_FULL = 5000000; AVS_20K_* `is_assignable=false`; AVS_MTG assignable.
+- Both `rpc_execute_inventory_metal_conversion` overloads use `/ 999`.
+- `consume_public_rate_limit('migrate:smoke', 5, 60)` → `{ allowed: true }`.
+
+## Note on Supabase MCP
+Project MCP OAuth channel failed in-session (`Failed to clear OAuth state`). Migrations were applied with `supabase db query --linked -f …` then `migration repair --status applied` so history matches reality. Re-auth MCP when the IDE channel is healthy; do **not** re-run these SQL files blindly.
+
+## Do not
+- `supabase db push` wholesale (remote/local history drift).
+- Mass `migration repair` revert without Owner order.

@@ -30,6 +30,7 @@ import {
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { generateImageThumbnail } from "@/lib/attachments-store";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
+import { getDefaultPurityPermille } from "@/lib/ma-tara-workshop-policy";
 import { PackageCheck, AlertTriangle, ImagePlus } from "lucide-react";
 
 /**
@@ -65,7 +66,7 @@ export function OutsideWorkReceiveDialog({
   const [jewellerId, setJewellerId] = useState("");
   const [orderId, setOrderId] = useState("none");
   const [materialType, setMaterialType] = useState<string>("Finished Product");
-  const [purityStr, setPurityStr] = useState("995");
+  const [purityStr, setPurityStr] = useState(String(getDefaultPurityPermille()));
   const [weightStr, setWeightStr] = useState("");
   const [remarks, setRemarks] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);

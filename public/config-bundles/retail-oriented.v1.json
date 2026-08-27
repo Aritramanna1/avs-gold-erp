@@ -4,22 +4,30 @@
   "bundleId": "retail-oriented.v1",
   "label": "Retail-oriented Configuration",
   "exportedAt": "2026-08-27T00:00:00.000Z",
-  "notes": "Retail-leaning defaults for AVS retail editions.",
+  "notes": "Retail-leaning defaults for AVS retail editions (Docx SoT AVS_10K_RETAIL / AVS_30K_RETAIL). pureGoldReferencePermille=995 is default selected purity; fineGoldMg remains ÷999. Manufacturing modules may be hidden by plan entitlement — not deleted.",
   "editionFamily": "RETAIL",
   "mtjSimplifiedWorkflow": false,
   "activeTerminologyPack": "indian_trade",
+  "hiddenByDefaultModules": ["scheme", "boolean_ledger"],
+  "printDefaults": {
+    "hideCustomerHisabOnInvoice": true
+  },
+  "docxEditionLadder": ["AVS_10K_RETAIL", "AVS_30K_RETAIL", "AVS_50K_FULL"],
   "maTaraWorkshopPolicy": {
     "pureGoldReferencePermille": 995,
     "materialPayableByCategoryKey": {}
   },
+  "primaryActions": ["STOCK", "SALE", "PURCHASE", "ORDER", "CUSTOMER", "SETTLEMENT", "REPORTS", "EXPENSE"],
   "terminologyOverrides": {
     "customer": "Customer",
-    "invoice": "Sale Invoice"
+    "invoice": "Sale Invoice",
+    "making_charge": "Making Charge"
   },
   "dropdowns": {
     "itemCategory": ["Ring", "Chain", "Earring", "Pendant", "Bangle", "Necklace", "Set"],
     "orderType": ["Ready Stock", "Custom", "Repair"],
     "sourceType": ["Walk-in", "Phone", "WhatsApp", "Referral", "Repeat Customer"],
-    "paymentMode": ["Cash", "UPI", "Bank Transfer", "Card", "Gold Exchange"]
+    "paymentMode": ["Cash", "UPI", "Bank Transfer", "Card", "Gold Exchange"],
+    "stockLocation": ["Showroom", "Vault", "Display", "Counter"]
   }
 }

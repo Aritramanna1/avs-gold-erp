@@ -38,6 +38,7 @@ import {
   type MaterialGroup,
 } from "@/lib/material-vault-store";
 import { mgToGrams, gramsToMg, getCaratLabel } from "@/lib/gold";
+import { getDefaultPurityPermille } from "@/lib/ma-tara-workshop-policy";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useSettings } from "@/lib/settings-store";
 import { toast } from "sonner";
@@ -295,7 +296,7 @@ function MaterialStockDialog({ open, onClose }: { open: boolean; onClose: () => 
   );
   const [metal, setMetal] = useState("Gold");
   const [category, setCategory] = useState("kdm_balls");
-  const [purity, setPurity] = useState("995");
+  const [purity, setPurity] = useState(String(getDefaultPurityPermille()));
   const [action, setAction] = useState<(typeof STOCK_ACTIONS)[number]["value"]>("purchase");
   const [weightG, setWeightG] = useState("");
   const [reference, setReference] = useState("");

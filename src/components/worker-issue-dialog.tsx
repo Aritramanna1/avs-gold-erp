@@ -26,6 +26,7 @@ import { useMaterialVault } from "@/lib/material-vault-store";
 import { issueMaterialToVaultCategory, ISSUE_VAULT_MOVEMENT_TYPE } from "@/lib/material-vault-sync";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
+import { getDefaultPurityPermille } from "@/lib/ma-tara-workshop-policy";
 import { Hammer, AlertTriangle } from "lucide-react";
 
 /**
@@ -73,7 +74,7 @@ export function WorkerIssueDialog({
 
   const [workerId, setWorkerId] = useState("");
   const [material, setMaterial] = useState("Gold");
-  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? 995));
+  const [purityStr, setPurityStr] = useState(String(defaultPurity ?? getDefaultPurityPermille()));
   const [weightStr, setWeightStr] = useState("");
   const [remarks, setRemarks] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +85,7 @@ export function WorkerIssueDialog({
     if (open) {
       setWorkerId("");
       setMaterial("Gold");
-      setPurityStr(String(defaultPurity ?? 995));
+      setPurityStr(String(defaultPurity ?? getDefaultPurityPermille()));
       setWeightStr("");
       setRemarks("");
       setError(null);

@@ -16,6 +16,7 @@ import {
   Banknote,
   BarChart3,
   TrendingDown,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 import { useTenantEntitlements } from "@/lib/tenant-entitlements";
@@ -31,8 +32,15 @@ type MtgAction = {
 
 const MTG_ACTIONS: MtgAction[] = [
   { to: "/stock", label: "STOCK", icon: Package, feature: "inventory" },
-  { to: "/orders", label: "ORDER", icon: ShoppingBag, feature: "orders" },
   { to: "/billing", label: "SALE", icon: Receipt, feature: "billing" },
+  {
+    to: "/billing",
+    label: "PURCHASE",
+    icon: ClipboardList,
+    feature: "billing",
+    search: { mode: "purchase" },
+  },
+  { to: "/orders", label: "ORDER", icon: ShoppingBag, feature: "orders" },
   {
     to: "/workshop/gold-book",
     label: "ISSUE",
@@ -47,8 +55,8 @@ const MTG_ACTIONS: MtgAction[] = [
     feature: "manufacturing",
     search: { entry: "return" },
   },
-  { to: "/melt", label: "MELT", icon: FlameKindling, feature: "melt_account" },
-  { to: "/workshop/polishing", label: "POLISH", icon: Sparkles, feature: "manufacturing" },
+  { to: "/melt", label: "MELTING", icon: FlameKindling, feature: "melt_account" },
+  { to: "/workshop/polishing", label: "POLISHING", icon: Sparkles, feature: "manufacturing" },
   {
     to: "/people",
     label: "KARIGAR",
@@ -57,7 +65,7 @@ const MTG_ACTIONS: MtgAction[] = [
     search: { tab: "karigars" },
   },
   { to: "/people", label: "CUSTOMER", icon: User, search: { tab: "customers" } },
-  { to: "/settlement/new", label: "SETTLE", icon: Banknote },
+  { to: "/settlement/new", label: "SETTLEMENT", icon: Banknote },
   { to: "/reports", label: "REPORTS", icon: BarChart3, feature: "reports" },
   { to: "/expenses", label: "EXPENSE", icon: TrendingDown },
 ];
