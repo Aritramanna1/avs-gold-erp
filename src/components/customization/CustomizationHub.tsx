@@ -43,11 +43,19 @@ import {
   RotateCcw,
   CheckCircle2,
   Layers,
+  Upload,
 } from "lucide-react";
 import { useSettings, DROPDOWN_LABELS, type DropdownKey } from "@/lib/settings-store";
 import { useTerminology } from "@/lib/terminology-engine-store";
 import { TerminologyManager } from "@/components/settings/TerminologyManager";
 import { BusinessLanguageAliases } from "./BusinessLanguageAliases";
+import {
+  applyConfigurationBundle,
+  buildExportConfigurationBundle,
+  loadBundledJson,
+  validateConfigurationBundle,
+  type ConfigurationBundle,
+} from "@/lib/configuration-bundle";
 import { DocumentTemplateDesigner } from "./DocumentTemplateDesigner";
 import { PrintProfileDesigner } from "./PrintProfileDesigner";
 import { PrintBrandingAssetsPanel } from "./PrintBrandingAssetsPanel";
@@ -1207,16 +1215,11 @@ function ReportsContent() {
 function AdvancedContent() {
   const settings = useSettings();
   const terminology = useTerminology();
+  const [importPreview, setImportPreview] = useState<ConfigurationBundle | null>(null);
+  const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
 
   const handleExportBundle = () => {
-    const bundle = {
-      version: "3.1.0",
-      exportedAt: new Date().toISOString(),
-      dropdowns: settings.dropdowns,
-      formsMetadata: settings.formsMetadata,
-      terminologyOverrides: terminology.customOverrides,
-      activeTerminologyPack: terminology.activePack,
-    };
+    const bundle = buildExportConfigurationBundle("Exported firm configuration");
     const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1226,13 +1229,53 @@ function AdvancedContent() {
     toast.success("Universal configuration bundle exported.");
   };
 
+  const handleFileImport = async (file: File | null) => {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const raw = JSON.parse(text) as unknown;
+      const v = validateConfigurationBundle(raw);
+      if (!v.ok) {
+        toast.error(v.errors.join("; "));
+        return;
+      }
+      setImportPreview(v.bundle);
+      toast.message(`Bundle ready: ${v.bundle.label}. Confirm apply below.`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Invalid bundle JSON");
+    }
+  };
+
+  const handleApplyImport = () => {
+    if (!importPreview) return;
+    if (
+      !confirm(
+        `Apply configuration bundle "${importPreview.label}" in ${importMode.toUpperCase()} mode?\n\nThis updates customization settings. It does not rewrite gold calculations or historical ledgers.`,
+      )
+    ) {
+      return;
+    }
+    applyConfigurationBundle(importPreview, { mode: importMode });
+    setImportPreview(null);
+    toast.success(`Applied ${importPreview.label} (${importMode}).`);
+  };
+
+  const handleLoadPreset = async (path: string) => {
+    try {
+      const bundle = await loadBundledJson(path);
+      setImportPreview(bundle);
+      toast.message(`Loaded preset: ${bundle.label}. Confirm apply below.`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to load preset");
+    }
+  };
+
   return (
     <Card className="p-5 space-y-6">
       <div className="border-b pb-3">
         <h3 className="text-sm font-semibold">Customization Snapshots & Instant Rollback</h3>
         <p className="text-xs text-muted-foreground mt-1">
-          Export full configuration bundles or revert changes instantly to previous stable
-          snapshots.
+          Export full configuration bundles or import approved packs. Apply never happens silently.
         </p>
       </div>
 
@@ -1240,12 +1283,99 @@ function AdvancedContent() {
         <div className="rounded-lg border p-4 bg-muted/20 space-y-3">
           <h4 className="font-semibold text-foreground">Export Configuration Bundle</h4>
           <p className="text-muted-foreground">
-            Download your active dropdowns, terminology overrides, entity schemas, and custom
-            formulas into a portable JSON package.
+            Download dropdowns, terminology, forms metadata, and firm workshop policy (incl. 995
+            config setting) into a portable JSON package.
           </p>
           <Button size="sm" variant="outline" onClick={handleExportBundle} className="text-xs h-8">
             Export JSON Bundle
           </Button>
+        </div>
+
+        <div className="rounded-lg border p-4 bg-muted/20 space-y-3">
+          <h4 className="font-semibold text-foreground">Import Configuration Bundle</h4>
+          <p className="text-muted-foreground">
+            Validate version/schema, preview, then merge or replace. Does not overwrite without
+            confirmation.
+          </p>
+          <Input
+            type="file"
+            accept="application/json,.json"
+            className="text-xs h-8"
+            onChange={(e) => void handleFileImport(e.target.files?.[0] ?? null)}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-8"
+              onClick={() => void handleLoadPreset("/config-bundles/mtj-default.v1.json")}
+            >
+              Load MTJ Default
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-8"
+              onClick={() => void handleLoadPreset("/config-bundles/retail-oriented.v1.json")}
+            >
+              Load Retail
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-8"
+              onClick={() =>
+                void handleLoadPreset("/config-bundles/manufacturing-oriented.v1.json")
+              }
+            >
+              Load Manufacturing
+            </Button>
+          </div>
+        </div>
+
+        <div className="rounded-lg border p-4 bg-muted/20 space-y-3 sm:col-span-2">
+          <h4 className="font-semibold text-foreground flex items-center gap-2">
+            <Upload className="h-3.5 w-3.5" />
+            Pending apply
+          </h4>
+          {importPreview ? (
+            <div className="space-y-2">
+              <p className="text-muted-foreground">
+                {importPreview.label} · {importPreview.bundleId} · schema {importPreview.version}
+              </p>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="radio"
+                    checked={importMode === "merge"}
+                    onChange={() => setImportMode("merge")}
+                  />
+                  Merge
+                </label>
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="radio"
+                    checked={importMode === "replace"}
+                    onChange={() => setImportMode("replace")}
+                  />
+                  Replace listed keys
+                </label>
+                <Button size="sm" className="text-xs h-8" onClick={handleApplyImport}>
+                  Confirm apply
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs h-8"
+                  onClick={() => setImportPreview(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No bundle staged.</p>
+          )}
         </div>
 
         <div className="rounded-lg border p-4 bg-muted/20 space-y-3">
@@ -1258,7 +1388,8 @@ function AdvancedContent() {
             variant="outline"
             onClick={() => {
               if (confirm("Reset customization defaults to factory settings?")) {
-                toast.success("Factory defaults restored.");
+                terminology.resetCustomOverrides();
+                toast.success("Factory terminology overrides cleared.");
               }
             }}
             className="text-xs h-8 text-destructive hover:text-destructive"
@@ -1267,6 +1398,11 @@ function AdvancedContent() {
           </Button>
         </div>
       </div>
+
+      <p className="text-[10px] text-muted-foreground font-mono">
+        Active pack: {terminology.activePack} · Firm 995 config:{" "}
+        {settings.maTaraWorkshopPolicy?.pureGoldReferencePermille ?? 995} (settings only)
+      </p>
     </Card>
   );
 }

@@ -11,6 +11,8 @@ import {
 } from "@/lib/navigation-groups";
 import { hasRoutePermission } from "@/lib/permissions";
 import { useTerminology } from "@/lib/terminology-engine-store";
+import { useTenantEntitlements } from "@/lib/tenant-entitlements";
+import { featureRequiredForPath } from "@/lib/entitlement-route-map";
 import { ChevronDown } from "lucide-react";
 
 export { navigationGroups, navigationItems } from "@/lib/navigation-items";
@@ -53,6 +55,8 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
   const firm = useSettings((s) => s.firm);
   const branding = useSettings((s) => s.branding);
   const role = useSettings((s) => s.currentUserRole);
+  const hasFeature = useTenantEntitlements((s) => s.hasFeature);
+  const entitlementsLoaded = useTenantEntitlements((s) => s.loaded);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(loadOpenGroups);
 
@@ -60,10 +64,16 @@ export function Sidebar({ onOpenGoldRateEditor, className = "" }: SidebarProps) 
     return navigationGroups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => hasRoutePermission(role, item.to)),
+        items: group.items.filter((item) => {
+          if (!hasRoutePermission(role, item.to)) return false;
+          const required = featureRequiredForPath(item.to);
+          if (!required) return true;
+          if (!entitlementsLoaded) return true;
+          return hasFeature(required);
+        }),
       }))
       .filter((group) => group.items.length > 0);
-  }, [role]);
+  }, [role, hasFeature, entitlementsLoaded]);
 
   const flatVisibleItems = useMemo(() => filteredGroups.flatMap((g) => g.items), [filteredGroups]);
 

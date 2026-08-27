@@ -15,6 +15,9 @@ import {
   isPublicAuthPath,
   pickDefaultRoute,
 } from "@/lib/identity/route-access";
+import { useTenantEntitlements, syncModuleStatesFromEntitlements } from "@/lib/tenant-entitlements";
+import { pathAllowedByEntitlements } from "@/lib/entitlement-route-map";
+import { ensureMtjDefaultBundleAppliedOnce } from "@/lib/configuration-bundle";
 
 const startCloudSync = async () => (await import("@/lib/data-loader")).startCloudSync();
 const stopCloudSync = () => {
@@ -35,12 +38,28 @@ export function AuthGate({ children }: { children: ReactNode }) {
 function RouteAuthBoundary({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { context, ready } = useAuthorizationContext();
+  const entitlementsLoaded = useTenantEntitlements((s) => s.loaded);
+  const hasFeature = useTenantEntitlements((s) => s.hasFeature);
+  const isMtg = useTenantEntitlements((s) => s.isMtg);
 
   if (!ready) return <>{children}</>;
   if (isPublicAuthPath(pathname) || isLegacyPortalLoginPath(pathname)) return <>{children}</>;
   if (!context) return <>{children}</>;
 
   if (!canAccessPath(context, pathname)) {
+    throw notFound();
+  }
+
+  // Plan entitlement deep-link deny (UI hide ≠ security — RPC/RLS still enforce).
+  if (
+    context.active_workspace?.workspace_type === "erp" &&
+    !pathAllowedByEntitlements(pathname, hasFeature, entitlementsLoaded, { isMtg })
+  ) {
+    throw notFound();
+  }
+
+  // Non-MTG tenants cannot use /mtg shell routes.
+  if (entitlementsLoaded && pathname.startsWith("/mtg") && !isMtg) {
     throw notFound();
   }
 
@@ -82,6 +101,17 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
           _bootstrappedUserId = null;
           resetAuth();
           void resetAllBusinessStores();
+          useTenantEntitlements.setState({
+            loaded: false,
+            features: {},
+            isMtg: false,
+            editionFamily: null,
+            businessEdition: null,
+            planCode: null,
+            planName: null,
+            priceMinor: null,
+            error: null,
+          });
         } else {
           setSession(null);
           setBootError(null);
@@ -124,6 +154,28 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
         useSettings.getState().setCurrentUserRole(active.role);
       }
 
+      const workspaceType = ctx.active_workspace?.workspace_type ?? active?.workspace_type;
+      if (workspaceType === "erp" || workspaceType === "ceo") {
+        void startCloudSync();
+        void useTenantEntitlements
+          .getState()
+          .refresh()
+          .then(() => {
+            const ent = useTenantEntitlements.getState();
+            const branchId = useSettings.getState().selectedBranchId;
+            if (branchId && Object.keys(ent.features).length > 0) {
+              void syncModuleStatesFromEntitlements(branchId, ent.features);
+            }
+            if (ent.isMtg) {
+              void ensureMtjDefaultBundleAppliedOnce();
+            }
+            const currentPath = window.location.pathname;
+            if (ent.isMtg && (currentPath === "/app" || currentPath === "/")) {
+              void navigate({ to: "/mtg" as "/", replace: true });
+            }
+          });
+      }
+
       const defaultRoute = pickDefaultRoute(ctx);
       const currentPath = window.location.pathname;
       const landingPaths = [
@@ -141,11 +193,6 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
         } else {
           void navigate({ to: defaultRoute as "/", replace: true });
         }
-      }
-
-      const workspaceType = ctx.active_workspace?.workspace_type ?? active?.workspace_type;
-      if (workspaceType === "erp" || workspaceType === "ceo") {
-        void startCloudSync();
       }
     }
 

@@ -29,6 +29,10 @@ import { useDailyCloses, type DailyClose as DailyCloseRecord } from "@/lib/daily
 import { usePrintLog, type PrintEvent as PrintLogRecord } from "@/lib/printlog-store";
 import { useWhatsapp, type WhatsappMessage } from "@/lib/whatsapp-store";
 import { useSettings, isSettingsPullStale } from "@/lib/settings-store";
+import {
+  normalizeMaTaraWorkshopPolicy,
+  type MaTaraWorkshopPolicy,
+} from "@/lib/ma-tara-workshop-policy";
 import { useAttachments, hydrateAttachmentsFromLocal } from "@/lib/attachments-store";
 import { migrateLegacyRepairsToOrders } from "@/lib/repair-migration";
 import { useCommLog, type CommEvent } from "@/lib/comm-log-store";
@@ -467,6 +471,10 @@ export async function pullAppSettings(): Promise<void> {
       print: payload.print ?? useSettings.getState().print,
       gst: payload.gst ?? useSettings.getState().gst,
       makingCharge: payload.makingCharge ?? useSettings.getState().makingCharge,
+      maTaraWorkshopPolicy: normalizeMaTaraWorkshopPolicy(
+        (payload as { maTaraWorkshopPolicy?: Partial<MaTaraWorkshopPolicy> })
+          .maTaraWorkshopPolicy ?? useSettings.getState().maTaraWorkshopPolicy,
+      ),
       purities: payload.purities ?? useSettings.getState().purities,
       making: payload.making ?? useSettings.getState().making,
       hardware: payload.hardware ?? useSettings.getState().hardware,

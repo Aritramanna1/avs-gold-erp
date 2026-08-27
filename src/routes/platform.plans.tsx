@@ -23,6 +23,7 @@ import { Layers, ShieldCheck, Check, Smartphone, Monitor, Globe, Plus, Save } fr
 import { toast } from "sonner";
 import { useCommercialPricingStore } from "@/lib/comm/platform/commercial-pricing-store";
 import { DEFAULT_AVS_PRODUCT } from "@/lib/comm/platform/communication-events";
+import { AvsCatalogPricingPanel } from "@/components/platform/AvsCatalogPricingPanel";
 
 export const Route = createFileRoute("/platform/plans")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
@@ -95,8 +96,11 @@ function PlatformPlanBuilderPage() {
     }
     setSaving(true);
     try {
-      const monthlyPaise = currentPlan.pricingMonthlyINR * 100;
-      const annualPaise = currentPlan.pricingAnnualINR * 100;
+      const monthlyPaise = Math.round(currentPlan.pricingMonthlyINR * 100);
+      const annualPaise =
+        currentPlan.pricingAnnualINR > 0
+          ? Math.round(currentPlan.pricingAnnualINR * 100)
+          : monthlyPaise * 10;
       await publishPlanVersion({
         planId,
         productId: DEFAULT_AVS_PRODUCT,
@@ -119,7 +123,24 @@ function PlatformPlanBuilderPage() {
         .from("platform_plans")
         .update({ price_minor: monthlyPaise, updated_at: new Date().toISOString() })
         .eq("id", planId);
-      toast.success(`Plan ${currentPlan.name} saved to platform catalog.`);
+
+      // Sync plan_features so apply_plan_entitlements stays authoritative.
+      const featureRows = currentPlan.features.map((feature_key) => ({
+        plan_id: planId,
+        feature_key,
+        enabled: true,
+      }));
+      // Also enable device surfaces from the structural config
+      for (const surface of currentPlan.allowedSurfaces) {
+        featureRows.push({ plan_id: planId, feature_key: surface, enabled: true });
+      }
+      await supabase.from("plan_features").delete().eq("plan_id", planId);
+      if (featureRows.length > 0) {
+        const { error: featErr } = await supabase.from("plan_features").insert(featureRows);
+        if (featErr) throw featErr;
+      }
+
+      toast.success(`Plan ${currentPlan.name} saved (price + plan_features).`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to save plan");
     } finally {
@@ -169,6 +190,8 @@ function PlatformPlanBuilderPage() {
         </Card>
       ) : (
         <>
+          <AvsCatalogPricingPanel />
+
           {/* Tier Selection Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {(Object.keys(plans) as CommercialPlanTier[]).map((tierKey) => {

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDraft } from "@/lib/drafts-store";
 import { useSettings } from "@/lib/settings-store";
 import { shortShopName } from "@/lib/app-info";
@@ -64,7 +64,14 @@ const MATERIAL_BOOKS = [
 ] as const;
 type MaterialBookKey = (typeof MATERIAL_BOOKS)[number]["key"];
 
+type GoldBookSearch = {
+  entry?: "given" | "return";
+};
+
 export const Route = createFileRoute("/workshop/gold-book")({
+  validateSearch: (search: Record<string, unknown>): GoldBookSearch => ({
+    entry: search.entry === "given" || search.entry === "return" ? search.entry : undefined,
+  }),
   head: () => {
     const shortName = shortShopName(useSettings.getState().firm?.shopName);
     return {
@@ -103,6 +110,7 @@ function WorkerGoldBookPage() {
   const { firm } = useSettings();
   const people = usePeople((s) => s.people);
   const { entries, addEntry, removeEntry, getWorkerBalance } = useWorkerGoldBook();
+  const { entry: entryFromSearch } = Route.useSearch();
 
   // Which material book is open (the inline worker book is selected by default).
   const [selectedBook, setSelectedBook] = useState<MaterialBookKey>("worker");
@@ -123,6 +131,14 @@ function WorkerGoldBookPage() {
     "mtj-goldbook-entryType-v1",
     "given",
   );
+
+  // MTG ISSUE/RECEIVE deep-link: open New Entry with the right direction.
+  useEffect(() => {
+    if (entryFromSearch === "given" || entryFromSearch === "return") {
+      setActiveTab("new_entry");
+      setEntryType(entryFromSearch);
+    }
+  }, [entryFromSearch, setActiveTab, setEntryType]);
 
   // Filters state
   const [workerFilter, setWorkerFilter] = useState<string>("all");

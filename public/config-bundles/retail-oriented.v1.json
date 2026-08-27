@@ -1,0 +1,24 @@
+{
+  "schema": "ornexa.configuration_bundle",
+  "version": "1.0.0",
+  "bundleId": "retail-oriented.v1",
+  "label": "Retail-oriented Configuration",
+  "exportedAt": "2026-08-27T00:00:00.000Z",
+  "notes": "Retail-leaning defaults for AVS retail editions.",
+  "mtjSimplifiedWorkflow": false,
+  "activeTerminologyPack": "indian_trade",
+  "maTaraWorkshopPolicy": {
+    "pureGoldReferencePermille": 995,
+    "materialPayableByCategoryKey": {}
+  },
+  "terminologyOverrides": {
+    "customer": "Customer",
+    "invoice": "Sale Invoice"
+  },
+  "dropdowns": {
+    "itemCategory": ["Ring", "Chain", "Earring", "Pendant", "Bangle", "Necklace", "Set"],
+    "orderType": ["Ready Stock", "Custom", "Repair"],
+    "sourceType": ["Walk-in", "Phone", "WhatsApp", "Referral", "Repeat Customer"],
+    "paymentMode": ["Cash", "UPI", "Bank Transfer", "Card", "Gold Exchange"]
+  }
+}

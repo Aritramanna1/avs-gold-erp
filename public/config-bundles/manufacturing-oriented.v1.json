@@ -1,0 +1,27 @@
+{
+  "schema": "ornexa.configuration_bundle",
+  "version": "1.0.0",
+  "bundleId": "manufacturing-oriented.v1",
+  "label": "Manufacturing-oriented Configuration",
+  "exportedAt": "2026-08-27T00:00:00.000Z",
+  "notes": "Manufacturing-leaning defaults aligned with Offline Dhadi/Jangad vocabulary mapped to AVS labels.",
+  "mtjSimplifiedWorkflow": false,
+  "activeTerminologyPack": "indian_trade",
+  "maTaraWorkshopPolicy": {
+    "pureGoldReferencePermille": 995,
+    "materialPayableByCategoryKey": {}
+  },
+  "terminologyOverrides": {
+    "karigar": "Karigar",
+    "job_card": "Issue / Receive",
+    "outside_work": "Outside Work / Jangad",
+    "making_charge": "Labour"
+  },
+  "dropdowns": {
+    "itemCategory": ["Ring", "Chain", "Earring", "Pendant", "Bangle", "Necklace", "Other"],
+    "orderType": ["Custom", "Repair", "Polishing", "Wholesale"],
+    "workerRole": ["Master Karigar", "Helper", "Polisher", "Stone Setter", "Finisher"],
+    "repairType": ["Soldering", "Polish", "Re-size", "Re-string", "Tip Change", "Stone Setting"],
+    "stockLocation": ["Vault", "Workshop", "Repair Bench", "Showroom"]
+  }
+}
