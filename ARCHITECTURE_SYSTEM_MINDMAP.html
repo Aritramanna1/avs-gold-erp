@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AVS / ORNEXA ERP — Complete System Architecture & Infrastructure Mind Maps</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #111827;
+      --card: #1f2937;
+      --border: #374151;
+      --gold: #c8a24b;
+      --gold-light: #fef08a;
+      --gold-dark: #854d0e;
+      --blue: #3b82f6;
+      --cyan: #06b6d4;
+      --emerald: #10b981;
+      --purple: #a855f7;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); overflow-x: hidden; padding-bottom: 60px; }
+    
+    header {
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(11, 15, 23, 0.95));
+      border-bottom: 1px solid rgba(200, 162, 75, 0.3);
+      padding: 24px 32px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .header-content { max-width: 1600px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+    .title-group h1 { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; }
+    .title-group h1 span.gold { color: var(--gold); }
+    .title-group p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    
+    .nav-tabs { display: flex; gap: 8px; background: rgba(31, 41, 55, 0.6); padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+    .nav-btn.active { background: var(--gold); color: #0f172a; font-weight: 600; box-shadow: 0 2px 8px rgba(200, 162, 75, 0.4); }
+
+    .main-container { max-width: 1600px; margin: 24px auto; padding: 0 24px; }
+    .view-section { display: none; }
+    .view-section.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .card-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+    .card-header h2 { font-size: 17px; font-weight: 600; color: var(--gold); display: flex; align-items: center; gap: 8px; }
+    .badge { font-size: 11px; padding: 3px 8px; border-radius: 9999px; background: rgba(200, 162, 75, 0.15); color: var(--gold-light); border: 1px solid rgba(200, 162, 75, 0.3); }
+
+    .svg-canvas-container {
+      width: 100%;
+      background: #080c13;
+      border: 1px solid #1f293d;
+      border-radius: 10px;
+      overflow: auto;
+      position: relative;
+    }
+    svg { display: block; width: 100%; min-width: 1300px; height: auto; }
+
+    /* SVG Styles */
+    .node-box { fill: #131b2e; stroke: #2a3756; stroke-width: 1.5; rx: 8; transition: all 0.2s; }
+    .node-box:hover { stroke: #c8a24b; filter: drop-shadow(0 4px 12px rgba(200, 162, 75, 0.25)); }
+    .node-title { fill: #f3f4f6; font-size: 13px; font-weight: 600; }
+    .node-sub { fill: #94a3b8; font-size: 11px; }
+    .node-tag { fill: #c8a24b; font-size: 10px; font-weight: 700; }
+    .link-line { stroke: #334155; stroke-width: 1.5; fill: none; stroke-dasharray: 4 2; }
+    .link-active { stroke: #c8a24b; stroke-width: 2; fill: none; }
+    .flow-arrow { fill: #c8a24b; }
+
+    /* Formula & Details Grid */
+    .details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; margin-top: 16px; }
+    .detail-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; }
+    .detail-card h3 { font-size: 14px; font-weight: 600; color: #e2e8f0; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .detail-card p { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
+    .formula-pill { font-family: monospace; font-size: 12px; background: rgba(200, 162, 75, 0.1); color: var(--gold-light); border: 1px solid rgba(200, 162, 75, 0.25); padding: 6px 10px; border-radius: 6px; display: block; margin-top: 6px; }
+    .db-table-tag { font-size: 11px; font-family: monospace; background: rgba(59, 130, 246, 0.15); color: #93c5fd; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+    .legend-bar { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 16px; font-size: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-content">
+    <div class="title-group">
+      <h1><span class="gold">AVS / ORNEXA ERP</span> Infrastructure & Data Flow Mind Maps</h1>
+      <p>Comprehensive System Architecture, Engine Workspaces, Dual-Ledger Mathematics & 10 Canonical Reporting Pipelines</p>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-btn active" onclick="showTab('tab-infra')">1. Full System Architecture</button>
+      <button class="nav-btn" onclick="showTab('tab-dataflow')">2. Data Sources & Storage Flow</button>
+      <button class="nav-btn" onclick="showTab('tab-calc')">3. Calculations & Dual Ledgers</button>
+      <button class="nav-btn" onclick="showTab('tab-reports')">4. 10 Report Families</button>
+      <button class="nav-btn" onclick="showTab('tab-az')">5. A–Z Functional Modules</button>
+    </div>
+  </div>
+</header>
+
+<main class="main-container">
+
+  <!-- TAB 1: FULL SYSTEM ARCHITECTURE -->
+  <section id="tab-infra" class="view-section active">
+    <div class="card-panel">
+      <div class="card-header">
+        <h2>System Hierarchy: Backend Layers → Functional Engines → Client Surfaces → Workspaces</h2>
+        <span class="badge">Authoritative Blueprint</span>
+      </div>
+      
+      <div class="legend-bar">
+        <div class="legend-item"><div class="legend-dot" style="background:#c8a24b;"></div> Authoritative PostgreSQL / Supabase Backend</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div> 8 Consolidated Functional Engines</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div> Multi-Surface Clients (Entitlement Gated)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> 6 Tailored Portals & Workspaces</div>
+      </div>
+
+      <div class="svg-canvas-container">
+        <svg viewBox="0 0 1400 780" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#C8A24B" />
+              <stop offset="100%" stop-color="#926B1E" />
+            </linearGradient>
+            <linearGradient id="blueGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#1E293B" />
+              <stop offset="100%" stop-color="#0F172A" />
+            </linearGradient>
+          </defs>
+
+          <!-- LEVEL 1: BACKEND LAYER -->
+          <rect x="50" y="30" width="1300" height="120" rx="10" fill="#0c121e" stroke="#c8a24b" stroke-width="1.5" stroke-dasharray="4 2"/>
+          <text x="70" y="55" fill="#c8a24b" font-size="13" font-weight="700" letter-spacing="1">LAYER 1: AUTHORITATIVE CLOUD BACKEND (PostgreSQL 15+ & Supabase RLS)</text>
+
+          <g transform="translate(70, 70)">
+            <rect width="280" height="60" class="node-box" stroke="#c8a24b" />
+            <text x="15" y="25" class="node-title">Party 360 & Profiles</text>
+            <text x="15" y="45" class="node-sub">Customer, Karigar, Bullion Dealer, Staff</text>
+          </g>
+
+          <g transform="translate(380, 70)">
+            <rect width="320" height="60" class="node-box" stroke="#c8a24b" />
+            <text x="15" y="25" class="node-title">Dual Cash (₹) & Gold (g) Ledgers</text>
+            <text x="15" y="45" class="node-sub">Immutable Double-Entry Ledger Book</text>
+          </g>
+
+          <g transform="translate(730, 70)">
+            <rect width="310" height="60" class="node-box" stroke="#c8a24b" />
+            <text x="15" y="25" class="node-title">Vault Safe, Stock & Workshop WIP</text>
+            <text x="15" y="45" class="node-sub">Physical Metal, Tagged Stock, Benchmark lots</text>
+          </g>
+
+          <g transform="translate(1070, 70)">
+            <rect width="260" height="60" class="node-box" stroke="#c8a24b" />
+            <text x="15" y="25" class="node-title">Versioned JSONB Rules</text>
+            <text x="15" y="45" class="node-sub">Making rules, tax, templates, pricing</text>
+          </g>
+
+          <!-- CONNECTING ARROWS 1 -> 2 -->
+          <line x1="700" y1="150" x2="700" y2="200" stroke="#c8a24b" stroke-width="2" />
+          <polygon points="695,195 700,205 705,195" fill="#c8a24b" />
+
+          <!-- LEVEL 2: 8 FUNCTIONAL ENGINES -->
+          <rect x="50" y="210" width="1300" height="150" rx="10" fill="#0d1527" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="70" y="235" fill="#60a5fa" font-size="13" font-weight="700" letter-spacing="1">LAYER 2: THE 8 CONSOLIDATED FUNCTIONAL ENGINES</text>
+
+          <!-- 8 Engine Nodes -->
+          <g transform="translate(70, 250)">
+            <rect width="145" height="90" class="node-box" stroke="#3b82f6" />
+            <text x="10" y="25" class="node-tag">ENGINE 1</text>
+            <text x="10" y="45" class="node-title" font-size="11">Masters & Bhav</text>
+            <text x="10" y="65" class="node-sub" font-size="9">Daily Gold/Silver Bhav</text>
+            <text x="10" y="78" class="node-sub" font-size="9">Purity Rates 24K..14K</text>
+          </g>
+
+          <g transform="translate(230, 250)">
+            <rect width="145" height="90" class="node-box" stroke="#3b82f6" />
+            <text x="10" y="25" class="node-tag">ENGINE 2</text>
+            <text x="10" y="45" class="node-title" font-size="11">Manufacturing</text>
+            <text x="10" y="65" class="node-sub" font-size="9">Karigar Gold Book</text>
+            <text x="10" y="78" class="node-sub" font-size="9">Job Cards (12 stages)</text>
+          </g>
+
+          <g transform="translate(390, 250)">
+            <rect width="145" height="90" class="node-box" stroke="#3b82f6" />
+            <text x="10" y="25" class="node-tag">ENGINE 3</text>
+            <text x="10" y="45" class="node-title" font-size="11">Transactions</text>
+            <text x="10" y="65" class="node-sub" font-size="9">Sales, Orders, Return</text>
+            <text x="10" y="78" class="node-sub" font-size="9">Gold/Cash settlements</text>
+          </g>
+
+          <g transform="translate(550, 250)">
+            <rect width="145" height="90" class="node-box" stroke="#3b82f6" />
+            <text x="10" y="25" class="node-tag">ENGINE 4</text>
+            <text x="10" y="45" class="node-title" font-size="11">Tag & Stock</text>
+            <text x="10" y="65" class="node-sub" font-size="9">RFID & 1D Barcodes</text>
+            <text x="10" y="78" class="node-sub" font-size="9">Vault Safes Registry</text>
+          </g>
+
+          <g transform="translate(710, 250)">
+            <rect width="145" height="90" class="node-box" stroke="#3b82f6" />
+            <text x="10" y="25" class="node-tag">ENGINE 5</text>
+            <text x="10" y="45" class="node-title" font-size="11">Reporting (10)</text>
+            <text x="10" y="65" class="node-sub" font-size="9">Daily Flow & Metal Pos</text>
+            <text x="10" y="78" class="node-sub" font-size="9">Custody & Audit logs</text>
+          </g>
+
+          <g transform="translate(870, 250)">
+            <rect width="145" height="90" class="node-box" stroke="#3b82f6" />
+            <text x="10" y="25" class="node-tag">ENGINE 6</text>
+            <text x="10" y="45" class="node-title" font-size="11">Customization</text>
+            <text x="10" y="65" class="node-sub" font-size="9">Making Charge Rules</text>
+            <text x="10" y="78" class="node-sub" font-size="9">11 Config Categories</text>
+          </g>
+
+          <g transform="translate(1030, 250)">
+            <rect width="145" height="90" class="node-box" stroke="#3b82f6" />
+            <text x="10" y="25" class="node-tag">ENGINE 7</text>
+            <text x="10" y="45" class="node-title" font-size="11">Universal Doc</text>
+            <text x="10" y="65" class="node-sub" font-size="9">10 Dynamic Templates</text>
+            <text x="10" y="78" class="node-sub" font-size="9">Auto Apology / PDF</text>
+          </g>
+
+          <g transform="translate(1190, 250)">
+            <rect width="145" height="90" class="node-box" stroke="#3b82f6" />
+            <text x="10" y="25" class="node-tag">ENGINE 8</text>
+            <text x="10" y="45" class="node-title" font-size="11">Migration & AI</text>
+            <text x="10" y="65" class="node-sub" font-size="9">13-Stage Importer</text>
+            <text x="10" y="78" class="node-sub" font-size="9">Context Assistant AI</text>
+          </g>
+
+          <!-- CONNECTING ARROWS 2 -> 3 -->
+          <line x1="700" y1="360" x2="700" y2="410" stroke="#3b82f6" stroke-width="2" />
+          <polygon points="695,405 700,415 705,405" fill="#3b82f6" />
+
+          <!-- LEVEL 3: CLIENT SURFACES -->
+          <rect x="50" y="420" width="1300" height="110" rx="10" fill="#0e1a22" stroke="#10b981" stroke-width="1.5"/>
+          <text x="70" y="445" fill="#34d399" font-size="13" font-weight="700" letter-spacing="1">LAYER 3: CLIENT SURFACES (Server-Side Entitlement & License Gated)</text>
+
+          <g transform="translate(100, 460)">
+            <rect width="360" height="50" class="node-box" stroke="#10b981" />
+            <text x="20" y="30" class="node-title">📱 Mobile Smartphone App (client.mobile)</text>
+          </g>
+          <g transform="translate(520, 460)">
+            <rect width="360" height="50" class="node-box" stroke="#10b981" />
+            <text x="20" y="30" class="node-title">🌐 Web Browser Application (client.web)</text>
+          </g>
+          <g transform="translate(940, 460)">
+            <rect width="360" height="50" class="node-box" stroke="#10b981" />
+            <text x="20" y="30" class="node-title">💻 Desktop Native App (client.desktop)</text>
+          </g>
+
+          <!-- CONNECTING ARROWS 3 -> 4 -->
+          <line x1="700" y1="530" x2="700" y2="580" stroke="#10b981" stroke-width="2" />
+          <polygon points="695,575 700,585 705,575" fill="#10b981" />
+
+          <!-- LEVEL 4: WORKSPACES & PORTALS -->
+          <rect x="50" y="590" width="1300" height="150" rx="10" fill="#181329" stroke="#a855f7" stroke-width="1.5"/>
+          <text x="70" y="615" fill="#c084fc" font-size="13" font-weight="700" letter-spacing="1">LAYER 4: INTERNAL ERP WORKSPACES & EXTERNAL ACTOR PORTALS</text>
+
+          <g transform="translate(70, 635)">
+            <rect width="190" height="85" class="node-box" stroke="#a855f7" />
+            <text x="15" y="25" class="node-title">Main ERP</text>
+            <text x="15" y="45" class="node-sub">Full Manufacturing, POS,</text>
+            <text x="15" y="60" class="node-sub">Billing, Vault & Books</text>
+            <text x="15" y="75" class="db-table-tag">/*</text>
+          </g>
+
+          <g transform="translate(285, 635)">
+            <rect width="190" height="85" class="node-box" stroke="#a855f7" />
+            <text x="15" y="25" class="node-title">Customer VIP Portal</text>
+            <text x="15" y="45" class="node-sub">Live Orders, Invoices,</text>
+            <text x="15" y="60" class="node-sub">Gold balance, Passbook</text>
+            <text x="15" y="75" class="db-table-tag">/customer/*</text>
+          </g>
+
+          <g transform="translate(500, 635)">
+            <rect width="190" height="85" class="node-box" stroke="#a855f7" />
+            <text x="15" y="25" class="node-title">Karigar Portal</text>
+            <text x="15" y="45" class="node-sub">Job Cards, Gold Given,</text>
+            <text x="15" y="60" class="node-sub">Weight Returns, Labour</text>
+            <text x="15" y="75" class="db-table-tag">/karigar/*</text>
+          </g>
+
+          <g transform="translate(715, 635)">
+            <rect width="190" height="85" class="node-box" stroke="#a855f7" />
+            <text x="15" y="25" class="node-title">Supplier Portal</text>
+            <text x="15" y="45" class="node-sub">Bullion Invoices, Pure Gold</text>
+            <text x="15" y="60" class="node-sub">Purchase & Payments</text>
+            <text x="15" y="75" class="db-table-tag">/supplier/*</text>
+          </g>
+
+          <g transform="translate(930, 635)">
+            <rect width="190" height="85" class="node-box" stroke="#a855f7" />
+            <text x="15" y="25" class="node-title">CEO Executive</text>
+            <text x="15" y="45" class="node-sub">P&L, Total Net Worth,</text>
+            <text x="15" y="60" class="node-sub">Gold Reserve Audit</text>
+            <text x="15" y="75" class="db-table-tag">/ceo/*</text>
+          </g>
+
+          <g transform="translate(1145, 635)">
+            <rect width="190" height="85" class="node-box" stroke="#a855f7" />
+            <text x="15" y="25" class="node-title">Platform Control</text>
+            <text x="15" y="45" class="node-sub">Tenant Management,</text>
+            <text x="15" y="60" class="node-sub">Licenses & AMC Billing</text>
+            <text x="15" y="75" class="db-table-tag">/platform/*</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 2: DATA SOURCES & STORAGE FLOW -->
+  <section id="tab-dataflow" class="view-section">
+    <div class="card-panel">
+      <div class="card-header">
+        <h2>Data Topology: Where Every Piece of Data Originates, Validates & Persists</h2>
+        <span class="badge">Data Lineage & Storage</span>
+      </div>
+
+      <div class="svg-canvas-container">
+        <svg viewBox="0 0 1400 680" xmlns="http://www.w3.org/2000/svg">
+          <!-- External Sources -->
+          <g transform="translate(50, 40)">
+            <rect width="360" height="580" rx="10" fill="#0d1424" stroke="#3b82f6" stroke-width="1.5" />
+            <text x="20" y="30" fill="#60a5fa" font-size="14" font-weight="700">1. INPUTS & HARDWARE DEVICES</text>
+
+            <g transform="translate(20, 60)">
+              <rect width="320" height="80" class="node-box" />
+              <text x="15" y="25" class="node-title">⚖️ Serial RS232 / USB Precision Scales</text>
+              <text x="15" y="45" class="node-sub">Driver: Web Serial API (0.001g tare/gross)</text>
+              <text x="15" y="65" class="node-tag">src/lib/hardware/scale-client.ts</text>
+            </g>
+
+            <g transform="translate(20, 160)">
+              <rect width="320" height="80" class="node-box" />
+              <text x="15" y="25" class="node-title">📷 Cloudflare R2 Permanent Media Bucket</text>
+              <text x="15" y="45" class="node-sub">Worker Proxy: https://mtj-storage-proxy...</text>
+              <text x="15" y="65" class="node-tag">src/lib/storage/r2-uploader.ts</text>
+            </g>
+
+            <g transform="translate(20, 260)">
+              <rect width="320" height="80" class="node-box" />
+              <text x="15" y="25" class="node-title">💬 Wasender WhatsApp Cloud Gateway</text>
+              <text x="15" y="45" class="node-sub">HTTP Webhook + QR Multi-Device Session</text>
+              <text x="15" y="65" class="node-tag">src/lib/comm/wasender-client.ts</text>
+            </g>
+
+            <g transform="translate(20, 360)">
+              <rect width="320" height="80" class="node-box" />
+              <text x="15" y="25" class="node-title">🏷️ RFID & 1D Barcode Handheld Guns</text>
+              <text x="15" y="45" class="node-sub">Code128 / QR / Zebra Scanner Input Stream</text>
+              <text x="15" y="65" class="node-tag">src/lib/rfid-scanner.ts</text>
+            </g>
+
+            <g transform="translate(20, 460)">
+              <rect width="320" height="80" class="node-box" />
+              <text x="15" y="25" class="node-title">📊 Tally Prime XML / Excel Legacy Imports</text>
+              <text x="15" y="45" class="node-sub">13-Stage Batch Ingestion Parser</text>
+              <text x="15" y="65" class="node-tag">src/lib/data-loader.ts</text>
+            </g>
+          </g>
+
+          <!-- Core Reactive State Stores -->
+          <g transform="translate(480, 40)">
+            <rect width="420" height="580" rx="10" fill="#0d1b2a" stroke="#c8a24b" stroke-width="1.5" />
+            <text x="20" y="30" fill="#c8a24b" font-size="14" font-weight="700">2. IN-MEMORY ZUSTAND STATE BUS</text>
+
+            <g transform="translate(20, 60)">
+              <rect width="380" height="75" class="node-box" />
+              <text x="15" y="25" class="node-title">useBilling & useCustomerLedger</text>
+              <text x="15" y="45" class="node-sub">Invoices, Advances, Pure Gold Owed (mg)</text>
+              <text x="15" y="62" class="node-tag">src/lib/billing-store.ts</text>
+            </g>
+
+            <g transform="translate(20, 150)">
+              <rect width="380" height="75" class="node-box" />
+              <text x="15" y="25" class="node-title">useOrders & useJobCards</text>
+              <text x="15" y="45" class="node-sub">Order Slips, Lines, Karigar Bench Custody</text>
+              <text x="15" y="62" class="node-tag">src/lib/orders-store.ts</text>
+            </g>
+
+            <g transform="translate(20, 240)">
+              <rect width="380" height="75" class="node-box" />
+              <text x="15" y="25" class="node-title">useWorkerGoldBook & useWorkerReturns</text>
+              <text x="15" y="45" class="node-sub">Gold Given, Scrap Return, Polish Loss, Wastage</text>
+              <text x="15" y="62" class="node-tag">src/lib/worker-gold-book-store.ts</text>
+            </g>
+
+            <g transform="translate(20, 330)">
+              <rect width="380" height="75" class="node-box" />
+              <text x="15" y="25" class="node-title">useTagInventory & useMelting</text>
+              <text x="15" y="45" class="node-sub">Tagged Items, HUID, Assay Lots & Melts</text>
+              <text x="15" y="62" class="node-tag">src/lib/tag-inventory-store.ts</text>
+            </g>
+
+            <g transform="translate(20, 420)">
+              <rect width="380" height="75" class="node-box" />
+              <text x="15" y="25" class="node-title">useEmailConfigStore & Comm Engine</text>
+              <text x="15" y="45" class="node-sub">Auto Apologies, PDF Attachments, SMTPSend</text>
+              <text x="15" y="62" class="node-tag">src/lib/comm/automatic-communication-engine.ts</text>
+            </g>
+
+            <g transform="translate(20, 510)">
+              <rect width="380" height="55" class="node-box" />
+              <text x="15" y="25" class="node-title">useSettings & useFirmScopedQuery</text>
+              <text x="15" y="42" class="node-sub">Tenant RLS scope, branchId, GSTIN</text>
+            </g>
+          </g>
+
+          <!-- Supabase Tables -->
+          <g transform="translate(970, 40)">
+            <rect width="380" height="580" rx="10" fill="#141c18" stroke="#10b981" stroke-width="1.5" />
+            <text x="20" y="30" fill="#34d399" font-size="14" font-weight="700">3. PERSISTENT SUPABASE SCHEMA</text>
+
+            <g transform="translate(20, 60)">
+              <rect width="340" height="60" class="node-box" stroke="#10b981" />
+              <text x="15" y="25" class="node-title" fill="#34d399">public.invoices & public.orders</text>
+              <text x="15" y="45" class="node-sub">Full JSONB row payload + indexing keys</text>
+            </g>
+
+            <g transform="translate(20, 130)">
+              <rect width="340" height="60" class="node-box" stroke="#10b981" />
+              <text x="15" y="25" class="node-title" fill="#34d399">public.people & public.job_cards</text>
+              <text x="15" y="45" class="node-sub">Party 360, Customer/Worker Profiles</text>
+            </g>
+
+            <g transform="translate(20, 200)">
+              <rect width="340" height="60" class="node-box" stroke="#10b981" />
+              <text x="15" y="25" class="node-title" fill="#34d399">public.worker_gold_book</text>
+              <text x="15" y="45" class="node-sub">Bench custody entries (given/returned/loss)</text>
+            </g>
+
+            <g transform="translate(20, 270)">
+              <rect width="340" height="60" class="node-box" stroke="#10b981" />
+              <text x="15" y="25" class="node-title" fill="#34d399">public.customer_gold_ledger</text>
+              <text x="15" y="45" class="node-sub">Customer pure gold credit & deposits</text>
+            </g>
+
+            <g transform="translate(20, 340)">
+              <rect width="340" height="60" class="node-box" stroke="#10b981" />
+              <text x="15" y="25" class="node-title" fill="#34d399">public.tag_registry & vault_safes</text>
+              <text x="15" y="45" class="node-sub">Inventory Barcodes, Gross/Net, HUID</text>
+            </g>
+
+            <g transform="translate(20, 410)">
+              <rect width="340" height="60" class="node-box" stroke="#10b981" />
+              <text x="15" y="25" class="node-title" fill="#34d399">public.communication_audit_log</text>
+              <text x="15" y="45" class="node-sub">Email / WhatsApp delivery trail</text>
+            </g>
+
+            <g transform="translate(20, 480)">
+              <rect width="340" height="60" class="node-box" stroke="#10b981" />
+              <text x="15" y="25" class="node-title" fill="#34d399">public.audit_log & app_settings</text>
+              <text x="15" y="45" class="node-sub">Security log, RLS rules & custom formulas</text>
+            </g>
+          </g>
+
+          <!-- Connecting Lines -->
+          <path d="M 410 100 L 480 100" stroke="#c8a24b" stroke-width="2" />
+          <path d="M 410 200 L 480 200" stroke="#c8a24b" stroke-width="2" />
+          <path d="M 410 300 L 480 300" stroke="#c8a24b" stroke-width="2" />
+          <path d="M 410 400 L 480 400" stroke="#c8a24b" stroke-width="2" />
+          <path d="M 410 500 L 480 500" stroke="#c8a24b" stroke-width="2" />
+
+          <path d="M 900 100 L 970 100" stroke="#10b981" stroke-width="2" />
+          <path d="M 900 200 L 970 200" stroke="#10b981" stroke-width="2" />
+          <path d="M 900 300 L 970 300" stroke="#10b981" stroke-width="2" />
+          <path d="M 900 400 L 970 400" stroke="#10b981" stroke-width="2" />
+          <path d="M 900 500 L 970 500" stroke="#10b981" stroke-width="2" />
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 3: CALCULATIONS & DUAL LEDGERS -->
+  <section id="tab-calc" class="view-section">
+    <div class="card-panel">
+      <div class="card-header">
+        <h2>Dual-Currency Mathematics: Fine Gold (g) & Cash (₹) Calculation Rules</h2>
+        <span class="badge">Canonical Formulas</span>
+      </div>
+
+      <div class="details-grid">
+        <div class="detail-card">
+          <h3>1. Net Weight & Fine Gold Conversion <span class="badge">Core Standard</span></h3>
+          <p>Net weight strictly deducts stones, enamel, and wax weight. Fine gold is computed at 24K (1000‰ purity basis).</p>
+          <div class="formula-pill">Net (mg) = Gross Weight (mg) - Less Weight (mg)</div>
+          <div class="formula-pill">Fine Gold (mg) = [Net (mg) × Purity (‰)] ÷ 1000</div>
+          <div class="formula-pill">22K (91.6%) Example: 10,000mg Net × 916 ÷ 1000 = 9,160mg Fine Gold</div>
+        </div>
+
+        <div class="detail-card">
+          <h3>2. Workshop Wastage & Bench Loss <span class="badge">Karigar Hisab</span></h3>
+          <p>Workshop allows contracted wastage percentage on gross gold issue. Bench balance determines worker liability.</p>
+          <div class="formula-pill">Allowed Wastage (mg) = Gross Issued × Wastage%</div>
+          <div class="formula-pill">Worker Balance = Fine Issued - (Finished Fine + Scrap Fine + Allowed Wastage)</div>
+          <div class="formula-pill">Loss Recovery: Over-loss is settled in pure 24K gold or cash at current Bhav</div>
+        </div>
+
+        <div class="detail-card">
+          <h3>3. Invoicing, Making Charges & GST <span class="badge">Billing Engine</span></h3>
+          <p>Making charges apply per gram or percentage. GST (3%) applies to total of (Gold Value + Making + Stone Charges).</p>
+          <div class="formula-pill">Gold Value (₹) = [Net Weight (g) × Today Bhav (₹/g)]</div>
+          <div class="formula-pill">Taxable Amount = Gold Value + Making Charges + Stones + Hallmark Fee</div>
+          <div class="formula-pill">CGST (1.5%) + SGST (1.5%) = Taxable Amount × 3%</div>
+        </div>
+
+        <div class="detail-card">
+          <h3>4. Old Gold Exchange & Valuation <span class="badge">Customer Intake</span></h3>
+          <p>Customer exchange jewellery is melted/tested for purity. Purity difference is adjusted into pure gold deposit.</p>
+          <div class="formula-pill">Old Gold Value (₹) = Net Old Weight × Purity% × Old Gold Purchase Rate</div>
+          <div class="formula-pill">Exchange Offset: Invoice Total Payable = Invoice Amount - Old Gold Credit (₹)</div>
+          <div class="formula-pill">Or Deposited to Customer Gold Ledger as pure 24K credit grams</div>
+        </div>
+
+        <div class="detail-card">
+          <h3>5. Dual Ledger Account Balance Invariant <span class="badge">World-First Audit</span></h3>
+          <p>Customer balance is maintained simultaneously in Cash (₹) and Pure Gold (mg). No automatic mixing without transaction.</p>
+          <div class="formula-pill">Customer Cash Due (₹) = Σ Invoices(Balance) - Σ Cash Receipts(Paise)</div>
+          <div class="formula-pill">Customer Gold Credit (mg) = Σ Pure Gold Deposits(mg) - Σ Gold Applied(mg)</div>
+          <div class="formula-pill">Zero Silent Conversion: Metal debt requires explicit Rate Lock / Sale document</div>
+        </div>
+
+        <div class="detail-card">
+          <h3>6. Outside Work & Subcontracting <span class="badge">Specialist Services</span></h3>
+          <p>Enameling (Meenakari), CAD Casting, Diamond Setting, and Laser Engraving outsourced to third-party vendors.</p>
+          <div class="formula-pill">Outside Worker Custody = Metal Issued (g) - Metal Returned (g)</div>
+          <div class="formula-pill">Service Charge Payable = Pieces × Per-Piece Labour OR Grams × Rate/g</div>
+          <div class="formula-pill">Rollup: Accumulated directly into final item cost & workshop statement</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 4: 10 REPORT FAMILIES -->
+  <section id="tab-reports" class="view-section">
+    <div class="card-panel">
+      <div class="card-header">
+        <h2>The 10 Canonical Reporting Families: Source Data → Transformation → Output Formats</h2>
+        <span class="badge">Executive & Operational Reports</span>
+      </div>
+
+      <div class="details-grid">
+        <div class="detail-card">
+          <h3>1. Daily Gold Flow Report <span class="db-table-tag">reports.daily-gold-flow</span></h3>
+          <p>Daily physical metal movement across Vault, Counter, Workshop, and Melting.</p>
+          <p><strong>Sources:</strong> <code>worker_gold_book</code>, <code>invoices</code>, <code>old_gold</code>, <code>vault_safes</code></p>
+          <p><strong>Outputs:</strong> Opening Metal (g) + Inflows (Purchases/Old Gold) - Outflows (Sales/Karigar) = Closing Metal.</p>
+        </div>
+
+        <div class="detail-card">
+          <h3>2. Metal Position & Reserve Report <span class="db-table-tag">reports.metal-position</span></h3>
+          <p>Complete firm-wide valuation of metal in stock, karigar custody, and customer accounts.</p>
+          <p><strong>Sources:</strong> <code>tag_registry</code>, <code>worker_gold_book</code>, <code>customer_gold_ledger</code></p>
+          <p><strong>Outputs:</strong> 24K, 22K, 18K breakdown, Pure equivalent, Market value at live Bhav.</p>
+        </div>
+
+        <div class="detail-card">
+          <h3>3. Sales & Tax Register (GSTR-1) <span class="db-table-tag">reports.sales-register</span></h3>
+          <p>Full statutory GST sales register for tax filing and chartered accountant audits.</p>
+          <p><strong>Sources:</strong> <code>invoices</code>, <code>credit_notes</code>, <code>app_settings</code></p>
+          <p><strong>Outputs:</strong> HSN 7113 breakdown, Taxable, CGST, SGST, IGST, E-Way Bill details.</p>
+        </div>
+
+        <div class="detail-card">
+          <h3>4. Workshop WIP & Karigar Custody <span class="db-table-tag">reports.outside-work</span></h3>
+          <p>Real-time bench accountability tracking gold with each master craftsman.</p>
+          <p><strong>Sources:</strong> <code>job_cards</code>, <code>worker_returns</code>, <code>worker_gold_book</code></p>
+          <p><strong>Outputs:</strong> Karigar wise gold issued, finished jewellery returned, net pending liability.</p>
+        </div>
+
+        <div class="detail-card">
+          <h3>5. Total Profit & Loss Statement <span class="db-table-tag">reports.total-profit</span></h3>
+          <p>Real-time margin intelligence combining metal appreciation and making revenue.</p>
+          <p><strong>Sources:</strong> <code>invoices</code>, <code>expenses</code>, <code>old_gold</code>, <code>bhav_history</code></p>
+          <p><strong>Outputs:</strong> Metal Margins + Making Profit + Stone Profit - Operating Expenses = Net Profit.</p>
+        </div>
+
+        <div class="detail-card">
+          <h3>6. Customer Account Ledger Statement <span class="db-table-tag">reports.ledger-statement</span></h3>
+          <p>Formal customer dual statement showing both ₹ and Pure Gold transactions.</p>
+          <p><strong>Sources:</strong> <code>invoices</code>, <code>payments</code>, <code>customer_gold_ledger</code></p>
+          <p><strong>Outputs:</strong> High-fidelity PDF statement with instant WhatsApp share deep link.</p>
+        </div>
+
+        <div class="detail-card">
+          <h3>7. Daily Close & Daybook Register <span class="db-table-tag">reports.daybook</span></h3>
+          <p>End-of-day reconciliation across Cash in drawer, Bank UPI, and Gold in vault.</p>
+          <p><strong>Sources:</strong> <code>payments</code>, <code>drawings</code>, <code>expenses</code>, <code>vault_safes</code></p>
+          <p><strong>Outputs:</strong> Physical cash verification, variance report, CEO day-end signoff.</p>
+        </div>
+
+        <div class="detail-card">
+          <h3>8. Stock Audit & Tag Discrepancy <span class="db-table-tag">reports.stock-audit</span></h3>
+          <p>Physical tray-by-tray scanning audit against system inventory register.</p>
+          <p><strong>Sources:</strong> <code>tag_registry</code>, <code>stock_audit_sessions</code></p>
+          <p><strong>Outputs:</strong> Scanned tags vs Missing tags vs Unregistered items with weight diffs.</p>
+        </div>
+
+        <div class="detail-card">
+          <h3>9. Outside Worker & Specialist Charges <span class="db-table-tag">reports.outside-work</span></h3>
+          <p>Labour bills and metal reconciliation for Hallmarking centers, Meenakari, and CAD.</p>
+          <p><strong>Sources:</strong> <code>outside_work_charges</code>, <code>job_cards</code></p>
+          <p><strong>Outputs:</strong> Pending vendor bills, service history, item cost attribution.</p>
+        </div>
+
+        <div class="detail-card">
+          <h3>10. Full ERP Audit & Compliance Trail <span class="db-table-tag">reports.erp-audit</span></h3>
+          <p>Tamper-evident log of every record creation, status change, deletion, and email dispatch.</p>
+          <p><strong>Sources:</strong> <code>audit_log</code>, <code>communication_audit_log</code></p>
+          <p><strong>Outputs:</strong> Actor, IP, Device, Before/After state, Timestamp, Reference error IDs.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 5: A–Z FUNCTIONAL MODULES -->
+  <section id="tab-az" class="view-section">
+    <div class="card-panel">
+      <div class="card-header">
+        <h2>The 26 Modular Components (A–Z Architecture Blueprint)</h2>
+        <span class="badge">Alphabetical Index</span>
+      </div>
+
+      <div class="details-grid">
+        <div class="detail-card"><h3>A: Accounts & Dual Ledgers</h3><p>Immutable double-entry book keeping Cash (₹) and Fine Gold (mg) independently without synthetic conversions.</p></div>
+        <div class="detail-card"><h3>B: Branches & Daily Bhav</h3><p>Multi-branch isolation with centralized or branch-specific gold/silver market rates per karat (24K..14K).</p></div>
+        <div class="detail-card"><h3>C: Customization & Making Rules</h3><p>11-category customization hub: making charge matrices (per gram/percentage/slab), document styling, tax presets.</p></div>
+        <div class="detail-card"><h3>D: Documents & Diamond 4Cs</h3><p>Universal document renderer (10 dynamic templates) and specialized Cut, Color, Clarity, Carat diamond inventory.</p></div>
+        <div class="detail-card"><h3>E: Entitlements & Expenses</h3><p>Commercial plan gating (Basic, Growth, Pro, Scale, Max) and comprehensive expense tracking with member drawings.</p></div>
+        <div class="detail-card"><h3>F: Fine Gold Traceability</h3><p>Milligram-level metal tracking from bullion bar intake through melting, bench manufacturing, polishing to sale.</p></div>
+        <div class="detail-card"><h3>G: GST & BIS Hallmarking (HUID)</h3><p>Statutory 6-digit alphanumeric HUID tracking, BIS compliance, B2B/B2C GST tax computation with HSN 7113.</p></div>
+        <div class="detail-card"><h3>H: Hisab Final & Hardware Scales</h3><p>Web Serial API integration for RS232 precision balances and automatic karigar settlement calculations.</p></div>
+        <div class="detail-card"><h3>I: Inventory & Tax Invoicing</h3><p>Tagged jewellery stock, box management, multi-item invoicing with automated payment allocation.</p></div>
+        <div class="detail-card"><h3>J: Job Cards (12 Stages)</h3><p>Full manufacturing bench ticket lifecycle from Design Approval, Casting, Filing, Setting, Polishing to Final QC.</p></div>
+        <div class="detail-card"><h3>K: Karigar Bench Custody</h3><p>Individual artisan gold accounts tracking gold given, finished pieces returned, scrap, and bench loss.</p></div>
+        <div class="detail-card"><h3>L: Localization & Melting Lots</h3><p>Multilingual UI (English, Hindi, Bengali, Gujarati) and raw gold/old gold assay melting lot tracking.</p></div>
+        <div class="detail-card"><h3>M: Migration Engine (13 Stages)</h3><p>Automated legacy data ingestion wizard importing products, customers, opening stock, and history from Excel/Tally.</p></div>
+        <div class="detail-card"><h3>N: Notifications & Numbering</h3><p>Automated WhatsApp & Email delivery (Order Confirmed, Ready, Delayed Apology) and custom document sequence codes.</p></div>
+        <div class="detail-card"><h3>O: Outside Work & Old Gold</h3><p>Subcontractor labour management and customer exchange valuation with purity testing deductions.</p></div>
+        <div class="detail-card"><h3>P: Party 360 & External Portals</h3><p>Unified directory for Customers, Karigars, Suppliers, Bullion Dealers with dedicated secure self-service portals.</p></div>
+        <div class="detail-card"><h3>Q: Quality Control & Queries</h3><p>Pre-delivery inspection checklists (purity check, stone tightness, polish lustre) and global search palette.</p></div>
+        <div class="detail-card"><h3>R: 10 Canonical Report Families</h3><p>Comprehensive reporting suite covering daily flow, metal position, sales, P&L, customer statements, and audits.</p></div>
+        <div class="detail-card"><h3>S: Security RLS & Stock Audits</h3><p>Supabase Row Level Security tenant isolation, device fingerprinting, and barcode physical stock audit sweeps.</p></div>
+        <div class="detail-card"><h3>T: Tag Registry & Terminology</h3><p>High-speed barcode label printing (Zebra/TVS thermal), customizable tag fields, and regional jewellery names.</p></div>
+        <div class="detail-card"><h3>U: Universal Transactions</h3><p>Unified transaction dispatcher handling Sales, Orders, Repairs, Estimates, Advances, and Settlements.</p></div>
+        <div class="detail-card"><h3>V: Vault Safes & Verifications</h3><p>Physical safe location registers, day-end vault transfers, and cryptographic document verification URLs.</p></div>
+        <div class="detail-card"><h3>W: Workflows & WhatsApp Meta</h3><p>Business workflow automation engine and Wasender cloud API gateway for instant PDF transmission.</p></div>
+        <div class="detail-card"><h3>X: XML Tally & Exception Locks</h3><p>Direct XML export to Tally Prime accounting and financial year freeze dates to prevent historical tampering.</p></div>
+        <div class="detail-card"><h3>Y: Year-End Close & Yields</h3><p>Financial year closure wizard, opening balance rollups, and casting/manufacturing gold yield analytics.</p></div>
+        <div class="detail-card"><h3>Z: Zero-Loss Refining & Trust</h3><p>Bench sweep collection, acid refining recovery tracking, and end-to-end auditability guarantees.</p></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  function showTab(tabId) {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+    
+    const target = document.getElementById(tabId);
+    if (target) target.classList.add('active');
+    
+    event.currentTarget.classList.add('active');
+  }
+</script>
+
+</body>
+</html>
