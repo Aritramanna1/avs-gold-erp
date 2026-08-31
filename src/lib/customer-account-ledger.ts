@@ -369,6 +369,11 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
       year: "numeric",
     });
 
+    const firstItem = o.item || (o.items && o.items.length > 0 ? o.items[0] : null);
+    const itemName = firstItem?.itemName || "Custom Jewellery Order";
+    const itemQty = firstItem?.quantity ? ` × ${firstItem.quantity}` : "";
+    const itemPurity = firstItem?.purity || undefined;
+
     // Milestone: the order itself. A zero-value audit row so the book's
     // chronological history starts at "Order placed", not at the first money
     // movement. ts-1 so it sits just before this order's advances.
@@ -378,9 +383,9 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
       date: dateStr,
       voucherNo: o.orderNo,
       type: "Order Created",
-      description: `Order placed · ${o.item.itemName}${o.item.quantity ? ` × ${o.item.quantity}` : ""}`,
+      description: `Order placed · ${itemName}${itemQty}`,
       source: "order",
-      purity: o.item.purity || undefined,
+      purity: itemPurity,
       goldInMg: 0,
       goldOutMg: 0,
       moneyDebitPaise: 0,
@@ -395,7 +400,7 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
         date: dateStr,
         voucherNo: o.orderNo,
         type: "Order Advance (Cash)",
-        description: `Cash advance for Order ${o.orderNo} · ${o.item.itemName}`,
+        description: `Cash advance for Order ${o.orderNo} · ${itemName}`,
         source: "order",
         goldInMg: 0,
         goldOutMg: 0,
@@ -414,7 +419,7 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
         date: dateStr,
         voucherNo: o.orderNo,
         type: isOld ? "Old Gold In" : "Gold Deposit",
-        description: `${label} for Order ${o.orderNo} · ${o.item.itemName} (${o.advance.goldApplyMode === "apply" ? "Direct Apply" : "Custody Credit"})`,
+        description: `${label} for Order ${o.orderNo} · ${itemName} (${o.advance.goldApplyMode === "apply" ? "Direct Apply" : "Custody Credit"})`,
         source: "order",
         grossMg: o.advance.goldGrossMg,
         purity: o.advance.goldPurity,
