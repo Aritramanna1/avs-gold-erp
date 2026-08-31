@@ -1,0 +1,16 @@
+# Prevent directory listing for privacy and security of files on Hostinger.
+Options -Indexes
+
+# Serve existing static files directly.
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Route client-side app paths back to the SPA entry point.
+RewriteRule ^ index.html [L]
+
+# Block direct access to executable server-side or shell files.
+<FilesMatch "\.(php5|phtml|exe|sh|bat|cmd)$">
+  Require all denied
+</FilesMatch>

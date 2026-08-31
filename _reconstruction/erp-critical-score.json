@@ -1,0 +1,193 @@
+[
+  {
+    "base": "vault-gold-stock",
+    "shop": "vault-gold-stock-BLnwSke9.js",
+    "shopBytes": 2555,
+    "srcBytes": 5525,
+    "extractBytes": 5525,
+    "srcPct": 56,
+    "extractPct": 56,
+    "prefer": "SRC_OK",
+    "keyHits": "GOLD_WEIGHT_MATERIALS,assertVaultGoldIssueAvailable"
+  },
+  {
+    "base": "VaultGoldStockSelect",
+    "shop": "VaultGoldStockSelect-O4q3K8-h.js",
+    "shopBytes": 1332,
+    "srcBytes": 2360,
+    "extractBytes": 2360,
+    "srcPct": 71,
+    "extractPct": 71,
+    "prefer": "SRC_OK",
+    "keyHits": ""
+  },
+  {
+    "base": "transaction-ledger-guards",
+    "shop": "transaction-ledger-guards-BV_FvItY.js",
+    "shopBytes": 806,
+    "srcBytes": 1992,
+    "extractBytes": 1992,
+    "srcPct": 54,
+    "extractPct": 54,
+    "prefer": "SRC_OK",
+    "keyHits": "assertTransactionGoldIssueFromLedger,assertTransactionCashAvailable"
+  },
+  {
+    "base": "invoice-due",
+    "shop": "invoice-due-Bg8SAzvu.js",
+    "shopBytes": 680,
+    "srcBytes": 1598,
+    "extractBytes": 1598,
+    "srcPct": 26,
+    "extractPct": 26,
+    "prefer": "SRC_OK",
+    "keyHits": "requireVaultStockLine"
+  },
+  {
+    "base": "material-issue-stock",
+    "shop": "material-issue-stock-Ed_xoD4a.js",
+    "shopBytes": 1418,
+    "srcBytes": 3100,
+    "extractBytes": 3100,
+    "srcPct": 58,
+    "extractPct": 58,
+    "prefer": "SRC_OK",
+    "keyHits": "assertMaterialIssueStock,assertAlloyLinesStock"
+  },
+  {
+    "base": "document-verification",
+    "shop": "document-verification-BBzJUcOB.js",
+    "shopBytes": 10856,
+    "srcBytes": 10215,
+    "extractBytes": 3157,
+    "srcPct": 70,
+    "extractPct": 60,
+    "prefer": "SRC_OK",
+    "keyHits": "verify,mintInvoiceVerification,mint_invoice_verification,ensureInvoiceVerification,verifyPublicDocument,verify_public_document"
+  },
+  {
+    "base": "invoice-payment-status",
+    "shop": "invoice-payment-status-CIr4jz_u.js",
+    "shopBytes": 717,
+    "srcBytes": 1528,
+    "extractBytes": 1528,
+    "srcPct": 64,
+    "extractPct": 64,
+    "prefer": "SRC_OK",
+    "keyHits": ""
+  },
+  {
+    "base": "ledger-pagination",
+    "shop": "ledger-pagination-Bw3pit91.js",
+    "shopBytes": 1467,
+    "srcBytes": 4515,
+    "extractBytes": 4515,
+    "srcPct": 57,
+    "extractPct": 57,
+    "prefer": "SRC_OK",
+    "keyHits": "get_company_cash_ledger_page,get_gold_ledger_page"
+  },
+  {
+    "base": "branch-scope",
+    "shop": "branch-scope-B19fvJ2U.js",
+    "shopBytes": 410,
+    "srcBytes": 1449,
+    "extractBytes": 1449,
+    "srcPct": 34,
+    "extractPct": 34,
+    "prefer": "SRC_OK",
+    "keyHits": ""
+  },
+  {
+    "base": "firm-scoped-app-settings",
+    "shop": "firm-scoped-app-settings-Cc-xE3cx.js",
+    "shopBytes": 1394,
+    "srcBytes": 4339,
+    "extractBytes": 4330,
+    "srcPct": 42,
+    "extractPct": 42,
+    "prefer": "SRC_OK",
+    "keyHits": ""
+  },
+  {
+    "base": "BillingModule",
+    "shop": "BillingModule-CBfTVV76.js",
+    "shopBytes": 127923,
+    "srcBytes": 183693,
+    "extractBytes": 222692,
+    "srcPct": 49,
+    "extractPct": 53,
+    "prefer": "EXTRACT",
+    "keyHits": "required"
+  },
+  {
+    "base": "billing-store",
+    "shop": "billing-store-BeroIR92.js",
+    "shopBytes": 30345,
+    "srcBytes": 49034,
+    "extractBytes": 47944,
+    "srcPct": 39,
+    "extractPct": 39,
+    "prefer": "SRC_OK",
+    "keyHits": "ensureInvoiceVerification"
+  },
+  {
+    "base": "ledger-store",
+    "shop": "ledger-store-Dm0ctGvF.js",
+    "shopBytes": 13716,
+    "srcBytes": 23071,
+    "extractBytes": 23071,
+    "srcPct": 52,
+    "extractPct": 52,
+    "prefer": "SRC_OK",
+    "keyHits": "calculateLiveGoldExposure,get_firm_ledger_balances,fetchFirmLedgerBalances"
+  },
+  {
+    "base": "material-vault-store",
+    "shop": "material-vault-store-Ca9p6DM_.js",
+    "shopBytes": 7612,
+    "srcBytes": 18578,
+    "extractBytes": 18838,
+    "srcPct": 33,
+    "extractPct": 34,
+    "prefer": "SRC_OK",
+    "keyHits": "required"
+  },
+  {
+    "base": "material-vault-sync",
+    "shop": "material-vault-sync-C6XxMCBg.js",
+    "shopBytes": 2442,
+    "srcBytes": 5261,
+    "extractBytes": 5261,
+    "srcPct": 47,
+    "extractPct": 47,
+    "prefer": "SRC_OK",
+    "keyHits": ""
+  },
+  {
+    "base": "PrintEngine",
+    "shop": "PrintEngine-DT0cXyhr.js",
+    "shopBytes": 19375,
+    "srcBytes": 0,
+    "extractBytes": 0,
+    "srcPct": null,
+    "extractPct": null,
+    "prefer": "MISSING",
+    "keyHits": ""
+  },
+  {
+    "base": "auth-gate",
+    "status": "NO_SHOP_CHUNK"
+  },
+  {
+    "base": "invoice-data",
+    "shop": "invoice-data-rxAnU1Fp.js",
+    "shopBytes": 10455,
+    "srcBytes": 0,
+    "extractBytes": 0,
+    "srcPct": null,
+    "extractPct": null,
+    "prefer": "MISSING",
+    "keyHits": ""
+  }
+]

@@ -1,0 +1,515 @@
+{
+  "generatedAt": "2026-08-30T12:42:44.354Z",
+  "projectUrl": "https://dqgrrafuoxaorvyrcuuh.supabase.co",
+  "checks": [
+    {
+      "section": "architecture-audit",
+      "step": "prod_throttle_not_aggressive",
+      "pass": true,
+      "detail": "PROD: 80 req/10s, 0ms gap; DEV: 10/400 retained",
+      "at": "2026-08-30T12:42:40.959Z"
+    },
+    {
+      "section": "architecture-audit",
+      "step": "prod_boot_throttle_relaxed",
+      "pass": true,
+      "detail": "PROD boot: 120 req/10s, 0ms gap",
+      "at": "2026-08-30T12:42:40.962Z"
+    },
+    {
+      "section": "architecture-audit",
+      "step": "inflight_dedupe_present",
+      "pass": true,
+      "detail": "GET dedupe via in-flight map + pull-dedupe.ts",
+      "at": "2026-08-30T12:42:40.962Z"
+    },
+    {
+      "section": "architecture-audit",
+      "step": "no_duplicate_pullAll_boot",
+      "pass": true,
+      "detail": "tenant-context uses startCloudSync only (no pullAll call)",
+      "at": "2026-08-30T12:42:40.962Z"
+    },
+    {
+      "section": "architecture-audit",
+      "step": "token_refresh_skips_boot",
+      "pass": true,
+      "detail": "TOKEN_REFRESHED does not re-run bootstrap",
+      "at": "2026-08-30T12:42:40.962Z"
+    },
+    {
+      "section": "architecture-audit",
+      "step": "pullCritical_45s_budget",
+      "pass": true,
+      "detail": "pullCritical uses 45s staged-load fail threshold",
+      "at": "2026-08-30T12:42:40.962Z"
+    },
+    {
+      "section": "architecture-audit",
+      "step": "critical_pulls_parallel_after_settings",
+      "pass": true,
+      "detail": "branches/branch_settings/dropdown_masters parallel after app_settings",
+      "at": "2026-08-30T12:42:40.962Z"
+    },
+    {
+      "section": "architecture-audit",
+      "step": "subscription_gate_passes_org_id",
+      "pass": true,
+      "detail": "resolveSubscriptionAccess receives activeOrganizationId",
+      "at": "2026-08-30T12:42:40.962Z"
+    },
+    {
+      "section": "architecture-audit",
+      "step": "subscription_membership_fallback",
+      "pass": true,
+      "detail": "RPC failure falls back to membership subscription_status",
+      "at": "2026-08-30T12:42:40.962Z"
+    },
+    {
+      "section": "architecture-audit",
+      "step": "platform_owner_gate_bypass",
+      "pass": true,
+      "detail": "Platform owners bypass SubscriptionRequired screen",
+      "at": "2026-08-30T12:42:40.962Z"
+    },
+    {
+      "section": "login",
+      "step": "erp_owner_password",
+      "pass": true,
+      "detail": "status=200 ms=708",
+      "at": "2026-08-30T12:42:41.670Z"
+    },
+    {
+      "section": "login",
+      "step": "firm_id_resolved",
+      "pass": true,
+      "detail": "firmId=f9f73cce-9538-4286-9754-530ca4581fbb",
+      "at": "2026-08-30T12:42:42.041Z"
+    },
+    {
+      "section": "erp-boot-chain",
+      "step": "auth_context",
+      "pass": true,
+      "detail": "status=200 ms=32",
+      "at": "2026-08-30T12:42:42.073Z"
+    },
+    {
+      "section": "erp-boot-chain",
+      "step": "memberships",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T12:42:42.160Z"
+    },
+    {
+      "section": "erp-boot-chain",
+      "step": "critical_catalog_parallel",
+      "pass": true,
+      "detail": "#0=200 #1=200 #2=200",
+      "at": "2026-08-30T12:42:42.755Z"
+    },
+    {
+      "section": "erp-boot-chain",
+      "step": "dashboard_rpc",
+      "pass": true,
+      "detail": "status=200 ms=73",
+      "at": "2026-08-30T12:42:42.828Z"
+    },
+    {
+      "section": "erp-boot-chain",
+      "step": "boot_chain_under_45s",
+      "pass": true,
+      "detail": "total=787ms",
+      "at": "2026-08-30T12:42:42.828Z"
+    },
+    {
+      "section": "erp-boot-chain",
+      "step": "boot_chain_under_15s_target",
+      "pass": true,
+      "detail": "target_fast=787ms",
+      "advisory": true,
+      "at": "2026-08-30T12:42:42.828Z"
+    },
+    {
+      "section": "module-probes",
+      "step": "customers_people",
+      "pass": true,
+      "detail": "status=200 ms=35 firm_scoped",
+      "at": "2026-08-30T12:42:42.864Z"
+    },
+    {
+      "section": "module-probes",
+      "step": "orders",
+      "pass": true,
+      "detail": "status=200 ms=38 firm_scoped",
+      "at": "2026-08-30T12:42:42.902Z"
+    },
+    {
+      "section": "module-probes",
+      "step": "job_cards",
+      "pass": true,
+      "detail": "status=200 ms=32 firm_scoped",
+      "at": "2026-08-30T12:42:42.934Z"
+    },
+    {
+      "section": "module-probes",
+      "step": "stock_inventory",
+      "pass": true,
+      "detail": "status=200 ms=37 firm_scoped",
+      "at": "2026-08-30T12:42:42.971Z"
+    },
+    {
+      "section": "module-probes",
+      "step": "billing_invoices",
+      "pass": true,
+      "detail": "status=200 ms=265 firm_scoped",
+      "at": "2026-08-30T12:42:43.237Z"
+    },
+    {
+      "section": "module-probes",
+      "step": "gold_ledger_page",
+      "pass": true,
+      "detail": "status=200 ms=88",
+      "at": "2026-08-30T12:42:43.325Z"
+    },
+    {
+      "section": "module-probes",
+      "step": "reports_firm_balances",
+      "pass": true,
+      "detail": "status=200 ms=38",
+      "at": "2026-08-30T12:42:43.363Z"
+    },
+    {
+      "section": "module-probes",
+      "step": "settings_org",
+      "pass": true,
+      "detail": "status=200 ms=25 firm_scoped",
+      "at": "2026-08-30T12:42:43.388Z"
+    },
+    {
+      "section": "subscription-gate",
+      "step": "rpc_with_active_firm",
+      "pass": true,
+      "detail": "status=200 access=granted valid=true",
+      "at": "2026-08-30T12:42:43.447Z"
+    },
+    {
+      "section": "subscription-gate",
+      "step": "membership_evidence_active_or_trial",
+      "pass": true,
+      "detail": "subscription_status=active",
+      "at": "2026-08-30T12:42:43.475Z"
+    },
+    {
+      "section": "subscription-gate",
+      "step": "membership_fallback_would_grant",
+      "pass": true,
+      "detail": "RPC failure path has membership evidence for grant",
+      "at": "2026-08-30T12:42:43.475Z"
+    },
+    {
+      "section": "subscription-gate",
+      "step": "bogus_org_not_auto_granted",
+      "pass": true,
+      "detail": "access=denied valid=false",
+      "at": "2026-08-30T12:42:43.500Z"
+    },
+    {
+      "section": "platform-bypass",
+      "step": "is_platform_owner",
+      "pass": true,
+      "detail": "is_platform_owner=true",
+      "at": "2026-08-30T12:42:43.703Z"
+    },
+    {
+      "section": "platform-bypass",
+      "step": "platform_route",
+      "pass": true,
+      "detail": "default_route=/platform",
+      "at": "2026-08-30T12:42:43.703Z"
+    },
+    {
+      "section": "portal-customer",
+      "step": "login",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T12:42:43.976Z"
+    },
+    {
+      "section": "portal-customer",
+      "step": "auth_context",
+      "pass": true,
+      "detail": "active=customer",
+      "at": "2026-08-30T12:42:44.264Z"
+    },
+    {
+      "section": "portal-customer",
+      "step": "portal_context",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T12:42:44.314Z"
+    },
+    {
+      "section": "unauthorized-denied",
+      "step": "invalid_token_denied",
+      "pass": true,
+      "detail": "status=401",
+      "at": "2026-08-30T12:42:44.354Z"
+    },
+    {
+      "section": "postgres-errors-24h",
+      "step": "service_role",
+      "pass": true,
+      "detail": "skipped — set SUPABASE_SERVICE_ROLE_KEY for DB error snapshot",
+      "advisory": true,
+      "at": "2026-08-30T12:42:44.354Z"
+    }
+  ],
+  "timings": [
+    {
+      "name": "get_authorization_context",
+      "ms": 32,
+      "ok": true
+    },
+    {
+      "name": "get_my_memberships",
+      "ms": 87,
+      "ok": true
+    },
+    {
+      "name": "app_settings",
+      "ms": 44,
+      "ok": true
+    },
+    {
+      "name": "branches",
+      "ms": 110,
+      "ok": true
+    },
+    {
+      "name": "branch_settings",
+      "ms": 505,
+      "ok": true
+    },
+    {
+      "name": "dropdown_masters",
+      "ms": 549,
+      "ok": true
+    },
+    {
+      "name": "get_home_dashboard_summary",
+      "ms": 73,
+      "ok": true
+    },
+    {
+      "name": "customers_people",
+      "ms": 35,
+      "ok": true
+    },
+    {
+      "name": "orders",
+      "ms": 38,
+      "ok": true
+    },
+    {
+      "name": "job_cards",
+      "ms": 32,
+      "ok": true
+    },
+    {
+      "name": "stock_inventory",
+      "ms": 37,
+      "ok": true
+    },
+    {
+      "name": "billing_invoices",
+      "ms": 265,
+      "ok": true
+    },
+    {
+      "name": "gold_ledger_page",
+      "ms": 88,
+      "ok": true
+    },
+    {
+      "name": "reports_firm_balances",
+      "ms": 38,
+      "ok": true
+    },
+    {
+      "name": "settings_org",
+      "ms": 25,
+      "ok": true
+    }
+  ],
+  "requestLog": [
+    {
+      "path": "/auth/v1/token",
+      "method": "POST",
+      "status": 200,
+      "ms": 0
+    },
+    {
+      "path": "/rest/v1/rpc/get_authorization_context",
+      "method": "POST",
+      "status": 200,
+      "ms": 370
+    },
+    {
+      "path": "/rest/v1/rpc/get_authorization_context",
+      "method": "POST",
+      "status": 200,
+      "ms": 32
+    },
+    {
+      "path": "/rest/v1/rpc/get_my_memberships",
+      "method": "POST",
+      "status": 200,
+      "ms": 87
+    },
+    {
+      "path": "/rest/v1/app_settings",
+      "method": "GET",
+      "status": 200,
+      "ms": 44
+    },
+    {
+      "path": "/rest/v1/branches",
+      "method": "GET",
+      "status": 200,
+      "ms": 110
+    },
+    {
+      "path": "/rest/v1/branch_settings",
+      "method": "GET",
+      "status": 200,
+      "ms": 505
+    },
+    {
+      "path": "/rest/v1/dropdown_masters",
+      "method": "GET",
+      "status": 200,
+      "ms": 549
+    },
+    {
+      "path": "/rest/v1/rpc/get_home_dashboard_summary",
+      "method": "POST",
+      "status": 200,
+      "ms": 73
+    },
+    {
+      "path": "/rest/v1/people",
+      "method": "GET",
+      "status": 200,
+      "ms": 35
+    },
+    {
+      "path": "/rest/v1/orders",
+      "method": "GET",
+      "status": 200,
+      "ms": 38
+    },
+    {
+      "path": "/rest/v1/job_cards",
+      "method": "GET",
+      "status": 200,
+      "ms": 32
+    },
+    {
+      "path": "/rest/v1/inventory",
+      "method": "GET",
+      "status": 200,
+      "ms": 37
+    },
+    {
+      "path": "/rest/v1/invoices",
+      "method": "GET",
+      "status": 200,
+      "ms": 265
+    },
+    {
+      "path": "/rest/v1/rpc/get_gold_ledger_page",
+      "method": "POST",
+      "status": 200,
+      "ms": 88
+    },
+    {
+      "path": "/rest/v1/rpc/get_firm_ledger_balances",
+      "method": "POST",
+      "status": 200,
+      "ms": 37
+    },
+    {
+      "path": "/rest/v1/organizations",
+      "method": "GET",
+      "status": 200,
+      "ms": 25
+    },
+    {
+      "path": "/rest/v1/rpc/resolve_subscription_access",
+      "method": "POST",
+      "status": 200,
+      "ms": 59
+    },
+    {
+      "path": "/rest/v1/rpc/get_my_memberships",
+      "method": "POST",
+      "status": 200,
+      "ms": 28
+    },
+    {
+      "path": "/rest/v1/rpc/resolve_subscription_access",
+      "method": "POST",
+      "status": 200,
+      "ms": 25
+    },
+    {
+      "path": "/auth/v1/token",
+      "method": "POST",
+      "status": 200,
+      "ms": 0
+    },
+    {
+      "path": "/rest/v1/rpc/get_authorization_context",
+      "method": "POST",
+      "status": 200,
+      "ms": 70
+    },
+    {
+      "path": "/auth/v1/token",
+      "method": "POST",
+      "status": 200,
+      "ms": 0
+    },
+    {
+      "path": "/rest/v1/rpc/get_authorization_context",
+      "method": "POST",
+      "status": 200,
+      "ms": 288
+    },
+    {
+      "path": "/rest/v1/rpc/get_my_portal_context",
+      "method": "POST",
+      "status": 200,
+      "ms": 50
+    },
+    {
+      "path": "/rest/v1/rpc/get_authorization_context",
+      "method": "POST",
+      "status": 401,
+      "ms": 40
+    }
+  ],
+  "postgresErrors": null,
+  "metrics": {
+    "loginMs": 708,
+    "bootChainMs": 787,
+    "requestTotal": 26,
+    "requestUnique": 18,
+    "requestDuplicates": 8
+  },
+  "summary": {
+    "pass": 35,
+    "fail": 0,
+    "advisory": 2
+  }
+}

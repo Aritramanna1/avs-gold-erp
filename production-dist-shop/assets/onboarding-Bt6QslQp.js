@@ -1,0 +1,1 @@
+import{Y as e}from"./index-dAP2DT1D.js";var t=e;export{t as component};

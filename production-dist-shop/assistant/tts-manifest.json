@@ -1,0 +1,49 @@
+{
+  "version": "1.0.0-candidate",
+  "family": "qwen3-tts",
+  "updatedAt": "2026-08-24",
+  "policy": {
+    "noPaidVoiceApi": true,
+    "noMandatoryExternalAi": true,
+    "weightsNotInApk": true,
+    "voiceProfileSeparateFromWeights": true,
+    "authorizedCloneOnly": true
+  },
+  "models": [
+    {
+      "id": "ornexa-qwen3-tts-0.6b-v1",
+      "variantId": "qwen3-tts-12hz-0.6b-base",
+      "displayName": "AVS Voice Standard (Qwen3-TTS 0.6B)",
+      "role": "primary_candidate",
+      "approved": false,
+      "sizeBytes": 1800000000,
+      "minRamMb": 4096,
+      "sha256": "pending-benchmark-gate",
+      "hfId": "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "ornexa-qwen3-tts-1.7b-v1",
+      "variantId": "qwen3-tts-12hz-1.7b-base",
+      "displayName": "AVS Voice Enhanced (Qwen3-TTS 1.7B)",
+      "role": "quality_optional",
+      "approved": false,
+      "sizeBytes": 3800000000,
+      "minRamMb": 6144,
+      "sha256": "pending-benchmark-gate",
+      "hfId": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "ornexa-chatterbox-turbo-bench-v1",
+      "variantId": "chatterbox-turbo",
+      "displayName": "Chatterbox Turbo (benchmark only)",
+      "role": "benchmark_alternative",
+      "approved": false,
+      "sizeBytes": 0,
+      "minRamMb": 4096,
+      "sha256": "pending-benchmark-gate",
+      "license": "check-upstream"
+    }
+  ]
+}

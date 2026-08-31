@@ -1,0 +1,1 @@
+var e=[`customer`,`firm_customer`],t=[`supplier`,`vendor`,`refinery`,`hallmark_vendor`,`service_provider`],n=[`karigar`,`worker`,`outside_worker`,`outside_karigar`];function r(t){return e.includes(t.type)}function i(e){return t.includes(e.type)}function a(e){return n.includes(e.type)}export{a as n,i as r,r as t};

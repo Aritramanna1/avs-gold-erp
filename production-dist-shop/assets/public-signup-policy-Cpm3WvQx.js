@@ -1,0 +1,1 @@
+var e=`AVS ERP access is invitation-only. Ask your jeweller or AVS to send you a secure invitation link, or request access from our team.`,t=`/request-access`;export{t as n,e as t};

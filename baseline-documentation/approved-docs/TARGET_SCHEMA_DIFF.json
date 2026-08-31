@@ -1,0 +1,65 @@
+{
+  "source_project": "kjfjsfhftytezsjyegmb",
+  "target_project": "dqgrrafuoxaorvyrcuuh",
+  "analysis_only": true,
+  "source_public_tables": 77,
+  "target_public_tables": 60,
+  "source_public_routines": 25,
+  "target_public_routines": 3,
+  "source_public_policies": 210,
+  "target_public_policies": 90,
+  "target_literal_true_policies": 85,
+  "source_storage_buckets": 8,
+  "target_storage_buckets": 0,
+  "classifications": [
+    {
+      "object": "organizations",
+      "type": "table",
+      "classification": "MISSING_IN_TARGET",
+      "risk": "P0",
+      "action": "create after target dependency review"
+    },
+    {
+      "object": "user_profiles",
+      "type": "table",
+      "classification": "MISSING_IN_TARGET",
+      "risk": "P0",
+      "action": "create after auth/profile definition review"
+    },
+    {
+      "object": "onboard_tenant",
+      "type": "routine",
+      "classification": "MISSING_IN_TARGET",
+      "risk": "P0",
+      "action": "install after identity tables"
+    },
+    {
+      "object": "people",
+      "type": "table",
+      "classification": "SEMANTIC_CONFLICT",
+      "risk": "P0",
+      "action": "column/constraint diff before ALTER"
+    },
+    {
+      "object": "attachments",
+      "type": "table",
+      "classification": "DATA_BLOCKED",
+      "risk": "P0",
+      "action": "diff both definitions and map the 1 target row before any constraint or storage change"
+    },
+    {
+      "object": "storage_buckets",
+      "type": "storage",
+      "classification": "MISSING_IN_TARGET",
+      "risk": "P0",
+      "action": "create private buckets after metadata design"
+    },
+    {
+      "object": "target_migration_history",
+      "type": "history",
+      "classification": "UNSAFE_TO_AUTOMATE",
+      "risk": "P0",
+      "action": "do not repair until equivalence proven"
+    }
+  ]
+}

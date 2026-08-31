@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";import{t}from"./useNavigate-CJ5OSqdF.js";var n=e(),r=()=>(0,n.jsx)(t,{to:`/hardware`,replace:!0});export{r as component};

@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";import{t}from"./StandardPage-CIDB2R71.js";import{t as n}from"./TerminologyManager-5X89H0Td.js";var r=e();function i(){return(0,r.jsx)(t,{title:`Jewellery Terminology Engine (42 Terms)`,subtitle:`Manage active trade packs and custom vocabulary aliases.`,children:(0,r.jsx)(n,{})})}export{i as component};

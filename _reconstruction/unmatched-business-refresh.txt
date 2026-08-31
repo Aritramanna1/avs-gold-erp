@@ -1,0 +1,11 @@
+_slug
+doc._token
+shield-x
+shopping-cart
+smartphone
+test-tube
+twitter-provider
+unsubscribe._token
+user-check
+user-plus
+zap

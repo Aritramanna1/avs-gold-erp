@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";import{t}from"./DedicatedPortalLoginPage-Chr6wNRT.js";var n=e();function r(){return(0,n.jsx)(t,{portalType:`supplier`,title:`Supplier Portal`,subtitle:`Sign in with your email or mobile OTP to track your purchase vouchers, metal supplies, and settlements.`,destinationRoute:`/supplier-portal`})}export{r as component};

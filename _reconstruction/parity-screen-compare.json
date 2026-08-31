@@ -1,0 +1,521 @@
+{
+  "at": "2026-08-29T20:02:21.087Z",
+  "routes": 20,
+  "comparisons": [
+    {
+      "route": "/app",
+      "localhostOk": true,
+      "shopOk": true,
+      "titleMatch": false,
+      "bothOk": true,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/people",
+      "localhostOk": true,
+      "shopOk": true,
+      "titleMatch": false,
+      "bothOk": true,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/stock",
+      "localhostOk": true,
+      "shopOk": true,
+      "titleMatch": false,
+      "bothOk": true,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/orders",
+      "localhostOk": true,
+      "shopOk": true,
+      "titleMatch": false,
+      "bothOk": true,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/billing",
+      "localhostOk": true,
+      "shopOk": true,
+      "titleMatch": false,
+      "bothOk": true,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/ledger",
+      "localhostOk": true,
+      "shopOk": false,
+      "titleMatch": false,
+      "bothOk": false,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/workshop",
+      "localhostOk": true,
+      "shopOk": false,
+      "titleMatch": false,
+      "bothOk": false,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/reports",
+      "localhostOk": true,
+      "shopOk": false,
+      "titleMatch": false,
+      "bothOk": false,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/reports/gold-ledger",
+      "localhostOk": true,
+      "shopOk": false,
+      "titleMatch": false,
+      "bothOk": false,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/reports/sales-register",
+      "localhostOk": true,
+      "shopOk": false,
+      "titleMatch": false,
+      "bothOk": false,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/settings",
+      "localhostOk": true,
+      "shopOk": true,
+      "titleMatch": false,
+      "bothOk": true,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/barcode",
+      "localhostOk": true,
+      "shopOk": true,
+      "titleMatch": false,
+      "bothOk": true,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/utilities",
+      "localhostOk": true,
+      "shopOk": true,
+      "titleMatch": false,
+      "bothOk": true,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/mobile/work",
+      "localhostOk": true,
+      "shopOk": false,
+      "titleMatch": false,
+      "bothOk": false,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/mobile/business",
+      "localhostOk": true,
+      "shopOk": false,
+      "titleMatch": false,
+      "bothOk": false,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/mobile/reports",
+      "localhostOk": true,
+      "shopOk": false,
+      "titleMatch": false,
+      "bothOk": false,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/mobile/more",
+      "localhostOk": true,
+      "shopOk": false,
+      "titleMatch": false,
+      "bothOk": false,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/verify",
+      "localhostOk": true,
+      "shopOk": true,
+      "titleMatch": true,
+      "bothOk": true,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/customer-portal",
+      "localhostOk": true,
+      "shopOk": true,
+      "titleMatch": false,
+      "bothOk": true,
+      "localhostCrash": false,
+      "shopCrash": false
+    },
+    {
+      "route": "/login",
+      "localhostOk": true,
+      "shopOk": false,
+      "titleMatch": null,
+      "bothOk": false,
+      "localhostCrash": false,
+      "shopCrash": false
+    }
+  ],
+  "captures": [
+    {
+      "id": "localhost",
+      "baseURL": "http://localhost:3000",
+      "screens": [
+        {
+          "route": "/app",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/people",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/stock",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/orders",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/billing",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/ledger",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/workshop",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/reports",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/reports/gold-ledger",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/reports/sales-register",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/settings",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/barcode",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/utilities",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Product Features Workflows About Manufacturing Wholesale Pricing Tutorials FAQ Support Contact Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026",
+          "hasCrash": false
+        },
+        {
+          "route": "/mobile/work",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026 Arivahly Venture Sphere. AVS ERP jewellery manufacturing ERP. arivahly.in Cookies & privacy We",
+          "hasCrash": false
+        },
+        {
+          "route": "/mobile/business",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026 Arivahly Venture Sphere. AVS ERP jewellery manufacturing ERP. arivahly.in Cookies & privacy We",
+          "hasCrash": false
+        },
+        {
+          "route": "/mobile/reports",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026 Arivahly Venture Sphere. AVS ERP jewellery manufacturing ERP. arivahly.in Cookies & privacy We",
+          "hasCrash": false
+        },
+        {
+          "route": "/mobile/more",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026 Arivahly Venture Sphere. AVS ERP jewellery manufacturing ERP. arivahly.in Cookies & privacy We",
+          "hasCrash": false
+        },
+        {
+          "route": "/verify",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Reports Verify Receipt Scan a QR code from any AVS printout, enter a document number (e.g. Order No, Invoice No), or paste the payload manually. Scan with camera Start camera Or enter document number / paste payload Verify Paste from clipboard Paste-based verification works on every device. Camera scanning requires a browser that supports the Web BarcodeDetector API and camera access. Cookies & privacy We use essential cookies for sign-in and security. Optional cookies help improve the product. See our Privacy Policy and Terms. Accept all Essential only Manage",
+          "hasCrash": false
+        },
+        {
+          "route": "/customer-portal",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026 Arivahly Venture Sphere. AVS ERP jewellery manufacturing ERP. arivahly.in Cookies & privacy We",
+          "hasCrash": false
+        },
+        {
+          "route": "/login",
+          "title": "Login · AVS ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Login Start 14-Day Trial STANDARD SIGN IN Corporation Email Password Forgot? Keep me signed in on this device Secure Sign In OR Continue with Google Sign In with OTP Forgot Password Start 14-Day Free Trial Accept Invitation Code New workshop? Start a 14-day trial. Joining a firm? Accept an invitation from your jeweller. A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE A PRODUCT BY AVS — ARIVAHLY VENTURE SPHERE PRODUCT Features About Pricing Contact LEGAL Privacy Policy Terms of Service Refund Policy © 2026 Arivahly Venture Sphere. AVS ERP jewellery manufacturing ERP. arivahly.in Cookies & privacy We",
+          "hasCrash": false
+        }
+      ]
+    },
+    {
+      "id": "shop5190",
+      "baseURL": "https://maatarajewellers.shop",
+      "screens": [
+        {
+          "route": "/app",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Skip to main content ERP GOLD RATE Rs. 7,000/g 22K | Active Current Branch: QA Main Branch EN हिन्दी मराठी বাংলা mtj.qa.firm-owner.20260731 owner M HOME MASTER TRANSACTION PAYROLL BARCODE UTILITY REPORTS PRODUCTION GST / ESTIMATE SCHEME BULLION AVS PLATFORM HOME › Dashboard Good day Daily operations overview DAILY OPERATIONS Sale Purchase Jama Slip / Receipt / Jama Bhugtan / Payment / Nave Account Master — Party / Grahak Item Design Orders Accountwise Summary / Details Cash Book Karigar Issue / Return Item Stock / Ready Stock Reports Hub 13 13-Stage Historical Data & Opening Balance Setup Defe",
+          "hasCrash": false
+        },
+        {
+          "route": "/people",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Skip to main content ERP GOLD RATE Rs. 7,000/g 22K | Active Current Branch: QA Main Branch EN हिन्दी मराठी বাংলা mtj.qa.firm-owner.20260731 owner M HOME MASTER TRANSACTION PAYROLL BARCODE UTILITY REPORTS PRODUCTION GST / ESTIMATE SCHEME BULLION AVS PLATFORM MASTER › Account Master People Directory Party / Grahak, firms, Karigar, employees and vendors — one clean registry for the whole shop. Add Party / Grahak Add Firm Add Karigar / Worker Add Employee Add Vendor Party / Grahak 0 Firms 0 Karigar / Workers 0 Employees 0 Vendors / Bahari Kaam / Outsideers 0 KYC Documents 41 Name Phone Type Gold C",
+          "hasCrash": false
+        },
+        {
+          "route": "/stock",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Skip to main content ERP GOLD RATE Rs. 7,000/g 22K | Active Current Branch: QA Main Branch EN हिन्दी मराठी বাংলা mtj.qa.firm-owner.20260731 owner M HOME MASTER TRANSACTION PAYROLL BARCODE UTILITY REPORTS PRODUCTION GST / ESTIMATE SCHEME BULLION AVS PLATFORM BARCODE › Item Stock / Ready Stock INVENTORY DESK Ready stock Work with real finished jewellery inventory, status, location, barcode, and movement history. Refresh MATCHING ITEMS ... AVAILABLE ... PAGE GOLD 0.000 g PAGE 1 / 1 Add ready stock Scan barcode Stock verification Stock register Server-paginated inventory with RLS-backed search and",
+          "hasCrash": false
+        },
+        {
+          "route": "/orders",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Skip to main content ERP GOLD RATE Rs. 7,000/g 22K | Active Current Branch: QA Main Branch EN हिन्दी मराठी বাংলা mtj.qa.firm-owner.20260731 owner M HOME MASTER TRANSACTION PAYROLL BARCODE UTILITY REPORTS PRODUCTION GST / ESTIMATE SCHEME BULLION AVS PLATFORM PRODUCTION › Orders Orders Browse, search, and manage Party / Grahak jewelry design orders. Create Order All statuses All types Loading orders Fetching the order register from Supabase. Workflow: Order → Job Card → Receive Work → Stock → Billing → Daily Close. Getting Started This sidebar is your main navigation — every module for orders, g",
+          "hasCrash": false
+        },
+        {
+          "route": "/billing",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Restoring workspace… Skip to main content ERP GOLD RATE Rs. NOT SET 22K | awaiting setup Current Branch: Main Branch EN हिन्दी मराठी বাংলা mtj.qa.firm-owner.20260731 owner M HOME MASTER TRANSACTION PAYROLL BARCODE UTILITY REPORTS PRODUCTION GST / ESTIMATE SCHEME BULLION AVS PLATFORM TRANSACTION › Sale Sales Billing Invoice register — ready stock, GST, payments and print stay on this module. Credit Notes Debit Notes Estimates & Quotations Delivery Challans Supplier Purchases New Settlement New Invoice INVOICES 0 COLLECTED ₹ 0.00 OUTSTANDING ₹ 0.00 Invoice Register New Invoice Outstanding Custom",
+          "hasCrash": false
+        },
+        {
+          "route": "/ledger",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": false,
+          "error": null,
+          "sample": "",
+          "hasCrash": false
+        },
+        {
+          "route": "/workshop",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": false,
+          "error": null,
+          "sample": "",
+          "hasCrash": false
+        },
+        {
+          "route": "/reports",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": false,
+          "error": null,
+          "sample": "",
+          "hasCrash": false
+        },
+        {
+          "route": "/reports/gold-ledger",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": false,
+          "error": null,
+          "sample": "",
+          "hasCrash": false
+        },
+        {
+          "route": "/reports/sales-register",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": false,
+          "error": null,
+          "sample": "",
+          "hasCrash": false
+        },
+        {
+          "route": "/settings",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Restoring workspace… Skip to main content ERP GOLD RATE Rs. NOT SET 22K | awaiting setup Current Branch: QA Main Branch EN हिन्दी मराठी বাংলা mtj.qa.firm-owner.20260731 owner M HOME MASTER TRANSACTION PAYROLL BARCODE UTILITY REPORTS PRODUCTION GST / ESTIMATE SCHEME BULLION AVS PLATFORM MASTER Settings Brand, WhatsApp, firm, masters, compliance, hardware, and backup. Brand Settings Product identity, logo, colors, support details, and print branding. Subscription & Billing Plans, invoices, secure payments, receipts, and usage credits. WhatsApp Settings Providers, WasenderAPI, templates, automati",
+          "hasCrash": false
+        },
+        {
+          "route": "/barcode",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Skip to main content ERP GOLD RATE Rs. 7,000/g 22K | Active Current Branch: QA Main Branch EN हिन्दी मराठी বাংলা mtj.qa.firm-owner.20260731 owner M HOME MASTER TRANSACTION PAYROLL BARCODE UTILITY REPORTS PRODUCTION GST / ESTIMATE SCHEME BULLION AVS PLATFORM BARCODE › Barcode IDENTIFICATION Barcode & tagging Search, identify, and print the active barcode records already connected to manufacturing and stock flows. Refresh TOTAL BARCODES 0 ACTIVE 0 TAGGED 0 DELIVERED 0 Scan barcode Latest barcode records No barcode records found. Getting Started This sidebar is your main navigation — every module",
+          "hasCrash": false
+        },
+        {
+          "route": "/utilities",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Skip to main content ERP GOLD RATE Rs. 7,000/g 22K | Active Current Branch: QA Main Branch EN हिन्दी मराठी বাংলা mtj.qa.firm-owner.20260731 owner M HOME MASTER TRANSACTION PAYROLL BARCODE UTILITY REPORTS PRODUCTION GST / ESTIMATE SCHEME BULLION AVS PLATFORM UTILITY › Utilities Hub OFFLINE PARITY Utilities & Masters Every Offline ERP utility/master name is listed here and opens the AVS ERP screen (live or alias). Gold Vault and money vouchers remain the only SoT. Showing 46 of 46 utilities / masters / txns Master Account alias AVS: People (Party 360) Parties — customers, suppliers, karigars. Ma",
+          "hasCrash": false
+        },
+        {
+          "route": "/mobile/work",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": false,
+          "error": null,
+          "sample": "",
+          "hasCrash": false
+        },
+        {
+          "route": "/mobile/business",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": false,
+          "error": null,
+          "sample": "",
+          "hasCrash": false
+        },
+        {
+          "route": "/mobile/reports",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": false,
+          "error": null,
+          "sample": "",
+          "hasCrash": false
+        },
+        {
+          "route": "/mobile/more",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": false,
+          "error": null,
+          "sample": "",
+          "hasCrash": false
+        },
+        {
+          "route": "/verify",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Reports Verify Receipt Scan a QR code from any AVS printout, enter a document number (e.g. Order No, Invoice No), or paste the payload manually. Scan with camera Start camera Or enter document number / paste payload Verify Paste from clipboard Paste-based verification works on every device. Camera scanning requires a browser that supports the Web BarcodeDetector API and camera access.",
+          "hasCrash": false
+        },
+        {
+          "route": "/customer-portal",
+          "title": "AVS ERP — Jewellery Ecosystem ERP",
+          "ok": true,
+          "error": null,
+          "sample": "Skip to main content ERP M GOOD MORNING · 30 AUG 2026 Today's position MTJ QA Firm A GOLD POSITION · VAULT 22K GOLD RATE ₹7,000/g Transaction Module — People 360 Accept invitation 0 invoice(s) today · ledger needs review Open orders: 0 · Ready stock: 0.000 g AVS ERP MOBILE · 1/14 Getting Started Home dashboard and workspace. Same ERP as desktop — mobile only changes layout. Back Skip Next Home Production Transaction Reports More Ornexa Assistant Deterministic Core Permission-Aware Business Intelligence (Ctrl+J) Auto-read QUICK: Teach me AVS ERP Where is my Gold? Firm Gold Position Receivables ",
+          "hasCrash": false
+        },
+        {
+          "route": "/login",
+          "title": null,
+          "ok": false,
+          "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for getByTestId('auth-submit')\n    - locator resolved to <button type=\"submit\" id=\"btn-auth-submit\" data-testid=\"auth-submit\" class=\"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm text-sm cursor-pointer duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none [&_svg]:pointer-events-none [&_svg]:size-4 [&…>Secure Sign In</button>\n  - attempting click action\n    - waiting for element to be visible, enabled and stable\n    - element is not stable\n  - retrying click action\n    - waiting for element to be visible, enabled and stable\n  - element was detached from the DOM, retrying\n",
+          "sample": null,
+          "hasCrash": false
+        }
+      ]
+    }
+  ],
+  "matchRate": 0.05
+}

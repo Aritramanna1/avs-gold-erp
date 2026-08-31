@@ -1,0 +1,97 @@
+{
+  "generatedAt": "2026-08-30T15:01:25.452Z",
+  "project": "https://dqgrrafuoxaorvyrcuuh.supabase.co",
+  "localAug30MigrationFiles": [
+    "20260830120000_gold_ledger_page_perf.sql",
+    "20260830140000_rls_initplan_cpu_fix.sql",
+    "20260830160000_document_hosting_retention_and_rate_limits.sql",
+    "20260830160000_egress_rate_limit_hot_rpcs.sql",
+    "20260830170000_platform_database_health_observability.sql",
+    "20260830180000_boot_operational_query_perf.sql",
+    "20260830190000_gold_ledger_balances_page_order.sql",
+    "20260830200000_bank_recon_statement_and_verify_rpcs.sql",
+    "20260830210000_expand_api_rate_limits.sql",
+    "20260830220000_disable_public_trial_signup.sql",
+    "20260830230000_fix_provision_public_trial_overload.sql",
+    "20260830240000_fix_auth_context_readonly_login.sql",
+    "20260830250000_platform_workspace_role_parity.sql",
+    "20260830260000_fix_auth_context_infer_active_workspace.sql",
+    "20260830270000_fix_stable_rpc_rate_limit_readonly.sql",
+    "20260830280000_item_groups_and_inventory_master_link.sql"
+  ],
+  "objectProbe": [
+    {
+      "id": "item_groups",
+      "kind": "table",
+      "qaStatus": "missing (404)",
+      "required": true
+    },
+    {
+      "id": "portal_kyc_documents",
+      "kind": "table",
+      "qaStatus": "missing (404)",
+      "required": true
+    },
+    {
+      "id": "api_rate_limits",
+      "kind": "table",
+      "qaStatus": "missing (404)",
+      "required": false
+    },
+    {
+      "id": "document_shares",
+      "kind": "table",
+      "qaStatus": "applied",
+      "required": true
+    },
+    {
+      "id": "get_gold_ledger_page",
+      "kind": "rpc",
+      "migration": "20260830120000 / 20260830190000",
+      "qaStatus": "applied",
+      "required": true
+    },
+    {
+      "id": "mark_my_portal_kyc_doc",
+      "kind": "rpc",
+      "migration": "20260830190000",
+      "qaStatus": "probe 404",
+      "required": true
+    },
+    {
+      "id": "resolve_document_share",
+      "kind": "rpc",
+      "migration": "20260830160000",
+      "qaStatus": "applied",
+      "required": true
+    },
+    {
+      "id": "check_api_rate_limit",
+      "kind": "rpc",
+      "migration": "20260830160000 / 20260830210000",
+      "qaStatus": "exists_internal",
+      "required": true
+    },
+    {
+      "id": "provision_public_trial",
+      "kind": "rpc_blocked",
+      "migration": "20260830220000",
+      "qaStatus": "blocked_as_expected",
+      "required": true
+    },
+    {
+      "id": "get_home_dashboard_summary",
+      "kind": "rpc",
+      "migration": "baseline",
+      "qaStatus": "applied",
+      "required": true
+    }
+  ],
+  "blockers": [
+    "item_groups",
+    "portal_kyc_documents",
+    "api_rate_limits",
+    "item_groups requires owner DB apply of 20260830280000 (CLI blocked: SUPABASE_DB_PASSWORD)"
+  ],
+  "applyBlockedReason": "supabase db query --linked requires SUPABASE_DB_PASSWORD; migration history drift prevents db push without repair"
+}

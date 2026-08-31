@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' data: blob: capacitor: https://localhost; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: capacitor:; font-src 'self' data:; connect-src 'self' https: wss: capacitor: https://localhost https://*.supabase.co wss://*.supabase.co; media-src 'self' data: blob: capacitor:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+    />
+    <title>AVS ERP — Jewellery Ecosystem ERP</title>
+    <meta
+      name="description"
+      content="AVS ERP / Onyxa — Manufacturing-first jewellery ERP with gold custody, karigar management, GST billing, and invitation-only access. Jewellery ERP India."
+    />
+    <meta name="keywords" content="jewellery ERP, jewellery manufacturing software, gold ERP India, karigar management, AVS ERP, jewellery factory software" />
+    <meta property="og:title" content="AVS ERP — Jewellery Ecosystem ERP" />
+    <meta property="og:description" content="Manufacturing-first jewellery ERP with gold traceability and karigar custody." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href="/assets/ornexa-mark.png?v=20260819" sizes="96x96" />
+    <link rel="icon" type="image/png" href="/assets/ornexa-mark.png?v=20260819" />
+    <link rel="shortcut icon" href="/assets/ornexa-mark.png?v=20260819" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/ornexa-mark.png?v=20260819" />
+    <meta name="apple-mobile-web-app-title" content="AVS ERP" />
+    <link rel="manifest" href="/site.webmanifest?v=20260705" />
+    <!-- Instant boot skeleton: paints before any JS/CSS bundle so the user
+         never sees a blank white screen — and never a spinning circle. It is
+         shaped like the app shell (sidebar rail + header + module body) so it
+         reads as "the app is arriving", matching the React <AppBootSkeleton>
+         that takes over. React's createRoot replaces #root's children on
+         mount, so this clears itself with zero extra JS. -->
+    <!-- Set the theme class on <html> BEFORE any paint, from the same
+         localStorage key ThemeProvider uses (default light). This makes the
+         splash below AND the React skeleton match the user's theme from the
+         first frame — no black screen in Light Mode, no flash. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("mtj-app-theme") || "light";
+          var dark =
+            t === "dark" ||
+            (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.add(dark ? "dark" : "light");
+        } catch (e) {
+          document.documentElement.classList.add("light");
+        }
+      })();
+    </script>
+    <style>
+      /* Theme-aware splash: light by default, dark only when <html> carries the
+         .dark class the script above (and later ThemeProvider) sets. */
+      #boot-splash {
+        --bs-bg: #faf9f5;
+        --bs-border: #e7e5e0;
+        --bs-bar-a: #e7e5e0;
+        --bs-bar-b: #f2f0ec;
+        position: fixed;
+        inset: 0;
+        display: flex;
+        background: var(--bs-bg);
+        z-index: 2147483647;
+      }
+      html.dark #boot-splash {
+        --bs-bg: #141318;
+        --bs-border: #26262f;
+        --bs-bar-a: #14141b;
+        --bs-bar-b: #1e1e28;
+      }
+      #boot-splash .bs-rail {
+        width: 256px;
+        flex-shrink: 0;
+        border-right: 1px solid var(--bs-border);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      #boot-splash .bs-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      #boot-splash .bs-header {
+        height: 64px;
+        border-bottom: 1px solid var(--bs-border);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 32px;
+      }
+      #boot-splash .bs-body {
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      #boot-splash .bs-cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+      #boot-splash .bs-bar {
+        border-radius: 8px;
+        background: linear-gradient(
+          90deg,
+          var(--bs-bar-a) 25%,
+          var(--bs-bar-b) 37%,
+          var(--bs-bar-a) 63%
+        );
+        background-size: 400% 100%;
+        animation: bs-shimmer 1.4s ease infinite;
+      }
+      @keyframes bs-shimmer {
+        0% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0 50%;
+        }
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-DtYbHvEa.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-aKtaBQYM.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-charts-Bv77YuA6.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-BbySHAOQ.js">
+    <link rel="modulepreload" crossorigin href="/assets/useRouter-B9k4xCGr.js">
+    <link rel="modulepreload" crossorigin href="/assets/matchContext-BlZdT3zq.js">
+    <link rel="modulepreload" crossorigin href="/assets/useStore-BgDmhNqo.js">
+    <link rel="modulepreload" crossorigin href="/assets/ClientOnly-DfSBraD0.js">
+    <link rel="modulepreload" crossorigin href="/assets/not-found-i5RsCZif.js">
+    <link rel="modulepreload" crossorigin href="/assets/redirect-D3L17tzd.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-CC4AhQPs.js">
+    <link rel="modulepreload" crossorigin href="/assets/Match-wlSxhK07.js">
+    <link rel="modulepreload" crossorigin href="/assets/link-6fVuz00-.js">
+    <link rel="modulepreload" crossorigin href="/assets/useMatch-ChgqzlXh.js">
+    <link rel="modulepreload" crossorigin href="/assets/useParams-1dy6tnhi.js">
+    <link rel="modulepreload" crossorigin href="/assets/useSearch-DQGrLgJL.js">
+    <link rel="modulepreload" crossorigin href="/assets/useNavigate-CJ5OSqdF.js">
+    <link rel="modulepreload" crossorigin href="/assets/fileRoute-D-KADs5i.js">
+    <link rel="modulepreload" crossorigin href="/assets/lazyRouteComponent-DEsFxhyx.js">
+    <link rel="modulepreload" crossorigin href="/assets/useRouterState-BUSYVWZd.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-jspdf-B4GrIcJL.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-supabase-DyReoeFf.js">
+    <link rel="modulepreload" crossorigin href="/assets/supabase-egress-monitor-DguaorWF.js">
+    <link rel="modulepreload" crossorigin href="/assets/client-Cimbf6d0.js">
+    <link rel="modulepreload" crossorigin href="/assets/data-provider-BiPx7OEV.js">
+    <link rel="modulepreload" crossorigin href="/assets/website-service-BvG4Ufwi.js">
+    <link rel="modulepreload" crossorigin href="/assets/createLucideIcon-CHJvbPx4.js">
+    <link rel="modulepreload" crossorigin href="/assets/chart-column-CI4AUEtA.js">
+    <link rel="modulepreload" crossorigin href="/assets/layers-Cc0y1R_y.js">
+    <link rel="modulepreload" crossorigin href="/assets/list-CTkgfmvg.js">
+    <link rel="modulepreload" crossorigin href="/assets/arrow-left-right-Be2GMyYe.js">
+    <link rel="modulepreload" crossorigin href="/assets/bell-Dnd9PiWI.js">
+    <link rel="modulepreload" crossorigin href="/assets/book-open-CoZE-141.js">
+    <link rel="modulepreload" crossorigin href="/assets/briefcase-DgCxuUBI.js">
+    <link rel="modulepreload" crossorigin href="/assets/building-2-QQxvsAc3.js">
+    <link rel="modulepreload" crossorigin href="/assets/file-spreadsheet-C8FVJYYV.js">
+    <link rel="modulepreload" crossorigin href="/assets/file-text-C_EY97yl.js">
+    <link rel="modulepreload" crossorigin href="/assets/gem-sYFcyYUT.js">
+    <link rel="modulepreload" crossorigin href="/assets/hammer-D9ZF8mg8.js">
+    <link rel="modulepreload" crossorigin href="/assets/landmark-Ce9CDxQA.js">
+    <link rel="modulepreload" crossorigin href="/assets/mail-B7UWs-Ic.js">
+    <link rel="modulepreload" crossorigin href="/assets/message-square-CmrHS_Bd.js">
+    <link rel="modulepreload" crossorigin href="/assets/package-DMKmAFT-.js">
+    <link rel="modulepreload" crossorigin href="/assets/printer-DDtviric.js">
+    <link rel="modulepreload" crossorigin href="/assets/receipt-DNViDsxX.js">
+    <link rel="modulepreload" crossorigin href="/assets/scale-BcQdsQFu.js">
+    <link rel="modulepreload" crossorigin href="/assets/scan-line-OviVYlar.js">
+    <link rel="modulepreload" crossorigin href="/assets/settings-CNj4zvSA.js">
+    <link rel="modulepreload" crossorigin href="/assets/shield-check-DUGIONhz.js">
+    <link rel="modulepreload" crossorigin href="/assets/shopping-bag-FwcFkX4b.js">
+    <link rel="modulepreload" crossorigin href="/assets/trending-down-Bq1sb0B6.js">
+    <link rel="modulepreload" crossorigin href="/assets/truck-CmThsaUs.js">
+    <link rel="modulepreload" crossorigin href="/assets/user-Dz8jJEt4.js">
+    <link rel="modulepreload" crossorigin href="/assets/users-Db3FDA9k.js">
+    <link rel="modulepreload" crossorigin href="/assets/wallet-CqXoJrEZ.js">
+    <link rel="modulepreload" crossorigin href="/assets/wrench-B4HTOvJi.js">
+    <link rel="modulepreload" crossorigin href="/assets/navigation-groups-BKp26uTT.js">
+    <link rel="modulepreload" crossorigin href="/assets/circle-alert-CCWv1fbW.js">
+    <link rel="modulepreload" crossorigin href="/assets/circle-check-Dn3p_grq.js">
+    <link rel="modulepreload" crossorigin href="/assets/loader-circle-BHbTnCGy.js">
+    <link rel="modulepreload" crossorigin href="/assets/sparkles-B8-eWyQD.js">
+    <link rel="modulepreload" crossorigin href="/assets/arrow-left-Qi-okZR9.js">
+    <link rel="modulepreload" crossorigin href="/assets/arrow-right-CK-QJBL4.js">
+    <link rel="modulepreload" crossorigin href="/assets/check-FN7jQh3Y.js">
+    <link rel="modulepreload" crossorigin href="/assets/chevron-down-CKL6ZQQV.js">
+    <link rel="modulepreload" crossorigin href="/assets/chevron-right-B9nq5ii1.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-Sx8oDgAi.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-BAmwXWJf.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-C6ddSntr.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-DBE-6UvA.js">
+    <link rel="modulepreload" crossorigin href="/assets/es2015-LGZmRX_O.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-b90mnwwx.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-DNJowX4i.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-evC1liYY.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-Cv74YzXr.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-DVEMw4HQ.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-CSPRp9Do.js">
+    <link rel="modulepreload" crossorigin href="/assets/select-D1jrDSot.js">
+    <link rel="modulepreload" crossorigin href="/assets/coins-ByguRI3t.js">
+    <link rel="modulepreload" crossorigin href="/assets/download-fF6jkDDz.js">
+    <link rel="modulepreload" crossorigin href="/assets/external-link-BRHq8cLv.js">
+    <link rel="modulepreload" crossorigin href="/assets/layout-grid-St5Piz_l.js">
+    <link rel="modulepreload" crossorigin href="/assets/lock-C63_ev-U.js">
+    <link rel="modulepreload" crossorigin href="/assets/plus-CadKpSUT.js">
+    <link rel="modulepreload" crossorigin href="/assets/refresh-cw-D6i8jdX2.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-CpanW9W2.js">
+    <link rel="modulepreload" crossorigin href="/assets/button-DpMl8nr4.js">
+    <link rel="modulepreload" crossorigin href="/assets/web-app-state-LKzGlEPm.js">
+    <link rel="modulepreload" crossorigin href="/assets/search-DYrBIuT4.js">
+    <link rel="modulepreload" crossorigin href="/assets/upload-DRMLg-f3.js">
+    <link rel="modulepreload" crossorigin href="/assets/x-Bczo787_.js">
+    <link rel="modulepreload" crossorigin href="/assets/react-yId0ar3t.js">
+    <link rel="modulepreload" crossorigin href="/assets/settings-store-BXUarrxy.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-DsyeVslx.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-YOux573B.js">
+    <link rel="modulepreload" crossorigin href="/assets/input-CXAiBfFe.js">
+    <link rel="modulepreload" crossorigin href="/assets/label-kmfodFZp.js">
+    <link rel="modulepreload" crossorigin href="/assets/bullion-rate-service-BN356Ddk.js">
+    <link rel="modulepreload" crossorigin href="/assets/role-resolution-yLd6-Ip7.js">
+    <link rel="modulepreload" crossorigin href="/assets/rbac-1mFzCtk6.js">
+    <link rel="modulepreload" crossorigin href="/assets/image-compression-C-0E2ngb.js">
+    <link rel="modulepreload" crossorigin href="/assets/supabase-storage-Cd4t4aup.js">
+    <link rel="modulepreload" crossorigin href="/assets/Logo-Bppn0d-T.js">
+    <link rel="modulepreload" crossorigin href="/assets/crm-gUsXoi77.js">
+    <link rel="modulepreload" crossorigin href="/assets/ledger-DSwkepID.js">
+    <link rel="modulepreload" crossorigin href="/assets/manufacturing-C84KC8l0.js">
+    <link rel="modulepreload" crossorigin href="/assets/melt-DDrjbyI0.js">
+    <link rel="modulepreload" crossorigin href="/assets/repair-BsMEmuJY.js">
+    <link rel="modulepreload" crossorigin href="/assets/middleware-Pd0e8Igk.js">
+    <link rel="modulepreload" crossorigin href="/assets/terminology-engine-store-Df2vp4fc.js">
+    <link rel="modulepreload" crossorigin href="/assets/LanguageContext-BOkoA3D9.js">
+    <link rel="modulepreload" crossorigin href="/assets/communication-events-B1xI272D.js">
+    <link rel="modulepreload" crossorigin href="/assets/base-repository-BQkWz6Aj.js">
+    <link rel="modulepreload" crossorigin href="/assets/workflow-engine-DqAZ2q46.js">
+    <link rel="modulepreload" crossorigin href="/assets/device-registry-DD2Ftjh1.js">
+    <link rel="modulepreload" crossorigin href="/assets/audit-log-BbnK8osV.js">
+    <link rel="modulepreload" crossorigin href="/assets/financial-lock-store-RsuzUW-h.js">
+    <link rel="modulepreload" crossorigin href="/assets/branch-scope-BgHikFrd.js">
+    <link rel="modulepreload" crossorigin href="/assets/ledger-pagination-6i0TpHuY.js">
+    <link rel="modulepreload" crossorigin href="/assets/ledger-store-ufirhsCR.js">
+    <link rel="modulepreload" crossorigin href="/assets/purity-grades-store-J5pQ-4Ui.js">
+    <link rel="modulepreload" crossorigin href="/assets/gold-CgCimYBV.js">
+    <link rel="modulepreload" crossorigin href="/assets/gold-lineage-emitter-CgSsVAGh.js">
+    <link rel="modulepreload" crossorigin href="/assets/firm-scoped-app-settings-B647iJDz.js">
+    <link rel="modulepreload" crossorigin href="/assets/firm-scoped-query-CtR3kvr-.js">
+    <link rel="modulepreload" crossorigin href="/assets/module-store-BXAsG5xR.js">
+    <link rel="modulepreload" crossorigin href="/assets/document-numbering--OyP5o_q.js">
+    <link rel="modulepreload" crossorigin href="/assets/billing-store-DKJoEZvy.js">
+    <link rel="modulepreload" crossorigin href="/assets/orders-store-C7Jbn4vS.js">
+    <link rel="modulepreload" crossorigin href="/assets/attachments-store-OfD1kSGQ.js">
+    <link rel="modulepreload" crossorigin href="/assets/gold-settlement-store-BgWf6A8_.js">
+    <link rel="modulepreload" crossorigin href="/assets/gold-calculation-rules-store-DXD90EbF.js">
+    <link rel="modulepreload" crossorigin href="/assets/worker-gold-book-store-BhbGbUfJ.js">
+    <link rel="modulepreload" crossorigin href="/assets/jobcards-store-CONCubYY.js">
+    <link rel="modulepreload" crossorigin href="/assets/comm-settings-store-DQ59HI7O.js">
+    <link rel="modulepreload" crossorigin href="/assets/repair-store-DzEmRCsB.js">
+    <link rel="modulepreload" crossorigin href="/assets/sequence-manager-Dp54h90Y.js">
+    <link rel="modulepreload" crossorigin href="/assets/billing-documents-store-BiCbI4Gw.js">
+    <link rel="modulepreload" crossorigin href="/assets/edge-function-error-ClCFvwO6.js">
+    <link rel="modulepreload" crossorigin href="/assets/comm-log-store-CCsflM98.js">
+    <link rel="modulepreload" crossorigin href="/assets/hostinger-client-xptwnWa-.js">
+    <link rel="modulepreload" crossorigin href="/assets/public-origin-D3hDXzDA.js">
+    <link rel="modulepreload" crossorigin href="/assets/link-hosts-CuV21B7V.js">
+    <link rel="modulepreload" crossorigin href="/assets/custody-flow-query-TlXZY-wg.js">
+    <link rel="modulepreload" crossorigin href="/assets/worker-return-store-BDQiw8rk.js">
+    <link rel="modulepreload" crossorigin href="/assets/outside-work-query-Ctq99LHe.js">
+    <link rel="modulepreload" crossorigin href="/assets/outside-work-store-BruWDZUV.js">
+    <link rel="modulepreload" crossorigin href="/assets/outside-work-labour-store-EACloTGO.js">
+    <link rel="modulepreload" crossorigin href="/assets/polishing-store-DIfAB7ba.js">
+    <link rel="modulepreload" crossorigin href="/assets/material-vault-store-CUqE7tPg.js">
+    <link rel="modulepreload" crossorigin href="/assets/manufacturing-bill-store-Cykxt8MB.js">
+    <link rel="modulepreload" crossorigin href="/assets/transaction-types-store-Z4BqAzu8.js">
+    <link rel="modulepreload" crossorigin href="/assets/universal-transaction-bridge-Bm_l70-s.js">
+    <link rel="modulepreload" crossorigin href="/assets/party-opening-balances-CcV9fQlq.js">
+    <link rel="modulepreload" crossorigin href="/assets/ledger-voucher-routes-DYQFp6HG.js">
+    <link rel="modulepreload" crossorigin href="/assets/money-voucher-D_GX5lXu.js">
+    <link rel="modulepreload" crossorigin href="/assets/customer-account-ledger-D2Udh_Ct.js">
+    <link rel="modulepreload" crossorigin href="/assets/settlement-store-alkRBNFV.js">
+    <link rel="modulepreload" crossorigin href="/assets/workers-store-CRpjljvU.js">
+    <link rel="modulepreload" crossorigin href="/assets/portal-scope-store-CN0hmhkW.js">
+    <link rel="modulepreload" crossorigin href="/assets/platform-ueQlkFLk.js">
+    <link rel="modulepreload" crossorigin href="/assets/portal-offline-cache-CCH61T2a.js">
+    <link rel="modulepreload" crossorigin href="/assets/authorization-context-store-CSC-Im_G.js">
+    <link rel="modulepreload" crossorigin href="/assets/permissions-PjZz7amt.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-CWh39ijW.js">
+    <link rel="modulepreload" crossorigin href="/assets/app-info-B4UJv40Y.js">
+    <link rel="modulepreload" crossorigin href="/assets/startup-preferences-D8x6m2TR.js">
+    <link rel="modulepreload" crossorigin href="/assets/startup-metrics-BQSPTmeE.js">
+    <link rel="modulepreload" crossorigin href="/assets/branch-store-B-QfC5MZ.js">
+    <link rel="modulepreload" crossorigin href="/assets/tenant-context-store-DKs30I1_.js">
+    <link rel="modulepreload" crossorigin href="/assets/sheet-DZxI1xtq.js">
+    <link rel="modulepreload" crossorigin href="/assets/network-CFd67GTX.js">
+    <link rel="modulepreload" crossorigin href="/assets/storage-pZIaJ5v0.js">
+    <link rel="modulepreload" crossorigin href="/assets/queue-CSViKIGd.js">
+    <link rel="modulepreload" crossorigin href="/assets/expenses-store--adpOWth.js">
+    <link rel="modulepreload" crossorigin href="/assets/stock-store-Bv_cKWTb.js">
+    <link rel="modulepreload" crossorigin href="/assets/supplier-purchases-store-BgL7fpnc.js">
+    <link rel="modulepreload" crossorigin href="/assets/melt-store-BDfy29Mm.js">
+    <link rel="modulepreload" crossorigin href="/assets/offline-iTWAMl9n.js">
+    <link rel="modulepreload" crossorigin href="/assets/app-loading-store-Fx3-69fm.js">
+    <link rel="modulepreload" crossorigin href="/assets/card-DK49iAKU.js">
+    <link rel="modulepreload" crossorigin href="/assets/communication-jobs-store-837ExkC8.js">
+    <link rel="modulepreload" crossorigin href="/assets/comm-queue-BV3lZ3WT.js">
+    <link rel="modulepreload" crossorigin href="/assets/license-store-CLU_njTV.js">
+    <link rel="modulepreload" crossorigin href="/assets/knowledge-repository-DkZsfc5i.js">
+    <link rel="modulepreload" crossorigin href="/assets/assistant-tool-registry-CPwkxbWC.js">
+    <link rel="modulepreload" crossorigin href="/assets/public-site-url-BoAJxi1V.js">
+    <link rel="modulepreload" crossorigin href="/assets/app-surface-DI-eyCaY.js">
+    <link rel="modulepreload" crossorigin href="/assets/print-engine-DYmFiKAU.js">
+    <link rel="modulepreload" crossorigin href="/assets/textarea-CDneb2lH.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-CRFsVcVq.css">
+  </head>
+  <body>
+    <div id="root">
+      <div id="boot-splash" aria-label="Loading AVS ERP">
+        <div class="bs-rail">
+          <div class="bs-bar" style="height: 36px"></div>
+          <div class="bs-bar" style="height: 32px; margin-top: 12px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+          <div class="bs-bar" style="height: 32px"></div>
+        </div>
+        <div class="bs-main">
+          <div class="bs-header">
+            <div class="bs-bar" style="height: 32px; width: 160px"></div>
+            <div class="bs-bar" style="height: 32px; width: 96px; margin-left: auto"></div>
+            <div class="bs-bar" style="height: 36px; width: 36px; border-radius: 50%"></div>
+            <div class="bs-bar" style="height: 36px; width: 120px; border-radius: 999px"></div>
+          </div>
+          <div class="bs-body">
+            <div class="bs-bar" style="height: 32px; width: 240px"></div>
+            <div class="bs-cards">
+              <div class="bs-bar" style="height: 92px"></div>
+              <div class="bs-bar" style="height: 92px"></div>
+              <div class="bs-bar" style="height: 92px"></div>
+              <div class="bs-bar" style="height: 92px"></div>
+            </div>
+            <div class="bs-bar" style="height: 320px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

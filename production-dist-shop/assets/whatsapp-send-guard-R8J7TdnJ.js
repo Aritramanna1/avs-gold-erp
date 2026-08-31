@@ -1,0 +1,1 @@
+var e=new Map,t=8e3;function n(e){return[e.branchId??`MAIN`,e.phone??``,e.message??``,e.documentUrl??``].join(`|`)}function r(n){let r=e.get(n),i=Date.now();if(r!=null&&i-r<t)return!0;if(e.set(n,i),e.size>200)for(let[n,r]of e)i-r>t&&e.delete(n);return!1}export{r as n,n as t};

@@ -1,0 +1,73 @@
+{
+  "at": "2026-08-31T13:50:03.609Z",
+  "email": "mt***@example.com",
+  "expectedGroups": [
+    "HOME",
+    "MASTER",
+    "TRANSACTION",
+    "PAYROLL",
+    "BARCODE",
+    "UTILITY",
+    "REPORTS",
+    "PRODUCTION",
+    "GST / ESTIMATE",
+    "SCHEME",
+    "BULLION",
+    "AVS PLATFORM"
+  ],
+  "captures": [
+    {
+      "id": "localhost",
+      "baseURL": "http://localhost:3000",
+      "ok": true,
+      "error": null,
+      "title": "Login · AVS ERP",
+      "favicon": "/assets/ornexa-mark.png?v=20260819",
+      "groups": [
+        "HOME",
+        "MASTER",
+        "TRANSACTION",
+        "PAYROLL",
+        "BARCODE",
+        "UTILITY",
+        "REPORTS",
+        "PRODUCTION",
+        "GST / ESTIMATE",
+        "SCHEME",
+        "BULLION",
+        "AVS PLATFORM"
+      ],
+      "bodySample": "Skip to main content ERP GOLD RATE Rs. NOT SET 22K | awaiting setup Current Branch: QA Main Branch EN हिन्दी मराठी বাংলা 3 mtj.qa.firm-owner.20260731 owner M HOME MASTER TRANSACTION PAYROLL BARCODE UTILITY REPORTS PRODUCTION GST / ESTIMATE SCHEME BULLION AVS PLATFORM HOME › Dashboard Good day Daily operations overview DAILY OPERATIONS Sale Purchase Jama Slip / Receipt / Jama Bhugtan / Payment / Nave Account Master — Party / Grahak Item Design Orders Accountwise Summary / Details Cash Book Karigar Issue / Return Item Stock / Ready Stock Reports Hub Owner / manager snapshot Gold Rate Not Set The live gold rate is currently missing. Money values, karigar salary calculations, and invoices will display as blank or zero until set. Set Gold Rate Now Order Tracking TODAY'S SNAPSHOT VAULT GOLD 226824.182 g Balanced GOLD WITH KARIGAR 33032.567 g FINISHED STOCK 4402.387 g 21 in stock PARTY / GRAHAK GOLD HELD -4752.894 g OPEN ORDERS 415 418 total TODAY'S BILLING Rs. 0 0 bills today · 388 total Getting Started This sidebar is your main navigation — every module for orders, gold, manufacturing, and billing lives here. Start tour Guided Tours Skip Online | Company: MTJ QA Firm A | FY: 2026-",
+      "missingGroups": [],
+      "hasStaging": false,
+      "hasBadLabels": false
+    },
+    {
+      "id": "shop5190",
+      "baseURL": "https://maatarajewellers.shop",
+      "ok": true,
+      "error": null,
+      "title": "AVS ERP — Jewellery Ecosystem ERP",
+      "favicon": "./assets/ornexa-mark.png?v=20260819",
+      "groups": [
+        "HOME",
+        "MASTER",
+        "TRANSACTION",
+        "PAYROLL",
+        "BARCODE",
+        "UTILITY",
+        "REPORTS",
+        "PRODUCTION",
+        "GST / ESTIMATE",
+        "SCHEME",
+        "BULLION",
+        "AVS PLATFORM"
+      ],
+      "bodySample": "Skip to main content ERP GOLD RATE Rs. NOT SET 22K | awaiting setup Current Branch: QA Main Branch EN हिन्दी मराठी বাংলা 2 mtj.qa.firm-owner.20260731 owner M HOME MASTER TRANSACTION PAYROLL BARCODE UTILITY REPORTS PRODUCTION GST / ESTIMATE SCHEME BULLION AVS PLATFORM HOME › Dashboard Good day Daily operations overview DAILY OPERATIONS Sale Purchase Jama Slip / Receipt / Jama Bhugtan / Payment / Nave Account Master — Party / Grahak Item Design Orders Accountwise Summary / Details Cash Book Karigar Issue / Return Item Stock / Ready Stock Reports Hub Owner / manager snapshot Gold Rate Not Set The live gold rate is currently missing. Money values, karigar salary calculations, and invoices will display as blank or zero until set. Set Gold Rate Now Order Tracking TODAY'S SNAPSHOT VAULT GOLD 226824.182 g Balanced GOLD WITH KARIGAR 33032.567 g FINISHED STOCK 4402.387 g 21 in stock PARTY / GRAHAK GOLD HELD -4752.894 g OPEN ORDERS 415 418 total TODAY'S BILLING Rs. 0 0 bills today · 388 total Getting Started This sidebar is your main navigation — every module for orders, gold, manufacturing, and billing lives here. Start tour Guided Tours Skip Online | Company: MTJ QA Firm A | FY: 2026-",
+      "missingGroups": [],
+      "hasStaging": false,
+      "hasBadLabels": false
+    }
+  ],
+  "match": true
+}

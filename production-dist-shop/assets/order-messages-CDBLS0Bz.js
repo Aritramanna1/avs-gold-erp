@@ -1,0 +1,1 @@
+import{i as e,n as t,o as n,t as r}from"./wa-placeholders-hn9fxxM7.js";function i(i,a){return t(n.getState().templates.find(e=>e.kind===i&&e.active)?.body||e[i],r({orderId:a.id}))}function a(e){return i(`order_confirm`,e)}export{i as n,a as t};

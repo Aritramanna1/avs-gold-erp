@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";import{t}from"./useParams-1dy6tnhi.js";import{t as n}from"./PrintEngine-AvoNsqE-.js";var r=e();function i(){let{id:e}=t({from:`/billing/gold-settlement-print/$id`});return(0,r.jsx)(n,{docType:`gold_settlement`,recordId:e,backUrl:`/billing`})}export{i as component};

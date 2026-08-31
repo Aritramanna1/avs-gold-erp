@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-08-30T12:42:40.904Z",
+  "checks": [
+    {
+      "name": "dist_built",
+      "pass": true,
+      "detail": "entry=index-BqOvri0o.js"
+    },
+    {
+      "name": "pullCritical_45s",
+      "pass": true,
+      "detail": "45s staged-load timeout"
+    },
+    {
+      "name": "parallel_critical_pulls",
+      "pass": true,
+      "detail": "parallel catalog after app_settings"
+    },
+    {
+      "name": "people_firm_scope",
+      "pass": true,
+      "detail": "people list explicit firm_id"
+    },
+    {
+      "name": "prod_throttle_relaxed",
+      "pass": true,
+      "detail": "PROD 80 req/10s not 10"
+    },
+    {
+      "name": "transaction_calculations_module",
+      "pass": true,
+      "detail": "central calculation orchestrator present"
+    },
+    {
+      "name": "data_loader_chunk",
+      "pass": true,
+      "detail": "data-loader-DuEPEEH2.js"
+    }
+  ],
+  "summary": {
+    "pass": 7,
+    "fail": 0
+  }
+}

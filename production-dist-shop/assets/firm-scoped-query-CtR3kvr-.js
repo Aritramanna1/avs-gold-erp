@@ -1,0 +1,1 @@
+import{n as e}from"./rolldown-runtime-aKtaBQYM.js";import{r as t}from"./firm-scoped-app-settings-B647iJDz.js";var n=e({resolveFirmIdForQuery:()=>r,withFirmScope:()=>i});async function r(){return t().catch(()=>null)}function i(e,t){return t?e.eq(`firm_id`,t):e}export{r as n,i as r,n as t};

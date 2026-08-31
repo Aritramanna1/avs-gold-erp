@@ -1,0 +1,469 @@
+{
+  "generatedAt": "2026-08-30T15:11:51.945Z",
+  "frozenUrl": "http://localhost:3002",
+  "editableUrl": "http://localhost:3000",
+  "frozenBundle": "index-CVsE73i6.js",
+  "editableBundle": null,
+  "dataParity": {
+    "vault_gold_mg": 226824182,
+    "open_orders": 414,
+    "available_stock_count": 21,
+    "note": "same backend for both builds when both use QA Supabase"
+  },
+  "probes": [
+    {
+      "id": "bundle_identity",
+      "frozen": "index-CVsE73i6.js",
+      "editable": "dev (no hash)",
+      "match": true
+    },
+    {
+      "id": "login",
+      "path": "/login",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/login"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/login"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "dashboard",
+      "path": "/app",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/app"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/app"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "customers",
+      "path": "/people",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/people"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/people"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "karigars",
+      "path": "/people?tab=karigars",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/people?tab=karigars"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/people?tab=karigars"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "stock",
+      "path": "/stock",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/stock"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/stock"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "stock_entry",
+      "path": "/stock/entry",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/stock/entry"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/stock/entry"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "orders",
+      "path": "/orders",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/orders"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/orders"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "orders_new",
+      "path": "/orders/new",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/orders/new"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/orders/new"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "billing",
+      "path": "/billing",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/billing"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/billing"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "ledger",
+      "path": "/ledger",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/ledger"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/ledger"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "workshop",
+      "path": "/workshop",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/workshop"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/workshop"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "reports",
+      "path": "/reports",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/reports"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/reports"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "gold_ledger",
+      "path": "/reports/gold-ledger",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/reports/gold-ledger"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/reports/gold-ledger"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "settings",
+      "path": "/settings",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/settings"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/settings"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "barcode",
+      "path": "/barcode",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/barcode"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/barcode"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "utilities",
+      "path": "/utilities",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/utilities"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/utilities"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "item_masters",
+      "path": "/utilities/item-masters",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/utilities/item-masters"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/utilities/item-masters"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "customization",
+      "path": "/settings/customization",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/settings/customization"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/settings/customization"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "mobile",
+      "path": "/mobile",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/mobile"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/mobile"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "customer_portal",
+      "path": "/customer-portal",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/customer-portal"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/customer-portal"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "karigar_portal",
+      "path": "/karigar-portal",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/karigar-portal"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/karigar-portal"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "supplier_portal",
+      "path": "/supplier-portal",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/supplier-portal"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/supplier-portal"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "manufacturing",
+      "path": "/manufacturing",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/manufacturing"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/manufacturing"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "attendance",
+      "path": "/attendance",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/attendance"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/attendance"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "treasury",
+      "path": "/treasury/vouchers",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/treasury/vouchers"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/treasury/vouchers"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "purchases",
+      "path": "/billing/purchases",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/billing/purchases"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/billing/purchases"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "settlements",
+      "path": "/billing/settlement/new",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/billing/settlement/new"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/billing/settlement/new"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "bank_recon",
+      "path": "/treasury/bank-reconciliation",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/treasury/bank-reconciliation"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/treasury/bank-reconciliation"
+      },
+      "markerDiff": []
+    },
+    {
+      "id": "request_access",
+      "path": "/request-access",
+      "frozen": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3002/request-access"
+      },
+      "editable": {
+        "status": 200,
+        "markers": [],
+        "finalUrl": "http://localhost:3000/request-access"
+      },
+      "markerDiff": []
+    }
+  ],
+  "mismatches": [
+    {
+      "surface": "login",
+      "frozen": "request access or trial CTA",
+      "editable": "neither visible in SSR html",
+      "difference": "CTA may be client-rendered only",
+      "rootCause": "SPA — probe via browser not raw HTML",
+      "fix": "browser snapshot audit",
+      "verification": "browser snapshot"
+    }
+  ],
+  "mismatchCount": 1,
+  "verdict": "NOT PASS"
+}

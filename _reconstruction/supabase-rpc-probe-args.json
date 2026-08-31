@@ -1,0 +1,89 @@
+[
+  {
+    "name": "mint_invoice_verification",
+    "bodyKeys": [
+      "p_invoice_id"
+    ],
+    "http": 404,
+    "status": "NO_MATCHING_OVERLOAD_OR_MISSING",
+    "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.mint_invoice_verification with parameter p_invoice_id or with a single unnamed json/jsonb paramet"
+  },
+  {
+    "name": "verify_public_document",
+    "bodyKeys": [
+      "p_token"
+    ],
+    "http": 200,
+    "status": "OK",
+    "snippet": "{\"ok\": false, \"status\": \"invalid\", \"message\": \"This invoice could not be verified.\"}"
+  },
+  {
+    "name": "register_document_verification",
+    "bodyKeys": [
+      "p_document_type",
+      "p_document_id",
+      "p_firm_id"
+    ],
+    "http": 404,
+    "status": "NO_MATCHING_OVERLOAD_OR_MISSING",
+    "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.register_document_verification with parameters p_document_id, p_document_type, p_firm_id or with "
+  },
+  {
+    "name": "next_document_number",
+    "bodyKeys": [
+      "p_doc_type",
+      "p_branch_id"
+    ],
+    "http": 404,
+    "status": "NO_MATCHING_OVERLOAD_OR_MISSING",
+    "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.next_document_number with parameters p_branch_id, p_doc_type or with a single unnamed json/jsonb "
+  },
+  {
+    "name": "set_active_tenant_context",
+    "bodyKeys": [
+      "p_organization_id",
+      "p_product_id"
+    ],
+    "http": 401,
+    "status": "PRESENT",
+    "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function set_active_tenant_context\"}"
+  },
+  {
+    "name": "rpc_post_universal_transaction",
+    "bodyKeys": [
+      "p_payload"
+    ],
+    "http": 404,
+    "status": "NO_MATCHING_OVERLOAD_OR_MISSING",
+    "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.rpc_post_universal_transaction with parameter p_payload or with a single unnamed json/jsonb param"
+  },
+  {
+    "name": "get_gold_ledger_page",
+    "bodyKeys": [
+      "p_firm_id",
+      "p_limit",
+      "p_offset"
+    ],
+    "http": 404,
+    "status": "NO_MATCHING_OVERLOAD_OR_MISSING",
+    "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.get_gold_ledger_page with parameters p_firm_id, p_limit, p_offset or with a single unnamed json/j"
+  },
+  {
+    "name": "get_my_memberships",
+    "bodyKeys": [
+      "p_product_id"
+    ],
+    "http": 401,
+    "status": "PRESENT",
+    "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_my_memberships\"}"
+  },
+  {
+    "name": "verify_public_document",
+    "bodyKeys": [
+      "token"
+    ],
+    "http": 404,
+    "status": "NO_MATCHING_OVERLOAD_OR_MISSING",
+    "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.verify_public_document with parameter token or with a single unnamed json/jsonb parameter, but no"
+  }
+]

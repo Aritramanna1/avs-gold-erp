@@ -1,0 +1,36 @@
+# Node dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+dist-*/
+*.local
+
+# Logs and debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+
+# Editor and OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test and QA outputs
+test-results/
+playwright-report/
+blob-report/
+qa/reports-output/
+.playwright-artifacts/
+coverage/
+
+# Environment files
+.env.local
+.env.*.local

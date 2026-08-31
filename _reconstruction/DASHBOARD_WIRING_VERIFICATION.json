@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-08-30T14:23:11.162Z",
+  "checks": [
+    {
+      "step": "dev_supabase_enabled",
+      "pass": true,
+      "detail": "VITE_ENABLE_DEV_SUPABASE=1"
+    },
+    {
+      "step": "login",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "step": "dashboard_rpc",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "step": "vault_nonzero",
+      "pass": true,
+      "detail": "vault_mg=226824182"
+    },
+    {
+      "step": "open_orders_nonzero",
+      "pass": true,
+      "detail": "open=414"
+    },
+    {
+      "step": "stock_count_nonzero",
+      "pass": true,
+      "detail": "stock=21"
+    }
+  ]
+}

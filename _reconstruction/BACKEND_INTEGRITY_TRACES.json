@@ -1,0 +1,164 @@
+{
+  "generatedAt": "2026-08-31T13:48:07.305Z",
+  "method": "static-source-audit",
+  "traces": [
+    {
+      "id": "A",
+      "name": "Customer commercial chain",
+      "overall": "WORKS",
+      "links": [
+        {
+          "link": "Customer UI",
+          "file": "src/routes/people.index.tsx",
+          "status": "WORKS"
+        },
+        {
+          "link": "Billing calc",
+          "file": "src/lib/billing-store.ts",
+          "status": "WORKS"
+        },
+        {
+          "link": "Ledger report",
+          "file": "src/routes/reports.ledgers.tsx",
+          "status": "WORKS"
+        },
+        {
+          "link": "Invoice print/PDF",
+          "file": "src/components/print-engine/PrintEngine.tsx",
+          "status": "WORKS"
+        },
+        {
+          "link": "Document hosting",
+          "file": "src/lib/document-shares.ts",
+          "status": "WORKS"
+        },
+        {
+          "link": "Share chain",
+          "file": "src/lib/comm/send-whatsapp-document.ts",
+          "status": "WORKS"
+        },
+        {
+          "link": "Portal access",
+          "file": "src/routes/customer-portal.tsx",
+          "status": "WORKS"
+        }
+      ]
+    },
+    {
+      "id": "B",
+      "name": "Item/stock chain",
+      "overall": "WORKS",
+      "links": [
+        {
+          "link": "Item Master",
+          "file": "src/lib/item-masters-store.ts",
+          "status": "WORKS"
+        },
+        {
+          "link": "Stock UI",
+          "file": "src/routes/stock.index.tsx",
+          "status": "WORKS"
+        },
+        {
+          "link": "Stock entry",
+          "file": "src/routes/stock.entry.tsx",
+          "status": "WORKS"
+        },
+        {
+          "link": "Billing link",
+          "file": "src/lib/billing-query.ts",
+          "status": "WORKS"
+        },
+        {
+          "link": "Barcode",
+          "file": "src/lib/barcode-config-store.ts",
+          "status": "WORKS"
+        },
+        {
+          "link": "Ledger",
+          "file": "src/routes/reports.gold-ledger.tsx",
+          "status": "WORKS"
+        }
+      ]
+    },
+    {
+      "id": "C",
+      "name": "Gold chain",
+      "overall": "WORKS",
+      "links": [
+        {
+          "link": "Purity selection",
+          "file": "src/lib/gold-calculation-rules-store.ts",
+          "status": "WORKS"
+        },
+        {
+          "link": "Calculation",
+          "file": "src/lib/gold.ts",
+          "status": "WORKS"
+        },
+        {
+          "link": "Vault",
+          "file": "src/routes/ledger.tsx",
+          "status": "WORKS"
+        },
+        {
+          "link": "Issue/receive",
+          "file": "src/routes/workshop.receive-slip.$id.tsx",
+          "status": "WORKS"
+        },
+        {
+          "link": "Settlement",
+          "file": "src/routes/billing.index.tsx",
+          "status": "WORKS"
+        },
+        {
+          "link": "Print/PDF",
+          "file": "src/components/print-engine/PrintEngine.tsx",
+          "status": "WORKS"
+        }
+      ]
+    },
+    {
+      "id": "D",
+      "name": "Portal chain",
+      "overall": "PARTIAL",
+      "links": [
+        {
+          "link": "Portal auth",
+          "file": "src/routes/customer-login.tsx",
+          "status": "WORKS"
+        },
+        {
+          "link": "Tenant identity",
+          "file": "src/lib/portal/portal-kyc-service.ts",
+          "status": "WORKS"
+        },
+        {
+          "link": "RLS probe",
+          "file": "qa/database/rls-isolation.test.ts",
+          "status": "WORKS"
+        },
+        {
+          "link": "Document hosting RPC",
+          "file": "supabase/migrations",
+          "status": "PARTIAL"
+        },
+        {
+          "link": "Hosted doc view",
+          "file": "src/routes/doc.$token.tsx",
+          "status": "WORKS"
+        },
+        {
+          "link": "Access audit",
+          "file": "src/lib/document-shares.ts",
+          "status": "WORKS"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "works": 3,
+    "partial": 1,
+    "broken": 0
+  }
+}

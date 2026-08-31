@@ -1,0 +1,402 @@
+{
+  "summary": {
+    "url": "https://dqgrrafuoxaorvyrcuuh.supabase.co",
+    "rounds": 3,
+    "missingUnique": [],
+    "signatureMismatchUnique": [],
+    "lastRound": [
+      {
+        "name": "verify_public_document",
+        "http": 200,
+        "status": "OK",
+        "snippet": "{\"ok\": false, \"status\": \"invalid\", \"message\": \"This invoice could not be verified.\"}"
+      },
+      {
+        "name": "get_public_website_bundle",
+        "http": 200,
+        "status": "OK",
+        "snippet": "{\"pages\": [{\"seo\": {\"title\": \"About Ornexa\"}, \"title\": \"About\", \"page_key\": \"about\", \"sections\": [{\"id\": \"story\", \"type\": \"rich_text\", \"body_md\": \"Arivahly Vent"
+      },
+      {
+        "name": "get_platform_trial_days",
+        "http": 200,
+        "status": "OK",
+        "snippet": "7"
+      },
+      {
+        "name": "mint_invoice_verification",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function mint_invoice_verification\"}"
+      },
+      {
+        "name": "get_gold_ledger_page",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_gold_ledger_page\"}"
+      },
+      {
+        "name": "get_company_cash_ledger_page",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_company_cash_ledger_page\"}"
+      },
+      {
+        "name": "get_my_memberships",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_my_memberships\"}"
+      },
+      {
+        "name": "set_active_tenant_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function set_active_tenant_context\"}"
+      },
+      {
+        "name": "get_my_portal_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_my_portal_context\"}"
+      },
+      {
+        "name": "get_authorization_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_authorization_context\"}"
+      },
+      {
+        "name": "next_document_number",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function next_document_number\"}"
+      },
+      {
+        "name": "post_metal_conversion",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function post_metal_conversion\"}"
+      },
+      {
+        "name": "customer_portal_approve_design",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function customer_portal_approve_design\"}"
+      },
+      {
+        "name": "supplier_portal_accept_purchase",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function supplier_portal_accept_purchase\"}"
+      },
+      {
+        "name": "rpc_post_universal_transaction",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function rpc_post_universal_transaction\"}"
+      },
+      {
+        "name": "register_document_verification",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function register_document_verification\"}"
+      }
+    ]
+  },
+  "rounds": [
+    [
+      {
+        "name": "verify_public_document",
+        "http": 200,
+        "status": "OK",
+        "snippet": "{\"ok\": false, \"status\": \"invalid\", \"message\": \"This invoice could not be verified.\"}"
+      },
+      {
+        "name": "get_public_website_bundle",
+        "http": 200,
+        "status": "OK",
+        "snippet": "{\"pages\": [{\"seo\": {\"title\": \"About Ornexa\"}, \"title\": \"About\", \"page_key\": \"about\", \"sections\": [{\"id\": \"story\", \"type\": \"rich_text\", \"body_md\": \"Arivahly Vent"
+      },
+      {
+        "name": "get_platform_trial_days",
+        "http": 200,
+        "status": "OK",
+        "snippet": "7"
+      },
+      {
+        "name": "mint_invoice_verification",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function mint_invoice_verification\"}"
+      },
+      {
+        "name": "get_gold_ledger_page",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_gold_ledger_page\"}"
+      },
+      {
+        "name": "get_company_cash_ledger_page",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_company_cash_ledger_page\"}"
+      },
+      {
+        "name": "get_my_memberships",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_my_memberships\"}"
+      },
+      {
+        "name": "set_active_tenant_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function set_active_tenant_context\"}"
+      },
+      {
+        "name": "get_my_portal_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_my_portal_context\"}"
+      },
+      {
+        "name": "get_authorization_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_authorization_context\"}"
+      },
+      {
+        "name": "next_document_number",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function next_document_number\"}"
+      },
+      {
+        "name": "post_metal_conversion",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function post_metal_conversion\"}"
+      },
+      {
+        "name": "customer_portal_approve_design",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function customer_portal_approve_design\"}"
+      },
+      {
+        "name": "supplier_portal_accept_purchase",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function supplier_portal_accept_purchase\"}"
+      },
+      {
+        "name": "rpc_post_universal_transaction",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function rpc_post_universal_transaction\"}"
+      },
+      {
+        "name": "register_document_verification",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function register_document_verification\"}"
+      }
+    ],
+    [
+      {
+        "name": "verify_public_document",
+        "http": 200,
+        "status": "OK",
+        "snippet": "{\"ok\": false, \"status\": \"invalid\", \"message\": \"This invoice could not be verified.\"}"
+      },
+      {
+        "name": "get_public_website_bundle",
+        "http": 200,
+        "status": "OK",
+        "snippet": "{\"pages\": [{\"seo\": {\"title\": \"About Ornexa\"}, \"title\": \"About\", \"page_key\": \"about\", \"sections\": [{\"id\": \"story\", \"type\": \"rich_text\", \"body_md\": \"Arivahly Vent"
+      },
+      {
+        "name": "get_platform_trial_days",
+        "http": 200,
+        "status": "OK",
+        "snippet": "7"
+      },
+      {
+        "name": "mint_invoice_verification",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function mint_invoice_verification\"}"
+      },
+      {
+        "name": "get_gold_ledger_page",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_gold_ledger_page\"}"
+      },
+      {
+        "name": "get_company_cash_ledger_page",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_company_cash_ledger_page\"}"
+      },
+      {
+        "name": "get_my_memberships",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_my_memberships\"}"
+      },
+      {
+        "name": "set_active_tenant_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function set_active_tenant_context\"}"
+      },
+      {
+        "name": "get_my_portal_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_my_portal_context\"}"
+      },
+      {
+        "name": "get_authorization_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_authorization_context\"}"
+      },
+      {
+        "name": "next_document_number",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function next_document_number\"}"
+      },
+      {
+        "name": "post_metal_conversion",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function post_metal_conversion\"}"
+      },
+      {
+        "name": "customer_portal_approve_design",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function customer_portal_approve_design\"}"
+      },
+      {
+        "name": "supplier_portal_accept_purchase",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function supplier_portal_accept_purchase\"}"
+      },
+      {
+        "name": "rpc_post_universal_transaction",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function rpc_post_universal_transaction\"}"
+      },
+      {
+        "name": "register_document_verification",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function register_document_verification\"}"
+      }
+    ],
+    [
+      {
+        "name": "verify_public_document",
+        "http": 200,
+        "status": "OK",
+        "snippet": "{\"ok\": false, \"status\": \"invalid\", \"message\": \"This invoice could not be verified.\"}"
+      },
+      {
+        "name": "get_public_website_bundle",
+        "http": 200,
+        "status": "OK",
+        "snippet": "{\"pages\": [{\"seo\": {\"title\": \"About Ornexa\"}, \"title\": \"About\", \"page_key\": \"about\", \"sections\": [{\"id\": \"story\", \"type\": \"rich_text\", \"body_md\": \"Arivahly Vent"
+      },
+      {
+        "name": "get_platform_trial_days",
+        "http": 200,
+        "status": "OK",
+        "snippet": "7"
+      },
+      {
+        "name": "mint_invoice_verification",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function mint_invoice_verification\"}"
+      },
+      {
+        "name": "get_gold_ledger_page",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_gold_ledger_page\"}"
+      },
+      {
+        "name": "get_company_cash_ledger_page",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_company_cash_ledger_page\"}"
+      },
+      {
+        "name": "get_my_memberships",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_my_memberships\"}"
+      },
+      {
+        "name": "set_active_tenant_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function set_active_tenant_context\"}"
+      },
+      {
+        "name": "get_my_portal_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_my_portal_context\"}"
+      },
+      {
+        "name": "get_authorization_context",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_authorization_context\"}"
+      },
+      {
+        "name": "next_document_number",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function next_document_number\"}"
+      },
+      {
+        "name": "post_metal_conversion",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function post_metal_conversion\"}"
+      },
+      {
+        "name": "customer_portal_approve_design",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function customer_portal_approve_design\"}"
+      },
+      {
+        "name": "supplier_portal_accept_purchase",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function supplier_portal_accept_purchase\"}"
+      },
+      {
+        "name": "rpc_post_universal_transaction",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function rpc_post_universal_transaction\"}"
+      },
+      {
+        "name": "register_document_verification",
+        "http": 401,
+        "status": "PRESENT",
+        "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function register_document_verification\"}"
+      }
+    ]
+  ]
+}

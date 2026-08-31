@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";import{ps as t}from"./index-CVsE73i6.js";import{t as n}from"./PrintEngine-DT0cXyhr.js";var r=e();function i(){let{workerId:e,date:i}=t({from:`/workshop/material-slip/$workerId/$date`});return(0,r.jsx)(n,{docType:`daily_material_slip`,recordId:`${e}~${i}`,backUrl:`/workshop/gold-book`})}export{i as component};

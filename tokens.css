@@ -1,0 +1,119 @@
+/**
+ * Ornexa / AVS ERP Design Tokens
+ * Apple-inspired operational density — adapted for jewellery manufacturing ERP.
+ * NOT a marketing site: hairlines, parchment surfaces, single action accent, AVS gold brand mark.
+ */
+
+:root {
+  /* Motion */
+  --avs-fast: 140ms;
+  --avs-base: 220ms;
+  --avs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Radius — low/subtle for operational panels */
+  --radius-none: 0;
+  --radius-xs: 0.125rem; /* 2px */
+  --radius-sm: 0.25rem; /* 4px */
+  --radius-control: 0.375rem; /* 6px */
+  --radius-md: 0.5rem; /* 8px */
+  --radius-lg: 0.6875rem; /* 11px */
+  --radius-xl: 1.125rem; /* 18px utility cards only */
+  --radius-pill: 9999px;
+  --avs-radius-md: var(--radius-md);
+
+  /* Spacing scale (8px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Brand — AVS gold is accent/mark only, NOT primary interactive */
+  --avs-gold: #a88445;
+  --avs-gold-soft: #eee5d2;
+  --avs-gold-deep: #806738;
+
+  /* Light theme semantic surfaces */
+  --avs-ink: #1d1d1f;
+  --avs-ink-muted: #6e6e73;
+  --avs-ink-subtle: #86868b;
+  --avs-canvas: #ffffff;
+  --avs-parchment: #f5f5f7;
+  --avs-ivory: #faf8f2;
+  --avs-paper: #fffdf8;
+  --avs-pearl: #fafafc;
+  --avs-line: #e0e0e0;
+  --avs-line-soft: #f0f0f0;
+  --avs-obsidian: #18181b;
+
+  /* Single action accent (links, primary CTAs) */
+  --avs-action: #0066cc;
+  --avs-action-hover: #0071e3;
+  --avs-action-on-dark: #2997ff;
+
+  /* Typography stacks */
+  --font-display: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Touch / a11y */
+  --touch-target: 2.75rem; /* 44px */
+  --focus-ring: 2px solid var(--avs-action);
+  --focus-offset: 2px;
+
+  /* Semantic aliases (light default) */
+  --semantic-background: var(--avs-parchment);
+  --semantic-foreground: var(--avs-ink);
+  --semantic-card: var(--avs-canvas);
+  --semantic-card-muted: var(--avs-pearl);
+  --semantic-border: var(--avs-line);
+  --semantic-border-soft: var(--avs-line-soft);
+  --semantic-primary: var(--avs-action);
+  --semantic-primary-hover: var(--avs-action-hover);
+  --semantic-primary-foreground: #ffffff;
+  --semantic-muted: var(--avs-parchment);
+  --semantic-muted-foreground: var(--avs-ink-muted);
+  --semantic-sidebar: var(--avs-obsidian);
+  --semantic-sidebar-foreground: #f5f5f7;
+  --semantic-sidebar-border: #2f2f33;
+  --semantic-accent-brand: var(--avs-gold);
+}
+
+.dark {
+  --avs-ink: #f5f5f7;
+  --avs-ink-muted: #a1a1a6;
+  --avs-ink-subtle: #86868b;
+  --avs-canvas: #272729;
+  --avs-parchment: #1d1d1f;
+  --avs-ivory: #1d1d1f;
+  --avs-paper: #2a2a2c;
+  --avs-pearl: #2f2f31;
+  --avs-line: rgba(255, 255, 255, 0.12);
+  --avs-line-soft: rgba(255, 255, 255, 0.06);
+  --avs-obsidian: #000000;
+
+  --avs-gold: #c9a227;
+  --avs-gold-soft: rgba(201, 162, 39, 0.14);
+  --avs-gold-deep: #e8c96a;
+
+  --semantic-background: var(--avs-parchment);
+  --semantic-foreground: var(--avs-ink);
+  --semantic-card: var(--avs-canvas);
+  --semantic-card-muted: var(--avs-paper);
+  --semantic-border: var(--avs-line);
+  --semantic-border-soft: var(--avs-line-soft);
+  --semantic-primary: var(--avs-action-on-dark);
+  --semantic-primary-hover: #4dabff;
+  --semantic-primary-foreground: #000000;
+  --semantic-muted: var(--avs-paper);
+  --semantic-muted-foreground: var(--avs-ink-muted);
+  --semantic-sidebar: var(--avs-obsidian);
+  --semantic-sidebar-foreground: #f5f5f7;
+  --semantic-sidebar-border: rgba(255, 255, 255, 0.08);
+  --semantic-accent-brand: var(--avs-gold);
+  --focus-ring: 2px solid var(--avs-action-on-dark);
+}

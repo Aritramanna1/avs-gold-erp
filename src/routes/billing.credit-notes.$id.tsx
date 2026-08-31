@@ -1,0 +1,170 @@
+import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { useState } from "react";
+import { useCreditNotes } from "@/lib/billing-documents-store";
+import { useBillingDocumentById } from "@/lib/use-billing-document";
+import { paiseToRupees } from "@/lib/billing-store";
+import { useSettings } from "@/lib/settings-store";
+import { usePrintEngine } from "@/lib/print-engine";
+import { useCan } from "@/lib/rbac";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Ban, Loader2, Printer, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/billing/credit-notes/$id")({
+  head: () => ({ meta: [{ title: "Credit Note · AVS Gold ERP" }] }),
+  component: CreditNoteDetail,
+});
+
+function CreditNoteDetail() {
+  const { id } = useParams({ from: "/billing/credit-notes/$id" });
+  const cancel = useCreditNotes((s) => s.cancel);
+  const { firm } = useSettings();
+  const { triggerPrint } = usePrintEngine();
+  const { can, email } = useCan();
+  const { document: note, loading, error, retry } = useBillingDocumentById("credit_note", id);
+
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  if (loading && !note) {
+    return (
+      <div className="p-8 max-w-3xl mx-auto text-sm text-muted-foreground">
+        <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+        Loading credit note...
+      </div>
+    );
+  }
+
+  if (!note) {
+    return (
+      <div className="p-8 max-w-3xl mx-auto text-center">
+        <h1 className="font-serif text-2xl text-gold">Credit note not found</h1>
+        {error ? (
+          <Button variant="outline" className="gap-1.5 mt-4" onClick={retry}>
+            <RotateCcw className="h-4 w-4" /> Retry
+          </Button>
+        ) : null}
+        <Link to="/billing/credit-notes" className="text-gold underline mt-4 inline-block">
+          Back to Credit Notes
+        </Link>
+      </div>
+    );
+  }
+
+  async function handleCancel() {
+    setCancelling(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      await cancel(note!.id, {
+        id: data.session?.user.id ?? null,
+        email: data.session?.user.email ?? email ?? null,
+      });
+      toast.success("Credit note cancelled.");
+      setCancelOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to cancel credit note.");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-neutral-100 p-4 md:p-8 print:bg-white print:p-0">
+      <div className="flex gap-2 mb-4 print:hidden flex-wrap">
+        <Link to="/billing/credit-notes">
+          <Button variant="ghost" className="gap-1.5">
+            <ArrowLeft className="h-4 w-4" /> All Credit Notes
+          </Button>
+        </Link>
+        <Button
+          onClick={() =>
+            triggerPrint(
+              `/billing/credit-note-print/${note.id}`,
+              `Credit Note Preview · ${note.creditNoteNo}`,
+            )
+          }
+          className="gap-1.5"
+        >
+          <Printer className="h-4 w-4" /> Print
+        </Button>
+        {note.status === "issued" && can("billing.delete") && (
+          <Button variant="destructive" className="gap-1.5" onClick={() => setCancelOpen(true)}>
+            <Ban className="h-4 w-4" /> Cancel Credit Note
+          </Button>
+        )}
+      </div>
+
+      <div
+        className="bg-white text-neutral-900 shadow-lg rounded-lg mx-auto p-10"
+        style={{ maxWidth: 794, fontFamily: "'Helvetica Neue', Arial, sans-serif" }}
+      >
+        <div className="flex items-start justify-between border-b-4 border-amber-500 pb-4 mb-4">
+          <div>
+            <div className="text-xl font-bold text-amber-700">{firm.shopName.toUpperCase()}</div>
+            {firm.address && <div className="text-xs text-neutral-500">{firm.address}</div>}
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-amber-600">CREDIT NOTE</div>
+            <div className="text-xs text-neutral-500 font-mono">{note.creditNoteNo}</div>
+            <Badge variant={note.status === "issued" ? "outline" : "destructive"} className="mt-1">
+              {note.status === "issued" ? "Issued" : "Cancelled"}
+            </Badge>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 text-sm mb-6">
+          <div>
+            <div className="text-xs uppercase text-neutral-400">Customer</div>
+            <div className="font-medium">{note.customerName}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase text-neutral-400">Against Invoice</div>
+            <div className="font-medium">{note.invoiceNo || "Standalone (no invoice)"}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase text-neutral-400">Date</div>
+            <div>{new Date(note.createdAt).toLocaleDateString("en-IN")}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase text-neutral-400">Amount</div>
+            <div className="font-semibold text-amber-700">₹ {paiseToRupees(note.amountPaise)}</div>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-xs uppercase text-neutral-400 mb-1">Reason</div>
+          <div className="text-sm border border-neutral-200 rounded-md p-3">{note.reason}</div>
+        </div>
+      </div>
+
+      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Credit Note {note.creditNoteNo}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This is recorded in the audit log and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>Back</AlertDialogCancel>
+            <AlertDialogAction disabled={cancelling} onClick={handleCancel}>
+              {cancelling ? "Cancelling…" : "Yes, Cancel"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

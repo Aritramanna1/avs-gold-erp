@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";import{o as t}from"./index-mQb9w6oi.js";import{t as n}from"./PrintEngine-DapdRLgL.js";var r=e();function i(){let{variant:e}=t.useParams(),i=e===`2`?`2`:`1`;return(0,r.jsx)(n,{docType:`account_balance_report`,recordId:i,backUrl:`/reports/account-balance?variant=${i}`})}export{i as component};

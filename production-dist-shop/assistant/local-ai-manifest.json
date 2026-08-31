@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 2,
+  "updatedAt": "2026-08-24",
+  "minAppVersion": "1.1.1",
+  "policy": {
+    "cloudLlm": false,
+    "aiCreditsOnAssistant": false,
+    "writesRequireConfirm": true
+  },
+  "primaryFamily": "qwen3",
+  "primaryVariantId": "qwen3-0.6b-instruct-q4_k_m",
+  "knowledgePacks": [
+    {
+      "version": "4.0.0",
+      "sha256": "bundled-seed",
+      "source": "bundled",
+      "approved": true
+    }
+  ],
+  "models": [
+    {
+      "id": "ornexa-qwen3-0.6b-q4-v1",
+      "tier": "standard",
+      "family": "qwen3",
+      "variantId": "qwen3-0.6b-instruct-q4_k_m",
+      "version": "1.0.0-candidate",
+      "sha256": "pending-benchmark-gate",
+      "sizeBytes": 400000000,
+      "minRamMb": 3072,
+      "approved": false,
+      "notes": "Primary Qwen3 candidate. approved:false until mobile/LOCAL_AI_ON_DEVICE_BENCHMARK.md passes on hardware + Product Owner promote. Not in base APK."
+    },
+    {
+      "id": "ornexa-qwen3-1.7b-q4-v1",
+      "tier": "enhanced",
+      "family": "qwen3",
+      "variantId": "qwen3-1.7b-instruct-q4_k_m",
+      "version": "1.0.0-candidate",
+      "sha256": "pending-benchmark-gate",
+      "sizeBytes": 1100000000,
+      "minRamMb": 6144,
+      "approved": false,
+      "notes": "Enhanced download-only for 6GB+ phones. Never ship in base APK."
+    }
+  ]
+}

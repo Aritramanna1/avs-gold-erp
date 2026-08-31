@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-08-30T13:22:36.626Z",
+  "email": "mtj.qa.firm-owner.20260731@example.com",
+  "firmId": "f9f73cce-9538-4286-9754-530ca4581fbb",
+  "metrics": {
+    "dashboardRpcMs": 612,
+    "dashboard": {
+      "vaultMg": 226824182,
+      "openOrders": 414,
+      "stockCount": 21,
+      "finishedMg": 4402387,
+      "karigarMg": 32116567,
+      "todayBillingPaise": 0
+    },
+    "customers": 27,
+    "karigars": 50
+  },
+  "checks": [
+    {
+      "step": "dev_supabase_flag",
+      "pass": true,
+      "detail": "VITE_ENABLE_DEV_SUPABASE=1",
+      "at": "2026-08-30T13:22:34.802Z"
+    },
+    {
+      "step": "login_1",
+      "pass": true,
+      "detail": "mtj.qa.firm-owner.20260731@example.com",
+      "at": "2026-08-30T13:22:35.196Z"
+    },
+    {
+      "step": "firm_scope",
+      "pass": true,
+      "detail": "f9f73cce-9538-4286-9754-530ca4581fbb",
+      "at": "2026-08-30T13:22:35.604Z"
+    },
+    {
+      "step": "dashboard_rpc_1",
+      "pass": true,
+      "detail": "status=200 ms=612",
+      "at": "2026-08-30T13:22:36.217Z"
+    },
+    {
+      "step": "vault_live",
+      "pass": true,
+      "detail": "226824182 mg",
+      "at": "2026-08-30T13:22:36.217Z"
+    },
+    {
+      "step": "open_orders_live",
+      "pass": true,
+      "detail": "414",
+      "at": "2026-08-30T13:22:36.217Z"
+    },
+    {
+      "step": "stock_live",
+      "pass": true,
+      "detail": "21",
+      "at": "2026-08-30T13:22:36.217Z"
+    },
+    {
+      "step": "finished_stock_live",
+      "pass": true,
+      "detail": "4402387 mg",
+      "at": "2026-08-30T13:22:36.217Z"
+    },
+    {
+      "step": "karigar_gold_live",
+      "pass": true,
+      "detail": "32116567 mg",
+      "at": "2026-08-30T13:22:36.217Z"
+    },
+    {
+      "step": "customers_live",
+      "pass": true,
+      "detail": "count=27",
+      "at": "2026-08-30T13:22:36.369Z"
+    },
+    {
+      "step": "karigars_live",
+      "pass": true,
+      "detail": "count=50",
+      "at": "2026-08-30T13:22:36.369Z"
+    },
+    {
+      "step": "login_2_after_logout",
+      "pass": true,
+      "detail": "re-login ok",
+      "at": "2026-08-30T13:22:36.479Z"
+    },
+    {
+      "step": "dashboard_rpc_2_parity",
+      "pass": true,
+      "detail": "vault=226824182 open=414 stock=21",
+      "at": "2026-08-30T13:22:36.625Z"
+    }
+  ],
+  "summary": {
+    "pass": 13,
+    "fail": 0
+  },
+  "verdict": "DASHBOARD_DATA_LIVE_OK"
+}

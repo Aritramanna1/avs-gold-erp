@@ -1,0 +1,9 @@
+{
+  "version": "3.1.0",
+  "bundleType": "full-erp",
+  "description": "Seed configuration bundle for AVS full ERP onboarding",
+  "dropdowns": {},
+  "formsMetadata": {},
+  "terminologyOverrides": {},
+  "activeTerminologyPack": "indian_trade"
+}

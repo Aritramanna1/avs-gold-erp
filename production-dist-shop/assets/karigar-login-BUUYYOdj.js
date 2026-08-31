@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";import{t}from"./DedicatedPortalLoginPage-Ax-OmzXF.js";var n=e();function r(){return(0,n.jsx)(t,{portalType:`karigar`,title:`Karigar Portal`,subtitle:`Sign in with your mobile number or email to view your active job cards, gold custody balance, and wages.`,destinationRoute:`/karigar-portal`})}export{r as component};

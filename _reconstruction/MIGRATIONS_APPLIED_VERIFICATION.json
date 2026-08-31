@@ -1,0 +1,64 @@
+{
+  "generatedAt": "2026-08-30T14:59:30.804Z",
+  "project": "https://dqgrrafuoxaorvyrcuuh.supabase.co",
+  "allRequiredApplied": false,
+  "checks": [
+    {
+      "id": "supabase_config",
+      "pass": true,
+      "detail": "project https://dqgrrafuoxaorvyrcuuh.supabase.co"
+    },
+    {
+      "id": "qa_login",
+      "pass": true,
+      "detail": "mtj.qa.firm-owner.20260731@example.com"
+    },
+    {
+      "id": "get_home_dashboard_summary",
+      "pass": true,
+      "detail": "applied / callable",
+      "migration": "dashboard RPC baseline",
+      "status": 200
+    },
+    {
+      "id": "get_gold_ledger_page",
+      "pass": true,
+      "detail": "applied / callable",
+      "migration": "ledger pagination RPC (QA signature)",
+      "status": 200
+    },
+    {
+      "id": "resolve_document_share",
+      "pass": true,
+      "detail": "applied / callable",
+      "migration": "20260830160000 document hosting (anon grant)",
+      "status": 200
+    },
+    {
+      "id": "provision_public_trial_blocked",
+      "pass": true,
+      "detail": "applied / callable",
+      "migration": "20260830220000 disable public trial",
+      "status": 404
+    },
+    {
+      "id": "item_groups_table",
+      "pass": false,
+      "detail": "status=404 data={\"status\":404}",
+      "migration": "20260830280000 item groups",
+      "status": 404
+    },
+    {
+      "id": "check_api_rate_limit",
+      "pass": true,
+      "detail": "applied / callable",
+      "migration": "20260830160000 rate limits (internal; QA uses p_bucket_key)",
+      "status": 401
+    },
+    {
+      "id": "local_migration_files",
+      "pass": true,
+      "detail": "205 files in supabase/migrations"
+    }
+  ]
+}

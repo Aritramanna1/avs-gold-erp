@@ -1,0 +1,45 @@
+﻿{
+    "roles":  {
+                  "BUILD":  "from main",
+                  "DEVELOPMENT":  "main",
+                  "DEPLOY":  "resulting build from main",
+                  "BASELINE":  "isolated/frozen — this folder",
+                  "IMPLEMENTATION":  "based ONLY on this baseline"
+              },
+    "frozenAtUtc":  "2026-08-27T15:24:47Z",
+    "doNotOverwrite":  true,
+    "contents":  [
+                     "production-artifact/index-CVsE73i6.js",
+                     "production-artifact/dist_go_20260826_190800.zip",
+                     "source/ (git archive of 8dc1c438214a5e3192e15dc95b7708de24ca6baf)",
+                     "approved-docs/",
+                     "configuration/",
+                     "migrations-ref/",
+                     "print-customization-refs/",
+                     "mtj-offline-erp-refs/",
+                     "qa-evidence/",
+                     "git/REFS.txt"
+                 ],
+    "verification":  {
+                         "mainContainsBaselineAsAncestor":  true,
+                         "extractMatchesZipIndex":  true,
+                         "zipContainsExactIndex":  true
+                     },
+    "baselineId":  "CVsE73i6",
+    "immutable":  true,
+    "hashes":  {
+                   "indexBytes":  1098975,
+                   "distGoZipSha256":  "D221ECCB7DAFB3309209094632BBD143EF28A747159693DC8F9B0E51ECF018AA",
+                   "indexCVsE73i6JsSha256":  "DDE3DCBECA50D0EE30882C0B98B25D8E95E8B1429319EFBD31720C61518D08D8"
+               },
+    "equation":  {
+                     "gitSha":  "8dc1c438214a5e3192e15dc95b7708de24ca6baf",
+                     "recoveryZip":  "dist_go_20260826_190800.zip",
+                     "gitRefs":  [
+                                     "production-baseline-cvse73i6",
+                                     "backup/production-baseline-cvse73i6"
+                                 ],
+                     "liveUrl":  "https://maatarajewellers.shop",
+                     "productionArtifact":  "index-CVsE73i6.js"
+                 }
+}

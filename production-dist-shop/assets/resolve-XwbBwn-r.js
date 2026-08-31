@@ -1,0 +1,1 @@
+function e(e,t){return t.split(`.`).reduce((e,t)=>{if(e&&typeof e==`object`&&t in e)return e[t]},e)}function t(e){return e==null||e===``?`—`:String(e)}function n(e,t){return e?!!t[e]:!0}export{e as n,n as r,t};

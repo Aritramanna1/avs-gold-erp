@@ -1,0 +1,11 @@
+{
+  "defaults": {
+    "timeout": 30000,
+    "standard": "WCAG2AA",
+    "runners": ["axe", "htmlcs"]
+  },
+  "urls": [
+    "http://localhost:3000/login",
+    "http://localhost:3000/help"
+  ]
+}

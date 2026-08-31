@@ -1,0 +1,1 @@
+import{a as e}from"./dist-C6b7-QqJ.js";var t=e(`OrnexaStt`,{web:()=>({async isAvailable(){return{available:!1}},async start(){return{ok:!1}},async stop(){},async addListener(){return{remove:async()=>void 0}}})});export{t as OrnexaStt};

@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";import{t}from"./DedicatedPortalLoginPage-Chr6wNRT.js";var n=e();function r(){return(0,n.jsx)(t,{portalType:`customer`,title:`Customer Portal`,subtitle:`Sign in with your email or mobile OTP to view your orders, invoices, gold wallet, and repairs.`,destinationRoute:`/customer-portal`})}export{r as component};

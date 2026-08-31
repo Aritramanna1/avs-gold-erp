@@ -1,0 +1,1 @@
+function e(){return typeof window>`u`?null:window.mtjDesktop?.print??null}function t(){return e()!==null}async function n(t,n){let r=e();return r?r.printHtml(t,n):{success:!1,error:`Native print bridge unavailable (browser build).`}}export{t as isNativePrintAvailable,n as printHtmlNatively};

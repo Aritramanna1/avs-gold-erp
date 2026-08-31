@@ -1,0 +1,125 @@
+{
+  "url": "https://dqgrrafuoxaorvyrcuuh.supabase.co",
+  "results": [
+    {
+      "name": "get_gold_ledger_page",
+      "http": 401,
+      "status": "PRESENT",
+      "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_gold_ledger_page\"}"
+    },
+    {
+      "name": "get_company_cash_ledger_page",
+      "http": 401,
+      "status": "PRESENT",
+      "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_company_cash_ledger_page\"}"
+    },
+    {
+      "name": "get_firm_ledger_balances",
+      "http": 401,
+      "status": "PRESENT",
+      "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_firm_ledger_balances\"}"
+    },
+    {
+      "name": "get_home_dashboard_summary",
+      "http": 401,
+      "status": "PRESENT",
+      "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_home_dashboard_summary\"}"
+    },
+    {
+      "name": "get_billing_outstanding_summary",
+      "http": 401,
+      "status": "PRESENT",
+      "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_billing_outstanding_summary\"}"
+    },
+    {
+      "name": "mint_invoice_verification",
+      "http": 404,
+      "status": "MISSING",
+      "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.mint_invoice_verification without parameters or with a single unnamed json/js"
+    },
+    {
+      "name": "verify_public_document",
+      "http": 404,
+      "status": "MISSING",
+      "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.verify_public_document without parameters or with a single unnamed json/jsonb"
+    },
+    {
+      "name": "register_document_verification",
+      "http": 404,
+      "status": "MISSING",
+      "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.register_document_verification without parameters or with a single unnamed js"
+    },
+    {
+      "name": "rpc_post_universal_transaction",
+      "http": 404,
+      "status": "MISSING",
+      "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.rpc_post_universal_transaction without parameters or with a single unnamed js"
+    },
+    {
+      "name": "rpc_reverse_universal_ledger_entry",
+      "http": 404,
+      "status": "MISSING",
+      "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.rpc_reverse_universal_ledger_entry without parameters or with a single unname"
+    },
+    {
+      "name": "get_my_memberships",
+      "http": 401,
+      "status": "PRESENT",
+      "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_my_memberships\"}"
+    },
+    {
+      "name": "set_active_tenant_context",
+      "http": 404,
+      "status": "MISSING",
+      "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.set_active_tenant_context without parameters or with a single unnamed json/js"
+    },
+    {
+      "name": "get_my_portal_context",
+      "http": 401,
+      "status": "PRESENT",
+      "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_my_portal_context\"}"
+    },
+    {
+      "name": "get_authorization_context",
+      "http": 401,
+      "status": "PRESENT",
+      "snippet": "{\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function get_authorization_context\"}"
+    },
+    {
+      "name": "next_document_number",
+      "http": 404,
+      "status": "MISSING",
+      "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.next_document_number without parameters or with a single unnamed json/jsonb p"
+    },
+    {
+      "name": "get_public_website_bundle",
+      "http": 200,
+      "status": "OK",
+      "snippet": "{\"pages\": [{\"seo\": {\"title\": \"About Ornexa\"}, \"title\": \"About\", \"page_key\": \"about\", \"sections\": [{\"id\": \"story\", \"type\": \"rich_text\", \"body"
+    },
+    {
+      "name": "get_platform_trial_days",
+      "http": 200,
+      "status": "OK",
+      "snippet": "7"
+    },
+    {
+      "name": "post_metal_conversion",
+      "http": 404,
+      "status": "MISSING",
+      "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.post_metal_conversion without parameters or with a single unnamed json/jsonb "
+    },
+    {
+      "name": "customer_portal_approve_design",
+      "http": 404,
+      "status": "MISSING",
+      "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.customer_portal_approve_design without parameters or with a single unnamed js"
+    },
+    {
+      "name": "supplier_portal_accept_purchase",
+      "http": 404,
+      "status": "MISSING",
+      "snippet": "{\"code\":\"PGRST202\",\"details\":\"Searched for the function public.supplier_portal_accept_purchase without parameters or with a single unnamed j"
+    }
+  ]
+}

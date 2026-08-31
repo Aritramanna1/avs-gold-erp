@@ -1,0 +1,1 @@
+async function e(e,t){let n=t??`The request failed. Please try again.`;if(!e||typeof e!=`object`)return n;let r=e.context;if(r&&typeof r==`object`&&`json`in r)try{let e=await r.clone().json();if(e&&typeof e==`object`&&typeof e.error==`string`)return e.error}catch{}let i=e.message;return typeof i==`string`&&i?i:n}export{e as t};

@@ -1,0 +1,765 @@
+{
+  "generatedAt": "2026-08-31T13:48:17.330Z",
+  "shopUniqueChunks": 896,
+  "srcRouteCount": 300,
+  "moduleAudit": [
+    {
+      "id": "home",
+      "inShop": true,
+      "srcHits": [
+        "/app",
+        "OperationalHomeLinks",
+        "get_home_dashboard_summary"
+      ],
+      "shopHits": [
+        {
+          "needle": "/app",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "OperationalHomeLinks",
+          "index": false,
+          "chunks": []
+        },
+        {
+          "needle": "get_home_dashboard_summary",
+          "index": false,
+          "chunks": [
+            "app-B5D-YC5X.js",
+            "app-BcaaHMYx.js",
+            "app-BSHITaUB.js",
+            "app-ByPLa2Qa.js",
+            "app-CZXchOq6.js"
+          ]
+        }
+      ],
+      "srcRoutes": [
+        "/app",
+        "/platform/meta-whatsapp",
+        "/reports/approvals",
+        "/settings/integrations/whatsapp",
+        "/settings/whatsapp-templates",
+        "/settings/whatsapp",
+        "/whatsapp",
+        "/whatsapp"
+      ]
+    },
+    {
+      "id": "master_group",
+      "inShop": true,
+      "srcHits": [
+        "Master",
+        "Group",
+        "catalog.masters",
+        "/catalog/masters",
+        "item_masters"
+      ],
+      "shopHits": [
+        {
+          "needle": "Master",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "Group",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "catalog.masters",
+          "index": false,
+          "chunks": [
+            "index-BEztsuL-.js",
+            "index-BZciIpjO.js",
+            "index-C4D0u6jx.js",
+            "index-Ccx6piKe.js",
+            "index-CH0B6qR9.js"
+          ]
+        },
+        {
+          "needle": "/catalog/masters",
+          "index": false,
+          "chunks": [
+            "index-BEztsuL-.js",
+            "index-BZciIpjO.js",
+            "index-C4D0u6jx.js",
+            "index-Ccx6piKe.js",
+            "index-CH0B6qR9.js"
+          ]
+        },
+        {
+          "needle": "item_masters",
+          "index": true,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": [
+        "/catalog/masters"
+      ]
+    },
+    {
+      "id": "folders",
+      "inShop": true,
+      "srcHits": [
+        "folder",
+        "Folder",
+        "attachments"
+      ],
+      "shopHits": [
+        {
+          "needle": "folder",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "Folder",
+          "index": false,
+          "chunks": [
+            "CustomizationHub-BAxgL8MY.js",
+            "CustomizationHub-BPF1_LYO.js",
+            "CustomizationHub-BrKHN3Md.js",
+            "CustomizationHub-BUBLerMy.js",
+            "CustomizationHub-C4a7mr8Y.js"
+          ]
+        },
+        {
+          "needle": "attachments",
+          "index": true,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": []
+    },
+    {
+      "id": "stamps",
+      "inShop": true,
+      "srcHits": [
+        "stamp",
+        "Stamp",
+        "filings-slip"
+      ],
+      "shopHits": [
+        {
+          "needle": "stamp",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "Stamp",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "filings-slip",
+          "index": true,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": [
+        "/workshop/filings-slip/:id"
+      ]
+    },
+    {
+      "id": "staging_warning",
+      "inShop": true,
+      "srcHits": [
+        "staging",
+        "warning",
+        "SourceOfTruthBadge",
+        "partial failure"
+      ],
+      "shopHits": [
+        {
+          "needle": "staging",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "warning",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "SourceOfTruthBadge",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "partial failure",
+          "index": false,
+          "chunks": [
+            "data-loader-6BCjJ-Ql.js",
+            "data-loader-AqTqfOSn.js",
+            "data-loader-BKHCt1N5.js",
+            "data-loader-CgzJL0eS.js",
+            "data-loader-Dhk9qM73.js"
+          ]
+        }
+      ],
+      "srcRoutes": []
+    },
+    {
+      "id": "crm",
+      "inShop": true,
+      "srcHits": [
+        "/crm",
+        "leads"
+      ],
+      "shopHits": [
+        {
+          "needle": "/crm",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "crm-leads",
+          "index": false,
+          "chunks": []
+        },
+        {
+          "needle": "leads",
+          "index": true,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": [
+        "/solutions/crm"
+      ]
+    },
+    {
+      "id": "assistant",
+      "inShop": true,
+      "srcHits": [
+        "/assistant",
+        "assistant-tts",
+        "Ornexa Assistant"
+      ],
+      "shopHits": [
+        {
+          "needle": "/assistant",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "assistant-tts",
+          "index": false,
+          "chunks": [
+            "index-BEztsuL-.js",
+            "index-BZciIpjO.js",
+            "index-C4D0u6jx.js",
+            "index-Ccx6piKe.js",
+            "index-CH0B6qR9.js"
+          ]
+        },
+        {
+          "needle": "Ornexa Assistant",
+          "index": false,
+          "chunks": [
+            "assistant-0mEeVdWT.js",
+            "assistant-4mKKL_38.js",
+            "assistant-8iP3lNIB.js",
+            "assistant-BWw7WQtm.js",
+            "assistant-BWzyoXu0.js"
+          ]
+        }
+      ],
+      "srcRoutes": [
+        "/assistant",
+        "/mobile/assistant"
+      ]
+    },
+    {
+      "id": "ceo",
+      "inShop": true,
+      "srcHits": [
+        "CEO (View Only)",
+        "CEO"
+      ],
+      "shopHits": [
+        {
+          "needle": "CEO (View Only)",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "CEO",
+          "index": true,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": []
+    },
+    {
+      "id": "boolean",
+      "inShop": true,
+      "srcHits": [
+        "boolean",
+        "Boolean"
+      ],
+      "shopHits": [
+        {
+          "needle": "boolean",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "Boolean",
+          "index": true,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": []
+    },
+    {
+      "id": "schemes",
+      "inShop": true,
+      "srcHits": [
+        "/scheme",
+        "scheme-store"
+      ],
+      "shopHits": [
+        {
+          "needle": "/scheme",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "scheme-store",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "scheme.accounts",
+          "index": true,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": [
+        "/reports/scheme",
+        "/scheme/accounts",
+        "/scheme",
+        "/scheme/plans",
+        "/scheme/receipts",
+        "/scheme"
+      ]
+    },
+    {
+      "id": "dice",
+      "inShop": true,
+      "srcHits": [],
+      "shopHits": [
+        {
+          "needle": "dice",
+          "index": false,
+          "chunks": [
+            "index.es-amq2yD5d.js",
+            "index.es-BP0zRAqn.js",
+            "pdf.worker.min-CHFwMXne.js",
+            "rasterize-B_C5jH9_.js",
+            "rasterize-CEzyX-Zl.js"
+          ]
+        },
+        {
+          "needle": "Dice",
+          "index": false,
+          "chunks": []
+        },
+        {
+          "needle": "/dice",
+          "index": false,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": []
+    },
+    {
+      "id": "wipe",
+      "inShop": true,
+      "srcHits": [
+        "wipeout",
+        "wipe",
+        "Wipe"
+      ],
+      "shopHits": [
+        {
+          "needle": "wipeout",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "wipe",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "Wipe",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "utilities.wipeout",
+          "index": true,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": [
+        "/utilities/wipeout"
+      ]
+    },
+    {
+      "id": "manufacturing",
+      "inShop": true,
+      "srcHits": [
+        "/manufacturing",
+        "manufacturing_bill"
+      ],
+      "shopHits": [
+        {
+          "needle": "/manufacturing",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "manufacturing_bill",
+          "index": false,
+          "chunks": [
+            "base-repository-1Sjs6oXY.js",
+            "base-repository-BAvqE4DZ.js",
+            "base-repository-Bf3WfAeP.js",
+            "base-repository-Bi-DVtyL.js",
+            "base-repository-BiLNkMXC.js"
+          ]
+        },
+        {
+          "needle": "ManufacturingModule",
+          "index": false,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": [
+        "/manufacturing/bill/:id",
+        "/manufacturing/bill/new/:jobId",
+        "/manufacturing",
+        "/manufacturing",
+        "/reports/manufacturing-reconciliation",
+        "/reports/manufacturing",
+        "/solutions/manufacturing"
+      ]
+    },
+    {
+      "id": "outstanding",
+      "inShop": true,
+      "srcHits": [
+        "outstanding",
+        "Outstanding",
+        "get_billing_outstanding_summary"
+      ],
+      "shopHits": [
+        {
+          "needle": "outstanding",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "Outstanding",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "get_billing_outstanding_summary",
+          "index": false,
+          "chunks": [
+            "billing-query-DcNMgHM8.js",
+            "billing-store-1JsN7Nyx.js",
+            "billing-store-BcLCvbiU.js",
+            "billing-store-BPYOF5bu.js",
+            "billing-store-CQFeCkVB.js"
+          ]
+        }
+      ],
+      "srcRoutes": [
+        "/reports/gold-outstanding"
+      ]
+    },
+    {
+      "id": "outside_work",
+      "inShop": true,
+      "srcHits": [
+        "outside-work",
+        "outside_work",
+        "Outside Work",
+        "jangad"
+      ],
+      "shopHits": [
+        {
+          "needle": "outside-work",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "outside_work",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "Outside Work",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "jangad",
+          "index": true,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": [
+        "/reports/outside-work",
+        "/workshop/jangad",
+        "/workshop/outside-work",
+        "/workshop/outside-worker-book/:partyId",
+        "/workshop/outside-worker-books"
+      ]
+    },
+    {
+      "id": "mtg",
+      "inShop": true,
+      "srcHits": [
+        "/mtg"
+      ],
+      "shopHits": [
+        {
+          "needle": "/mtg",
+          "index": false,
+          "chunks": [
+            "app-surface-DI-eyCaY.js",
+            "index-BEztsuL-.js",
+            "index-BZciIpjO.js",
+            "index-C4D0u6jx.js",
+            "index-Ccx6piKe.js"
+          ]
+        },
+        {
+          "needle": "mtg.index",
+          "index": false,
+          "chunks": [
+            "index-BEztsuL-.js",
+            "index-BZciIpjO.js",
+            "index-C4D0u6jx.js",
+            "index-Ccx6piKe.js",
+            "index-CH0B6qR9.js"
+          ]
+        }
+      ],
+      "srcRoutes": [
+        "/mtg",
+        "/mtg"
+      ]
+    },
+    {
+      "id": "workflows",
+      "inShop": true,
+      "srcHits": [
+        "/workflows",
+        "workflows"
+      ],
+      "shopHits": [
+        {
+          "needle": "/workflows",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "workflows",
+          "index": true,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": [
+        "/workflows"
+      ]
+    },
+    {
+      "id": "utilities",
+      "inShop": true,
+      "srcHits": [
+        "/utilities"
+      ],
+      "shopHits": [
+        {
+          "needle": "/utilities",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "utilities.index",
+          "index": true,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": [
+        "/utilities/cash-fine-transfer",
+        "/utilities/counter-settings",
+        "/utilities/gst-calculator",
+        "/utilities",
+        "/utilities/item-masters",
+        "/utilities/item-transaction",
+        "/utilities/opening-fine-cash",
+        "/utilities/patla-stock",
+        "/utilities/sauda-book",
+        "/utilities/sub-accounts",
+        "/utilities",
+        "/utilities/urd-purchase",
+        "/utilities/wipeout"
+      ]
+    },
+    {
+      "id": "erp_audit",
+      "inShop": true,
+      "srcHits": [
+        "erp-audit",
+        "run-audit"
+      ],
+      "shopHits": [
+        {
+          "needle": "erp-audit",
+          "index": true,
+          "chunks": []
+        },
+        {
+          "needle": "run-audit",
+          "index": false,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": [
+        "/reports/erp-audit"
+      ]
+    },
+    {
+      "id": "data_loader",
+      "inShop": true,
+      "srcHits": [
+        "pullPeople",
+        "pullBackground",
+        "STARTUP_LEDGER_CACHE_LIMIT"
+      ],
+      "shopHits": [
+        {
+          "needle": "pullPeople",
+          "index": false,
+          "chunks": [
+            "data-loader-6BCjJ-Ql.js",
+            "data-loader-AqTqfOSn.js",
+            "data-loader-BKHCt1N5.js",
+            "data-loader-CgzJL0eS.js",
+            "data-loader-Dhk9qM73.js"
+          ]
+        },
+        {
+          "needle": "pullBackground",
+          "index": false,
+          "chunks": [
+            "data-loader-6BCjJ-Ql.js",
+            "data-loader-AqTqfOSn.js",
+            "data-loader-BKHCt1N5.js",
+            "data-loader-CgzJL0eS.js",
+            "data-loader-Dhk9qM73.js"
+          ]
+        },
+        {
+          "needle": "STARTUP_LEDGER_CACHE_LIMIT",
+          "index": false,
+          "chunks": []
+        }
+      ],
+      "srcRoutes": []
+    }
+  ],
+  "srcOnlySuspect": [],
+  "srcOnlySuspectCount": 0,
+  "shopRouteGaps": [
+    "attendance.index-B",
+    "attendance.print._kind._id",
+    "attendance.print._kind._id-",
+    "auth.callback-C",
+    "billing._id",
+    "billing.credit-note-print._id",
+    "billing.credit-notes._id",
+    "billing.debit-note-print._id",
+    "billing.debit-notes._id",
+    "billing.delivery-challan-print._id",
+    "billing.delivery-challans._id",
+    "billing.estimate-print._id",
+    "billing.estimate._id",
+    "billing.estimate._id-D",
+    "billing.estimate._id-Y",
+    "billing.estimates._id",
+    "billing.estimates._id-C",
+    "billing.gold-settlement-print._id",
+    "billing.print._id",
+    "billing.receipt._id",
+    "billing.settlement-slip._id",
+    "catalog._id",
+    "catalog._id-D",
+    "catalog.index-D",
+    "control.rates-D",
+    "control.terminology-C",
+    "conversion.slip._id",
+    "doc._token",
+    "doc._token-B",
+    "index.es",
+    "manufacturing.bill-print._id",
+    "manufacturing.bill._id",
+    "manufacturing.bill.new._jobId",
+    "manufacturing.bill.new._jobId-C",
+    "mobile.more-D",
+    "mobile.more-K",
+    "mobile.sync-",
+    "mobile.sync-j",
+    "orders._id",
+    "orders.print._kind._id",
+    "people._id",
+    "people._id-C",
+    "people._id-D",
+    "people.ledger-print._id",
+    "people.ledger-print._id-D",
+    "people.print._id",
+    "platform.billing-print._id",
+    "platform.plans-0",
+    "repair._id",
+    "repair.print._kind._id",
+    "repair.print._kind._id-D",
+    "reports.account-balance-print._variant",
+    "reports.auditor-P",
+    "reports.book-print._docType",
+    "reports.cash-flow-C",
+    "reports.cash-flow-O",
+    "reports.city-wise-B",
+    "reports.daily-summary-C",
+    "reports.daily-summary-D",
+    "reports.dailyclose-print._id"
+  ],
+  "shopRouteGapsCount": 109,
+  "extractOnlyRoutes": [],
+  "mtgInShop": {
+    "index": false,
+    "chunks": [
+      "app-surface-DI-eyCaY.js",
+      "index-BEztsuL-.js",
+      "index-BZciIpjO.js",
+      "index-C4D0u6jx.js",
+      "index-Ccx6piKe.js"
+    ]
+  },
+  "catalogMastersInShop": {
+    "index": false,
+    "chunks": [
+      "index-BEztsuL-.js",
+      "index-BZciIpjO.js",
+      "index-C4D0u6jx.js",
+      "index-Ccx6piKe.js",
+      "index-CH0B6qR9.js"
+    ]
+  }
+}

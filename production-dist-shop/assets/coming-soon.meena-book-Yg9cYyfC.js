@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";import{us as t}from"./index-CVsE73i6.js";var n=e(),r=()=>(0,n.jsx)(t,{to:`/workshop/process/$type`,params:{type:`meena`},replace:!0});export{r as component};

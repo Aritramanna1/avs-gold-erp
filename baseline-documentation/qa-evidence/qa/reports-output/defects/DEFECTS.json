@@ -1,0 +1,157 @@
+[
+  {
+    "id": "DEF-2026-08-15-001",
+    "severity": "P1",
+    "area": "Functional",
+    "test": "TC-01 typecheck",
+    "environment": "local",
+    "role": "n/a",
+    "steps": [
+      "npm run typecheck"
+    ],
+    "expected": "Zero TypeScript errors",
+    "actual": "TS2339 in src/lib/comm/email-service.ts and platform/email-template-library-store.ts",
+    "evidence": "qa/reports-output/qa-2026-08-15T19-07-00.partial.json",
+    "likelySource": "PRODUCT — loose typing on email API responses",
+    "status": "OPEN",
+    "classification": "PRODUCT_DEFECT"
+  },
+  {
+    "id": "DEF-2026-08-15-002",
+    "severity": "P0",
+    "area": "Security",
+    "test": "CS-01 client security scan",
+    "environment": "local",
+    "role": "n/a",
+    "steps": [
+      "npm run security:scan"
+    ],
+    "expected": "No service-role patterns in client src",
+    "actual": "src/lib/auth/auth-storage.ts matches service-role pattern",
+    "evidence": "scripts/security-scan.mjs output",
+    "likelySource": "PRODUCT — review whether string is documentation vs real key exposure",
+    "status": "OPEN",
+    "classification": "PRODUCT_DEFECT"
+  },
+  {
+    "id": "DEF-2026-08-15-003",
+    "severity": "P0",
+    "area": "Security",
+    "test": "QA staging guard / E2E target",
+    "environment": "local",
+    "role": "n/a",
+    "steps": [
+      "Initial smoke run before qa/config/qa.env fix"
+    ],
+    "expected": "E2E targets localhost or approved staging only",
+    "actual": "System E2E_BASE_URL overrode .env.e2e and hit maatarajewellers.shop",
+    "evidence": "global-setup log in qa smoke run",
+    "likelySource": "TEST_FRAMEWORK — fixed via qa/config/qa.env load order + orchestrator defaults",
+    "status": "FIXED",
+    "classification": "TEST_DEFECT"
+  },
+  {
+    "id": "DEF-2026-08-15-004",
+    "severity": "P2",
+    "area": "Functional",
+    "test": "E2E-01 core-flows-smoke",
+    "environment": "production (blocked going forward)",
+    "role": "Manager",
+    "steps": [
+      "Run core-flows-smoke disposable invite flow"
+    ],
+    "expected": "Invite created and modules load",
+    "actual": "Timeout on settings/users invite flow against production",
+    "evidence": "qa/reports-output/playwright-artifacts",
+    "likelySource": "PRODUCT or TEST — re-run on localhost staging with QA credentials",
+    "status": "OPEN",
+    "classification": "NEEDS_RETEST"
+  },
+  {
+    "id": "DEF-2026-08-15-005",
+    "severity": "P3",
+    "area": "Security",
+    "test": "GL-01 Gitleaks",
+    "environment": "local",
+    "role": "n/a",
+    "steps": [
+      "npm run qa:security:gitleaks"
+    ],
+    "expected": "Gitleaks scan completes",
+    "actual": "Docker not available on runner — scan SKIPPED",
+    "evidence": "qa/scripts/run-gitleaks.mjs",
+    "likelySource": "INFRA — install Docker or Gitleaks CLI for weekly scans",
+    "status": "BLOCKED",
+    "classification": "INFRA"
+  },
+  {
+    "id": "DEF-2026-08-15-STRIX-CS01",
+    "severity": "P0",
+    "area": "Security",
+    "test": "Client security scan (correlated)",
+    "title": "Service-role pattern in client auth-storage",
+    "actual": "src/lib/auth/auth-storage.ts matches privileged key pattern — verify not shipped to browser",
+    "remediation": "Audit auth-storage.ts; ensure service role never in client bundle; use anon key + RLS only.",
+    "classification": "PRODUCT_DEFECT",
+    "environment": "http://localhost:3000",
+    "role": "n/a",
+    "steps": "Automated Strix + correlated static scan",
+    "expected": "No P0/P1 in staging scope",
+    "evidence": "qa/reports-output/strix",
+    "likelySource": "PRODUCT",
+    "status": "REVIEW_REQUIRED",
+    "strixRun": "strix-initial-2026-08-16"
+  },
+  {
+    "id": "DEF-2026-08-15-STRIX-HDR01",
+    "severity": "P3",
+    "area": "Security",
+    "test": "ZAP baseline (correlated)",
+    "title": "Missing security headers on Vite dev server",
+    "actual": "CSP, X-Frame-Options, Permissions-Policy warnings on localhost dev build",
+    "remediation": "Configure production/staging reverse proxy headers; re-test on staging build not Vite dev.",
+    "classification": "STAGING_DEV_ONLY",
+    "environment": "http://localhost:3000",
+    "role": "n/a",
+    "steps": "Automated Strix + correlated static scan",
+    "expected": "No P0/P1 in staging scope",
+    "evidence": "qa/reports-output/strix",
+    "likelySource": "INFRA",
+    "status": "REVIEW_REQUIRED",
+    "strixRun": "strix-initial-2026-08-16"
+  },
+  {
+    "id": "DEF-2026-08-15-STRIX-TENANT-B",
+    "severity": "P2",
+    "area": "RLS",
+    "test": "Strix tenant matrix",
+    "title": "Tenant B QA accounts not seeded",
+    "actual": "Cross-tenant negative tests BLOCKED until QA_OWNER_B / QA_CUSTOMER_B credentials exist",
+    "remediation": "Run qa/scripts/seed-qa-tenants.mjs on staging Supabase; populate qa/security/strix/accounts.env",
+    "classification": "TEST_INFRA",
+    "status": "BLOCKED",
+    "environment": "http://localhost:3000",
+    "role": "n/a",
+    "steps": "Automated Strix + correlated static scan",
+    "expected": "No P0/P1 in staging scope",
+    "evidence": "qa/reports-output/strix",
+    "likelySource": "INFRA",
+    "strixRun": "strix-initial-2026-08-16"
+  {
+    "id": "DEF-2026-08-16-STRIX-MODEL",
+    "severity": "P3",
+    "area": "Security",
+    "test": "Strix initial controlled assessment",
+    "environment": "http://localhost:3000",
+    "role": "n/a",
+    "steps": "npm run qa:security:strix with gemini/gemini-3.6-flash",
+    "expected": "Authorized staging pentest with validated findings",
+    "actual": "Model refused active security testing (policy block). 0 Strix-native findings. Cost $0.14.",
+    "evidence": "qa/reports-output/strix/host-docker-internal-3000_2357/penetration_test_report.md",
+    "likelySource": "STRIX_LLM policy — retry with Strix-recommended frontier model (e.g. openai/gpt-5.4, claude-sonnet-5)",
+    "status": "BLOCKED",
+    "classification": "TOOL_LIMITATION",
+    "remediation": "Set STRIX_LLM to a Strix-recommended frontier model and re-run qa:security:strix on staging.",
+    "strixRun": "strix-initial-2026-08-16"
+  }
+]

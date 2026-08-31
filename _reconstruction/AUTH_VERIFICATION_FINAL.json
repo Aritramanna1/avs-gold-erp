@@ -1,0 +1,480 @@
+{
+  "at": "2026-08-30T11:52:21.673Z",
+  "url": "https://dqgrrafuoxaorvyrcuuh.supabase.co",
+  "total": 60,
+  "failed": 0,
+  "manual": 1,
+  "overall": "PASS",
+  "checks": [
+    {
+      "flow": "erp-owner",
+      "step": "password_auth",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:14.061Z"
+    },
+    {
+      "flow": "erp-owner",
+      "step": "authorization_context",
+      "pass": true,
+      "detail": "status=200 issues=none",
+      "active": {
+        "branch_id": "mtj-qa-a-main",
+        "portal_type": null,
+        "membership_id": null,
+        "workspace_key": "f9f73cce-9538-4286-9754-530ca4581fbb:erp",
+        "workspace_type": "erp",
+        "organization_id": "f9f73cce-9538-4286-9754-530ca4581fbb"
+      },
+      "default_route": "/",
+      "at": "2026-08-30T11:52:14.154Z"
+    },
+    {
+      "flow": "erp-owner",
+      "step": "default_route",
+      "pass": true,
+      "detail": "expected=/app got=/",
+      "at": "2026-08-30T11:52:14.154Z"
+    },
+    {
+      "flow": "erp-owner",
+      "step": "subscription_access",
+      "pass": true,
+      "detail": "status=200 access=granted valid=true",
+      "at": "2026-08-30T11:52:14.207Z"
+    },
+    {
+      "flow": "erp-owner",
+      "step": "rls_firm_data",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:14.251Z"
+    },
+    {
+      "flow": "erp-owner",
+      "step": "token_refresh",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:14.335Z"
+    },
+    {
+      "flow": "erp-owner",
+      "step": "context_after_refresh",
+      "pass": true,
+      "detail": "issues=none",
+      "at": "2026-08-30T11:52:14.632Z"
+    },
+    {
+      "flow": "erp-owner",
+      "step": "relogin_after_logout",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:14.714Z"
+    },
+    {
+      "flow": "erp-owner",
+      "step": "context_after_relogin",
+      "pass": true,
+      "detail": "issues=none",
+      "at": "2026-08-30T11:52:14.817Z"
+    },
+    {
+      "flow": "erp-owner",
+      "step": "chain_complete",
+      "pass": true,
+      "detail": "persona chain",
+      "at": "2026-08-30T11:52:14.817Z"
+    },
+    {
+      "flow": "platform-owner-qa",
+      "step": "qa_password_align",
+      "pass": true,
+      "detail": "password aligned for mtj.qa.platform-admin.20260731@example.com",
+      "at": "2026-08-30T11:52:15.185Z"
+    },
+    {
+      "flow": "platform-owner-qa",
+      "step": "password_auth",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:15.533Z"
+    },
+    {
+      "flow": "platform-owner-qa",
+      "step": "authorization_context",
+      "pass": true,
+      "detail": "status=200 issues=none",
+      "active": {
+        "branch_id": null,
+        "portal_type": null,
+        "membership_id": null,
+        "workspace_key": "platform:platform",
+        "workspace_type": "platform",
+        "organization_id": null
+      },
+      "default_route": "/platform",
+      "at": "2026-08-30T11:52:15.593Z"
+    },
+    {
+      "flow": "platform-owner-qa",
+      "step": "default_route",
+      "pass": true,
+      "detail": "expected=/platform got=/platform",
+      "at": "2026-08-30T11:52:15.593Z"
+    },
+    {
+      "flow": "platform-owner-qa",
+      "step": "set_platform_workspace",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:15.864Z"
+    },
+    {
+      "flow": "platform-owner-qa",
+      "step": "platform_active_after_set",
+      "pass": true,
+      "detail": "active=platform",
+      "at": "2026-08-30T11:52:16.128Z"
+    },
+    {
+      "flow": "platform-owner-qa",
+      "step": "token_refresh",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:16.168Z"
+    },
+    {
+      "flow": "platform-owner-qa",
+      "step": "context_after_refresh",
+      "pass": true,
+      "detail": "issues=none",
+      "at": "2026-08-30T11:52:16.453Z"
+    },
+    {
+      "flow": "platform-owner-qa",
+      "step": "relogin_after_logout",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:16.850Z"
+    },
+    {
+      "flow": "platform-owner-qa",
+      "step": "context_after_relogin",
+      "pass": true,
+      "detail": "issues=none",
+      "at": "2026-08-30T11:52:16.908Z"
+    },
+    {
+      "flow": "platform-owner-qa",
+      "step": "chain_complete",
+      "pass": true,
+      "detail": "persona chain",
+      "at": "2026-08-30T11:52:16.908Z"
+    },
+    {
+      "flow": "customer-portal",
+      "step": "password_auth",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:16.950Z"
+    },
+    {
+      "flow": "customer-portal",
+      "step": "authorization_context",
+      "pass": true,
+      "detail": "status=200 issues=none",
+      "active": {
+        "branch_id": "mtj-qa-a-main",
+        "portal_type": "customer",
+        "membership_id": null,
+        "workspace_key": "f9f73cce-9538-4286-9754-530ca4581fbb:customer",
+        "workspace_type": "customer",
+        "organization_id": "f9f73cce-9538-4286-9754-530ca4581fbb"
+      },
+      "default_route": "/",
+      "at": "2026-08-30T11:52:17.016Z"
+    },
+    {
+      "flow": "customer-portal",
+      "step": "default_route",
+      "pass": true,
+      "detail": "expected=/customer-portal got=/customer-portal",
+      "at": "2026-08-30T11:52:17.016Z"
+    },
+    {
+      "flow": "customer-portal",
+      "step": "portal_context_rpc",
+      "pass": true,
+      "detail": "status=200",
+      "entitlementBlocked": false,
+      "at": "2026-08-30T11:52:17.052Z"
+    },
+    {
+      "flow": "customer-portal",
+      "step": "token_refresh",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:17.328Z"
+    },
+    {
+      "flow": "customer-portal",
+      "step": "context_after_refresh",
+      "pass": true,
+      "detail": "issues=none",
+      "at": "2026-08-30T11:52:17.626Z"
+    },
+    {
+      "flow": "customer-portal",
+      "step": "relogin_after_logout",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:17.936Z"
+    },
+    {
+      "flow": "customer-portal",
+      "step": "context_after_relogin",
+      "pass": true,
+      "detail": "issues=none",
+      "at": "2026-08-30T11:52:18.248Z"
+    },
+    {
+      "flow": "customer-portal",
+      "step": "chain_complete",
+      "pass": true,
+      "detail": "persona chain",
+      "at": "2026-08-30T11:52:18.248Z"
+    },
+    {
+      "flow": "karigar-portal-qa",
+      "step": "qa_password_align",
+      "pass": true,
+      "detail": "password aligned for portal.qa.karigar.a@ornexa.test",
+      "at": "2026-08-30T11:52:18.409Z"
+    },
+    {
+      "flow": "karigar-portal-qa",
+      "step": "password_auth",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:18.533Z"
+    },
+    {
+      "flow": "karigar-portal-qa",
+      "step": "authorization_context",
+      "pass": true,
+      "detail": "status=200 issues=none",
+      "active": {
+        "branch_id": "mtj-qa-a-main",
+        "portal_type": "karigar",
+        "membership_id": null,
+        "workspace_key": "f9f73cce-9538-4286-9754-530ca4581fbb:karigar",
+        "workspace_type": "karigar",
+        "organization_id": "f9f73cce-9538-4286-9754-530ca4581fbb"
+      },
+      "default_route": "/karigar-portal",
+      "at": "2026-08-30T11:52:18.590Z"
+    },
+    {
+      "flow": "karigar-portal-qa",
+      "step": "default_route",
+      "pass": true,
+      "detail": "expected=/karigar-portal got=/karigar-portal",
+      "at": "2026-08-30T11:52:18.590Z"
+    },
+    {
+      "flow": "karigar-portal-qa",
+      "step": "portal_context_rpc",
+      "pass": true,
+      "detail": "status=403 entitlement blocked (auth OK): feature_not_entitled:karigar_portal",
+      "entitlementBlocked": true,
+      "at": "2026-08-30T11:52:18.638Z"
+    },
+    {
+      "flow": "karigar-portal-qa",
+      "step": "token_refresh",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:18.677Z"
+    },
+    {
+      "flow": "karigar-portal-qa",
+      "step": "context_after_refresh",
+      "pass": true,
+      "detail": "issues=none",
+      "at": "2026-08-30T11:52:18.740Z"
+    },
+    {
+      "flow": "karigar-portal-qa",
+      "step": "relogin_after_logout",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:18.912Z"
+    },
+    {
+      "flow": "karigar-portal-qa",
+      "step": "context_after_relogin",
+      "pass": true,
+      "detail": "issues=none",
+      "at": "2026-08-30T11:52:18.996Z"
+    },
+    {
+      "flow": "karigar-portal-qa",
+      "step": "chain_complete",
+      "pass": true,
+      "detail": "persona chain",
+      "at": "2026-08-30T11:52:18.996Z"
+    },
+    {
+      "flow": "supplier-portal-qa",
+      "step": "qa_password_align",
+      "pass": true,
+      "detail": "password aligned for portal.qa.supplier.a@ornexa.test",
+      "at": "2026-08-30T11:52:19.424Z"
+    },
+    {
+      "flow": "supplier-portal-qa",
+      "step": "password_auth",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:19.786Z"
+    },
+    {
+      "flow": "supplier-portal-qa",
+      "step": "authorization_context",
+      "pass": true,
+      "detail": "status=200 issues=none",
+      "active": {
+        "branch_id": "mtj-qa-a-main",
+        "portal_type": "supplier",
+        "membership_id": null,
+        "workspace_key": "f9f73cce-9538-4286-9754-530ca4581fbb:supplier",
+        "workspace_type": "supplier",
+        "organization_id": "f9f73cce-9538-4286-9754-530ca4581fbb"
+      },
+      "default_route": "/supplier-portal",
+      "at": "2026-08-30T11:52:19.865Z"
+    },
+    {
+      "flow": "supplier-portal-qa",
+      "step": "default_route",
+      "pass": true,
+      "detail": "expected=/supplier-portal got=/supplier-portal",
+      "at": "2026-08-30T11:52:19.865Z"
+    },
+    {
+      "flow": "supplier-portal-qa",
+      "step": "portal_context_rpc",
+      "pass": true,
+      "detail": "status=200",
+      "entitlementBlocked": false,
+      "at": "2026-08-30T11:52:19.899Z"
+    },
+    {
+      "flow": "supplier-portal-qa",
+      "step": "token_refresh",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:19.942Z"
+    },
+    {
+      "flow": "supplier-portal-qa",
+      "step": "context_after_refresh",
+      "pass": true,
+      "detail": "issues=none",
+      "at": "2026-08-30T11:52:20.003Z"
+    },
+    {
+      "flow": "supplier-portal-qa",
+      "step": "relogin_after_logout",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T11:52:20.159Z"
+    },
+    {
+      "flow": "supplier-portal-qa",
+      "step": "context_after_relogin",
+      "pass": true,
+      "detail": "issues=none",
+      "at": "2026-08-30T11:52:20.224Z"
+    },
+    {
+      "flow": "supplier-portal-qa",
+      "step": "chain_complete",
+      "pass": true,
+      "detail": "persona chain",
+      "at": "2026-08-30T11:52:20.224Z"
+    },
+    {
+      "flow": "failure-cases",
+      "step": "public_signup_blocked",
+      "pass": true,
+      "detail": "status=422",
+      "at": "2026-08-30T11:52:20.251Z"
+    },
+    {
+      "flow": "failure-cases",
+      "step": "wrong_invitation_rejected",
+      "pass": true,
+      "detail": "valid=false",
+      "at": "2026-08-30T11:52:21.290Z"
+    },
+    {
+      "flow": "failure-cases",
+      "step": "erp_user_wrong_portal_context",
+      "pass": true,
+      "detail": "status=200 erp_active=erp",
+      "at": "2026-08-30T11:52:21.671Z"
+    },
+    {
+      "flow": "failure-cases",
+      "step": "oauth_no_signup_wiring",
+      "pass": true,
+      "detail": "invite OAuth wired server-side",
+      "at": "2026-08-30T11:52:21.672Z"
+    },
+    {
+      "flow": "oauth-otp-wiring",
+      "step": "signup_disabled_config",
+      "pass": true,
+      "detail": "config.toml enable_signup=false",
+      "at": "2026-08-30T11:52:21.672Z"
+    },
+    {
+      "flow": "oauth-otp-wiring",
+      "step": "aurum_redirect_configured",
+      "pass": true,
+      "detail": "aurum redirect in config.toml",
+      "at": "2026-08-30T11:52:21.672Z"
+    },
+    {
+      "flow": "oauth-otp-wiring",
+      "step": "invite_oauth_server_validation",
+      "pass": true,
+      "detail": "server-side invite OAuth + rate limit",
+      "at": "2026-08-30T11:52:21.672Z"
+    },
+    {
+      "flow": "oauth-otp-wiring",
+      "step": "google_oauth_client_wired",
+      "pass": true,
+      "detail": "client Google OAuth entry",
+      "at": "2026-08-30T11:52:21.673Z"
+    },
+    {
+      "flow": "oauth-otp-wiring",
+      "step": "otp_route_exists",
+      "pass": true,
+      "detail": "otp-login route present",
+      "at": "2026-08-30T11:52:21.673Z"
+    },
+    {
+      "flow": "platform-owner-live",
+      "step": "owner_gmail_manual",
+      "pass": true,
+      "detail": "aritramanna222@gmail.com — owner must confirm browser login to /platform (credentials not in automation env)",
+      "manual": true,
+      "required": true,
+      "at": "2026-08-30T11:52:21.673Z"
+    }
+  ]
+}

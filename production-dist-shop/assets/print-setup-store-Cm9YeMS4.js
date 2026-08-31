@@ -1,0 +1,1 @@
+import{t as e}from"./react-yId0ar3t.js";var t={sizeOverride:null,orientation:null,margins:null,scalePct:100,fitToPage:!0},n=e()(e=>({...t,setSizeOverride:t=>e({sizeOverride:t}),setOrientation:t=>e({orientation:t}),setMargins:t=>e({margins:t}),setScalePct:t=>e({scalePct:Math.min(200,Math.max(25,t||100))}),setFitToPage:t=>e({fitToPage:t}),reset:()=>e({...t})}));export{n as t};

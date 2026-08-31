@@ -1,0 +1,15 @@
+title = "Ornexa Gitleaks"
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore vendor, build, and agent skill caches"
+paths = [
+  '''node_modules''',
+  '''dist''',
+  '''\.agents''',
+  '''\.claude''',
+  '''release''',
+  '''qa/reports-output''',
+  '''package-lock\.json''',
+]

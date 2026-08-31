@@ -1,0 +1,22 @@
+{
+  "description": "Strix integration config for Ornexa QA — references only; secrets in accounts.env",
+  "scanMode": "quick",
+  "nonInteractive": true,
+  "maxBudgetUsd": 3,
+  "maxTurns": 80,
+  "defaultLlm": "gemini/gemini-3.6-flash",
+  "outputDir": "qa/reports-output/strix",
+  "instructionFile": "qa/security/strix/ornexa-scope.md",
+  "targets": {
+    "web": "${QA_BASE_URL}",
+    "source": "."
+  },
+  "excludedHostPatterns": [
+    "maatarajewellers.shop",
+    "api.razorpay.com/v1/payments",
+    "graph.facebook.com",
+    "gmail.googleapis.com"
+  ],
+  "requireHumanReview": true,
+  "autoRemediate": false
+}

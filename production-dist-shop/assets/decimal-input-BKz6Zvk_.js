@@ -1,0 +1,1 @@
+function e(e){let t=``,n=!1;for(let r of e)r>=`0`&&r<=`9`?t+=r:r===`.`&&!n&&(t+=r,n=!0);return t}export{e as t};

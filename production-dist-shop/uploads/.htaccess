@@ -1,0 +1,11 @@
+# Secure .htaccess for MTJ Uploads Storage on Hostinger
+# Blocks directory browsing listings and prevents script files execution
+
+# Disable directory indexing
+Options -Indexes
+
+# Prevent executing scripts inside uploads
+<FilesMatch "\.(php|php5|php4|php3|phtml|pl|py|jsp|asp|sh|cgi|js)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

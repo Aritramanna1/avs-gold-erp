@@ -1,0 +1,104 @@
+{
+  "generatedAt": "2026-08-30T14:23:12.347Z",
+  "checks": [
+    {
+      "step": "dev_supabase_flag",
+      "pass": true,
+      "detail": "VITE_ENABLE_DEV_SUPABASE=1",
+      "at": "2026-08-30T14:23:11.209Z"
+    },
+    {
+      "step": "login",
+      "pass": true,
+      "detail": "mtj.qa.firm-owner.20260731@example.com",
+      "at": "2026-08-30T14:23:11.452Z"
+    },
+    {
+      "step": "firm_scope",
+      "pass": true,
+      "detail": "f9f73cce-9538-4286-9754-530ca4581fbb",
+      "at": "2026-08-30T14:23:11.668Z"
+    },
+    {
+      "step": "dashboard_rpc_status",
+      "pass": true,
+      "detail": "status=200",
+      "at": "2026-08-30T14:23:11.862Z"
+    },
+    {
+      "step": "vault_gold_live",
+      "pass": true,
+      "detail": "vault_mg=226824182",
+      "at": "2026-08-30T14:23:11.862Z"
+    },
+    {
+      "step": "open_orders_live",
+      "pass": true,
+      "detail": "open=414",
+      "at": "2026-08-30T14:23:11.862Z"
+    },
+    {
+      "step": "stock_live",
+      "pass": true,
+      "detail": "stock=21",
+      "at": "2026-08-30T14:23:11.862Z"
+    },
+    {
+      "step": "karigar_gold_live",
+      "pass": true,
+      "detail": "karigar_mg=32116567",
+      "at": "2026-08-30T14:23:11.862Z"
+    },
+    {
+      "step": "relogin_dashboard_parity",
+      "pass": true,
+      "detail": "vault=226824182 open=414",
+      "at": "2026-08-30T14:23:12.145Z"
+    },
+    {
+      "step": "customers_page_data",
+      "pass": true,
+      "detail": "count=27",
+      "at": "2026-08-30T14:23:12.347Z"
+    },
+    {
+      "step": "karigars_page_data",
+      "pass": true,
+      "detail": "count=50",
+      "at": "2026-08-30T14:23:12.347Z"
+    },
+    {
+      "step": "single_rpc_per_probe",
+      "pass": true,
+      "detail": "rpc=3 rest=2 (login+auth+dashboard probes)",
+      "at": "2026-08-30T14:23:12.347Z"
+    }
+  ],
+  "liveSummary": {
+    "goldBuckets": {
+      "vault": 226824182,
+      "karigar": 32116567,
+      "finished": 4402387,
+      "customer": -3836894
+    },
+    "openOrders": 414,
+    "totalOrders": 416,
+    "stockCount": 21,
+    "todayInvoiceCount": 0,
+    "todayBillingPaise": 0,
+    "ledgerDiscrepancyMg": 0
+  },
+  "people": {
+    "customerCount": 27,
+    "karigarCount": 50,
+    "firmId": "f9f73cce-9538-4286-9754-530ca4581fbb"
+  },
+  "metrics": {
+    "rpcCalls": 3,
+    "restCalls": 2
+  },
+  "summary": {
+    "pass": 12,
+    "fail": 0
+  }
+}

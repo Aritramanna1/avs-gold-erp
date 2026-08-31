@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-08-30T13:43:09.719Z",
+  "checks": [
+    {
+      "step": "login",
+      "pass": true,
+      "detail": "mtj.qa.firm-owner.20260731@example.com"
+    },
+    {
+      "step": "firm_scope",
+      "pass": true,
+      "detail": "firm_id=f9f73cce-9538-4286-9754-530ca4581fbb"
+    },
+    {
+      "step": "customers_firm_scoped",
+      "pass": true,
+      "detail": "status=200 count=27"
+    },
+    {
+      "step": "karigars_firm_scoped",
+      "pass": true,
+      "detail": "status=200 count=50"
+    },
+    {
+      "step": "customer_legacy_data_type_parity",
+      "pass": true,
+      "detail": "column=27 legacy_data=27"
+    },
+    {
+      "step": "dashboard_rpc",
+      "pass": true,
+      "detail": "status=200 gold_vault=n/a"
+    }
+  ],
+  "summary": {
+    "pass": 6,
+    "fail": 0
+  }
+}

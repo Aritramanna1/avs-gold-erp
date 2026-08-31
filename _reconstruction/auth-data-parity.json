@@ -1,0 +1,99 @@
+{
+  "at": "2026-08-29T19:59:58.589Z",
+  "url": "https://dqgrrafuoxaorvyrcuuh.supabase.co",
+  "email": "mt***@example.com",
+  "stableAcross3Rounds": true,
+  "liveIds": {
+    "invoice": {
+      "id": "inv_2a0d34bf56ca",
+      "invoiceNo": "GO-MT9ROVKC-CASH-TTL"
+    },
+    "barcode": null
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "firmId": "f9f73cce-9538-4286-9754-530ca4581fbb",
+      "counts": {
+        "customers": 27,
+        "karigars": 60,
+        "people": 89,
+        "orders": 397,
+        "job_cards": 391,
+        "inventory": 352,
+        "gold_ledger_rpc": 200,
+        "gold_ledger_sample": null,
+        "invoices": 387,
+        "stock_movements": 680
+      },
+      "statuses": {
+        "customers": 200,
+        "karigars": 200,
+        "orders": 200,
+        "job_cards": 200,
+        "dashboard": 500,
+        "gold_ledger_rpc": 200
+      },
+      "dashboardKeys": [
+        "code",
+        "details",
+        "hint",
+        "message"
+      ]
+    },
+    {
+      "round": 2,
+      "firmId": "f9f73cce-9538-4286-9754-530ca4581fbb",
+      "counts": {
+        "customers": 27,
+        "karigars": 60,
+        "people": 89,
+        "orders": 397,
+        "job_cards": 391,
+        "inventory": 352,
+        "gold_ledger_rpc": 200,
+        "gold_ledger_sample": null,
+        "invoices": 387,
+        "stock_movements": 680
+      },
+      "statuses": {
+        "customers": 200,
+        "karigars": 200,
+        "orders": 200,
+        "job_cards": 200,
+        "dashboard": 200,
+        "gold_ledger_rpc": 200
+      },
+      "dashboardKeys": [
+        "0"
+      ]
+    },
+    {
+      "round": 3,
+      "firmId": "f9f73cce-9538-4286-9754-530ca4581fbb",
+      "counts": {
+        "customers": 27,
+        "karigars": 60,
+        "people": 89,
+        "orders": 397,
+        "job_cards": 391,
+        "inventory": 352,
+        "gold_ledger_rpc": 200,
+        "gold_ledger_sample": null,
+        "invoices": 387,
+        "stock_movements": 680
+      },
+      "statuses": {
+        "customers": 200,
+        "karigars": 200,
+        "orders": 200,
+        "job_cards": 200,
+        "dashboard": 200,
+        "gold_ledger_rpc": 200
+      },
+      "dashboardKeys": [
+        "0"
+      ]
+    }
+  ]
+}

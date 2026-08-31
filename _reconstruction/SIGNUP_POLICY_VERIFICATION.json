@@ -1,0 +1,55 @@
+{
+  "at": "2026-08-30T11:53:11.477Z",
+  "checks": [
+    {
+      "id": "edge_public_trial_provision_403",
+      "pass": true,
+      "detail": "status=403 body={\"error\":\"Public signup is disabled. Request access from AVS or complete signup using your authorized invitation link.\","
+    },
+    {
+      "id": "edge_invite_accept_validate_reachable",
+      "pass": true,
+      "detail": "status=200 valid=false reason=not_found"
+    },
+    {
+      "id": "route_trial_start_redirect",
+      "pass": true,
+      "detail": "trial.start → REQUEST_ACCESS_PATH, no signUp"
+    },
+    {
+      "id": "rpc_provision_public_trial_anon_blocked",
+      "pass": true,
+      "detail": "status=401 snippet={\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function provision_public_trial\"}"
+    },
+    {
+      "id": "auth_existing_user_signin",
+      "pass": true,
+      "detail": "signed in as configured E2E user"
+    },
+    {
+      "id": "rpc_provision_public_trial_authed_blocked",
+      "pass": true,
+      "detail": "status=403 snippet={\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"permission denied for function provision_public_trial\"}"
+    },
+    {
+      "id": "auth_existing_user_has_workspace",
+      "pass": true,
+      "detail": "status=200 workspaces=1"
+    },
+    {
+      "id": "edge_public_trial_provision_authed_403",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "invite_google_oauth_and_rate_limit_wired",
+      "pass": true,
+      "detail": "invite accept OAuth + rate limit present"
+    },
+    {
+      "id": "auth_provider_public_signup_disabled",
+      "pass": true,
+      "detail": "signup rejected status=422"
+    }
+  ]
+}

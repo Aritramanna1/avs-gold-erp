@@ -1,0 +1,1 @@
+import{n as e}from"./rolldown-runtime-aKtaBQYM.js";var t=e({OrnexaPrint:()=>n}),n={async printPdf(){throw Error(`OrnexaPrint is only available on native Android`)},async printHtml(){throw Error(`OrnexaPrint is only available on native Android`)},async htmlToPdf(){throw Error(`OrnexaPrint is only available on native Android`)}};export{t as n,n as t};

@@ -1,0 +1,2189 @@
+
+AVS ERP / ORNEXA
+PRODUCT EDITION &amp; PRICINGDISCOVERY DOCUMENT
+INTERNAL PRODUCT DECISION DOCUMENT— NOT A MARKETING BROCHURE —
+Version: Draft for owner reviewDate: 2026-08-27Evidence base: codebase routes/stores/docs inventory (2026-08-27)Status: DOCUMENTATION ONLY — no ERP code or entitlement changes
+PURPOSEUnderstand everything first → Print → Review with team →Mark REQUIRED / NOT REQUIRED → Decide editions → Then implement.
+Commercial levels under evaluation (working labels only):Edition 1 ≈ ₹10,000 / year    |    Edition 2 ≈ ₹30,000 / year    |    Edition 3 ≈ ₹50,000 / year₹20K and ₹40K are NOT separate editions in this exercise.
+Approval block (handwrite):Prepared by: _________________     Date: ___________Reviewed by: _________________     Date: ___________Owner decision: ☐ APPROVED AS PLANNING BASE  ☐ REVISE  ☐ REJECTSignature: _______________________________
+1. Purpose &amp; rules of this document
+This document helps owners decide which features should exist, which are necessary, which belong in which commercial edition, which should be simplified or hidden, which are too complex for small businesses, and which should be reserved for higher editions.
+Hard rules for this discovery phase:
+• Do NOT change ERP code, database, migrations, UI, or permissions based on this document alone.
+• Do NOT delete features or create subscription locks until owners approve a later implementation plan.
+• Do NOT invent features that do not exist in the product.
+• Do NOT treat recommendations as final decisions — mark OWNER DECISION where unsure.
+• Simplified edition ≠ different accounting law. Prefer simpler UI / fewer modules / fewer options.
+• Underlying platform should stay architecturally consistent (one data plane, gold_ledger + ULE).
+1.1 Design principle (hypothesis only)
+Edition 1 (₹10K): SIMPLE / FAST / EASY / ESSENTIAL — still a genuinely useful product.Edition 2 (₹30K): MORE CONTROL / AUTOMATION / BUSINESS FEATURES.Edition 3 (₹50K): COMPLETE ERP — manufacturing depth, portals, advanced accounting/CRM/AI.Do not artificially gut basics only to force upgrades.
+1.2 Existing Ornexa plan ladder (reference — not this exercise)
+docs/SAAS_ENTITLEMENT_AND_BILLING.md already defines ORNEXA BASIC / GROWTH / PROFESSIONAL / SCALE / MAX with surface + portal + AI entitlements. That ladder is REFERENCE ONLY. This document evaluates a separate commercial shape: ₹10K / ₹30K / ₹50K. Owners must decide how (or whether) the two models converge.
+2. Current AVS product overview (evidence)
+Product identity (constitution / CLAUDE.md): Supabase-online jewellery MANUFACTURING ERP for web, desktop, and mobile — not a retail jewellery POS. Gold Vault / gold_ledger is metal SoT; universal ledger is money SoT; production offline/hybrid local DB is retired.
+Inventory snapshot (2026-08-27):
+• ~219 route .tsx files under src/routes
+• ~90+ domain *-store.ts modules under src/lib (plus print/comm/assistant stores)
+• Primary nav: src/lib/navigation-groups.ts → Sidebar
+• Module toggles: src/lib/module-store.ts (catalog, billing, gst, inventory, manufacturing, job_work, bullion, melt, crm, repairs, orders, attendance, payroll, barcode, WhatsApp, email, SMS, portals, reports, multi_branch, …)
+• Pilot module status: docs/MODULES.md (Active vs Partial)
+• Print: Universal Print Engine (src/lib/print-engine). Export: report-engine / EXPORT_ENGINE.md
+• Portals: customer, karigar, supplier + CEO dashboard
+• AI: /assistant + mobile.assistant + lib/assistant stack
+Offline reference ERP (AVS-ERP-Offline / company 1002) informs manufacturing accounting meaning (manubook, igroup, DocSeries). It is NOT a second production database.
+3. Complete feature inventory by business area
+Grouped from routes + stores + MODULES.md + nav. Exists=Yes unless noted. UNKNOWN / NEEDS OWNER DECISION where evidence is incomplete.
+A. Sales / Billing
+• Sales invoices / billing — billing.* + billing-store
+• Estimates / quotations — billing.estimates.*
+• Credit / debit notes
+• Delivery challans
+• Retail-style POS checkout — Product is mfg ERP; retail mode entitlement exists in docs only
+B. Purchase
+• Supplier purchases — billing.purchases + supplier-purchases-store
+• Purchase returns
+C. Inventory / Stock
+• Ready stock register — stock.* Partial per MODULES
+• Stock entry / import
+• Stock lots / boxes / trays
+• Stock transfers — multi-location
+• Stones &amp; diamonds tracking
+• Physical stock verification
+• Catalog / design library
+D. Barcode
+• Barcode &amp; tagging — Partial; scanner/print coming-soon routes
+• Manufacturing barcode tags
+• Hardware devices (scale/scanner)
+E. Gold / Jewellery
+• Gold vault / gold ledger — Source of truth for metal
+• Material vault (multi-material)
+• Metal conversion
+• Melt account
+• Refinery operations
+• Gold settlement / hisab
+• Customer gold deposits
+• Rate book / control rates
+• Rate-cut / overloss
+• Purity / stamp masters
+F. Customers / People
+• People / Party 360 — customers/suppliers/karigars/employees
+H. KYC
+• KYC / attachments — people + attachments-store
+G. CRM
+• CRM opportunities / tasks — crm-store
+I. Orders
+• Manufacturing orders
+• Job cards / production
+• Order import
+J. Karigar
+• Worker gold book (issue/return) — Core mfg hisab
+• Outside work / subcontract
+• Polishing books
+• Bench custody
+• Workshop processes (KDM/Meena/etc.)
+• Meena book — coming-soon route
+K. Manufacturing
+• Manufacturing bills (making)
+• Manufacturing books / ledgers
+• QC / Hallmark / HUID
+• ITC-04 job-work register
+L. Accounts / Ledger
+• Chart of accounts / dual books — ULE money + gold_ledger metal
+• Manufacturing CoA / DocSeries gates — economics spine on branch
+• Universal transaction engine — SCALE+ in SAAS doc
+• Custom books / entities / formulas
+M. Cash / Payments
+• Treasury vouchers (receipt/payment)
+• Bank reconciliation
+• Expenses — Partial posting evidence
+N. GST / Tax
+• GST settings &amp; returns
+• Financial statements
+• Tally export
+O. Payroll / Attendance
+• Attendance
+• Payroll / wages / advances — workers-store
+P. Reports
+• Core operational reports — daily close, gold summary, etc.
+• Advanced reconciliation reports — vault/mfg/settlement recon
+• Audit / auditor / exceptions / approvals
+• Communication analytics
+Q. Documents / Printing
+• Universal Print Engine
+• Print templates / profiles
+• Universal Export Engine
+R. QR Verification
+• QR / public document verification — verify + doc.$token
+S. Portals
+• Customer portal
+• Karigar portal
+• Supplier portal
+• CEO dashboard — CEO role only
+T. Communication
+• WhatsApp (Wasender / Meta)
+• Email communications
+• SMS providers
+• Comm automation / campaigns / inbox
+U. AI Assistant
+• AI Assistant (context / cloud) — assistant + mobile.assistant
+V. Dashboard
+• Operational dashboard — /app
+• Transaction hub
+W. Settings / Customization
+• Settings / firm branding / GST config
+• Workflow / automation settings
+• Customization hub / terminology
+• Multi-branch — 1 branch in SAAS tiers
+• Data migration / opening balances — one-time heavy
+X. Security / Users
+• Users / invites / RBAC — simplify role labels for basic
+• Security center / backup-recovery UI
+• License / entitlement validation
+• Platform / SaaS admin (Ornexa ops) — Not a customer feature
+Y. Backup / Offline / Desktop
+• Electron desktop shell — Thin shell; same Supabase
+• Local-authoritative offline ERP — ARCHITECTURE: not authorized
+• Cloud backup / restore UI
+Z. Other
+• Repair orders — retail-adjacent
+• Localization (HI/MR/BN)
+• Help / tutorials / training
+• Notifications center
+3.1 Additional surfaces (routes present)
+• Auth: login, OTP, invite, reset, onboarding, trial.start, setup
+• Marketing/legal: pricing, features, faq, terms, privacy, solutions/*
+• Control: accounts, customization, migration, print-profiles, rates, shortcuts, tally-export, terminology
+• Platform ops: platform.*, saas-admin, company-admin (operator — not end-customer SKU)
+• Coming soon: barcode-printing, barcode-scanner, meena-book
+• Mobile: mobile.index, mobile.master, mobile.transactions, mobile.stock-entry, mobile.assistant
+4. Master feature matrix (print &amp; mark)
+Legend — Retail/Mfg: RETAIL | MANUFACTURING | BOTH | FULL ERP | ADD-ON | UNKNOWN. Cx=Complexity 1–5, V=Value 1–5, F=Freq 1–5, S=Support 1–5. Owner Decision: leave blank and tick while reviewing.
+Feature
+Area
+Exists?
+R/Mfg
+Mobile
+Online
+Cx
+V
+Owner ☐
+Sales invoices / billing
+Sales / Billin
+Yes
+BOTH
+ALL
+BOTH
+3
+5
+☐
+Estimates / quotations
+Sales / Billin
+Yes
+BOTH
+DESKTO
+BOTH
+2
+4
+☐
+Credit / debit notes
+Sales / Billin
+Yes
+BOTH
+DESKTO
+BOTH
+3
+4
+☐
+Delivery challans
+Sales / Billin
+Yes
+BOTH
+DESKTO
+BOTH
+2
+3
+☐
+Retail-style POS checkout
+Sales / Billin
+UNKNOWN
+RETAIL
+UNKNOW
+BOTH
+3
+4
+☐
+Supplier purchases
+Purchase
+Yes
+BOTH
+MOBILE
+BOTH
+3
+5
+☐
+Purchase returns
+Purchase
+Yes
+BOTH
+DESKTO
+BOTH
+3
+3
+☐
+Ready stock register
+Inventory / St
+Yes
+BOTH
+MOBILE
+BOTH
+3
+5
+☐
+Stock entry / import
+Inventory / St
+Yes
+BOTH
+MOBILE
+BOTH
+3
+4
+☐
+Stock lots / boxes / trays
+Inventory / St
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+3
+☐
+Stock transfers
+Inventory / St
+Yes
+BOTH
+DESKTO
+BOTH
+3
+3
+☐
+Stones &amp; diamonds tracking
+Inventory / St
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+4
+☐
+Physical stock verification
+Inventory / St
+Yes
+BOTH
+DESKTO
+BOTH
+3
+4
+☐
+Catalog / design library
+Inventory / St
+Yes
+MANUFACT
+MOBILE
+BOTH
+3
+4
+☐
+Barcode &amp; tagging
+Barcode
+Yes
+BOTH
+DESKTO
+BOTH
+4
+4
+☐
+Manufacturing barcode tags
+Barcode
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+4
+☐
+Hardware devices (scale/scanner)
+Barcode
+Yes
+BOTH
+DESKTO
+BOTH
+4
+3
+☐
+Gold vault / gold ledger
+Gold / Jewelle
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+5
+☐
+Material vault (multi-material)
+Gold / Jewelle
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+4
+☐
+Metal conversion
+Gold / Jewelle
+Yes
+MANUFACT
+MOBILE
+BOTH
+4
+4
+☐
+Melt account
+Gold / Jewelle
+Yes
+MANUFACT
+MOBILE
+BOTH
+4
+4
+☐
+Refinery operations
+Gold / Jewelle
+Yes
+MANUFACT
+DESKTO
+BOTH
+5
+3
+☐
+Gold settlement / hisab
+Gold / Jewelle
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+5
+☐
+Customer gold deposits
+Gold / Jewelle
+Yes
+BOTH
+DESKTO
+BOTH
+3
+4
+☐
+Rate book / control rates
+Gold / Jewelle
+Yes
+BOTH
+DESKTO
+BOTH
+3
+5
+☐
+Rate-cut / overloss
+Gold / Jewelle
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+3
+☐
+Purity / stamp masters
+Gold / Jewelle
+Yes
+BOTH
+DESKTO
+BOTH
+2
+5
+☐
+People / Party 360
+Customers / Pe
+Yes
+BOTH
+MOBILE
+BOTH
+3
+5
+☐
+KYC / attachments
+KYC
+Yes
+BOTH
+DESKTO
+BOTH
+3
+4
+☐
+CRM opportunities / tasks
+CRM
+Yes
+BOTH
+DESKTO
+ONLINE-O
+4
+3
+☐
+Manufacturing orders
+Orders
+Yes
+MANUFACT
+MOBILE
+BOTH
+3
+5
+☐
+Job cards / production
+Orders
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+5
+☐
+Order import
+Orders
+Yes
+MANUFACT
+DESKTO
+BOTH
+3
+3
+☐
+Worker gold book (issue/return)
+Karigar
+Yes
+MANUFACT
+MOBILE
+BOTH
+4
+5
+☐
+Outside work / subcontract
+Karigar
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+4
+☐
+Polishing books
+Karigar
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+3
+☐
+Bench custody
+Karigar
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+3
+☐
+Workshop processes (KDM/Meena/etc.)
+Karigar
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+4
+☐
+Meena book
+Karigar
+Coming s
+MANUFACT
+DESKTO
+BOTH
+4
+3
+☐
+Manufacturing bills (making)
+Manufacturing
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+4
+☐
+Manufacturing books / ledgers
+Manufacturing
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+4
+☐
+QC / Hallmark / HUID
+Manufacturing
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+4
+☐
+ITC-04 job-work register
+Manufacturing
+Yes
+MANUFACT
+DESKTO
+BOTH
+5
+3
+☐
+Chart of accounts / dual books
+Accounts / Led
+Yes
+BOTH
+DESKTO
+BOTH
+5
+5
+☐
+Manufacturing CoA / DocSeries gates
+Accounts / Led
+Yes
+MANUFACT
+DESKTO
+BOTH
+5
+3
+☐
+Universal transaction engine
+Accounts / Led
+Yes
+FULL ERP
+ALL
+BOTH
+5
+3
+☐
+Custom books / entities / formulas
+Accounts / Led
+Yes
+FULL ERP
+DESKTO
+BOTH
+5
+2
+☐
+Treasury vouchers (receipt/payment)
+Cash / Payment
+Yes
+BOTH
+MOBILE
+BOTH
+3
+5
+☐
+Bank reconciliation
+Cash / Payment
+Yes
+BOTH
+DESKTO
+BOTH
+4
+4
+☐
+Expenses
+Cash / Payment
+Yes
+BOTH
+DESKTO
+BOTH
+2
+4
+☐
+GST settings &amp; returns
+GST / Tax
+Yes
+BOTH
+DESKTO
+BOTH
+4
+5
+☐
+Financial statements
+GST / Tax
+Yes
+BOTH
+DESKTO
+BOTH
+4
+4
+☐
+Tally export
+GST / Tax
+Yes
+BOTH
+DESKTO
+BOTH
+4
+3
+☐
+Attendance
+Payroll / Atte
+Yes
+MANUFACT
+DESKTO
+BOTH
+3
+3
+☐
+Payroll / wages / advances
+Payroll / Atte
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+3
+☐
+Core operational reports
+Reports
+Yes
+BOTH
+MOBILE
+BOTH
+3
+5
+☐
+Advanced reconciliation reports
+Reports
+Yes
+MANUFACT
+DESKTO
+BOTH
+4
+4
+☐
+Audit / auditor / exceptions / approvals
+Reports
+Yes
+FULL ERP
+DESKTO
+BOTH
+4
+3
+☐
+Communication analytics
+Reports
+Yes
+ADD-ON
+DESKTO
+ONLINE-O
+3
+2
+☐
+Universal Print Engine
+Documents / Pr
+Yes
+BOTH
+DESKTO
+BOTH
+3
+5
+☐
+Print templates / profiles
+Documents / Pr
+Yes
+BOTH
+DESKTO
+BOTH
+4
+4
+☐
+Universal Export Engine
+Documents / Pr
+Yes
+BOTH
+DESKTO
+BOTH
+3
+4
+☐
+QR / public document verification
+QR Verificatio
+Yes
+BOTH
+ALL
+ONLINE
+3
+4
+☐
+Customer portal
+Portals
+Yes
+BOTH
+ALL
+ONLINE
+4
+3
+☐
+Karigar portal
+Portals
+Yes
+MANUFACT
+ALL
+ONLINE
+4
+4
+☐
+Supplier portal
+Portals
+Yes
+MANUFACT
+ALL
+ONLINE
+4
+3
+☐
+CEO dashboard
+Portals
+Yes
+FULL ERP
+DESKTO
+ONLINE
+3
+3
+☐
+WhatsApp (Wasender / Meta)
+Communication
+Yes
+BOTH
+DESKTO
+ONLINE-O
+4
+4
+☐
+Email communications
+Communication
+Yes
+BOTH
+DESKTO
+ONLINE-O
+3
+3
+☐
+SMS providers
+Communication
+Yes
+BOTH
+DESKTO
+ONLINE-O
+3
+2
+☐
+Comm automation / campaigns / inbox
+Communication
+Yes
+FULL ERP
+DESKTO
+ONLINE-O
+5
+3
+☐
+AI Assistant (context / cloud)
+AI Assistant
+Yes
+FULL ERP
+ALL
+ONLINE-O
+5
+3
+☐
+Operational dashboard
+Dashboard
+Yes
+BOTH
+ALL
+BOTH
+2
+5
+☐
+Transaction hub
+Dashboard
+Yes
+BOTH
+MOBILE
+BOTH
+2
+4
+☐
+Settings / firm branding / GST config
+Settings / Cus
+Yes
+BOTH
+MOBILE
+BOTH
+3
+5
+☐
+Workflow / automation settings
+Settings / Cus
+Yes
+FULL ERP
+DESKTO
+BOTH
+5
+3
+☐
+Customization hub / terminology
+Settings / Cus
+Yes
+FULL ERP
+DESKTO
+BOTH
+5
+2
+☐
+Multi-branch
+Settings / Cus
+Yes
+BOTH
+DESKTO
+BOTH
+4
+3
+☐
+Data migration / opening balances
+Settings / Cus
+Yes
+BOTH
+DESKTO
+BOTH
+5
+4
+☐
+Users / invites / RBAC
+Security / Use
+Yes
+BOTH
+DESKTO
+ONLINE
+4
+5
+☐
+Security center / backup-recovery UI
+Security / Use
+Yes
+FULL ERP
+DESKTO
+ONLINE
+4
+4
+☐
+License / entitlement validation
+Security / Use
+Yes
+BOTH
+DESKTO
+ONLINE
+3
+5
+☐
+Platform / SaaS admin (Ornexa ops)
+Security / Use
+Yes
+FULL ERP
+DESKTO
+ONLINE
+5
+1
+☐
+Electron desktop shell
+Backup / Offli
+Yes
+BOTH
+DESKTO
+ONLINE
+3
+3
+☐
+Local-authoritative offline ERP
+Backup / Offli
+No (reti
+BOTH
+DESKTO
+OFFLINE
+5
+2
+☐
+Cloud backup / restore UI
+Backup / Offli
+Yes
+BOTH
+DESKTO
+ONLINE
+4
+4
+☐
+Repair orders
+Other
+Yes
+RETAIL
+DESKTO
+BOTH
+3
+3
+☐
+Localization (HI/MR/BN)
+Other
+Yes
+BOTH
+ALL
+BOTH
+3
+4
+☐
+Help / tutorials / training
+Other
+Yes
+BOTH
+ALL
+BOTH
+2
+4
+☐
+Notifications center
+Other
+Yes
+BOTH
+ALL
+BOTH
+2
+3
+☐
+Per-feature owner checklist (use while reviewing each major feature):☐ Required?  ☐ Small retailer?  ☐ Normal jewellery retailer?  ☐ Manufacturing?☐ Advanced?  ☐ Can simplify?  ☐ Hide from basic users?  ☐ Add-on?☐ Higher edition only?  ☐ High support burden?
+5. ₹10K / ₹30K / ₹50K edition planning matrix
+Working names: Edition 1 / Edition 2 / Edition 3. REC column = AGENT RECOMMENDATION ONLY (not a decision). Final: tick Include / Exclude / Add-on / Owner.
+Feature
+REC E1 ₹10K
+REC E2 ₹30K
+REC E3 ₹50K
+OWNER (I/E/A/O)
+Sales invoices / billing
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Estimates / quotations
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Credit / debit notes
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Delivery challans
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Retail-style POS checkout
+OWNER
+OWNER
+OWNER
+☐I ☐E ☐A ☐O
+Supplier purchases
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Purchase returns
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Ready stock register
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Stock entry / import
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Stock lots / boxes / trays
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Stock transfers
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Stones &amp; diamonds tracking
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Physical stock verification
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Catalog / design library
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Barcode &amp; tagging
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Manufacturing barcode tags
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Hardware devices (scale/scanner)
+ADD-ON
+ADD-ON
+INCLUDE
+☐I ☐E ☐A ☐O
+Gold vault / gold ledger
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Material vault (multi-material)
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Metal conversion
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Melt account
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Refinery operations
+EXCLUDE
+EXCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Gold settlement / hisab
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Customer gold deposits
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Rate book / control rates
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Rate-cut / overloss
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Purity / stamp masters
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+People / Party 360
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+KYC / attachments
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+CRM opportunities / tasks
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Manufacturing orders
+EXCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Job cards / production
+EXCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Order import
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Worker gold book (issue/return)
+EXCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Outside work / subcontract
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Polishing books
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Bench custody
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Workshop processes (KDM/Meena/etc.)
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Meena book
+EXCLUDE
+OWNER
+OWNER
+☐I ☐E ☐A ☐O
+Manufacturing bills (making)
+EXCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Manufacturing books / ledgers
+EXCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+QC / Hallmark / HUID
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+ITC-04 job-work register
+EXCLUDE
+EXCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Chart of accounts / dual books
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Manufacturing CoA / DocSeries gates
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Universal transaction engine
+EXCLUDE
+EXCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Custom books / entities / formulas
+EXCLUDE
+EXCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Treasury vouchers (receipt/payment)
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Bank reconciliation
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Expenses
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+GST settings &amp; returns
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Financial statements
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Tally export
+ADD-ON
+ADD-ON
+INCLUDE
+☐I ☐E ☐A ☐O
+Attendance
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Payroll / wages / advances
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Core operational reports
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Advanced reconciliation reports
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Audit / auditor / exceptions / appro
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Communication analytics
+EXCLUDE
+ADD-ON
+INCLUDE
+☐I ☐E ☐A ☐O
+Universal Print Engine
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Print templates / profiles
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Universal Export Engine
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+QR / public document verification
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Customer portal
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Karigar portal
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Supplier portal
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+CEO dashboard
+EXCLUDE
+EXCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+WhatsApp (Wasender / Meta)
+ADD-ON
+ADD-ON
+INCLUDE
+☐I ☐E ☐A ☐O
+Email communications
+ADD-ON
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+SMS providers
+ADD-ON
+ADD-ON
+INCLUDE
+☐I ☐E ☐A ☐O
+Comm automation / campaigns / inbox
+EXCLUDE
+EXCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+AI Assistant (context / cloud)
+EXCLUDE
+ADD-ON
+INCLUDE
+☐I ☐E ☐A ☐O
+Operational dashboard
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Transaction hub
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Settings / firm branding / GST confi
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Workflow / automation settings
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Customization hub / terminology
+EXCLUDE
+EXCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Multi-branch
+EXCLUDE
+OWNER
+INCLUDE
+☐I ☐E ☐A ☐O
+Data migration / opening balances
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Users / invites / RBAC
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Security center / backup-recovery UI
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+License / entitlement validation
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Platform / SaaS admin (Ornexa ops)
+EXCLUDE
+EXCLUDE
+EXCLUDE
+☐I ☐E ☐A ☐O
+Electron desktop shell
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Local-authoritative offline ERP
+EXCLUDE
+EXCLUDE
+EXCLUDE
+☐I ☐E ☐A ☐O
+Cloud backup / restore UI
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Repair orders
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Localization (HI/MR/BN)
+OWNER
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Help / tutorials / training
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+Notifications center
+INCLUDE
+INCLUDE
+INCLUDE
+☐I ☐E ☐A ☐O
+I=Include  E=Exclude  A=Add-on  O=Owner decision still open
+6. Retail vs Manufacturing classification
+AVS is constitutionally a manufacturing ERP. A retail-only customer must not be forced through full karigar/WIP workflows. A manufacturing customer must not lose jewellery/mfg depth because the retail edition is simpler.
+Classification: RETAIL
+• Retail-style POS checkout
+• Repair orders
+Classification: MANUFACTURING
+• Stock lots / boxes / trays
+• Stones &amp; diamonds tracking
+• Catalog / design library
+• Manufacturing barcode tags
+• Gold vault / gold ledger
+• Material vault (multi-material)
+• Metal conversion
+• Melt account
+• Refinery operations
+• Gold settlement / hisab
+• Rate-cut / overloss
+• Manufacturing orders
+• Job cards / production
+• Order import
+• Worker gold book (issue/return)
+• Outside work / subcontract
+• Polishing books
+• Bench custody
+• Workshop processes (KDM/Meena/etc.)
+• Meena book
+• Manufacturing bills (making)
+• Manufacturing books / ledgers
+• QC / Hallmark / HUID
+• ITC-04 job-work register
+• Manufacturing CoA / DocSeries gates
+• Attendance
+• Payroll / wages / advances
+• Advanced reconciliation reports
+• Karigar portal
+• Supplier portal
+Classification: BOTH
+• Sales invoices / billing
+• Estimates / quotations
+• Credit / debit notes
+• Delivery challans
+• Supplier purchases
+• Purchase returns
+• Ready stock register
+• Stock entry / import
+• Stock transfers
+• Physical stock verification
+• Barcode &amp; tagging
+• Hardware devices (scale/scanner)
+• Customer gold deposits
+• Rate book / control rates
+• Purity / stamp masters
+• People / Party 360
+• KYC / attachments
+• CRM opportunities / tasks
+• Chart of accounts / dual books
+• Treasury vouchers (receipt/payment)
+• Bank reconciliation
+• Expenses
+• GST settings &amp; returns
+• Financial statements
+• Tally export
+• Core operational reports
+• Universal Print Engine
+• Print templates / profiles
+• Universal Export Engine
+• QR / public document verification
+• Customer portal
+• WhatsApp (Wasender / Meta)
+• Email communications
+• SMS providers
+• Operational dashboard
+• Transaction hub
+• Settings / firm branding / GST config
+• Multi-branch
+• Data migration / opening balances
+• Users / invites / RBAC
+• License / entitlement validation
+• Electron desktop shell
+• Local-authoritative offline ERP
+• Cloud backup / restore UI
+• Localization (HI/MR/BN)
+• Help / tutorials / training
+• Notifications center
+Classification: FULL ERP
+• Universal transaction engine
+• Custom books / entities / formulas
+• Audit / auditor / exceptions / approvals
+• CEO dashboard
+• Comm automation / campaigns / inbox
+• AI Assistant (context / cloud)
+• Workflow / automation settings
+• Customization hub / terminology
+• Security center / backup-recovery UI
+• Platform / SaaS admin (Ornexa ops)
+Classification: ADD-ON
+• Communication analytics
+Classification: UNKNOWN
+(none tagged)
+7. Online vs Offline
+Production architecture: ONLINE Supabase-backed ERP. Electron desktop is a thin shell to the same data plane. Local-authoritative offline/SQLite is RETIRED. Optional services (WhatsApp, email, cloud AI) are ONLINE-DEPENDENT OPTIONAL.
+BOTH
+• Sales invoices / billing
+• Estimates / quotations
+• Credit / debit notes
+• Delivery challans
+• Retail-style POS checkout
+• Supplier purchases
+• Purchase returns
+• Ready stock register
+• Stock entry / import
+• Stock lots / boxes / trays
+• Stock transfers
+• Stones &amp; diamonds tracking
+• Physical stock verification
+• Catalog / design library
+• Barcode &amp; tagging
+• Manufacturing barcode tags
+• Hardware devices (scale/scanner)
+• Gold vault / gold ledger
+• Material vault (multi-material)
+• Metal conversion
+• Melt account
+• Refinery operations
+• Gold settlement / hisab
+• Customer gold deposits
+• Rate book / control rates
+• Rate-cut / overloss
+• Purity / stamp masters
+• People / Party 360
+• KYC / attachments
+• Manufacturing orders
+• Job cards / production
+• Order import
+• Worker gold book (issue/return)
+• Outside work / subcontract
+• Polishing books
+• Bench custody
+• Workshop processes (KDM/Meena/etc.)
+• Meena book
+• Manufacturing bills (making)
+• Manufacturing books / ledgers
+ONLINE
+• QR / public document verification
+• Customer portal
+• Karigar portal
+• Supplier portal
+• CEO dashboard
+• Users / invites / RBAC
+• Security center / backup-recovery UI
+• License / entitlement validation
+• Platform / SaaS admin (Ornexa ops)
+• Electron desktop shell
+• Cloud backup / restore UI
+ONLINE-OPTIONAL
+• CRM opportunities / tasks
+• Communication analytics
+• WhatsApp (Wasender / Meta)
+• Email communications
+• SMS providers
+• Comm automation / campaigns / inbox
+• AI Assistant (context / cloud)
+OFFLINE
+• Local-authoritative offline ERP
+OWNER NOTE: If a future Offline SKU is required, that is a separate product decision — not a silent fork of accounting SoT. ☐ Agree  ☐ Disagree  ☐ Needs separate project
+8. Desktop vs Mobile
+Do not put every desktop feature on mobile. Mobile should prioritise workflows that make sense on a phone (issue/receive, stock entry, invoice, payments, people create, assistant).
+Device tag: ALL
+• Sales invoices / billing
+• Universal transaction engine
+• QR / public document verification
+• Customer portal
+• Karigar portal
+• Supplier portal
+• AI Assistant (context / cloud)
+• Operational dashboard
+• Localization (HI/MR/BN)
+• Help / tutorials / training
+• Notifications center
+Device tag: MOBILE
+• Supplier purchases
+• Ready stock register
+• Stock entry / import
+• Catalog / design library
+• Metal conversion
+• Melt account
+• People / Party 360
+• Manufacturing orders
+• Worker gold book (issue/return)
+• Treasury vouchers (receipt/payment)
+• Core operational reports
+• Transaction hub
+• Settings / firm branding / GST config
+Device tag: DESKTOP
+• Estimates / quotations
+• Credit / debit notes
+• Delivery challans
+• Purchase returns
+• Stock lots / boxes / trays
+• Stock transfers
+• Stones &amp; diamonds tracking
+• Physical stock verification
+• Barcode &amp; tagging
+• Manufacturing barcode tags
+• Hardware devices (scale/scanner)
+• Gold vault / gold ledger
+• Material vault (multi-material)
+• Refinery operations
+• Gold settlement / hisab
+• Customer gold deposits
+• Rate book / control rates
+• Rate-cut / overloss
+• Purity / stamp masters
+• KYC / attachments
+• CRM opportunities / tasks
+• Job cards / production
+• Order import
+• Outside work / subcontract
+• Polishing books
+• Bench custody
+• Workshop processes (KDM/Meena/etc.)
+• Meena book
+• Manufacturing bills (making)
+• Manufacturing books / ledgers
+• QC / Hallmark / HUID
+• ITC-04 job-work register
+• Chart of accounts / dual books
+• Manufacturing CoA / DocSeries gates
+• Custom books / entities / formulas
+• Bank reconciliation
+• Expenses
+• GST settings &amp; returns
+• Financial statements
+• Tally export
+• Attendance
+• Payroll / wages / advances
+• Advanced reconciliation reports
+• Audit / auditor / exceptions / approvals
+• Communication analytics
+• Universal Print Engine
+• Print templates / profiles
+• Universal Export Engine
+• CEO dashboard
+• WhatsApp (Wasender / Meta)
+• Email communications
+• SMS providers
+• Comm automation / campaigns / inbox
+• Workflow / automation settings
+• Customization hub / terminology
+• Multi-branch
+• Data migration / opening balances
+• Users / invites / RBAC
+• Security center / backup-recovery UI
+• License / entitlement validation
+• Platform / SaaS admin (Ornexa ops)
+• Electron desktop shell
+• Local-authoritative offline ERP
+• Cloud backup / restore UI
+• Repair orders
+Device tag: UNKNOWN
+• Retail-style POS checkout
+9. User levels / permissions matrix (planning)
+Evidence roles: rbac.ts (owner, manager, billing, vault, workshop, accountant, viewer, …) and docs/ROLE_PERMISSION_MATRIX.md / permissions.ts (includes Retail Staff, Manufacturing Staff, portals). This table is for PRODUCT planning — not an implementation change.
+Feature area
+Owner
+Mgr
+Acct
+Sales
+Cashier
+Karigar
+Cust
+Suppl
+Admin
+Dashboard
+☐
+☐
+☐
+☐
+☐
+—
+—
+—
+☐
+Billing / invoices
+☐
+☐
+☐
+☐
+☐
+—
+○
+—
+☐
+Payments / cash
+☐
+☐
+☐
+☐
+☐
+—
+—
+—
+☐
+People / KYC
+☐
+☐
+☐
+☐
+○
+—
+—
+—
+☐
+Gold vault / issue-return
+☐
+☐
+○
+—
+—
+○
+—
+—
+☐
+Orders / job cards
+☐
+☐
+—
+☐
+—
+○
+○
+—
+☐
+Reports (basic)
+☐
+☐
+☐
+○
+—
+—
+—
+—
+☐
+Reports (advanced)
+☐
+☐
+☐
+—
+—
+—
+—
+—
+☐
+GST / CoA / locks
+☐
+○
+☐
+—
+—
+—
+—
+—
+☐
+Settings / users
+☐
+○
+—
+—
+—
+—
+—
+—
+☐
+Portals (external)
+☐
+○
+—
+—
+—
+☐
+☐
+☐
+☐
+AI assistant
+☐
+☐
+○
+○
+—
+—
+—
+—
+☐
+WhatsApp / email ops
+☐
+☐
+—
+○
+—
+—
+—
+—
+☐
+☐ = should see  ○ = limited  — = no. Fill during workshop.
+10. Complexity / value / support burden
+High support + high complexity + low frequency → candidate for higher edition or exclude from ₹10K. Scores are planning estimates from product structure — owners should adjust.
+Feature
+Cx
+Value
+Freq
+Support
+Note
+Platform / SaaS admin (Ornexa ops)
+5
+1
+1
+5
+review
+Custom books / entities / formulas
+5
+2
+1
+5
+review
+Customization hub / terminology
+5
+2
+1
+5
+review
+Local-authoritative offline ERP
+5
+2
+1
+5
+review
+Manufacturing CoA / DocSeries gates
+5
+3
+2
+5
+review
+Universal transaction engine
+5
+3
+2
+5
+review
+Comm automation / campaigns / inbox
+5
+3
+2
+5
+review
+AI Assistant (context / cloud)
+5
+3
+2
+5
+review
+Workflow / automation settings
+5
+3
+2
+5
+review
+Refinery operations
+5
+3
+2
+4
+review
+ITC-04 job-work register
+5
+3
+2
+4
+review
+Data migration / opening balances
+5
+4
+1
+5
+review
+Hardware devices (scale/scanner)
+4
+3
+3
+4
+review
+Rate-cut / overloss
+4
+3
+2
+4
+review
+CRM opportunities / tasks
+4
+3
+2
+4
+review
+Chart of accounts / dual books
+5
+5
+4
+5
+review
+Payroll / wages / advances
+4
+3
+3
+4
+review
+Audit / auditor / exceptions / approvals
+4
+3
+2
+4
+review
+Customer portal
+4
+3
+2
+4
+review
+Supplier portal
+4
+3
+2
+4
+review
+Multi-branch
+4
+3
+2
+4
+review
+Stock lots / boxes / trays
+4
+3
+3
+3
+review
+Stones &amp; diamonds tracking
+4
+4
+3
+4
+review
+Barcode &amp; tagging
+4
+4
+4
+4
+review
+Manufacturing barcode tags
+4
+4
+3
+4
+review
+11. Features that should be simplified (candidates)
+Simplification = UX / visibility / options — NOT different business law.
+Chart of accounts / Universal Ledger
+CURRENT EXPERIENCE: Users see technical journal / CoA screens.
+→ PROBLEM: Complexity / literacy / support risk
+→ PROPOSED SIMPLIFICATION: Normal staff may only need Money Entry / Party Balance; CoA for accountant/admin.
+→ BUSINESS LOGIC PRESERVED? Yes — ULE remains SoT.
+→ OWNER DECISION: ☐ Simplify  ☐ Keep as-is  ☐ Higher edition only  ☐ Needs workshop
+Settings / customization hub
+CURRENT EXPERIENCE: Very large settings surface (GST, WhatsApp, workflows, templates, economics…).
+→ PROBLEM: Complexity / literacy / support risk
+→ PROPOSED SIMPLIFICATION: Edition 1: Brand + GST + rates + users only. Advanced tabs admin-gated.
+→ BUSINESS LOGIC PRESERVED? Yes — same app_settings blob.
+→ OWNER DECISION: ☐ Simplify  ☐ Keep as-is  ☐ Higher edition only  ☐ Needs workshop
+Reports suite
+CURRENT EXPERIENCE: Many specialised recon/audit reports.
+→ PROBLEM: Complexity / literacy / support risk
+→ PROPOSED SIMPLIFICATION: Edition 1: Daily close, sales, stock, party outstanding. Advanced recon in higher editions.
+→ BUSINESS LOGIC PRESERVED? Yes — same report engines.
+→ OWNER DECISION: ☐ Simplify  ☐ Keep as-is  ☐ Higher edition only  ☐ Needs workshop
+CRM + communications hub
+CURRENT EXPERIENCE: Pipeline + WhatsApp inbox + campaigns + analytics.
+→ PROBLEM: Complexity / literacy / support risk
+→ PROPOSED SIMPLIFICATION: Edition 1: Party phone + simple reminders. Full CRM/WA as add-on or E2/E3.
+→ BUSINESS LOGIC PRESERVED? Yes — optional modules.
+→ OWNER DECISION: ☐ Simplify  ☐ Keep as-is  ☐ Higher edition only  ☐ Needs workshop
+Manufacturing / workshop
+CURRENT EXPERIENCE: Gold book, outside work, polishing, processes, bills, hallmark.
+→ PROBLEM: Complexity / literacy / support risk
+→ PROPOSED SIMPLIFICATION: Hide entire Manufacturing nav group for retail-only tenants; full for mfg tenants.
+→ BUSINESS LOGIC PRESERVED? Yes — module flags / business.mode entitlements.
+→ OWNER DECISION: ☐ Simplify  ☐ Keep as-is  ☐ Higher edition only  ☐ Needs workshop
+Dashboard
+CURRENT EXPERIENCE: Risk of KPI clutter.
+→ PROBLEM: Complexity / literacy / support risk
+→ PROPOSED SIMPLIFICATION: Edition 1: cash today, gold position, pending orders/invoices only.
+→ BUSINESS LOGIC PRESERVED? Yes.
+→ OWNER DECISION: ☐ Simplify  ☐ Keep as-is  ☐ Higher edition only  ☐ Needs workshop
+User management / roles
+CURRENT EXPERIENCE: Many role names (Retail Staff, Manufacturing Staff, vault, workshop…).
+→ PROBLEM: Complexity / literacy / support risk
+→ PROPOSED SIMPLIFICATION: Edition 1 presets: Owner, Staff, Accountant. Advanced roles in E3.
+→ BUSINESS LOGIC PRESERVED? Yes — map to existing RBAC.
+→ OWNER DECISION: ☐ Simplify  ☐ Keep as-is  ☐ Higher edition only  ☐ Needs workshop
+Terminology (ULE, DocSeries, igroup…)
+CURRENT EXPERIENCE: Technical Offline/ERP terms leak into UI.
+→ PROBLEM: Complexity / literacy / support risk
+→ PROPOSED SIMPLIFICATION: User-facing labels: Money Entry, Stock Effect, Tax Type — keep internal codes.
+→ BUSINESS LOGIC PRESERVED? Yes — terminology engine exists.
+→ OWNER DECISION: ☐ Simplify  ☐ Keep as-is  ☐ Higher edition only  ☐ Needs workshop
+12. Candidates to exclude from ₹10,000 Edition (for review)
+NOT assumed excluded — present for owner marking.
+☐  Stock lots / boxes / trays  (agent rec: EXCLUDE) — area C. Inventory / Stock
+☐  Stones &amp; diamonds tracking  (agent rec: EXCLUDE) — area C. Inventory / Stock
+☐  Manufacturing barcode tags  (agent rec: EXCLUDE) — area D. Barcode
+☐  Hardware devices (scale/scanner)  (agent rec: ADD-ON) — area D. Barcode
+☐  Material vault (multi-material)  (agent rec: EXCLUDE) — area E. Gold / Jewellery
+☐  Metal conversion  (agent rec: EXCLUDE) — area E. Gold / Jewellery
+☐  Melt account  (agent rec: EXCLUDE) — area E. Gold / Jewellery
+☐  Refinery operations  (agent rec: EXCLUDE) — area E. Gold / Jewellery
+☐  Rate-cut / overloss  (agent rec: EXCLUDE) — area E. Gold / Jewellery
+☐  CRM opportunities / tasks  (agent rec: EXCLUDE) — area G. CRM
+☐  Manufacturing orders  (agent rec: EXCLUDE) — area I. Orders
+☐  Job cards / production  (agent rec: EXCLUDE) — area I. Orders
+☐  Order import  (agent rec: EXCLUDE) — area I. Orders
+☐  Worker gold book (issue/return)  (agent rec: EXCLUDE) — area J. Karigar
+☐  Outside work / subcontract  (agent rec: EXCLUDE) — area J. Karigar
+☐  Polishing books  (agent rec: EXCLUDE) — area J. Karigar
+☐  Bench custody  (agent rec: EXCLUDE) — area J. Karigar
+☐  Workshop processes (KDM/Meena/etc.)  (agent rec: EXCLUDE) — area J. Karigar
+☐  Meena book  (agent rec: EXCLUDE) — area J. Karigar
+☐  Manufacturing bills (making)  (agent rec: EXCLUDE) — area K. Manufacturing
+☐  Manufacturing books / ledgers  (agent rec: EXCLUDE) — area K. Manufacturing
+☐  QC / Hallmark / HUID  (agent rec: EXCLUDE) — area K. Manufacturing
+☐  ITC-04 job-work register  (agent rec: EXCLUDE) — area K. Manufacturing
+☐  Manufacturing CoA / DocSeries gates  (agent rec: EXCLUDE) — area L. Accounts / Ledger
+☐  Universal transaction engine  (agent rec: EXCLUDE) — area L. Accounts / Ledger
+☐  Custom books / entities / formulas  (agent rec: EXCLUDE) — area L. Accounts / Ledger
+☐  Tally export  (agent rec: ADD-ON) — area N. GST / Tax
+☐  Attendance  (agent rec: EXCLUDE) — area O. Payroll / Attendance
+☐  Payroll / wages / advances  (agent rec: EXCLUDE) — area O. Payroll / Attendance
+☐  Advanced reconciliation reports  (agent rec: EXCLUDE) — area P. Reports
+☐  Audit / auditor / exceptions / approvals  (agent rec: EXCLUDE) — area P. Reports
+☐  Communication analytics  (agent rec: EXCLUDE) — area P. Reports
+☐  Customer portal  (agent rec: EXCLUDE) — area S. Portals
+☐  Karigar portal  (agent rec: EXCLUDE) — area S. Portals
+☐  Supplier portal  (agent rec: EXCLUDE) — area S. Portals
+☐  CEO dashboard  (agent rec: EXCLUDE) — area S. Portals
+☐  WhatsApp (Wasender / Meta)  (agent rec: ADD-ON) — area T. Communication
+☐  Email communications  (agent rec: ADD-ON) — area T. Communication
+☐  SMS providers  (agent rec: ADD-ON) — area T. Communication
+☐  Comm automation / campaigns / inbox  (agent rec: EXCLUDE) — area T. Communication
+☐  AI Assistant (context / cloud)  (agent rec: EXCLUDE) — area U. AI Assistant
+☐  Workflow / automation settings  (agent rec: EXCLUDE) — area W. Settings / Customization
+☐  Customization hub / terminology  (agent rec: EXCLUDE) — area W. Settings / Customization
+☐  Multi-branch  (agent rec: EXCLUDE) — area W. Settings / Customization
+☐  Platform / SaaS admin (Ornexa ops)  (agent rec: EXCLUDE) — area X. Security / Users
+☐  Local-authoritative offline ERP  (agent rec: EXCLUDE) — area Y. Backup / Offline / Desktop
+13. Add-on candidates (vs editions)
+Some capabilities may sell better as metered/add-on packs than as forced edition jumps.
+☐  WhatsApp / Meta WABA — ☐ Add-on  ☐ Bundle in E2  ☐ Bundle in E3  ☐ Never
+☐  SMS pack — ☐ Add-on  ☐ Bundle in E2  ☐ Bundle in E3  ☐ Never
+☐  Cloud AI assistant credits — ☐ Add-on  ☐ Bundle in E2  ☐ Bundle in E3  ☐ Never
+☐  Tally export — ☐ Add-on  ☐ Bundle in E2  ☐ Bundle in E3  ☐ Never
+☐  Hardware integration pack — ☐ Add-on  ☐ Bundle in E2  ☐ Bundle in E3  ☐ Never
+☐  Extra portal seats — ☐ Add-on  ☐ Bundle in E2  ☐ Bundle in E3  ☐ Never
+☐  Extra branch — ☐ Add-on  ☐ Bundle in E2  ☐ Bundle in E3  ☐ Never
+☐  Advanced automation / campaigns — ☐ Add-on  ☐ Bundle in E2  ☐ Bundle in E3  ☐ Never
+14. Why would a customer upgrade?
+14.1 Edition 1 → Edition 2 (₹10K → ₹30K) — draft hypotheses
+☐  Needs manufacturing orders + worker gold book / job cards
+☐  Needs deeper stock (lots/transfers) or hallmark/QC
+☐  Needs bank recon + fuller GST/financial reports
+☐  Needs second device surface (e.g. mobile) or one portal
+☐  Needs structured CRM beyond party phone book
+14.2 Edition 2 → Edition 3 (₹30K → ₹50K) — draft hypotheses
+☐  Needs multiple portals (customer + karigar + supplier) and/or CEO view
+☐  Needs universal custom transactions / formula / workflow designer
+☐  Needs advanced AI + automation + WhatsApp inbox/campaigns
+☐  Needs multi-branch / enterprise audit / period control depth
+☐  Needs refinery / ITC-04 / advanced recon pack
+Principle: Edition 1 must remain genuinely useful (billing, people, stock, cash, essential gold/GST as owners decide).
+15. Non-technical / low-literacy UX considerations
+Separate USER EXPERIENCE from BUSINESS / DATABASE LOGIC. Example: UI may say “Money Entry” while the system still posts a Universal Ledger Entry.
+☐  Can a shop employee understand this screen immediately?  Notes: _______________________________
+☐  Is terminology unnecessarily technical?  Notes: _______________________________
+☐  Can the workflow be reduced to fewer steps?  Notes: _______________________________
+☐  Can icons + simple words replace jargon?  Notes: _______________________________
+☐  Can the system provide guided actions / next-step prompts?  Notes: _______________________________
+☐  Are important actions obvious (Save / Print / Pay)?  Notes: _______________________________
+☐  Can complex accounting stay hidden from normal users?  Notes: _______________________________
+☐  Can advanced settings be restricted to administrators?  Notes: _______________________________
+16. Owner decision questionnaire
+Leave handwriting space. Tick and annotate.
+1. What type of customer is ₹10K targeting?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+2. Retail only, or small businesses generally (including tiny workshops)?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+3. Should barcode be included in ₹10K?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+4. Should gold accounting / vault be included in ₹10K?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+5. Should GST be included in ₹10K?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+6. Should CRM be included in ₹10K? How much CRM is necessary?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+7. Should manufacturing (orders/job cards/gold book) exist in ₹10K?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+8. Should payroll / attendance exist in ₹10K?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+9. Should portals exist in ₹10K?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+10. Should AI exist in ₹10K?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+11. Which reports are essential vs advanced?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+12. What should a cashier see?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+13. What should an owner see?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+14. What should an accountant see?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+15. Which features require administrator access?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+16. Which features should be mobile?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+17. Which features must work completely offline (if any)?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+18. Which online services are optional add-ons?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+19. Primary selling point of Edition 1 / 2 / 3?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+20. What triggers upgrade ₹10K → ₹30K?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+21. What triggers upgrade ₹30K → ₹50K?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+22. Which features should be add-ons instead of editions?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+23. Which features should NEVER be in the simplified edition due to complexity/support?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+24. How should this ₹10/30/50K ladder relate to existing ORNEXA BASIC…MAX entitlements?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+25. Is AVS sold primarily as manufacturing ERP, with retail as a constrained mode — or the reverse?
+☐ Yes   ☐ No   ☐ Partial   ☐ Owner undecidedNotes: ______________________________________________________________________________________________________________________________________
+17. Final notes &amp; approval
+FINAL RULE: Do not optimise for “more features.” Optimise for right features, simple experience, clear differentiation, low support burden, consistent business logic, and easy use for non-technical users.
+Next step after this print review: produce an IMPLEMENTATION PLAN (entitlement keys, nav hides, role presets, module flags) — only after owner signatures below.
+OWNER APPROVALName: ________________________  Role: _________________☐ Inventory accepted as complete enough to plan editions☐ Edition recommendations accepted as starting point☐ Edition recommendations need major revision (attach marked pages)☐ Authorised to draft implementation planSignature: ________________________  Date: ______________Second reviewer: __________________  Date: ______________
+Appendix evidence paths: docs/AVS_ERP_FEATURE_INVENTORY_SOURCE.md, docs/MODULES.md, docs/SAAS_ENTITLEMENT_AND_BILLING.md, src/lib/navigation-groups.ts, src/lib/module-store.ts, src/lib/rbac.ts, docs/ROLE_PERMISSION_MATRIX.md.

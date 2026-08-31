@@ -1,0 +1,21 @@
+rules:
+  - id: ornexa-service-role-in-frontend
+    languages: [typescript, javascript]
+    message: Service-role or privileged Supabase key must not appear in frontend code
+    severity: ERROR
+    patterns:
+      - pattern-regex: (?i)(service[_-]?role|SUPABASE_SERVICE_ROLE)
+      - pattern: dangerouslySetInnerHTML
+    paths:
+      include:
+        - src/**
+
+  - id: ornexa-unverified-webhook
+    languages: [typescript]
+    message: Webhook handler should verify signature before processing
+    severity: WARNING
+    pattern: |
+      Deno.serve($FN)
+    paths:
+      include:
+        - supabase/functions/**
