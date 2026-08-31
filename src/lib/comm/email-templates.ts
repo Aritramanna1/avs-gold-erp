@@ -404,16 +404,29 @@ export function renderEmailTemplate(
       );
     case "order_delayed":
       return simpleTemplate(
-        "Important Update: Order {{document_number}} Delayed — {{tenant_name}}",
-        `<p>Dear {{recipient_name}},</p><p>We sincerely apologize, but your order <strong>{{document_number}}</strong> has experienced a short delay${vars.reasonText ? ` due to <em>${escapeHtml(vars.reasonText)}</em>` : ""}.${vars.revisedDate ? `<br/>The revised estimated completion date is <strong>${escapeHtml(vars.revisedDate)}</strong>.` : ""}</p><p>Your updated order slip is attached for your reference.</p>${ctaButton("Track Order Status", vars.actionUrl)}`,
-        "Order {{document_number}} is delayed. Revised date: " + (vars.revisedDate || "Upcoming") + ". Track: {{action_url}}",
+        "Important Update: Order {{document_number}} Delayed (Delay Apology) — {{tenant_name}}",
+        `<p>Dear {{recipient_name}},</p>
+<p>We are writing to sincerely apologize regarding your jewellery order <strong>{{document_number}}</strong>.</p>
+<div style="background:#FFFBEB;border:1px solid #FDE68A;border-left:4px solid #D97706;padding:16px 20px;border-radius:8px;margin:20px 0;color:#92400E;">
+  <p style="margin:0 0 8px 0;font-size:16px;font-weight:600;color:#B45309;">We are deeply sorry that your order has been delayed.</p>
+  <p style="margin:0;font-size:14px;line-height:1.5;">Our master craftsmen and workshop team are giving your pieces their undivided attention and working with top priority. We promise to deliver your order to you as soon as possible.</p>
+</div>
+${vars.revisedDate ? `<p style="margin:12px 0;"><strong>Estimated Revised Delivery:</strong> <span style="color:#B45309;font-weight:600;">${escapeHtml(vars.revisedDate)}</span></p>` : ""}
+${vars.reasonText ? `<p style="margin:12px 0;"><strong>Workshop Note:</strong> ${escapeHtml(vars.reasonText)}</p>` : ""}
+<p style="margin-top:16px;">We sincerely appreciate your patience, understanding, and trust in our craftsmanship.</p>
+${ctaButton("Track Order Live", vars.actionUrl)}`,
+        "We are sorry that your order {{document_number}} is delayed. Our workshop is expediting your jewellery with top priority and will deliver to you as soon as possible. Track: {{action_url}}",
         vars,
       );
     case "order_delivered":
       return simpleTemplate(
-        "Order {{document_number}} Delivered — {{tenant_name}}",
-        `<p>Dear {{recipient_name}},</p><p>We are delighted to confirm that your order <strong>{{document_number}}</strong> has been successfully completed and delivered.</p><p>Thank you for choosing <strong>{{tenant_name}}</strong>. Your official delivery document is attached.</p>${ctaButton("View Order Details", vars.actionUrl)}`,
-        "Order {{document_number}} delivered. View: {{action_url}}",
+        "Order {{document_number}} Delivered — Thank You from {{tenant_name}}",
+        `<p>Dear {{recipient_name}},</p>
+<p>We are delighted to confirm that your order <strong>{{document_number}}</strong> has been successfully completed and delivered.</p>
+<p>Thank you for choosing <strong>{{tenant_name}}</strong>. It has been a pleasure crafting your precious jewellery.</p>
+<p>Your official tax invoice and purity guarantee records are attached to this email.</p>
+${ctaButton("View Order & Guarantee", vars.actionUrl)}`,
+        "Order {{document_number}} has been delivered. Thank you from {{tenant_name}}!",
         vars,
       );
     case "credit_note":

@@ -72,6 +72,10 @@ function markDispatched(key: string): void {
   }
 }
 
+export function clearAutomaticCommDedupeCache(): void {
+  recentDispatches.clear();
+}
+
 /** Convert blob to bare base64 for email attachment transport */
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -216,7 +220,11 @@ export async function dispatchAutomaticBusinessEvent(
     documentType: event.docType?.replace(/_/g, " ").toUpperCase() || "Document",
     documentNumber: event.documentNumber || event.recordId || "—",
     amountFormatted: event.variables?.amount ? `₹ ${event.variables.amount}` : undefined,
-    reasonText: event.variables?.reason ? String(event.variables.reason) : undefined,
+    reasonText: event.variables?.reasonText
+      ? String(event.variables.reasonText)
+      : event.variables?.reason
+        ? String(event.variables.reason)
+        : undefined,
     revisedDate: event.variables?.revisedDate ? String(event.variables.revisedDate) : undefined,
     parentInvoiceNo: event.variables?.parentInvoiceNo ? String(event.variables.parentInvoiceNo) : undefined,
     auditReference: event.variables?.auditReference ? String(event.variables.auditReference) : undefined,

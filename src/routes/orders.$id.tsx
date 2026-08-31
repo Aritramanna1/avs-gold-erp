@@ -61,13 +61,16 @@ import { CommLogCard } from "@/components/comm-log-card";
 import { ReferenceNotesPanel } from "@/components/reference-notes/ReferenceNotesPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useOrderById } from "@/lib/use-order";
+import { isOrderDelayed, sendOrderDelayNotification } from "@/lib/comm/order-delay-monitor";
 import {
+  AlertTriangle,
   ArrowLeft,
   BookOpen,
   Calendar,
   CheckCircle2,
   Eye,
   Hammer,
+  Mail,
   PackageCheck,
   Printer,
   Receipt,
@@ -109,6 +112,9 @@ function OrderDetailPage() {
   const [workerIssueOpen, setWorkerIssueOpen] = useState(false);
   const [sendPolishingOpen, setSendPolishingOpen] = useState(false);
   const [receivePolishingOpen, setReceivePolishingOpen] = useState(false);
+  const [delayDialogOpen, setDelayDialogOpen] = useState(false);
+
+  const isDelayed = useMemo(() => (order ? isOrderDelayed(order) : false), [order]);
 
   const refreshWorkerReturns = useWorkerReturns((s) => s.refresh);
   const allWorkerReturns = useWorkerReturns((s) => s.returns);
@@ -424,6 +430,34 @@ function OrderDetailPage() {
           </Badge>
         </div>
       </div>
+
+      {/* Delayed Order Alert Banner */}
+      {isDelayed && (
+        <div
+          data-testid="order-delayed-banner"
+          className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm"
+        >
+          <div className="flex items-start sm:items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+            <div>
+              <div className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                Order Delayed (Promised Due Date: {order.expectedDelivery})
+              </div>
+              <div className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                This order has passed its scheduled delivery deadline. You can send a delay apology email with an updated timeline to keep the customer informed.
+              </div>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            className="bg-amber-600 hover:bg-amber-700 text-white shrink-0 gap-1.5 shadow-sm"
+            onClick={() => setDelayDialogOpen(true)}
+            data-testid="order-delay-apology-btn"
+          >
+            <Mail className="h-4 w-4" /> Send Delay Apology Email
+          </Button>
+        </div>
+      )}
 
       {/* Dashboard Summary — display only, aggregated from Gold Ledger, Worker Gold Book, Order Issues, Worker Returns, and the Timeline */}
       <div
@@ -1061,6 +1095,12 @@ function OrderDetailPage() {
         orderNo={order.orderNo}
         defaultPurity={order.item.purity}
       />
+      <OrderDelayApologyDialog
+        open={delayDialogOpen}
+        onClose={() => setDelayDialogOpen(false)}
+        order={order}
+        customer={customer}
+      />
     </div>
   );
 }
@@ -1261,3 +1301,104 @@ function CreateJobCardDialog({
     </Dialog>
   );
 }
+
+function OrderDelayApologyDialog({
+  open,
+  onClose,
+  order,
+  customer,
+}: {
+  open: boolean;
+  onClose: () => void;
+  order: Order;
+  customer?: { fullName?: string; email?: string; phone?: string } | null;
+}) {
+  const [revisedDate, setRevisedDate] = useState(order.expectedDelivery || "");
+  const [reasonText, setReasonText] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function handleSend() {
+    try {
+      setSending(true);
+      const res = await sendOrderDelayNotification(order, {
+        revisedDate: revisedDate || undefined,
+        reasonText: reasonText || undefined,
+      });
+
+      if (res.ok) {
+        toast.success(
+          res.skipped
+            ? "Delay apology skipped (deduplicated or email automation disabled)"
+            : "Delay apology email sent successfully to customer!",
+        );
+        onClose();
+      } else {
+        toast.error(`Failed to send apology email: ${res.error || "Unknown error"}`);
+      }
+    } catch (err: any) {
+      toast.error(`Error sending email: ${err?.message || "Internal error"}`);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5 text-amber-600" />
+            Send Order Delay Apology Email
+          </DialogTitle>
+          <DialogDescription>
+            Dispatch an official apology email to <strong className="text-foreground">{customer?.fullName || "Customer"}</strong> ({customer?.email || "No email on record"}).
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
+            <strong>Template Message:</strong> &ldquo;We are deeply sorry that your order is delayed. Our master craftsmen and workshop team are giving your pieces top priority, and we will deliver to you as soon as possible.&rdquo;
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Original Promised Delivery Date</Label>
+            <Input value={order.expectedDelivery || "—"} disabled className="bg-muted/50 font-mono text-xs" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Estimated Revised Delivery Date (Optional)</Label>
+            <Input
+              type="date"
+              value={revisedDate}
+              onChange={(e) => setRevisedDate(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Workshop Note / Delay Reason (Optional)</Label>
+            <Input
+              placeholder="e.g., Intricate hand-engraving & setting in progress"
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={sending}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSend}
+            disabled={sending || !customer?.email}
+            className="bg-amber-600 hover:bg-amber-700 text-white gap-2"
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+            {sending ? "Sending Apology…" : "Send Apology Email"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

@@ -5,11 +5,12 @@ import { registerScheduledReportJobs } from "@/lib/comm/scheduled-reports";
 import { registerWeeklyStatementJobs } from "@/lib/comm/scheduled-statements";
 import { registerGoldReconciliationJob } from "@/lib/reconciliation/scheduled-reconciliation";
 import { registerDisasterRecoveryDrillJob } from "@/lib/security/disaster-recovery";
-import { startScheduler } from "@/lib/comm/scheduler";
+import { registerJob, startScheduler } from "@/lib/comm/scheduler";
 import { startCommQueueScheduler } from "@/lib/comm/comm-queue";
 import { invokeCommunicationScheduler } from "@/lib/comm/communication-scheduler-client";
 import { loadCommunicationPolicy } from "@/lib/communication-policy";
 import { resumePendingPushRoute } from "@/lib/deep-link";
+import { checkAndNotifyDelayedOrders } from "@/lib/comm/order-delay-monitor";
 
 let booted = false;
 
@@ -34,6 +35,22 @@ export function bootCommunicationRuntime(): () => void {
   registerWeeklyStatementJobs();
   registerGoldReconciliationJob();
   registerDisasterRecoveryDrillJob();
+
+  // Daily sweep for overdue orders to dispatch delay apologies automatically
+  registerJob({
+    key: "order_delay_auto_apology_sweep",
+    cadence: "daily",
+    run: async () => {
+      await checkAndNotifyDelayedOrders();
+    },
+  });
+
+  // Background check on startup after data loads
+  setTimeout(() => {
+    void checkAndNotifyDelayedOrders().catch((err) =>
+      console.warn("[comm-boot] initial order delay check:", err),
+    );
+  }, 5000);
 
   void loadCommunicationPolicy().catch((err) =>
     console.warn("[comm-boot] communication policy:", err),

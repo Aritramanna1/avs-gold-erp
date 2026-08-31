@@ -614,8 +614,12 @@ export const useOrders = create<OrdersState>()((set, get) => ({
       timeline: [...current.timeline, ev],
       updatedAt: Date.now(),
     };
-    await orderRepository.save(updated);
     set((s) => ({ orders: s.orders.map((o) => (o.id === id ? updated : o)) }));
+    try {
+      await orderRepository.save(updated);
+    } catch (err) {
+      console.warn("[Orders] Could not persist timeline update to DB:", err);
+    }
   },
   remove: async (id) => {
     const current = get().orders.find((o) => o.id === id);
