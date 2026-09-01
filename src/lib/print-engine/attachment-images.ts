@@ -255,42 +255,98 @@ export async function enrichPrintDocumentData(data: PrintDocumentData): Promise<
  */
 export async function urlToPdfImageData(
   url: string,
-): Promise<{ dataUrl: string; format: "JPEG" | "PNG" | "WEBP" } | null> {
+): Promise<{
+  dataUrl: string;
+  format: "JPEG" | "PNG" | "WEBP";
+  width: number;
+  height: number;
+  aspectRatio: number;
+} | null> {
   const trimmed = url.trim();
   if (!trimmed) return null;
 
   try {
-    // Tiny pure data-URL JPEG/PNG can skip canvas when already jsPDF-friendly.
+    // Direct data URLs (JPEG, PNG)
     if (
       trimmed.startsWith("data:image/jpeg") ||
       trimmed.startsWith("data:image/jpg") ||
       trimmed.startsWith("data:image/png")
     ) {
       const format = trimmed.includes("image/png") ? "PNG" : "JPEG";
-      return { dataUrl: trimmed, format };
+      try {
+        if (typeof Image !== "undefined") {
+          const img = await loadHtmlImage(trimmed);
+          const width = img.naturalWidth || img.width || 800;
+          const height = img.naturalHeight || img.height || 600;
+          return {
+            dataUrl: trimmed,
+            format,
+            width,
+            height,
+            aspectRatio: width / (height || 1),
+          };
+        }
+      } catch {
+        /* fallback */
+      }
+      return {
+        dataUrl: trimmed,
+        format,
+        width: 800,
+        height: 600,
+        aspectRatio: 1.333,
+      };
     }
 
+    // Check if it's an SVG data URL
     if (trimmed.startsWith("data:image/svg+xml")) {
+      let width = 600;
+      let height = 600;
+      const wMatch = trimmed.match(/width=['"]?(\d+)['"]?/);
+      const hMatch = trimmed.match(/height=['"]?(\d+)['"]?/);
+      const viewBoxMatch = trimmed.match(/viewBox=['"]?0\s+0\s+(\d+)\s+(\d+)['"]?/);
+      if (wMatch && hMatch) {
+        width = parseInt(wMatch[1], 10) || 600;
+        height = parseInt(hMatch[1], 10) || 600;
+      } else if (viewBoxMatch) {
+        width = parseInt(viewBoxMatch[1], 10) || 600;
+        height = parseInt(viewBoxMatch[2], 10) || 600;
+      }
+
       try {
         if (typeof Image !== "undefined" && typeof document !== "undefined") {
           const img = await loadHtmlImage(trimmed);
-          const width = img.naturalWidth || img.width || 600;
-          const height = img.naturalHeight || img.height || 600;
+          const naturalW = img.naturalWidth || img.width || width;
+          const naturalH = img.naturalHeight || img.height || height;
           const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
+          canvas.width = naturalW;
+          canvas.height = naturalH;
           const ctx = canvas.getContext("2d");
           if (ctx) {
             ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, width, height);
-            ctx.drawImage(img, 0, 0, width, height);
+            ctx.fillRect(0, 0, naturalW, naturalH);
+            ctx.drawImage(img, 0, 0, naturalW, naturalH);
             const dataUrl = canvas.toDataURL("image/png");
-            return { dataUrl, format: "PNG" };
+            return {
+              dataUrl,
+              format: "PNG",
+              width: naturalW,
+              height: naturalH,
+              aspectRatio: naturalW / (naturalH || 1),
+            };
           }
         }
       } catch (err) {
         console.warn("[urlToPdfImageData] SVG load fallback:", err);
       }
+
+      return {
+        dataUrl: trimmed,
+        format: "PNG",
+        width,
+        height,
+        aspectRatio: width / (height || 1),
+      };
     }
 
     const { fetchAuthorizedObjectBlob } = await import("@/lib/supabase-storage");
@@ -304,10 +360,16 @@ export async function urlToPdfImageData(
 
 const PDF_IMAGE_MAX_EDGE = 1600;
 
-/** Decode any browser-supported image blob → JPEG data URL for jsPDF. */
+/** Decode any browser-supported image blob → JPEG data URL for jsPDF with intrinsic dimensions. */
 async function blobToPdfCompatibleImage(
   blob: Blob,
-): Promise<{ dataUrl: string; format: "JPEG" | "PNG" } | null> {
+): Promise<{
+  dataUrl: string;
+  format: "JPEG" | "PNG";
+  width: number;
+  height: number;
+  aspectRatio: number;
+} | null> {
   if (blob.size === 0) return null;
 
   // Prefer createImageBitmap (handles WebP); fall back to HTMLImageElement.
@@ -362,7 +424,13 @@ async function blobToPdfCompatibleImage(
 
   const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
   if (!dataUrl.startsWith("data:image/")) return null;
-  return { dataUrl, format: "JPEG" };
+  return {
+    dataUrl,
+    format: "JPEG",
+    width: targetW,
+    height: targetH,
+    aspectRatio: targetW / (targetH || 1),
+  };
 }
 
 function loadHtmlImage(src: string): Promise<HTMLImageElement> {

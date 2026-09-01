@@ -202,7 +202,7 @@ function JobCardPage() {
                   key={i}
                   src={img}
                   alt={`Reference ${i + 1}`}
-                  className="h-16 w-16 object-cover rounded border border-border"
+                  className="h-16 w-16 object-contain rounded border border-border bg-muted/20"
                 />
               ))}
             </div>

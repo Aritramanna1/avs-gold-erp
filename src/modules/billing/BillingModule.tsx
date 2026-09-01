@@ -4044,12 +4044,12 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                           src={realPhoto}
                           referrerPolicy="no-referrer"
                           alt={s.itemName}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-contain p-1"
                         />
                       ) : (
                         <StockPhotoImg
                           stockItem={s}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-contain p-1"
                           fallback={
                             <span className="text-muted-foreground text-xs text-center px-2">
                               No photo uploaded
@@ -5124,11 +5124,11 @@ function StandardItemRow({
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border/60">
         <div className="w-14 h-14 rounded-md overflow-hidden border border-border bg-muted/40 flex-shrink-0 flex items-center justify-center">
           {thumbnailImg ? (
-            <img src={thumbnailImg} alt={it.itemName} className="h-full w-full object-cover" />
+            <img src={thumbnailImg} alt={it.itemName} className="h-full w-full object-contain p-0.5" />
           ) : stockRef ? (
             <StockPhotoImg
               stockItem={stockRef}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain p-0.5"
               fallback={
                 <span className="text-[8px] text-muted-foreground text-center leading-tight px-1">
                   No

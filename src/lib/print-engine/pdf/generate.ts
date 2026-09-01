@@ -141,8 +141,6 @@ async function drawSection(
       );
       if (items.length === 0) return y;
 
-      const imgW = section.fullPagePerImage ? geo.contentW - 4 : geo.contentW / 2 - 6;
-      const imgH = section.fullPagePerImage ? 240 : 55;
       let cy = y;
 
       if (section.title) {
@@ -153,27 +151,40 @@ async function drawSection(
       }
 
       for (const item of items) {
-        const pageH = doc.internal.pageSize.getHeight();
-        if (cy + imgH + 10 > pageH - geo.margin) {
-          doc.addPage();
-          cy = geo.margin;
-        }
         try {
           const img = await urlToPdfImageData(item.url);
           if (img) {
+            const aspect = img.aspectRatio || (img.width && img.height ? img.width / img.height : 1.33);
+            const maxW = section.fullPagePerImage ? geo.contentW - 4 : geo.contentW - 8;
+            const maxH = section.fullPagePerImage ? 230 : 90;
+
+            let renderW = maxW;
+            let renderH = renderW / aspect;
+            if (renderH > maxH) {
+              renderH = maxH;
+              renderW = renderH * aspect;
+            }
+
+            const pageH = doc.internal.pageSize.getHeight();
+            if (cy + renderH + 12 > pageH - geo.margin) {
+              doc.addPage();
+              cy = geo.margin;
+            }
+
+            const offsetX = (geo.contentW - renderW) / 2;
             doc.addImage(
               img.dataUrl,
               img.format === "WEBP" ? "JPEG" : img.format,
-              geo.margin,
+              geo.margin + offsetX,
               cy,
-              imgW,
-              imgH,
+              renderW,
+              renderH,
             );
-            cy += imgH + 2;
+            cy += renderH + 2;
             doc.setFont("helvetica", "normal");
-            doc.setFontSize(7);
-            doc.text(item.label.slice(0, 60), geo.margin, cy + 3);
-            cy += 8;
+            doc.setFontSize(7.5);
+            doc.text(item.label.slice(0, 80), geo.margin + offsetX, cy + 3);
+            cy += 7;
           }
         } catch {
           /* skip broken image */

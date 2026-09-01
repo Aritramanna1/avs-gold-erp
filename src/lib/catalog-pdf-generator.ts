@@ -140,14 +140,24 @@ export async function generateMultiPageCatalogPdf(
           try {
             const img = await urlToPdfImageData(photo);
             if (img) {
-              doc.addImage(img.dataUrl, img.format === "WEBP" ? "JPEG" : img.format, imgX, imgY, imgSize, imgSize);
+              const maxW = contentW - 20;
+              const maxH = 105;
+              const aspect = img.aspectRatio || (img.width && img.height ? img.width / img.height : 1);
+              let renderW = maxW;
+              let renderH = renderW / aspect;
+              if (renderH > maxH) {
+                renderH = maxH;
+                renderW = renderH * aspect;
+              }
+              const imgX = margin + (contentW - renderW) / 2;
+              doc.addImage(img.dataUrl, img.format === "WEBP" ? "JPEG" : img.format, imgX, imgY, renderW, renderH);
             }
           } catch {
             /* skip */
           }
         }
 
-        const detailsY = imgY + imgSize + 12;
+        const detailsY = startY + 118;
         doc.setFont("helvetica", "bold");
         doc.setFontSize(16);
         doc.setTextColor(30, 30, 30);
@@ -191,20 +201,30 @@ export async function generateMultiPageCatalogPdf(
         doc.setLineWidth(0.3);
         doc.rect(margin, cardY, contentW, cardH);
 
-        const imgSize = Math.min(cardH - 12, 75);
         const photo = resolveProductPhoto(item);
         if (photo) {
           try {
             const img = await urlToPdfImageData(photo);
             if (img) {
-              doc.addImage(img.dataUrl, img.format === "WEBP" ? "JPEG" : img.format, margin + 6, cardY + 6, imgSize, imgSize);
+              const maxW = 75;
+              const maxH = cardH - 12;
+              const aspect = img.aspectRatio || (img.width && img.height ? img.width / img.height : 1);
+              let renderW = maxW;
+              let renderH = renderW / aspect;
+              if (renderH > maxH) {
+                renderH = maxH;
+                renderW = renderH * aspect;
+              }
+              const imgOffX = margin + 6 + (maxW - renderW) / 2;
+              const imgOffY = cardY + 6 + (maxH - renderH) / 2;
+              doc.addImage(img.dataUrl, img.format === "WEBP" ? "JPEG" : img.format, imgOffX, imgOffY, renderW, renderH);
             }
           } catch {
             /* skip */
           }
         }
 
-        const textX = margin + imgSize + 14;
+        const textX = margin + 75 + 14;
         doc.setFont("helvetica", "bold");
         doc.setFontSize(13);
         doc.setTextColor(30, 30, 30);
@@ -301,9 +321,18 @@ export async function generateMultiPageCatalogPdf(
           try {
             const img = await urlToPdfImageData(photo);
             if (img) {
-              const imgDim = Math.min(cardW - 8, imgBoxH - 6);
-              const imgOffX = cardX + (cardW - imgDim) / 2;
-              doc.addImage(img.dataUrl, img.format === "WEBP" ? "JPEG" : img.format, imgOffX, cardY + 3, imgDim, imgDim);
+              const maxW = cardW - 8;
+              const maxH = imgBoxH - 6;
+              const aspect = img.aspectRatio || (img.width && img.height ? img.width / img.height : 1);
+              let renderW = maxW;
+              let renderH = renderW / aspect;
+              if (renderH > maxH) {
+                renderH = maxH;
+                renderW = renderH * aspect;
+              }
+              const imgOffX = cardX + (cardW - renderW) / 2;
+              const imgOffY = cardY + 3 + (maxH - renderH) / 2;
+              doc.addImage(img.dataUrl, img.format === "WEBP" ? "JPEG" : img.format, imgOffX, imgOffY, renderW, renderH);
             }
           } catch {
             /* skip */

@@ -182,7 +182,7 @@ export function StockPhotoGallery({ stockId }: { stockId: string }) {
                   <img
                     src={src}
                     alt={photo.fileName ?? "Product"}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain p-1"
                   />
                 ) : (
                   <div className="w-full h-full grid place-items-center text-muted-foreground">

@@ -540,21 +540,23 @@ function ImagesSection({ config, data }: { config: ImagesSectionConfig; data: Pr
             className={
               config.fullPagePerImage
                 ? "print:break-before-page"
-                : "rounded border border-stone-300 bg-stone-50 overflow-hidden"
+                : "rounded border border-stone-300 bg-stone-50 overflow-hidden flex flex-col justify-between"
             }
           >
-            <img
-              src={item.url}
-              alt={item.label}
-              className={
-                config.fullPagePerImage
-                  ? "w-full max-h-[240mm] object-contain"
-                  : isKyc
-                    ? "w-full h-44 sm:h-52 object-contain bg-white"
-                    : "w-full h-28 object-contain bg-white"
-              }
-            />
-            <figcaption className="px-2 py-1 text-[9px] font-mono uppercase tracking-wide text-stone-500 border-t border-stone-200 bg-stone-50">
+            <div className="flex-1 p-2 flex items-center justify-center bg-white min-h-[120px]">
+              <img
+                src={item.url}
+                alt={item.label}
+                className={
+                  config.fullPagePerImage
+                    ? "max-w-full max-h-[240mm] object-contain m-auto"
+                    : isKyc
+                      ? "max-w-full max-h-56 sm:max-h-64 h-auto w-auto object-contain m-auto"
+                      : "max-w-full max-h-36 h-auto w-auto object-contain m-auto"
+                }
+              />
+            </div>
+            <figcaption className="px-2 py-1 text-[9px] font-mono uppercase tracking-wide text-stone-500 border-t border-stone-200 bg-stone-50 text-center">
               {item.label}
             </figcaption>
           </figure>

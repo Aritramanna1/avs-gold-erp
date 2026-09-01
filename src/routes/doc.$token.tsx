@@ -608,7 +608,7 @@ function UnifiedPublicDocumentPage() {
                   <img
                     src={item.imageUrl}
                     alt={item.name}
-                    className="h-full w-full object-cover group-hover:scale-105 transition duration-500"
+                    className="h-full w-full object-contain p-1 group-hover:scale-105 transition duration-500"
                   />
                   <span className="absolute top-1 left-1 rounded bg-background/80 px-1 py-0.2 text-[8px] font-bold text-gold font-mono">
                     {item.purity}

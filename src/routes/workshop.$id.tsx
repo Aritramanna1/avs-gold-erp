@@ -305,7 +305,7 @@ function JobCardDetail() {
                       <img
                         src={src}
                         alt={`Reference ${i + 1}`}
-                        className="h-20 w-20 object-cover rounded border border-border"
+                        className="h-20 w-20 object-contain rounded border border-border bg-muted/20"
                       />
                     </a>
                   ))}

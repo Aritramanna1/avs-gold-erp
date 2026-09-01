@@ -37,7 +37,7 @@ export function StockListThumbnail({
     <img
       src={url}
       alt={alt}
-      className="h-12 w-12 rounded-md border border-border object-cover shrink-0"
+      className="h-12 w-12 rounded-md border border-border object-contain bg-background/50 p-0.5 shrink-0"
     />
   );
 }

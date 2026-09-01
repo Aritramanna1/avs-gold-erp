@@ -84,15 +84,25 @@ export async function addDocHeader(
     try {
       const logoImg = await urlToPdfImageData(firm.logoUrl);
       if (logoImg) {
+        const maxW = 16;
+        const maxH = 14;
+        const aspect = logoImg.aspectRatio || (logoImg.width && logoImg.height ? logoImg.width / logoImg.height : 1);
+        let renderW = maxW;
+        let renderH = renderW / aspect;
+        if (renderH > maxH) {
+          renderH = maxH;
+          renderW = renderH * aspect;
+        }
+        const imgOffY = y0 + 1 + (maxH - renderH) / 2;
         doc.addImage(
           logoImg.dataUrl,
           logoImg.format === "WEBP" ? "JPEG" : logoImg.format,
           margin,
-          y0 + 1,
-          14,
-          14,
+          imgOffY,
+          renderW,
+          renderH,
         );
-        textStartX = margin + 18;
+        textStartX = margin + renderW + 4;
       }
     } catch {
       // Logo rendering failed; continue without it
@@ -116,10 +126,12 @@ export async function addDocHeader(
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text(docTitle.toUpperCase(), colR, y0 + 6, { align: "right" });
+  doc.text((docTitle || "DOCUMENT").toUpperCase(), colR, y0 + 6, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text(`No: ${docNo}`, colR, y0 + 12, { align: "right" });
+  if (docNo) {
+    doc.text(`No: ${docNo}`, colR, y0 + 12, { align: "right" });
+  }
   doc.text(`Date: ${date}`, colR, y0 + 17, { align: "right" });
 
   const ruleY = y0 + 24;
@@ -170,15 +182,25 @@ export async function addPremiumHeader(
     try {
       const logoImg = await urlToPdfImageData(firm.logoUrl);
       if (logoImg) {
+        const maxW = 16;
+        const maxH = 14;
+        const aspect = logoImg.aspectRatio || (logoImg.width && logoImg.height ? logoImg.width / logoImg.height : 1);
+        let renderW = maxW;
+        let renderH = renderW / aspect;
+        if (renderH > maxH) {
+          renderH = maxH;
+          renderW = renderH * aspect;
+        }
+        const imgOffY = y + 1 + (maxH - renderH) / 2;
         doc.addImage(
           logoImg.dataUrl,
           logoImg.format === "WEBP" ? "JPEG" : logoImg.format,
           margin,
-          y + 1,
-          14,
-          14,
+          imgOffY,
+          renderW,
+          renderH,
         );
-        textStartX = margin + 18;
+        textStartX = margin + renderW + 4;
       }
     } catch {
       // Logo rendering failed; continue without it
@@ -610,15 +632,25 @@ export async function addSignatureBlock(
       try {
         const stampImg = await urlToPdfImageData(stampUrl);
         if (stampImg) {
+          const maxW = 28;
+          const maxH = 24;
+          const aspect = stampImg.aspectRatio || (stampImg.width && stampImg.height ? stampImg.width / stampImg.height : 1);
+          let renderW = maxW;
+          let renderH = renderW / aspect;
+          if (renderH > maxH) {
+            renderH = maxH;
+            renderW = renderH * aspect;
+          }
+          const imgOffX = colR - 45 - renderW / 2;
           doc.addImage(
             stampImg.dataUrl,
             stampImg.format === "WEBP" ? "JPEG" : stampImg.format,
-            colR - 58,
+            imgOffX,
             ry,
-            24,
-            24,
+            renderW,
+            renderH,
           );
-          ry += 26;
+          ry += renderH + 2;
         }
       } catch {
         /* best-effort */
@@ -632,15 +664,25 @@ export async function addSignatureBlock(
       try {
         const sigImg = await urlToPdfImageData(sigUrl);
         if (sigImg) {
+          const maxW = 36;
+          const maxH = 14;
+          const aspect = sigImg.aspectRatio || (sigImg.width && sigImg.height ? sigImg.width / sigImg.height : 2.5);
+          let renderW = maxW;
+          let renderH = renderW / aspect;
+          if (renderH > maxH) {
+            renderH = maxH;
+            renderW = renderH * aspect;
+          }
+          const imgOffX = colR - 45 - renderW / 2;
           doc.addImage(
             sigImg.dataUrl,
             sigImg.format === "WEBP" ? "JPEG" : sigImg.format,
-            colR - 62,
+            imgOffX,
             ry,
-            30,
-            12,
+            renderW,
+            renderH,
           );
-          ry += 14;
+          ry += renderH + 2;
         }
       } catch {
         /* best-effort */

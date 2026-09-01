@@ -877,7 +877,7 @@ function OrderDetailPage() {
                       <img
                         src={ret.referencePhotoDataUrl}
                         alt="Reference"
-                        className="h-12 w-12 object-cover rounded border border-border mt-1.5"
+                        className="h-12 w-12 object-contain rounded border border-border bg-muted/20 mt-1.5"
                       />
                     )}
                   </li>

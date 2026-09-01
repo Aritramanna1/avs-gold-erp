@@ -10,7 +10,7 @@ export function R2ObjectImage({
   bucket,
   storagePath,
   alt,
-  className = "object-cover w-full h-full",
+  className = "object-contain max-w-full max-h-full m-auto",
   fallbackClassName = "w-full h-full grid place-items-center text-muted-foreground",
 }: {
   bucket: string;

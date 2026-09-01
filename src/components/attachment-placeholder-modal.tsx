@@ -269,7 +269,7 @@ export function AttachmentPlaceholderModal({
             {fileDataUrl ? (
               <div className="rounded-lg border border-border p-3 bg-secondary/30 flex flex-col items-center justify-center gap-3 relative group">
                 {isImage ? (
-                  <div className="max-h-48 rounded overflow-hidden shadow-sm border border-border/60 bg-white flex items-center justify-center">
+                  <div className="max-h-64 rounded overflow-hidden shadow-sm border border-border/60 bg-white flex items-center justify-center p-2">
                     {fileMissing ? (
                       <div className="p-8 text-center text-xs text-red-500 font-medium font-mono">
                         File unavailable in document storage
@@ -280,7 +280,7 @@ export function AttachmentPlaceholderModal({
                         alt="Attachment preview"
                         referrerPolicy="no-referrer"
                         onError={() => setFileMissing(true)}
-                        className="object-contain max-h-40 w-auto"
+                        className="object-contain max-h-56 max-w-full w-auto h-auto m-auto"
                         data-testid="attachment-preview"
                       />
                     )}

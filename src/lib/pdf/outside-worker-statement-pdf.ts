@@ -63,15 +63,25 @@ export async function generateOutsideWorkerStatementPdf(
     try {
       const logoImg = await urlToPdfImageData(firm.logoUrl);
       if (logoImg) {
+        const maxW = 16;
+        const maxH = 12;
+        const aspect = logoImg.aspectRatio || (logoImg.width && logoImg.height ? logoImg.width / logoImg.height : 1);
+        let renderW = maxW;
+        let renderH = renderW / aspect;
+        if (renderH > maxH) {
+          renderH = maxH;
+          renderW = renderH * aspect;
+        }
+        const imgOffY = y - 3 + (maxH - renderH) / 2;
         doc.addImage(
           logoImg.dataUrl,
           logoImg.format === "WEBP" ? "JPEG" : logoImg.format,
           MARGIN,
-          y - 3,
-          12,
-          12,
+          imgOffY,
+          renderW,
+          renderH,
         );
-        textStartX = MARGIN + 15;
+        textStartX = MARGIN + renderW + 3;
       }
     } catch {
       /* skip */

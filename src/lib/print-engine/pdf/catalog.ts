@@ -58,13 +58,24 @@ export async function generateCatalogPdf(
       try {
         const img = await urlToPdfImageData(photo);
         if (img) {
+          const maxW = 42;
+          const maxH = 42;
+          const aspect = img.aspectRatio || (img.width && img.height ? img.width / img.height : 1);
+          let renderW = maxW;
+          let renderH = renderW / aspect;
+          if (renderH > maxH) {
+            renderH = maxH;
+            renderW = renderH * aspect;
+          }
+          const imgOffX = geo.margin + 2 + (maxW - renderW) / 2;
+          const imgOffY = y + 3 + (maxH - renderH) / 2;
           doc.addImage(
             img.dataUrl,
             img.format === "WEBP" ? "JPEG" : img.format,
-            geo.margin + 2,
-            y + 3,
-            imgW,
-            imgH,
+            imgOffX,
+            imgOffY,
+            renderW,
+            renderH,
           );
         }
       } catch {
