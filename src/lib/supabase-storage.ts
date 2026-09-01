@@ -120,10 +120,11 @@ async function r2DisplayBlobUrl(bucket: string, path: string): Promise<string> {
   if (path.startsWith("data:") || path.startsWith("blob:") || path.startsWith("/")) {
     return path;
   }
-  if (/^https?:\/\//i.test(path) && !R2_PROXY_URL?.length) {
+  // Direct public HTTP/HTTPS URLs (including public R2 bucket links) that do not match the auth proxy URL
+  if (/^https?:\/\//i.test(path) && !isR2ProxyUrl(path)) {
     return path;
   }
-  // Absolute URL that is already our proxy → still needs auth fetch
+  // Absolute URL that is already our proxy → needs auth fetch
   const key = r2CacheKey(bucket, path);
   const cached = r2BlobUrlCache.get(key);
   if (cached) return cached;
@@ -131,15 +132,43 @@ async function r2DisplayBlobUrl(bucket: string, path: string): Promise<string> {
   let inflight = r2BlobUrlInflight.get(key);
   if (!inflight) {
     inflight = (async () => {
-      const auth = await r2AuthHeader();
-      if (!auth) throw new Error("Sign in again to load stored images.");
+      let auth = "";
+      try {
+        auth = await r2AuthHeader();
+      } catch {
+        /* proceed to fallback */
+      }
+
       const objectUrl = path.startsWith("http")
         ? path
         : await r2ProxyObjectUrl(bucket, path);
-      const res = await fetch(objectUrl, { headers: { Authorization: auth } });
+
+      let res: Response;
+      try {
+        res = await fetch(objectUrl, { headers: auth ? { Authorization: auth } : {} });
+      } catch {
+        // Fallback without headers in case CORS blocked Authorization header
+        res = await fetch(objectUrl);
+      }
+
       if (!res.ok) {
+        // Retry unauthenticated in case it is a public asset
+        if (auth) {
+          try {
+            const pubRes = await fetch(objectUrl);
+            if (pubRes.ok) {
+              const blob = await pubRes.blob();
+              const displayUrl = URL.createObjectURL(blob);
+              r2BlobUrlCache.set(key, displayUrl);
+              return displayUrl;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
         throw new Error(`R2 image load failed: ${res.status}`);
       }
+
       const blob = await res.blob();
       const displayUrl = URL.createObjectURL(blob);
       r2BlobUrlCache.set(key, displayUrl);

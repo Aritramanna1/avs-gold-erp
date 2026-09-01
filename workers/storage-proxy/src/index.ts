@@ -105,11 +105,22 @@ async function resolveTenant(token: string, userId: string, env: Env): Promise<T
   };
 }
 
-/** Object keys are `firms/{firmId}/branches/{branchId}/...` — everything else is rejected. */
-function pathTenant(key: string): { firmId: string; branchId: string } | null {
+/** Object keys can be `firms/{firmId}/...`, `platform/...`, or `public/...`. */
+function pathTenant(key: string): { firmId: string; branchId?: string } | null {
   const parts = key.split("/");
-  if (parts.length < 5 || parts[0] !== "firms" || parts[2] !== "branches") return null;
-  return { firmId: parts[1], branchId: parts[3] };
+  if (parts[0] === "platform" || parts[0] === "public") {
+    return { firmId: "public" };
+  }
+  if (parts[0] === "firms" && parts.length >= 2) {
+    const firmId = parts[1];
+    const branchId = parts[2] === "branches" && parts[3] ? parts[3] : undefined;
+    return { firmId, branchId };
+  }
+  // Fallback for namespaced keys (e.g. customer-documents/{firmId}/...)
+  if (parts.length >= 2 && parts[1]) {
+    return { firmId: parts[1] };
+  }
+  return null;
 }
 
 export default {
@@ -147,8 +158,7 @@ export default {
     const objectTenant = pathTenant(objectKey);
     if (
       !objectTenant ||
-      objectTenant.firmId !== tenant.firmId ||
-      (tenant.branchId && objectTenant.branchId !== tenant.branchId)
+      (objectTenant.firmId !== "public" && objectTenant.firmId !== tenant.firmId)
     ) {
       return new Response("Forbidden", { status: 403, headers: cors });
     }

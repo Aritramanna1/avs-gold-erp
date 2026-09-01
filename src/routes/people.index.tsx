@@ -38,6 +38,7 @@ import {
   kycComplete,
   tabsForType,
 } from "@/lib/people-store";
+import { PersonProfileAvatar } from "@/components/people/PersonProfileAvatar";
 import {
   User,
   Building2,
@@ -467,30 +468,14 @@ function PeoplePage() {
 /* ----------------------------- Avatar ----------------------------- */
 
 function PersonAvatar({ person, className }: { person: Person; className: string }) {
-  const [broken, setBroken] = useState(false);
-  // Resolves from Supabase-backed storage; falls back to legacy inlined base64
-  // for older records.
-  const photoUrl = useAttachmentUrl("person", person.id, "photo");
-  if (photoUrl && !broken) {
-    return (
-      <div className={`${className} overflow-hidden bg-accent`}>
-        <img
-          src={photoUrl}
-          alt={person.fullName}
-          referrerPolicy="no-referrer"
-          onError={() => setBroken(true)}
-          className="h-full w-full object-cover"
-          data-testid="person-avatar-img"
-        />
-      </div>
-    );
-  }
   return (
-    <div
-      className={`${className} gradient-gold grid place-items-center text-primary-foreground font-serif`}
-    >
-      {person.fullName.charAt(0).toUpperCase()}
-    </div>
+    <PersonProfileAvatar
+      personId={person.id}
+      person={person}
+      name={person.fullName}
+      className={className}
+      data-testid="person-avatar-img"
+    />
   );
 }
 

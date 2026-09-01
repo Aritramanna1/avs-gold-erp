@@ -48,6 +48,7 @@ import { GuidedTourOffer } from "@/components/training/GuidedTourOffer";
 import { MobileGuidedTour } from "@/components/mobile/MobileGuidedTour";
 import { toast } from "sonner";
 import { NotificationBell } from "@/components/notification-bell";
+import { PersonProfileAvatar } from "@/components/people/PersonProfileAvatar";
 import { AssistantDrawer, openOrnexaAssistant } from "@/components/assistant/AssistantDrawer";
 import { PageHeader } from "@/components/design-system";
 import { BusinessSwitcher } from "@/components/identity/BusinessSwitcher";
@@ -369,9 +370,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                       {displayRole}
                     </div>
                   </div>
-                  <div className="h-9 w-9 rounded-md bg-primary grid place-items-center text-primary-foreground font-bold text-sm shrink-0">
-                    {initials}
-                  </div>
+                  <PersonProfileAvatar
+                    personId={currentUser?.id}
+                    person={currentUser}
+                    name={displayName}
+                    className="h-9 w-9 rounded-md shrink-0"
+                    data-testid="app-shell-user-avatar"
+                  />
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
                 </button>
               </DropdownMenuTrigger>

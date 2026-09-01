@@ -242,9 +242,10 @@ export async function getAttachmentUrl(
 
   const rec = useAttachments.getState().items[key];
   if (!rec) return null;
-  if (!rec.storagePath || !rec.bucket) return rec.fileDataUrl ?? null;
+  if (!rec.storagePath) return rec.fileDataUrl ?? null;
 
-  const url = await getAttachmentSignedUrl(rec.bucket, rec.storagePath);
+  const bucket = rec.bucket || getBucketForEntityType(entityType);
+  const url = await getAttachmentSignedUrl(bucket, rec.storagePath);
   objectUrlCache.set(key, url);
   return url;
 }
