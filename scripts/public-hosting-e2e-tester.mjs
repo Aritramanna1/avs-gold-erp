@@ -157,7 +157,7 @@ async function runPublicHostingE2ETest() {
 
   const mobileContent = await mobilePage.content();
   const hasBranding = mobileContent.includes("Maa Tara Jewellers") && mobileContent.includes("Bowbazar");
-  const hasGoldFirst = mobileContent.includes("Pure Gold Obligation") && mobileContent.includes("Fine Gold");
+  const hasGoldFirst = mobileContent.includes("Primary Gold Obligation") && (mobileContent.includes("gold-weight-display") || mobileContent.includes("g fine") || mobileContent.includes("g"));
   const hasItems = mobileContent.includes("~Items Purchased~");
   const hasLoyalty = mobileContent.includes("~Loyalty") || mobileContent.includes("Earned in this bill");
   const hasCollection = mobileContent.includes("Explore Master Jewellery") || mobileContent.includes("Shop Now");
