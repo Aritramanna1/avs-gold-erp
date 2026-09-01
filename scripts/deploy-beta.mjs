@@ -105,13 +105,22 @@ for (const file of distFiles) {
     "upload-length": fileStats.size.toString(),
     "upload-offset": "0",
   };
-  const preflight = await fetch(targetFileUrl, { method: "POST", headers });
-  if (preflight.status === 201 || preflight.status === 200 || preflight.status === 204) {
-    await fetch(targetFileUrl, {
-      method: "PATCH",
-      headers: { ...headers, "Content-Type": "application/offset+octet-stream" },
-      body: fileBuffer,
-    });
+  let uploaded = false;
+  for (let attempt = 1; attempt <= 4 && !uploaded; attempt++) {
+    try {
+      const preflight = await fetch(targetFileUrl, { method: "POST", headers });
+      if (preflight.status === 201 || preflight.status === 200 || preflight.status === 204) {
+        await fetch(targetFileUrl, {
+          method: "PATCH",
+          headers: { ...headers, "Content-Type": "application/offset+octet-stream" },
+          body: fileBuffer,
+        });
+      }
+      uploaded = true;
+    } catch (err) {
+      if (attempt === 4) throw err;
+      await new Promise((r) => setTimeout(r, attempt * 600));
+    }
   }
   if (count % 25 === 0 || count === distFiles.length) {
     console.log(`  Uploaded ${count}/${distFiles.length}…`);

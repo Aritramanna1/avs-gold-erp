@@ -1,35 +1,12 @@
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
 
-function getFiles(dir) {
-  let results = [];
-  const list = fs.readdirSync(dir);
-  list.forEach(file => {
-    const fullPath = path.join(dir, file);
-    const stat = fs.statSync(fullPath);
-    if (stat && stat.isDirectory()) {
-      results = results.concat(getFiles(fullPath));
-    } else {
-      results.push(fullPath);
-    }
-  });
-  return results;
+const content = fs.readFileSync("src/routeTree.gen.ts", "utf8");
+const fullPaths = [];
+const pathMatches = content.matchAll(/fullPath:\s*['"]([^'"]+)['"]/g);
+for (const match of pathMatches) {
+  fullPaths.push(match[1]);
 }
 
-const routesDir = path.resolve('src/routes');
-const files = getFiles(routesDir).filter(f => f.endsWith('.tsx') || f.endsWith('.ts'));
-
-console.log('Total route files:', files.length);
-
-const routePaths = files.map(f => {
-  const rel = path.relative(routesDir, f);
-  let p = rel.replace(/\\/g, '/').replace(/\.tsx?$/, '');
-  if (p === '__root') return null;
-  p = p.replace(/\.index$/, '').replace(/\/index$/, '');
-  p = '/' + p.replace(/\./g, '/').replace(/\$/g, ':');
-  return p === '' ? '/' : p;
-}).filter(Boolean);
-
-console.log('Processed unique route paths:', routePaths.length);
-fs.writeFileSync('scripts/routes-list.json', JSON.stringify(routePaths, null, 2));
-console.log('Saved to scripts/routes-list.json');
+const uniquePaths = Array.from(new Set(fullPaths)).sort();
+console.log("Total unique full paths:", uniquePaths.length);
+console.log(JSON.stringify(uniquePaths, null, 2));
