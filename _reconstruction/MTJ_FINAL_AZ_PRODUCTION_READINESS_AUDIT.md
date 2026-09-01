@@ -45,11 +45,12 @@
 
 ## 3. Karigar Multi-Purity Custody Matrix
 
-* **Physical Purity Segregation**: Karigars working in 22K (916) and 18K (750) maintain two completely separate running ledgers.
-* **Customer Fine-Gold Conversion Removed**: Karigar accounts track physical gross weight issued, finished jewellery returned, and workshop scrap. Allowed wastage and over-loss are calculated per purity book without converting to customer-facing monetary fine-gold settlements.
+* **Primary & Authoritative Custody**: Karigars working in 22K (916) and 18K (750) maintain completely isolated physical running ledgers. The craftsman owes physical metal in that specific purity (e.g. 2.000g of physical 22K gold), not monetary or customer-style fine gold.
+* **Informational Fine Conversion**: The fine gold value (e.g. 1.832g) is strictly a derived, non-authoritative statistical calculation for macro showroom valuation and central vault metal balance reports. It is **never** used to settle craftsman accounts or compute wage obligations.
+* **Customer Fine-Gold Conversion Removed**: Customer fine-gold settlement logic is completely decoupled from craftsman custody. Allowed wastage and over-loss are calculated per purity book based on actual physical return weights and scrap recovery.
 * **Verified Book Output**:
-  - 22K (916) Book: 50.000g Issued − 48.000g Returned (45g finished + 3g scrap) = **2.000g gross physical custody** (1.832g fine gold equivalent).
-  - 18K (750) Book: 30.000g Issued − 0g Returned = **30.000g gross physical custody** (22.500g fine gold equivalent).
+  - **22K (916) Book**: 50.000g Issued − 48.000g Returned (45.000g finished + 3.000g scrap) = **2.000g gross physical 22K custody** *(Authoritative)* [Derived informational fine: 1.832g].
+  - **18K (750) Book**: 30.000g Issued − 0.000g Returned = **30.000g gross physical 18K custody** *(Authoritative)* [Derived informational fine: 22.500g].
 
 ---
 
