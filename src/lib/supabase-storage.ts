@@ -32,9 +32,8 @@ export function isR2ProxyUrl(url: string): boolean {
 
 /**
  * Fetch image/file bytes for PDF embedding.
- * - blob:/data: → plain fetch (already authorized in-memory)
- * - R2 proxy HTTPS → Authorization: Bearer session (never public)
- * - same-origin /assets → plain fetch
+ * - data: / blob: → plain fetch
+ * - R2 proxy HTTPS / same-origin → standard CORS fetch with auth fallback
  */
 export async function fetchAuthorizedObjectBlob(url: string): Promise<Blob> {
   const trimmed = url.trim();
@@ -57,15 +56,21 @@ export async function fetchAuthorizedObjectBlob(url: string): Promise<Blob> {
     absolute = `${window.location.origin}${trimmed}`;
   }
 
+  try {
+    const res = await fetch(absolute, { mode: "cors" });
+    if (res.ok) return res.blob();
+  } catch {
+    /* proceed to fallback */
+  }
+
   if (isR2ProxyUrl(absolute) || (R2_PROXY_URL && absolute.startsWith(R2_PROXY_URL))) {
     const auth = await r2AuthHeader();
-    if (!auth) throw new Error("Sign in again to load stored images for PDF.");
-    const res = await fetch(absolute, { headers: { Authorization: auth } });
+    const res = await fetch(absolute, { headers: auth ? { Authorization: auth } : {} });
     if (!res.ok) throw new Error(`R2 image load failed: ${res.status}`);
     return res.blob();
   }
 
-  const res = await fetch(absolute, { credentials: "include" });
+  const res = await fetch(absolute);
   if (!res.ok) throw new Error(`Image fetch failed: ${res.status}`);
   return res.blob();
 }
@@ -76,7 +81,8 @@ async function r2Upload(
   file: File | Blob,
   contentType: string,
 ): Promise<void> {
-  const res = await fetch(`${R2_PROXY_URL}/${bucket}/${path}`, {
+  const cleanPath = path.replace(/^\/+/, "");
+  const res = await fetch(`${R2_PROXY_URL}/${bucket}/${cleanPath}`, {
     method: "PUT",
     headers: { Authorization: await r2AuthHeader(), "Content-Type": contentType },
     body: file,
@@ -86,99 +92,31 @@ async function r2Upload(
 
 async function r2ProxyObjectUrl(bucket: string, path: string): Promise<string> {
   if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
-  return `${R2_PROXY_URL}/${bucket}/${path}`;
+  const cleanPath = path.replace(/^\/+/, "");
+  return `${R2_PROXY_URL}/${bucket}/${cleanPath}`;
 }
 
-/** In-memory blob: URLs for <img src> — proxy URLs need Authorization and cannot be used directly. */
-const r2BlobUrlCache = new Map<string, string>();
-const r2BlobUrlInflight = new Map<string, Promise<string>>();
-
-function r2CacheKey(bucket: string, path: string): string {
-  return `${bucket}::${path}`;
-}
-
-/** Drop a cached display URL (call after replace/delete). */
+/** Drop a cached display URL (compatibility no-op for direct URLs). */
 export function revokeR2DisplayUrl(bucket: string, path: string): void {
-  const key = r2CacheKey(bucket, path);
-  const existing = r2BlobUrlCache.get(key);
-  if (existing?.startsWith("blob:")) {
-    try {
-      URL.revokeObjectURL(existing);
-    } catch {
-      /* ignore */
-    }
-  }
-  r2BlobUrlCache.delete(key);
-  r2BlobUrlInflight.delete(key);
+  /* direct URLs require no revocation */
 }
 
 /**
- * Fetch an R2 object with the session JWT and return a blob: URL safe for <img>/<a>.
- * The raw proxy URL cannot be used in img tags — browsers do not send Authorization.
+ * Resolves a stable, browser-displayable URL for an R2 object.
+ * Direct R2 proxy URLs load seamlessly across ERP, portals, public documents, and PDF generation.
  */
-async function r2DisplayBlobUrl(bucket: string, path: string): Promise<string> {
-  if (path.startsWith("data:") || path.startsWith("blob:") || path.startsWith("/")) {
+export function getDirectR2ObjectUrl(bucket: string, path: string): string {
+  if (!path) return "";
+  if (
+    path.startsWith("data:") ||
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  ) {
     return path;
   }
-  // Direct public HTTP/HTTPS URLs (including public R2 bucket links) that do not match the auth proxy URL
-  if (/^https?:\/\//i.test(path) && !isR2ProxyUrl(path)) {
-    return path;
-  }
-  // Absolute URL that is already our proxy → needs auth fetch
-  const key = r2CacheKey(bucket, path);
-  const cached = r2BlobUrlCache.get(key);
-  if (cached) return cached;
-
-  let inflight = r2BlobUrlInflight.get(key);
-  if (!inflight) {
-    inflight = (async () => {
-      let auth = "";
-      try {
-        auth = await r2AuthHeader();
-      } catch {
-        /* proceed to fallback */
-      }
-
-      const objectUrl = path.startsWith("http")
-        ? path
-        : await r2ProxyObjectUrl(bucket, path);
-
-      let res: Response;
-      try {
-        res = await fetch(objectUrl, { headers: auth ? { Authorization: auth } : {} });
-      } catch {
-        // Fallback without headers in case CORS blocked Authorization header
-        res = await fetch(objectUrl);
-      }
-
-      if (!res.ok) {
-        // Retry unauthenticated in case it is a public asset
-        if (auth) {
-          try {
-            const pubRes = await fetch(objectUrl);
-            if (pubRes.ok) {
-              const blob = await pubRes.blob();
-              const displayUrl = URL.createObjectURL(blob);
-              r2BlobUrlCache.set(key, displayUrl);
-              return displayUrl;
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-        throw new Error(`R2 image load failed: ${res.status}`);
-      }
-
-      const blob = await res.blob();
-      const displayUrl = URL.createObjectURL(blob);
-      r2BlobUrlCache.set(key, displayUrl);
-      return displayUrl;
-    })().finally(() => {
-      r2BlobUrlInflight.delete(key);
-    });
-    r2BlobUrlInflight.set(key, inflight);
-  }
-  return inflight;
+  if (!R2_PROXY_URL) return path;
+  const cleanPath = path.replace(/^\/+/, "");
+  return `${R2_PROXY_URL}/${bucket}/${cleanPath}`;
 }
 
 async function r2Delete(bucket: string, path: string): Promise<void> {
@@ -356,15 +294,13 @@ export async function downloadCentralOrnexaVoiceAudio(
   return res.blob();
 }
 
-/** Returns a browser-displayable URL for a stored file (authenticated blob: URL). */
+/** Returns a browser-displayable, permanent URL for a stored file. */
 export async function getAttachmentSignedUrl(
   namespace: string,
   path: string,
   forceRefresh = false,
 ): Promise<string> {
-  if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
-  if (forceRefresh) revokeR2DisplayUrl(namespace, path);
-  return r2DisplayBlobUrl(namespace, path);
+  return getDirectR2ObjectUrl(namespace, path);
 }
 
 /** Compresses an image and stores it in Cloudflare R2. */

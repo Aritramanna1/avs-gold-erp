@@ -63,6 +63,7 @@ import {
   Clock,
 } from "lucide-react";
 import QRCode from "qrcode";
+import { getDirectR2ObjectUrl } from "@/lib/supabase-storage";
 
 export const Route = createFileRoute("/doc/$token")({
   head: () => ({
@@ -91,6 +92,7 @@ type PortalFirm = {
   email?: string;
   gstin?: string;
   logoUrl?: string;
+  logoStoragePath?: string;
   website?: string;
   branchName?: string;
   terms?: string;
@@ -119,6 +121,7 @@ function portalFirm(raw: Record<string, unknown>): PortalFirm {
     email: opt("email") ?? "sales@maatarajewellers.shop",
     gstin: opt("gstin") ?? "19AABCM1234B1Z2",
     logoUrl: opt("logoUrl"),
+    logoStoragePath: opt("logoStoragePath") ?? opt("logo_storage_path"),
     website: opt("website") ?? "https://maatarajewellers.shop",
     branchName: opt("branchName") ?? "Bowbazar Flagship Showroom",
     terms:
@@ -341,11 +344,22 @@ function UnifiedPublicDocumentPage() {
       <header className="border-b border-border bg-card/60 backdrop-blur-sm sticky top-0 z-30 px-4 py-3 print:hidden">
         <div className="max-w-xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            {firm.logoUrl ? (
-              <img src={firm.logoUrl} alt={firm.shopName} className="h-9 w-auto object-contain" />
-            ) : (
-              <Logo className="h-8 w-auto" />
-            )}
+            {(() => {
+              const logoSrc =
+                firm.logoUrl ||
+                (firm.logoStoragePath ? getDirectR2ObjectUrl("firm-assets", firm.logoStoragePath) : null);
+              if (logoSrc) {
+                return (
+                  <img
+                    src={logoSrc}
+                    alt={firm.shopName}
+                    crossOrigin="anonymous"
+                    className="h-9 w-auto object-contain"
+                  />
+                );
+              }
+              return <Logo className="h-8 w-auto" />;
+            })()}
             <div>
               <h1 className="font-serif font-bold text-sm sm:text-base text-foreground tracking-tight leading-tight">
                 {firm.shopName}

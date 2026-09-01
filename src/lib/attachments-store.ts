@@ -4,6 +4,7 @@ import { createRepository } from "./repositories/base-repository";
 import {
   getAttachmentSignedUrl,
   getBucketForEntityType,
+  getDirectR2ObjectUrl,
   uploadFileToSupabase,
 } from "./supabase-storage";
 import type { PortalType } from "@/lib/portal/portal-context-service";
@@ -343,6 +344,10 @@ export function useAttachmentUrl(
   const rec = useAttachments((s) => s.items[makeKey(entityType, entityId, docKey)]);
   const [url, setUrl] = useState<string | null>(null);
 
+  const directUrl = rec?.storagePath
+    ? getDirectR2ObjectUrl(rec.bucket || getBucketForEntityType(entityType), rec.storagePath)
+    : null;
+
   useEffect(() => {
     let cancelled = false;
     if (!rec) {
@@ -359,7 +364,7 @@ export function useAttachmentUrl(
     };
   }, [entityType, entityId, docKey, rec?.checksum, rec?.fileDataUrl, rec?.storagePath, rec?.bucket]);
 
-  return url ?? rec?.thumbnailDataUrl ?? rec?.fileDataUrl ?? null;
+  return url ?? directUrl ?? rec?.thumbnailDataUrl ?? rec?.fileDataUrl ?? null;
 }
 
 /**

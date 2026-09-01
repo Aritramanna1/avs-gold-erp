@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ImageIcon } from "lucide-react";
-import { getAttachmentSignedUrl } from "@/lib/supabase-storage";
+import { getDirectR2ObjectUrl } from "@/lib/supabase-storage";
 
 /**
- * Renders an image from Cloudflare R2 via the authenticated storage proxy.
- * Replaces legacy Supabase Storage `getPublicUrl()` calls.
+ * Renders an image from Cloudflare R2 via the storage proxy.
+ * Resolves persistent, direct URLs with instant loading and resilient error fallback.
  */
 export function R2ObjectImage({
   bucket,
@@ -19,33 +19,9 @@ export function R2ObjectImage({
   className?: string;
   fallbackClassName?: string;
 }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!!storagePath);
+  const [broken, setBroken] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!storagePath) {
-      setUrl(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    void getAttachmentSignedUrl(bucket, storagePath)
-      .then((resolved) => {
-        if (!cancelled) setUrl(resolved);
-      })
-      .catch(() => {
-        if (!cancelled) setUrl(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [bucket, storagePath]);
-
-  if (!storagePath || (!url && !loading)) {
+  if (!storagePath || broken) {
     return (
       <div className={fallbackClassName}>
         <ImageIcon className="h-6 w-6 opacity-30" />
@@ -53,9 +29,23 @@ export function R2ObjectImage({
     );
   }
 
-  if (loading && !url) {
-    return <div className={fallbackClassName} />;
+  const resolvedUrl = getDirectR2ObjectUrl(bucket, storagePath);
+  if (!resolvedUrl) {
+    return (
+      <div className={fallbackClassName}>
+        <ImageIcon className="h-6 w-6 opacity-30" />
+      </div>
+    );
   }
 
-  return <img src={url ?? undefined} alt={alt} className={className} />;
+  return (
+    <img
+      src={resolvedUrl}
+      alt={alt}
+      className={className}
+      crossOrigin="anonymous"
+      loading="lazy"
+      onError={() => setBroken(true)}
+    />
+  );
 }

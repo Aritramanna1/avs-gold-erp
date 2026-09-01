@@ -35,15 +35,20 @@ import {
 import { fetchBillingCustomerContact } from "@/lib/billing-query";
 import { useBillingInvoiceById } from "@/lib/use-billing-invoice";
 import { mgToGrams, getCaratLabel } from "@/lib/gold";
+import { fineGoldMgConfigured } from "@/lib/gold-calculation-rules";
 import {
   AlertTriangle,
   ArrowLeft,
   Ban,
+  Banknote,
+  CheckCircle,
+  Coins,
   FileText,
   Loader2,
   Printer,
   Receipt,
   RotateCcw,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import { useCan } from "@/lib/rbac";
@@ -125,10 +130,35 @@ function InvoiceDetailPage() {
     }
   }
 
-  const [payMode, setPayMode] = useState<PaymentMode>("gold_exchange");
+  const [settleTab, setSettleTab] = useState<"cash" | "gold">("cash");
+  const [payMode, setPayMode] = useState<PaymentMode>("cash");
   const [payAmt, setPayAmt] = useState("");
   const [payRef, setPayRef] = useState("");
   const [payNotes, setPayNotes] = useState("");
+  const [goldGrossGramsStr, setGoldGrossGramsStr] = useState("");
+  const [goldPurityStr, setGoldPurityStr] = useState("916");
+  const [goldMeltLossStr, setGoldMeltLossStr] = useState("");
+  const [customerAdvanceGoldMg, setCustomerAdvanceGoldMg] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!inv?.customerId) {
+      setCustomerAdvanceGoldMg(0);
+      return;
+    }
+    import("@/lib/customer-account-ledger")
+      .then(({ compileCustomerLedger }) => {
+        if (cancelled) return;
+        const ledger = compileCustomerLedger(inv.customerId);
+        setCustomerAdvanceGoldMg(ledger.goldAdvanceMg || 0);
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerAdvanceGoldMg(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [inv?.customerId]);
 
   const { triggerPrint } = usePrintEngine();
   if (loadingInvoice && !inv) {
@@ -177,10 +207,10 @@ function InvoiceDetailPage() {
     );
   }
 
-  async function record() {
+  async function recordCashPayment() {
     const amt = rupeesToPaise(payAmt);
     if (amt <= 0) {
-      toast.error("Enter payment amount.");
+      toast.error("Enter valid cash payment amount.");
       return;
     }
     try {
@@ -190,11 +220,76 @@ function InvoiceDetailPage() {
         reference: payRef || undefined,
         notes: payNotes || undefined,
       });
+      toast.success("Payment recorded successfully.");
       setPayAmt("");
       setPayRef("");
       setPayNotes("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to record payment.");
+    }
+  }
+
+  async function recordGoldPayment() {
+    const grossG = parseFloat(goldGrossGramsStr) || 0;
+    if (grossG <= 0) {
+      toast.error("Enter valid gold weight.");
+      return;
+    }
+    const meltG = parseFloat(goldMeltLossStr) || 0;
+    const netG = Math.max(0, grossG - meltG);
+    const purity = Math.round(Number(goldPurityStr) || 916);
+    const fineMg = fineGoldMgConfigured(Math.round(netG * 1000), purity);
+    const currentRatePaise = goldRatePaise || 750000;
+    const valuePaise = Math.round((fineMg * currentRatePaise) / 1000);
+
+    try {
+      await addPayment(inv!.id, {
+        mode: "gold_exchange",
+        amountPaise: valuePaise,
+        goldGrossMg: Math.round(grossG * 1000),
+        goldPurity: purity,
+        goldFineMg: fineMg,
+        goldRatePerGramPaise: currentRatePaise,
+        reference: payRef || "Settlement in Gold",
+        notes: payNotes || undefined,
+      });
+      toast.success(`Gold payment of ${mgToGrams(fineMg)} g Fine recorded.`);
+      setGoldGrossGramsStr("");
+      setGoldMeltLossStr("");
+      setPayRef("");
+      setPayNotes("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to record gold payment.");
+    }
+  }
+
+  async function settleFromGoldAdvance() {
+    if (customerAdvanceGoldMg <= 0) {
+      toast.error("No gold advance available for this customer.");
+      return;
+    }
+    const applyMg = Math.min(customerAdvanceGoldMg, balanceFineMg);
+    if (applyMg <= 0) {
+      toast.error("Invoice is already fully settled.");
+      return;
+    }
+    const currentRatePaise = goldRatePaise || 750000;
+    const valuePaise = Math.round((applyMg * currentRatePaise) / 1000);
+
+    try {
+      await addPayment(inv!.id, {
+        mode: "customer_gold_credit",
+        amountPaise: valuePaise,
+        goldGrossMg: applyMg,
+        goldPurity: 100,
+        goldFineMg: applyMg,
+        goldRatePerGramPaise: currentRatePaise,
+        reference: "Gold Advance Usage",
+        notes: `Settled from existing customer gold balance (${mgToGrams(applyMg)} g fine applied)`,
+      });
+      toast.success(`Applied ${mgToGrams(applyMg)} g Fine Gold from customer advance.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to apply gold advance.");
     }
   }
 
@@ -223,8 +318,8 @@ function InvoiceDetailPage() {
     750000;
 
   const totalFineMg =
-    (inv?.items?.reduce((s, it) => s + (it.fineMg || 0), 0) || 0) > 0
-      ? inv!.items.reduce((s, it) => s + (it.fineMg || 0), 0)
+    (inv?.items?.reduce((s: number, it: any) => s + (it.fineMg || 0), 0) || 0) > 0
+      ? inv!.items.reduce((s: number, it: any) => s + (it.fineMg || 0), 0)
       : Math.round(((inv?.grandTotalPaise || inv?.subtotalPaise || 0) / goldRatePaise) * 1000);
 
   const paidFineMg =
@@ -317,7 +412,19 @@ function InvoiceDetailPage() {
           <div className="rounded-md border border-border bg-card p-5">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-serif text-lg text-gold">Items & Gold Computation</h3>
-              <Badge variant="outline">{INVOICE_STATUS_LABELS[inv.status]}</Badge>
+              {inv.status === "issued" || (inv.balancePaise > 0 && inv.paidPaise === 0) ? (
+                <Badge className="bg-rose-500/10 text-rose-500 border border-rose-500/30 text-xs font-bold font-mono">
+                  [ UNPAID INVOICE ] · Outstanding: {mgToGrams(balanceFineMg)} g Fine
+                </Badge>
+              ) : inv.balancePaise > 0 ? (
+                <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/30 text-xs font-bold font-mono">
+                  [ PARTIALLY PAID ] · Balance: {mgToGrams(balanceFineMg)} g Fine
+                </Badge>
+              ) : (
+                <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold font-mono">
+                  [ SETTLED IN FULL ]
+                </Badge>
+              )}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -332,7 +439,7 @@ function InvoiceDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {inv.items.map((it) => (
+                  {inv.items.map((it: any) => (
                     <tr key={it.id} className="border-b border-border/60">
                       <td className="py-2">
                         <div className="font-medium">{it.itemName}</div>
@@ -396,7 +503,7 @@ function InvoiceDetailPage() {
               <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
             ) : (
               <ul className="space-y-2 text-sm">
-                {inv.payments.map((p) => {
+                {inv.payments.map((p: any) => {
                   const rateUsed = (p as any).goldRatePerGramPaise || goldRatePaise;
                   const equivMg = (p as any).goldEquivalentMg || (rateUsed > 0 ? Math.round((p.amountPaise / rateUsed) * 1000) : 0);
                   const isGold = p.mode === "gold_exchange" || p.mode === "customer_gold_credit";
@@ -408,7 +515,7 @@ function InvoiceDetailPage() {
                     >
                       <div>
                         <div className="font-semibold text-foreground flex items-center gap-2">
-                          <span>{PAYMENT_MODE_LABELS[p.mode]}</span>
+                          <span>{PAYMENT_MODE_LABELS[p.mode as PaymentMode] || p.mode}</span>
                           {isGold ? (
                             <Badge className="bg-gold/20 text-gold border-gold/40 text-[10px]">Physical Gold</Badge>
                           ) : (
@@ -435,61 +542,196 @@ function InvoiceDetailPage() {
             )}
 
             {inv.balancePaise > 0 && can("billing.recordPayment") && (
-              <div className="mt-4 pt-4 border-t border-border">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">
-                  Record payment (Gold First)
-                </div>
-                <div className="grid sm:grid-cols-[150px_140px_1fr_auto] gap-2 items-end">
-                  <div>
-                    <Label>Mode</Label>
-                    <Select value={payMode} onValueChange={(v) => setPayMode(v as PaymentMode)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(Object.keys(PAYMENT_MODE_LABELS) as PaymentMode[])
-                          .filter((m) => m !== "outstanding")
-                          .map((m) => (
-                            <SelectItem key={m} value={m}>
-                              {PAYMENT_MODE_LABELS[m]}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Amount (₹)</Label>
-                    <Input
-                      value={payAmt}
-                      onChange={(e) => setPayAmt(e.target.value)}
-                      placeholder={(inv.balancePaise / 100).toString()}
-                    />
-                  </div>
-                  <div>
-                    <Label>Reference / Notes</Label>
-                    <Input
-                      value={payRef}
-                      onChange={(e) => setPayRef(e.target.value)}
-                      placeholder="UPI ref, cheque"
-                    />
-                  </div>
-                  <Button onClick={record}>Record</Button>
-                </div>
-                {payAmtNumber > 0 && (
-                  <div className="mt-2 text-xs text-muted-foreground bg-muted/30 p-2 rounded border border-border flex justify-between">
-                    <span>
-                      Gold Equivalent: <strong className="text-gold font-mono">{mgToGrams(payGoldEquivMg)} g</strong>
+              <div className="mt-6 pt-5 border-t border-border space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Coins className="h-4 w-4 text-gold" />
+                    <span className="text-sm font-bold uppercase tracking-wider text-foreground">
+                      Settle Outstanding Payment / पावती सेटल करा
                     </span>
-                    <span>
-                      Transaction Rate: <span className="font-mono">₹{paiseToRupees(goldRatePaise)}/g</span>
-                    </span>
+                  </div>
+                  <div className="text-xs font-mono text-muted-foreground">
+                    Outstanding: <strong className="text-rose-500 font-bold">{mgToGrams(balanceFineMg)} g Fine</strong> · ₹{paiseToRupees(inv.balancePaise)}
+                  </div>
+                </div>
+
+                {/* 1-Click Auto-Settlement from Customer Gold Advance */}
+                {customerAdvanceGoldMg > 0 && (
+                  <div className="p-3.5 rounded-xl border border-gold/40 bg-gold/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-bold text-gold flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-gold" /> Customer Has Available Gold Balance
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Available in Ledger: <strong className="font-mono text-foreground">{mgToGrams(customerAdvanceGoldMg)} g Fine</strong>. You can auto-settle this invoice from their existing gold advance.
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="bg-gold hover:bg-gold/90 text-white font-bold text-xs shrink-0 gap-1.5"
+                      onClick={settleFromGoldAdvance}
+                    >
+                      <CheckCircle className="h-3.5 w-3.5" /> Settle from Customer Gold ({mgToGrams(Math.min(customerAdvanceGoldMg, balanceFineMg))} g)
+                    </Button>
                   </div>
                 )}
+
+                {/* Settlement Method Tabs */}
+                <div className="flex gap-2 border-b border-border pb-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={settleTab === "cash" ? "default" : "outline"}
+                    className={`h-8 text-xs font-bold gap-1.5 ${settleTab === "cash" ? "bg-emerald-600 hover:bg-emerald-500 text-white" : ""}`}
+                    onClick={() => setSettleTab("cash")}
+                  >
+                    <Banknote className="h-3.5 w-3.5" /> Settle in Cash / Bank / UPI
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={settleTab === "gold" ? "default" : "outline"}
+                    className={`h-8 text-xs font-bold gap-1.5 ${settleTab === "gold" ? "bg-gold hover:bg-gold/90 text-white" : ""}`}
+                    onClick={() => setSettleTab("gold")}
+                  >
+                    <Coins className="h-3.5 w-3.5" /> Settle in Physical Gold
+                  </Button>
+                </div>
+
+                {settleTab === "cash" ? (
+                  <div className="space-y-3">
+                    <div className="grid sm:grid-cols-[150px_140px_1fr_auto] gap-2 items-end">
+                      <div>
+                        <Label className="text-xs">Payment Mode</Label>
+                        <Select value={payMode} onValueChange={(v) => setPayMode(v as PaymentMode)}>
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(Object.keys(PAYMENT_MODE_LABELS) as PaymentMode[])
+                              .filter((m) => m !== "outstanding" && m !== "gold_exchange" && m !== "customer_gold_credit")
+                              .map((m) => (
+                                <SelectItem key={m} value={m} className="text-xs">
+                                  {PAYMENT_MODE_LABELS[m]}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Amount (₹)</Label>
+                        <Input
+                          className="h-9 text-xs font-mono"
+                          value={payAmt}
+                          onChange={(e) => setPayAmt(e.target.value)}
+                          placeholder={(inv.balancePaise / 100).toString()}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Reference / UTR / Cheque</Label>
+                        <Input
+                          className="h-9 text-xs"
+                          value={payRef}
+                          onChange={(e) => setPayRef(e.target.value)}
+                          placeholder="UPI ref, UTR, cheque no."
+                        />
+                      </div>
+                      <Button
+                        className="h-9 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white"
+                        onClick={recordCashPayment}
+                      >
+                        Record Cash Settlement
+                      </Button>
+                    </div>
+
+                    {payAmtNumber > 0 && (
+                      <div className="text-xs text-muted-foreground bg-emerald-500/5 p-2.5 rounded-lg border border-emerald-500/20 flex justify-between items-center font-mono">
+                        <span className="text-emerald-400">
+                          Gold Equivalent Settled: <strong className="font-bold">{mgToGrams(payGoldEquivMg)} g Fine</strong>
+                        </span>
+                        <span>
+                          Transaction Rate: <strong>₹{paiseToRupees(goldRatePaise)}/g</strong>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="grid sm:grid-cols-4 gap-2.5 items-end">
+                      <div>
+                        <Label className="text-xs">Gross Weight (g)</Label>
+                        <Input
+                          className="h-9 text-xs font-mono"
+                          value={goldGrossGramsStr}
+                          onChange={(e) => setGoldGrossGramsStr(e.target.value)}
+                          placeholder={mgToGrams(balanceFineMg).toString()}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Touch / Purity %</Label>
+                        <Input
+                          className="h-9 text-xs font-mono"
+                          value={goldPurityStr}
+                          onChange={(e) => setGoldPurityStr(e.target.value)}
+                          placeholder="916"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Melt Loss / Ded (g)</Label>
+                        <Input
+                          className="h-9 text-xs font-mono"
+                          value={goldMeltLossStr}
+                          onChange={(e) => setGoldMeltLossStr(e.target.value)}
+                          placeholder="0.000"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Description / Ref</Label>
+                        <Input
+                          className="h-9 text-xs"
+                          value={payRef}
+                          onChange={(e) => setPayRef(e.target.value)}
+                          placeholder="Old Gold / Lagad"
+                        />
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const grossG = parseFloat(goldGrossGramsStr) || 0;
+                      const meltG = parseFloat(goldMeltLossStr) || 0;
+                      const netG = Math.max(0, grossG - meltG);
+                      const purity = Math.round(Number(goldPurityStr) || 916);
+                      const fineMg = fineGoldMgConfigured(Math.round(netG * 1000), purity);
+                      const valPaise = Math.round((fineMg * (goldRatePaise || 750000)) / 1000);
+
+                      return (
+                        <div className="p-3 bg-gold/5 border border-gold/20 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                          <div className="text-xs font-mono space-x-3">
+                            <span className="text-gold font-bold">
+                              Fine Gold: <strong>{mgToGrams(fineMg)} g</strong>
+                            </span>
+                            <span className="text-muted-foreground">
+                              Cash Value: <strong>₹ {paiseToRupees(valPaise)}</strong> @ ₹{paiseToRupees(goldRatePaise)}/g
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="bg-gold hover:bg-gold/90 text-white font-bold text-xs"
+                            onClick={recordGoldPayment}
+                          >
+                            Record Gold Settlement
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
                 <Input
-                  className="mt-2"
+                  className="h-8 text-xs text-muted-foreground"
                   value={payNotes}
                   onChange={(e) => setPayNotes(e.target.value)}
-                  placeholder="Notes (optional)"
+                  placeholder="Additional settlement notes (optional)"
                 />
               </div>
             )}

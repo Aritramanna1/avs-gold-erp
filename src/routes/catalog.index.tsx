@@ -763,7 +763,8 @@ function DesignCard({
               src={photo}
               alt={d.designName || d.designNumber}
               className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              loading="lazy"
             />
           ) : (
             <ImageIcon className="h-8 w-8 opacity-50" />

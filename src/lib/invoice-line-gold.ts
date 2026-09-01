@@ -21,7 +21,7 @@ export function applyInvoiceLineGold(
   billingType: BillingType | null | undefined,
 ): InvoiceItem {
   const rules = currentGoldCalculationRules();
-  const lessMg = Math.max(0, Math.round(it.lessMg ?? Math.max(0, it.grossMg - it.netMg)));
+  const lessMg = Math.max(0, Math.round(it.lessMg ?? 0));
   // Prefer dedicated Offline Add_wt; fall back to legacy stoneWeightMg-as-Add.
   const addMg = Math.max(0, Math.round(it.addMg ?? it.stoneWeightMg ?? 0));
   const fineEnabled = isJewelleryCalcFeatureEnabled("fineCalculation", rules);

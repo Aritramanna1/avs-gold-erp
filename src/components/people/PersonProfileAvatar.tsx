@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from "react";
 import { useAttachmentUrl } from "@/lib/attachments-store";
-import { getAttachmentSignedUrl } from "@/lib/supabase-storage";
+import { getDirectR2ObjectUrl } from "@/lib/supabase-storage";
 import { cn } from "@/lib/utils";
 
 /** Same initials rule as the tenant profile chip in AppShell. */
@@ -43,17 +43,32 @@ export function PersonProfileAvatar({
   "data-testid": testId,
 }: Props) {
   const [broken, setBroken] = useState(false);
-  const [asyncR2Url, setAsyncR2Url] = useState<string | null>(null);
 
   const pid = personId || person?.id || "";
 
   // 1. Direct hook resolution for person, worker, user, customer
   const personPhotoUrl = useAttachmentUrl("person", pid, docKey);
   const workerPhotoUrl = useAttachmentUrl("worker", pid, docKey);
-  const userPhotoUrl = useAttachmentUrl("person", pid, docKey);
 
-  // 2. Direct property candidates from person/user profile object
-  const directCandidate =
+  // 2. Storage path candidates
+  const storagePathCandidate =
+    person?.avatarStoragePath ||
+    person?.avatar_storage_path ||
+    person?.storage_path ||
+    person?.data?.avatarStoragePath ||
+    person?.data?.avatar_storage_path ||
+    null;
+
+  const bucket =
+    person?.bucket ||
+    (person?.type === "worker" || person?.role === "karigar" ? "worker-kyc" : "customer-documents");
+
+  const r2StorageUrl = storagePathCandidate
+    ? getDirectR2ObjectUrl(bucket, storagePathCandidate)
+    : null;
+
+  // 3. Direct property candidates
+  const rawCandidate =
     explicitAvatarUrl ||
     person?.avatar_url ||
     person?.photoUrl ||
@@ -66,48 +81,35 @@ export function PersonProfileAvatar({
     person?.data?.photo_url ||
     personPhotoUrl ||
     workerPhotoUrl ||
-    userPhotoUrl ||
     null;
 
-  // 3. Resolve R2 storage paths if passed as storage path (e.g. firms/...)
-  const storagePathCandidate =
-    person?.avatarStoragePath ||
-    person?.avatar_storage_path ||
-    person?.storage_path ||
-    person?.data?.avatarStoragePath ||
-    person?.data?.avatar_storage_path ||
-    null;
+  // Discard empty strings
+  const validDirectCandidate =
+    rawCandidate && typeof rawCandidate === "string" && rawCandidate.trim() !== ""
+      ? rawCandidate.trim()
+      : null;
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!storagePathCandidate || directCandidate?.startsWith("http") || directCandidate?.startsWith("blob:") || directCandidate?.startsWith("data:")) {
-      setAsyncR2Url(null);
-      return;
-    }
-    const bucket = person?.bucket || "customer-documents";
-    void getAttachmentSignedUrl(bucket, storagePathCandidate)
-      .then((res) => {
-        if (!cancelled && res) setAsyncR2Url(res);
-      })
-      .catch(() => {
-        if (!cancelled) setAsyncR2Url(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [storagePathCandidate, directCandidate, person?.bucket]);
+  // If candidate is a storage path (e.g. starts with firms/ or branches/ or platform/), resolve to R2
+  const finalPhotoUrl =
+    (validDirectCandidate && (validDirectCandidate.startsWith("http") || validDirectCandidate.startsWith("data:")))
+      ? validDirectCandidate
+      : (validDirectCandidate && (validDirectCandidate.startsWith("firms/") || validDirectCandidate.startsWith("platform/")))
+      ? getDirectR2ObjectUrl(bucket, validDirectCandidate)
+      : r2StorageUrl ||
+        validDirectCandidate ||
+        null;
 
-  const finalPhotoUrl = directCandidate || asyncR2Url;
   const showPhoto = Boolean(finalPhotoUrl) && !broken;
-  const initials = nameInitials(name);
+  const initials = nameInitials(name || person?.fullName || person?.name || "");
 
   if (showPhoto && finalPhotoUrl) {
     return (
       <div className={cn("overflow-hidden bg-accent shrink-0 select-none", className)}>
         <img
           src={finalPhotoUrl}
-          alt={name}
-          referrerPolicy="no-referrer"
+          alt={name || person?.fullName || "Avatar"}
+          crossOrigin="anonymous"
+          loading="lazy"
           onError={() => setBroken(true)}
           className={cn("h-full w-full object-cover", imgClassName)}
           data-testid={testId}

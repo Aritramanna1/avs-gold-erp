@@ -1,17 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { hardwareService, useScaleReading } from "@/lib/hardware-service";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Scale, PencilLine } from "lucide-react";
 
 /**
- * Reusable weight-entry field (Priority 7). If a physical scale is
- * connected (WebSerial, see hardware-service.ts), shows the live stable
- * reading and lets the user accept it with one click. If no scale is
- * connected — or the user doesn't trust a given reading — "Enter Manually"
- * always works: this is a production-ready fallback, not a placeholder,
- * since gold weighing must never be blocked by a missing/misbehaving
- * device.
+ * Reusable weight-entry field. If a physical scale is connected,
+ * shows the live stable reading. If manual entry is used, typing
+ * (e.g. 8.100) is fully preserved without jumping or resetting.
  */
 export function WeightInput({
   valueGrams,
@@ -25,6 +21,13 @@ export function WeightInput({
   const { reading: liveReading, connected: scaleAvailable } = useScaleReading();
   const [manualMode, setManualMode] = useState(!hardwareService.isScaleConnected);
   const [manualText, setManualText] = useState(valueGrams != null ? String(valueGrams) : "");
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (!isFocused) {
+      setManualText(valueGrams != null ? String(valueGrams) : "");
+    }
+  }, [valueGrams, isFocused]);
 
   if (!manualMode && scaleAvailable) {
     return (
@@ -57,16 +60,24 @@ export function WeightInput({
   return (
     <div className="flex items-center gap-2">
       <Input
-        type="number"
-        step="0.001"
-        min="0"
+        type="text"
+        inputMode="decimal"
         autoFocus={autoFocus}
-        placeholder="Weight in grams"
+        placeholder="0.000"
         value={manualText}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => {
+          setIsFocused(false);
+          const num = parseFloat(manualText);
+          if (!isNaN(num) && num > 0) {
+            setManualText(num.toFixed(3));
+          }
+        }}
         onChange={(e) => {
-          setManualText(e.target.value);
-          const num = parseFloat(e.target.value);
-          onChange(Number.isFinite(num) ? num : null);
+          const val = e.target.value;
+          setManualText(val);
+          const num = parseFloat(val);
+          onChange(Number.isFinite(num) && num >= 0 ? num : val === "" ? null : undefined as any);
         }}
       />
       {scaleAvailable && (

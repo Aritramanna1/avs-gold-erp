@@ -139,7 +139,8 @@ function DesignPage() {
               src={photoUrl}
               alt={d.designName}
               className="object-contain max-h-full max-w-full rounded-md"
-              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              loading="lazy"
             />
           </div>
         ) : (

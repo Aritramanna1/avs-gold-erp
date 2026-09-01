@@ -126,12 +126,42 @@ function pathTenant(key: string): { firmId: string; branchId?: string } | null {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const origin = resolveCorsOrigin(request, env.ALLOWED_ORIGIN);
-    const cors = CORS_HEADERS(origin);
+    const cors = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Firm-Id",
+      "Access-Control-Max-Age": "86400",
+    };
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors });
     }
 
+    // URL shape: /{bucketNamespace}/{objectKey...} — bucketNamespace (e.g.
+    // "catalog-designs") is client-side routing only, R2 itself is one bucket.
+    const url = new URL(request.url);
+    const parts = url.pathname.slice(1).split("/");
+    if (parts.length < 2) {
+      return new Response("Bad Request", { status: 400, headers: cors });
+    }
+    const objectKey = parts.slice(1).join("/");
+
+    // GET / HEAD: Public/direct object read. Enables <img> tags, PDF rendering,
+    // public documents (/doc/$token), and portals without needing ephemeral blob hacks.
+    if (request.method === "GET" || request.method === "HEAD") {
+      const obj = await env.STORAGE.get(objectKey);
+      if (!obj) return new Response("Not Found", { status: 404, headers: cors });
+      const headers = new Headers(cors);
+      obj.writeHttpMetadata(headers);
+      headers.set("etag", obj.httpEtag);
+      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      if (request.method === "HEAD") {
+        return new Response(null, { headers });
+      }
+      return new Response(obj.body, { headers });
+    }
+
+    // PUT / DELETE: Require valid Supabase user JWT and strict tenant scoping.
     const auth = request.headers.get("Authorization") ?? "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
     if (!token) {
@@ -145,15 +175,6 @@ export default {
 
     const tenant = await resolveTenant(token, user.id, env);
     if (!tenant) return new Response("Tenant assignment required", { status: 403, headers: cors });
-
-    // URL shape: /{bucketNamespace}/{objectKey...} — bucketNamespace (e.g.
-    // "catalog-designs") is client-side routing only, R2 itself is one bucket.
-    const url = new URL(request.url);
-    const parts = url.pathname.slice(1).split("/");
-    if (parts.length < 2) {
-      return new Response("Bad Request", { status: 400, headers: cors });
-    }
-    const objectKey = parts.slice(1).join("/");
 
     const objectTenant = pathTenant(objectKey);
     if (
@@ -176,16 +197,6 @@ export default {
         status: 200,
         headers: { ...cors, "Content-Type": "application/json" },
       });
-    }
-
-    if (request.method === "GET") {
-      const obj = await env.STORAGE.get(objectKey);
-      if (!obj) return new Response("Not Found", { status: 404, headers: cors });
-      const headers = new Headers(cors);
-      obj.writeHttpMetadata(headers);
-      headers.set("etag", obj.httpEtag);
-      headers.set("Cache-Control", "private, max-age=3600");
-      return new Response(obj.body, { headers });
     }
 
     if (request.method === "DELETE") {
