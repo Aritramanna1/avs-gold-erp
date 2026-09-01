@@ -4,7 +4,8 @@ import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
+import { usePeople, PERSON_TYPE_LABELS, KYC_DOC_LABELS, type KycDocKey } from "@/lib/people-store";
+import { AttachmentButton } from "@/components/attachment-placeholder-modal";
 import { useOrders, ORDER_STATUS_LABELS, paiseToRupees } from "@/lib/orders-store";
 import { useJobCards, JOB_STATUS_LABELS } from "@/lib/jobcards-store";
 import { useMfgBills } from "@/lib/manufacturing-bill-store";
@@ -46,6 +47,7 @@ import { PortalInvitationsPanel } from "@/components/portal/PortalInvitationsPan
 import { getPartyTimelineData, type PartyTimelineData } from "@/lib/central-foundation";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { GoldWeightDisplay } from "@/components/ui/GoldWeightDisplay";
+import { PersonProfileAvatar } from "@/components/people/PersonProfileAvatar";
 
 export const Route = createFileRoute("/people/$id")({
   head: () => ({ meta: [{ title: "Party 360 Workspace · Ornexa ERP" }] }),
@@ -188,35 +190,43 @@ function Party360WorkspacePage() {
       {/* Header Summary Card */}
       <div className="rounded-md border border-border/80 bg-card p-6 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                {person.fullName}
-              </h1>
-              <Badge variant="outline" className="capitalize text-xs font-medium">
-                {PERSON_TYPE_LABELS[person.type] || person.type}
-              </Badge>
-              <Badge variant={person.active ? "default" : "secondary"} className="text-[11px]">
-                {person.active ? "Active" : "Inactive"}
-              </Badge>
-            </div>
-            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-2">
-              <span className="flex items-center gap-1">
-                <Phone className="h-3.5 w-3.5" /> {person.phone}
-              </span>
-              {person.email && (
+          <div className="flex items-center gap-4">
+            <PersonProfileAvatar
+              person={person}
+              name={person.fullName}
+              className="h-14 w-14 rounded-full border border-border shrink-0"
+              imgClassName="object-contain p-0.5"
+            />
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                  {person.fullName}
+                </h1>
+                <Badge variant="outline" className="capitalize text-xs font-medium">
+                  {PERSON_TYPE_LABELS[person.type] || person.type}
+                </Badge>
+                <Badge variant={person.active ? "default" : "secondary"} className="text-[11px]">
+                  {person.active ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mt-2">
                 <span className="flex items-center gap-1">
-                  <Mail className="h-3.5 w-3.5" /> {person.email}
+                  <Phone className="h-3.5 w-3.5" /> {person.phone}
                 </span>
-              )}
-              {person.gstin && (
-                <span className="font-mono bg-muted/60 px-2 py-0.5 rounded">
-                  GSTIN: {person.gstin}
-                </span>
-              )}
-              {person.pan && (
-                <span className="font-mono bg-muted/60 px-2 py-0.5 rounded">PAN: {person.pan}</span>
-              )}
+                {person.email && (
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-3.5 w-3.5" /> {person.email}
+                  </span>
+                )}
+                {person.gstin && (
+                  <span className="font-mono bg-muted/60 px-2 py-0.5 rounded">
+                    GSTIN: {person.gstin}
+                  </span>
+                )}
+                {person.pan && (
+                  <span className="font-mono bg-muted/60 px-2 py-0.5 rounded">PAN: {person.pan}</span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -861,43 +871,45 @@ function Party360WorkspacePage() {
         {/* Tab 6: Document Vault */}
         <TabsContent value="vault" className="space-y-4">
           <div className="rounded-md border border-border/80 bg-card p-5 space-y-4 shadow-sm">
-            <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" /> Party Document Vault & KYC
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
-              <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
-                <p className="font-medium text-foreground">PAN Card</p>
-                <Badge variant={person.docs?.pan ? "default" : "outline"} className="text-[10px]">
-                  {person.docs?.pan ? "On File" : "Missing"}
-                </Badge>
-              </div>
-              <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
-                <p className="font-medium text-foreground">Aadhaar Front</p>
-                <Badge
-                  variant={person.docs?.aadhaar_front ? "default" : "outline"}
-                  className="text-[10px]"
-                >
-                  {person.docs?.aadhaar_front ? "On File" : "Missing"}
-                </Badge>
-              </div>
-              <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
-                <p className="font-medium text-foreground">Address Proof</p>
-                <Badge
-                  variant={person.docs?.address_proof ? "default" : "outline"}
-                  className="text-[10px]"
-                >
-                  {person.docs?.address_proof ? "On File" : "Missing"}
-                </Badge>
-              </div>
-              <div className="rounded-lg border p-3 bg-muted/20 text-center space-y-1">
-                <p className="font-medium text-foreground">Signature / Stamp</p>
-                <Badge
-                  variant={person.docs?.signature ? "default" : "outline"}
-                  className="text-[10px]"
-                >
-                  {person.docs?.signature ? "On File" : "Missing"}
-                </Badge>
-              </div>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" /> Party Document Vault & KYC
+              </h3>
+              <Link
+                to={`/people/print/${person.id}` as any}
+                className="inline-flex items-center justify-center rounded-md text-xs font-medium h-8 px-3 border border-border bg-background hover:bg-muted"
+              >
+                Print KYC Sheet
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              {(["photo", "aadhaar_front", "aadhaar_back", "pan", "address_proof", "signature"] as KycDocKey[]).map((k) => {
+                const filed = !!person.docs?.[k];
+                return (
+                  <div
+                    key={k}
+                    className={`rounded-lg border p-3 flex items-center justify-between gap-3 ${
+                      filed
+                        ? "border-gold/40 bg-gold/5"
+                        : "border-dashed border-border bg-background/30"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground">{KYC_DOC_LABELS[k]}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {filed ? "Verified & on file" : "Not uploaded yet"}
+                      </p>
+                    </div>
+                    <AttachmentButton
+                      entityType="person"
+                      entityId={person.id}
+                      docKey={k}
+                      docLabel={KYC_DOC_LABELS[k]}
+                      title={`${person.fullName} — ${KYC_DOC_LABELS[k]}`}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </TabsContent>

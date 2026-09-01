@@ -25,7 +25,7 @@ type Props = {
   personId?: string;
   person?: any;
   avatarUrl?: string | null;
-  name: string;
+  name?: string;
   className?: string;
   imgClassName?: string;
   docKey?: string;
@@ -36,7 +36,7 @@ export function PersonProfileAvatar({
   personId,
   person,
   avatarUrl: explicitAvatarUrl,
-  name,
+  name = "",
   className,
   imgClassName,
   docKey = "photo",
