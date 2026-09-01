@@ -171,11 +171,23 @@ export async function getDocumentShare(token: string): Promise<DocumentShare | n
       p_token: token,
     });
 
-    if (error || !data) return null;
-    return data as DocumentShare;
-  } catch {
-    return null;
+    if (!error && data) return data as DocumentShare;
+  } catch {}
+
+  // Offline resilience & client-side snapshot fallback
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const cached = localStorage.getItem(`doc_share_${token}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && (!parsed.expires_at || new Date(parsed.expires_at).getTime() > Date.now())) {
+          return parsed as DocumentShare;
+        }
+      }
+    } catch {}
   }
+
+  return null;
 }
 
 /** Maps CommRequest.linkedType → ShareDocumentType */
