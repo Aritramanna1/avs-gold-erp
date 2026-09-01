@@ -157,22 +157,26 @@ async function runPublicHostingE2ETest() {
 
   const mobileContent = await mobilePage.content();
   const hasBranding = mobileContent.includes("Maa Tara Jewellers") && mobileContent.includes("Bowbazar");
-  const hasGoldFirst = mobileContent.includes("Primary Gold Obligation") && mobileContent.includes("Fine");
-  const hasStatus = mobileContent.includes("Fully Paid");
-  const hasCollection = mobileContent.includes("Explore Our Master Collection");
-  const hasFeedback = mobileContent.includes("Rate Your Experience");
+  const hasGoldFirst = mobileContent.includes("Pure Gold Obligation") && mobileContent.includes("Fine Gold");
+  const hasItems = mobileContent.includes("~Items Purchased~");
+  const hasLoyalty = mobileContent.includes("~Loyalty") || mobileContent.includes("Earned in this bill");
+  const hasCollection = mobileContent.includes("Explore Master Jewellery") || mobileContent.includes("Shop Now");
+  const hasFeedback = mobileContent.includes("Feedback Form");
+  const hasAnniversary = mobileContent.includes("Birthday & Anniversary Rewards");
 
   auditLog.responsiveViews.push({
     viewport: "390px Mobile (iPhone 14)",
     brandingVerified: hasBranding,
     goldFirstVerified: hasGoldFirst,
-    statusVerified: hasStatus,
+    itemsVerified: hasItems,
+    loyaltyVerified: hasLoyalty,
     collectionVerified: hasCollection,
     feedbackVerified: hasFeedback,
-    status: hasBranding && hasGoldFirst ? "PASS" : "FAIL",
+    anniversaryVerified: hasAnniversary,
+    status: hasBranding && hasGoldFirst && hasItems ? "PASS" : "FAIL",
     screenshot: `qa/audit-screenshots/${shotMobileFull}`,
   });
-  console.log(`  ✓ Mobile 390px layout verified (Branding: ${hasBranding}, Gold-First: ${hasGoldFirst})`);
+  console.log(`  ✓ Mobile 390px layout verified (Branding: ${hasBranding}, Gold-First: ${hasGoldFirst}, Items: ${hasItems}, Loyalty: ${hasLoyalty})`);
 
   // Test Customer Feedback Submission on Mobile
   console.log("  Testing interactive 5-star feedback submission...");
