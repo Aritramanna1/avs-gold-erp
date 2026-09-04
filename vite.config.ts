@@ -43,6 +43,9 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: true,
     hmr: hmrConfig,
+    watch: {
+      ignored: ["**/.agents/**", "**/electron-app/**", "**/dist/**", "**/coverage/**"],
+    },
   },
   preview: {
     host: "0.0.0.0",
