@@ -1,10 +1,13 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  isElectron: true,
-  platform: process.platform,
-  version: "1.1.2",
-  print: () => ipcRenderer.invoke("print-document"),
+  openErp: () => ipcRenderer.invoke("open-erp"),
+  openControlCenter: () => ipcRenderer.invoke("open-control-center"),
+  startServices: () => ipcRenderer.invoke("start-services"),
+  stopServices: () => ipcRenderer.invoke("stop-services"),
+  restartServices: () => ipcRenderer.invoke("restart-services"),
+  getHealthStatus: () => ipcRenderer.invoke("get-health-status"),
+  printDocument: () => ipcRenderer.invoke("print-document"),
   reloadApp: () => ipcRenderer.invoke("reload-app"),
   getAppConfig: () => ipcRenderer.invoke("get-app-config"),
 });

@@ -1,9 +1,52 @@
-const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, shell, Tray } = require("electron");
 const path = require("path");
+const os = require("os");
+const http = require("http");
+const { exec } = require("child_process");
 
-const DEFAULT_URL = process.env.MTJ_ERP_URL || "http://localhost:3000";
+const ERP_URL = process.env.MTJ_ERP_URL || "http://localhost:3000";
+const GATEWAY_URL = process.env.SUPABASE_GATEWAY_URL || "http://127.0.0.1:8000";
+const SUPABASE_DIR = path.resolve(__dirname, "../../supabase-self-hosted");
 
 let mainWindow = null;
+
+function getLocalIpAddress() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return "192.168.0.101";
+}
+
+function checkHttpEndpoint(url, timeoutMs = 2000) {
+  return new Promise((resolve) => {
+    try {
+      const parsed = new URL(url);
+      const req = http.get(
+        {
+          hostname: parsed.hostname,
+          port: parsed.port || 80,
+          path: parsed.pathname || "/",
+          timeout: timeoutMs,
+        },
+        (res) => {
+          resolve(res.statusCode >= 200 && res.statusCode < 500);
+        }
+      );
+      req.on("error", () => resolve(false));
+      req.on("timeout", () => {
+        req.destroy();
+        resolve(false);
+      });
+    } catch {
+      resolve(false);
+    }
+  });
+}
 
 function getOfflineHtml() {
   return `
@@ -29,7 +72,7 @@ function getOfflineHtml() {
           background-color: #0f172a;
           border: 1px solid #1e293b;
           border-radius: 12px;
-          padding: 32px;
+          padding: 36px 32px;
           max-width: 440px;
           width: 90%;
           text-align: center;
@@ -53,19 +96,25 @@ function getOfflineHtml() {
           font-weight: 700;
           margin: 0 0 8px;
           color: #ffffff;
+          letter-spacing: 0.5px;
         }
         p {
           font-size: 13px;
-          line-height: 1.5;
+          line-height: 1.6;
           color: #94a3b8;
           margin: 0 0 24px;
+        }
+        .actions {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
         }
         button {
           background-color: #d97706;
           color: #020617;
           border: none;
           font-weight: 600;
-          padding: 10px 20px;
+          padding: 12px 20px;
           border-radius: 6px;
           cursor: pointer;
           font-size: 14px;
@@ -74,6 +123,14 @@ function getOfflineHtml() {
         }
         button:hover {
           background-color: #b45309;
+        }
+        .btn-ctrl {
+          background-color: #1e293b;
+          color: #f8fafc;
+          border: 1px solid #334155;
+        }
+        .btn-ctrl:hover {
+          background-color: #334155;
         }
         .sub {
           font-size: 11px;
@@ -85,17 +142,21 @@ function getOfflineHtml() {
     <body>
       <div class="card">
         <div class="icon">⚡</div>
-        <h1>MTJ ERP is currently offline</h1>
+        <h1>ERP OFFLINE</h1>
         <p>
-          The shop host server is unreachable. Please verify that the host machine and Supabase stack are running, or try again later.
+          The shop server is currently offline.<br />
+          Please start the MTJ ERP application on the main shop PC.
         </p>
-        <button onclick="window.location.href='${DEFAULT_URL}'">Retry Connection</button>
-        <div class="sub">Auto-retrying every 10 seconds...</div>
+        <div class="actions">
+          <button onclick="window.location.href='${ERP_URL}'">Retry Connection</button>
+          <button class="btn-ctrl" onclick="if(window.electronAPI) window.electronAPI.openControlCenter(); else window.location.reload();">Open Control Center</button>
+        </div>
+        <div class="sub">Auto-retrying connection every 8 seconds...</div>
       </div>
       <script>
         setTimeout(() => {
-          window.location.href = "${DEFAULT_URL}";
-        }, 10000);
+          window.location.href = "${ERP_URL}";
+        }, 8000);
       </script>
     </body>
     </html>
@@ -108,13 +169,13 @@ function createWindow() {
     height: 860,
     minWidth: 1024,
     minHeight: 700,
-    title: "MTJ / AVS ERP",
+    title: "MTJ / AVS ERP — Host Control Shell",
     backgroundColor: "#020617",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true,
+      sandbox: false,
     },
     autoHideMenuBar: true,
     show: false,
@@ -125,8 +186,13 @@ function createWindow() {
     mainWindow.show();
   });
 
-  mainWindow.loadURL(DEFAULT_URL).catch(() => {
-    mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(getOfflineHtml())}`);
+  // Check if ERP is already online; if so, open ERP, else open Control Center
+  checkHttpEndpoint(ERP_URL).then((isUp) => {
+    if (isUp) {
+      mainWindow.loadURL(ERP_URL);
+    } else {
+      mainWindow.loadFile(path.join(__dirname, "control-center.html"));
+    }
   });
 
   mainWindow.webContents.on("did-fail-load", (_event, errorCode) => {
@@ -135,7 +201,6 @@ function createWindow() {
     }
   });
 
-  // Open external links in default OS browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http:") || url.startsWith("https:")) {
       shell.openExternal(url);
@@ -149,7 +214,64 @@ function createWindow() {
   });
 }
 
-// IPC Handlers
+// IPC Handlers for Service Orchestration
+ipcMain.handle("open-erp", async () => {
+  if (mainWindow) {
+    mainWindow.loadURL(ERP_URL);
+  }
+  return { ok: true };
+});
+
+ipcMain.handle("open-control-center", async () => {
+  if (mainWindow) {
+    mainWindow.loadFile(path.join(__dirname, "control-center.html"));
+  }
+  return { ok: true };
+});
+
+ipcMain.handle("get-health-status", async () => {
+  const [erpUp, gwUp, storageUp] = await Promise.all([
+    checkHttpEndpoint(ERP_URL),
+    checkHttpEndpoint(`${GATEWAY_URL}/rest/v1/`),
+    checkHttpEndpoint(`${GATEWAY_URL}/storage/v1/status`),
+  ]);
+
+  return {
+    erp: erpUp,
+    db: gwUp,
+    auth: gwUp,
+    storage: storageUp || gwUp,
+    realtime: gwUp,
+    karigar: true,
+    tunnel: false,
+    lanIp: getLocalIpAddress(),
+  };
+});
+
+ipcMain.handle("start-services", async () => {
+  return new Promise((resolve) => {
+    exec("docker compose up -d", { cwd: SUPABASE_DIR }, (err, stdout) => {
+      resolve({ ok: !err, output: stdout || err?.message });
+    });
+  });
+});
+
+ipcMain.handle("stop-services", async () => {
+  return new Promise((resolve) => {
+    exec("docker compose down", { cwd: SUPABASE_DIR }, (err, stdout) => {
+      resolve({ ok: !err, output: stdout || err?.message });
+    });
+  });
+});
+
+ipcMain.handle("restart-services", async () => {
+  return new Promise((resolve) => {
+    exec("docker compose restart", { cwd: SUPABASE_DIR }, (err, stdout) => {
+      resolve({ ok: !err, output: stdout || err?.message });
+    });
+  });
+});
+
 ipcMain.handle("print-document", async () => {
   if (mainWindow) {
     mainWindow.webContents.print({ silent: false, printBackground: true });
@@ -159,7 +281,7 @@ ipcMain.handle("print-document", async () => {
 
 ipcMain.handle("reload-app", async () => {
   if (mainWindow) {
-    mainWindow.loadURL(DEFAULT_URL);
+    mainWindow.loadURL(ERP_URL);
   }
   return { ok: true };
 });
@@ -167,7 +289,8 @@ ipcMain.handle("reload-app", async () => {
 ipcMain.handle("get-app-config", async () => {
   return {
     version: "1.1.2",
-    targetUrl: DEFAULT_URL,
+    targetUrl: ERP_URL,
+    lanIp: getLocalIpAddress(),
     isPackaged: app.isPackaged,
   };
 });

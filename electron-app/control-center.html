@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MTJ / AVS ERP — Host Control Center</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: radial-gradient(circle at top, #111827 0%, #030712 100%);
+      color: #f3f4f6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .container {
+      width: 100%;
+      max-width: 640px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+    }
+    .header {
+      padding: 28px 32px 20px;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .title-area h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #f59e0b;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .title-area p {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    .badge-single {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .content {
+      padding: 28px 32px;
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .status-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .status-card .name {
+      font-size: 13px;
+      font-weight: 500;
+      color: #e2e8f0;
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .dot.running {
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+    .text.running {
+      color: #10b981;
+    }
+    .dot.offline {
+      background: #ef4444;
+      box-shadow: 0 0 10px #ef4444;
+    }
+    .text.offline {
+      color: #ef4444;
+    }
+    .dot.enabled {
+      background: #3b82f6;
+      box-shadow: 0 0 10px #3b82f6;
+    }
+    .text.enabled {
+      color: #3b82f6;
+    }
+    .dot.off {
+      background: #64748b;
+    }
+    .text.off {
+      color: #94a3b8;
+    }
+
+    .network-box {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 28px;
+    }
+    .network-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+    .network-row:not(:last-child) {
+      border-bottom: 1px solid #1e293b;
+    }
+    .network-label {
+      color: #94a3b8;
+      font-weight: 500;
+    }
+    .network-value {
+      color: #f59e0b;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 600;
+    }
+
+    .action-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .btn {
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #f59e0b;
+      color: #020617;
+      grid-column: 1 / -1;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 14px;
+    }
+    .btn-primary:hover {
+      background: #d97706;
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+    }
+    .btn-secondary {
+      background: #334155;
+      color: #f8fafc;
+    }
+    .btn-secondary:hover {
+      background: #475569;
+    }
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+    .footer {
+      padding: 14px 32px;
+      background: #090d16;
+      border-top: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title-area">
+        <h1><span>👑</span> MTJ / AVS ERP</h1>
+        <p>Main Shop PC — Service Controller & Launcher</p>
+      </div>
+      <div class="badge-single">Single-Tenant Host</div>
+    </div>
+
+    <div class="content">
+      <div class="section-title">Live Service Status</div>
+      <div class="status-grid">
+        <div class="status-card">
+          <span class="name">ERP Web App</span>
+          <div class="status-indicator">
+            <span class="dot running" id="dot-erp"></span>
+            <span class="text running" id="txt-erp">RUNNING</span>
+          </div>
+        </div>
+        <div class="status-card">
+          <span class="name">PostgreSQL Database</span>
+          <div class="status-indicator">
+            <span class="dot running" id="dot-db"></span>
+            <span class="text running" id="txt-db">RUNNING</span>
+          </div>
+        </div>
+        <div class="status-card">
+          <span class="name">Authentication API</span>
+          <div class="status-indicator">
+            <span class="dot running" id="dot-auth"></span>
+            <span class="text running" id="txt-auth">RUNNING</span>
+          </div>
+        </div>
+        <div class="status-card">
+          <span class="name">Storage Subsystem</span>
+          <div class="status-indicator">
+            <span class="dot running" id="dot-storage"></span>
+            <span class="text running" id="txt-storage">RUNNING</span>
+          </div>
+        </div>
+        <div class="status-card">
+          <span class="name">Karigar Portal</span>
+          <div class="status-indicator">
+            <span class="dot enabled" id="dot-karigar"></span>
+            <span class="text enabled" id="txt-karigar">ENABLED</span>
+          </div>
+        </div>
+        <div class="status-card">
+          <span class="name">Cloudflare Tunnel</span>
+          <div class="status-indicator">
+            <span class="dot off" id="dot-tunnel"></span>
+            <span class="text off" id="txt-tunnel">STANDBY</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Connection Endpoints</div>
+      <div class="network-box">
+        <div class="network-row">
+          <span class="network-label">Local Host PC</span>
+          <span class="network-value" id="val-local">http://localhost:3000</span>
+        </div>
+        <div class="network-row">
+          <span class="network-label">Shop Wi-Fi / LAN</span>
+          <span class="network-value" id="val-lan">http://192.168.0.101:3000</span>
+        </div>
+        <div class="network-row">
+          <span class="network-label">Supabase LAN Gateway</span>
+          <span class="network-value" id="val-gw">http://192.168.0.101:8000</span>
+        </div>
+      </div>
+
+      <div class="action-group">
+        <button class="btn btn-primary" id="btn-open-erp">
+          <span>🚀</span> OPEN ERP APPLICATION
+        </button>
+        <button class="btn btn-secondary" id="btn-restart">
+          <span>🔄</span> RESTART STACK
+        </button>
+        <button class="btn btn-danger" id="btn-stop">
+          <span>⏹</span> STOP SERVICES
+        </button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>AVS ERP Core v1.1.2 · Release Candidate</span>
+      <span id="txt-uptime">Host Health: Optimal</span>
+    </div>
+  </div>
+
+  <script>
+    const btnOpenErp = document.getElementById("btn-open-erp");
+    const btnRestart = document.getElementById("btn-restart");
+    const btnStop = document.getElementById("btn-stop");
+
+    btnOpenErp.addEventListener("click", () => {
+      if (window.electronAPI) {
+        window.electronAPI.openErp();
+      } else {
+        window.location.href = "http://localhost:3000";
+      }
+    });
+
+    btnRestart.addEventListener("click", async () => {
+      btnRestart.textContent = "Restarting...";
+      if (window.electronAPI) {
+        await window.electronAPI.restartServices();
+      }
+      setTimeout(() => {
+        btnRestart.innerHTML = "<span>🔄</span> RESTART STACK";
+        pollHealth();
+      }, 3000);
+    });
+
+    btnStop.addEventListener("click", async () => {
+      if (confirm("Are you sure you want to stop local Supabase and ERP services?")) {
+        if (window.electronAPI) {
+          await window.electronAPI.stopServices();
+        }
+        pollHealth();
+      }
+    });
+
+    async function pollHealth() {
+      if (window.electronAPI && window.electronAPI.getHealthStatus) {
+        try {
+          const status = await window.electronAPI.getHealthStatus();
+          document.getElementById("dot-erp").className = status.erp ? "dot running" : "dot offline";
+          document.getElementById("txt-erp").textContent = status.erp ? "RUNNING" : "OFFLINE";
+          document.getElementById("txt-erp").className = status.erp ? "text running" : "text offline";
+
+          document.getElementById("dot-db").className = status.db ? "dot running" : "dot offline";
+          document.getElementById("txt-db").textContent = status.db ? "RUNNING" : "OFFLINE";
+          document.getElementById("txt-db").className = status.db ? "text running" : "text offline";
+
+          document.getElementById("dot-auth").className = status.auth ? "dot running" : "dot offline";
+          document.getElementById("txt-auth").textContent = status.auth ? "RUNNING" : "OFFLINE";
+          document.getElementById("txt-auth").className = status.auth ? "text running" : "text offline";
+
+          document.getElementById("dot-storage").className = status.storage ? "dot running" : "dot offline";
+          document.getElementById("txt-storage").textContent = status.storage ? "RUNNING" : "OFFLINE";
+          document.getElementById("txt-storage").className = status.storage ? "text running" : "text offline";
+
+          if (status.lanIp) {
+            document.getElementById("val-lan").textContent = `http://${status.lanIp}:3000`;
+            document.getElementById("val-gw").textContent = `http://${status.lanIp}:8000`;
+          }
+        } catch (e) {
+          console.error("Health check error:", e);
+        }
+      }
+    }
+
+    setInterval(pollHealth, 4000);
+    pollHealth();
+  </script>
+</body>
+</html>
