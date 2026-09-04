@@ -1,0 +1,7 @@
+name = "mtj-erp"
+main = "src/index.ts"
+compatibility_date = "2026-09-04"
+workers_dev = true
+
+[vars]
+UPSTREAM_TUNNEL_URL = "https://ppm-annotation-herself-prayer.trycloudflare.com"

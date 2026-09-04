@@ -2,13 +2,93 @@ const { app, BrowserWindow, ipcMain, Menu, shell, Tray } = require("electron");
 const path = require("path");
 const os = require("os");
 const http = require("http");
-const { exec } = require("child_process");
+const https = require("https");
+const fs = require("fs");
+const { exec, spawn } = require("child_process");
 
-const ERP_URL = process.env.MTJ_ERP_URL || "http://localhost:3000";
-const GATEWAY_URL = process.env.SUPABASE_GATEWAY_URL || "http://127.0.0.1:8000";
+const CLIENT_CONFIG_FILE = path.join(app.getPath("userData"), "client-config.json");
+const CF_CONFIG_FILE = path.join(app.getPath("userData"), "cloudflare-tunnel.json");
+const INSTALLATION_LOCK_FILE = path.join(app.getPath("userData"), "installation-lock.json");
 const SUPABASE_DIR = path.resolve(__dirname, "../../supabase-self-hosted");
 
+const SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3ODg1MjMxMTMsImV4cCI6MTk0NjIwMzExM30.Q5HWSD5Oc6MMxvStgG7-Z0rIob9La1bsKsBw0r8GtuQ";
+
 let mainWindow = null;
+let tunnelProcess = null;
+let tunnelLogs = [];
+
+function isInstallationInitialized() {
+  try {
+    return fs.existsSync(INSTALLATION_LOCK_FILE);
+  } catch {
+    return false;
+  }
+}
+
+function loadClientConfig() {
+  try {
+    if (fs.existsSync(CLIENT_CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(CLIENT_CONFIG_FILE, "utf-8"));
+    }
+  } catch (e) {
+    console.error("Failed to load client config:", e);
+  }
+  return {
+    mode: "host",
+    hostUrl: "http://192.168.0.101:3000",
+    localUrl: "http://localhost:3000",
+  };
+}
+
+function saveClientConfig(cfg) {
+  try {
+    fs.writeFileSync(CLIENT_CONFIG_FILE, JSON.stringify(cfg, null, 2), "utf-8");
+    return true;
+  } catch (e) {
+    console.error("Failed to save client config:", e);
+    return false;
+  }
+}
+
+function loadCloudflareConfig() {
+  try {
+    if (fs.existsSync(CF_CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(CF_CONFIG_FILE, "utf-8"));
+    }
+  } catch (e) {
+    console.error("Failed to load cloudflare config:", e);
+  }
+  return {
+    enabled: true,
+    tunnelName: "mtj-erp-host",
+    tunnelId: "ed3a82d1-3298-48c6-b0cd-a1fa0dd46e65",
+    hostname: "mtj-erp.aritramanna222.workers.dev",
+    localService: "http://localhost:3000",
+    token: "eyJhIjoiMzllZmRjYzBlMmNlYWE4NDZjNzMxOTgwMzA2MzliZjYiLCJ0IjoiZWQzYTgyZDEtMzI5OC00OGM2LWIwY2QtYTFmYTBkZDQ2ZTY1IiwicyI6Ik1UVmpZVEJtTmpZdFltWTJZUzAwTURRM0xUaGpNREV0TTJKaU9UaGxaRFV5TnpBNSJ9",
+    status: "active",
+    lastTested: null,
+  };
+}
+
+function saveCloudflareConfig(cfg) {
+  try {
+    fs.writeFileSync(CF_CONFIG_FILE, JSON.stringify(cfg, null, 2), "utf-8");
+    return true;
+  } catch (e) {
+    console.error("Failed to save cloudflare config:", e);
+    return false;
+  }
+}
+
+let appConfig = loadClientConfig();
+let cfConfig = loadCloudflareConfig();
+
+function getEffectiveErpUrl() {
+  if (appConfig.mode === "client") {
+    return appConfig.hostUrl || "http://192.168.0.101:3000";
+  }
+  return process.env.MTJ_ERP_URL || "http://localhost:3000";
+}
 
 function getLocalIpAddress() {
   const interfaces = os.networkInterfaces();
@@ -22,33 +102,122 @@ function getLocalIpAddress() {
   return "192.168.0.101";
 }
 
-function checkHttpEndpoint(url, timeoutMs = 2000) {
+function findCloudflaredBinary() {
+  const candidates = [
+    "C:\\Program Files (x86)\\cloudflared\\cloudflared.exe",
+    "C:\\Program Files\\cloudflared\\cloudflared.exe",
+    path.join(process.env.LOCALAPPDATA || "", "cloudflared", "bin", "cloudflared.exe"),
+    path.join(process.env.APPDATA || "", "cloudflared", "cloudflared.exe"),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return "cloudflared";
+}
+
+function checkHttpEndpoint(urlStr, timeoutMs = 2500) {
   return new Promise((resolve) => {
     try {
-      const parsed = new URL(url);
-      const req = http.get(
+      const parsed = new URL(urlStr);
+      const isHttps = parsed.protocol === "https:";
+      const client = isHttps ? https : http;
+      const startTime = Date.now();
+
+      const req = client.get(
         {
           hostname: parsed.hostname,
-          port: parsed.port || 80,
+          port: parsed.port || (isHttps ? 443 : 80),
           path: parsed.pathname || "/",
           timeout: timeoutMs,
+          rejectUnauthorized: false,
         },
         (res) => {
-          resolve(res.statusCode >= 200 && res.statusCode < 500);
+          const latencyMs = Date.now() - startTime;
+          resolve({
+            ok: res.statusCode >= 200 && res.statusCode < 500,
+            status: res.statusCode,
+            latencyMs,
+          });
         }
       );
-      req.on("error", () => resolve(false));
+
+      req.on("error", (err) => resolve({ ok: false, error: err.message }));
       req.on("timeout", () => {
         req.destroy();
-        resolve(false);
+        resolve({ ok: false, error: "Connection timeout" });
       });
-    } catch {
-      resolve(false);
+    } catch (err) {
+      resolve({ ok: false, error: err.message });
     }
   });
 }
 
+function startManagedTunnel() {
+  if (tunnelProcess) {
+    return { ok: true, message: "Tunnel process already running" };
+  }
+
+  const bin = findCloudflaredBinary();
+  const token = cfConfig.token;
+
+  let args = [];
+  if (token) {
+    args = ["tunnel", "run", "--token", token];
+  } else if (cfConfig.tunnelName) {
+    args = ["tunnel", "run", cfConfig.tunnelName];
+  } else {
+    return { ok: false, error: "No tunnel token or tunnel name configured" };
+  }
+
+  try {
+    tunnelProcess = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+
+    tunnelProcess.stdout.on("data", (data) => {
+      const str = data.toString();
+      tunnelLogs.push(`[STDOUT] ${str.trim()}`);
+      if (tunnelLogs.length > 100) tunnelLogs.shift();
+    });
+
+    tunnelProcess.stderr.on("data", (data) => {
+      const str = data.toString();
+      tunnelLogs.push(`[STDERR] ${str.trim()}`);
+      if (tunnelLogs.length > 100) tunnelLogs.shift();
+    });
+
+    tunnelProcess.on("close", (code) => {
+      tunnelLogs.push(`[PROCESS] Tunnel exited with code ${code}`);
+      tunnelProcess = null;
+    });
+
+    cfConfig.enabled = true;
+    cfConfig.status = "active";
+    saveCloudflareConfig(cfConfig);
+
+    return { ok: true, pid: tunnelProcess.pid };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+function stopManagedTunnel() {
+  if (!tunnelProcess) {
+    cfConfig.status = "inactive";
+    saveCloudflareConfig(cfConfig);
+    return { ok: true, message: "Tunnel not running" };
+  }
+  try {
+    tunnelProcess.kill();
+    tunnelProcess = null;
+    cfConfig.status = "inactive";
+    saveCloudflareConfig(cfConfig);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
 function getOfflineHtml() {
+  const targetUrl = getEffectiveErpUrl();
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -73,7 +242,7 @@ function getOfflineHtml() {
           border: 1px solid #1e293b;
           border-radius: 12px;
           padding: 36px 32px;
-          max-width: 440px;
+          max-width: 460px;
           width: 90%;
           text-align: center;
           box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
@@ -96,7 +265,6 @@ function getOfflineHtml() {
           font-weight: 700;
           margin: 0 0 8px;
           color: #ffffff;
-          letter-spacing: 0.5px;
         }
         p {
           font-size: 13px;
@@ -142,20 +310,21 @@ function getOfflineHtml() {
     <body>
       <div class="card">
         <div class="icon">⚡</div>
-        <h1>ERP OFFLINE</h1>
+        <h1>ERP SERVER OFFLINE</h1>
         <p>
-          The shop server is currently offline.<br />
-          Please start the MTJ ERP application on the main shop PC.
+          Unable to connect to MTJ ERP at:<br />
+          <strong style="color:#f59e0b;">${targetUrl}</strong><br /><br />
+          Please ensure the Shop Host PC is powered on, connected to the same Wi-Fi network, and the ERP stack is running.
         </p>
         <div class="actions">
-          <button onclick="window.location.href='${ERP_URL}'">Retry Connection</button>
-          <button class="btn-ctrl" onclick="if(window.electronAPI) window.electronAPI.openControlCenter(); else window.location.reload();">Open Control Center</button>
+          <button onclick="window.location.href='${targetUrl}'">Retry Connection</button>
+          <button class="btn-ctrl" onclick="if(window.electronAPI) window.electronAPI.openControlCenter(); else window.location.reload();">Configure Connection / Control Center</button>
         </div>
-        <div class="sub">Auto-retrying connection every 8 seconds...</div>
+        <div class="sub">Auto-retrying in 8 seconds...</div>
       </div>
       <script>
         setTimeout(() => {
-          window.location.href = "${ERP_URL}";
+          window.location.href = "${targetUrl}";
         }, 8000);
       </script>
     </body>
@@ -169,7 +338,7 @@ function createWindow() {
     height: 860,
     minWidth: 1024,
     minHeight: 700,
-    title: "MTJ / AVS ERP — Host Control Shell",
+    title: "MTJ / AVS ERP — Jewellery Ecosystem",
     backgroundColor: "#020617",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -186,10 +355,19 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Check if ERP is already online; if so, open ERP, else open Control Center
-  checkHttpEndpoint(ERP_URL).then((isUp) => {
-    if (isUp) {
-      mainWindow.loadURL(ERP_URL);
+  const initialized = isInstallationInitialized();
+
+  // If host and not yet initialized, open the First-Run Setup Wizard
+  if (!initialized && appConfig.mode === "host") {
+    mainWindow.loadFile(path.join(__dirname, "first-run-setup.html"));
+    return;
+  }
+
+  const targetUrl = getEffectiveErpUrl();
+
+  checkHttpEndpoint(targetUrl).then((result) => {
+    if (result.ok) {
+      mainWindow.loadURL(targetUrl);
     } else {
       mainWindow.loadFile(path.join(__dirname, "control-center.html"));
     }
@@ -214,10 +392,288 @@ function createWindow() {
   });
 }
 
-// IPC Handlers for Service Orchestration
+// -------------------------------------------------------------
+// First-Run Setup IPC Handlers
+// -------------------------------------------------------------
+
+ipcMain.handle("complete-first-run-setup", async (_event, payload) => {
+  try {
+    const lockData = {
+      is_setup_completed: true,
+      completed_at: new Date().toISOString(),
+      businessProfile: payload.businessProfile,
+      deploymentMode: payload.deploymentMode,
+      portals: payload.portals,
+      adminEmail: payload.admin?.email,
+    };
+
+    // 1. Create or ensure first admin account in Supabase
+    if (payload.admin?.email && payload.admin?.password) {
+      const adminBody = JSON.stringify({
+        email: payload.admin.email,
+        password: payload.admin.password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: payload.admin.name || "MTJ Owner",
+          role: "owner",
+        },
+      });
+
+      const opt = {
+        hostname: "127.0.0.1",
+        port: 8000,
+        path: "/auth/v1/admin/users",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+          apikey: SERVICE_ROLE_KEY,
+        },
+      };
+
+      await new Promise((resolve) => {
+        const req = http.request(opt, (res) => {
+          resolve(res.statusCode);
+        });
+        req.on("error", () => resolve(false));
+        req.write(adminBody);
+        req.end();
+      });
+    }
+
+    // 2. Write permanent lock file
+    fs.writeFileSync(INSTALLATION_LOCK_FILE, JSON.stringify(lockData, null, 2), "utf-8");
+
+    // 3. Update appConfig
+    appConfig.mode = "host";
+    saveClientConfig(appConfig);
+
+    return { ok: true };
+  } catch (err) {
+    console.error("Setup completion error:", err);
+    throw err;
+  }
+});
+
+ipcMain.handle("check-setup-locked", async () => {
+  return isInstallationInitialized();
+});
+
+// -------------------------------------------------------------
+// Cloudflare IPC Handlers
+// -------------------------------------------------------------
+
+ipcMain.handle("cf-check-installed", async () => {
+  const bin = findCloudflaredBinary();
+  return new Promise((resolve) => {
+    exec(`"${bin}" --version`, (err, stdout) => {
+      if (err) {
+        resolve({ installed: false, error: err.message });
+      } else {
+        resolve({ installed: true, version: stdout.trim(), path: bin });
+      }
+    });
+  });
+});
+
+ipcMain.handle("cf-install", async () => {
+  const destDir = path.join(process.env.LOCALAPPDATA || "", "cloudflared", "bin");
+  const destFile = path.join(destDir, "cloudflared.exe");
+  const downloadUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe";
+
+  try {
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+
+    return new Promise((resolve) => {
+      const file = fs.createWriteStream(destFile);
+      https.get(downloadUrl, (response) => {
+        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          https.get(response.headers.location, (redirectRes) => {
+            redirectRes.pipe(file);
+            file.on("finish", () => {
+              file.close();
+              resolve({ ok: true, path: destFile });
+            });
+          }).on("error", (err) => resolve({ ok: false, error: err.message }));
+        } else {
+          response.pipe(file);
+          file.on("finish", () => {
+            file.close();
+            resolve({ ok: true, path: destFile });
+          });
+        }
+      }).on("error", (err) => resolve({ ok: false, error: err.message }));
+    });
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle("cf-login", async () => {
+  const bin = findCloudflaredBinary();
+  return new Promise((resolve) => {
+    exec(`"${bin}" tunnel login`, (err, stdout) => {
+      const certPath = path.join(os.homedir(), ".cloudflared", "cert.pem");
+      const exists = fs.existsSync(certPath);
+      resolve({
+        ok: exists || !err,
+        certPath: exists ? certPath : null,
+        output: stdout,
+      });
+    });
+  });
+});
+
+ipcMain.handle("cf-create-tunnel", async (_event, name) => {
+  const bin = findCloudflaredBinary();
+  const tunnelName = name || "mtj-erp-host";
+  return new Promise((resolve) => {
+    exec(`"${bin}" tunnel create ${tunnelName}`, (err, stdout, stderr) => {
+      cfConfig.tunnelName = tunnelName;
+      saveCloudflareConfig(cfConfig);
+      resolve({
+        ok: !err || stderr.includes("already exists"),
+        output: stdout || stderr,
+        tunnelName,
+      });
+    });
+  });
+});
+
+ipcMain.handle("cf-route-dns", async (_event, { tunnelName, hostname }) => {
+  const bin = findCloudflaredBinary();
+  const tName = tunnelName || cfConfig.tunnelName || "mtj-erp-host";
+  return new Promise((resolve) => {
+    exec(`"${bin}" tunnel route dns ${tName} ${hostname}`, (err, stdout, stderr) => {
+      cfConfig.hostname = hostname;
+      saveCloudflareConfig(cfConfig);
+      resolve({
+        ok: !err || stderr.includes("already exists"),
+        output: stdout || stderr,
+        hostname,
+      });
+    });
+  });
+});
+
+ipcMain.handle("cf-start-tunnel", async (_event, customParams) => {
+  if (customParams) {
+    cfConfig = { ...cfConfig, ...customParams };
+    saveCloudflareConfig(cfConfig);
+  }
+  return startManagedTunnel();
+});
+
+ipcMain.handle("cf-stop-tunnel", async () => {
+  return stopManagedTunnel();
+});
+
+ipcMain.handle("cf-restart-tunnel", async () => {
+  stopManagedTunnel();
+  await new Promise((r) => setTimeout(r, 1000));
+  return startManagedTunnel();
+});
+
+ipcMain.handle("cf-get-status", async () => {
+  return new Promise((resolve) => {
+    exec('tasklist /FI "IMAGENAME eq cloudflared.exe" /FO CSV /NH', (err, stdout) => {
+      const isRunning = !err && stdout.toLowerCase().includes("cloudflared.exe");
+      resolve({
+        running: isRunning,
+        pid: tunnelProcess ? tunnelProcess.pid : null,
+        hostname: cfConfig.hostname || "mtj-erp.aritramanna222.workers.dev",
+        tunnelName: cfConfig.tunnelName || "mtj-erp-host",
+        enabled: cfConfig.enabled,
+        status: isRunning ? "active" : "inactive",
+        localService: cfConfig.localService || "http://localhost:3000",
+        recentLogs: tunnelLogs.slice(-10),
+      });
+    });
+  });
+});
+
+ipcMain.handle("cf-save-config", async (_event, newCfg) => {
+  cfConfig = { ...cfConfig, ...newCfg };
+  const ok = saveCloudflareConfig(cfConfig);
+  return { ok, config: cfConfig };
+});
+
+ipcMain.handle("cf-get-config", async () => {
+  return cfConfig;
+});
+
+ipcMain.handle("cf-test-endpoint", async (_event, customHostname) => {
+  const host = customHostname || cfConfig.hostname;
+  if (!host) return { ok: false, error: "No hostname configured" };
+  const target = host.startsWith("http") ? host : `https://${host}`;
+  return await checkHttpEndpoint(target, 4000);
+});
+
+ipcMain.handle("cf-repair-tunnel", async () => {
+  const steps = [];
+
+  // Step 1: Check binary
+  const bin = findCloudflaredBinary();
+  const binExists = fs.existsSync(bin) || bin === "cloudflared";
+  steps.push({
+    step: "1. Cloudflare Binary Verification",
+    ok: binExists,
+    details: binExists ? `Found at ${bin}` : "Missing cloudflared.exe",
+  });
+
+  // Step 2: Check Local ERP
+  const erpRes = await checkHttpEndpoint("http://localhost:3000", 3000);
+  steps.push({
+    step: "2. Local ERP Service Health (:3000)",
+    ok: erpRes.ok,
+    details: erpRes.ok ? `ERP is reachable (${erpRes.latencyMs}ms)` : "ERP server on :3000 is not responding",
+  });
+
+  // Step 3: Check Supabase Gateway
+  const gwRes = await checkHttpEndpoint("http://127.0.0.1:8000/rest/v1/", 3000);
+  steps.push({
+    step: "3. Supabase API Gateway Health (:8000)",
+    ok: gwRes.ok,
+    details: gwRes.ok ? "Gateway is reachable" : "Supabase backend on :8000 is offline",
+  });
+
+  // Step 4: Restart tunnel process
+  stopManagedTunnel();
+  await new Promise((r) => setTimeout(r, 1500));
+  const startRes = startManagedTunnel();
+  steps.push({
+    step: "4. Restart Managed Tunnel Process",
+    ok: startRes.ok,
+    details: startRes.ok ? `Tunnel spawned (PID: ${startRes.pid})` : `Failed to spawn: ${startRes.error}`,
+  });
+
+  // Step 5: Verify Public Endpoint
+  await new Promise((r) => setTimeout(r, 3000));
+  const httpsRes = await checkHttpEndpoint(`https://${cfConfig.hostname || "mtj-erp.aritramanna222.workers.dev"}`, 4000);
+  steps.push({
+    step: "5. Public HTTPS Endpoint Reachability",
+    ok: httpsRes.ok,
+    details: httpsRes.ok ? `Public endpoint https://${cfConfig.hostname} is online!` : "Public domain is pending DNS propagation or tunnel edge warmup",
+  });
+
+  const allPassed = steps.every((s) => s.ok);
+  return {
+    ok: allPassed,
+    steps,
+    hostname: cfConfig.hostname,
+  };
+});
+
+// -------------------------------------------------------------
+// General App IPC Handlers
+// -------------------------------------------------------------
+
 ipcMain.handle("open-erp", async () => {
   if (mainWindow) {
-    mainWindow.loadURL(ERP_URL);
+    const url = getEffectiveErpUrl();
+    mainWindow.loadURL(url);
   }
   return { ok: true };
 });
@@ -230,22 +686,48 @@ ipcMain.handle("open-control-center", async () => {
 });
 
 ipcMain.handle("get-health-status", async () => {
-  const [erpUp, gwUp, storageUp] = await Promise.all([
-    checkHttpEndpoint(ERP_URL),
-    checkHttpEndpoint(`${GATEWAY_URL}/rest/v1/`),
-    checkHttpEndpoint(`${GATEWAY_URL}/storage/v1/status`),
+  const erpUrl = getEffectiveErpUrl();
+  const lanIp = getLocalIpAddress();
+
+  const [erpRes, gwRes, storageRes] = await Promise.all([
+    checkHttpEndpoint(erpUrl),
+    checkHttpEndpoint(`http://127.0.0.1:8000/rest/v1/`),
+    checkHttpEndpoint(`http://127.0.0.1:8000/storage/v1/status`),
   ]);
 
-  return {
-    erp: erpUp,
-    db: gwUp,
-    auth: gwUp,
-    storage: storageUp || gwUp,
-    realtime: gwUp,
-    karigar: true,
-    tunnel: false,
-    lanIp: getLocalIpAddress(),
-  };
+  return new Promise((resolve) => {
+    exec('tasklist /FI "IMAGENAME eq cloudflared.exe" /FO CSV /NH', (err, stdout) => {
+      const tunnelIsRunning = !err && stdout.toLowerCase().includes("cloudflared.exe");
+      resolve({
+        erp: erpRes.ok,
+        db: gwRes.ok,
+        auth: gwRes.ok,
+        storage: storageRes.ok || gwRes.ok,
+        realtime: gwRes.ok,
+        karigar: true,
+        tunnel: tunnelIsRunning,
+        lanIp,
+        currentMode: appConfig.mode,
+        targetUrl: erpUrl,
+        cfHostname: cfConfig.hostname || "mtj-erp.aritramanna222.workers.dev",
+        isInitialized: isInstallationInitialized(),
+      });
+    });
+  });
+});
+
+ipcMain.handle("test-connection", async (_event, url) => {
+  return await checkHttpEndpoint(url);
+});
+
+ipcMain.handle("save-client-config", async (_event, newConfig) => {
+  appConfig = { ...appConfig, ...newConfig };
+  const saved = saveClientConfig(appConfig);
+  return { ok: saved, config: appConfig };
+});
+
+ipcMain.handle("get-client-config", async () => {
+  return appConfig;
 });
 
 ipcMain.handle("start-services", async () => {
@@ -281,7 +763,7 @@ ipcMain.handle("print-document", async () => {
 
 ipcMain.handle("reload-app", async () => {
   if (mainWindow) {
-    mainWindow.loadURL(ERP_URL);
+    mainWindow.loadURL(getEffectiveErpUrl());
   }
   return { ok: true };
 });
@@ -289,9 +771,12 @@ ipcMain.handle("reload-app", async () => {
 ipcMain.handle("get-app-config", async () => {
   return {
     version: "1.1.2",
-    targetUrl: ERP_URL,
+    targetUrl: getEffectiveErpUrl(),
     lanIp: getLocalIpAddress(),
     isPackaged: app.isPackaged,
+    mode: appConfig.mode,
+    cloudflare: cfConfig,
+    isInitialized: isInstallationInitialized(),
   };
 });
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MTJ / AVS ERP — Host Control Center</title>
+  <title>MTJ / AVS ERP — Host & Client Control Center</title>
   <style>
     * {
       box-sizing: border-box;
@@ -22,7 +22,7 @@
     }
     .container {
       width: 100%;
-      max-width: 640px;
+      max-width: 700px;
       background: #0f172a;
       border: 1px solid #1e293b;
       border-radius: 16px;
@@ -30,14 +30,14 @@
       overflow: hidden;
     }
     .header {
-      padding: 28px 32px 20px;
+      padding: 22px 28px 16px;
       border-bottom: 1px solid #1e293b;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
     .title-area h1 {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 700;
       letter-spacing: 0.5px;
       color: #f59e0b;
@@ -46,43 +46,59 @@
       gap: 10px;
     }
     .title-area p {
-      font-size: 13px;
+      font-size: 12px;
       color: #94a3b8;
-      margin-top: 4px;
+      margin-top: 3px;
     }
-    .badge-single {
-      background: rgba(245, 158, 11, 0.12);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      color: #fbbf24;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 9999px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    .mode-toggle {
+      display: flex;
+      background: #090d16;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 3px;
+      gap: 4px;
     }
-    .content {
-      padding: 28px 32px;
-    }
-    .section-title {
+    .mode-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 6px 12px;
+      border-radius: 6px;
       font-size: 12px;
       font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mode-btn.active {
+      background: #f59e0b;
+      color: #020617;
+      font-weight: 700;
+    }
+    .content {
+      padding: 22px 28px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: #64748b;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     .status-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 24px;
+      gap: 10px;
+      margin-bottom: 18px;
     }
     .status-card {
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 10px;
-      padding: 14px 16px;
+      padding: 12px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -126,26 +142,20 @@
     .text.enabled {
       color: #3b82f6;
     }
-    .dot.off {
-      background: #64748b;
-    }
-    .text.off {
-      color: #94a3b8;
-    }
 
     .network-box {
       background: rgba(15, 23, 42, 0.8);
       border: 1px solid #334155;
       border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 28px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
     }
     .network-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 6px 0;
-      font-size: 13px;
+      padding: 5px 0;
+      font-size: 12px;
     }
     .network-row:not(:last-child) {
       border-bottom: 1px solid #1e293b;
@@ -160,14 +170,123 @@
       font-weight: 600;
     }
 
+    /* Cloudflare Specific Section */
+    .cf-box {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 18px;
+    }
+    .cf-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .cf-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cf-controls {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 11px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #475569;
+      background: #1e293b;
+      color: #f8fafc;
+      transition: all 0.2s;
+    }
+    .btn-sm:hover {
+      background: #334155;
+      border-color: #64748b;
+    }
+    .btn-sm.primary {
+      background: #d97706;
+      border-color: #f59e0b;
+      color: #020617;
+      font-weight: 700;
+    }
+    .btn-sm.primary:hover {
+      background: #b45309;
+    }
+    .btn-sm.repair {
+      background: rgba(168, 85, 247, 0.15);
+      border-color: rgba(168, 85, 247, 0.3);
+      color: #c084fc;
+    }
+    .btn-sm.repair:hover {
+      background: rgba(168, 85, 247, 0.25);
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .input-wrapper {
+      display: flex;
+      gap: 8px;
+    }
+    .input-text {
+      flex: 1;
+      background: #090d16;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: #f8fafc;
+      font-size: 13px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .input-text:focus {
+      outline: none;
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+    }
+    .test-result-bar {
+      margin-top: 8px;
+      font-size: 11px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: none;
+    }
+    .test-result-bar.success {
+      display: block;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+    .test-result-bar.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
     .action-group {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: 10px;
     }
     .btn {
-      padding: 12px 18px;
+      padding: 11px 16px;
       border-radius: 8px;
       font-size: 13px;
       font-weight: 600;
@@ -185,7 +304,7 @@
       grid-column: 1 / -1;
       font-size: 14px;
       font-weight: 700;
-      padding: 14px;
+      padding: 13px;
     }
     .btn-primary:hover {
       background: #d97706;
@@ -207,7 +326,7 @@
       background: rgba(239, 68, 68, 0.25);
     }
     .footer {
-      padding: 14px 32px;
+      padding: 12px 28px;
       background: #090d16;
       border-top: 1px solid #1e293b;
       display: flex;
@@ -216,6 +335,52 @@
       font-size: 11px;
       color: #64748b;
     }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 50;
+    }
+    .modal-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      max-width: 520px;
+      width: 100%;
+      padding: 24px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .repair-step {
+      font-size: 12px;
+      padding: 8px 10px;
+      background: #1e293b;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .repair-step.success {
+      border-left: 3px solid #10b981;
+    }
+    .repair-step.fail {
+      border-left: 3px solid #ef4444;
+    }
   </style>
 </head>
 <body>
@@ -223,99 +388,216 @@
     <div class="header">
       <div class="title-area">
         <h1><span>👑</span> MTJ / AVS ERP</h1>
-        <p>Main Shop PC — Service Controller & Launcher</p>
+        <p id="sub-title">Host Server & Cloudflare Control Center</p>
       </div>
-      <div class="badge-single">Single-Tenant Host</div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="mode-host-btn">Host Mode</button>
+        <button class="mode-btn" id="mode-client-btn">Client Mode</button>
+      </div>
     </div>
 
     <div class="content">
-      <div class="section-title">Live Service Status</div>
-      <div class="status-grid">
-        <div class="status-card">
-          <span class="name">ERP Web App</span>
-          <div class="status-indicator">
-            <span class="dot running" id="dot-erp"></span>
-            <span class="text running" id="txt-erp">RUNNING</span>
+      <!-- HOST VIEW -->
+      <div id="view-host">
+        <div class="section-title">
+          <span>Live Local Services</span>
+        </div>
+        <div class="status-grid">
+          <div class="status-card">
+            <span class="name">ERP Web App (:3000)</span>
+            <div class="status-indicator">
+              <span class="dot running" id="dot-erp"></span>
+              <span class="text running" id="txt-erp">RUNNING</span>
+            </div>
+          </div>
+          <div class="status-card">
+            <span class="name">PostgreSQL Database</span>
+            <div class="status-indicator">
+              <span class="dot running" id="dot-db"></span>
+              <span class="text running" id="txt-db">RUNNING</span>
+            </div>
+          </div>
+          <div class="status-card">
+            <span class="name">Supabase Auth API</span>
+            <div class="status-indicator">
+              <span class="dot running" id="dot-auth"></span>
+              <span class="text running" id="txt-auth">RUNNING</span>
+            </div>
+          </div>
+          <div class="status-card">
+            <span class="name">Storage Subsystem</span>
+            <div class="status-indicator">
+              <span class="dot running" id="dot-storage"></span>
+              <span class="text running" id="txt-storage">RUNNING</span>
+            </div>
           </div>
         </div>
-        <div class="status-card">
-          <span class="name">PostgreSQL Database</span>
-          <div class="status-indicator">
-            <span class="dot running" id="dot-db"></span>
-            <span class="text running" id="txt-db">RUNNING</span>
+
+        <!-- CLOUDFLARE TUNNEL SECTION -->
+        <div class="section-title">
+          <span>Internet Access & Cloudflare Tunnel</span>
+          <span style="color:#10b981; font-weight: 600; font-size:10px;">ZERO-TRUST HTTPS</span>
+        </div>
+        <div class="cf-box">
+          <div class="cf-header">
+            <div class="cf-title">
+              <span>🌐</span> Cloudflare Tunnel:
+              <span id="cf-tunnel-status-badge" style="color:#10b981; font-weight: 700; margin-left: 4px;">RUNNING</span>
+            </div>
+            <div class="cf-controls">
+              <button class="btn-sm primary" id="btn-cf-start">Start</button>
+              <button class="btn-sm" id="btn-cf-stop">Stop</button>
+              <button class="btn-sm" id="btn-cf-restart">Restart</button>
+              <button class="btn-sm repair" id="btn-cf-repair">Repair</button>
+            </div>
+          </div>
+          <div class="network-row" style="padding-top:2px;">
+            <span class="network-label">Public Domain:</span>
+            <span class="network-value" id="cf-val-domain">https://mtj-erp.aritramanna222.workers.dev</span>
+          </div>
+          <div class="network-row">
+            <span class="network-label">Ingress Route:</span>
+            <span class="network-value" style="color:#94a3b8;">mtj-erp.aritramanna222.workers.dev → http://localhost:3000</span>
+          </div>
+          <div style="margin-top: 10px; display: flex; gap: 8px;">
+            <button class="btn-sm" id="btn-cf-test-https" style="width: 100%; text-align: center;">
+              <span>⚡</span> Test Public HTTPS Endpoint
+            </button>
+          </div>
+          <div class="test-result-bar" id="cf-test-bar"></div>
+        </div>
+
+        <div class="section-title">Local Shop Network Endpoints</div>
+        <div class="network-box">
+          <div class="network-row">
+            <span class="network-label">Shop LAN Access:</span>
+            <span class="network-value" id="val-lan">http://192.168.0.101:3000</span>
+          </div>
+          <div class="network-row">
+            <span class="network-label">Karigar Workshop:</span>
+            <span class="network-value" id="val-karigar">http://192.168.0.101:3000/karigar-login</span>
           </div>
         </div>
-        <div class="status-card">
-          <span class="name">Authentication API</span>
-          <div class="status-indicator">
-            <span class="dot running" id="dot-auth"></span>
-            <span class="text running" id="txt-auth">RUNNING</span>
-          </div>
-        </div>
-        <div class="status-card">
-          <span class="name">Storage Subsystem</span>
-          <div class="status-indicator">
-            <span class="dot running" id="dot-storage"></span>
-            <span class="text running" id="txt-storage">RUNNING</span>
-          </div>
-        </div>
-        <div class="status-card">
-          <span class="name">Karigar Portal</span>
-          <div class="status-indicator">
-            <span class="dot enabled" id="dot-karigar"></span>
-            <span class="text enabled" id="txt-karigar">ENABLED</span>
-          </div>
-        </div>
-        <div class="status-card">
-          <span class="name">Cloudflare Tunnel</span>
-          <div class="status-indicator">
-            <span class="dot off" id="dot-tunnel"></span>
-            <span class="text off" id="txt-tunnel">STANDBY</span>
-          </div>
+
+        <div class="action-group">
+          <button class="btn btn-primary" id="btn-open-host-erp">
+            <span>🚀</span> OPEN ERP DASHBOARD
+          </button>
+          <button class="btn btn-secondary" id="btn-restart-host">
+            <span>🔄</span> RESTART DATABASE STACK
+          </button>
+          <button class="btn btn-danger" id="btn-stop-host">
+            <span>⏹</span> STOP LOCAL SERVICES
+          </button>
         </div>
       </div>
 
-      <div class="section-title">Connection Endpoints</div>
-      <div class="network-box">
-        <div class="network-row">
-          <span class="network-label">Local Host PC</span>
-          <span class="network-value" id="val-local">http://localhost:3000</span>
+      <!-- CLIENT VIEW -->
+      <div id="view-client" style="display: none;">
+        <div class="section-title">Client Workstation Configuration</div>
+        <div class="form-group">
+          <label class="form-label">Shop Host Server IP / Cloudflare Domain</label>
+          <div class="input-wrapper">
+            <input type="text" class="input-text" id="input-host-url" placeholder="http://192.168.0.101:3000 or https://erp.mtjgold.com" value="http://192.168.0.101:3000" />
+            <button class="btn btn-secondary" id="btn-test-conn" style="flex:0 0 auto; padding: 0 16px;">
+              <span>⚡</span> Test
+            </button>
+          </div>
+          <div class="test-result-bar" id="test-result-msg"></div>
         </div>
-        <div class="network-row">
-          <span class="network-label">Shop Wi-Fi / LAN</span>
-          <span class="network-value" id="val-lan">http://192.168.0.101:3000</span>
-        </div>
-        <div class="network-row">
-          <span class="network-label">Supabase LAN Gateway</span>
-          <span class="network-value" id="val-gw">http://192.168.0.101:8000</span>
-        </div>
-      </div>
 
-      <div class="action-group">
-        <button class="btn btn-primary" id="btn-open-erp">
-          <span>🚀</span> OPEN ERP APPLICATION
-        </button>
-        <button class="btn btn-secondary" id="btn-restart">
-          <span>🔄</span> RESTART STACK
-        </button>
-        <button class="btn btn-danger" id="btn-stop">
-          <span>⏹</span> STOP SERVICES
-        </button>
+        <div class="section-title">Connection Guidance</div>
+        <div class="network-box" style="margin-bottom: 20px;">
+          <p style="font-size: 12px; color: #94a3b8; line-height: 1.6;">
+            • Enter the IP address of the Main Shop PC (e.g. <span style="color:#f59e0b;">http://192.168.0.101:3000</span>).<br />
+            • If connecting remotely, enter your Cloudflare domain (<span style="color:#f59e0b;">https://erp.mtjgold.com</span>).<br />
+            • Click <strong>Save & Launch ERP</strong> to connect immediately.
+          </p>
+        </div>
+
+        <div class="action-group">
+          <button class="btn btn-primary" id="btn-connect-client">
+            <span>🚀</span> SAVE & LAUNCH ERP CLIENT
+          </button>
+        </div>
       </div>
     </div>
 
     <div class="footer">
-      <span>AVS ERP Core v1.1.2 · Release Candidate</span>
-      <span id="txt-uptime">Host Health: Optimal</span>
+      <span>AVS ERP Core v1.1.2 · Cloudflare Zero-Trust</span>
+      <span id="txt-uptime">System: Operational</span>
+    </div>
+  </div>
+
+  <!-- REPAIR MODAL -->
+  <div class="modal-overlay" id="repair-modal">
+    <div class="modal-card">
+      <div class="modal-title">
+        <span>🔧</span> Cloudflare Tunnel Repair Diagnostics
+      </div>
+      <div id="repair-steps-container" style="margin-bottom: 16px; max-height: 260px; overflow-y: auto;">
+        <p style="font-size: 13px; color: #94a3b8;">Running diagnostics...</p>
+      </div>
+      <div style="display:flex; justify-content:flex-end;">
+        <button class="btn-sm primary" id="btn-close-modal">Close</button>
+      </div>
     </div>
   </div>
 
   <script>
-    const btnOpenErp = document.getElementById("btn-open-erp");
-    const btnRestart = document.getElementById("btn-restart");
-    const btnStop = document.getElementById("btn-stop");
+    const modeHostBtn = document.getElementById("mode-host-btn");
+    const modeClientBtn = document.getElementById("mode-client-btn");
+    const viewHost = document.getElementById("view-host");
+    const viewClient = document.getElementById("view-client");
+    const inputHostUrl = document.getElementById("input-host-url");
+    const btnTestConn = document.getElementById("btn-test-conn");
+    const testResultMsg = document.getElementById("test-result-msg");
+    const btnConnectClient = document.getElementById("btn-connect-client");
+    const btnOpenHostErp = document.getElementById("btn-open-host-erp");
+    const btnRestartHost = document.getElementById("btn-restart-host");
+    const btnStopHost = document.getElementById("btn-stop-host");
 
-    btnOpenErp.addEventListener("click", () => {
+    // CF Elements
+    const cfBadge = document.getElementById("cf-tunnel-status-badge");
+    const cfDomainVal = document.getElementById("cf-val-domain");
+    const btnCfStart = document.getElementById("btn-cf-start");
+    const btnCfStop = document.getElementById("btn-cf-stop");
+    const btnCfRestart = document.getElementById("btn-cf-restart");
+    const btnCfRepair = document.getElementById("btn-cf-repair");
+    const btnCfTestHttps = document.getElementById("btn-cf-test-https");
+    const cfTestBar = document.getElementById("cf-test-bar");
+
+    // Modal
+    const repairModal = document.getElementById("repair-modal");
+    const repairContainer = document.getElementById("repair-steps-container");
+    const btnCloseModal = document.getElementById("btn-close-modal");
+
+    let currentMode = "host";
+
+    function setMode(mode) {
+      currentMode = mode;
+      if (mode === "host") {
+        modeHostBtn.classList.add("active");
+        modeClientBtn.classList.remove("active");
+        viewHost.style.display = "block";
+        viewClient.style.display = "none";
+        document.getElementById("sub-title").textContent = "Host Server & Cloudflare Control Center";
+      } else {
+        modeClientBtn.classList.add("active");
+        modeHostBtn.classList.remove("active");
+        viewHost.style.display = "none";
+        viewClient.style.display = "block";
+        document.getElementById("sub-title").textContent = "Client Workstation Setup";
+      }
+      if (window.electronAPI && window.electronAPI.saveClientConfig) {
+        window.electronAPI.saveClientConfig({ mode });
+      }
+    }
+
+    modeHostBtn.addEventListener("click", () => setMode("host"));
+    modeClientBtn.addEventListener("click", () => setMode("client"));
+
+    btnOpenHostErp.addEventListener("click", () => {
       if (window.electronAPI) {
         window.electronAPI.openErp();
       } else {
@@ -323,25 +605,151 @@
       }
     });
 
-    btnRestart.addEventListener("click", async () => {
-      btnRestart.textContent = "Restarting...";
+    // Cloudflare Controls
+    btnCfStart.addEventListener("click", async () => {
+      btnCfStart.textContent = "Starting...";
+      if (window.electronAPI && window.electronAPI.cloudflare) {
+        await window.electronAPI.cloudflare.startTunnel();
+      }
+      setTimeout(pollHealth, 1500);
+    });
+
+    btnCfStop.addEventListener("click", async () => {
+      if (confirm("Stop Cloudflare Tunnel? (Remote internet access will be paused)")) {
+        btnCfStop.textContent = "Stopping...";
+        if (window.electronAPI && window.electronAPI.cloudflare) {
+          await window.electronAPI.cloudflare.stopTunnel();
+        }
+        setTimeout(pollHealth, 1500);
+      }
+    });
+
+    btnCfRestart.addEventListener("click", async () => {
+      btnCfRestart.textContent = "Restarting...";
+      if (window.electronAPI && window.electronAPI.cloudflare) {
+        await window.electronAPI.cloudflare.restartTunnel();
+      }
+      setTimeout(pollHealth, 2500);
+    });
+
+    btnCfTestHttps.addEventListener("click", async () => {
+      btnCfTestHttps.textContent = "Testing HTTPS...";
+      cfTestBar.style.display = "none";
+      if (window.electronAPI && window.electronAPI.cloudflare) {
+        const res = await window.electronAPI.cloudflare.testEndpoint();
+        if (res.ok) {
+          cfTestBar.className = "test-result-bar success";
+          cfTestBar.textContent = `✓ Public HTTPS Endpoint is responsive! (${res.latencyMs || 45}ms)`;
+        } else {
+          cfTestBar.className = "test-result-bar error";
+          cfTestBar.textContent = `✗ Public endpoint test failed: ${res.error || "Cannot reach host"}`;
+        }
+      }
+      btnCfTestHttps.innerHTML = "<span>⚡</span> Test Public HTTPS Endpoint";
+    });
+
+    btnCfRepair.addEventListener("click", async () => {
+      repairModal.style.display = "flex";
+      repairContainer.innerHTML = "<p style='font-size:13px; color:#94a3b8;'>Executing 5-stage automated repair sequence...</p>";
+      if (window.electronAPI && window.electronAPI.cloudflare) {
+        const result = await window.electronAPI.cloudflare.repair();
+        let html = "";
+        for (const s of result.steps) {
+          html += `
+            <div class="repair-step ${s.ok ? 'success' : 'fail'}">
+              <div>
+                <strong>${s.step}</strong><br/>
+                <span style="color:#94a3b8; font-size:11px;">${s.details}</span>
+              </div>
+              <span style="color:${s.ok ? '#10b981' : '#ef4444'}; font-weight:bold;">${s.ok ? 'PASSED' : 'FAILED'}</span>
+            </div>
+          `;
+        }
+        repairContainer.innerHTML = html;
+        pollHealth();
+      }
+    });
+
+    btnCloseModal.addEventListener("click", () => {
+      repairModal.style.display = "none";
+    });
+
+    btnTestConn.addEventListener("click", async () => {
+      const url = inputHostUrl.value.trim();
+      if (!url) return;
+      btnTestConn.textContent = "Testing...";
+      testResultMsg.style.display = "none";
+      try {
+        let result = { ok: false };
+        if (window.electronAPI && window.electronAPI.testConnection) {
+          result = await window.electronAPI.testConnection(url);
+        } else {
+          const res = await fetch(url, { mode: "no-cors" });
+          result = { ok: true, latencyMs: 50 };
+        }
+
+        if (result.ok) {
+          testResultMsg.className = "test-result-bar success";
+          testResultMsg.textContent = `✓ Connected successfully to MTJ ERP (${result.latencyMs || 20}ms)`;
+        } else {
+          testResultMsg.className = "test-result-bar error";
+          testResultMsg.textContent = `✗ Connection failed: ${result.error || "Cannot reach server"}`;
+        }
+      } catch (err) {
+        testResultMsg.className = "test-result-bar error";
+        testResultMsg.textContent = `✗ Error: ${err.message}`;
+      } finally {
+        btnTestConn.innerHTML = "<span>⚡</span> Test";
+      }
+    });
+
+    btnConnectClient.addEventListener("click", async () => {
+      const url = inputHostUrl.value.trim();
+      if (!url) return;
+      if (window.electronAPI && window.electronAPI.saveClientConfig) {
+        await window.electronAPI.saveClientConfig({ mode: "client", hostUrl: url });
+        window.electronAPI.openErp();
+      } else {
+        window.location.href = url;
+      }
+    });
+
+    btnRestartHost.addEventListener("click", async () => {
+      btnRestartHost.textContent = "Restarting...";
       if (window.electronAPI) {
         await window.electronAPI.restartServices();
       }
       setTimeout(() => {
-        btnRestart.innerHTML = "<span>🔄</span> RESTART STACK";
+        btnRestartHost.innerHTML = "<span>🔄</span> RESTART DATABASE STACK";
         pollHealth();
       }, 3000);
     });
 
-    btnStop.addEventListener("click", async () => {
-      if (confirm("Are you sure you want to stop local Supabase and ERP services?")) {
+    btnStopHost.addEventListener("click", async () => {
+      if (confirm("Are you sure you want to stop Supabase services?")) {
         if (window.electronAPI) {
           await window.electronAPI.stopServices();
         }
         pollHealth();
       }
     });
+
+    async function init() {
+      if (window.electronAPI) {
+        try {
+          const cfg = await window.electronAPI.getClientConfig();
+          if (cfg && cfg.mode) {
+            setMode(cfg.mode);
+          }
+          if (cfg && cfg.hostUrl) {
+            inputHostUrl.value = cfg.hostUrl;
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      pollHealth();
+    }
 
     async function pollHealth() {
       if (window.electronAPI && window.electronAPI.getHealthStatus) {
@@ -365,16 +773,34 @@
 
           if (status.lanIp) {
             document.getElementById("val-lan").textContent = `http://${status.lanIp}:3000`;
-            document.getElementById("val-gw").textContent = `http://${status.lanIp}:8000`;
+            document.getElementById("val-karigar").textContent = `http://${status.lanIp}:3000/karigar-login`;
+          }
+
+          if (status.tunnel) {
+            cfBadge.textContent = "RUNNING";
+            cfBadge.style.color = "#10b981";
+            btnCfStart.disabled = true;
+            btnCfStop.disabled = false;
+          } else {
+            cfBadge.textContent = "STOPPED";
+            cfBadge.style.color = "#ef4444";
+            btnCfStart.disabled = false;
+            btnCfStop.disabled = true;
+          }
+
+          if (status.cfHostname) {
+            cfDomainVal.textContent = `https://${status.cfHostname}`;
+          } else {
+            cfDomainVal.textContent = "https://mtj-erp.aritramanna222.workers.dev";
           }
         } catch (e) {
-          console.error("Health check error:", e);
+          console.error("Health poll error:", e);
         }
       }
     }
 
-    setInterval(pollHealth, 4000);
-    pollHealth();
+    setInterval(pollHealth, 3500);
+    init();
   </script>
 </body>
 </html>

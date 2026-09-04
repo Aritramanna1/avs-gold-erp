@@ -70,7 +70,7 @@ const DEFAULT_INSTALLATION_CONFIG: Omit<
   deploymentMode: "local",
   cloudflareTunnel: {
     enabled: false,
-    localService: "http://localhost:8000",
+    localService: "http://localhost:3000",
     httpsRequired: true,
     status: "inactive",
   },
