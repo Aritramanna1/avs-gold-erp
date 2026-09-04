@@ -12,22 +12,12 @@ const base = (process.env.VITE_PUBLIC_APP_URL || "https://maatarajewellers.shop"
 );
 
 const paths = [
-  "/",
-  "/features",
-  "/pricing",
-  "/contact",
-  "/faq",
-  "/tutorials",
-  "/downloads",
-  "/whats-new",
-  "/blog",
-  "/trial/start",
   "/login",
-  "/solutions/manufacturing",
-  "/solutions/wholesale",
-  "/legal/privacy",
-  "/legal/terms",
-  "/legal/refund",
+  "/customer-login",
+  "/karigar-login",
+  "/supplier-login",
+  "/privacy",
+  "/terms",
 ];
 
 const today = new Date().toISOString().slice(0, 10);
@@ -38,8 +28,8 @@ ${paths
     (p) => `  <url>
     <loc>${base}${p}</loc>
     <lastmod>${today}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>${p === "/" ? "1.0" : "0.7"}</priority>
+    <changefreq>monthly</changefreq>
+    <priority>${p === "/login" ? "1.0" : "0.5"}</priority>
   </url>`,
   )
   .join("\n")}

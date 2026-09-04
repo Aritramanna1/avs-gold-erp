@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Build three Aurum production surfaces from one source tree.
- * Outputs: dist-marketing/, dist-erp/, dist-portal/
+ * Build ERP and Portal production surfaces from one source tree.
+ * Outputs: dist-erp/, dist-portal/
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -18,36 +18,13 @@ const OAUTH_ENV = {
 
 const SURFACES = [
   {
-    name: "aurum",
-    outDir: "dist-aurum",
-    env: {
-      ...OAUTH_ENV,
-      VITE_APP_SURFACE: "aurum",
-      VITE_PUBLIC_MARKETING_URL: "https://aurum.arivahly.in",
-      VITE_PUBLIC_APP_URL: "https://aurum.arivahly.in",
-      VITE_PUBLIC_PORTAL_URL: "https://aurumportal.arivahly.in",
-    },
-  },
-  {
-    name: "marketing",
-    outDir: "dist-marketing",
-    env: {
-      ...OAUTH_ENV,
-      VITE_APP_SURFACE: "marketing",
-      VITE_PUBLIC_MARKETING_URL: "https://aurum.arivahly.in",
-      VITE_PUBLIC_APP_URL: "https://aurum.arivahly.in",
-      VITE_PUBLIC_PORTAL_URL: "https://aurumportal.arivahly.in",
-    },
-  },
-  {
     name: "erp",
     outDir: "dist-erp",
     env: {
       ...OAUTH_ENV,
       VITE_APP_SURFACE: "erp",
-      VITE_PUBLIC_MARKETING_URL: "https://aurum.arivahly.in",
-      VITE_PUBLIC_APP_URL: "https://aurum.arivahly.in",
-      VITE_PUBLIC_PORTAL_URL: "https://aurumportal.arivahly.in",
+      VITE_PUBLIC_APP_URL: "https://maatarajewellers.shop",
+      VITE_PUBLIC_PORTAL_URL: "https://portal.maatarajewellers.shop",
     },
   },
   {
@@ -56,9 +33,8 @@ const SURFACES = [
     env: {
       ...OAUTH_ENV,
       VITE_APP_SURFACE: "portal",
-      VITE_PUBLIC_MARKETING_URL: "https://aurum.arivahly.in",
-      VITE_PUBLIC_APP_URL: "https://erp.aurum.arivahly.in",
-      VITE_PUBLIC_PORTAL_URL: "https://aurumportal.arivahly.in",
+      VITE_PUBLIC_APP_URL: "https://maatarajewellers.shop",
+      VITE_PUBLIC_PORTAL_URL: "https://portal.maatarajewellers.shop",
     },
   },
 ];
@@ -90,7 +66,7 @@ const targets = only.length
   : SURFACES;
 
 if (!targets.length) {
-  console.error("Unknown surface. Use: aurum | marketing | erp | portal");
+  console.error("Unknown surface. Use: erp | portal");
   process.exit(1);
 }
 

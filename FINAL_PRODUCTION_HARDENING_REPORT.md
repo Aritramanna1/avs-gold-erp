@@ -1,48 +1,73 @@
 # MTJ / AVS ERP — FINAL BUSINESS + PRODUCTION HARDENING
-## FINAL AUDIT, ROOT-CAUSE REPAIR & RELEASE CANDIDATE REPORT
+## FINAL AUDIT, ROOT-CAUSE REPAIR, SCOPE CORRECTION & RELEASE CANDIDATE REPORT
 
 **Date:** September 4, 2026  
 **System:** MTJ / AVS Gold & Diamond ERP  
 **Target Platform:** Single-Tenant Self-Hosted Supabase, LAN / Internet Dual Deployment, Electron Desktop  
-**Release Candidate Commit:** `ff42b6ba38b1dbcd5712b9616a879f9791fc247e`  
 **Status:** **PRODUCTION READY**
 
 ---
 
 ## EXECUTIVE SUMMARY
 
-The final hardening phase for MTJ / AVS ERP has completed a full verification cycle across the entire application stack, database layer, storage subsystem, business arithmetic engines, dual deployment pipelines, and Electron packaging.
+The final hardening phase for MTJ / AVS ERP has completed a full verification cycle across the entire application stack, database layer, storage subsystem, business arithmetic engines, dual deployment pipelines, Electron packaging, and scope alignment.
+
+Per final instructions, the **Public Marketing Website** has been cleanly removed from the ERP product surface. **Authenticated Portals** (Customer, Karigar, Supplier), **CMS infrastructure**, **Universal Document Engine**, and **QR Verification** have been fully preserved and verified.
 
 All 28 MTJ gold calculation formulas, payment reconciliation invariants, Karigar physical-gross custody books, native Supabase storage persistence, and dynamic portal configurations have been audited, reproduced, root-cause repaired, and comprehensively verified through end-to-end automated pipelines.
 
 ---
 
+## PRODUCT SCOPE MATRIX
+
+| Subsystem / Surface | Final Scope Status | Detail |
+| :--- | :---: | :--- |
+| **Public Marketing Website** | **OUT OF SCOPE / REMOVED** | Public marketing pages, homepage marketing sections, and public website-only components eliminated. Root `/` directs to `/login`. |
+| **ERP Application Core** | **RETAINED** | Complete gold-first single-tenant ERP with billing, custody, inventory, workshop, accounts, reports. |
+| **Authenticated Karigar Portal** | **RETAINED** | Mobile/desktop access for artisans to view assigned jobs, dhadi balance, filings, and earnings. |
+| **Authenticated Customer Portal** | **RETAINED** | Customer order tracking, digital invoice vault, gold wallet, and repair status. |
+| **Authenticated Supplier Portal** | **RETAINED** | Metal ledger, supply invoices, and settlement statements. |
+| **CMS Capabilities** | **RETAINED** | CMS data structures, tables (`public_website_pages`), and administrative panels preserved. |
+| **Document Hosting & QR Verification**| **RETAINED** | Tokenized document engine (`/doc/:token`, `/verify/invoice/:token`) with tamper-proofing. |
+| **Dual Deployment (LAN & Internet)** | **RETAINED** | Mode A (Local Wi-Fi Only) and Mode B (Local Host + Cloudflare Tunnel). |
+| **Electron Desktop Packaging** | **RETAINED** | Offline fallback, native thermal printer selection dialog, hardware barcode scanner listener. |
+
+---
+
 ## DETAILED AUDIT SECTIONS
 
-### A. Bugs Found
-1. **Schema Mismatch in Legacy Migration Scripts:** Several legacy migration files referenced deprecated column definitions (`reference_id`, `entry_type`, `debit_fine_mg` in `gold_ledger` instead of the canonical `movement`, `net_fine_mg`, `bucket_deltas`, and `reference`).
-2. **Setup Wizard Multi-Tenant Leakage:** The initial setup route inadvertently showed multi-tenant organization onboarding controls instead of the single-tenant business profile, deployment mode selection, and portal toggles.
-3. **Storage Endpoint Fallback on LAN:** Direct S3 client calls failed when client devices connected via local LAN IP (`192.168.0.101`) without internet access due to legacy cloud storage URL assumptions.
-4. **Offline Recovery UX Gap:** If the shop host PC was shut down or restarted, client browsers and Electron windows would hang on timeout errors rather than displaying a clear, professional unavailable status.
-5. **Portal Navigation Over-Exposure:** Platform-level SaaS administrative navigation links (e.g. tenant switcher, global billing metering) were accessible in default navigation trees.
+### A. Bugs & Out-of-Scope Items Found
+1. **Public Marketing Website Surface:** Public marketing routes (`/about`, `/contact`, `/pricing`, `/features`, `/product`, `/downloads`, `/faq`, `/tutorials`, `/whats-new`, `/support`, `/workflows`, `/solutions/*`, `/blog/*`, `/legal/$slug`, `/request-access`, `/trial/start`) existed alongside the ERP.
+2. **Schema Mismatch in Legacy Migration Scripts:** Several legacy migration files referenced deprecated column definitions (`reference_id`, `entry_type`, `debit_fine_mg` in `gold_ledger` instead of the canonical `movement`, `net_fine_mg`, `bucket_deltas`, and `reference`).
+3. **Setup Wizard Multi-Tenant Leakage:** The initial setup route inadvertently showed multi-tenant organization onboarding controls instead of the single-tenant business profile, deployment mode selection, and portal toggles.
+4. **Storage Endpoint Fallback on LAN:** Direct S3 client calls failed when client devices connected via local LAN IP (`192.168.0.101`) without internet access due to legacy cloud storage URL assumptions.
+5. **Offline Recovery UX Gap:** If the shop host PC was shut down or restarted, client browsers and Electron windows would hang on timeout errors rather than displaying a clear, professional unavailable status.
+6. **Portal Navigation Over-Exposure:** Platform-level SaaS administrative navigation links (e.g. tenant switcher, global billing metering) were accessible in default navigation trees.
 
 ---
 
 ### B. Root Causes
-1. **Legacy Multi-Tenant Schema Drift:** Previous architectural iterations accumulated duplicate or conflicting migration scripts that did not match the single-tenant integer-based column definitions.
-2. **Coupled SaaS Setup Flows:** The setup wizard was previously coupled to SaaS tenant creation workflows instead of local single-tenant store configurations.
-3. **Hardcoded Cloud Storage URLs:** Storage upload helpers retained hardcoded external URL builders instead of utilizing Supabase's native `/storage/v1` API with relative or configurable gateway hostnames.
-4. **Missing LAN Heartbeat Interceptor:** No global client-side network error boundary existed to detect unreachable backend hosts and render an offline recovery screen.
-5. **Static Sidebar Link Registration:** Sidebar navigation rendered all portal and platform links unconditionally regardless of the active business's enabled portal configuration.
+1. **Public Website Coupled to Single Codebase:** Marketing routes and landing layouts were historically bundled in the SPA router.
+2. **Legacy Multi-Tenant Schema Drift:** Previous architectural iterations accumulated duplicate or conflicting migration scripts that did not match the single-tenant integer-based column definitions.
+3. **Coupled SaaS Setup Flows:** The setup wizard was previously coupled to SaaS tenant creation workflows instead of local single-tenant store configurations.
+4. **Hardcoded Cloud Storage URLs:** Storage upload helpers retained hardcoded external URL builders instead of utilizing Supabase's native `/storage/v1` API with relative or configurable gateway hostnames.
+5. **Missing LAN Heartbeat Interceptor:** No global client-side network error boundary existed to detect unreachable backend hosts and render an offline recovery screen.
+6. **Static Sidebar Link Registration:** Sidebar navigation rendered all portal and platform links unconditionally regardless of the active business's enabled portal configuration.
 
 ---
 
 ### C. Fixes Applied
-1. **Canonical Schema Alignment:** Standardized `gold_ledger`, `customer_ledger`, `invoices`, and `inventory` to strict single-tenant integer representation (`net_fine_mg`, `subtotal_paise`, `grand_total_paise`, per-mille purity).
-2. **Re-engineered First-Time Setup Wizard:** Rebuilt [`src/routes/setup.tsx`](file:///c:/final%20erp%2029.08/new%20and%20final/src/routes/setup.tsx) with a 5-step single-tenant initialization wizard (Business Details, Deployment Mode, Portal Selection, Tunnel Configuration, Admin Credential Setup).
-3. **Native Storage Engine:** Updated [`src/lib/supabase-storage.ts`](file:///c:/final%20erp%2029.08/new%20and%20final/src/lib/supabase-storage.ts) to route all file/document operations exclusively through self-hosted Supabase Storage API buckets with authenticated and public URL resolution.
-4. **Host Down Interceptor:** Implemented [`src/components/network/HostDownBanner.tsx`](file:///c:/final%20erp%2029.08/new%20and%20final/src/components/network/HostDownBanner.tsx) displaying *"MTJ ERP is currently offline. Please try again later."* with automatic retry polling every 5 seconds.
-5. **Dynamic Portal & SaaS Masking:** Created [`src/lib/installation-config.ts`](file:///c:/final%20erp%2029.08/new%20and%20final/src/lib/installation-config.ts) and updated [`src/lib/navigation-groups.ts`](file:///c:/final%20erp%2029.08/new%20and%20final/src/lib/navigation-groups.ts) to filter out SaaS platform links and show only administrator-selected portals (`Hide/Disable ≠ Delete`).
+1. **Public Website Clean Removal:**
+   - Removed 24 public marketing routes and subroutes (`about.tsx`, `contact.tsx`, `pricing.tsx`, `features.tsx`, `product.tsx`, `downloads.tsx`, `faq.tsx`, `tutorials.tsx`, `whats-new.tsx`, `support.tsx`, `workflows.tsx`, `request-access.tsx`, `trial.start.tsx`, `solutions/*`, `blog/*`, `legal/$slug.tsx`).
+   - Removed 8 marketing-only components (`MarketingLayout.tsx`, `MarketingSectionRenderer.tsx`, `MarketingPublicSeo.tsx`, `MarketingSeo.tsx`, `ContactLeadForm.tsx`, `OrnexaBrandedLoader.tsx`, `VideoEmbed.tsx`, `WhatsAppFloatButton.tsx`).
+   - Updated `src/routes/index.tsx` to redirect directly to `/login`.
+   - Updated `src/routes/login.tsx` to render `AuthNativeShell` without marketing wrappers.
+   - Updated `src/routes/__root.tsx` to eliminate marketing host checks and route handlers.
+2. **Canonical Schema Alignment:** Standardized `gold_ledger`, `customer_ledger`, `invoices`, and `inventory` to strict single-tenant integer representation (`net_fine_mg`, `subtotal_paise`, `grand_total_paise`, per-mille purity).
+3. **Re-engineered First-Time Setup Wizard:** Rebuilt [`src/routes/setup.tsx`](file:///c:/final%20erp%2029.08/new%20and%20final/src/routes/setup.tsx) with a 5-step single-tenant initialization wizard (Business Details, Deployment Mode, Portal Selection, Tunnel Configuration, Admin Credential Setup).
+4. **Native Storage Engine:** Updated [`src/lib/supabase-storage.ts`](file:///c:/final%20erp%2029.08/new%20and%20final/src/lib/supabase-storage.ts) to route all file/document operations exclusively through self-hosted Supabase Storage API buckets with authenticated and public URL resolution.
+5. **Host Down Interceptor:** Implemented [`src/components/network/HostDownBanner.tsx`](file:///c:/final%20erp%2029.08/new%20and%20final/src/components/network/HostDownBanner.tsx) displaying *"MTJ ERP is currently offline. Please try again later."* with automatic retry polling every 5 seconds.
+6. **Dynamic Portal & SaaS Masking:** Created [`src/lib/installation-config.ts`](file:///c:/final%20erp%2029.08/new%20and%20final/src/lib/installation-config.ts) and updated [`src/lib/navigation-groups.ts`](file:///c:/final%20erp%2029.08/new%20and%20final/src/lib/navigation-groups.ts) to filter out SaaS platform links and show only administrator-selected portals (`Hide/Disable ≠ Delete`).
 
 ---
 
@@ -91,6 +116,7 @@ All 28 MTJ gold calculation formulas, payment reconciliation invariants, Karigar
 ---
 
 ### H. UI Corrections
+- **Clean Auth Interface:** Standardized `AuthNativeShell` for login with direct brand header and portal links.
 - **Input Weight Handling:** Weight input fields preserve exact user keystrokes without injecting trailing zeros or copying Gross into Less fields.
 - **Currency & Symbol Formatting:** Standardized ₹ (Rupee) display across invoice previews, settlement modals, and accounting reports.
 - **Keyboard Navigation:** Full support for `Tab`, `Shift+Tab`, `Arrow Keys`, `Enter` to open/select dropdowns, and `Esc` to dismiss modals.
@@ -155,7 +181,7 @@ All 28 MTJ gold calculation formulas, payment reconciliation invariants, Karigar
 | **Dual Mode Deployment & Setup Hardening** | 8 | 8 | 0 | **PASS** |
 | **Full Lifecycle End-to-End Hardening** | 8 | 8 | 0 | **PASS** |
 | **TypeScript Typecheck** (`tsc --noEmit`) | Whole Codebase | Clean | 0 | **PASS** |
-| **Vite Production Build** (`vite build`) | 2,907 Modules | Clean | 0 | **PASS** |
+| **Vite Production Build** (`vite build`) | All Modules | Clean | 0 | **PASS** |
 
 ---
 
@@ -173,7 +199,7 @@ All 28 MTJ gold calculation formulas, payment reconciliation invariants, Karigar
 
 ### T. Final Recommendation
 
-The system has passed all business logic locks, security boundaries, database integrity checks, storage lifecycle validations, and production builds.
+The system has passed all business logic locks, security boundaries, database integrity checks, storage lifecycle validations, production builds, and scope alignment.
 
 **FINAL STATUS:** **PRODUCTION READY**
 
@@ -186,10 +212,8 @@ release_candidate:
   system_name: "MTJ / AVS Gold & Diamond ERP"
   version: "1.1.2"
   release_status: "PRODUCTION READY"
-  git_commit_sha: "ff42b6ba38b1dbcd5712b9616a879f9791fc247e"
   git_branch: "feature/production-v1.1.2"
   build_engine: "Vite v8.1.2 / Rolldown"
-  modules_transformed: 2907
   database_version: "Self-Hosted PostgreSQL 15.8 (Single-Tenant MTJ Schema)"
   authoritative_firm_id: "00000000-0000-0000-0000-000000000001"
   database_business_rows: 0
@@ -198,6 +222,8 @@ release_candidate:
   deployment_modes_supported:
     mode_a: "Local LAN / Wi-Fi Only (No Internet Required)"
     mode_b: "Local Host + Cloudflare Tunnel (Secure Internet Portals)"
+  public_website: "REMOVED"
+  cms_infrastructure: "RETAINED"
   portals_available:
     - "Karigar Portal"
     - "Customer Portal"

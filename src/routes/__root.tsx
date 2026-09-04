@@ -34,12 +34,7 @@ const GlobalCommandPalette = lazy(() =>
 );
 
 function NotFoundComponent() {
-  const erpHome =
-    isPackagedErpSurface() || shouldStayInProduct()
-      ? hasAuthSessionHint()
-        ? "/app"
-        : "/login"
-      : "/";
+  const erpHome = "/login";
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -50,10 +45,11 @@ function NotFoundComponent() {
         </p>
         <div className="mt-6">
           <Link
-            to={erpHome}
+            to="/login"
+            search={{ redirect: "", error: "", audience: undefined }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
           >
-            {erpHome === "/login" ? "Go to sign in" : "Go home"}
+            Go to sign in
           </Link>
         </div>
       </div>
@@ -73,25 +69,7 @@ function RouteContentPending() {
   );
 }
 
-import { isCommercialPublicPath, isPublicMarketingPath } from "@/lib/website/defaults";
-import { shouldStayInProduct, hasAuthSessionHint } from "@/lib/product-entry";
 import { useSettings, onSettingsPersistFailed } from "@/lib/settings-store";
-import { isPackagedErpSurface } from "@/lib/native/platform";
-import {
-  crossHostRedirectForPath,
-  erpAppUrl,
-  isErpHostname,
-  isFirmErpLandingPath,
-  isMarketingHostname,
-  isPlatformCmsPath,
-  isPlatformManagementPath,
-  isPortalHostname,
-  isPortalRolePath,
-  isUnifiedAurumOrigin,
-  marketingAppUrl,
-  portalAppUrl,
-} from "@/lib/public-origin";
-import { currentAppSurface, isRouteAllowedOnSurface, isMarketingSurfacePath, isPortalSurfacePath, isErpSurfacePath } from "@/lib/app-surface";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => {
@@ -133,71 +111,14 @@ function RootComponent() {
   const [deferredChromeReady, setDeferredChromeReady] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const host = window.location.hostname.toLowerCase();
-    if (host === "localhost" || host === "127.0.0.1") return;
-
-    const surface = currentAppSurface();
-    if (!isRouteAllowedOnSurface(currentPath, surface)) {
-      const url = crossHostRedirectForPath(currentPath);
-      if (url) {
-        window.location.replace(url);
-        return;
-      }
-      if (isMarketingSurfacePath(currentPath)) {
-        window.location.replace(marketingAppUrl(currentPath));
-        return;
-      }
-      if (isPortalSurfacePath(currentPath)) {
-        window.location.replace(portalAppUrl(currentPath));
-        return;
-      }
-      if (isErpSurfacePath(currentPath)) {
-        window.location.replace(erpAppUrl(currentPath));
-        return;
-      }
-    }
-
-    if (isErpHostname(host)) {
-      if (isPortalRolePath(currentPath) || isPlatformCmsPath(currentPath)) {
-        const url = crossHostRedirectForPath(currentPath);
-        if (url) window.location.replace(url);
-      }
-      return;
-    }
-    if (isPortalHostname(host)) {
-      if (
-        isFirmErpLandingPath(currentPath) ||
-        isPlatformManagementPath(currentPath) ||
-        isPlatformCmsPath(currentPath)
-      ) {
-        const url = crossHostRedirectForPath(currentPath);
-        if (url) window.location.replace(url);
-      }
-      return;
-    }
-    if (isMarketingHostname(host)) {
-      if (
-        !isUnifiedAurumOrigin() &&
-        (isFirmErpLandingPath(currentPath) || isPlatformManagementPath(currentPath))
-      ) {
-        const url = crossHostRedirectForPath(currentPath);
-        if (url) window.location.replace(url);
-      }
-    }
-  }, [currentPath]);
-
-  useEffect(() => {
     return onSettingsPersistFailed((message) => {
       toast.error(message);
     });
   }, []);
 
-  const stayInProduct = shouldStayInProduct();
   const isPublic =
-    (isPublicMarketingPath(currentPath) &&
-      !(isCommercialPublicPath(currentPath) && stayInProduct)) ||
     [
+      "/login",
       "/forgot-password",
       "/reset-password",
       "/auth/callback",
@@ -213,13 +134,12 @@ function RootComponent() {
       "/supplier-portal",
       "/privacy",
       "/terms",
-      "/trial/start",
-      "/request-access",
       "/onboarding",
       "/setup",
     ].includes(currentPath) ||
     currentPath.startsWith("/invite/") ||
     currentPath.startsWith("/doc/") ||
+    currentPath.startsWith("/verify/") ||
     currentPath.startsWith("/karigar-") ||
     currentPath.startsWith("/customer-") ||
     currentPath.startsWith("/supplier-");

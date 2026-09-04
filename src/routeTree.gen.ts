@@ -10,16 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkshopRouteImport } from './routes/workshop'
-import { Route as WorkflowsRouteImport } from './routes/workflows'
 import { Route as WhatsappRouteImport } from './routes/whatsapp'
-import { Route as WhatsNewRouteImport } from './routes/whats-new'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as UtilitiesRouteImport } from './routes/utilities'
-import { Route as TutorialsRouteImport } from './routes/tutorials'
 import { Route as TransactionsRouteImport } from './routes/transactions'
 import { Route as TransactionHubRouteImport } from './routes/transaction-hub'
 import { Route as TermsRouteImport } from './routes/terms'
-import { Route as SupportRouteImport } from './routes/support'
 import { Route as SupplierPortalRouteImport } from './routes/supplier-portal'
 import { Route as SupplierLoginRouteImport } from './routes/supplier-login'
 import { Route as StockRouteImport } from './routes/stock'
@@ -28,12 +24,9 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SchemeRouteImport } from './routes/scheme'
 import { Route as SaasAdminRouteImport } from './routes/saas-admin'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as RequestAccessRouteImport } from './routes/request-access'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RepairRouteImport } from './routes/repair'
-import { Route as ProductRouteImport } from './routes/product'
 import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PlatformRouteImport } from './routes/platform'
 import { Route as OtpLoginRouteImport } from './routes/otp-login'
 import { Route as OrdersRouteImport } from './routes/orders'
@@ -50,13 +43,9 @@ import { Route as KarigarLoginRouteImport } from './routes/karigar-login'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as FeaturesRouteImport } from './routes/features'
-import { Route as FaqRouteImport } from './routes/faq'
-import { Route as DownloadsRouteImport } from './routes/downloads'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CustomerPortalRouteImport } from './routes/customer-portal'
 import { Route as CustomerLoginRouteImport } from './routes/customer-login'
-import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CompanyAdminRouteImport } from './routes/company-admin'
 import { Route as CommunicationsRouteImport } from './routes/communications'
 import { Route as CatalogRouteImport } from './routes/catalog'
@@ -65,7 +54,6 @@ import { Route as BarcodeRouteImport } from './routes/barcode'
 import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AppRouteImport } from './routes/app'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkshopIndexRouteImport } from './routes/workshop.index'
 import { Route as WhatsappIndexRouteImport } from './routes/whatsapp.index'
@@ -88,7 +76,6 @@ import { Route as ConversionIndexRouteImport } from './routes/conversion.index'
 import { Route as CommunicationsIndexRouteImport } from './routes/communications.index'
 import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
 import { Route as BranchesIndexRouteImport } from './routes/branches.index'
-import { Route as BlogIndexRouteImport } from './routes/blog/index'
 import { Route as BillingIndexRouteImport } from './routes/billing.index'
 import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
 import { Route as WorkshopWorkerBooksRouteImport } from './routes/workshop.worker-books'
@@ -116,7 +103,6 @@ import { Route as UtilitiesGstCalculatorRouteImport } from './routes/utilities.g
 import { Route as UtilitiesCounterSettingsRouteImport } from './routes/utilities.counter-settings'
 import { Route as UtilitiesCashFineTransferRouteImport } from './routes/utilities.cash-fine-transfer'
 import { Route as UnsubscribeTokenRouteImport } from './routes/unsubscribe.$token'
-import { Route as TrialStartRouteImport } from './routes/trial.start'
 import { Route as TreasuryVouchersRouteImport } from './routes/treasury.vouchers'
 import { Route as TreasuryCashBookRouteImport } from './routes/treasury.cash-book'
 import { Route as TreasuryBankReconciliationRouteImport } from './routes/treasury.bank-reconciliation'
@@ -129,14 +115,6 @@ import { Route as StockHallmarkRouteImport } from './routes/stock.hallmark'
 import { Route as StockEntryRouteImport } from './routes/stock.entry'
 import { Route as StockBoxesRouteImport } from './routes/stock.boxes'
 import { Route as StockIdRouteImport } from './routes/stock.$id'
-import { Route as SolutionsWholesaleRouteImport } from './routes/solutions/wholesale'
-import { Route as SolutionsSecurityRouteImport } from './routes/solutions/security'
-import { Route as SolutionsPortalsRouteImport } from './routes/solutions/portals'
-import { Route as SolutionsManufacturingRouteImport } from './routes/solutions/manufacturing'
-import { Route as SolutionsInventoryRouteImport } from './routes/solutions/inventory'
-import { Route as SolutionsHardwareRouteImport } from './routes/solutions/hardware'
-import { Route as SolutionsCrmRouteImport } from './routes/solutions/crm'
-import { Route as SolutionsBillingRouteImport } from './routes/solutions/billing'
 import { Route as SettlementNewRouteImport } from './routes/settlement.new'
 import { Route as SettlementIdRouteImport } from './routes/settlement.$id'
 import { Route as SettingsWorkflowRouteImport } from './routes/settings.workflow'
@@ -237,7 +215,6 @@ import { Route as MobileMasterRouteImport } from './routes/mobile.master'
 import { Route as MobileGoldStockRouteImport } from './routes/mobile.gold-stock'
 import { Route as MobileBusinessRouteImport } from './routes/mobile.business'
 import { Route as MobileAssistantRouteImport } from './routes/mobile.assistant'
-import { Route as LegalSlugRouteImport } from './routes/legal/$slug'
 import { Route as InviteAcceptRouteImport } from './routes/invite.accept'
 import { Route as DocTokenRouteImport } from './routes/doc.$token'
 import { Route as DashboardCeoRouteImport } from './routes/dashboard.ceo'
@@ -256,7 +233,6 @@ import { Route as CatalogTemplatesRouteImport } from './routes/catalog.templates
 import { Route as CatalogMastersRouteImport } from './routes/catalog.masters'
 import { Route as CatalogDesignerRouteImport } from './routes/catalog.designer'
 import { Route as CatalogIdRouteImport } from './routes/catalog.$id'
-import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
 import { Route as BillingNewRouteImport } from './routes/billing.new'
 import { Route as BillingCreditNoteRouteImport } from './routes/billing.credit-note'
 import { Route as BillingIdRouteImport } from './routes/billing.$id'
@@ -315,19 +291,9 @@ const WorkshopRoute = WorkshopRouteImport.update({
   path: '/workshop',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WorkflowsRoute = WorkflowsRouteImport.update({
-  id: '/workflows',
-  path: '/workflows',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const WhatsappRoute = WhatsappRouteImport.update({
   id: '/whatsapp',
   path: '/whatsapp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const WhatsNewRoute = WhatsNewRouteImport.update({
-  id: '/whats-new',
-  path: '/whats-new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyRoute = VerifyRouteImport.update({
@@ -338,11 +304,6 @@ const VerifyRoute = VerifyRouteImport.update({
 const UtilitiesRoute = UtilitiesRouteImport.update({
   id: '/utilities',
   path: '/utilities',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TutorialsRoute = TutorialsRouteImport.update({
-  id: '/tutorials',
-  path: '/tutorials',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TransactionsRoute = TransactionsRouteImport.update({
@@ -358,11 +319,6 @@ const TransactionHubRoute = TransactionHubRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SupportRoute = SupportRouteImport.update({
-  id: '/support',
-  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SupplierPortalRoute = SupplierPortalRouteImport.update({
@@ -405,11 +361,6 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RequestAccessRoute = RequestAccessRouteImport.update({
-  id: '/request-access',
-  path: '/request-access',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -420,19 +371,9 @@ const RepairRoute = RepairRouteImport.update({
   path: '/repair',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProductRoute = ProductRouteImport.update({
-  id: '/product',
-  path: '/product',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PricingRoute = PricingRouteImport.update({
-  id: '/pricing',
-  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlatformRoute = PlatformRouteImport.update({
@@ -515,21 +456,6 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FeaturesRoute = FeaturesRouteImport.update({
-  id: '/features',
-  path: '/features',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FaqRoute = FaqRouteImport.update({
-  id: '/faq',
-  path: '/faq',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DownloadsRoute = DownloadsRouteImport.update({
-  id: '/downloads',
-  path: '/downloads',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -543,11 +469,6 @@ const CustomerPortalRoute = CustomerPortalRouteImport.update({
 const CustomerLoginRoute = CustomerLoginRouteImport.update({
   id: '/customer-login',
   path: '/customer-login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompanyAdminRoute = CompanyAdminRouteImport.update({
@@ -588,11 +509,6 @@ const AssistantRoute = AssistantRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -703,11 +619,6 @@ const CatalogIndexRoute = CatalogIndexRouteImport.update({
 const BranchesIndexRoute = BranchesIndexRouteImport.update({
   id: '/branches/',
   path: '/branches/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BlogIndexRoute = BlogIndexRouteImport.update({
-  id: '/blog/',
-  path: '/blog/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BillingIndexRoute = BillingIndexRouteImport.update({
@@ -850,11 +761,6 @@ const UnsubscribeTokenRoute = UnsubscribeTokenRouteImport.update({
   path: '/unsubscribe/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TrialStartRoute = TrialStartRouteImport.update({
-  id: '/trial/start',
-  path: '/trial/start',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TreasuryVouchersRoute = TreasuryVouchersRouteImport.update({
   id: '/treasury/vouchers',
   path: '/treasury/vouchers',
@@ -915,46 +821,6 @@ const StockIdRoute = StockIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => StockRoute,
-} as any)
-const SolutionsWholesaleRoute = SolutionsWholesaleRouteImport.update({
-  id: '/solutions/wholesale',
-  path: '/solutions/wholesale',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SolutionsSecurityRoute = SolutionsSecurityRouteImport.update({
-  id: '/solutions/security',
-  path: '/solutions/security',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SolutionsPortalsRoute = SolutionsPortalsRouteImport.update({
-  id: '/solutions/portals',
-  path: '/solutions/portals',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SolutionsManufacturingRoute = SolutionsManufacturingRouteImport.update({
-  id: '/solutions/manufacturing',
-  path: '/solutions/manufacturing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SolutionsInventoryRoute = SolutionsInventoryRouteImport.update({
-  id: '/solutions/inventory',
-  path: '/solutions/inventory',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SolutionsHardwareRoute = SolutionsHardwareRouteImport.update({
-  id: '/solutions/hardware',
-  path: '/solutions/hardware',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SolutionsCrmRoute = SolutionsCrmRouteImport.update({
-  id: '/solutions/crm',
-  path: '/solutions/crm',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SolutionsBillingRoute = SolutionsBillingRouteImport.update({
-  id: '/solutions/billing',
-  path: '/solutions/billing',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const SettlementNewRoute = SettlementNewRouteImport.update({
   id: '/settlement/new',
@@ -1467,11 +1333,6 @@ const MobileAssistantRoute = MobileAssistantRouteImport.update({
   path: '/mobile/assistant',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LegalSlugRoute = LegalSlugRouteImport.update({
-  id: '/legal/$slug',
-  path: '/legal/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const InviteAcceptRoute = InviteAcceptRouteImport.update({
   id: '/accept',
   path: '/accept',
@@ -1563,11 +1424,6 @@ const CatalogIdRoute = CatalogIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => CatalogRoute,
-} as any)
-const BlogSlugRoute = BlogSlugRouteImport.update({
-  id: '/blog/$slug',
-  path: '/blog/$slug',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const BillingNewRoute = BillingNewRouteImport.update({
   id: '/new',
@@ -1848,7 +1704,6 @@ const AttendancePrintKindIdRoute = AttendancePrintKindIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/attendance': typeof AttendanceRouteWithChildren
@@ -1857,13 +1712,9 @@ export interface FileRoutesByFullPath {
   '/catalog': typeof CatalogRouteWithChildren
   '/communications': typeof CommunicationsRouteWithChildren
   '/company-admin': typeof CompanyAdminRoute
-  '/contact': typeof ContactRoute
   '/customer-login': typeof CustomerLoginRoute
   '/customer-portal': typeof CustomerPortalRoute
   '/dashboard': typeof DashboardRouteWithChildren
-  '/downloads': typeof DownloadsRoute
-  '/faq': typeof FaqRoute
-  '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/invite': typeof InviteRouteWithChildren
@@ -1880,12 +1731,9 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
   '/platform': typeof PlatformRouteWithChildren
-  '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
-  '/product': typeof ProductRoute
   '/repair': typeof RepairRouteWithChildren
   '/reports': typeof ReportsRouteWithChildren
-  '/request-access': typeof RequestAccessRoute
   '/reset-password': typeof ResetPasswordRoute
   '/saas-admin': typeof SaasAdminRoute
   '/scheme': typeof SchemeRouteWithChildren
@@ -1894,22 +1742,17 @@ export interface FileRoutesByFullPath {
   '/stock': typeof StockRouteWithChildren
   '/supplier-login': typeof SupplierLoginRoute
   '/supplier-portal': typeof SupplierPortalRoute
-  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/transaction-hub': typeof TransactionHubRoute
   '/transactions': typeof TransactionsRoute
-  '/tutorials': typeof TutorialsRoute
   '/utilities': typeof UtilitiesRouteWithChildren
   '/verify': typeof VerifyRouteWithChildren
-  '/whats-new': typeof WhatsNewRoute
   '/whatsapp': typeof WhatsappRouteWithChildren
-  '/workflows': typeof WorkflowsRoute
   '/workshop': typeof WorkshopRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/billing/$id': typeof BillingIdRoute
   '/billing/credit-note': typeof BillingCreditNoteRoute
   '/billing/new': typeof BillingNewRoute
-  '/blog/$slug': typeof BlogSlugRoute
   '/catalog/$id': typeof CatalogIdRoute
   '/catalog/designer': typeof CatalogDesignerRoute
   '/catalog/masters': typeof CatalogMastersRoute
@@ -1928,7 +1771,6 @@ export interface FileRoutesByFullPath {
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
-  '/legal/$slug': typeof LegalSlugRoute
   '/mobile/assistant': typeof MobileAssistantRoute
   '/mobile/business': typeof MobileBusinessRoute
   '/mobile/gold-stock': typeof MobileGoldStockRoute
@@ -2029,14 +1871,6 @@ export interface FileRoutesByFullPath {
   '/settings/workflow': typeof SettingsWorkflowRoute
   '/settlement/$id': typeof SettlementIdRoute
   '/settlement/new': typeof SettlementNewRoute
-  '/solutions/billing': typeof SolutionsBillingRoute
-  '/solutions/crm': typeof SolutionsCrmRoute
-  '/solutions/hardware': typeof SolutionsHardwareRoute
-  '/solutions/inventory': typeof SolutionsInventoryRoute
-  '/solutions/manufacturing': typeof SolutionsManufacturingRoute
-  '/solutions/portals': typeof SolutionsPortalsRoute
-  '/solutions/security': typeof SolutionsSecurityRoute
-  '/solutions/wholesale': typeof SolutionsWholesaleRoute
   '/stock/$id': typeof StockIdRoute
   '/stock/boxes': typeof StockBoxesRoute
   '/stock/entry': typeof StockEntryRoute
@@ -2049,7 +1883,6 @@ export interface FileRoutesByFullPath {
   '/treasury/bank-reconciliation': typeof TreasuryBankReconciliationRoute
   '/treasury/cash-book': typeof TreasuryCashBookRoute
   '/treasury/vouchers': typeof TreasuryVouchersRoute
-  '/trial/start': typeof TrialStartRoute
   '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/utilities/cash-fine-transfer': typeof UtilitiesCashFineTransferRoute
   '/utilities/counter-settings': typeof UtilitiesCounterSettingsRoute
@@ -2077,7 +1910,6 @@ export interface FileRoutesByFullPath {
   '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/billing/': typeof BillingIndexRoute
-  '/blog/': typeof BlogIndexRoute
   '/branches/': typeof BranchesIndexRoute
   '/catalog/': typeof CatalogIndexRoute
   '/communications/': typeof CommunicationsIndexRoute
@@ -2150,18 +1982,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/barcode': typeof BarcodeRoute
   '/company-admin': typeof CompanyAdminRoute
-  '/contact': typeof ContactRoute
   '/customer-login': typeof CustomerLoginRoute
   '/customer-portal': typeof CustomerPortalRoute
   '/dashboard': typeof DashboardRouteWithChildren
-  '/downloads': typeof DownloadsRoute
-  '/faq': typeof FaqRoute
-  '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/invite': typeof InviteRouteWithChildren
@@ -2174,28 +2001,20 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/otp-login': typeof OtpLoginRoute
   '/platform': typeof PlatformRouteWithChildren
-  '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
-  '/product': typeof ProductRoute
-  '/request-access': typeof RequestAccessRoute
   '/reset-password': typeof ResetPasswordRoute
   '/saas-admin': typeof SaasAdminRoute
   '/setup': typeof SetupRoute
   '/supplier-login': typeof SupplierLoginRoute
   '/supplier-portal': typeof SupplierPortalRoute
-  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/transaction-hub': typeof TransactionHubRoute
   '/transactions': typeof TransactionsRoute
-  '/tutorials': typeof TutorialsRoute
   '/verify': typeof VerifyRouteWithChildren
-  '/whats-new': typeof WhatsNewRoute
-  '/workflows': typeof WorkflowsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/billing/$id': typeof BillingIdRoute
   '/billing/credit-note': typeof BillingCreditNoteRoute
   '/billing/new': typeof BillingNewRoute
-  '/blog/$slug': typeof BlogSlugRoute
   '/catalog/$id': typeof CatalogIdRoute
   '/catalog/designer': typeof CatalogDesignerRoute
   '/catalog/masters': typeof CatalogMastersRoute
@@ -2214,7 +2033,6 @@ export interface FileRoutesByTo {
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
-  '/legal/$slug': typeof LegalSlugRoute
   '/mobile/assistant': typeof MobileAssistantRoute
   '/mobile/business': typeof MobileBusinessRoute
   '/mobile/gold-stock': typeof MobileGoldStockRoute
@@ -2315,14 +2133,6 @@ export interface FileRoutesByTo {
   '/settings/workflow': typeof SettingsWorkflowRoute
   '/settlement/$id': typeof SettlementIdRoute
   '/settlement/new': typeof SettlementNewRoute
-  '/solutions/billing': typeof SolutionsBillingRoute
-  '/solutions/crm': typeof SolutionsCrmRoute
-  '/solutions/hardware': typeof SolutionsHardwareRoute
-  '/solutions/inventory': typeof SolutionsInventoryRoute
-  '/solutions/manufacturing': typeof SolutionsManufacturingRoute
-  '/solutions/portals': typeof SolutionsPortalsRoute
-  '/solutions/security': typeof SolutionsSecurityRoute
-  '/solutions/wholesale': typeof SolutionsWholesaleRoute
   '/stock/$id': typeof StockIdRoute
   '/stock/boxes': typeof StockBoxesRoute
   '/stock/entry': typeof StockEntryRoute
@@ -2335,7 +2145,6 @@ export interface FileRoutesByTo {
   '/treasury/bank-reconciliation': typeof TreasuryBankReconciliationRoute
   '/treasury/cash-book': typeof TreasuryCashBookRoute
   '/treasury/vouchers': typeof TreasuryVouchersRoute
-  '/trial/start': typeof TrialStartRoute
   '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/utilities/cash-fine-transfer': typeof UtilitiesCashFineTransferRoute
   '/utilities/counter-settings': typeof UtilitiesCounterSettingsRoute
@@ -2363,7 +2172,6 @@ export interface FileRoutesByTo {
   '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
   '/attendance': typeof AttendanceIndexRoute
   '/billing': typeof BillingIndexRoute
-  '/blog': typeof BlogIndexRoute
   '/branches': typeof BranchesIndexRoute
   '/catalog': typeof CatalogIndexRoute
   '/communications': typeof CommunicationsIndexRoute
@@ -2437,7 +2245,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/attendance': typeof AttendanceRouteWithChildren
@@ -2446,13 +2253,9 @@ export interface FileRoutesById {
   '/catalog': typeof CatalogRouteWithChildren
   '/communications': typeof CommunicationsRouteWithChildren
   '/company-admin': typeof CompanyAdminRoute
-  '/contact': typeof ContactRoute
   '/customer-login': typeof CustomerLoginRoute
   '/customer-portal': typeof CustomerPortalRoute
   '/dashboard': typeof DashboardRouteWithChildren
-  '/downloads': typeof DownloadsRoute
-  '/faq': typeof FaqRoute
-  '/features': typeof FeaturesRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/invite': typeof InviteRouteWithChildren
@@ -2469,12 +2272,9 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRouteWithChildren
   '/otp-login': typeof OtpLoginRoute
   '/platform': typeof PlatformRouteWithChildren
-  '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
-  '/product': typeof ProductRoute
   '/repair': typeof RepairRouteWithChildren
   '/reports': typeof ReportsRouteWithChildren
-  '/request-access': typeof RequestAccessRoute
   '/reset-password': typeof ResetPasswordRoute
   '/saas-admin': typeof SaasAdminRoute
   '/scheme': typeof SchemeRouteWithChildren
@@ -2483,22 +2283,17 @@ export interface FileRoutesById {
   '/stock': typeof StockRouteWithChildren
   '/supplier-login': typeof SupplierLoginRoute
   '/supplier-portal': typeof SupplierPortalRoute
-  '/support': typeof SupportRoute
   '/terms': typeof TermsRoute
   '/transaction-hub': typeof TransactionHubRoute
   '/transactions': typeof TransactionsRoute
-  '/tutorials': typeof TutorialsRoute
   '/utilities': typeof UtilitiesRouteWithChildren
   '/verify': typeof VerifyRouteWithChildren
-  '/whats-new': typeof WhatsNewRoute
   '/whatsapp': typeof WhatsappRouteWithChildren
-  '/workflows': typeof WorkflowsRoute
   '/workshop': typeof WorkshopRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/billing/$id': typeof BillingIdRoute
   '/billing/credit-note': typeof BillingCreditNoteRoute
   '/billing/new': typeof BillingNewRoute
-  '/blog/$slug': typeof BlogSlugRoute
   '/catalog/$id': typeof CatalogIdRoute
   '/catalog/designer': typeof CatalogDesignerRoute
   '/catalog/masters': typeof CatalogMastersRoute
@@ -2517,7 +2312,6 @@ export interface FileRoutesById {
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
-  '/legal/$slug': typeof LegalSlugRoute
   '/mobile/assistant': typeof MobileAssistantRoute
   '/mobile/business': typeof MobileBusinessRoute
   '/mobile/gold-stock': typeof MobileGoldStockRoute
@@ -2618,14 +2412,6 @@ export interface FileRoutesById {
   '/settings/workflow': typeof SettingsWorkflowRoute
   '/settlement/$id': typeof SettlementIdRoute
   '/settlement/new': typeof SettlementNewRoute
-  '/solutions/billing': typeof SolutionsBillingRoute
-  '/solutions/crm': typeof SolutionsCrmRoute
-  '/solutions/hardware': typeof SolutionsHardwareRoute
-  '/solutions/inventory': typeof SolutionsInventoryRoute
-  '/solutions/manufacturing': typeof SolutionsManufacturingRoute
-  '/solutions/portals': typeof SolutionsPortalsRoute
-  '/solutions/security': typeof SolutionsSecurityRoute
-  '/solutions/wholesale': typeof SolutionsWholesaleRoute
   '/stock/$id': typeof StockIdRoute
   '/stock/boxes': typeof StockBoxesRoute
   '/stock/entry': typeof StockEntryRoute
@@ -2638,7 +2424,6 @@ export interface FileRoutesById {
   '/treasury/bank-reconciliation': typeof TreasuryBankReconciliationRoute
   '/treasury/cash-book': typeof TreasuryCashBookRoute
   '/treasury/vouchers': typeof TreasuryVouchersRoute
-  '/trial/start': typeof TrialStartRoute
   '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/utilities/cash-fine-transfer': typeof UtilitiesCashFineTransferRoute
   '/utilities/counter-settings': typeof UtilitiesCounterSettingsRoute
@@ -2666,7 +2451,6 @@ export interface FileRoutesById {
   '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/billing/': typeof BillingIndexRoute
-  '/blog/': typeof BlogIndexRoute
   '/branches/': typeof BranchesIndexRoute
   '/catalog/': typeof CatalogIndexRoute
   '/communications/': typeof CommunicationsIndexRoute
@@ -2741,7 +2525,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/about'
     | '/app'
     | '/assistant'
     | '/attendance'
@@ -2750,13 +2533,9 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/communications'
     | '/company-admin'
-    | '/contact'
     | '/customer-login'
     | '/customer-portal'
     | '/dashboard'
-    | '/downloads'
-    | '/faq'
-    | '/features'
     | '/forgot-password'
     | '/help'
     | '/invite'
@@ -2773,12 +2552,9 @@ export interface FileRouteTypes {
     | '/orders'
     | '/otp-login'
     | '/platform'
-    | '/pricing'
     | '/privacy'
-    | '/product'
     | '/repair'
     | '/reports'
-    | '/request-access'
     | '/reset-password'
     | '/saas-admin'
     | '/scheme'
@@ -2787,22 +2563,17 @@ export interface FileRouteTypes {
     | '/stock'
     | '/supplier-login'
     | '/supplier-portal'
-    | '/support'
     | '/terms'
     | '/transaction-hub'
     | '/transactions'
-    | '/tutorials'
     | '/utilities'
     | '/verify'
-    | '/whats-new'
     | '/whatsapp'
-    | '/workflows'
     | '/workshop'
     | '/auth/callback'
     | '/billing/$id'
     | '/billing/credit-note'
     | '/billing/new'
-    | '/blog/$slug'
     | '/catalog/$id'
     | '/catalog/designer'
     | '/catalog/masters'
@@ -2821,7 +2592,6 @@ export interface FileRouteTypes {
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
-    | '/legal/$slug'
     | '/mobile/assistant'
     | '/mobile/business'
     | '/mobile/gold-stock'
@@ -2922,14 +2692,6 @@ export interface FileRouteTypes {
     | '/settings/workflow'
     | '/settlement/$id'
     | '/settlement/new'
-    | '/solutions/billing'
-    | '/solutions/crm'
-    | '/solutions/hardware'
-    | '/solutions/inventory'
-    | '/solutions/manufacturing'
-    | '/solutions/portals'
-    | '/solutions/security'
-    | '/solutions/wholesale'
     | '/stock/$id'
     | '/stock/boxes'
     | '/stock/entry'
@@ -2942,7 +2704,6 @@ export interface FileRouteTypes {
     | '/treasury/bank-reconciliation'
     | '/treasury/cash-book'
     | '/treasury/vouchers'
-    | '/trial/start'
     | '/unsubscribe/$token'
     | '/utilities/cash-fine-transfer'
     | '/utilities/counter-settings'
@@ -2970,7 +2731,6 @@ export interface FileRouteTypes {
     | '/workshop/worker-books'
     | '/attendance/'
     | '/billing/'
-    | '/blog/'
     | '/branches/'
     | '/catalog/'
     | '/communications/'
@@ -3043,18 +2803,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/about'
     | '/app'
     | '/assistant'
     | '/barcode'
     | '/company-admin'
-    | '/contact'
     | '/customer-login'
     | '/customer-portal'
     | '/dashboard'
-    | '/downloads'
-    | '/faq'
-    | '/features'
     | '/forgot-password'
     | '/help'
     | '/invite'
@@ -3067,28 +2822,20 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/otp-login'
     | '/platform'
-    | '/pricing'
     | '/privacy'
-    | '/product'
-    | '/request-access'
     | '/reset-password'
     | '/saas-admin'
     | '/setup'
     | '/supplier-login'
     | '/supplier-portal'
-    | '/support'
     | '/terms'
     | '/transaction-hub'
     | '/transactions'
-    | '/tutorials'
     | '/verify'
-    | '/whats-new'
-    | '/workflows'
     | '/auth/callback'
     | '/billing/$id'
     | '/billing/credit-note'
     | '/billing/new'
-    | '/blog/$slug'
     | '/catalog/$id'
     | '/catalog/designer'
     | '/catalog/masters'
@@ -3107,7 +2854,6 @@ export interface FileRouteTypes {
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
-    | '/legal/$slug'
     | '/mobile/assistant'
     | '/mobile/business'
     | '/mobile/gold-stock'
@@ -3208,14 +2954,6 @@ export interface FileRouteTypes {
     | '/settings/workflow'
     | '/settlement/$id'
     | '/settlement/new'
-    | '/solutions/billing'
-    | '/solutions/crm'
-    | '/solutions/hardware'
-    | '/solutions/inventory'
-    | '/solutions/manufacturing'
-    | '/solutions/portals'
-    | '/solutions/security'
-    | '/solutions/wholesale'
     | '/stock/$id'
     | '/stock/boxes'
     | '/stock/entry'
@@ -3228,7 +2966,6 @@ export interface FileRouteTypes {
     | '/treasury/bank-reconciliation'
     | '/treasury/cash-book'
     | '/treasury/vouchers'
-    | '/trial/start'
     | '/unsubscribe/$token'
     | '/utilities/cash-fine-transfer'
     | '/utilities/counter-settings'
@@ -3256,7 +2993,6 @@ export interface FileRouteTypes {
     | '/workshop/worker-books'
     | '/attendance'
     | '/billing'
-    | '/blog'
     | '/branches'
     | '/catalog'
     | '/communications'
@@ -3329,7 +3065,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/about'
     | '/app'
     | '/assistant'
     | '/attendance'
@@ -3338,13 +3073,9 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/communications'
     | '/company-admin'
-    | '/contact'
     | '/customer-login'
     | '/customer-portal'
     | '/dashboard'
-    | '/downloads'
-    | '/faq'
-    | '/features'
     | '/forgot-password'
     | '/help'
     | '/invite'
@@ -3361,12 +3092,9 @@ export interface FileRouteTypes {
     | '/orders'
     | '/otp-login'
     | '/platform'
-    | '/pricing'
     | '/privacy'
-    | '/product'
     | '/repair'
     | '/reports'
-    | '/request-access'
     | '/reset-password'
     | '/saas-admin'
     | '/scheme'
@@ -3375,22 +3103,17 @@ export interface FileRouteTypes {
     | '/stock'
     | '/supplier-login'
     | '/supplier-portal'
-    | '/support'
     | '/terms'
     | '/transaction-hub'
     | '/transactions'
-    | '/tutorials'
     | '/utilities'
     | '/verify'
-    | '/whats-new'
     | '/whatsapp'
-    | '/workflows'
     | '/workshop'
     | '/auth/callback'
     | '/billing/$id'
     | '/billing/credit-note'
     | '/billing/new'
-    | '/blog/$slug'
     | '/catalog/$id'
     | '/catalog/designer'
     | '/catalog/masters'
@@ -3409,7 +3132,6 @@ export interface FileRouteTypes {
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
-    | '/legal/$slug'
     | '/mobile/assistant'
     | '/mobile/business'
     | '/mobile/gold-stock'
@@ -3510,14 +3232,6 @@ export interface FileRouteTypes {
     | '/settings/workflow'
     | '/settlement/$id'
     | '/settlement/new'
-    | '/solutions/billing'
-    | '/solutions/crm'
-    | '/solutions/hardware'
-    | '/solutions/inventory'
-    | '/solutions/manufacturing'
-    | '/solutions/portals'
-    | '/solutions/security'
-    | '/solutions/wholesale'
     | '/stock/$id'
     | '/stock/boxes'
     | '/stock/entry'
@@ -3530,7 +3244,6 @@ export interface FileRouteTypes {
     | '/treasury/bank-reconciliation'
     | '/treasury/cash-book'
     | '/treasury/vouchers'
-    | '/trial/start'
     | '/unsubscribe/$token'
     | '/utilities/cash-fine-transfer'
     | '/utilities/counter-settings'
@@ -3558,7 +3271,6 @@ export interface FileRouteTypes {
     | '/workshop/worker-books'
     | '/attendance/'
     | '/billing/'
-    | '/blog/'
     | '/branches/'
     | '/catalog/'
     | '/communications/'
@@ -3632,7 +3344,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AboutRoute: typeof AboutRoute
   AppRoute: typeof AppRoute
   AssistantRoute: typeof AssistantRoute
   AttendanceRoute: typeof AttendanceRouteWithChildren
@@ -3641,13 +3352,9 @@ export interface RootRouteChildren {
   CatalogRoute: typeof CatalogRouteWithChildren
   CommunicationsRoute: typeof CommunicationsRouteWithChildren
   CompanyAdminRoute: typeof CompanyAdminRoute
-  ContactRoute: typeof ContactRoute
   CustomerLoginRoute: typeof CustomerLoginRoute
   CustomerPortalRoute: typeof CustomerPortalRoute
   DashboardRoute: typeof DashboardRouteWithChildren
-  DownloadsRoute: typeof DownloadsRoute
-  FaqRoute: typeof FaqRoute
-  FeaturesRoute: typeof FeaturesRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HelpRoute: typeof HelpRoute
   InviteRoute: typeof InviteRouteWithChildren
@@ -3664,12 +3371,9 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRouteWithChildren
   OtpLoginRoute: typeof OtpLoginRoute
   PlatformRoute: typeof PlatformRouteWithChildren
-  PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
-  ProductRoute: typeof ProductRoute
   RepairRoute: typeof RepairRouteWithChildren
   ReportsRoute: typeof ReportsRouteWithChildren
-  RequestAccessRoute: typeof RequestAccessRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SaasAdminRoute: typeof SaasAdminRoute
   SchemeRoute: typeof SchemeRouteWithChildren
@@ -3678,19 +3382,14 @@ export interface RootRouteChildren {
   StockRoute: typeof StockRouteWithChildren
   SupplierLoginRoute: typeof SupplierLoginRoute
   SupplierPortalRoute: typeof SupplierPortalRoute
-  SupportRoute: typeof SupportRoute
   TermsRoute: typeof TermsRoute
   TransactionHubRoute: typeof TransactionHubRoute
   TransactionsRoute: typeof TransactionsRoute
-  TutorialsRoute: typeof TutorialsRoute
   UtilitiesRoute: typeof UtilitiesRouteWithChildren
   VerifyRoute: typeof VerifyRouteWithChildren
-  WhatsNewRoute: typeof WhatsNewRoute
   WhatsappRoute: typeof WhatsappRouteWithChildren
-  WorkflowsRoute: typeof WorkflowsRoute
   WorkshopRoute: typeof WorkshopRouteWithChildren
   AuthCallbackRoute: typeof AuthCallbackRoute
-  BlogSlugRoute: typeof BlogSlugRoute
   ComingSoonBarcodePrintingRoute: typeof ComingSoonBarcodePrintingRoute
   ComingSoonBarcodeScannerRoute: typeof ComingSoonBarcodeScannerRoute
   ComingSoonMeenaBookRoute: typeof ComingSoonMeenaBookRoute
@@ -3703,7 +3402,6 @@ export interface RootRouteChildren {
   ControlTallyExportRoute: typeof ControlTallyExportRoute
   ControlTerminologyRoute: typeof ControlTerminologyRoute
   DocTokenRoute: typeof DocTokenRoute
-  LegalSlugRoute: typeof LegalSlugRoute
   MobileAssistantRoute: typeof MobileAssistantRoute
   MobileBusinessRoute: typeof MobileBusinessRoute
   MobileGoldStockRoute: typeof MobileGoldStockRoute
@@ -3718,20 +3416,10 @@ export interface RootRouteChildren {
   PeopleImportRoute: typeof PeopleImportRoute
   SettlementIdRoute: typeof SettlementIdRoute
   SettlementNewRoute: typeof SettlementNewRoute
-  SolutionsBillingRoute: typeof SolutionsBillingRoute
-  SolutionsCrmRoute: typeof SolutionsCrmRoute
-  SolutionsHardwareRoute: typeof SolutionsHardwareRoute
-  SolutionsInventoryRoute: typeof SolutionsInventoryRoute
-  SolutionsManufacturingRoute: typeof SolutionsManufacturingRoute
-  SolutionsPortalsRoute: typeof SolutionsPortalsRoute
-  SolutionsSecurityRoute: typeof SolutionsSecurityRoute
-  SolutionsWholesaleRoute: typeof SolutionsWholesaleRoute
   TreasuryBankReconciliationRoute: typeof TreasuryBankReconciliationRoute
   TreasuryCashBookRoute: typeof TreasuryCashBookRoute
   TreasuryVouchersRoute: typeof TreasuryVouchersRoute
-  TrialStartRoute: typeof TrialStartRoute
   UnsubscribeTokenRoute: typeof UnsubscribeTokenRoute
-  BlogIndexRoute: typeof BlogIndexRoute
   BranchesIndexRoute: typeof BranchesIndexRoute
   ConversionIndexRoute: typeof ConversionIndexRoute
   ExpensesIndexRoute: typeof ExpensesIndexRoute
@@ -3754,25 +3442,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkshopRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/workflows': {
-      id: '/workflows'
-      path: '/workflows'
-      fullPath: '/workflows'
-      preLoaderRoute: typeof WorkflowsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/whatsapp': {
       id: '/whatsapp'
       path: '/whatsapp'
       fullPath: '/whatsapp'
       preLoaderRoute: typeof WhatsappRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/whats-new': {
-      id: '/whats-new'
-      path: '/whats-new'
-      fullPath: '/whats-new'
-      preLoaderRoute: typeof WhatsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verify': {
@@ -3787,13 +3461,6 @@ declare module '@tanstack/react-router' {
       path: '/utilities'
       fullPath: '/utilities'
       preLoaderRoute: typeof UtilitiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tutorials': {
-      id: '/tutorials'
-      path: '/tutorials'
-      fullPath: '/tutorials'
-      preLoaderRoute: typeof TutorialsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/transactions': {
@@ -3815,13 +3482,6 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/support': {
-      id: '/support'
-      path: '/support'
-      fullPath: '/support'
-      preLoaderRoute: typeof SupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/supplier-portal': {
@@ -3880,13 +3540,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/request-access': {
-      id: '/request-access'
-      path: '/request-access'
-      fullPath: '/request-access'
-      preLoaderRoute: typeof RequestAccessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/reports': {
       id: '/reports'
       path: '/reports'
@@ -3901,25 +3554,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RepairRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/product': {
-      id: '/product'
-      path: '/product'
-      fullPath: '/product'
-      preLoaderRoute: typeof ProductRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pricing': {
-      id: '/pricing'
-      path: '/pricing'
-      fullPath: '/pricing'
-      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/platform': {
@@ -4034,27 +3673,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/features': {
-      id: '/features'
-      path: '/features'
-      fullPath: '/features'
-      preLoaderRoute: typeof FeaturesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/faq': {
-      id: '/faq'
-      path: '/faq'
-      fullPath: '/faq'
-      preLoaderRoute: typeof FaqRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/downloads': {
-      id: '/downloads'
-      path: '/downloads'
-      fullPath: '/downloads'
-      preLoaderRoute: typeof DownloadsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -4074,13 +3692,6 @@ declare module '@tanstack/react-router' {
       path: '/customer-login'
       fullPath: '/customer-login'
       preLoaderRoute: typeof CustomerLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/company-admin': {
@@ -4137,13 +3748,6 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -4298,13 +3902,6 @@ declare module '@tanstack/react-router' {
       path: '/branches'
       fullPath: '/branches/'
       preLoaderRoute: typeof BranchesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/': {
-      id: '/blog/'
-      path: '/blog'
-      fullPath: '/blog/'
-      preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/billing/': {
@@ -4496,13 +4093,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UnsubscribeTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/trial/start': {
-      id: '/trial/start'
-      path: '/trial/start'
-      fullPath: '/trial/start'
-      preLoaderRoute: typeof TrialStartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/treasury/vouchers': {
       id: '/treasury/vouchers'
       path: '/treasury/vouchers'
@@ -4586,62 +4176,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/stock/$id'
       preLoaderRoute: typeof StockIdRouteImport
       parentRoute: typeof StockRoute
-    }
-    '/solutions/wholesale': {
-      id: '/solutions/wholesale'
-      path: '/solutions/wholesale'
-      fullPath: '/solutions/wholesale'
-      preLoaderRoute: typeof SolutionsWholesaleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/solutions/security': {
-      id: '/solutions/security'
-      path: '/solutions/security'
-      fullPath: '/solutions/security'
-      preLoaderRoute: typeof SolutionsSecurityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/solutions/portals': {
-      id: '/solutions/portals'
-      path: '/solutions/portals'
-      fullPath: '/solutions/portals'
-      preLoaderRoute: typeof SolutionsPortalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/solutions/manufacturing': {
-      id: '/solutions/manufacturing'
-      path: '/solutions/manufacturing'
-      fullPath: '/solutions/manufacturing'
-      preLoaderRoute: typeof SolutionsManufacturingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/solutions/inventory': {
-      id: '/solutions/inventory'
-      path: '/solutions/inventory'
-      fullPath: '/solutions/inventory'
-      preLoaderRoute: typeof SolutionsInventoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/solutions/hardware': {
-      id: '/solutions/hardware'
-      path: '/solutions/hardware'
-      fullPath: '/solutions/hardware'
-      preLoaderRoute: typeof SolutionsHardwareRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/solutions/crm': {
-      id: '/solutions/crm'
-      path: '/solutions/crm'
-      fullPath: '/solutions/crm'
-      preLoaderRoute: typeof SolutionsCrmRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/solutions/billing': {
-      id: '/solutions/billing'
-      path: '/solutions/billing'
-      fullPath: '/solutions/billing'
-      preLoaderRoute: typeof SolutionsBillingRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/settlement/new': {
       id: '/settlement/new'
@@ -5343,13 +4877,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MobileAssistantRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/legal/$slug': {
-      id: '/legal/$slug'
-      path: '/legal/$slug'
-      fullPath: '/legal/$slug'
-      preLoaderRoute: typeof LegalSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/invite/accept': {
       id: '/invite/accept'
       path: '/accept'
@@ -5475,13 +5002,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/catalog/$id'
       preLoaderRoute: typeof CatalogIdRouteImport
       parentRoute: typeof CatalogRoute
-    }
-    '/blog/$slug': {
-      id: '/blog/$slug'
-      path: '/blog/$slug'
-      fullPath: '/blog/$slug'
-      preLoaderRoute: typeof BlogSlugRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/billing/new': {
       id: '/billing/new'
@@ -6429,7 +5949,6 @@ const WorkshopRouteWithChildren = WorkshopRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AboutRoute: AboutRoute,
   AppRoute: AppRoute,
   AssistantRoute: AssistantRoute,
   AttendanceRoute: AttendanceRouteWithChildren,
@@ -6438,13 +5957,9 @@ const rootRouteChildren: RootRouteChildren = {
   CatalogRoute: CatalogRouteWithChildren,
   CommunicationsRoute: CommunicationsRouteWithChildren,
   CompanyAdminRoute: CompanyAdminRoute,
-  ContactRoute: ContactRoute,
   CustomerLoginRoute: CustomerLoginRoute,
   CustomerPortalRoute: CustomerPortalRoute,
   DashboardRoute: DashboardRouteWithChildren,
-  DownloadsRoute: DownloadsRoute,
-  FaqRoute: FaqRoute,
-  FeaturesRoute: FeaturesRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HelpRoute: HelpRoute,
   InviteRoute: InviteRouteWithChildren,
@@ -6461,12 +5976,9 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRouteWithChildren,
   OtpLoginRoute: OtpLoginRoute,
   PlatformRoute: PlatformRouteWithChildren,
-  PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
-  ProductRoute: ProductRoute,
   RepairRoute: RepairRouteWithChildren,
   ReportsRoute: ReportsRouteWithChildren,
-  RequestAccessRoute: RequestAccessRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SaasAdminRoute: SaasAdminRoute,
   SchemeRoute: SchemeRouteWithChildren,
@@ -6475,19 +5987,14 @@ const rootRouteChildren: RootRouteChildren = {
   StockRoute: StockRouteWithChildren,
   SupplierLoginRoute: SupplierLoginRoute,
   SupplierPortalRoute: SupplierPortalRoute,
-  SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   TransactionHubRoute: TransactionHubRoute,
   TransactionsRoute: TransactionsRoute,
-  TutorialsRoute: TutorialsRoute,
   UtilitiesRoute: UtilitiesRouteWithChildren,
   VerifyRoute: VerifyRouteWithChildren,
-  WhatsNewRoute: WhatsNewRoute,
   WhatsappRoute: WhatsappRouteWithChildren,
-  WorkflowsRoute: WorkflowsRoute,
   WorkshopRoute: WorkshopRouteWithChildren,
   AuthCallbackRoute: AuthCallbackRoute,
-  BlogSlugRoute: BlogSlugRoute,
   ComingSoonBarcodePrintingRoute: ComingSoonBarcodePrintingRoute,
   ComingSoonBarcodeScannerRoute: ComingSoonBarcodeScannerRoute,
   ComingSoonMeenaBookRoute: ComingSoonMeenaBookRoute,
@@ -6500,7 +6007,6 @@ const rootRouteChildren: RootRouteChildren = {
   ControlTallyExportRoute: ControlTallyExportRoute,
   ControlTerminologyRoute: ControlTerminologyRoute,
   DocTokenRoute: DocTokenRoute,
-  LegalSlugRoute: LegalSlugRoute,
   MobileAssistantRoute: MobileAssistantRoute,
   MobileBusinessRoute: MobileBusinessRoute,
   MobileGoldStockRoute: MobileGoldStockRoute,
@@ -6515,20 +6021,10 @@ const rootRouteChildren: RootRouteChildren = {
   PeopleImportRoute: PeopleImportRoute,
   SettlementIdRoute: SettlementIdRoute,
   SettlementNewRoute: SettlementNewRoute,
-  SolutionsBillingRoute: SolutionsBillingRoute,
-  SolutionsCrmRoute: SolutionsCrmRoute,
-  SolutionsHardwareRoute: SolutionsHardwareRoute,
-  SolutionsInventoryRoute: SolutionsInventoryRoute,
-  SolutionsManufacturingRoute: SolutionsManufacturingRoute,
-  SolutionsPortalsRoute: SolutionsPortalsRoute,
-  SolutionsSecurityRoute: SolutionsSecurityRoute,
-  SolutionsWholesaleRoute: SolutionsWholesaleRoute,
   TreasuryBankReconciliationRoute: TreasuryBankReconciliationRoute,
   TreasuryCashBookRoute: TreasuryCashBookRoute,
   TreasuryVouchersRoute: TreasuryVouchersRoute,
-  TrialStartRoute: TrialStartRoute,
   UnsubscribeTokenRoute: UnsubscribeTokenRoute,
-  BlogIndexRoute: BlogIndexRoute,
   BranchesIndexRoute: BranchesIndexRoute,
   ConversionIndexRoute: ConversionIndexRoute,
   ExpensesIndexRoute: ExpensesIndexRoute,

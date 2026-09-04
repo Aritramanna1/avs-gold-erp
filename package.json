@@ -12,10 +12,8 @@
   "scripts": {
     "dev": "node scripts/dev-egress-guard.mjs && vite",
     "build": "vite build",
-    "build:marketing": "node scripts/build-surfaces.mjs marketing",
     "build:erp": "node scripts/build-surfaces.mjs erp",
     "build:portal": "node scripts/build-surfaces.mjs portal",
-    "build:aurum": "node scripts/build-surfaces.mjs aurum",
     "postbuild": "node scripts/generate-sitemap.mjs",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "build:dev": "vite build --mode development",

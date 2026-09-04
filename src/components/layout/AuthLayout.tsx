@@ -145,7 +145,7 @@ export function AuthLayout({
   const [rememberDevice, setRememberDeviceState] = useState(() => isRememberDeviceEnabled());
 
   /** Capacitor WebView: prefer SPA navigate over <a>/target=_blank (often no-ops). */
-  const go = (to: "/forgot-password" | "/otp-login" | "/request-access" | "/invite/accept") => {
+  const go = (to: "/forgot-password" | "/otp-login" | "/invite/accept") => {
     void navigate({ to });
   };
 
@@ -702,14 +702,6 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
               <>
                 <button
                   type="button"
-                  className="w-full rounded-sm bg-[#B89454] px-3 py-2.5 text-sm font-semibold text-slate-950"
-                  data-testid="auth-link-request-access"
-                  onClick={() => go("/request-access")}
-                >
-                  Request access
-                </button>
-                <button
-                  type="button"
                   className="text-gold font-medium hover:text-gold/85 hover:underline focus:outline-none transition-colors"
                   data-testid="auth-link-otp"
                   onClick={() => go("/otp-login")}
@@ -746,12 +738,6 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
                   className="text-gold font-medium hover:text-gold/85 hover:underline focus:outline-none transition-colors"
                 >
                   Forgot Password
-                </Link>
-                <Link
-                  to="/request-access"
-                  className="text-gold font-medium hover:text-gold/85 hover:underline focus:outline-none transition-colors"
-                >
-                  Request access
                 </Link>
                 <Link
                   to="/invite/accept"
