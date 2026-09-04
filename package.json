@@ -23,6 +23,7 @@
     "lint:ci": "eslint src/components/mobile src/lib/mobile src/hooks/use-device-class.ts src/routes/mobile.index.tsx src/routes/mobile.master.tsx src/routes/mobile.transactions.tsx src/routes/mobile.assistant.tsx src/routes/mobile.stock-entry.tsx src/components/portal/PortalMobileBottomNav.tsx src/components/design-system/TabletSplitView.tsx scripts/validate-migrations.mjs scripts/ci-notify.mjs",
     "typecheck": "tsc --noEmit",
     "security:scan": "node scripts/security-scan.mjs",
+    "check:ui": "node scripts/check-ui-rules.mjs",
     "validate:migrations": "node scripts/validate-migrations.mjs",
     "i18n:coverage": "node scripts/check-i18n-coverage.mjs",
     "test:service": "node scripts/test-assistant-verification.mjs && node scripts/run-day1-selfchecks.mjs && node scripts/audit-report-print-sources.mjs",
