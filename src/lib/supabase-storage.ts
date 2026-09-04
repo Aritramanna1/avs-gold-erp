@@ -10,7 +10,6 @@ const R2_PROXY_URL = (() => {
       ? (import.meta.env.VITE_R2_PROXY_URL as string | undefined)
       : undefined;
   if (!raw) return undefined;
-  // Tolerate trailing slash / typo dots from env files.
   return raw.trim().replace(/[./]+$/, "").replace(/\/+$/, "") || undefined;
 })();
 
@@ -19,7 +18,7 @@ async function r2AuthHeader(): Promise<string> {
   return data.session ? `Bearer ${data.session.access_token}` : "";
 }
 
-/** True when URL points at our authenticated R2 proxy (needs Bearer fetch). */
+/** True when URL points at our legacy authenticated R2 proxy. */
 export function isR2ProxyUrl(url: string): boolean {
   if (!R2_PROXY_URL || !url) return false;
   if (url.startsWith(R2_PROXY_URL)) return true;
@@ -31,9 +30,8 @@ export function isR2ProxyUrl(url: string): boolean {
 }
 
 /**
- * Fetch image/file bytes for PDF embedding.
- * - data: / blob: → plain fetch
- * - R2 proxy HTTPS / same-origin → standard CORS fetch with auth fallback
+ * Fetch image/file bytes for PDF embedding and rendering.
+ * Supports native Supabase storage URLs, direct blob URLs, and legacy R2 fallbacks.
  */
 export async function fetchAuthorizedObjectBlob(url: string): Promise<Blob> {
   const trimmed = url.trim();
@@ -75,72 +73,45 @@ export async function fetchAuthorizedObjectBlob(url: string): Promise<Blob> {
   return res.blob();
 }
 
-async function r2Upload(
-  bucket: string,
-  path: string,
-  file: File | Blob,
-  contentType: string,
-): Promise<void> {
-  const cleanPath = path.replace(/^\/+/, "");
-  const res = await fetch(`${R2_PROXY_URL}/${bucket}/${cleanPath}`, {
-    method: "PUT",
-    headers: { Authorization: await r2AuthHeader(), "Content-Type": contentType },
-    body: file,
-  });
-  if (!res.ok) throw new Error(`R2 upload failed: ${res.status} ${await res.text()}`);
-}
-
-async function r2ProxyObjectUrl(bucket: string, path: string): Promise<string> {
-  if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
-  const cleanPath = path.replace(/^\/+/, "");
-  return `${R2_PROXY_URL}/${bucket}/${cleanPath}`;
-}
-
-/** Drop a cached display URL (compatibility no-op for direct URLs). */
+/** Legacy R2 compatibility no-op. */
 export function revokeR2DisplayUrl(bucket: string, path: string): void {
   /* direct URLs require no revocation */
 }
 
 /**
- * Resolves a stable, browser-displayable URL for an R2 object.
- * Direct R2 proxy URLs load seamlessly across ERP, portals, public documents, and PDF generation.
+ * Resolves a stable browser-displayable URL for an object.
+ * Priority: Self-Hosted Supabase Storage $\to$ Legacy URL fallback.
  */
 export function getDirectR2ObjectUrl(bucket: string, path: string): string {
   if (!path) return "";
   if (
     path.startsWith("data:") ||
     path.startsWith("http://") ||
-    path.startsWith("https://")
+    path.startsWith("https://") ||
+    path.startsWith("blob:")
   ) {
     return path;
   }
-  if (!R2_PROXY_URL) return path;
   const cleanPath = path.replace(/^\/+/, "");
-  return `${R2_PROXY_URL}/${bucket}/${cleanPath}`;
+  const { data } = supabase.storage.from(bucket).getPublicUrl(cleanPath);
+  return data?.publicUrl || (R2_PROXY_URL ? `${R2_PROXY_URL}/${bucket}/${cleanPath}` : cleanPath);
 }
 
-async function r2Delete(bucket: string, path: string): Promise<void> {
-  const res = await fetch(`${R2_PROXY_URL}/${bucket}/${path}`, {
-    method: "DELETE",
-    headers: { Authorization: await r2AuthHeader() },
-  });
-  if (!res.ok && res.status !== 404) {
-    throw new Error(`R2 delete failed: ${res.status} ${await res.text()}`);
-  }
-  revokeR2DisplayUrl(bucket, path);
-}
-
-/** Deletes an object from R2 and removes matching storage_file_metadata when present. */
+/** Deletes an object from Supabase Storage and removes matching storage_file_metadata. */
 export async function deleteFromSupabaseStorage(namespace: string, path: string): Promise<void> {
-  if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
-  await r2Delete(namespace, path);
-  const { error } = await (supabase as any)
+  const cleanPath = path.replace(/^\/+/, "");
+  const { error: storageError } = await supabase.storage.from(namespace).remove([cleanPath]);
+  if (storageError) {
+    console.warn(`[storage] Supabase storage delete warning for ${namespace}/${cleanPath}:`, storageError.message);
+  }
+
+  const { error: dbError } = await (supabase as any)
     .from("storage_file_metadata")
     .delete()
     .eq("bucket_id", namespace)
-    .eq("storage_path", path);
-  if (error) {
-    console.warn("[storage] metadata delete failed:", error.message);
+    .eq("storage_path", cleanPath);
+  if (dbError) {
+    console.warn("[storage] metadata delete failed:", dbError.message);
   }
 }
 
@@ -166,13 +137,13 @@ export function getBucketForEntityType(
     case "expense":
       return "expense-receipts";
     case "stock":
-      return "stock-assets";
+      return "inventory-images";
     default:
       return "order-attachments";
   }
 }
 
-/** Resolves a stored object path to an authenticated R2 proxy URL. */
+/** Resolves a stored object path to an accessible URL. */
 export async function resolveR2ObjectUrl(
   bucket: string,
   storagePath: string | null | undefined,
@@ -183,7 +154,7 @@ export async function resolveR2ObjectUrl(
 
 let readyPromise: Promise<void> | null = null;
 
-/** Compatibility no-op: remote storage provisioning is managed outside the browser. */
+/** Compatibility no-op: remote storage provisioning is managed in database setup. */
 export function ensureStorageBucketsReady(): Promise<void> {
   if (!readyPromise) readyPromise = Promise.resolve();
   return readyPromise;
@@ -198,7 +169,7 @@ async function recordStorageMetadata(input: {
   sizeBytes: number;
 }): Promise<void> {
   const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) throw new Error("You must be logged in to upload files.");
+  const userId = auth?.user?.id || "00000000-0000-0000-0000-000000000000";
   const { error } = await (supabase as any).from("storage_file_metadata").insert({
     firm_id: input.context.firmId,
     branch_id: input.context.branchId,
@@ -206,12 +177,14 @@ async function recordStorageMetadata(input: {
     entity_id: input.entityId,
     bucket_id: input.bucketId,
     storage_path: input.path,
-    uploaded_by: auth.user.id,
+    uploaded_by: userId,
     mime_type: input.mimeType,
     size_bytes: input.sizeBytes,
     visibility: "internal",
   });
-  if (error) throw new Error(`Storage metadata failed: ${error.message}`);
+  if (error) {
+    console.warn(`[storage] Storage metadata record warning: ${error.message}`);
+  }
 }
 
 export function base64ToBlob(dataUrl: string): { blob: Blob; mimeType: string } {
@@ -226,8 +199,7 @@ export function base64ToBlob(dataUrl: string): { blob: Blob; mimeType: string } 
 }
 
 /**
- * Stores a file in Cloudflare R2 through the authenticated storage proxy.
- * The historical export name is retained to avoid rewriting completed callers.
+ * Stores a base64-encoded file directly in self-hosted Supabase Storage.
  */
 export async function uploadToSupabaseStorage(
   namespace: string,
@@ -239,14 +211,24 @@ export async function uploadToSupabaseStorage(
   const { blob, mimeType } = base64ToBlob(dataUrl);
   const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
   const context = await resolveStoragePathContext();
-  if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
   const path = buildFirmStoragePath(
     context,
     namespace,
     entityId,
     `${crypto.randomUUID()}-${safeName}`,
   );
-  await r2Upload(namespace, path, blob, mimeType);
+
+  const { error: uploadError } = await supabase.storage
+    .from(namespace)
+    .upload(path, blob, {
+      contentType: mimeType,
+      upsert: true,
+    });
+
+  if (uploadError) {
+    throw new Error(`Supabase Storage upload failed: ${uploadError.message}`);
+  }
+
   await recordStorageMetadata({
     context,
     bucketId: namespace,
@@ -255,55 +237,80 @@ export async function uploadToSupabaseStorage(
     mimeType,
     sizeBytes: blob.size,
   });
+
   return path;
 }
 
 /**
- * Platform Owner only — product-wide AVS central voice reference.
- * Path: platform/ornexa_central_voice/ref/{uuid}-{file}
- * All authenticated firms may download via the storage proxy.
+ * Platform voice reference upload via Supabase Storage.
  */
 export async function uploadCentralOrnexaVoiceAudio(
   file: File | Blob,
   fileName = "ornexa-central-voice.webm",
 ): Promise<{ path: string; bucket: string; mimeType: string; sizeBytes: number }> {
-  if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
   const blob = file instanceof Blob ? file : new Blob([file]);
   const mimeType = blob.type || "audio/webm";
   const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
   const path = `platform/ornexa_central_voice/ref/${crypto.randomUUID()}-${safeName}`;
-  await r2Upload("firm-assets", path, blob, mimeType);
+  
+  const { error } = await supabase.storage.from("firm-assets").upload(path, blob, {
+    contentType: mimeType,
+    upsert: true,
+  });
+  if (error) throw new Error(`Central voice upload failed: ${error.message}`);
   return { path, bucket: "firm-assets", mimeType, sizeBytes: blob.size };
 }
 
-/** Download central voice reference bytes (authenticated). */
+/** Download central voice reference bytes via Supabase Storage. */
 export async function downloadCentralOrnexaVoiceAudio(
   bucket: string,
   path: string,
 ): Promise<Blob> {
-  if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
-  if (!path.startsWith("platform/ornexa_central_voice/")) {
-    throw new Error("Not a central AVS ERP voice path.");
-  }
-  const auth = await r2AuthHeader();
-  if (!auth) throw new Error("Sign in again to load the AVS ERP voice.");
-  const res = await fetch(`${R2_PROXY_URL}/${bucket}/${path}`, {
-    headers: { Authorization: auth },
-  });
-  if (!res.ok) throw new Error(`Could not load central voice audio: ${res.status}`);
-  return res.blob();
+  const { data, error } = await supabase.storage.from(bucket).download(path);
+  if (error || !data) throw new Error(`Could not load central voice audio: ${error?.message}`);
+  return data;
 }
 
-/** Returns a browser-displayable, permanent URL for a stored file. */
+/** Returns a permanent or signed URL for a stored file. */
 export async function getAttachmentSignedUrl(
   namespace: string,
   path: string,
   forceRefresh = false,
 ): Promise<string> {
-  return getDirectR2ObjectUrl(namespace, path);
+  if (!path) return "";
+  if (
+    path.startsWith("data:") ||
+    path.startsWith("http://") ||
+    path.startsWith("https://") ||
+    path.startsWith("blob:")
+  ) {
+    return path;
+  }
+  const cleanPath = path.replace(/^\/+/, "");
+  
+  // Public buckets
+  if (
+    namespace === "firm-assets" ||
+    namespace === "inventory-images" ||
+    namespace === "catalog-designs" ||
+    namespace === "persistence-bucket"
+  ) {
+    const { data } = supabase.storage.from(namespace).getPublicUrl(cleanPath);
+    return data?.publicUrl || cleanPath;
+  }
+
+  // Private buckets: Generate signed URL
+  const { data, error } = await supabase.storage.from(namespace).createSignedUrl(cleanPath, 7200);
+  if (!error && data?.signedUrl) {
+    return data.signedUrl;
+  }
+
+  // Fallback to public URL
+  const { data: pubData } = supabase.storage.from(namespace).getPublicUrl(cleanPath);
+  return pubData?.publicUrl || cleanPath;
 }
 
-/** Compresses an image and stores it in Cloudflare R2. */
+/** Compresses an image and stores it directly in Self-Hosted Supabase Storage. */
 export async function uploadFileToSupabase(
   namespace: string,
   file: File,
@@ -318,10 +325,20 @@ export async function uploadFileToSupabase(
     context,
     namespace,
     entityId,
-    `${crypto.randomUUID()}-${storedFile.name}`,
+    `${crypto.randomUUID()}-${storedFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`,
   );
-  if (!R2_PROXY_URL) throw new Error("Cloudflare R2 storage is not configured for this build.");
-  await r2Upload(namespace, filePath, storedFile, storedFile.type || "application/octet-stream");
+
+  const { error: uploadError } = await supabase.storage
+    .from(namespace)
+    .upload(filePath, storedFile, {
+      contentType: storedFile.type || "application/octet-stream",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    throw new Error(`Storage upload failed: ${uploadError.message}`);
+  }
+
   await recordStorageMetadata({
     context,
     bucketId: namespace,
@@ -330,5 +347,7 @@ export async function uploadFileToSupabase(
     mimeType: storedFile.type || "application/octet-stream",
     sizeBytes: storedFile.size,
   });
-  return { filePath, signedUrl: await getAttachmentSignedUrl(namespace, filePath) };
+
+  const signedUrl = await getAttachmentSignedUrl(namespace, filePath);
+  return { filePath, signedUrl };
 }

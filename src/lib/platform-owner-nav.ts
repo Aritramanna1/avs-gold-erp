@@ -193,12 +193,6 @@ export const platformOwnerNav: PlatformNavGroup[] = [
     title: "Platform Configuration",
     items: [
       {
-        id: "config-website",
-        label: "Website Manager",
-        pathname: "/platform/website",
-        icon: Globe,
-      },
-      {
         id: "config-branding",
         label: "Branding",
         pathname: "/platform",

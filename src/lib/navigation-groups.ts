@@ -113,6 +113,20 @@ function filterNavTree(
   return out;
 }
 
+import { useInstallationConfig } from "@/lib/installation-config";
+
+function isPortalRouteAllowed(to: string): boolean {
+  try {
+    const portals = useInstallationConfig.getState().activePortals;
+    if (to === "/karigar-portal" && portals && portals.karigar === false) return false;
+    if (to === "/customer-portal" && portals && portals.customer === false) return false;
+    if (to === "/supplier-portal" && portals && portals.supplier === false) return false;
+  } catch {
+    /* fallback to allowed */
+  }
+  return true;
+}
+
 /** Keep folders that still have at least one permitted leaf. */
 export function filterNavGroupsByPermission(
   groups: NavGroupDef[],
@@ -121,7 +135,7 @@ export function filterNavGroupsByPermission(
   return groups
     .map((group) => ({
       ...group,
-      items: filterNavTree(group.items, allow),
+      items: filterNavTree(group.items, (to) => allow(to) && isPortalRouteAllowed(to)),
     }))
     .filter((group) => group.items.length > 0);
 }
@@ -1044,6 +1058,33 @@ export const navigationGroups: NavGroupDef[] = [
         label: "Settlement",
         i18nKey: "item_gold_settlement",
         icon: ArrowLeftRight,
+      },
+    ],
+  },
+  {
+    id: "portals",
+    label: "Portals",
+    i18nKey: "group_portals",
+    subtitleKey: "subtitle_portals",
+    icon: Users,
+    items: [
+      {
+        to: "/karigar-portal",
+        label: "Karigar Portal",
+        i18nKey: "item_karigar_portal",
+        icon: Hammer,
+      },
+      {
+        to: "/customer-portal",
+        label: "Customer Portal",
+        i18nKey: "item_customer_portal",
+        icon: Users,
+      },
+      {
+        to: "/supplier-portal",
+        label: "Supplier Portal",
+        i18nKey: "item_supplier_portal",
+        icon: Truck,
       },
     ],
   },

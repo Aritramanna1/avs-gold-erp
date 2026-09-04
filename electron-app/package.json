@@ -1,0 +1,19 @@
+{
+  "name": "mtj-erp-desktop",
+  "version": "1.1.2",
+  "description": "MTJ / AVS Gold & Diamond Jewellery Manufacturing ERP Desktop Application",
+  "main": "main.cjs",
+  "author": "Arivahly Venture Sphere",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "package:win": "electron-packager . \"MTJ ERP\" --platform=win32 --arch=x64 --out=release --overwrite --prune=true --asar",
+    "package:mac": "electron-packager . \"MTJ ERP\" --platform=darwin --arch=x64 --out=release --overwrite --prune=true --asar",
+    "package:linux": "electron-packager . \"MTJ ERP\" --platform=linux --arch=x64 --out=release --overwrite --prune=true --asar"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^34.3.0",
+    "electron-packager": "^17.1.2"
+  }
+}

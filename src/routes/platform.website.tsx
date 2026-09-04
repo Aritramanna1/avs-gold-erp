@@ -1,16 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PlatformWebsiteManager } from "@/components/platform/PlatformWebsiteManager";
-import { guardRoute } from "@/lib/permissions";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { DEFAULT_PLATFORM_SEARCH } from "@/lib/platform-search";
 
 export const Route = createFileRoute("/platform/website")({
-  beforeLoad: ({ location }) => guardRoute(location.pathname),
-  component: PlatformWebsitePage,
+  component: () => <Navigate to="/platform" search={DEFAULT_PLATFORM_SEARCH} replace />,
 });
-
-function PlatformWebsitePage() {
-  return (
-    <div className="p-6">
-      <PlatformWebsiteManager />
-    </div>
-  );
-}
