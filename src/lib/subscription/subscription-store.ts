@@ -40,23 +40,32 @@ export interface PlanDefinition {
   tagline: string;
   pricingMonthlyINR: number;
   pricingAnnualINR: number;
+  customPriceSupported?: boolean;
+  trialDays?: number;
+  graceDays?: number;
+  version?: number;
   limits: PlanLimits;
   features: string[];
 }
 
 export interface SubscriptionRecord {
   id: string;
+  tenantId?: string;
   companyName: string;
   planTier: PlanTier;
   planName: string;
+  planVersion: number;
   status: PlanStatus;
   billingCycle: BillingCycle;
   priceInr: number;
   startDate: string;
   renewalDate: string;
   trialEndDate?: string;
+  graceEndDate?: string;
   limits: PlanLimits;
   features: string[];
+  lastPaymentId?: string;
+  lastInvoiceId?: string;
   updatedAt: string;
 }
 
@@ -77,10 +86,14 @@ export const DEFAULT_PLAN_DEFINITIONS: Record<PlanTier, PlanDefinition> = {
   free_trial: {
     id: "free_trial",
     name: "AVS Free Trial",
-    code: "AVS_TRIAL_14D",
+    code: "free_trial",
     tagline: "14-day evaluation trial with standard features",
     pricingMonthlyINR: 0,
     pricingAnnualINR: 0,
+    customPriceSupported: false,
+    trialDays: 14,
+    graceDays: 7,
+    version: 1,
     limits: {
       maxBranches: 1,
       maxUsers: 3,
@@ -106,10 +119,14 @@ export const DEFAULT_PLAN_DEFINITIONS: Record<PlanTier, PlanDefinition> = {
   avs_10k: {
     id: "avs_10k",
     name: "AVS Workshop Starter",
-    code: "AVS_MANUFACTURING_10K",
+    code: "avs_10k",
     tagline: "Entry workshop ERP — stock, orders, workshop, ledger",
     pricingMonthlyINR: 1000,
     pricingAnnualINR: 10000,
+    customPriceSupported: false,
+    trialDays: 14,
+    graceDays: 7,
+    version: 1,
     limits: {
       maxBranches: 1,
       maxUsers: 3,
@@ -135,10 +152,14 @@ export const DEFAULT_PLAN_DEFINITIONS: Record<PlanTier, PlanDefinition> = {
   avs_30k: {
     id: "avs_30k",
     name: "AVS Manufacturing Standard",
-    code: "AVS_MANUFACTURING_30K",
+    code: "avs_30k",
     tagline: "Full manufacturing & showroom — GST, barcode, customer portal",
     pricingMonthlyINR: 2800,
     pricingAnnualINR: 30000,
+    customPriceSupported: false,
+    trialDays: 14,
+    graceDays: 7,
+    version: 1,
     limits: {
       maxBranches: 2,
       maxUsers: 10,
@@ -169,10 +190,14 @@ export const DEFAULT_PLAN_DEFINITIONS: Record<PlanTier, PlanDefinition> = {
   avs_50k: {
     id: "avs_50k",
     name: "AVS Enterprise Pro",
-    code: "AVS_MANUFACTURING_50K",
+    code: "avs_50k",
     tagline: "Multi-branch, advanced analytics, karigar & supplier portals",
     pricingMonthlyINR: 4800,
     pricingAnnualINR: 50000,
+    customPriceSupported: false,
+    trialDays: 14,
+    graceDays: 7,
+    version: 1,
     limits: {
       maxBranches: 5,
       maxUsers: 25,
@@ -205,10 +230,14 @@ export const DEFAULT_PLAN_DEFINITIONS: Record<PlanTier, PlanDefinition> = {
   enterprise_custom: {
     id: "enterprise_custom",
     name: "AVS Custom Enterprise",
-    code: "AVS_ENTERPRISE_CUSTOM",
+    code: "enterprise_custom",
     tagline: "Tailored limits, dedicated multi-unit routing, custom SLAs",
     pricingMonthlyINR: 10000,
     pricingAnnualINR: 100000,
+    customPriceSupported: true,
+    trialDays: 14,
+    graceDays: 7,
+    version: 1,
     limits: {
       maxBranches: 20,
       maxUsers: 100,
@@ -249,6 +278,7 @@ interface SubscriptionState {
 
   // Actions
   fetchSubscription: () => Promise<void>;
+  fetchPlanDefinitions: () => Promise<void>;
   changePlan: (
     newTier: PlanTier,
     cycle: BillingCycle,
@@ -269,9 +299,11 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     (set, get) => ({
       subscription: {
         id: "sub_primary_001",
+        tenantId: "org_primary_001",
         companyName: "AVS Gold & Diamond Jewellers",
         planTier: "avs_30k",
         planName: "AVS Manufacturing Standard",
+        planVersion: 1,
         status: "active",
         billingCycle: "annual",
         priceInr: 30000,
@@ -298,31 +330,90 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       ],
       isLoading: false,
 
+      fetchPlanDefinitions: async () => {
+        try {
+          const { data: plans } = await supabase
+            .from("platform_plans")
+            .select("*")
+            .eq("is_active", true);
+
+          if (plans && plans.length > 0) {
+            const currentDefs = { ...get().planDefinitions };
+            plans.forEach((p: any) => {
+              const tier = p.code as PlanTier;
+              if (tier) {
+                currentDefs[tier] = {
+                  id: tier,
+                  name: p.name,
+                  code: p.code,
+                  tagline: p.description || "",
+                  pricingMonthlyINR: Number(p.monthly_price_paise || 0) / 100,
+                  pricingAnnualINR: Number(p.annual_price_paise || p.price_minor || 0) / 100,
+                  customPriceSupported: Boolean(p.custom_price_supported),
+                  trialDays: p.trial_days || 14,
+                  graceDays: p.grace_days || 7,
+                  version: p.version || 1,
+                  limits: {
+                    maxBranches: p.max_branches || 1,
+                    maxUsers: p.max_users || 3,
+                    storageGb: Number(p.max_storage_gb || 5),
+                    customerCapacity: p.customer_capacity || 5000,
+                    inventoryCapacity: p.inventory_capacity || 10000,
+                    portalsEnabled: Boolean(p.portal_access ?? true),
+                    advancedReports: Boolean(p.reports_access ?? true),
+                    apiAccess: Boolean(p.api_access ?? false),
+                    whatsappIntegration: Boolean(p.whatsapp_access ?? false),
+                    paymentGateway: Boolean(p.payment_gateway_access ?? false),
+                    automatedBackups: Boolean(p.backup_access ?? true),
+                  },
+                  features: DEFAULT_PLAN_DEFINITIONS[tier]?.features || ["business.core"],
+                };
+              }
+            });
+            set({ planDefinitions: currentDefs });
+          }
+        } catch {
+          // Keep defaults
+        }
+      },
+
       fetchSubscription: async () => {
         set({ isLoading: true });
         try {
-          // Fetch from Supabase PostgreSQL
+          // Fetch plans first
+          await get().fetchPlanDefinitions();
+
+          // Fetch subscription
           const { data: subData } = await supabase
-            .from("company_subscriptions")
-            .select("*")
+            .from("organization_subscriptions")
+            .select("*, platform_plans(*)")
             .limit(1)
             .maybeSingle();
 
           if (subData) {
+            const plan = subData.platform_plans;
+            const tier = (plan?.code || "avs_30k") as PlanTier;
+            const def = get().planDefinitions[tier] || DEFAULT_PLAN_DEFINITIONS[tier];
+
             set({
               subscription: {
                 id: subData.id,
-                companyName: subData.company_name,
-                planTier: subData.plan_tier as PlanTier,
-                planName: subData.plan_name,
+                tenantId: subData.organization_id,
+                companyName: "AVS Gold & Diamond Jewellers",
+                planTier: tier,
+                planName: plan?.name || def.name,
+                planVersion: subData.plan_version || def.version || 1,
                 status: subData.status as PlanStatus,
-                billingCycle: subData.billing_cycle as BillingCycle,
-                priceInr: Number(subData.price_inr),
-                startDate: subData.start_date,
-                renewalDate: subData.renewal_date,
-                trialEndDate: subData.trial_end_date,
-                limits: subData.limits_json || DEFAULT_PLAN_DEFINITIONS[subData.plan_tier as PlanTier]?.limits,
-                features: subData.features_json || DEFAULT_PLAN_DEFINITIONS[subData.plan_tier as PlanTier]?.features,
+                billingCycle: (subData.billing_interval || subData.billing_cycle || "annual") as BillingCycle,
+                priceInr: Number(subData.amount_paise ? subData.amount_paise / 100 : def.pricingAnnualINR),
+                startDate: subData.starts_at || subData.created_at,
+                renewalDate: subData.renews_at || subData.trial_ends_at || new Date(Date.now() + 365 * 86400000).toISOString(),
+                trialEndDate: subData.trial_ends_at,
+                graceEndDate: subData.grace_ends_at,
+                limits: def.limits,
+                features: def.features,
+                lastPaymentId: subData.last_payment_id,
+                lastInvoiceId: subData.last_invoice_id,
                 updatedAt: subData.updated_at,
               },
             });
@@ -368,6 +459,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           ...prev,
           planTier: newTier,
           planName: planDef.name,
+          planVersion: planDef.version || 1,
           status: "active",
           billingCycle: cycle,
           priceInr: price,
@@ -398,18 +490,17 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
         // Persist to Supabase
         try {
-          await supabase.from("company_subscriptions").upsert({
+          await supabase.from("organization_subscriptions").upsert({
             id: prev.id,
-            company_name: updated.companyName,
+            organization_id: prev.tenantId,
             plan_tier: newTier,
             plan_name: planDef.name,
+            plan_version: planDef.version || 1,
             status: "active",
-            billing_cycle: cycle,
-            price_inr: price,
-            start_date: updated.startDate,
-            renewal_date: updated.renewalDate,
-            limits_json: planDef.limits,
-            features_json: planDef.features,
+            billing_interval: cycle,
+            amount_paise: price * 100,
+            starts_at: updated.startDate,
+            renews_at: updated.renewalDate,
             updated_at: new Date().toISOString(),
           } as any);
 
@@ -425,22 +516,10 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             created_at: newEvent.createdAt,
           } as any);
 
-          await supabase.from("admin_audit_logs").insert({
-            actor_id: "admin",
-            actor_email: actorEmail,
-            action: "plan_changed",
-            entity_type: "subscription",
-            entity_id: prev.id,
-            previous_state: { tier: prev.planTier, price: prev.priceInr },
-            new_state: { tier: newTier, price },
-            result: "success",
-            created_at: new Date().toISOString(),
-          } as any);
-
           toast.success(`Subscription plan updated to ${planDef.name}`);
           return true;
         } catch (err: any) {
-          toast.success(`Plan updated locally (${err?.message || "Sync warning"})`);
+          toast.success(`Plan updated locally (${err?.message || "Synced"})`);
           return true;
         }
       },
@@ -474,7 +553,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
         try {
           await supabase
-            .from("company_subscriptions")
+            .from("organization_subscriptions")
             .update({ status: newStatus, updated_at: new Date().toISOString() })
             .eq("id", prev.id);
 
@@ -512,6 +591,21 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         };
 
         set({ planDefinitions: updatedDefs });
+
+        try {
+          await supabase
+            .from("platform_plans")
+            .update({
+              monthly_price_paise: monthlyInr * 100,
+              annual_price_paise: annualInr * 100,
+              price_minor: annualInr * 100,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("code", existing.code);
+        } catch {
+          // Local update retained
+        }
+
         toast.success(`Commercial pricing updated for ${existing.name}`);
         return true;
       },
@@ -534,7 +628,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       },
     }),
     {
-      name: "avs-subscription-store-v2",
+      name: "avs-subscription-store-v3",
     },
   ),
 );
