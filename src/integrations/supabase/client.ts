@@ -20,11 +20,67 @@ function sanitizeEnvValue(value: string | undefined | null): string {
   return normalized.trim();
 }
 
+const PROD_SUPABASE_URL = "https://dqgrrafuoxaorvyrcuuh.supabase.co";
+const PROD_SUPABASE_KEY = "sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN";
+const PROD_SUPABASE_PROJECT_ID = "dqgrrafuoxaorvyrcuuh";
+
 function getResolvedConfig() {
+  const isBrowser = typeof window !== "undefined";
+  const isRemoteDomain = isBrowser && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+
+  // 1. Runtime window / global injection
+  const windowEnv = isBrowser ? ((window as any).__ENV__ || (window as any).ENV || {}) : {};
+
+  // 2. LocalStorage override (if explicitly saved by admin)
+  let storedUrl = "";
+  let storedKey = "";
+  let storedProjectId = "";
+  if (isBrowser) {
+    try {
+      storedUrl = localStorage.getItem("VITE_SUPABASE_URL") || localStorage.getItem("MTJ_SUPABASE_URL") || "";
+      storedKey = localStorage.getItem("VITE_SUPABASE_PUBLISHABLE_KEY") || localStorage.getItem("MTJ_SUPABASE_PUBLISHABLE_KEY") || "";
+      storedProjectId = localStorage.getItem("VITE_SUPABASE_PROJECT_ID") || "";
+    } catch {
+      // Ignore localStorage access restrictions
+    }
+  }
+
+  // 3. Build-time environment variable
+  const envUrl = sanitizeEnvValue(import.meta.env.VITE_SUPABASE_URL);
+  const envKey = sanitizeEnvValue(
+    (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
+    (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)
+  );
+  const envProjectId = sanitizeEnvValue(import.meta.env.VITE_SUPABASE_PROJECT_ID);
+
+  let resolvedUrl = sanitizeEnvValue(windowEnv.VITE_SUPABASE_URL) || storedUrl || envUrl;
+  let resolvedKey = sanitizeEnvValue(windowEnv.VITE_SUPABASE_PUBLISHABLE_KEY || windowEnv.VITE_SUPABASE_ANON_KEY) || storedKey || envKey;
+  let resolvedProjectId = sanitizeEnvValue(windowEnv.VITE_SUPABASE_PROJECT_ID) || storedProjectId || envProjectId;
+
+  // 4. Production Resilience Gate:
+  // If we are on a remote production domain (like erp.arivahly.in) and the configured URL is empty or points to localhost,
+  // automatically use the authoritative production Supabase backend so client fetch never fails.
+  if (
+    !resolvedUrl ||
+    (isRemoteDomain && (resolvedUrl.includes("localhost") || resolvedUrl.includes("127.0.0.1") || resolvedUrl.includes("default")))
+  ) {
+    resolvedUrl = PROD_SUPABASE_URL;
+    if (!resolvedKey || resolvedKey === "sb_publishable_0wEt7qew0XI5Ml8fqfVKyw_l5jjDiMh") {
+      resolvedKey = PROD_SUPABASE_KEY;
+    }
+    if (!resolvedProjectId || resolvedProjectId === "default") {
+      resolvedProjectId = PROD_SUPABASE_PROJECT_ID;
+    }
+  }
+
+  if (!resolvedKey) {
+    resolvedKey = PROD_SUPABASE_KEY;
+  }
+
   return {
-    url: sanitizeEnvValue(import.meta.env.VITE_SUPABASE_URL),
-    key: sanitizeEnvValue(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY),
-    projectId: sanitizeEnvValue(import.meta.env.VITE_SUPABASE_PROJECT_ID),
+    url: resolvedUrl,
+    key: resolvedKey,
+    projectId: resolvedProjectId || PROD_SUPABASE_PROJECT_ID,
   };
 }
 
