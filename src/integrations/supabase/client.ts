@@ -37,6 +37,13 @@ function getResolvedConfig() {
   let storedProjectId = "";
   if (isBrowser) {
     try {
+      const legacyKeys = ["VITE_SUPABASE_URL", "MTJ_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY", "MTJ_SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_PROJECT_ID"];
+      for (const k of legacyKeys) {
+        const val = localStorage.getItem(k);
+        if (val && (val.includes("xrvsvzfqjptzbxjscnvf") || val.includes("mtj-erp") || val.includes("0wEt7qew0XI5Ml8fqfVKyw"))) {
+          localStorage.removeItem(k);
+        }
+      }
       storedUrl = localStorage.getItem("VITE_SUPABASE_URL") || localStorage.getItem("MTJ_SUPABASE_URL") || "";
       storedKey = localStorage.getItem("VITE_SUPABASE_PUBLISHABLE_KEY") || localStorage.getItem("MTJ_SUPABASE_PUBLISHABLE_KEY") || "";
       storedProjectId = localStorage.getItem("VITE_SUPABASE_PROJECT_ID") || "";
@@ -58,19 +65,21 @@ function getResolvedConfig() {
   let resolvedProjectId = sanitizeEnvValue(windowEnv.VITE_SUPABASE_PROJECT_ID) || storedProjectId || envProjectId;
 
   // 4. Production Resilience Gate:
-  // If we are on a remote production domain (like erp.arivahly.in) and the configured URL is empty or points to localhost,
-  // automatically use the authoritative production Supabase backend so client fetch never fails.
+  // On remote production domain or if legacy/decommissioned project is referenced,
+  // enforce the authoritative production Supabase backend.
+  const isDecommissioned =
+    resolvedUrl.includes("xrvsvzfqjptzbxjscnvf") ||
+    resolvedUrl.includes("mtj-erp") ||
+    resolvedKey.includes("0wEt7qew0XI5Ml8fqfVKyw");
+
   if (
     !resolvedUrl ||
-    (isRemoteDomain && (resolvedUrl.includes("localhost") || resolvedUrl.includes("127.0.0.1") || resolvedUrl.includes("default")))
+    isDecommissioned ||
+    (isRemoteDomain && (resolvedUrl.includes("localhost") || resolvedUrl.includes("127.0.0.1") || resolvedUrl.includes("default") || resolvedUrl !== PROD_SUPABASE_URL))
   ) {
     resolvedUrl = PROD_SUPABASE_URL;
-    if (!resolvedKey || resolvedKey === "sb_publishable_0wEt7qew0XI5Ml8fqfVKyw_l5jjDiMh") {
-      resolvedKey = PROD_SUPABASE_KEY;
-    }
-    if (!resolvedProjectId || resolvedProjectId === "default") {
-      resolvedProjectId = PROD_SUPABASE_PROJECT_ID;
-    }
+    resolvedKey = PROD_SUPABASE_KEY;
+    resolvedProjectId = PROD_SUPABASE_PROJECT_ID;
   }
 
   if (!resolvedKey) {
