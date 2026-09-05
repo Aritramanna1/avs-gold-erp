@@ -20,6 +20,12 @@ export default defineConfig({
       exclude: ["**/*.d.ts", "**/routeTree.gen.ts"],
     },
     testTimeout: 30_000,
+    env: {
+      VITE_SUPABASE_URL: "https://dqgrrafuoxaorvyrcuuh.supabase.co",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_test_key",
+      VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_test_key",
+      VITE_APP_URL: "https://erp.arivahly.in",
+    },
   },
   resolve: {
     alias: {

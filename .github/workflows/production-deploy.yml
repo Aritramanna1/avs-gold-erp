@@ -13,6 +13,12 @@ jobs:
   test-and-build:
     name: Test, Build & Deploy to Hostinger
     runs-on: ubuntu-latest
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://dqgrrafuoxaorvyrcuuh.supabase.co' }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_test_key' }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_test_key' }}
+      VITE_APP_URL: 'https://erp.arivahly.in'
+      CI: 'true'
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -30,14 +36,11 @@ jobs:
 
       - name: Run Gold & Accounting Invariant QA Tests
         run: |
+          mkdir -p qa/reports-output
           npm run qa:gold
           npm run qa:accounting
 
       - name: Build Production SPA Bundle
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://dqgrrafuoxaorvyrcuuh.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_anon_key' }}
-          VITE_APP_URL: 'https://erp.arivahly.in'
         run: npm run build
 
       - name: Copy Server-Side PHP APIs & .htaccess to Dist
