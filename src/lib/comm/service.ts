@@ -170,24 +170,33 @@ class CommunicationService {
         }
 
         if (req.channel === "email" && config.providerType.startsWith("email_")) {
-          const { data: edgeResult, error: edgeError } = await (supabase as any).functions.invoke(
-            "send-email",
-            {
-              body: {
+          let emailSuccess = false;
+          let emailError: string | undefined;
+          try {
+            const res = await fetch("/api/email/send.php", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
                 branchId: req.branchId || "MAIN",
                 to: req.recipient.email,
                 subject: content.subject,
                 htmlBody: content.htmlBody,
                 textBody: content.textBody,
-              },
-            },
-          );
+              }),
+            });
+            const data = await res.json().catch(() => ({}));
+            emailSuccess = res.ok && data.success !== false;
+            if (!emailSuccess) emailError = data.error || `HTTP ${res.status}`;
+          } catch (e: any) {
+            emailError = e?.message || "Email dispatch failed";
+          }
+
           const result: CommResult = {
-            success: !edgeError && edgeResult?.success === true,
+            success: emailSuccess,
             provider: config.providerType,
             channel: req.channel,
-            error: edgeError?.message || edgeResult?.error,
-            status: edgeError || edgeResult?.success !== true ? "failed" : "queued",
+            error: emailError,
+            status: emailSuccess ? "queued" : "failed",
           };
           this.log(req, result, content.textBody ?? "");
           if (result.success) return result;
