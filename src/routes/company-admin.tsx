@@ -26,6 +26,12 @@ import {
   Sparkles,
   Search,
   Eye,
+  Cloud,
+  Clock,
+  Bell,
+  LifeBuoy,
+  Trash2,
+  Upload,
 } from "lucide-react";
 import { useSettings } from "@/lib/settings-store";
 import {
@@ -40,6 +46,10 @@ import {
   useWebhookManagementStore,
   type WebhookLogItem,
 } from "@/lib/webhooks/webhook-management-store";
+import { r2Storage, type StorageObjectMetadata } from "@/lib/storage/r2-storage-service";
+import { useAutomatedReportsStore } from "@/lib/reports/automated-reports-store";
+import { useNotificationEngine, type ServiceAlertType } from "@/lib/notifications/central-notification-engine";
+import { useServiceRequestsStore, type TicketCategory, type TicketPriority } from "@/lib/service-requests/service-requests-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -65,6 +75,7 @@ function CompanyAdminPage() {
     currentUserRole,
   );
 
+  // Subscriptions Store
   const {
     subscription,
     planDefinitions,
@@ -75,15 +86,16 @@ function CompanyAdminPage() {
     updateCommercialPricing,
   } = useSubscriptionStore();
 
+  // Integrations Store
   const {
     integrations,
     fetchIntegrations,
     toggleIntegration,
-    saveConfig,
     testConnection,
     testingId,
   } = useIntegrationsStore();
 
+  // Webhooks Store
   const {
     logs: webhookLogs,
     fetchLogs: fetchWebhookLogs,
@@ -91,6 +103,38 @@ function CompanyAdminPage() {
     simulateWebhook,
     retryingId,
   } = useWebhookManagementStore();
+
+  // Automated Reports Store
+  const {
+    schedules: reportSchedules,
+    fetchSchedules,
+    toggleSchedule,
+    saveSchedule,
+    runScheduleNow,
+    runningId: runningReportId,
+  } = useAutomatedReportsStore();
+
+  // Notification Engine Store
+  const {
+    alerts: serviceAlerts,
+    fetchAlerts,
+    broadcastAlert,
+    dismissAlert,
+    dispatchNotification,
+  } = useNotificationEngine();
+
+  // Service Requests Store
+  const {
+    tickets,
+    fetchTickets,
+    createTicket,
+    updateTicketStatus,
+  } = useServiceRequestsStore();
+
+  // Storage files list
+  const [storageObjects, setStorageObjects] = useState<StorageObjectMetadata[]>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [selectedUploadCategory, setSelectedUploadCategory] = useState<"designs" | "products" | "documents">("designs");
 
   // Active tab state
   const [activeTab, setActiveTab] = useState("overview");
@@ -106,15 +150,32 @@ function CompanyAdminPage() {
   const [editMonthlyInr, setEditMonthlyInr] = useState(2800);
   const [editAnnualInr, setEditAnnualInr] = useState(30000);
 
-  // Integration config modal state
-  const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | null>(null);
-  const [integrationSettingsForm, setIntegrationSettingsForm] = useState<Record<string, any>>({});
-  const [integrationSecretsForm, setIntegrationSecretsForm] = useState<Record<string, string>>({});
-
   // Webhook inspector modal state
   const [selectedWebhook, setSelectedWebhook] = useState<WebhookLogItem | null>(null);
   const [webhookSearchQuery, setWebhookSearchQuery] = useState("");
   const [webhookProviderFilter, setWebhookProviderFilter] = useState("all");
+
+  // Report Schedule modal state
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportTitle, setReportTitle] = useState("Daily Gold & Vault Digest");
+  const [reportType, setReportType] = useState<any>("daily_gold_balance");
+  const [reportFreq, setReportFreq] = useState<any>("daily");
+  const [reportRecipients, setReportRecipients] = useState("owner@maatarajewellers.shop");
+  const [reportFormat, setReportFormat] = useState<any>("pdf");
+
+  // Broadcast Alert modal state
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [alertType, setAlertType] = useState<ServiceAlertType>("PLANNED_MAINTENANCE");
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertSeverity, setAlertSeverity] = useState<any>("info");
+
+  // New Ticket modal state
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  const [ticketCategory, setTicketCategory] = useState<TicketCategory>("technical");
+  const [ticketPriority, setTicketPriority] = useState<TicketPriority>("medium");
+  const [ticketSubject, setTicketSubject] = useState("");
+  const [ticketDescription, setTicketDescription] = useState("");
 
   // System Diagnostics state
   const [isHealthRefreshing, setIsHealthRefreshing] = useState(false);
@@ -124,6 +185,7 @@ function CompanyAdminPage() {
     authService: "Active · Supabase Auth RLS",
     webhookDispatcher: "Active · /api/webhooks/dispatcher.php",
     emailEngine: "Ready · Hostinger Native SMTP",
+    r2Storage: "Active · Cloudflare R2 Vault",
     storageUsageGb: 4.8,
     storageMaxGb: subscription.limits?.storageGb || 25,
     responseTimeMs: 24,
@@ -135,7 +197,11 @@ function CompanyAdminPage() {
     void fetchSubscription();
     void fetchIntegrations();
     void fetchWebhookLogs();
-  }, [fetchSubscription, fetchIntegrations, fetchWebhookLogs]);
+    void fetchSchedules();
+    void fetchAlerts();
+    void fetchTickets();
+    void r2Storage.listTenantObjects().then(setStorageObjects);
+  }, [fetchSubscription, fetchIntegrations, fetchWebhookLogs, fetchSchedules, fetchAlerts, fetchTickets]);
 
   // Refresh health telemetry
   const refreshHealth = async () => {
@@ -159,6 +225,23 @@ function CompanyAdminPage() {
   };
 
   const subInfo = useMemo(() => getSubscriptionStatusInfo(), [subscription]);
+
+  // Handle R2 File Upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingMedia(true);
+    try {
+      const res = await r2Storage.upload(file, selectedUploadCategory);
+      if (res.success) {
+        const updated = await r2Storage.listTenantObjects();
+        setStorageObjects(updated);
+      }
+    } finally {
+      setIsUploadingMedia(false);
+      e.target.value = "";
+    }
+  };
 
   // Filtered webhooks
   const filteredWebhooks = useMemo(() => {
@@ -199,14 +282,14 @@ function CompanyAdminPage() {
               AVS Online Management Center
             </span>
             <Badge variant="outline" className="text-[11px] font-mono border-primary/30 text-primary">
-              v1.1.2 MANAGED
+              v1.1.2 ONLINE
             </Badge>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mt-1">
             Admin Control Center
           </h1>
           <p className="text-sm text-muted-foreground">
-            Authoritative administration, subscription entitlements, webhooks, and integrations.
+            Authoritative administration: Subscriptions, Cloudflare R2 Storage, Reports, Notifications & Webhooks.
           </p>
         </div>
 
@@ -239,32 +322,36 @@ function CompanyAdminPage() {
 
       {/* ── Navigation Tabs ────────────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 h-auto p-1 bg-muted/60 rounded-lg">
-          <TabsTrigger value="overview" className="gap-1.5 py-2 text-xs font-medium">
+        <TabsList className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-8 h-auto p-1 bg-muted/60 rounded-lg">
+          <TabsTrigger value="overview" className="gap-1 py-2 text-xs font-medium">
             <Activity className="h-3.5 w-3.5" />
             <span>Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="subscription" className="gap-1.5 py-2 text-xs font-medium">
+          <TabsTrigger value="subscription" className="gap-1 py-2 text-xs font-medium">
             <CreditCard className="h-3.5 w-3.5" />
             <span>Subscription</span>
           </TabsTrigger>
-          <TabsTrigger value="entitlements" className="gap-1.5 py-2 text-xs font-medium">
-            <Layers className="h-3.5 w-3.5" />
-            <span>Entitlements</span>
+          <TabsTrigger value="storage" className="gap-1 py-2 text-xs font-medium">
+            <Cloud className="h-3.5 w-3.5" />
+            <span>R2 Storage</span>
           </TabsTrigger>
-          <TabsTrigger value="company" className="gap-1.5 py-2 text-xs font-medium">
-            <Building2 className="h-3.5 w-3.5" />
-            <span>Branches</span>
+          <TabsTrigger value="reports" className="gap-1 py-2 text-xs font-medium">
+            <Clock className="h-3.5 w-3.5" />
+            <span>Auto Reports</span>
           </TabsTrigger>
-          <TabsTrigger value="integrations" className="gap-1.5 py-2 text-xs font-medium">
-            <Sliders className="h-3.5 w-3.5" />
-            <span>Integrations</span>
+          <TabsTrigger value="notifications" className="gap-1 py-2 text-xs font-medium">
+            <Bell className="h-3.5 w-3.5" />
+            <span>Notifications</span>
           </TabsTrigger>
-          <TabsTrigger value="webhooks" className="gap-1.5 py-2 text-xs font-medium">
+          <TabsTrigger value="helpdesk" className="gap-1 py-2 text-xs font-medium">
+            <LifeBuoy className="h-3.5 w-3.5" />
+            <span>Helpdesk</span>
+          </TabsTrigger>
+          <TabsTrigger value="webhooks" className="gap-1 py-2 text-xs font-medium">
             <Webhook className="h-3.5 w-3.5" />
             <span>Webhooks</span>
           </TabsTrigger>
-          <TabsTrigger value="audit" className="gap-1.5 py-2 text-xs font-medium">
+          <TabsTrigger value="audit" className="gap-1 py-2 text-xs font-medium">
             <FileText className="h-3.5 w-3.5" />
             <span>Audit Logs</span>
           </TabsTrigger>
@@ -274,22 +361,11 @@ function CompanyAdminPage() {
             TAB 1: OVERVIEW & SYSTEM HEALTH
            ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="overview" className="space-y-6">
-          {/* Quick Metrics Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Active Plan Card */}
             <div className="rounded-xl border bg-card p-5 shadow-sm space-y-3">
               <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
                 <span>Active Subscription</span>
-                <Badge
-                  variant={
-                    subInfo.badgeVariant === "success"
-                      ? "default"
-                      : subInfo.badgeVariant === "warning"
-                        ? "secondary"
-                        : "destructive"
-                  }
-                  className="capitalize font-mono text-[11px]"
-                >
+                <Badge variant="default" className="capitalize font-mono text-[11px]">
                   {subscription.status}
                 </Badge>
               </div>
@@ -305,93 +381,72 @@ function CompanyAdminPage() {
               </div>
             </div>
 
-            {/* Branch Allocations Card */}
             <div className="rounded-xl border bg-card p-5 shadow-sm space-y-3">
               <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
-                <span>Branch Allowance</span>
-                <Building2 className="h-4 w-4 text-primary" />
+                <span>R2 Object Vault</span>
+                <Cloud className="h-4 w-4 text-primary" />
               </div>
               <div>
                 <div className="text-2xl font-bold text-foreground">
-                  {settings.branches?.length || 1} / {subscription.limits?.maxBranches || 2}
+                  {storageObjects.length} Objects
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">Active retail & workshop units</div>
-              </div>
-              <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                <div
-                  className="bg-primary h-full rounded-full"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (((settings.branches?.length || 1) /
-                        (subscription.limits?.maxBranches || 2)) *
-                        100),
-                    )}%`,
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Webhook Activity Card */}
-            <div className="rounded-xl border bg-card p-5 shadow-sm space-y-3">
-              <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
-                <span>Webhook Health</span>
-                <Webhook className="h-4 w-4 text-emerald-500" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-foreground">
-                  {webhookLogs.filter((w) => w.status === "processed").length} / {webhookLogs.length}
-                </div>
-                <div className="text-xs text-emerald-600 font-medium mt-0.5">
-                  100% Idempotent Delivery
-                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">Cloudflare R2 Tenant Prefix</div>
               </div>
               <div className="text-xs text-muted-foreground pt-2 border-t border-border flex justify-between">
-                <span>Dispatcher:</span>
-                <span className="font-mono text-emerald-600">Active</span>
+                <span>Isolation:</span>
+                <span className="font-mono text-emerald-600 font-semibold">Strict</span>
               </div>
             </div>
 
-            {/* Storage Allowance Card */}
             <div className="rounded-xl border bg-card p-5 shadow-sm space-y-3">
               <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
-                <span>Hostinger Storage</span>
-                <Database className="h-4 w-4 text-blue-500" />
+                <span>Automated Reports</span>
+                <Clock className="h-4 w-4 text-emerald-500" />
               </div>
               <div>
                 <div className="text-2xl font-bold text-foreground">
-                  {healthTelemetry.storageUsageGb} GB / {healthTelemetry.storageMaxGb} GB
+                  {reportSchedules.filter((s) => s.isEnabled).length} Active
                 </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  Invoices, attachments & media
-                </div>
+                <div className="text-xs text-emerald-600 font-medium mt-0.5">Hostinger SMTP Delivery</div>
               </div>
-              <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                <div
-                  className="bg-blue-500 h-full rounded-full"
-                  style={{
-                    width: `${(healthTelemetry.storageUsageGb / healthTelemetry.storageMaxGb) * 100}%`,
-                  }}
-                />
+              <div className="text-xs text-muted-foreground pt-2 border-t border-border flex justify-between">
+                <span>Runner:</span>
+                <span className="font-mono text-foreground">Scheduled</span>
+              </div>
+            </div>
+
+            <div className="rounded-xl border bg-card p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between text-muted-foreground text-xs font-medium">
+                <span>Open Helpdesk Tickets</span>
+                <LifeBuoy className="h-4 w-4 text-amber-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-foreground">
+                  {tickets.filter((t) => t.status !== "resolved" && t.status !== "closed").length}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">Service requests pending</div>
+              </div>
+              <div className="text-xs text-muted-foreground pt-2 border-t border-border flex justify-between">
+                <span>Resolution SLA:</span>
+                <span className="font-mono text-foreground">&lt; 24h</span>
               </div>
             </div>
           </div>
 
-          {/* System Health Diagnostics Card */}
+          {/* Infrastructure Health Card */}
           <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <div>
                 <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <Server className="h-5 w-5 text-primary" />
-                  <span>Real-Time Infrastructure Telemetry</span>
+                  <span>Real-Time System Telemetry</span>
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Live operational status of Hostinger application layer, Supabase PostgreSQL, and
-                  subsystems.
+                  Hostinger PHP Engine, Supabase PostgreSQL, Cloudflare R2 Vault, and Dispatchers.
                 </p>
               </div>
               <span className="text-xs text-muted-foreground font-mono">
-                Updated: {healthTelemetry.lastChecked} ({healthTelemetry.responseTimeMs}ms)
+                Checked: {healthTelemetry.lastChecked} ({healthTelemetry.responseTimeMs}ms)
               </span>
             </div>
 
@@ -415,25 +470,23 @@ function CompanyAdminPage() {
               <div className="p-3.5 rounded-lg border border-border/80 bg-muted/20 space-y-1">
                 <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  <span>Authentication & RLS</span>
+                  <span>Cloudflare R2 Storage Vault</span>
                 </div>
-                <p className="text-xs font-mono text-muted-foreground">{healthTelemetry.authService}</p>
+                <p className="text-xs font-mono text-muted-foreground">{healthTelemetry.r2Storage}</p>
               </div>
 
               <div className="p-3.5 rounded-lg border border-border/80 bg-muted/20 space-y-1">
                 <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  <span>Central Webhook Dispatcher</span>
+                  <span>Webhook Dispatcher</span>
                 </div>
-                <p className="text-xs font-mono text-muted-foreground">
-                  {healthTelemetry.webhookDispatcher}
-                </p>
+                <p className="text-xs font-mono text-muted-foreground">{healthTelemetry.webhookDispatcher}</p>
               </div>
 
               <div className="p-3.5 rounded-lg border border-border/80 bg-muted/20 space-y-1">
                 <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  <span>Hostinger Email Dispatcher</span>
+                  <span>Hostinger Email Engine</span>
                 </div>
                 <p className="text-xs font-mono text-muted-foreground">{healthTelemetry.emailEngine}</p>
               </div>
@@ -441,11 +494,9 @@ function CompanyAdminPage() {
               <div className="p-3.5 rounded-lg border border-border/80 bg-muted/20 space-y-1">
                 <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  <span>Cron / Scheduled Automation</span>
+                  <span>Automated Report Runner</span>
                 </div>
-                <p className="text-xs font-mono text-muted-foreground">
-                  Active · /api/cron/scheduled-jobs.php
-                </p>
+                <p className="text-xs font-mono text-muted-foreground">/api/reports/automated-runner.php</p>
               </div>
             </div>
           </div>
@@ -456,7 +507,6 @@ function CompanyAdminPage() {
            ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="subscription" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Active Subscription Details Card */}
             <div className="lg:col-span-2 rounded-xl border bg-card p-6 shadow-sm space-y-5">
               <div className="flex items-start justify-between border-b border-border pb-4">
                 <div>
@@ -467,25 +517,15 @@ function CompanyAdminPage() {
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Billing Cycle:{" "}
-                    <strong className="text-foreground uppercase">{subscription.billingCycle}</strong>{" "}
-                    · Price:{" "}
-                    <strong className="text-foreground">
-                      ₹ {subscription.priceInr.toLocaleString("en-IN")}
-                    </strong>
+                    Billing: <strong className="text-foreground uppercase">{subscription.billingCycle}</strong> · Price: <strong className="text-foreground">₹ {subscription.priceInr.toLocaleString("en-IN")}</strong>
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => setIsPlanModalOpen(true)}
-                  className="gap-1.5"
-                >
+                <Button size="sm" onClick={() => setIsPlanModalOpen(true)} className="gap-1.5">
                   <Sparkles className="h-3.5 w-3.5" />
                   <span>Upgrade / Change</span>
                 </Button>
               </div>
 
-              {/* Lifecycle Dates */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                 <div className="p-3 rounded-lg border bg-muted/30">
                   <span className="text-muted-foreground">Start Date:</span>
@@ -502,126 +542,36 @@ function CompanyAdminPage() {
                 <div className="p-3 rounded-lg border bg-muted/30">
                   <span className="text-muted-foreground">Trial Expiry:</span>
                   <div className="font-medium text-foreground mt-0.5">
-                    {subscription.trialEndDate
-                      ? new Date(subscription.trialEndDate).toLocaleDateString("en-IN")
-                      : "Not applicable"}
+                    {subscription.trialEndDate ? new Date(subscription.trialEndDate).toLocaleDateString("en-IN") : "—"}
                   </div>
                 </div>
               </div>
 
-              {/* Usage vs Capacity Meters */}
-              <div className="space-y-4 pt-2">
-                <h3 className="text-sm font-semibold text-foreground">Capacity & Plan Quotas</h3>
-
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                      <span>Branch Units</span>
-                      <strong className="text-foreground">
-                        {settings.branches?.length || 1} / {subscription.limits?.maxBranches}
-                      </strong>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-primary h-full rounded-full"
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            (((settings.branches?.length || 1) /
-                              (subscription.limits?.maxBranches || 1)) *
-                              100),
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                      <span>Staff Users</span>
-                      <strong className="text-foreground">
-                        5 / {subscription.limits?.maxUsers}
-                      </strong>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-primary h-full rounded-full"
-                        style={{
-                          width: `${(5 / (subscription.limits?.maxUsers || 10)) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                      <span>Storage Allowance</span>
-                      <strong className="text-foreground">
-                        4.8 GB / {subscription.limits?.storageGb} GB
-                      </strong>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-blue-500 h-full rounded-full"
-                        style={{
-                          width: `${(4.8 / (subscription.limits?.storageGb || 25)) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Actions */}
               <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-border">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateStatus("active", "Administrator manual activation")}
-                >
+                <Button variant="outline" size="sm" onClick={() => updateStatus("active", "Manual activation")}>
                   Mark Active
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateStatus("past_due", "Grace period notice")}
-                >
+                <Button variant="outline" size="sm" onClick={() => updateStatus("past_due", "Grace notice")}>
                   Mark Past Due
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateStatus("suspended", "Administrative suspension")}
-                  className="text-destructive hover:text-destructive"
-                >
+                <Button variant="outline" size="sm" onClick={() => updateStatus("suspended", "Admin suspension")} className="text-destructive hover:text-destructive">
                   Suspend Plan
                 </Button>
               </div>
             </div>
 
-            {/* Commercial Pricing Configurator Card */}
             <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <h3 className="text-base font-semibold text-foreground">Commercial Pricing</h3>
-                <Badge variant="outline" className="text-[10px]">
-                  Configurable
-                </Badge>
+                <Badge variant="outline" className="text-[10px]">Configurable</Badge>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Customize commercial plan prices in real-time without modifying application code.
-              </p>
-
               <div className="space-y-3">
                 {Object.values(planDefinitions).map((plan) => (
-                  <div
-                    key={plan.id}
-                    className="p-3 rounded-lg border border-border bg-muted/20 flex items-center justify-between"
-                  >
+                  <div key={plan.id} className="p-3 rounded-lg border border-border bg-muted/20 flex items-center justify-between">
                     <div>
                       <div className="text-xs font-semibold text-foreground">{plan.name}</div>
                       <div className="text-[11px] text-muted-foreground">
-                        ₹ {plan.pricingAnnualINR.toLocaleString("en-IN")} / yr (₹{" "}
-                        {plan.pricingMonthlyINR.toLocaleString("en-IN")}/mo)
+                        ₹ {plan.pricingAnnualINR.toLocaleString("en-IN")} / yr
                       </div>
                     </div>
                     <Button
@@ -642,42 +592,349 @@ function CompanyAdminPage() {
               </div>
             </div>
           </div>
+        </TabsContent>
 
-          {/* Subscription Events Audit History */}
-          <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-semibold text-foreground">Subscription Event Audit History</h3>
-            <div className="overflow-x-auto">
+        {/* ══════════════════════════════════════════════════════════════════════
+            TAB 3: CLOUDFLARE R2 OBJECT STORAGE VAULT
+           ══════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="storage" className="space-y-6">
+          <div className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border pb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <Cloud className="h-5 w-5 text-primary" />
+                  <span>Cloudflare R2 Object Storage Vault</span>
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Tenant-isolated object storage for jewelry designs, high-res photos, and customer documents.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedUploadCategory}
+                  onChange={(e) => setSelectedUploadCategory(e.target.value as any)}
+                  className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm"
+                >
+                  <option value="designs">Category: Designs</option>
+                  <option value="products">Category: Products</option>
+                  <option value="documents">Category: Documents</option>
+                </select>
+
+                <label className="cursor-pointer">
+                  <Button size="sm" className="gap-1.5" disabled={isUploadingMedia} asChild>
+                    <span>
+                      <Upload className="h-3.5 w-3.5" />
+                      <span>{isUploadingMedia ? "Uploading..." : "Upload Media"}</span>
+                    </span>
+                  </Button>
+                  <input type="file" onChange={handleFileUpload} className="hidden" />
+                </label>
+              </div>
+            </div>
+
+            {/* Tenant Path Isolation Notice */}
+            <div className="p-3.5 rounded-lg border border-primary/20 bg-primary/5 text-xs text-muted-foreground flex items-center justify-between">
+              <div>
+                <strong className="text-foreground">Tenant Storage Prefix:</strong>{" "}
+                <code className="font-mono text-primary">tenant/tenant_default/&#123;category&#125;/*</code>
+              </div>
+              <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-500/30">
+                Cross-Tenant Access Blocked
+              </Badge>
+            </div>
+
+            {/* Objects Table */}
+            <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-xs text-left">
-                <thead className="text-muted-foreground border-b border-border">
+                <thead className="bg-muted/50 text-muted-foreground border-b border-border">
                   <tr>
-                    <th className="py-2.5 font-medium">Event Type</th>
-                    <th className="py-2.5 font-medium">Tier Transition</th>
-                    <th className="py-2.5 font-medium">Status Transition</th>
-                    <th className="py-2.5 font-medium">Actor</th>
-                    <th className="py-2.5 font-medium">Notes</th>
-                    <th className="py-2.5 font-medium">Timestamp</th>
+                    <th className="py-2.5 px-3 font-medium">Filename</th>
+                    <th className="py-2.5 px-3 font-medium">Category</th>
+                    <th className="py-2.5 px-3 font-medium">Object Key (Tenant Isolated)</th>
+                    <th className="py-2.5 px-3 font-medium">Size</th>
+                    <th className="py-2.5 px-3 font-medium">Uploaded At</th>
+                    <th className="py-2.5 px-3 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {subEvents.map((evt) => (
-                    <tr key={evt.id} className="hover:bg-muted/30">
-                      <td className="py-2.5 font-mono font-medium text-foreground">
-                        {evt.eventType}
-                      </td>
-                      <td className="py-2.5">
-                        <span className="text-muted-foreground">{evt.previousTier || "—"}</span>
-                        {" → "}
-                        <strong className="text-foreground">{evt.newTier}</strong>
-                      </td>
-                      <td className="py-2.5">
+                  {storageObjects.map((obj) => (
+                    <tr key={obj.id} className="hover:bg-muted/30">
+                      <td className="py-2.5 px-3 font-medium text-foreground">{obj.filename}</td>
+                      <td className="py-2.5 px-3">
                         <Badge variant="outline" className="capitalize text-[10px]">
-                          {evt.newStatus}
+                          {obj.category}
                         </Badge>
                       </td>
-                      <td className="py-2.5 text-muted-foreground">{evt.actorEmail}</td>
-                      <td className="py-2.5 text-muted-foreground">{evt.notes || "—"}</td>
-                      <td className="py-2.5 text-muted-foreground font-mono">
-                        {new Date(evt.createdAt).toLocaleString("en-IN")}
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-muted-foreground">
+                        {obj.objectKey}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-muted-foreground">
+                        {(obj.sizeBytes / 1024).toFixed(1)} KB
+                      </td>
+                      <td className="py-2.5 px-3 text-muted-foreground font-mono">
+                        {new Date(obj.createdAt).toLocaleDateString("en-IN")}
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              const url = await r2Storage.getSignedUrl(obj.objectKey);
+                              if (url) window.open(url, "_blank");
+                              else toast.error("Could not sign URL");
+                            }}
+                            className="h-7 px-2 text-xs"
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            <span>Signed URL</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              await r2Storage.deleteObject(obj.objectKey);
+                              const updated = await r2Storage.listTenantObjects();
+                              setStorageObjects(updated);
+                            }}
+                            className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {storageObjects.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                        No files in R2 storage vault. Click "Upload Media" to add your first design.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            TAB 4: AUTOMATED REPORTS ENGINE
+           ══════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="reports" className="space-y-6">
+          <div className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border pb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <span>Automated Reporting Engine</span>
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Configure daily, weekly, or monthly executive digests dispatched via Hostinger email.
+                </p>
+              </div>
+
+              <Button size="sm" onClick={() => setIsReportModalOpen(true)} className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add Report Schedule</span>
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {reportSchedules.map((sched) => (
+                <div key={sched.id} className="p-4 rounded-xl border border-border bg-card flex flex-col justify-between space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between">
+                      <h3 className="text-sm font-semibold text-foreground">{sched.title}</h3>
+                      <Switch
+                        checked={sched.isEnabled}
+                        onCheckedChange={(val) => toggleSchedule(sched.id, val)}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="outline" className="capitalize text-[10px]">{sched.frequency}</Badge>
+                      <span>at {sched.executionTime} IST</span>
+                      <span>· {sched.format.toUpperCase()}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Recipients: <strong className="text-foreground">{sched.recipients.join(", ")}</strong>
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">
+                      Status: <strong className="text-emerald-600 capitalize">{sched.lastStatus}</strong>
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => runScheduleNow(sched.id)}
+                      disabled={runningReportId === sched.id}
+                      className="h-7 text-xs gap-1"
+                    >
+                      <Play className="h-3 w-3" />
+                      <span>{runningReportId === sched.id ? "Running..." : "Run Now"}</span>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            TAB 5: NOTIFICATIONS & SERVICE HEALTH BROADCASTS
+           ══════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="notifications" className="space-y-6">
+          <div className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border pb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-primary" />
+                  <span>Central Notification & Service Alert Engine</span>
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Multi-channel event engine with anti-alert spam deduplication.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => dispatchNotification("subscription.expiring", "owner@maatarajewellers.shop", "Subscription Ending Soon", "Your annual plan renews in 14 days.")}
+                  className="text-xs gap-1"
+                >
+                  <Zap className="h-3 w-3" />
+                  <span>Test Alert</span>
+                </Button>
+                <Button size="sm" onClick={() => setIsAlertModalOpen(true)} className="gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Broadcast Notice</span>
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {serviceAlerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className={`p-4 rounded-xl border flex items-start justify-between gap-4 ${
+                    alert.severity === "critical"
+                      ? "border-destructive/40 bg-destructive/5"
+                      : alert.severity === "warning"
+                        ? "border-amber-500/40 bg-amber-500/5"
+                        : "border-primary/30 bg-primary/5"
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="font-mono text-[10px] uppercase">
+                        {alert.alertType}
+                      </Badge>
+                      <h4 className="text-sm font-semibold text-foreground">{alert.title}</h4>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{alert.message}</p>
+                    <div className="text-[10px] font-mono text-muted-foreground mt-1">
+                      Event ID: {alert.eventId} · Started: {new Date(alert.startsAt).toLocaleString("en-IN")}
+                    </div>
+                  </div>
+
+                  {alert.isActive && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => dismissAlert(alert.id)}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Dismiss
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            TAB 6: HELPDESK & SERVICE REQUESTS
+           ══════════════════════════════════════════════════════════════════════ */}
+        <TabsContent value="helpdesk" className="space-y-6">
+          <div className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border pb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                  <LifeBuoy className="h-5 w-5 text-primary" />
+                  <span>Operational Service Requests</span>
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Technical, billing, deployment, and integration support ticketing.
+                </p>
+              </div>
+
+              <Button size="sm" onClick={() => setIsTicketModalOpen(true)} className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" />
+                <span>New Service Request</span>
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-muted/50 text-muted-foreground border-b border-border">
+                  <tr>
+                    <th className="py-2.5 px-3 font-medium">Ticket No</th>
+                    <th className="py-2.5 px-3 font-medium">Subject</th>
+                    <th className="py-2.5 px-3 font-medium">Category</th>
+                    <th className="py-2.5 px-3 font-medium">Priority</th>
+                    <th className="py-2.5 px-3 font-medium">Status</th>
+                    <th className="py-2.5 px-3 font-medium">Created</th>
+                    <th className="py-2.5 px-3 font-medium text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {tickets.map((t) => (
+                    <tr key={t.id} className="hover:bg-muted/30">
+                      <td className="py-2.5 px-3 font-mono font-medium text-primary">{t.ticketNo}</td>
+                      <td className="py-2.5 px-3 font-medium text-foreground">
+                        <div>{t.subject}</div>
+                        <div className="text-[11px] text-muted-foreground line-clamp-1">{t.description}</div>
+                      </td>
+                      <td className="py-2.5 px-3 capitalize">{t.category}</td>
+                      <td className="py-2.5 px-3">
+                        <Badge
+                          variant={
+                            t.priority === "urgent" || t.priority === "high"
+                              ? "destructive"
+                              : "outline"
+                          }
+                          className="capitalize text-[10px]"
+                        >
+                          {t.priority}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <Badge
+                          variant={t.status === "resolved" ? "default" : "secondary"}
+                          className="capitalize text-[10px]"
+                        >
+                          {t.status.replace("_", " ")}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 px-3 text-muted-foreground font-mono">
+                        {new Date(t.createdAt).toLocaleDateString("en-IN")}
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        {t.status !== "resolved" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => updateTicketStatus(t.id, "resolved", "Resolved via Admin Control Center")}
+                            className="h-7 text-xs text-emerald-600 hover:text-emerald-700"
+                          >
+                            Resolve
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -688,240 +945,7 @@ function CompanyAdminPage() {
         </TabsContent>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            TAB 3: FEATURE ENTITLEMENTS MATRIX
-           ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="entitlements" className="space-y-6">
-          <div className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
-            <div className="border-b border-border pb-4">
-              <h2 className="text-lg font-semibold text-foreground">Granular Feature Entitlements</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Authoritative entitlement matrix governed by the active plan (
-                <strong>{subscription.planName}</strong>).
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[
-                { key: "business.core", label: "Core Jewellery Accounting & Ledger", desc: "Gold fine balance, vouchers, dar-rojmel" },
-                { key: "business.orders", label: "Custom Order & Repair Engine", desc: "Customer job tracking, advances, delivery slips" },
-                { key: "business.workshop", label: "Workshop & Karigar Management", desc: "Job cards, melting, issue/receive, custody balance" },
-                { key: "business.billing_full", label: "Tax Invoicing & GST Returns", desc: "CGST/SGST/IGST, HSN summaries, debit/credit notes" },
-                { key: "business.barcode", label: "Barcode Tagging & Stock Tracking", desc: "EAN-13, Code-128, RFID batch tray tags" },
-                { key: "business.item_masters", label: "Item Masters & Rates Engine", desc: "Purity matrices, stone weight, making charges" },
-                { key: "business.customer_portal", label: "Customer Self-Service Portal", desc: "Public link for order tracking & digital invoices" },
-                { key: "business.karigar_portal", label: "Karigar Workshop Portal", desc: "Worker bench job queue and material issue slips" },
-                { key: "business.supplier_portal", label: "Supplier Bullion Portal", desc: "Vendor invoices, purchase reconciliations" },
-                { key: "business.document_hosting", label: "Hostinger Document Vault", desc: "PDF invoice storage, hallmarking certificates" },
-                { key: "business.api_webhooks", label: "Central Webhook & API Access", desc: "Inbound webhooks for Razorpay & WhatsApp" },
-                { key: "business.multi_branch", label: "Multi-Branch Company Sync", desc: "Gorakhpur Main, Branch 2, Karigar Unit" },
-              ].map((item) => {
-                const isEnabled = subscription.features?.includes(item.key);
-                return (
-                  <div
-                    key={item.key}
-                    className={`p-4 rounded-xl border transition-all ${
-                      isEnabled ? "border-emerald-500/40 bg-emerald-500/5" : "border-border bg-muted/20 opacity-70"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-foreground">{item.label}</span>
-                      <Badge
-                        variant={isEnabled ? "default" : "secondary"}
-                        className="text-[10px] font-mono"
-                      >
-                        {isEnabled ? "ACTIVE" : "LOCKED"}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1.5">{item.desc}</p>
-                    <div className="text-[10px] font-mono text-muted-foreground/80 mt-2">
-                      Key: {item.key}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            TAB 4: COMPANY & BRANCH ALLOCATIONS
-           ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="company" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Company Legal Profile */}
-            <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
-              <h3 className="text-base font-semibold text-foreground">Company Legal Profile</h3>
-              <div className="space-y-3 text-xs">
-                <div>
-                  <span className="text-muted-foreground">Legal Trade Name:</span>
-                  <Input
-                    value={settings.firm.shopName}
-                    onChange={(e) =>
-                      settings.updateFirm({ ...settings.firm, shopName: e.target.value })
-                    }
-                    className="mt-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <span className="text-muted-foreground">GSTIN / Tax ID:</span>
-                  <Input
-                    value={settings.firm.gstin || ""}
-                    onChange={(e) =>
-                      settings.updateFirm({ ...settings.firm, gstin: e.target.value })
-                    }
-                    placeholder="09AAAAA0000A1Z5"
-                    className="mt-1 text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Registered Address:</span>
-                  <Input
-                    value={settings.firm.address || ""}
-                    onChange={(e) =>
-                      settings.updateFirm({ ...settings.firm, address: e.target.value })
-                    }
-                    className="mt-1 text-xs"
-                  />
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Contact Phone:</span>
-                  <Input
-                    value={settings.firm.phone || ""}
-                    onChange={(e) =>
-                      settings.updateFirm({ ...settings.firm, phone: e.target.value })
-                    }
-                    className="mt-1 text-xs"
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => toast.success("Company profile saved")}
-                  className="w-full mt-2"
-                >
-                  Save Profile
-                </Button>
-              </div>
-            </div>
-
-            {/* Branch Units Allocator */}
-            <div className="lg:col-span-2 rounded-xl border bg-card p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <div>
-                  <h3 className="text-base font-semibold text-foreground">Branch Allocations</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Operating under the Single Company, Multiple Branches model.
-                  </p>
-                </div>
-                <Badge variant="outline" className="font-mono text-xs">
-                  {settings.branches?.length || 1} / {subscription.limits?.maxBranches} Units
-                </Badge>
-              </div>
-
-              <div className="space-y-3">
-                {(settings.branches || []).map((branch: any, idx: number) => (
-                  <div
-                    key={branch.id || idx}
-                    className="p-4 rounded-xl border border-border bg-muted/10 flex items-center justify-between"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-semibold text-foreground">
-                          {branch.name || "Gorakhpur Main Branch"}
-                        </span>
-                        <Badge variant="outline" className="text-[10px]">
-                          {branch.code || `BR-${idx + 1}`}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {branch.address || "Main Market Showroom, Gorakhpur"} · Phone:{" "}
-                        {branch.phone || "+91 98765 43210"}
-                      </p>
-                    </div>
-                    <Badge variant="default" className="text-[10px]">
-                      ACTIVE
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            TAB 5: INTEGRATIONS & APIS
-           ══════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="integrations" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {integrations.map((item) => (
-              <div
-                key={item.id}
-                className="rounded-xl border bg-card p-5 shadow-sm flex flex-col justify-between space-y-4"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground">{item.name}</h3>
-                      <Badge variant="outline" className="capitalize text-[10px] mt-1 font-mono">
-                        {item.category}
-                      </Badge>
-                    </div>
-                    <Switch
-                      checked={item.isEnabled}
-                      onCheckedChange={(val) => toggleIntegration(item.id, val)}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
-                </div>
-
-                <div className="pt-3 border-t border-border space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Health Status:</span>
-                    <span
-                      className={`font-semibold capitalize ${
-                        item.healthStatus === "healthy"
-                          ? "text-emerald-600"
-                          : item.healthStatus === "error"
-                            ? "text-destructive"
-                            : "text-muted-foreground"
-                      }`}
-                    >
-                      {item.healthStatus}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => testConnection(item.id)}
-                      disabled={testingId === item.id}
-                      className="flex-1 text-xs h-8 gap-1"
-                    >
-                      <Play className="h-3 w-3" />
-                      <span>{testingId === item.id ? "Testing..." : "Test Connection"}</span>
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedIntegrationId(item.id);
-                        setIntegrationSettingsForm(item.settings);
-                        setIntegrationSecretsForm({});
-                      }}
-                      className="text-xs h-8"
-                    >
-                      Configure
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            TAB 6: WEBHOOK OPERATIONS & LOG INSPECTOR
+            TAB 7: WEBHOOK OPERATIONS
            ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="webhooks" className="space-y-6">
           <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
@@ -955,33 +979,6 @@ function CompanyAdminPage() {
               </div>
             </div>
 
-            {/* Filter Bar */}
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="relative flex-1 w-full">
-                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search by event type or idempotency key..."
-                  value={webhookSearchQuery}
-                  onChange={(e) => setWebhookSearchQuery(e.target.value)}
-                  className="pl-8 text-xs h-9"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <select
-                  value={webhookProviderFilter}
-                  onChange={(e) => setWebhookProviderFilter(e.target.value)}
-                  className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="all">All Providers</option>
-                  <option value="razorpay">Razorpay</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Webhooks Table */}
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-xs text-left">
                 <thead className="bg-muted/50 text-muted-foreground border-b border-border">
@@ -991,7 +988,6 @@ function CompanyAdminPage() {
                     <th className="py-2.5 px-3 font-medium">Idempotency Key</th>
                     <th className="py-2.5 px-3 font-medium">Status</th>
                     <th className="py-2.5 px-3 font-medium">Execution</th>
-                    <th className="py-2.5 px-3 font-medium">Received At</th>
                     <th className="py-2.5 px-3 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1003,58 +999,28 @@ function CompanyAdminPage() {
                           {log.provider}
                         </Badge>
                       </td>
-                      <td className="py-2.5 px-3 font-mono font-medium text-foreground">
-                        {log.eventType}
-                      </td>
+                      <td className="py-2.5 px-3 font-mono font-medium text-foreground">{log.eventType}</td>
                       <td className="py-2.5 px-3 font-mono text-muted-foreground text-[11px]">
                         {log.idempotencyKey.slice(0, 16)}...
                       </td>
                       <td className="py-2.5 px-3">
-                        <Badge
-                          variant={
-                            log.status === "processed"
-                              ? "default"
-                              : log.status === "failed"
-                                ? "destructive"
-                                : "secondary"
-                          }
-                          className="capitalize text-[10px]"
-                        >
+                        <Badge variant={log.status === "processed" ? "default" : "destructive"} className="capitalize text-[10px]">
                           {log.status}
                         </Badge>
                       </td>
                       <td className="py-2.5 px-3 font-mono text-muted-foreground">
                         {log.processingTimeMs}ms (Retries: {log.retryCount})
                       </td>
-                      <td className="py-2.5 px-3 text-muted-foreground font-mono">
-                        {new Date(log.receivedAt).toLocaleTimeString("en-IN")}
-                      </td>
                       <td className="py-2.5 px-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedWebhook(log)}
-                            className="h-7 px-2 text-xs"
-                          >
-                            <Eye className="h-3.5 w-3.5 mr-1" />
-                            <span>Inspect</span>
-                          </Button>
-                          {log.status === "failed" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => retryWebhook(log.id)}
-                              disabled={retryingId === log.id}
-                              className="h-7 px-2 text-xs text-destructive hover:text-destructive"
-                            >
-                              <RefreshCw
-                                className={`h-3 w-3 mr-1 ${retryingId === log.id ? "animate-spin" : ""}`}
-                              />
-                              <span>Retry</span>
-                            </Button>
-                          )}
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedWebhook(log)}
+                          className="h-7 px-2 text-xs"
+                        >
+                          <Eye className="h-3.5 w-3.5 mr-1" />
+                          <span>Inspect</span>
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -1065,41 +1031,27 @@ function CompanyAdminPage() {
         </TabsContent>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            TAB 7: ADMINISTRATIVE AUDIT LOGS
+            TAB 8: AUDIT LOGS
            ══════════════════════════════════════════════════════════════════════ */}
         <TabsContent value="audit" className="space-y-6">
           <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
             <h2 className="text-lg font-semibold text-foreground">Administrative Audit Stream</h2>
-            <p className="text-xs text-muted-foreground">
-              Immutable chronological record of administrative actions, plan changes, and security events.
-            </p>
-
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-xs text-left">
                 <thead className="bg-muted/50 text-muted-foreground border-b border-border">
                   <tr>
-                    <th className="py-2.5 px-3 font-medium">Action</th>
-                    <th className="py-2.5 px-3 font-medium">Entity Type</th>
-                    <th className="py-2.5 px-3 font-medium">Actor Email</th>
-                    <th className="py-2.5 px-3 font-medium">Result</th>
+                    <th className="py-2.5 px-3 font-medium">Event</th>
+                    <th className="py-2.5 px-3 font-medium">Actor</th>
+                    <th className="py-2.5 px-3 font-medium">Notes</th>
                     <th className="py-2.5 px-3 font-medium">Timestamp</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {subEvents.map((evt, idx) => (
-                    <tr key={evt.id || idx} className="hover:bg-muted/30">
-                      <td className="py-2.5 px-3 font-mono font-medium text-foreground">
-                        {evt.eventType}
-                      </td>
-                      <td className="py-2.5 px-3 capitalize text-muted-foreground">
-                        Subscription
-                      </td>
+                  {subEvents.map((evt) => (
+                    <tr key={evt.id} className="hover:bg-muted/30">
+                      <td className="py-2.5 px-3 font-mono font-medium text-foreground">{evt.eventType}</td>
                       <td className="py-2.5 px-3 text-foreground">{evt.actorEmail}</td>
-                      <td className="py-2.5 px-3">
-                        <Badge variant="default" className="text-[10px]">
-                          SUCCESS
-                        </Badge>
-                      </td>
+                      <td className="py-2.5 px-3 text-muted-foreground">{evt.notes || "—"}</td>
                       <td className="py-2.5 px-3 font-mono text-muted-foreground">
                         {new Date(evt.createdAt).toLocaleString("en-IN")}
                       </td>
@@ -1112,216 +1064,163 @@ function CompanyAdminPage() {
         </TabsContent>
       </Tabs>
 
-      {/* ── Modal: Upgrade / Change Plan ──────────────────────────────────── */}
+      {/* ── Modal: Upgrade Plan ───────────────────────────────────────────── */}
       <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Change Commercial Subscription Plan</DialogTitle>
-            <DialogDescription>
-              Select an authoritative tier and billing cycle for AVS ERP.
-            </DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4 py-2">
-            {/* Cycle Selector */}
-            <div className="flex items-center gap-2 p-1 bg-muted rounded-lg">
-              <button
-                type="button"
-                onClick={() => setSelectedCycle("annual")}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                  selectedCycle === "annual"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground"
-                }`}
-              >
-                Annual Billing (Save 20%)
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCycle("monthly")}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                  selectedCycle === "monthly"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground"
-                }`}
-              >
-                Monthly Billing
-              </button>
-            </div>
-
-            {/* Plan Tier Selector */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {Object.values(planDefinitions).map((plan) => {
-                const isSelected = selectedPlanTier === plan.id;
-                const price =
-                  selectedCycle === "annual"
-                    ? plan.pricingAnnualINR
-                    : plan.pricingMonthlyINR;
-                return (
-                  <div
-                    key={plan.id}
-                    onClick={() => setSelectedPlanTier(plan.id)}
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                      isSelected
-                        ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary"
-                        : "border-border hover:border-border/80 bg-card"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm text-foreground">{plan.name}</span>
-                      {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                    </div>
-                    <div className="text-lg font-bold text-foreground mt-1">
-                      ₹ {price.toLocaleString("en-IN")}{" "}
-                      <span className="text-xs font-normal text-muted-foreground">
-                        / {selectedCycle}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                      {plan.tagline}
-                    </p>
-                    <div className="text-[11px] text-muted-foreground/80 mt-2 font-mono">
-                      Max {plan.limits.maxBranches} Branches · {plan.limits.maxUsers} Users
-                    </div>
+              {Object.values(planDefinitions).map((plan) => (
+                <div
+                  key={plan.id}
+                  onClick={() => setSelectedPlanTier(plan.id)}
+                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                    selectedPlanTier === plan.id ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border bg-card"
+                  }`}
+                >
+                  <div className="font-semibold text-sm text-foreground">{plan.name}</div>
+                  <div className="text-lg font-bold text-foreground mt-1">
+                    ₹ {plan.pricingAnnualINR.toLocaleString("en-IN")} / yr
                   </div>
-                );
-              })}
+                  <p className="text-xs text-muted-foreground mt-1">{plan.tagline}</p>
+                </div>
+              ))}
             </div>
           </div>
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPlanModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                await changePlan(selectedPlanTier, selectedCycle);
-                setIsPlanModalOpen(false);
-              }}
-            >
+            <Button variant="outline" onClick={() => setIsPlanModalOpen(false)}>Cancel</Button>
+            <Button onClick={async () => { await changePlan(selectedPlanTier, selectedCycle); setIsPlanModalOpen(false); }}>
               Confirm Plan Activation
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Modal: Commercial Pricing Customizer ───────────────────────────── */}
-      <Dialog open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen}>
+      {/* ── Modal: Add Automated Report Schedule ──────────────────────────── */}
+      <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Commercial Tier Pricing</DialogTitle>
-            <DialogDescription>
-              Update list prices for {planDefinitions[pricingEditTier]?.name}.
-            </DialogDescription>
+            <DialogTitle>Add Automated Report Schedule</DialogTitle>
           </DialogHeader>
-
           <div className="space-y-3 py-2 text-xs">
             <div>
-              <span className="text-muted-foreground">Monthly Price (INR):</span>
-              <Input
-                type="number"
-                value={editMonthlyInr}
-                onChange={(e) => setEditMonthlyInr(Number(e.target.value))}
-                className="mt-1 font-mono"
-              />
+              <span className="text-muted-foreground">Report Title:</span>
+              <Input value={reportTitle} onChange={(e) => setReportTitle(e.target.value)} className="mt-1" />
             </div>
             <div>
-              <span className="text-muted-foreground">Annual Price (INR):</span>
-              <Input
-                type="number"
-                value={editAnnualInr}
-                onChange={(e) => setEditAnnualInr(Number(e.target.value))}
-                className="mt-1 font-mono"
-              />
+              <span className="text-muted-foreground">Frequency:</span>
+              <select value={reportFreq} onChange={(e) => setReportFreq(e.target.value)} className="w-full h-9 mt-1 rounded-md border border-input bg-background px-3 text-xs">
+                <option value="daily">Daily (08:00 IST)</option>
+                <option value="weekly">Weekly (Monday)</option>
+                <option value="monthly">Monthly (1st of month)</option>
+              </select>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Recipient Emails (comma separated):</span>
+              <Input value={reportRecipients} onChange={(e) => setReportRecipients(e.target.value)} className="mt-1" />
             </div>
           </div>
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPricingModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                await updateCommercialPricing(pricingEditTier, editMonthlyInr, editAnnualInr);
-                setIsPricingModalOpen(false);
-              }}
-            >
-              Save Pricing
+            <Button variant="outline" onClick={() => setIsReportModalOpen(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              await saveSchedule({
+                title: reportTitle,
+                frequency: reportFreq,
+                recipients: reportRecipients.split(",").map((s) => s.trim()),
+                format: reportFormat,
+              });
+              setIsReportModalOpen(false);
+            }}>
+              Save Schedule
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Modal: Webhook Payload Inspector ──────────────────────────────── */}
-      <Dialog open={!!selectedWebhook} onOpenChange={() => setSelectedWebhook(null)}>
-        <DialogContent className="max-w-2xl">
+      {/* ── Modal: Broadcast Service Alert ────────────────────────────────── */}
+      <Dialog open={isAlertModalOpen} onOpenChange={setIsAlertModalOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Webhook className="h-5 w-5 text-primary" />
-              <span>Webhook Payload Inspector</span>
-            </DialogTitle>
-            <DialogDescription>
-              Event: <strong className="font-mono text-foreground">{selectedWebhook?.eventType}</strong>{" "}
-              · Provider: <strong className="uppercase">{selectedWebhook?.provider}</strong>
-            </DialogDescription>
+            <DialogTitle>Broadcast Service Maintenance Alert</DialogTitle>
           </DialogHeader>
-
-          {selectedWebhook && (
-            <div className="space-y-4 py-2 text-xs">
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-2.5 rounded-lg border bg-muted/30">
-                  <span className="text-muted-foreground">Status:</span>
-                  <div className="font-semibold text-foreground capitalize mt-0.5">
-                    {selectedWebhook.status} (Verified: {selectedWebhook.signatureVerified ? "Yes" : "No"})
-                  </div>
-                </div>
-                <div className="p-2.5 rounded-lg border bg-muted/30">
-                  <span className="text-muted-foreground">Source IP & Execution:</span>
-                  <div className="font-mono text-foreground mt-0.5">
-                    {selectedWebhook.sourceIp} ({selectedWebhook.processingTimeMs}ms)
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <span className="font-semibold text-foreground">Raw Inbound Payload JSON:</span>
-                <pre className="mt-1 p-3 rounded-lg border bg-muted/50 font-mono text-[11px] overflow-x-auto max-h-48">
-                  {JSON.stringify(selectedWebhook.rawPayload, null, 2)}
-                </pre>
-              </div>
-
-              <div>
-                <span className="font-semibold text-foreground">Execution Result:</span>
-                <pre className="mt-1 p-3 rounded-lg border bg-muted/50 font-mono text-[11px] overflow-x-auto max-h-24 text-emerald-600">
-                  {JSON.stringify(selectedWebhook.processedResult, null, 2)}
-                </pre>
-              </div>
-
-              {selectedWebhook.lastError && (
-                <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-xs">
-                  <strong>Error Trace:</strong> {selectedWebhook.lastError}
-                </div>
-              )}
+          <div className="space-y-3 py-2 text-xs">
+            <div>
+              <span className="text-muted-foreground">Alert Type:</span>
+              <select value={alertType} onChange={(e) => setAlertType(e.target.value as any)} className="w-full h-9 mt-1 rounded-md border border-input bg-background px-3 text-xs">
+                <option value="PLANNED_MAINTENANCE">PLANNED_MAINTENANCE</option>
+                <option value="SERVICE_DEGRADED">SERVICE_DEGRADED</option>
+                <option value="SERVICE_RESTORED">SERVICE_RESTORED</option>
+              </select>
             </div>
-          )}
-
+            <div>
+              <span className="text-muted-foreground">Notice Title:</span>
+              <Input value={alertTitle} onChange={(e) => setAlertTitle(e.target.value)} placeholder="e.g. Scheduled Hostinger DB Maintenance" className="mt-1" />
+            </div>
+            <div>
+              <span className="text-muted-foreground">Message Details:</span>
+              <Input value={alertMessage} onChange={(e) => setAlertMessage(e.target.value)} placeholder="System will undergo maintenance..." className="mt-1" />
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedWebhook(null)}>
-              Close
+            <Button variant="outline" onClick={() => setIsAlertModalOpen(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              await broadcastAlert({
+                eventId: `alert_${Date.now()}`,
+                alertType,
+                title: alertTitle,
+                message: alertMessage,
+                severity: alertSeverity,
+                isActive: true,
+                startsAt: new Date().toISOString(),
+              });
+              setIsAlertModalOpen(false);
+            }}>
+              Broadcast Alert
             </Button>
-            {selectedWebhook?.status === "failed" && (
-              <Button
-                variant="destructive"
-                onClick={async () => {
-                  if (selectedWebhook) {
-                    await retryWebhook(selectedWebhook.id);
-                    setSelectedWebhook(null);
-                  }
-                }}
-              >
-                Retry Processing
-              </Button>
-            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: New Service Request ────────────────────────────────────── */}
+      <Dialog open={isTicketModalOpen} onOpenChange={setIsTicketModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Service Request Ticket</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2 text-xs">
+            <div>
+              <span className="text-muted-foreground">Category:</span>
+              <select value={ticketCategory} onChange={(e) => setTicketCategory(e.target.value as any)} className="w-full h-9 mt-1 rounded-md border border-input bg-background px-3 text-xs">
+                <option value="technical">Technical Issue</option>
+                <option value="billing">Billing & Subscription</option>
+                <option value="integration">Integration / Webhook</option>
+                <option value="deployment">Deployment & Cloud</option>
+              </select>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Subject:</span>
+              <Input value={ticketSubject} onChange={(e) => setTicketSubject(e.target.value)} placeholder="Summary of the issue" className="mt-1" />
+            </div>
+            <div>
+              <span className="text-muted-foreground">Description:</span>
+              <Input value={ticketDescription} onChange={(e) => setTicketDescription(e.target.value)} placeholder="Detailed steps or request" className="mt-1" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTicketModalOpen(false)}>Cancel</Button>
+            <Button onClick={async () => {
+              await createTicket({
+                category: ticketCategory,
+                priority: ticketPriority,
+                subject: ticketSubject,
+                description: ticketDescription,
+              });
+              setIsTicketModalOpen(false);
+            }}>
+              Submit Ticket
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
