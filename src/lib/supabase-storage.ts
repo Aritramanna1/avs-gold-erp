@@ -9,8 +9,8 @@ const R2_PROXY_URL = (() => {
     typeof import.meta.env !== "undefined"
       ? (import.meta.env.VITE_R2_PROXY_URL as string | undefined)
       : undefined;
-  if (!raw) return undefined;
-  return raw.trim().replace(/[./]+$/, "").replace(/\/+$/, "") || undefined;
+  if (!raw) return "https://mtj-storage-proxy.aritramanna222.workers.dev";
+  return raw.trim().replace(/[./]+$/, "").replace(/\/+$/, "") || "https://mtj-storage-proxy.aritramanna222.workers.dev";
 })();
 
 async function r2AuthHeader(): Promise<string> {
@@ -20,10 +20,11 @@ async function r2AuthHeader(): Promise<string> {
 
 /** True when URL points at our legacy authenticated R2 proxy. */
 export function isR2ProxyUrl(url: string): boolean {
-  if (!R2_PROXY_URL || !url) return false;
-  if (url.startsWith(R2_PROXY_URL)) return true;
+  if (!url) return false;
+  if (url.includes("mtj-storage-proxy") || url.includes("r2.cloudflarestorage.com")) return true;
+  if (R2_PROXY_URL && url.startsWith(R2_PROXY_URL)) return true;
   try {
-    return new URL(url).host === new URL(R2_PROXY_URL).host;
+    return R2_PROXY_URL ? new URL(url).host === new URL(R2_PROXY_URL).host : false;
   } catch {
     return false;
   }
@@ -93,8 +94,11 @@ export function getDirectR2ObjectUrl(bucket: string, path: string): string {
     return path;
   }
   const cleanPath = path.replace(/^\/+/, "");
+  if (R2_PROXY_URL) {
+    return `${R2_PROXY_URL}/${bucket}/${cleanPath}`;
+  }
   const { data } = supabase.storage.from(bucket).getPublicUrl(cleanPath);
-  return data?.publicUrl || (R2_PROXY_URL ? `${R2_PROXY_URL}/${bucket}/${cleanPath}` : cleanPath);
+  return data?.publicUrl || cleanPath;
 }
 
 /** Deletes an object from Supabase Storage and removes matching storage_file_metadata. */
@@ -137,7 +141,7 @@ export function getBucketForEntityType(
     case "expense":
       return "expense-receipts";
     case "stock":
-      return "inventory-images";
+      return "stock-assets";
     default:
       return "order-attachments";
   }
@@ -288,6 +292,10 @@ export async function getAttachmentSignedUrl(
   }
   const cleanPath = path.replace(/^\/+/, "");
   
+  if (R2_PROXY_URL) {
+    return `${R2_PROXY_URL}/${namespace}/${cleanPath}`;
+  }
+
   // Public buckets
   if (
     namespace === "firm-assets" ||

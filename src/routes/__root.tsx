@@ -125,6 +125,7 @@ function RootComponent() {
       "/otp-login",
       "/invite",
       "/invite/accept",
+      "/accept-invitation",
       "/verify",
       "/karigar-login",
       "/karigar-portal",

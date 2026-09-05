@@ -24,6 +24,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SchemeRouteImport } from './routes/scheme'
 import { Route as SaasAdminRouteImport } from './routes/saas-admin'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RequestAccessRouteImport } from './routes/request-access'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RepairRouteImport } from './routes/repair'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -54,6 +55,7 @@ import { Route as BarcodeRouteImport } from './routes/barcode'
 import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AcceptInvitationRouteImport } from './routes/accept-invitation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkshopIndexRouteImport } from './routes/workshop.index'
 import { Route as WhatsappIndexRouteImport } from './routes/whatsapp.index'
@@ -103,6 +105,7 @@ import { Route as UtilitiesGstCalculatorRouteImport } from './routes/utilities.g
 import { Route as UtilitiesCounterSettingsRouteImport } from './routes/utilities.counter-settings'
 import { Route as UtilitiesCashFineTransferRouteImport } from './routes/utilities.cash-fine-transfer'
 import { Route as UnsubscribeTokenRouteImport } from './routes/unsubscribe.$token'
+import { Route as TrialStartRouteImport } from './routes/trial.start'
 import { Route as TreasuryVouchersRouteImport } from './routes/treasury.vouchers'
 import { Route as TreasuryCashBookRouteImport } from './routes/treasury.cash-book'
 import { Route as TreasuryBankReconciliationRouteImport } from './routes/treasury.bank-reconciliation'
@@ -361,6 +364,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RequestAccessRoute = RequestAccessRouteImport.update({
+  id: '/request-access',
+  path: '/request-access',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -509,6 +517,11 @@ const AssistantRoute = AssistantRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcceptInvitationRoute = AcceptInvitationRouteImport.update({
+  id: '/accept-invitation',
+  path: '/accept-invitation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -759,6 +772,11 @@ const UtilitiesCashFineTransferRoute =
 const UnsubscribeTokenRoute = UnsubscribeTokenRouteImport.update({
   id: '/unsubscribe/$token',
   path: '/unsubscribe/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrialStartRoute = TrialStartRouteImport.update({
+  id: '/trial/start',
+  path: '/trial/start',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TreasuryVouchersRoute = TreasuryVouchersRouteImport.update({
@@ -1704,6 +1722,7 @@ const AttendancePrintKindIdRoute = AttendancePrintKindIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/attendance': typeof AttendanceRouteWithChildren
@@ -1734,6 +1753,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/repair': typeof RepairRouteWithChildren
   '/reports': typeof ReportsRouteWithChildren
+  '/request-access': typeof RequestAccessRoute
   '/reset-password': typeof ResetPasswordRoute
   '/saas-admin': typeof SaasAdminRoute
   '/scheme': typeof SchemeRouteWithChildren
@@ -1883,6 +1903,7 @@ export interface FileRoutesByFullPath {
   '/treasury/bank-reconciliation': typeof TreasuryBankReconciliationRoute
   '/treasury/cash-book': typeof TreasuryCashBookRoute
   '/treasury/vouchers': typeof TreasuryVouchersRoute
+  '/trial/start': typeof TrialStartRoute
   '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/utilities/cash-fine-transfer': typeof UtilitiesCashFineTransferRoute
   '/utilities/counter-settings': typeof UtilitiesCounterSettingsRoute
@@ -1982,6 +2003,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/barcode': typeof BarcodeRoute
@@ -2002,6 +2024,7 @@ export interface FileRoutesByTo {
   '/otp-login': typeof OtpLoginRoute
   '/platform': typeof PlatformRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/request-access': typeof RequestAccessRoute
   '/reset-password': typeof ResetPasswordRoute
   '/saas-admin': typeof SaasAdminRoute
   '/setup': typeof SetupRoute
@@ -2145,6 +2168,7 @@ export interface FileRoutesByTo {
   '/treasury/bank-reconciliation': typeof TreasuryBankReconciliationRoute
   '/treasury/cash-book': typeof TreasuryCashBookRoute
   '/treasury/vouchers': typeof TreasuryVouchersRoute
+  '/trial/start': typeof TrialStartRoute
   '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/utilities/cash-fine-transfer': typeof UtilitiesCashFineTransferRoute
   '/utilities/counter-settings': typeof UtilitiesCounterSettingsRoute
@@ -2245,6 +2269,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/attendance': typeof AttendanceRouteWithChildren
@@ -2275,6 +2300,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/repair': typeof RepairRouteWithChildren
   '/reports': typeof ReportsRouteWithChildren
+  '/request-access': typeof RequestAccessRoute
   '/reset-password': typeof ResetPasswordRoute
   '/saas-admin': typeof SaasAdminRoute
   '/scheme': typeof SchemeRouteWithChildren
@@ -2424,6 +2450,7 @@ export interface FileRoutesById {
   '/treasury/bank-reconciliation': typeof TreasuryBankReconciliationRoute
   '/treasury/cash-book': typeof TreasuryCashBookRoute
   '/treasury/vouchers': typeof TreasuryVouchersRoute
+  '/trial/start': typeof TrialStartRoute
   '/unsubscribe/$token': typeof UnsubscribeTokenRoute
   '/utilities/cash-fine-transfer': typeof UtilitiesCashFineTransferRoute
   '/utilities/counter-settings': typeof UtilitiesCounterSettingsRoute
@@ -2525,6 +2552,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/accept-invitation'
     | '/app'
     | '/assistant'
     | '/attendance'
@@ -2555,6 +2583,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/repair'
     | '/reports'
+    | '/request-access'
     | '/reset-password'
     | '/saas-admin'
     | '/scheme'
@@ -2704,6 +2733,7 @@ export interface FileRouteTypes {
     | '/treasury/bank-reconciliation'
     | '/treasury/cash-book'
     | '/treasury/vouchers'
+    | '/trial/start'
     | '/unsubscribe/$token'
     | '/utilities/cash-fine-transfer'
     | '/utilities/counter-settings'
@@ -2803,6 +2833,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/accept-invitation'
     | '/app'
     | '/assistant'
     | '/barcode'
@@ -2823,6 +2854,7 @@ export interface FileRouteTypes {
     | '/otp-login'
     | '/platform'
     | '/privacy'
+    | '/request-access'
     | '/reset-password'
     | '/saas-admin'
     | '/setup'
@@ -2966,6 +2998,7 @@ export interface FileRouteTypes {
     | '/treasury/bank-reconciliation'
     | '/treasury/cash-book'
     | '/treasury/vouchers'
+    | '/trial/start'
     | '/unsubscribe/$token'
     | '/utilities/cash-fine-transfer'
     | '/utilities/counter-settings'
@@ -3065,6 +3098,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/accept-invitation'
     | '/app'
     | '/assistant'
     | '/attendance'
@@ -3095,6 +3129,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/repair'
     | '/reports'
+    | '/request-access'
     | '/reset-password'
     | '/saas-admin'
     | '/scheme'
@@ -3244,6 +3279,7 @@ export interface FileRouteTypes {
     | '/treasury/bank-reconciliation'
     | '/treasury/cash-book'
     | '/treasury/vouchers'
+    | '/trial/start'
     | '/unsubscribe/$token'
     | '/utilities/cash-fine-transfer'
     | '/utilities/counter-settings'
@@ -3344,6 +3380,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AcceptInvitationRoute: typeof AcceptInvitationRoute
   AppRoute: typeof AppRoute
   AssistantRoute: typeof AssistantRoute
   AttendanceRoute: typeof AttendanceRouteWithChildren
@@ -3374,6 +3411,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   RepairRoute: typeof RepairRouteWithChildren
   ReportsRoute: typeof ReportsRouteWithChildren
+  RequestAccessRoute: typeof RequestAccessRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SaasAdminRoute: typeof SaasAdminRoute
   SchemeRoute: typeof SchemeRouteWithChildren
@@ -3419,6 +3457,7 @@ export interface RootRouteChildren {
   TreasuryBankReconciliationRoute: typeof TreasuryBankReconciliationRoute
   TreasuryCashBookRoute: typeof TreasuryCashBookRoute
   TreasuryVouchersRoute: typeof TreasuryVouchersRoute
+  TrialStartRoute: typeof TrialStartRoute
   UnsubscribeTokenRoute: typeof UnsubscribeTokenRoute
   BranchesIndexRoute: typeof BranchesIndexRoute
   ConversionIndexRoute: typeof ConversionIndexRoute
@@ -3538,6 +3577,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/request-access': {
+      id: '/request-access'
+      path: '/request-access'
+      fullPath: '/request-access'
+      preLoaderRoute: typeof RequestAccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -3748,6 +3794,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accept-invitation': {
+      id: '/accept-invitation'
+      path: '/accept-invitation'
+      fullPath: '/accept-invitation'
+      preLoaderRoute: typeof AcceptInvitationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -4091,6 +4144,13 @@ declare module '@tanstack/react-router' {
       path: '/unsubscribe/$token'
       fullPath: '/unsubscribe/$token'
       preLoaderRoute: typeof UnsubscribeTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/trial/start': {
+      id: '/trial/start'
+      path: '/trial/start'
+      fullPath: '/trial/start'
+      preLoaderRoute: typeof TrialStartRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/treasury/vouchers': {
@@ -5949,6 +6009,7 @@ const WorkshopRouteWithChildren = WorkshopRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AcceptInvitationRoute: AcceptInvitationRoute,
   AppRoute: AppRoute,
   AssistantRoute: AssistantRoute,
   AttendanceRoute: AttendanceRouteWithChildren,
@@ -5979,6 +6040,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   RepairRoute: RepairRouteWithChildren,
   ReportsRoute: ReportsRouteWithChildren,
+  RequestAccessRoute: RequestAccessRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SaasAdminRoute: SaasAdminRoute,
   SchemeRoute: SchemeRouteWithChildren,
@@ -6024,6 +6086,7 @@ const rootRouteChildren: RootRouteChildren = {
   TreasuryBankReconciliationRoute: TreasuryBankReconciliationRoute,
   TreasuryCashBookRoute: TreasuryCashBookRoute,
   TreasuryVouchersRoute: TreasuryVouchersRoute,
+  TrialStartRoute: TrialStartRoute,
   UnsubscribeTokenRoute: UnsubscribeTokenRoute,
   BranchesIndexRoute: BranchesIndexRoute,
   ConversionIndexRoute: ConversionIndexRoute,

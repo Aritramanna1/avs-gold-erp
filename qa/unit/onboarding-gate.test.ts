@@ -35,8 +35,8 @@ describe("onboarding-gate-service", () => {
     expect(hasAssistedSetupCompleted()).toBe(true);
   });
 
-  it("redirects only brand-new tenants on /app", () => {
-    expect(shouldRedirectToAssistedSetup("/app", "owner")).toBe(true);
+  it("never redirects on web per installer/first-run only policy", () => {
+    expect(shouldRedirectToAssistedSetup("/app", "owner")).toBe(false);
     expect(shouldRedirectToAssistedSetup("/onboarding", "owner")).toBe(false);
     expect(shouldRedirectToAssistedSetup("/app", "karigar")).toBe(false);
   });

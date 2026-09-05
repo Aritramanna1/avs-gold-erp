@@ -1,16 +1,56 @@
-# Prevent directory listing for privacy and security of files on Hostinger.
+# ==============================================================================
+# MTJ / AVS ERP — Hostinger Production Apache Configuration (.htaccess)
+# ==============================================================================
+
 Options -Indexes
+Options +FollowSymLinks
 
-# Serve existing static files directly.
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} -f [OR]
-RewriteCond %{REQUEST_FILENAME} -d
-RewriteRule ^ - [L]
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
 
-# Route client-side app paths back to the SPA entry point.
-RewriteRule ^ index.html [L]
+<LocationMatch "^/api/">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0, private"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </IfModule>
+</LocationMatch>
 
-# Block direct access to executable server-side or shell files.
-<FilesMatch "\.(php5|phtml|exe|sh|bat|cmd)$">
-  Require all denied
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    RewriteRule ^api/ - [L]
+
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+<Directory "uploads">
+    <FilesMatch "\.(php|phtml|php5|php7|php8|sh|exe|pl|cgi)$">
+        Require all denied
+    </FilesMatch>
+</Directory>
+
+<FilesMatch "^\.">
+    Require all denied
 </FilesMatch>

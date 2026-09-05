@@ -10,6 +10,7 @@ import {
   resolvePostLoginRoute,
   sanitizeLoginRedirect,
 } from "@/lib/auth/post-login-redirect";
+import { REQUEST_ACCESS_PATH } from "@/lib/auth/public-signup-policy";
 import { cn } from "@/lib/utils";
 
 const AUDIENCE_VALUES = ["staff", "customer", "karigar", "supplier"] as const;
@@ -126,6 +127,14 @@ function LoginPage() {
             onClick={() => void navigate({ to: "/invite/accept" })}
           >
             Accept invitation
+          </button>
+          <button
+            type="button"
+            data-testid="login-request-access"
+            className="w-full text-center text-xs text-white/60 hover:text-white underline underline-offset-2 py-1"
+            onClick={() => void navigate({ to: REQUEST_ACCESS_PATH })}
+          >
+            Don't have an invitation? Request Access
           </button>
         </section>
 
