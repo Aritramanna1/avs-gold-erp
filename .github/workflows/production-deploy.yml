@@ -12,6 +12,7 @@ on:
 jobs:
   test-and-build:
     name: Test, Build & Deploy to Hostinger
+    if: github.repository == 'Aritramanna1/avs-gold-erp'
     runs-on: ubuntu-latest
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://dqgrrafuoxaorvyrcuuh.supabase.co' }}
@@ -53,7 +54,7 @@ jobs:
 
       # Option A: Deploy via Hostinger hPanel Git Auto-Deploy Webhook (if secret configured)
       - name: Trigger Hostinger Git Auto-Deploy Webhook
-        if: env.HOSTINGER_DEPLOY_WEBHOOK_URL != ''
+        if: ${{ secrets.HOSTINGER_DEPLOY_WEBHOOK_URL != '' }}
         env:
           HOSTINGER_DEPLOY_WEBHOOK_URL: ${{ secrets.HOSTINGER_DEPLOY_WEBHOOK_URL }}
         run: |
@@ -62,15 +63,12 @@ jobs:
 
       # Option B: Deploy via FTPS / FTP directly to public_html (if secrets configured)
       - name: Deploy to Hostinger via FTPS
-        if: env.HOSTINGER_FTP_SERVER != '' && env.HOSTINGER_FTP_USERNAME != ''
+        if: ${{ secrets.HOSTINGER_FTP_SERVER != '' && secrets.HOSTINGER_FTP_USERNAME != '' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        env:
-          HOSTINGER_FTP_SERVER: ${{ secrets.HOSTINGER_FTP_SERVER }}
-          HOSTINGER_FTP_USERNAME: ${{ secrets.HOSTINGER_FTP_USERNAME }}
         with:
           server: ${{ secrets.HOSTINGER_FTP_SERVER }}
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           local-dir: ./dist/
-          server-dir: ./public_html/
+          server-dir: ./public_html/erp/
           dangerous-clean-slate: false

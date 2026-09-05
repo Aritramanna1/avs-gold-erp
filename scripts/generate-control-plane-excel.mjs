@@ -213,6 +213,48 @@ async function createMasterIndex() {
   ];
   formatSheet(wsAi, headersAi, rowsAi);
 
+  // APPLICATION_TRACKS
+  const wsTracks = wb.addWorksheet('APPLICATION_TRACKS');
+  const headersTracks = [
+    'Application_ID',
+    'Application_Name',
+    'Development_Agent',
+    'Repository_ID',
+    'Production_Branch',
+    'Production_Domain',
+    'CI_CD_Workflow',
+    'Deployment_Target',
+    'Owner',
+    'Scope_and_Boundaries',
+  ];
+  const rowsTracks = [
+    [
+      'APP-PUBLIC-WEBSITE',
+      'Arivahly Public Marketing Website & CMS',
+      'PUBLIC WEBSITE DEVELOPMENT AGENT',
+      'REPO-PUBLIC-WEBSITE',
+      'main',
+      'arivahly.in',
+      '.github/workflows/deploy-website.yml (Isolated)',
+      'Hostinger public_html (Apex Domain Root)',
+      'Public Website Agent',
+      'STRICT BOUNDARY: Public marketing pages, CMS, SEO, contact forms, PHP server-rendered site. The ERP Agent MUST NEVER touch or build this project.'
+    ],
+    [
+      'APP-ONLINE-ERP',
+      'Arivahly Online Managed Jewellery ERP Platform',
+      'ERP DEVELOPMENT AGENT',
+      'REPO-UPSTREAM-MAIN / REPO-HOSTINGER-LIVE',
+      'feature/production-v1.1.2 / main',
+      'erp.arivahly.in',
+      '.github/workflows/production-deploy.yml',
+      'Hostinger public_html/erp (Subdomain Directory)',
+      'ERP Development Agent',
+      'STRICT BOUNDARY: SaaS Admin Panel, CRM, Billing, Ledgers, Portals, Supabase DB/Auth, R2 Vault, Cloudflare WAF, ERP CI/CD. The Public Website Agent MUST NEVER touch this project.'
+    ],
+  ];
+  formatSheet(wsTracks, headersTracks, rowsTracks);
+
   // PLATFORM_MAP
   const wsPlatform = wb.addWorksheet('PLATFORM_MAP');
   const headersPlatform = [
@@ -246,6 +288,7 @@ async function createMasterIndex() {
     ['Total Registered Accounts', 6, '01_ACCOUNT_REGISTRY.xlsx', 'GitHub, Hostinger, Cloudflare, Supabase, Cloudflare R2, Hostinger Mail'],
     ['Total Environments', 3, '02_ENVIRONMENT_REGISTRY.xlsx', 'ONLINE_PRODUCTION, BASELINE_BACKUP, SELF_HOSTED'],
     ['Total Repositories', 3, '03_REPOSITORY_REGISTRY.xlsx', 'avs-gold-erp, avs-erp-hostinger-live, avs-erp-baseline-backup'],
+    ['Total Application Tracks', 2, '00_MASTER_CONTROL_INDEX.xlsx', 'APP-PUBLIC-WEBSITE (arivahly.in) & APP-ONLINE-ERP (erp.arivahly.in)'],
     ['Total Domains Configured', 2, '04_DOMAIN_CLOUDFLARE_REGISTRY.xlsx', 'erp.arivahly.in (Subdomain), arivahly.in (Parent Root)'],
     ['Total Backend Services', 7, '05_SERVICE_INTEGRATION_REGISTRY.xlsx', 'Supabase PG, Auth, Storage/R2, Hostinger PHP, Mail, Webhook Broker, Cron'],
     ['Total Active Integrations', 3, '05_SERVICE_INTEGRATION_REGISTRY.xlsx', 'Razorpay Payment Gateway, Meta WhatsApp Cloud API, Hostinger SMTP'],
@@ -253,7 +296,7 @@ async function createMasterIndex() {
     ['Records Needing Verification', 0, 'ALL WORKBOOKS', 'Zero unverified records in production line'],
     ['Records Marked Blocked', 1, '05_SERVICE_INTEGRATION_REGISTRY.xlsx', 'Future MCP Endpoint intentionally BLOCKED/DISABLED per security directive'],
     ['Canonical Production URL', 'https://erp.arivahly.in', '04_DOMAIN_CLOUDFLARE_REGISTRY.xlsx', 'Official human-facing production URL'],
-    ['Overall Verification Timestamp', '2026-09-05T13:20:00+05:30', 'FINAL_ONLINE_PRODUCTION_AUDIT.md', '100% Verified Production Release v1.1.2'],
+    ['Overall Verification Timestamp', '2026-09-05T14:00:00+05:30', 'FINAL_ONLINE_PRODUCTION_AUDIT.md', '100% Verified Production Release v1.1.2'],
   ];
   formatSheet(wsStatus, headersStatus, rowsStatus);
 
