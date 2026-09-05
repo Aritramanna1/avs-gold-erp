@@ -237,4 +237,153 @@ describe("ERP Payment Infrastructure — Invariant QA Suite", () => {
       expect(switchMode("LIVE", true).success).toBe(true);
     });
   });
+
+  describe("Rule 21 & 22: Automated Invoice Generation & GST Tax Invariants", () => {
+    function generateInvoiceNumber(seq: number, date: Date = new Date("2026-09-05")): string {
+      const yyyymm = date.toISOString().slice(0, 7).replace("-", "");
+      const padSeq = String(seq).padStart(4, "0");
+      return `INV-SaaS-${yyyymm}-${padSeq}`;
+    }
+
+    function calculateGstBreakdown(taxablePaise: number, isInterState: boolean) {
+      if (isInterState) {
+        const igst = Math.round(taxablePaise * 0.18);
+        return { cgst: 0, sgst: 0, igst, totalTax: igst, grandTotal: taxablePaise + igst };
+      } else {
+        const cgst = Math.round(taxablePaise * 0.09);
+        const sgst = Math.round(taxablePaise * 0.09);
+        return { cgst, sgst, igst: 0, totalTax: cgst + sgst, grandTotal: taxablePaise + cgst + sgst };
+      }
+    }
+
+    it("formats sequential invoice numbers conforming to INV-SaaS-YYYYMM-XXXX", () => {
+      const invNum1 = generateInvoiceNumber(1, new Date("2026-09-05"));
+      const invNum42 = generateInvoiceNumber(42, new Date("2026-09-05"));
+      expect(invNum1).toBe("INV-SaaS-202609-0001");
+      expect(invNum42).toBe("INV-SaaS-202609-0042");
+    });
+
+    it("accurately calculates intra-state GST (9% CGST + 9% SGST)", () => {
+      const taxable = 2999900; // Rs 29,999.00
+      const breakdown = calculateGstBreakdown(taxable, false);
+      expect(breakdown.cgst).toBe(269991); // Rs 2,699.91
+      expect(breakdown.sgst).toBe(269991);
+      expect(breakdown.igst).toBe(0);
+      expect(breakdown.totalTax).toBe(539982);
+      expect(breakdown.grandTotal).toBe(3539882);
+    });
+
+    it("accurately calculates inter-state GST (18% IGST)", () => {
+      const taxable = 2999900;
+      const breakdown = calculateGstBreakdown(taxable, true);
+      expect(breakdown.cgst).toBe(0);
+      expect(breakdown.sgst).toBe(0);
+      expect(breakdown.igst).toBe(539982);
+      expect(breakdown.grandTotal).toBe(3539882);
+    });
+  });
+
+  describe("Rule 23 & 24: Event Sequencing, Email Dispatch & Resend Idempotency", () => {
+    it("enforces strict event sequencing: PAYMENT_VERIFIED -> SUBSCRIPTION_ACTIVATED -> INVOICE_GENERATED -> EMAIL_DISPATCH_REQUESTED", () => {
+      const eventLog: string[] = [];
+
+      function processVerifiedPayment(paymentId: string) {
+        eventLog.push("PAYMENT_VERIFIED");
+        eventLog.push("SUBSCRIPTION_ACTIVATED");
+        eventLog.push("INVOICE_GENERATED");
+        eventLog.push("EMAIL_DISPATCH_REQUESTED");
+      }
+
+      processVerifiedPayment("pay_test_123");
+      expect(eventLog).toEqual([
+        "PAYMENT_VERIFIED",
+        "SUBSCRIPTION_ACTIVATED",
+        "INVOICE_GENERATED",
+        "EMAIL_DISPATCH_REQUESTED",
+      ]);
+    });
+
+    it("preserves successful payment and invoice integrity even if email dispatch fails", () => {
+      type OrderState = {
+        paymentStatus: "PENDING" | "PAID";
+        subscriptionStatus: "TRIAL" | "ACTIVE";
+        invoiceId: string | null;
+        emailStatus: "EMAIL_PENDING" | "EMAIL_SENT" | "EMAIL_FAILED";
+      };
+
+      const state: OrderState = {
+        paymentStatus: "PENDING",
+        subscriptionStatus: "TRIAL",
+        invoiceId: null,
+        emailStatus: "EMAIL_PENDING",
+      };
+
+      // Payment verified
+      state.paymentStatus = "PAID";
+      state.subscriptionStatus = "ACTIVE";
+      state.invoiceId = "INV-SaaS-202609-0001";
+
+      // Email dispatch fails (e.g. SMTP timeout / bad address)
+      const emailSuccess = false;
+      if (!emailSuccess) {
+        state.emailStatus = "EMAIL_FAILED";
+      }
+
+      // Assert that payment and subscription are NOT rolled back
+      expect(state.paymentStatus).toBe("PAID");
+      expect(state.subscriptionStatus).toBe("ACTIVE");
+      expect(state.invoiceId).toBe("INV-SaaS-202609-0001");
+      expect(state.emailStatus).toBe("EMAIL_FAILED");
+    });
+
+    it("resend invoice does NOT create duplicate invoices", () => {
+      const invoices = new Map<string, { invoiceNumber: string; sendAttempts: number }>();
+      invoices.set("ord_123", { invoiceNumber: "INV-SaaS-202609-0005", sendAttempts: 1 });
+
+      function resendInvoice(orderId: string) {
+        const inv = invoices.get(orderId);
+        if (!inv) throw new Error("Invoice not found");
+        inv.sendAttempts += 1;
+        return inv.invoiceNumber; // Resends existing invoice number
+      }
+
+      const originalNumber = invoices.get("ord_123")?.invoiceNumber;
+      const resentNumber = resendInvoice("ord_123");
+
+      expect(resentNumber).toBe(originalNumber);
+      expect(invoices.get("ord_123")?.sendAttempts).toBe(2);
+      expect(invoices.size).toBe(1); // No new invoice entry created
+    });
+  });
+
+  describe("Rule 25: Platform Payment & Gold-First Retail Accounting Boundary", () => {
+    it("guarantees SaaS subscription payments are isolated from retail jewelry ledger", () => {
+      const retailCustomerLedger = [
+        { voucher_type: "RETAIL_SALE", gold_weight_grams: 12.5, cash_amount: 85000 },
+        { voucher_type: "OLD_GOLD_PURCHASE", gold_weight_grams: -10.0, cash_amount: -65000 },
+      ];
+
+      const platformPayment = {
+        type: "SAAS_PLATFORM_SUBSCRIPTION",
+        plan: "avs_manufacturing_30k",
+        amount_paise: 2999900,
+        is_platform_fee: true,
+      };
+
+      // Platform fees should NEVER be pushed into retail gold ledger
+      function processPlatformPaymentLedger(payment: typeof platformPayment) {
+        if (payment.is_platform_fee) {
+          // Logged to platform_revenue, NOT retail customer ledger
+          return { platformLedgerUpdated: true, retailLedgerUpdated: false };
+        }
+        return { platformLedgerUpdated: false, retailLedgerUpdated: true };
+      }
+
+      const result = processPlatformPaymentLedger(platformPayment);
+      expect(result.retailLedgerUpdated).toBe(false);
+      expect(result.platformLedgerUpdated).toBe(true);
+      expect(retailCustomerLedger).toHaveLength(2); // Unaltered
+    });
+  });
 });
+

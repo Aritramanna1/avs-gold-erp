@@ -1,27 +1,26 @@
 /**
- * Platform Owner — Payment Dashboard, Search, and Reconciliation Center
+ * Platform Owner — Payment Dashboard, Search, Invoice Dispatch, and Reconciliation Center
  *
- * Provides real-time visibility into internal payments, subscription states,
- * multi-criteria search, and automated reconciliation of gateway discrepancies.
+ * Provides real-time visibility into internal payments, automated invoice generation,
+ * transactional email delivery tracking, multi-criteria search, and one-click invoice resending.
  */
 import { useEffect, useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
   RefreshCw,
   Search,
   AlertTriangle,
   CheckCircle2,
-  Clock,
-  XCircle,
   FileCheck,
-  CreditCard,
-  Layers,
-  ArrowRight,
+  Mail,
+  Send,
+  Loader2,
+  FileText,
+  Printer,
 } from "lucide-react";
 
 interface PaymentRow {
@@ -34,6 +33,9 @@ interface PaymentRow {
   environment: string;
   razorpay_order_id?: string;
   razorpay_payment_id?: string;
+  invoice_id?: string;
+  invoice_no?: string;
+  email_status?: string;
   created_at: string;
 }
 
@@ -92,6 +94,8 @@ export function PlatformPaymentReconciliation() {
   const [searchResults, setSearchResults] = useState<PaymentRow[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [activeStatusFilter, setActiveStatusFilter] = useState<string>("ALL");
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<PaymentRow | null>(null);
 
   async function loadDashboard() {
     setLoading(true);
@@ -135,6 +139,8 @@ export function PlatformPaymentReconciliation() {
             environment: "TEST",
             razorpay_order_id: "order_test_908a8f",
             razorpay_payment_id: "pay_test_908a8f112",
+            invoice_no: "INV-SaaS-202609-001",
+            email_status: "EMAIL_SENT",
             created_at: new Date().toISOString(),
           },
         ],
@@ -193,6 +199,25 @@ export function PlatformPaymentReconciliation() {
     }
   }
 
+  async function handleResendInvoice(invoiceId: string) {
+    setResendingId(invoiceId);
+    try {
+      const res = await fetch("/api/payments/resend-invoice.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoice_id: invoiceId }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "Resend failed");
+      toast.success(json.message || "Invoice emailed successfully");
+      await loadDashboard();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Could not resend invoice");
+    } finally {
+      setResendingId(null);
+    }
+  }
+
   const pStats = data?.stats.payments;
   const sStats = data?.stats.subscriptions;
   const displayedPayments =
@@ -207,10 +232,10 @@ export function PlatformPaymentReconciliation() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h3 className="font-semibold text-base flex items-center gap-2">
-            <FileCheck className="h-5 w-5 text-gold" /> Payment Reconciliation & Subscriptions
+            <FileCheck className="h-5 w-5 text-gold" /> Payment Reconciliation, Invoices &amp; Subscriptions
           </h3>
           <p className="text-xs text-muted-foreground">
-            Authoritative financial state across Razorpay orders, internal payments, and tenant licenses.
+            Authoritative financial state across Razorpay orders, internal payments, tax invoices, and email receipts.
           </p>
         </div>
         <Button
@@ -249,7 +274,7 @@ export function PlatformPaymentReconciliation() {
                   className="h-7 text-[10px]"
                   onClick={() => void handleReconcileFix(alert.internal_payment_id)}
                 >
-                  Mark PAID & Reconcile
+                  Mark PAID &amp; Reconcile
                 </Button>
               </div>
             ))}
@@ -306,7 +331,7 @@ export function PlatformPaymentReconciliation() {
           <div className="relative flex-1 w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by Payment ID, Order ID, Tenant, or Plan…"
+              placeholder="Search by Payment ID, Order ID, Invoice Number, Tenant, or Plan…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && void handleSearch()}
@@ -336,19 +361,19 @@ export function PlatformPaymentReconciliation() {
           ))}
         </div>
 
-        {/* Payments Table */}
+        {/* Payments & Invoices Table */}
         <div className="rounded border overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="bg-muted">
               <tr>
-                <th className="p-2.5 text-left font-semibold">Internal ID</th>
+                <th className="p-2.5 text-left font-semibold">Payment ID</th>
                 <th className="p-2.5 text-left font-semibold">Tenant</th>
                 <th className="p-2.5 text-left font-semibold">Plan</th>
                 <th className="p-2.5 text-right font-semibold">Amount</th>
                 <th className="p-2.5 text-left font-semibold">Status</th>
-                <th className="p-2.5 text-left font-semibold">Razorpay Ref</th>
-                <th className="p-2.5 text-left font-semibold">Mode</th>
-                <th className="p-2.5 text-left font-semibold">Date</th>
+                <th className="p-2.5 text-left font-semibold">Invoice No</th>
+                <th className="p-2.5 text-left font-semibold">Email Status</th>
+                <th className="p-2.5 text-left font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -381,16 +406,60 @@ export function PlatformPaymentReconciliation() {
                         {p.status}
                       </Badge>
                     </td>
-                    <td className="p-2.5 font-mono text-[10px] text-muted-foreground">
-                      {p.razorpay_payment_id || p.razorpay_order_id || "—"}
+                    <td className="p-2.5 font-mono text-[10px]">
+                      {p.invoice_no ? (
+                        <span className="font-semibold text-foreground">{p.invoice_no}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="p-2.5">
-                      <Badge variant="outline" className="text-[8px]">
-                        {p.environment}
-                      </Badge>
+                      {p.email_status ? (
+                        <Badge
+                          variant={
+                            p.email_status === "EMAIL_SENT"
+                              ? "default"
+                              : p.email_status === "EMAIL_PENDING"
+                                ? "outline"
+                                : "destructive"
+                          }
+                          className="text-[8px]"
+                        >
+                          {p.email_status}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-[10px]">—</span>
+                      )}
                     </td>
-                    <td className="p-2.5 text-muted-foreground text-[10px]">
-                      {new Date(p.created_at).toLocaleString("en-IN")}
+                    <td className="p-2.5">
+                      <div className="flex items-center gap-1.5">
+                        {p.invoice_no && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 text-[10px] px-1.5 gap-1"
+                            onClick={() => setSelectedInvoice(p)}
+                          >
+                            <FileText className="h-3 w-3" /> View
+                          </Button>
+                        )}
+                        {p.status === "PAID" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-[10px] px-1.5 gap-1"
+                            disabled={resendingId === (p.invoice_id || p.id)}
+                            onClick={() => void handleResendInvoice(p.invoice_id || p.id)}
+                          >
+                            {resendingId === (p.invoice_id || p.id) ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Send className="h-3 w-3" />
+                            )}
+                            Resend Email
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -399,6 +468,76 @@ export function PlatformPaymentReconciliation() {
           </table>
         </div>
       </Card>
+
+      {/* Invoice Detail Modal */}
+      {selectedInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <Card className="max-w-lg w-full p-6 border-gold/30 bg-card shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-gold" />
+                <div>
+                  <h4 className="font-bold text-sm">Invoice {selectedInvoice.invoice_no}</h4>
+                  <p className="text-[10px] text-muted-foreground font-mono">
+                    Payment ID: {selectedInvoice.id}
+                  </p>
+                </div>
+              </div>
+              <Badge variant="default" className="text-[10px]">
+                {selectedInvoice.status}
+              </Badge>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2 bg-muted/30 p-3 rounded">
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Customer / Tenant</span>
+                  <span className="font-semibold">{selectedInvoice.tenant_id}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Plan Tier</span>
+                  <span className="font-semibold">{selectedInvoice.plan_code}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Amount Paid</span>
+                  <span className="font-bold font-mono text-gold">
+                    {formatInr(selectedInvoice.amount_paise)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block">Email Status</span>
+                  <span className="font-semibold">{selectedInvoice.email_status || "EMAIL_PENDING"}</span>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-muted-foreground">
+                <p>
+                  <strong>Seller:</strong> Arivahly Venture Sphere Private Limited (GSTIN: 27AABCA1234F1Z5)
+                </p>
+                <p>
+                  <strong>Date:</strong> {new Date(selectedInvoice.created_at).toLocaleString("en-IN")}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button size="sm" variant="outline" onClick={() => setSelectedInvoice(null)}>
+                Close
+              </Button>
+              <Button
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  void handleResendInvoice(selectedInvoice.invoice_id || selectedInvoice.id);
+                  setSelectedInvoice(null);
+                }}
+              >
+                <Mail className="h-3.5 w-3.5" /> Resend Invoice to Email
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

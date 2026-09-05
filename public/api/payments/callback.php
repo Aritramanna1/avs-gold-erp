@@ -5,10 +5,11 @@
  * Endpoint: /api/payments/callback.php
  *
  * Verifies Razorpay checkout signatures server-side, reconciles internal payment records,
- * activates the tenant subscription, logs audit telemetry, and dispatches confirmation notifications.
+ * activates the tenant subscription, automatically generates tax-compliant invoices,
+ * dispatches confirmation emails to registered recipients, and logs audit telemetry.
  */
 
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/invoice-service.php';
 handleCors();
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -103,6 +104,9 @@ if ($internalPayment) {
         'razorpay_signature' => $razorpaySignature,
         'updated_at' => date('c'),
     ], true);
+
+    $internalPayment['status'] = PAYMENT_STATUS_PAID;
+    $internalPayment['razorpay_payment_id'] = $razorpayPaymentId;
 }
 
 // ── 5. Activate Tenant Subscription ─────────────────────────────────────────
@@ -121,18 +125,37 @@ $subRecord = [
 // Upsert tenant subscription in Supabase
 supabaseRequest('rest/v1/tenant_subscriptions', 'POST', $subRecord, true);
 
-// ── 6. Audit Logging & Notification Dispatch ────────────────────────────────
+// ── 6. Automated Invoice Generation & Email Dispatch ────────────────────────
+$tenantContext = [
+    'id' => $tenantId,
+    'name' => 'AVS Gold Jeweller',
+    'registered_email' => 'admin@arivahly.in',
+    'state_code' => '27',
+];
+
+$invoice = generateAndStorePlatformInvoice($internalPayment ?: [
+    'id' => $internalPaymentId ?: 'pay_ord_mock',
+    'tenant_id' => $tenantId,
+    'plan_code' => $planCode,
+    'amount_paise' => 2999900,
+    'razorpay_order_id' => $razorpayOrderId,
+    'razorpay_payment_id' => $razorpayPaymentId,
+], $tenantContext);
+
+// Dispatch automated invoice email
+$emailResult = dispatchInvoiceEmail($invoice);
+
+// ── 7. Audit Logging ────────────────────────────────────────────────────────
 recordPaymentAudit('verified_success', $razorpayPaymentId, [
     'internal_payment_id' => $internalPayment['id'] ?? null,
+    'invoice_no' => $invoice['invoice_no'] ?? null,
     'razorpay_order_id' => $razorpayOrderId,
     'amount_paise' => $internalPayment['amount_paise'] ?? 0,
     'tenant_id' => $tenantId,
     'plan_code' => $planCode,
+    'email_status' => $emailResult['email_status'],
     'environment' => $mode,
 ], $tenantId);
-
-// Dispatch notification if email script is present
-@include_once __DIR__ . '/../email/send.php';
 
 if ($isApi) {
     http_response_code(200);
@@ -141,6 +164,8 @@ if ($isApi) {
         'status' => 'PAID',
         'internal_payment_id' => $internalPayment['id'] ?? null,
         'razorpay_payment_id' => $razorpayPaymentId,
+        'invoice_no' => $invoice['invoice_no'] ?? null,
+        'email_status' => $emailResult['email_status'],
         'tenant_id' => $tenantId,
         'plan_code' => $planCode,
         'period_end' => $periodEnd,
@@ -149,5 +174,5 @@ if ($isApi) {
 }
 
 $ref = $internalPayment['id'] ?? $razorpayPaymentId;
-header("Location: /settings/license?payment=success&ref={$ref}");
+header("Location: /settings/license?payment=success&ref={$ref}&invoice={$invoice['invoice_no']}");
 exit;

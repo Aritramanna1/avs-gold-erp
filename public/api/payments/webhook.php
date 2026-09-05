@@ -5,10 +5,10 @@
  * Endpoint: /api/payments/webhook.php & /api/webhooks/razorpay.php
  *
  * Provides cryptographic HMAC verification, strict idempotency & replay protection,
- * automated subscription state reconciliation, and audit telemetry.
+ * automated subscription state reconciliation, invoice generation, registered email delivery, and audit telemetry.
  */
 
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/invoice-service.php';
 handleCors();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -71,6 +71,8 @@ if ($dupCheck['ok'] && !empty($dupCheck['data'])) {
 
 // ── 3. Handle Payment Lifecycle Events ──────────────────────────────────────
 $handledStatus = 'unhandled';
+$invoiceGenerated = null;
+$emailStatus = null;
 
 switch ($event) {
     case 'payment.captured':
@@ -83,23 +85,42 @@ switch ($event) {
                 'updated_at' => date('c'),
             ], true);
 
-            // Fetch tenant to activate subscription
+            // Fetch payment record
             $pmt = supabaseRequest("rest/v1/internal_payments?razorpay_order_id=eq.{$orderId}&limit=1", 'GET', null, true);
-            if ($pmt['ok'] && !empty($pmt['data'])) {
-                $tenantId = $pmt['data'][0]['tenant_id'] ?? 'tenant_default';
-                $planCode = $pmt['data'][0]['plan_code'] ?? 'avs_manufacturing_30k';
-                $billingPeriod = $pmt['data'][0]['billing_period'] ?? 'monthly';
-                $days = ($billingPeriod === 'annual') ? 365 : 30;
+            $pmtRecord = ($pmt['ok'] && !empty($pmt['data'])) ? $pmt['data'][0] : [
+                'id' => 'pay_webhook_' . bin2hex(random_bytes(6)),
+                'tenant_id' => 'tenant_default',
+                'plan_code' => 'avs_manufacturing_30k',
+                'amount_paise' => $amountPaise,
+                'currency' => $currency,
+                'razorpay_order_id' => $orderId,
+                'razorpay_payment_id' => $paymentId,
+            ];
 
-                supabaseRequest('rest/v1/tenant_subscriptions', 'POST', [
-                    'tenant_id' => $tenantId,
-                    'plan_code' => $planCode,
-                    'status' => SUB_STATUS_ACTIVE,
-                    'current_period_start' => date('c'),
-                    'current_period_end' => date('c', time() + ($days * 86400)),
-                    'updated_at' => date('c'),
-                ], true);
-            }
+            $tenantId = $pmtRecord['tenant_id'] ?? 'tenant_default';
+            $planCode = $pmtRecord['plan_code'] ?? 'avs_manufacturing_30k';
+            $billingPeriod = $pmtRecord['billing_period'] ?? 'monthly';
+            $days = ($billingPeriod === 'annual') ? 365 : 30;
+
+            // Activate tenant subscription
+            supabaseRequest('rest/v1/tenant_subscriptions', 'POST', [
+                'tenant_id' => $tenantId,
+                'plan_code' => $planCode,
+                'status' => SUB_STATUS_ACTIVE,
+                'current_period_start' => date('c'),
+                'current_period_end' => date('c', time() + ($days * 86400)),
+                'updated_at' => date('c'),
+            ], true);
+
+            // Automatically generate & email invoice
+            $invoiceGenerated = generateAndStorePlatformInvoice($pmtRecord, [
+                'id' => $tenantId,
+                'name' => 'AVS Gold Jeweller',
+                'registered_email' => 'admin@arivahly.in',
+            ]);
+
+            $dispatch = dispatchInvoiceEmail($invoiceGenerated);
+            $emailStatus = $dispatch['email_status'];
         }
         break;
 
@@ -141,6 +162,8 @@ recordPaymentAudit('webhook_processed', $idempotencyKey, [
     'amount_paise' => $amountPaise,
     'currency' => $currency,
     'status' => $handledStatus,
+    'invoice_no' => $invoiceGenerated['invoice_no'] ?? null,
+    'email_status' => $emailStatus,
     'environment' => $mode,
 ]);
 
@@ -151,5 +174,7 @@ echo json_encode([
     'payment_id' => $paymentId,
     'order_id' => $orderId,
     'status' => $handledStatus,
+    'invoice_no' => $invoiceGenerated['invoice_no'] ?? null,
+    'email_status' => $emailStatus,
     'processed_at' => date('c'),
 ]);
