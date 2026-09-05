@@ -1,0 +1,1 @@
+import"./rolldown-runtime-aKtaBQYM.js";import{m as e}from"./vendor-charts-Bv77YuA6.js";import{i as t}from"./vendor-react-BbySHAOQ.js";import{t as n}from"./useNavigate-CJ5OSqdF.js";import{wt as r}from"./index-DJ06P0x-.js";e();var i=t(),a=()=>(0,i.jsx)(n,{to:`/platform`,search:r,replace:!0});export{a as component};

@@ -1,0 +1,1 @@
+var e=`/request-access`;export{e as t};

@@ -1,0 +1,1 @@
+import{t as e}from"./data-provider-_r5jIwsE.js";import{V as t}from"./index-DJ06P0x-.js";function n(){return!1}async function r(n={}){let r=t(n.redirectPath??`/auth/callback`),{error:i}=await e.auth.signInWithOAuth({provider:`google`,options:{redirectTo:r}});return i?{ok:!1,error:i.message}:{ok:!0}}export{r as n,n as t};

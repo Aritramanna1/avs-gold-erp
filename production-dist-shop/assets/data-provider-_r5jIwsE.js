@@ -1,0 +1,1 @@
+import{n as e}from"./rolldown-runtime-aKtaBQYM.js";import{i as t,n,r}from"./client-DEP9H0fp.js";var i=e({dataProvider:()=>a,getCloudDataClient:()=>o,isSupabaseConfigured:()=>t,supabase:()=>a}),a=new Proxy({},{get(e,t){let n=r();return Reflect.get(n,t,n)}});function o(){return n()}export{i as n,o as r,a as t};

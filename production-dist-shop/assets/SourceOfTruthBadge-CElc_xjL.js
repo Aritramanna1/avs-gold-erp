@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";e();function t({variant:e=`ledger`,className:t}){return null}export{t};

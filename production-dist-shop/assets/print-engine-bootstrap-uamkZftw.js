@@ -1,0 +1,1 @@
+import{n as e}from"./template-store-Bx5KorNG.js";import{n as t}from"./profile-store-C_-pfm4g.js";var n=null;async function r(){return n||(n=(async()=>{let n=e.getState(),r=t.getState();await Promise.all([n.loaded?Promise.resolve():n.refresh(),r.loaded?Promise.resolve():r.refresh()])})(),n)}export{r as hydratePrintEngineStores};

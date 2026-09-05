@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";import{n as t}from"./Match-wlSxhK07.js";import{t as n}from"./role-gate-D1f2Xrpn.js";var r=e(),i=()=>(0,r.jsx)(n,{action:`billing.view`,label:`Billing`,children:(0,r.jsx)(t,{})});export{i as component};

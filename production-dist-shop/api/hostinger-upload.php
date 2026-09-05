@@ -24,7 +24,7 @@
 
 // ── CORS (allow your ERP origin only) ─────────────────────────────────────────
 $allowed_origins = [
-    // Replace with your ERP's real domain, e.g. "https://erp.yourshop.com"
+    'https://erp.arivahly.in',
     'http://localhost:3000',
     'https://localhost:3000',
 ];

@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-BNfbtW8F.js","assets/dist-olj9QmNK2.js"])))=>i.map(i=>d[i]);
+import{r as e}from"./vendor-jspdf-B4GrIcJL.js";import{r as t}from"./dist-olj9QmNK2.js";var n=t(`App`,{web:()=>e(()=>import(`./web-BNfbtW8F.js`).then(e=>new e.AppWeb),__vite__mapDeps([0,1]))});export{n as App};

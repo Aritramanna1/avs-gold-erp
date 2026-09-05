@@ -1,0 +1,1 @@
+import{i as e}from"./vendor-react-BbySHAOQ.js";import{t}from"./useNavigate-CJ5OSqdF.js";import{wt as n}from"./index-DJ06P0x-.js";var r=e(),i=()=>(0,r.jsx)(t,{to:`/platform`,search:n,replace:!0});export{i as component};

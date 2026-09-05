@@ -1,0 +1,1 @@
+import{s as e}from"./storage-Prbww7-M.js";var t=e=>`mfg.bill.draft.${e}`;function n(e){let t=(e??``).trim();return!t||t.toUpperCase().startsWith(`PENDING-`)||t.toUpperCase()===`DRAFT`?!1:t.startsWith(`MFG-`)}async function r(n,r){await e(t(n),r)}export{n as isReservedMfgBillNumber,r as saveLocalMfgBillDraft};
