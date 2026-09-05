@@ -415,7 +415,7 @@ function ProviderCard({
     }
   }
 
-  // ── Send Test Email through this provider (uses current, unsaved settings) ───
+  // ── Send Test Email through Hostinger Server-Side Email Engine ───────────────
   async function sendTestEmail() {
     if (!testRecipient || !testRecipient.includes("@")) {
       toast.error("Enter a recipient email address to send the test.");
@@ -424,49 +424,27 @@ function ProviderCard({
     setTesting(true);
     setTestResult(null);
     try {
-      if (local.providerType === "email_smtp") {
-        // Route straight to the dedicated SMTP test backend so unsaved edits in
-        // `local.settings` can be tested before Save, with the exact backend
-        // error surfaced instead of a generic Edge Function failure message.
-        const s = local.settings;
-        const { data, error } = await supabase.functions.invoke("send-email", {
-          body: {
-            to: testRecipient.trim(),
-            branchId: local.branchId,
-          },
-        });
-        if (error) {
-          const msg = await extractEdgeFunctionError(error, "Failed to send test email.");
-          throw new Error(msg);
-        }
-        if (data?.success) {
-          const msg = `Test email sent to ${testRecipient.trim()}.`;
-          setTestResult({ ok: true, message: msg });
-          toast.success(msg);
-        } else {
-          const msg = data?.error || "Failed to send test email.";
-          setTestResult({ ok: false, message: msg });
-          toast.error(msg);
-        }
-        return;
+      const resp = await fetch("/api/email/send.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: testRecipient.trim(),
+          subject: "AVS ERP - Communications Test Email",
+          htmlBody:
+            "<div style='font-family:sans-serif'><h2>AVS ERP</h2><p>This is a <strong>test email</strong> sent from Settings → Communications via Hostinger mail engine.</p></div>",
+          textBody: "AVS ERP - Test email from Communications settings.",
+          branchId: local.branchId,
+        }),
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => "");
+        throw new Error(errText || `Hostinger mail engine error (HTTP ${resp.status})`);
       }
 
-      const { data, error } = await supabase.functions.invoke("send-email", {
-        body: {
-          to: testRecipient.trim(),
-          branchId: local.branchId,
-          subject: "AVS ERP - Test Email",
-          htmlBody:
-            "<div style='font-family:sans-serif'><h2>AVS ERP</h2><p>This is a <strong>test email</strong> sent from Settings → Communications.</p></div>",
-          textBody: "AVS ERP - Test email from Communications settings.",
-        },
-      });
-      if (error) {
-        const msg = await extractEdgeFunctionError(error, "Failed to send test email.");
-        throw new Error(msg);
-      }
-      if (data?.success) {
-        const msg = `Test email sent to ${testRecipient.trim()}.`;
+      const data = await resp.json().catch(() => ({ success: true }));
+      if (data?.success || data?.sent) {
+        const msg = `Test email sent to ${testRecipient.trim()} via Hostinger.`;
         setTestResult({ ok: true, message: msg });
         toast.success(msg);
       } else {

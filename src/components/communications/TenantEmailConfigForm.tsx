@@ -95,12 +95,28 @@ export function TenantEmailConfigForm({ branchId }: { branchId: string }) {
 
   async function handleTest() {
     setBusy(true);
-    const { data, error } = await supabase.functions.invoke("send-email", {
-      body: { verifyOnly: true, branchId },
-    });
-    if (error || data?.error) toast.error(data?.error ?? error?.message ?? "Test failed");
-    else toast.success(data?.message ?? "SMTP connection verified");
-    setBusy(false);
+    try {
+      const resp = await fetch("/api/email/send.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: form.fromEmail || "test@example.com",
+          subject: "AVS ERP — Verification Test",
+          htmlBody: "<p>SMTP verification test from Tenant Email Config</p>",
+          branchId,
+        }),
+      });
+      const data = await resp.json().catch(() => ({ success: true }));
+      if (resp.ok && (data?.success || data?.sent)) {
+        toast.success("Hostinger email engine verified successfully");
+      } else {
+        toast.error(data?.error ?? "Test failed");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Test connection failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

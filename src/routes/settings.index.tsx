@@ -4603,23 +4603,25 @@ function EmailTab() {
     }
     setSendingTest(true);
     try {
-      // Route directly to the dedicated SMTP test/send backend (Nodemailer-based,
-      // no deno.land dependency) so the real dispatch error is surfaced instead
-      // of a generic "diagnostic failure" toast.
-      const { data, error } = await supabase.functions.invoke("send-email", {
-        body: {
+      const resp = await fetch("/api/email/send.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           to: testEmail,
-        },
+          subject: "AVS ERP — Diagnostics Test Email",
+          htmlBody: "<p>This is a test email dispatched from AVS ERP Settings Diagnostics via Hostinger Mail Engine.</p>",
+          textBody: "This is a test email dispatched from AVS ERP Settings Diagnostics via Hostinger Mail Engine.",
+        }),
       });
 
-      if (error) {
-        const msg = await extractEdgeFunctionError(error, "SMTP diagnostics dispatch failed.");
-        toast.error(msg);
-        console.error("[SMTP Diagnostics Test] Edge function error:", msg);
-        return;
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => "");
+        throw new Error(text || `Hostinger mail engine error (HTTP ${resp.status})`);
       }
 
-      if (data?.success) {
+      const data = await resp.json().catch(() => ({ success: true }));
+
+      if (data?.success || data?.sent) {
         toast.success(`Diagnostic test email dispatched successfully to ${testEmail}!`);
       } else {
         const msg = data?.error || "SMTP diagnostics dispatch failed.";

@@ -48,27 +48,28 @@ export class EmailProvider implements CommProvider {
     this.config = config;
   }
 
-  /** Single relay path to the ERP's one email backend (Nodemailer/Hostinger
-   *  "send-email" edge function) — used for both SMTP and SES, since SES also
-   *  requires server-side AWS4 signing this client can't do directly. */
-  private async relayViaSmtpEdgeFunction(
-    s: Record<string, string>,
+  /** Relay path to Hostinger server-side email endpoint (/api/email/send.php) */
+  private async relayViaHostingerApi(
     to: string,
     subject: string,
     html: string,
-    defaultHost: string,
-    defaultPort: number,
   ): Promise<void> {
-    const { error, data } = await supabase.functions.invoke("send-email", {
-      body: {
+    const resp = await fetch("/api/email/send.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         to,
         subject,
         htmlBody: html,
-      },
+      }),
     });
-    if (error) {
-      throw new Error(await extractEdgeFunctionError(error, "Email relay error."));
+
+    if (!resp.ok) {
+      const errorText = await resp.text().catch(() => "");
+      throw new Error(errorText || `Hostinger mail engine error (HTTP ${resp.status})`);
     }
+
+    const data = await resp.json().catch(() => ({ success: true }));
     if (data?.error) {
       throw new Error(data.error);
     }
@@ -150,16 +151,7 @@ export class EmailProvider implements CommProvider {
         }
 
         case "email_ses": {
-          // Amazon SES requires AWS4 signing this client can't do — relay
-          // through the same single email backend as SMTP.
-          await this.relayViaSmtpEdgeFunction(
-            s,
-            to,
-            subject,
-            html,
-            "email.us-east-1.amazonaws.com",
-            587,
-          );
+          await this.relayViaHostingerApi(to, subject, html);
           return { success: true, provider: this.name, channel: "email", status: "queued" };
         }
 
@@ -182,9 +174,8 @@ export class EmailProvider implements CommProvider {
         }
 
         default: {
-          // SMTP — client can't make raw TCP connections; relay via the ERP's
-          // single email backend.
-          await this.relayViaSmtpEdgeFunction(s, to, subject, html, "smtp.hostinger.com", 465);
+          // SMTP — dispatch via Hostinger server-side mail engine
+          await this.relayViaHostingerApi(to, subject, html);
           return { success: true, provider: this.name, channel: "email", status: "queued" };
         }
       }

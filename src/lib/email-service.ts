@@ -52,59 +52,39 @@ function wrapBrandHtml(title: string, innerHtml: string): string {
 }
 
 /**
- * Routes a payload through the Hostinger server-side email dispatcher (/api/email/send.php)
- * first to preserve Supabase free-tier limits, falling back to the Supabase Edge Function
- * only if the Hostinger endpoint is unreachable (e.g. local dev or non-PHP server).
+ * Routes transactional email directly through the Hostinger server-side email dispatcher (/api/email/send.php).
+ * Normal application emails are handled by Hostinger infrastructure and do NOT consume Supabase Edge Function quotas.
+ * If Hostinger email fails, the error is logged and reported directly.
  */
 async function dispatchViaSmtpRelay(payload: EmailPayload): Promise<void> {
-  const body = await buildSendEmailInvokeBody({
-    to: payload.to,
-    subject: payload.subject,
-    htmlBody: payload.htmlBody,
-    textBody: payload.textBody,
-    metadata: payload.metadata,
-    attachments: payload.attachments?.map((a) => ({
-      filename: a.filename,
-      content: a.contentBase64,
-      contentType: a.contentType,
-    })),
+  const resp = await fetch("/api/email/send.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      to: payload.to,
+      subject: payload.subject,
+      htmlBody: payload.htmlBody,
+      textBody: payload.textBody,
+      attachments: payload.attachments,
+      metadata: payload.metadata,
+    }),
   });
 
-  // 1. Prioritize Hostinger Server-Side API endpoint (/api/email/send.php)
-  if (typeof window !== "undefined") {
+  if (!resp.ok) {
+    const errorText = await resp.text().catch(() => "");
+    let errorMessage = `Hostinger mail engine error (HTTP ${resp.status})`;
     try {
-      const resp = await fetch("/api/email/send.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: payload.to,
-          subject: payload.subject,
-          htmlBody: payload.htmlBody,
-          textBody: payload.textBody,
-          attachments: payload.attachments,
-          metadata: payload.metadata,
-        }),
-      });
-
-      if (resp.ok) {
-        const json = await resp.json();
-        if (json.success) {
-          return;
-        }
-      }
+      const parsed = JSON.parse(errorText);
+      if (parsed.error) errorMessage = parsed.error;
     } catch {
-      // Hostinger API unreachable or local environment, proceed to fallback
+      if (errorText) errorMessage = errorText;
     }
+    throw new Error(errorMessage);
   }
 
-  // 2. Supabase Edge Function fallback
-  const { data, error } = await supabase.functions.invoke("send-email", { body });
-
-  if (error) {
-    throw new Error(await extractEdgeFunctionError(error, "SMTP relay error."));
-  }
-  if (data?.error) {
-    throw new Error(data.error);
+  const json = await resp.json().catch(() => ({ success: true }));
+  if (json && json.success === false) {
+    throw new Error(json.error || "Hostinger email dispatch failed.");
   }
 }
 

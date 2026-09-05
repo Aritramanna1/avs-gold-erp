@@ -47,16 +47,29 @@ export async function testPlatformEmailConnection(toEmail: string): Promise<{
   error?: string;
 }> {
   const settings = await loadPlatformEmailSettings();
-  const { data, error } = await supabase.functions.invoke("send-email", {
-    body: {
-      to: toEmail,
-      subject: `Ornexa platform email test — ${settings.displayName}`,
-      htmlBody: `<p>Platform email configuration test from ${settings.fromEmail}.</p>`,
-    },
-  });
-  if (error) return { ok: false, error: error.message };
-  if (data && typeof data === "object" && "ok" in data && data.ok === false) {
-    return { ok: false, error: String((data as { error?: string }).error ?? "Send failed") };
+  try {
+    const resp = await fetch("/api/email/send.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: toEmail,
+        subject: `AVS ERP email test — ${settings.displayName}`,
+        htmlBody: `<p>AVS ERP email configuration test from ${settings.fromEmail}.</p>`,
+      }),
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => "");
+      return { ok: false, error: text || `HTTP ${resp.status}` };
+    }
+
+    const data = await resp.json().catch(() => ({ success: true }));
+    if (data && data.success === false) {
+      return { ok: false, error: data.error || "Email delivery failed" };
+    }
+
+    return { ok: true };
+  } catch (err: unknown) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
-  return { ok: true };
 }

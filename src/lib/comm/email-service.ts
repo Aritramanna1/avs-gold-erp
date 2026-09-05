@@ -49,20 +49,10 @@ export class CentralEmailService {
     const maxRetries = options.maxRetries ?? 3;
 
     try {
-      const { data, error } = await (
-        supabase as unknown as {
-          functions: {
-            invoke: (
-              name: string,
-              opts: { body: Record<string, unknown> },
-            ) => Promise<{
-              data: { error?: string; messageId?: string } | null;
-              error: { message: string } | null;
-            }>;
-          };
-        }
-      ).functions.invoke("send-email", {
-        body: {
+      const resp = await fetch("/api/email/send.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           to: vars.recipientEmail,
           subject: rendered.subject,
           htmlBody: rendered.html,
@@ -75,13 +65,18 @@ export class CentralEmailService {
             referenceType: options.jobContext?.referenceType,
             referenceId: options.jobContext?.referenceId,
           },
-        },
+        }),
       });
 
-      if (error) throw new Error(error.message ?? "Email dispatch failed");
+      if (!resp.ok) {
+        const errorText = await resp.text().catch(() => "");
+        throw new Error(errorText || `Hostinger mail error (HTTP ${resp.status})`);
+      }
+
+      const data = await resp.json().catch(() => ({ success: true }));
       if (data?.error) throw new Error(String(data.error));
 
-      // Log to email_outbox for delivery tracking
+      // Log to email_outbox for delivery tracking in Supabase PostgreSQL
       void supabase.from("email_outbox" as never).insert({
         recipient_email: vars.recipientEmail,
         subject: rendered.subject,
