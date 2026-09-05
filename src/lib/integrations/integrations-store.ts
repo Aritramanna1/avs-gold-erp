@@ -45,7 +45,7 @@ export const DEFAULT_INTEGRATIONS: IntegrationItem[] = [
       keySecret: "••••••••••••••••",
       webhookSecret: "••••••••••••••••",
     },
-    webhookUrl: "https://maatarajewellers.shop/api/webhooks/dispatcher.php?provider=razorpay",
+    webhookUrl: "https://erp.arivahly.in/api/webhooks/dispatcher.php?provider=razorpay",
     healthStatus: "healthy",
     lastTestedAt: new Date().toISOString(),
     lastErrorMessage: null,
@@ -65,7 +65,7 @@ export const DEFAULT_INTEGRATIONS: IntegrationItem[] = [
       accessToken: "••••••••••••••••",
       appSecret: "••••••••••••••••",
     },
-    webhookUrl: "https://maatarajewellers.shop/api/webhooks/dispatcher.php?provider=whatsapp",
+    webhookUrl: "https://erp.arivahly.in/api/webhooks/dispatcher.php?provider=whatsapp",
     healthStatus: "healthy",
     lastTestedAt: new Date().toISOString(),
     lastErrorMessage: null,
@@ -80,7 +80,7 @@ export const DEFAULT_INTEGRATIONS: IntegrationItem[] = [
     settings: {
       host: "smtp.hostinger.com",
       port: 465,
-      fromEmail: "no-reply@maatarajewellers.shop",
+      fromEmail: "admin@arivahly.in",
       fromName: "MTJ / AVS Gold & Diamond Jewellers",
     },
     secretsMasked: {
@@ -105,7 +105,7 @@ export const DEFAULT_INTEGRATIONS: IntegrationItem[] = [
     secretsMasked: {
       apiKey: "••••••••••••••••",
     },
-    webhookUrl: "https://maatarajewellers.shop/api/webhooks/dispatcher.php?provider=sms",
+    webhookUrl: "https://erp.arivahly.in/api/webhooks/dispatcher.php?provider=sms",
     healthStatus: "unknown",
     lastTestedAt: null,
     lastErrorMessage: null,
@@ -142,7 +142,7 @@ export const DEFAULT_INTEGRATIONS: IntegrationItem[] = [
     secretsMasked: {
       bearerToken: "••••••••••••••••",
     },
-    webhookUrl: "https://maatarajewellers.shop/api/webhooks/dispatcher.php?provider=custom",
+    webhookUrl: "https://erp.arivahly.in/api/webhooks/dispatcher.php?provider=custom",
     healthStatus: "unknown",
     lastTestedAt: null,
     lastErrorMessage: null,

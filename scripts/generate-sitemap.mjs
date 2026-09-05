@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
-const base = (process.env.VITE_PUBLIC_APP_URL || "https://maatarajewellers.shop").replace(
+const base = (process.env.VITE_PUBLIC_APP_URL || "https://erp.arivahly.in").replace(
   /\/$/,
   "",
 );

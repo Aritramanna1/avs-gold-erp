@@ -3,7 +3,7 @@
  * Email clients need absolute HTTPS image URLs — prefer PNG over SVG.
  */
 
-export const DEFAULT_PLATFORM_APP_ORIGIN = "https://maatarajewellers.shop";
+export const DEFAULT_PLATFORM_APP_ORIGIN = "https://erp.arivahly.in";
 
 /** Full-colour AVS ERP wordmark suitable for email clients */
 export const DEFAULT_EMAIL_LOGO_PATH = "/assets/ornexa-logo-full.png";

@@ -8,14 +8,14 @@ export function getPublicSiteOrigin(): string {
   if (origin && !/localhost|127\.0\.0\.1/i.test(origin)) return origin;
   if (configured && !/localhost|127\.0\.0\.1/i.test(configured)) return configured;
   if (origin) return origin;
-  return "https://maatarajewellers.shop";
+  return "https://erp.arivahly.in";
 }
 
 /** Origin for invite links in email/SMS — never localhost (recipients are external). */
 export function getPublicInviteOrigin(): string {
   const configured = import.meta.env.VITE_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
   if (configured && !/localhost|127\.0\.0\.1/i.test(configured)) return configured;
-  return "https://maatarajewellers.shop";
+  return "https://erp.arivahly.in";
 }
 
 export function publicSiteUrl(path = "/"): string {

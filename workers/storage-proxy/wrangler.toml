@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2026-08-15"
 
 [vars]
-ALLOWED_ORIGIN = "https://maatarajewellers.shop"
+ALLOWED_ORIGIN = "https://erp.arivahly.in"
 SUPABASE_URL = "https://dqgrrafuoxaorvyrcuuh.supabase.co"
 
 [[r2_buckets]]

@@ -122,7 +122,7 @@ function portalFirm(raw: Record<string, unknown>): PortalFirm {
     gstin: opt("gstin") ?? "19AABCM1234B1Z2",
     logoUrl: opt("logoUrl"),
     logoStoragePath: opt("logoStoragePath") ?? opt("logo_storage_path"),
-    website: opt("website") ?? "https://maatarajewellers.shop",
+    website: opt("website") ?? "https://erp.arivahly.in",
     branchName: opt("branchName") ?? "Bowbazar Flagship Showroom",
     terms:
       opt("terms") ??

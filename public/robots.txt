@@ -65,4 +65,4 @@ Allow: /login
 Allow: /privacy
 Allow: /terms
 
-Sitemap: https://maatarajewellers.shop/sitemap.xml
+Sitemap: https://erp.arivahly.in/sitemap.xml

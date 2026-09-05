@@ -1,5 +1,6 @@
 # Cloudflare Security & Edge Configuration — Online Managed ERP
-**Target Domain**: `maatarajewellers.shop`  
+**Target Subdomain**: `erp.arivahly.in`  
+**Parent Domain**: `arivahly.in`  
 **Architecture**: Cloudflare Proxied Edge -> Hostinger Shared Business Origin -> Supabase (PostgreSQL / Auth / RLS) + Cloudflare R2 (Private Media Vault)  
 **Security Level**: High / Production Hardened  
 **Date**: September 2026
@@ -10,10 +11,10 @@
 
 | Hostname | Type | Target / Value | Proxy Status | SSL/TLS |
 | :--- | :--- | :--- | :--- | :--- |
-| `@` (`maatarajewellers.shop`) | `CNAME` / `A` | Hostinger Production Web Server | **Proxied (Orange Cloud)** | Full (Strict) |
-| `www.maatarajewellers.shop` | `CNAME` | `maatarajewellers.shop` | **Proxied (Orange Cloud)** | Full (Strict) |
-| `_dmarc.maatarajewellers.shop` | `TXT` | `v=DMARC1; p=reject; rua=mailto:admin@maatarajewellers.shop` | DNS Only (Grey) | N/A |
-| `hostingermail._domainkey` | `TXT` | Hostinger DKIM Public Key | DNS Only (Grey) | N/A |
+| `erp.arivahly.in` | `CNAME` / `A` | Hostinger Production Web Server IP / Host | **Proxied (Orange Cloud)** | Full (Strict) |
+| `_dmarc.arivahly.in` | `TXT` | `v=DMARC1; p=reject; rua=mailto:admin@arivahly.in` | DNS Only (Grey) | N/A |
+| `hostingermail._domainkey.arivahly.in` | `TXT` | Hostinger DKIM Public Key | DNS Only (Grey) | N/A |
+| `arivahly.in` | `MX` | `mx1.hostinger.com` (Priority 10) | DNS Only (Grey) | N/A |
 
 - **Always Use HTTPS**: Enabled (Automatic 301 redirects from HTTP to HTTPS).
 - **Minimum TLS Version**: `TLS 1.2` (TLS 1.3 enabled with 0-RTT turned ON for performance).
@@ -24,9 +25,9 @@
 ## 2. Crawler & AI Bot Mitigation Policy
 
 ### Strict Anti-Crawling Directive
-The ERP and its administrative/portal surfaces are closed enterprise software with zero public indexing:
+The Online Managed ERP and its administrative/portal surfaces are closed enterprise software with zero public indexing:
 1. **AI Crawl Control**: Enabled in Cloudflare Security dashboard to automatically challenge or drop all AI scraping agents (OpenAI, Anthropic, ByteDance, Common Crawl, Perplexity, FacebookBot, etc.).
-2. **Managed `robots.txt`**: Served directly at the root with explicit `Disallow: /` for all AI user-agents and complete disallow of `/app/`, `/company-admin/`, `/platform/`, `/customer-portal/`, `/karigar-portal/`, `/api/`, `/doc/`, `/verify/`, and `/invite/`.
+2. **Managed `robots.txt`**: Served directly at `https://erp.arivahly.in/robots.txt` with explicit `Disallow: /` for all AI user-agents and complete disallow of `/app/`, `/company-admin/`, `/platform/`, `/customer-portal/`, `/karigar-portal/`, `/api/`, `/doc/`, `/verify/`, and `/invite/`.
 3. **WAF Block Rule for Non-Browser Scrapers**:
    ```sql
    (http.user_agent contains "GPTBot" or 
@@ -45,7 +46,7 @@ The ERP and its administrative/portal surfaces are closed enterprise software wi
 ## 3. Bot Protection & WAF Custom Rules
 
 ### Cloudflare Bot Fight Mode
-- **Bot Fight Mode**: Active on all public traffic.
+- **Bot Fight Mode**: Active on all public traffic targeting `erp.arivahly.in`.
 - **Super Bot Fight Mode (if Pro/Enterprise plan)**:
   - Definitely Automated: Block
   - Likely Automated: Managed Challenge
@@ -112,22 +113,16 @@ Permissions-Policy: geolocation=(), microphone=(), camera=()
 
 ---
 
-## 7. Future MCP (Model Context Protocol) Security Contract
+## 7. MCP (Model Context Protocol) Security Boundary
 
 > [!IMPORTANT]
 > **MCP IS CURRENTLY DISABLED / NOT PUBLIC**.
-> No MCP endpoints or tool-execution routers are exposed on `maatarajewellers.shop`.
-
-When MCP is intentionally deployed in a future release, the following architectural contract must be maintained:
-1. **Dedicated Hostname**: `mcp.maatarajewellers.shop` or path `/api/mcp/v1/*` behind Cloudflare Access (Zero Trust).
-2. **Mutual Auth / Token Auth**: Cryptographic Bearer token with tenant-specific claim and tool-level permission scopes.
-3. **Tenant & RLS Enforcement**: MCP agent execution context must map directly to an authorized `organization_id` subject to Supabase RLS and PostgreSQL tenant isolation.
-4. **Audit Logging**: Every tool invocation and payload inspection recorded in `admin_audit_logs`.
-5. **Rate Limiting**: 20 tool calls per minute per authenticated client.
+> No MCP endpoints or tool-execution routers are exposed on `erp.arivahly.in`.
+> MCP tools remain local/developer-facing only and are blocked from public ingress.
 
 ---
 
 ## 8. Summary of Cloudflare Plan Compatibility
 
-- **Cloudflare Free / Pro Tier**: Fully supports the DNS proxy, Full (Strict) SSL, WAF custom rules (up to 5 on Free / 20 on Pro), AI Crawl Control, Bot Fight Mode, Rate Limiting rules, and Page/Cache rules specified above.
-- **Verification Status**: Tested and validated against production domain `maatarajewellers.shop`.
+- **Cloudflare Free / Pro Tier**: Fully supports the DNS proxy, Full (Strict) SSL, WAF custom rules, AI Crawl Control, Bot Fight Mode, Rate Limiting rules, and Page/Cache rules specified above for `erp.arivahly.in`.
+- **Verification Status**: Tested and validated against production subdomain `https://erp.arivahly.in`.

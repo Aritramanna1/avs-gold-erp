@@ -25,6 +25,7 @@ export interface Env {
 }
 
 const ALLOWED_ORIGINS = new Set([
+  "https://erp.arivahly.in",
   "https://maatarajewellers.shop",
   "https://maatarajewellers.in",
   "https://aurum.arivahly.in",
@@ -40,7 +41,7 @@ function resolveCorsOrigin(request: Request, fallback: string): string {
   const origin = request.headers.get("Origin");
   if (origin && ALLOWED_ORIGINS.has(origin)) return origin;
   if (fallback && ALLOWED_ORIGINS.has(fallback)) return fallback;
-  return "https://maatarajewellers.shop";
+  return "https://erp.arivahly.in";
 }
 
 const CORS_HEADERS = (origin: string) => ({
