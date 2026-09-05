@@ -133,6 +133,7 @@ export function AuthLayout({
   onSuccess,
   nativeMinimal = false,
   audienceHint,
+  className,
 }: AuthLayoutProps) {
   const { t } = useLanguage();
   const navigate = useNavigate();
