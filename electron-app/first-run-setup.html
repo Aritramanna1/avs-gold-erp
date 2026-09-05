@@ -403,6 +403,33 @@
     let selectedMode = "internet";
 
     function goToStep(s) {
+      if (s > currentStep) {
+        if (currentStep === 1) {
+          const sName = document.getElementById("firm-shop-name").value.trim();
+          if (!sName) {
+            alert("Please enter your Shop / Trade Name.");
+            return;
+          }
+        }
+        if (currentStep === 4) {
+          const email = document.getElementById("admin-email").value.trim();
+          const pass = document.getElementById("admin-pass").value;
+          const passConf = document.getElementById("admin-pass-confirm").value;
+          if (!email || !pass) {
+            alert("Please fill in Owner Login Email and Password.");
+            return;
+          }
+          if (pass.length < 6) {
+            alert("Password must be at least 6 characters.");
+            return;
+          }
+          if (pass !== passConf) {
+            alert("Passwords do not match. Please verify.");
+            return;
+          }
+        }
+      }
+
       document.getElementById(`step-${currentStep}`).style.display = "none";
       currentStep = s;
       document.getElementById(`step-${currentStep}`).style.display = "block";

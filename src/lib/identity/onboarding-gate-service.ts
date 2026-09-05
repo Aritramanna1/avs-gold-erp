@@ -8,7 +8,7 @@ import { useOrders } from "@/lib/orders-store";
 import { isAdminLikeRole } from "@/lib/role-resolution";
 import { isErpPath, isPlatformPath, isPortalPath } from "@/lib/identity/route-access";
 
-const EXEMPT_PATHS = new Set(["/onboarding", "/setup", "/request-access", "/trial/start"]);
+const EXEMPT_PATHS = new Set(["/request-access", "/trial/start"]);
 
 export function isOnboardingExemptPath(pathname: string): boolean {
   if (EXEMPT_PATHS.has(pathname)) return true;
@@ -57,14 +57,9 @@ export function canRunAssistedSetup(role: string | null | undefined): boolean {
 }
 
 /**
- * True when an authenticated ERP user should be sent to /onboarding once.
- * Call only after critical + background boot (people/orders loaded).
+ * Setup is strictly an Electron / host installer first-run procedure.
+ * Public web / returning browser sessions never redirect to setup.
  */
-export function shouldRedirectToAssistedSetup(pathname: string, role: string | null | undefined): boolean {
-  if (isOnboardingExemptPath(pathname)) return false;
-  if (isPlatformPath(pathname) || isPortalPath(pathname)) return false;
-  if (!isErpPath(pathname) && pathname !== "/app" && pathname !== "/") return false;
-  if (!canRunAssistedSetup(role)) return false;
-  if (isEstablishedWorkshopTenant()) return false;
-  return true;
+export function shouldRedirectToAssistedSetup(_pathname: string, _role: string | null | undefined): boolean {
+  return false;
 }

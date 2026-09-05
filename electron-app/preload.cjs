@@ -14,9 +14,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   reloadApp: () => ipcRenderer.invoke("reload-app"),
   getAppConfig: () => ipcRenderer.invoke("get-app-config"),
 
-  // First-Run Installer & Lock
+  // First-Run Installer, Lock & Local Recovery
   completeFirstRunSetup: (payload) => ipcRenderer.invoke("complete-first-run-setup", payload),
   checkSetupLocked: () => ipcRenderer.invoke("check-setup-locked"),
+  adminResetSetup: (credentials) => ipcRenderer.invoke("admin-reset-setup", credentials),
+  launchFirstRunSetup: () => ipcRenderer.invoke("launch-first-run-setup"),
 
   // Cloudflare Tunnel APIs
   cloudflare: {

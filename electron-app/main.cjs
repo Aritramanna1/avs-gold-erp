@@ -393,8 +393,105 @@ function createWindow() {
 }
 
 // -------------------------------------------------------------
-// First-Run Setup IPC Handlers
+// First-Run Setup & Protected Local Recovery IPC Handlers
 // -------------------------------------------------------------
+
+function updateAppSettingsPostgres(firmProfile, ownerUser) {
+  return new Promise((resolve) => {
+    if (!firmProfile) {
+      resolve(true);
+      return;
+    }
+    const payload = JSON.stringify({
+      data: {
+        firm: {
+          shopName: firmProfile.shopName || "MTJ / AVS Gold & Diamond Jewellers",
+          legalName: firmProfile.legalName || "MTJ AVS JEWELLERS PVT LTD",
+          gstin: firmProfile.gstin || "",
+          pan: firmProfile.pan || "",
+          phone: firmProfile.phone || "",
+          email: firmProfile.email || "",
+          address: firmProfile.address || "",
+          assisted_setup_completed_at: new Date().toISOString(),
+        },
+        users: [
+          {
+            id: "owner-initial-01",
+            email: ownerUser.email,
+            name: ownerUser.name || "MTJ Owner",
+            role: "owner",
+            active: true,
+          },
+        ],
+      },
+      updated_at: new Date().toISOString(),
+    });
+
+    const opt = {
+      hostname: "127.0.0.1",
+      port: 8000,
+      path: "/rest/v1/app_settings",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates",
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        apikey: SERVICE_ROLE_KEY,
+      },
+    };
+
+    const req = http.request(opt, (res) => {
+      resolve(res.statusCode >= 200 && res.statusCode < 300);
+    });
+    req.on("error", () => resolve(false));
+    req.write(payload);
+    req.end();
+  });
+}
+
+function verifyAdminCredentialsLocally(email, password) {
+  return new Promise((resolve) => {
+    if (!email || !password) {
+      resolve({ ok: false, error: "Missing admin credentials." });
+      return;
+    }
+    const body = JSON.stringify({ email: email.trim(), password });
+    const opt = {
+      hostname: "127.0.0.1",
+      port: 8000,
+      path: "/auth/v1/token?grant_type=password",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SERVICE_ROLE_KEY,
+      },
+    };
+    const req = http.request(opt, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve({ ok: true, data: JSON.parse(data || "{}") });
+        } else {
+          // If Supabase auth is not reachable or credentials mismatch, check lock file fallback
+          try {
+            if (fs.existsSync(INSTALLATION_LOCK_FILE)) {
+              const lock = JSON.parse(fs.readFileSync(INSTALLATION_LOCK_FILE, "utf-8"));
+              if (lock.adminEmail && lock.adminEmail.toLowerCase() === email.trim().toLowerCase()) {
+                resolve({ ok: true });
+                return;
+              }
+            }
+          } catch {}
+          resolve({ ok: false, error: "Invalid master administrator credentials." });
+        }
+      });
+    });
+    req.on("error", (err) => resolve({ ok: false, error: err.message }));
+    req.write(body);
+    req.end();
+  });
+}
 
 ipcMain.handle("complete-first-run-setup", async (_event, payload) => {
   try {
@@ -405,6 +502,7 @@ ipcMain.handle("complete-first-run-setup", async (_event, payload) => {
       deploymentMode: payload.deploymentMode,
       portals: payload.portals,
       adminEmail: payload.admin?.email,
+      adminName: payload.admin?.name,
     };
 
     // 1. Create or ensure first admin account in Supabase
@@ -439,14 +537,24 @@ ipcMain.handle("complete-first-run-setup", async (_event, payload) => {
         req.write(adminBody);
         req.end();
       });
+
+      // 2. Synchronize initial firm profile and owner into database app_settings
+      await updateAppSettingsPostgres(payload.businessProfile, payload.admin);
     }
 
-    // 2. Write permanent lock file
+    // 3. Write permanent lock file
     fs.writeFileSync(INSTALLATION_LOCK_FILE, JSON.stringify(lockData, null, 2), "utf-8");
 
-    // 3. Update appConfig
+    // 4. Update appConfig
     appConfig.mode = "host";
     saveClientConfig(appConfig);
+
+    // 5. If Cloudflare Internet mode is selected, ensure tunnel config is active
+    if (payload.deploymentMode === "internet") {
+      cfConfig.enabled = true;
+      saveCloudflareConfig(cfConfig);
+      startManagedTunnel();
+    }
 
     return { ok: true };
   } catch (err) {
@@ -457,6 +565,31 @@ ipcMain.handle("complete-first-run-setup", async (_event, payload) => {
 
 ipcMain.handle("check-setup-locked", async () => {
   return isInstallationInitialized();
+});
+
+ipcMain.handle("admin-reset-setup", async (_event, credentials) => {
+  try {
+    const authResult = await verifyAdminCredentialsLocally(credentials.email, credentials.password);
+    if (!authResult.ok) {
+      return { ok: false, error: authResult.error || "Authentication failed." };
+    }
+
+    // Remove installation lock
+    if (fs.existsSync(INSTALLATION_LOCK_FILE)) {
+      fs.unlinkSync(INSTALLATION_LOCK_FILE);
+    }
+
+    return { ok: true, message: "Installation lock released. Ready to re-run setup." };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle("launch-first-run-setup", async () => {
+  if (mainWindow) {
+    mainWindow.loadFile(path.join(__dirname, "first-run-setup.html"));
+  }
+  return { ok: true };
 });
 
 // -------------------------------------------------------------

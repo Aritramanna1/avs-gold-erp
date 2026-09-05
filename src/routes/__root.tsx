@@ -134,8 +134,6 @@ function RootComponent() {
       "/supplier-portal",
       "/privacy",
       "/terms",
-      "/onboarding",
-      "/setup",
     ].includes(currentPath) ||
     currentPath.startsWith("/invite/") ||
     currentPath.startsWith("/doc/") ||

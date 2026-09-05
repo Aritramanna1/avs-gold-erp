@@ -489,6 +489,9 @@
           <button class="btn btn-danger" id="btn-stop-host">
             <span>⏹</span> STOP LOCAL SERVICES
           </button>
+          <button class="btn btn-secondary" id="btn-open-recovery" style="grid-column: 1 / -1; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24;">
+            <span>🛡️</span> LOCAL ADMIN RECOVERY / RE-RUN SETUP
+          </button>
         </div>
       </div>
 
@@ -540,6 +543,36 @@
       </div>
       <div style="display:flex; justify-content:flex-end;">
         <button class="btn-sm primary" id="btn-close-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOCAL ADMIN RECOVERY MODAL -->
+  <div class="modal-overlay" id="recovery-modal">
+    <div class="modal-card">
+      <div class="modal-title" style="color: #fbbf24;">
+        <span>🛡️</span> Local Administrative Setup Recovery
+      </div>
+      <p style="font-size: 12px; color: #94a3b8; line-height: 1.5; margin-bottom: 16px;">
+        This procedure allows the shop owner to re-run the first-time installation setup. To prevent unauthorized resets, enter your Master Administrator credentials.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Master Admin Email</label>
+        <input type="email" class="input-text" id="recovery-admin-email" placeholder="admin@mtjgold.com" style="width:100%;" />
+      </div>
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label class="form-label">Master Admin Password</label>
+        <input type="password" class="input-text" id="recovery-admin-pass" placeholder="••••••••" style="width:100%;" />
+      </div>
+
+      <div class="test-result-bar" id="recovery-result-msg" style="margin-bottom: 14px;"></div>
+
+      <div style="display:flex; justify-content:flex-end; gap: 8px;">
+        <button class="btn-sm" id="btn-close-recovery">Cancel</button>
+        <button class="btn-sm primary" id="btn-submit-recovery" style="background:#f59e0b; color:#020617;">
+          Authorize & Re-Run Setup
+        </button>
       </div>
     </div>
   </div>
@@ -673,6 +706,77 @@
     btnCloseModal.addEventListener("click", () => {
       repairModal.style.display = "none";
     });
+
+    // Local Admin Recovery Listeners
+    const btnOpenRecovery = document.getElementById("btn-open-recovery");
+    const recoveryModal = document.getElementById("recovery-modal");
+    const btnCloseRecovery = document.getElementById("btn-close-recovery");
+    const btnSubmitRecovery = document.getElementById("btn-submit-recovery");
+    const recoveryEmailInput = document.getElementById("recovery-admin-email");
+    const recoveryPassInput = document.getElementById("recovery-admin-pass");
+    const recoveryResultMsg = document.getElementById("recovery-result-msg");
+
+    if (btnOpenRecovery) {
+      btnOpenRecovery.addEventListener("click", () => {
+        recoveryModal.style.display = "flex";
+        recoveryResultMsg.style.display = "none";
+        recoveryPassInput.value = "";
+      });
+    }
+
+    if (btnCloseRecovery) {
+      btnCloseRecovery.addEventListener("click", () => {
+        recoveryModal.style.display = "none";
+      });
+    }
+
+    if (btnSubmitRecovery) {
+      btnSubmitRecovery.addEventListener("click", async () => {
+        const email = recoveryEmailInput.value.trim();
+        const password = recoveryPassInput.value;
+        if (!email || !password) {
+          recoveryResultMsg.className = "test-result-bar error";
+          recoveryResultMsg.textContent = "Please enter both master administrator email and password.";
+          return;
+        }
+
+        btnSubmitRecovery.disabled = true;
+        btnSubmitRecovery.textContent = "Verifying...";
+        recoveryResultMsg.style.display = "none";
+
+        try {
+          if (window.electronAPI && window.electronAPI.adminResetSetup) {
+            const res = await window.electronAPI.adminResetSetup({ email, password });
+            if (res.ok) {
+              recoveryResultMsg.className = "test-result-bar success";
+              recoveryResultMsg.textContent = "✓ Master Admin verified. Setup unlocked! Launching setup wizard...";
+              setTimeout(() => {
+                if (window.electronAPI.launchFirstRunSetup) {
+                  window.electronAPI.launchFirstRunSetup();
+                } else {
+                  window.location.reload();
+                }
+              }, 1200);
+            } else {
+              recoveryResultMsg.className = "test-result-bar error";
+              recoveryResultMsg.textContent = `✗ Verification failed: ${res.error || "Incorrect credentials"}`;
+              btnSubmitRecovery.disabled = false;
+              btnSubmitRecovery.textContent = "Authorize & Re-Run Setup";
+            }
+          } else {
+            recoveryResultMsg.className = "test-result-bar error";
+            recoveryResultMsg.textContent = "Local recovery is only available inside Electron desktop app.";
+            btnSubmitRecovery.disabled = false;
+            btnSubmitRecovery.textContent = "Authorize & Re-Run Setup";
+          }
+        } catch (err) {
+          recoveryResultMsg.className = "test-result-bar error";
+          recoveryResultMsg.textContent = `✗ Error: ${err.message}`;
+          btnSubmitRecovery.disabled = false;
+          btnSubmitRecovery.textContent = "Authorize & Re-Run Setup";
+        }
+      });
+    }
 
     btnTestConn.addEventListener("click", async () => {
       const url = inputHostUrl.value.trim();

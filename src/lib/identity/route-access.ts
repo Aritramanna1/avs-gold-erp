@@ -131,8 +131,6 @@ export function isPublicAuthPath(pathname: string): boolean {
     pathname === "/terms" ||
     pathname === "/trial/start" ||
     pathname === "/request-access" ||
-    pathname === "/onboarding" ||
-    pathname === "/setup" ||
     pathname === "/login" ||
     pathname === "/verify" ||
     pathname.startsWith("/verify/") ||
