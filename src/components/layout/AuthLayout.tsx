@@ -205,240 +205,57 @@ export function AuthLayout({
         return;
       }
 
-      let authUser = null;
-      let authSession = null;
-      let functionInvokedSuccessfully = false;
-      let isRateLimited = false;
-      let lockMinutes = 60;
+      const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+        email: targetEmail,
+        password,
+      });
 
-      try {
-        // The Edge Function is an optional rate-limit layer. It is opt-in so
-        // a missing/stale deployment cannot produce a browser CORS error or
-        // delay normal Supabase authentication. Supabase Auth remains the
-        // authoritative credential and session boundary.
-        if (import.meta.env.VITE_AUTH_LOGIN_FUNCTION_ENABLED !== "true") {
-          throw Object.assign(new Error("Optional auth-login function disabled"), { status: 0 });
-        }
-        // Route the sign-in form through the "auth-login" Edge Function.
-        // NOTE: The Edge Function login rate-limiting lockout is a secondary UX lockout boundary,
-        // while the ultimate security boundary is handled natively by the database / Supabase auth settings.
-        const { data: funcData, error: funcErr } = await supabase.functions.invoke("auth-login", {
-          body: { email: targetEmail, password },
-        });
-
-        if (funcErr) {
-          const status = funcErr.status || (funcErr as any).statusCode;
-          if (status === 429) {
-            isRateLimited = true;
-          }
-          throw funcErr;
-        }
-
-        if (funcData) {
-          if (funcData.locked) {
-            isRateLimited = true;
-            lockMinutes = funcData.retryAfterMinutes || 60;
-            throw new Error(
-              funcData.error ||
-                `Too many failed attempts. Try again in about ${lockMinutes} minutes.`,
-            );
-          }
-
-          if (funcData.error) {
-            throw new Error(funcData.error);
-          }
-
-          // Successful authentication via Edge Function
-          authSession = funcData.session;
-          authUser = funcData.user;
-          functionInvokedSuccessfully = true;
-        }
-      } catch (ex: any) {
-        if (ex?.status !== 0) {
-          console.warn(
-            "[AuthLayout] Edge function login failed or not found, verifying rate-limit status.",
-            ex,
-          );
-        }
-
-        // Handle explicit rate limit responses from our Edge Function
-        if (
-          isRateLimited ||
-          ex.status === 429 ||
-          ex.message?.includes("Too many failed attempts") ||
-          ex.message?.includes("429")
-        ) {
-          const errMsg = ex.message?.includes("minutes")
-            ? ex.message
-            : `Too many failed attempts. Try again in about ${lockMinutes} minutes.`;
-          setErr(errMsg);
-          setLockedUntil(Date.now() + lockMinutes * 60 * 1000);
+      if (authErr) {
+        const status = authErr.status;
+        if (status === 429) {
+          setErr("Too many failed attempts. Please try again later.");
+          setLockedUntil(Date.now() + 5 * 60 * 1000);
           useSettings
             .getState()
             .addSecurityLog(
               "rate limited",
-              `Sign-in attempt rate limited for ${targetEmail}: ${errMsg}`,
+              `Sign-in attempt rate limited for ${targetEmail}`,
               targetEmail,
             );
-          setBusy(false);
-          return;
-        }
-
-        // Handle generic 401 unauthenticated response from Edge Function
-        if (
-          ex.status === 401 ||
-          ex.message?.includes("Invalid email or password") ||
-          ex.message?.includes("401")
+        } else if (
+          status === 400 ||
+          authErr.message?.includes("Invalid login credentials") ||
+          authErr.message?.includes("invalid_credentials")
         ) {
           setErr("Invalid email or password.");
           useSettings
             .getState()
             .addSecurityLog(
               "failed login",
-              `Failed Edge Function auth attempt for ${targetEmail}: Invalid credentials`,
+              `Failed login attempt for ${targetEmail}: Invalid credentials`,
               targetEmail,
             );
-setBusy(false);
-          return;
+        } else {
+          setErr(authErr.message || "Authentication error. Please try again.");
         }
-
-        // Graceful fallback to client-side login if the Edge Function itself is unreachable
-
-        try {
-          const { data: fallbackData, error: fallbackErr } = await supabase.auth.signInWithPassword(
-            {
-              email: targetEmail,
-              password,
-            },
-          );
-
-          if (fallbackErr) {
-            if (fallbackErr.status === 429) {
-              setErr("Too many failed attempts. Please try again later.");
-              setLockedUntil(Date.now() + 5 * 60 * 1000);
-            } else if (
-              fallbackErr.status === 400 ||
-              fallbackErr.message?.includes("Invalid login credentials") ||
-              fallbackErr.message?.includes("invalid_credentials")
-            ) {
-              setErr("Invalid email or password.");
-            } else {
-              const { isAbortLikeError, abortFriendlyMessage } = await import(
-                "@/lib/network-abort"
-              );
-              if (isAbortLikeError(fallbackErr)) {
-const retry = await supabase.auth.signInWithPassword({
-                  email: targetEmail,
-                  password,
-                });
-                if (retry.error) {
-                  setErr(
-                    isAbortLikeError(retry.error)
-                      ? abortFriendlyMessage()
-                      : retry.error.message || abortFriendlyMessage(),
-                  );
-                  setBusy(false);
-                  return;
-                }
-                if (retry.data?.session) {
-                  authSession = retry.data.session;
-                  authUser = retry.data.user;
-                  functionInvokedSuccessfully = false;
-                } else {
-                  setErr(abortFriendlyMessage());
-                  setBusy(false);
-                  return;
-                }
-              } else {
-                setErr(
-                  fallbackErr.message || "Authentication service error. Please try again later.",
-                );
-              }
-            }
-
-            if (!authSession) {
-              useSettings
-                .getState()
-                .addSecurityLog(
-                  "failed login",
-                  `Failed fallback auth attempt for ${targetEmail}: ${fallbackErr.message}`,
-                  targetEmail,
-                );
-              setBusy(false);
-              return;
-            }
-          } else if (fallbackData?.session) {
-            authSession = fallbackData.session;
-            authUser = fallbackData.user;
-            functionInvokedSuccessfully = false; // session is already loaded client-side, setSession not needed
-          } else {
-            throw new Error("No session returned from authentication provider.");
-          }
-        } catch (fallbackEx: any) {
-          console.error(
-            "[AuthLayout] Fallback client-side sign-in failed:",
-            fallbackEx.message || fallbackEx,
-          );
-          const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-abort");
-          setErr(
-            isAbortLikeError(fallbackEx)
-              ? abortFriendlyMessage()
-              : "Login service is temporarily unavailable. Please try again later.",
-          );
-          useSettings
-            .getState()
-            .addSecurityLog(
-              "failed login",
-              `Login attempt for ${targetEmail} blocked due to login service outage: ${fallbackEx.message || fallbackEx}`,
-              targetEmail,
-            );
-          setBusy(false);
-          return;
-        }
-      }
-
-      if (functionInvokedSuccessfully && authSession) {
-        // Set the session on client-side Supabase client
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: authSession.access_token,
-          refresh_token: authSession.refresh_token,
-        });
-
-        if (sessionError) {
-          throw sessionError;
-        }
-      } else if (!authSession) {
-        // Fallback or unexpected condition
-        setErr("Login service returned an invalid response. Please try again later.");
         setBusy(false);
         return;
       }
 
-      // NOTE: authorization (role/active/profile-linked checks) is performed
-      // exactly once, by AuthGate's reactive onAuthStateChange handler, which
-      // fires immediately once the session above is set. This form used to
-      // duplicate that same check here via its own getUser()+
-      // verifyUserRoleAndStatus() call — running the same app_settings
-      // lookup twice in parallel on every login. Beyond the redundant
-      // network round trip, if THIS copy's fetch hit any transient network
-      // hiccup, it would fall through and force a sign-out even when the
-      // user was fully authorized, producing an intermittent spurious
-      // logout right after a successful sign-in. AuthGate remains the single
-      // source of truth for authorization; if it determines the account
-      // isn't allowed, it shows its own error and signs the user out itself.
-      const signedInUserId = authUser?.id ?? authSession?.user?.id;
+      if (!authData?.session) {
+        setErr("Login service returned an invalid response. Please try again.");
+        setBusy(false);
+        return;
+      }
+
+      const signedInUserId = authData.user?.id || authData.session.user?.id;
       if (signedInUserId) {
         void noteSuccessfulPasswordLogin(signedInUserId);
       }
       await Promise.resolve(onSuccess?.());
     } catch (ex: any) {
-      console.error("[AuthLayout] Login submission hit unexpected system exception:", ex);
-const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-abort");
-      setErr(
-        isAbortLikeError(ex)
-          ? abortFriendlyMessage()
-          : ex.message || "An unexpected system error occurred.",
-      );
+      console.error("[AuthLayout] Login submission hit unexpected exception:", ex);
+      setErr(ex?.message || "An unexpected system error occurred.");
     } finally {
       setBusy(false);
     }

@@ -19,6 +19,12 @@ function createZip(sourceDir, outPath) {
 
     const htaccessContent = fs.readFileSync('hostinger-htaccess.txt', 'utf8');
     archive.append(htaccessContent, { name: '.htaccess' });
+    if (fs.existsSync('.env')) {
+      archive.append(fs.readFileSync('.env', 'utf8'), { name: '.env' });
+    }
+    if (fs.existsSync('.env.production')) {
+      archive.append(fs.readFileSync('.env.production', 'utf8'), { name: '.env.production' });
+    }
 
     archive.finalize();
   });

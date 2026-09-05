@@ -24,9 +24,9 @@ $supabaseStatus = false;
 $supabaseLatencyMs = null;
 if (!empty($SUPABASE_URL)) {
     $subStart = microtime(true);
-    $res = supabaseRequest('rest/v1/', 'GET');
+    $res = supabaseRequest('auth/v1/settings', 'GET');
     $subEnd = microtime(true);
-    $supabaseStatus = ($res['status'] >= 200 && $res['status'] < 500);
+    $supabaseStatus = ($res['status'] >= 200 && $res['status'] < 400);
     $supabaseLatencyMs = round(($subEnd - $subStart) * 1000, 2);
 }
 
@@ -47,6 +47,8 @@ $response = [
     'supabase' => [
         'configured_url' => $SUPABASE_URL,
         'reachable' => $supabaseStatus,
+        'http_status' => $res['status'] ?? null,
+        'error' => $supabaseStatus ? null : ($res['error'] ?? 'Unknown connection error'),
         'latency_ms' => $supabaseLatencyMs,
     ],
     'latency_ms' => $totalTimeMs,
