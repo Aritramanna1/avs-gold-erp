@@ -1,0 +1,73 @@
+name: Production CI/CD — Online Managed ERP (erp.arivahly.in)
+
+on:
+  push:
+    branches:
+      - main
+      - feature/production-v1.1.2
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    name: Test, Build & Deploy to Hostinger
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Gold & Accounting Invariant QA Tests
+        run: |
+          npm run qa:gold
+          npm run qa:accounting
+
+      - name: Build Production SPA Bundle
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://dqgrrafuoxaorvyrcuuh.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_anon_key' }}
+          VITE_APP_URL: 'https://erp.arivahly.in'
+        run: npm run build
+
+      - name: Copy Server-Side PHP APIs & .htaccess to Dist
+        run: |
+          mkdir -p dist/api
+          cp -r public/api/* dist/api/ || true
+          cp public/.htaccess dist/.htaccess || true
+          cp public/robots.txt dist/robots.txt || true
+          cp public/sitemap.xml dist/sitemap.xml || true
+
+      # Option A: Deploy via Hostinger hPanel Git Auto-Deploy Webhook (if secret configured)
+      - name: Trigger Hostinger Git Auto-Deploy Webhook
+        if: env.HOSTINGER_DEPLOY_WEBHOOK_URL != ''
+        env:
+          HOSTINGER_DEPLOY_WEBHOOK_URL: ${{ secrets.HOSTINGER_DEPLOY_WEBHOOK_URL }}
+        run: |
+          echo "Triggering Hostinger hPanel deployment webhook..."
+          curl -X POST -s -f "$HOSTINGER_DEPLOY_WEBHOOK_URL" || echo "Webhook trigger completed."
+
+      # Option B: Deploy via FTPS / FTP directly to public_html (if secrets configured)
+      - name: Deploy to Hostinger via FTPS
+        if: env.HOSTINGER_FTP_SERVER != '' && env.HOSTINGER_FTP_USERNAME != ''
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        env:
+          HOSTINGER_FTP_SERVER: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          HOSTINGER_FTP_USERNAME: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+        with:
+          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
+          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: ./public_html/
+          dangerous-clean-slate: false
