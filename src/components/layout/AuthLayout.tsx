@@ -25,6 +25,7 @@ interface AuthLayoutProps {
   nativeMinimal?: boolean;
   /** Soft audience hint under Google (native portal chips). */
   audienceHint?: string;
+  className?: string;
 }
 
 /**
@@ -458,36 +459,23 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
 
   return (
     <div
-      className={
-        nativeMinimal
-          ? "w-full relative"
-          : "min-h-screen w-full flex items-center justify-center bg-background px-4 py-8 relative overflow-hidden"
-      }
-    >
-      {!nativeMinimal && (
-        <>
-          <div className="absolute -top-[30%] -left-[20%] w-[60%] h-[60%] rounded-full bg-gold/5 blur-[120px] pointer-events-none" />
-          <div className="absolute -bottom-[30%] -right-[20%] w-[60%] h-[60%] rounded-full bg-gold/5 blur-[120px] pointer-events-none" />
-        </>
+      className={cn(
+        "w-full flex items-center justify-center relative",
+        className,
       )}
-
+    >
       <Card
-        className={
+        className={cn(
           nativeMinimal
             ? "w-full max-w-sm p-5 space-y-4 border-white/10 bg-white/5 text-white shadow-none"
-            : "w-full max-w-sm p-6 space-y-5 border-border shadow-elegant bg-card/85 backdrop-blur-md relative z-10 transition-all duration-300 hover:border-gold/20"
-        }
+            : "w-full max-w-md p-7 space-y-5 border border-slate-200 dark:border-border shadow-lg bg-white dark:bg-card text-slate-900 dark:text-foreground rounded-2xl relative z-10 transition-all",
+        )}
       >
         {!nativeMinimal && (
-          <div className="text-center space-y-1.5">
-            <OrnexaBrandLogo variant="stacked" className="mx-auto h-36 max-w-[200px]" />
-          </div>
-        )}
-
-        {!nativeMinimal && (
-          <div className="border-b border-border pb-1.5">
-            <div className="text-xs font-semibold text-muted-foreground">
-              <span className="text-gold uppercase tracking-widest text-[10px]">
+          <div className="text-center space-y-2 pb-1">
+            <OrnexaBrandLogo variant="stacked" className="mx-auto h-28 max-w-[190px]" />
+            <div className="border-b border-slate-100 dark:border-border pb-2 pt-1">
+              <span className="text-[#8C6D32] dark:text-[#B89454] uppercase tracking-widest text-[11px] font-bold">
                 {t("auth.standardSignInHeader")}
               </span>
             </div>
@@ -503,8 +491,8 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
           <div className="grid gap-1.5">
             <Label
               className={cn(
-                "text-xs font-medium tracking-wide",
-                nativeMinimal && "text-white/85",
+                "text-xs font-semibold tracking-wide",
+                nativeMinimal ? "text-white/85" : "text-slate-800 dark:text-slate-200",
               )}
               htmlFor="auth-email-input"
             >
@@ -513,17 +501,17 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
             <div className="relative">
               <Mail
                 className={cn(
-                  "absolute left-3 top-2.5 h-4 w-4",
-                  nativeMinimal ? "text-white/45" : "text-muted-foreground",
+                  "absolute left-3.5 top-3 h-4 w-4",
+                  nativeMinimal ? "text-white/45" : "text-slate-400 dark:text-muted-foreground",
                 )}
               />
               <Input
                 id="auth-email-input"
                 className={cn(
-                  "pl-9 h-10 focus-visible:ring-gold/30 focus-visible:border-gold/50",
+                  "pl-10 h-11 text-sm rounded-lg focus-visible:ring-2 focus-visible:ring-[#B89454]/40 focus-visible:border-[#B89454]",
                   nativeMinimal
                     ? "bg-black/40 border-white/25 text-white placeholder:text-white/40"
-                    : "border-input bg-background/50",
+                    : "border-slate-300 dark:border-input bg-slate-50/50 dark:bg-background text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground/60",
                 )}
                 data-testid="auth-email"
                 type="email"
@@ -541,8 +529,8 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
             <div className="flex justify-between items-center">
               <Label
                 className={cn(
-                  "text-xs font-medium tracking-wide",
-                  nativeMinimal && "text-white/85",
+                  "text-xs font-semibold tracking-wide",
+                  nativeMinimal ? "text-white/85" : "text-slate-800 dark:text-slate-200",
                 )}
                 htmlFor="auth-password-input"
               >
@@ -551,7 +539,7 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
               {native || nativeMinimal ? (
                 <button
                   type="button"
-                  className="text-[10px] text-gold hover:text-gold/85 hover:underline focus:outline-none font-medium transition-colors"
+                  className="text-[11px] text-[#8C6D32] dark:text-[#B89454] hover:underline focus:outline-none font-semibold transition-colors"
                   onClick={() => go("/forgot-password")}
                 >
                   {t("auth.forgotBtn")}
@@ -559,7 +547,7 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
               ) : (
                 <Link
                   to="/forgot-password"
-                  className="text-[10px] text-gold hover:text-gold/85 hover:underline focus:outline-none font-medium transition-colors"
+                  className="text-[11px] text-[#8C6D32] dark:text-[#B89454] hover:underline focus:outline-none font-semibold transition-colors"
                 >
                   {t("auth.forgotBtn")}
                 </Link>
@@ -568,17 +556,17 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
             <div className="relative">
               <KeyRound
                 className={cn(
-                  "absolute left-3 top-2.5 h-4 w-4",
-                  nativeMinimal ? "text-white/45" : "text-muted-foreground",
+                  "absolute left-3.5 top-3 h-4 w-4",
+                  nativeMinimal ? "text-white/45" : "text-slate-400 dark:text-muted-foreground",
                 )}
               />
               <Input
                 id="auth-password-input"
                 className={cn(
-                  "pl-9 pr-10 h-10 focus-visible:ring-gold/30 focus-visible:border-gold/50",
+                  "pl-10 pr-10 h-11 text-sm rounded-lg focus-visible:ring-2 focus-visible:ring-[#B89454]/40 focus-visible:border-[#B89454]",
                   nativeMinimal
                     ? "bg-black/40 border-white/25 text-white placeholder:text-white/40"
-                    : "border-input bg-background/50",
+                    : "border-slate-300 dark:border-input bg-slate-50/50 dark:bg-background text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground/60",
                 )}
                 data-testid="auth-password"
                 type={showPassword ? "text" : "password"}
@@ -595,10 +583,10 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 className={cn(
-                  "absolute right-3 top-2.5 focus:outline-none transition-colors",
+                  "absolute right-3.5 top-3 focus:outline-none transition-colors",
                   nativeMinimal
                     ? "text-white/55 hover:text-white"
-                    : "text-muted-foreground hover:text-foreground",
+                    : "text-slate-400 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-foreground",
                 )}
                 id="btn-toggle-password"
               >
@@ -610,12 +598,12 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
           <label
             className={cn(
               "flex items-center gap-2 text-xs cursor-pointer select-none",
-              nativeMinimal ? "text-white/70" : "text-muted-foreground",
+              nativeMinimal ? "text-white/70" : "text-slate-600 dark:text-muted-foreground font-medium",
             )}
           >
             <input
               type="checkbox"
-              className="rounded border-border"
+              className="rounded border-slate-300 dark:border-border text-[#B89454] focus:ring-[#B89454]"
               checked={rememberDevice}
               onChange={(e) => setRememberDeviceState(e.target.checked)}
               disabled={busy}
@@ -626,10 +614,10 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
           {err && (
             <div
               className={cn(
-                "text-xs font-medium leading-relaxed rounded-lg p-2.5 flex items-start gap-2 border",
+                "text-xs font-medium leading-relaxed rounded-lg p-3 flex items-start gap-2.5 border",
                 nativeMinimal
                   ? "text-white/85 bg-white/5 border-white/15"
-                  : "text-foreground bg-muted/60 border-border",
+                  : "text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900",
               )}
               data-testid="auth-error"
               id="auth-error-banner"
@@ -637,7 +625,7 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
               <ShieldAlert
                 className={cn(
                   "h-4 w-4 shrink-0 mt-0.5",
-                  nativeMinimal ? "text-[#B89454]" : "text-gold",
+                  nativeMinimal ? "text-[#B89454]" : "text-red-600 dark:text-red-400",
                 )}
               />
               <span>{err}</span>
@@ -647,7 +635,9 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
           <Button
             data-testid="auth-submit"
             type="submit"
-            className="w-full h-10 bg-gold hover:bg-gold/90 text-black font-semibold mt-2 shadow-sm relative overflow-hidden transition-all active:scale-[0.98]"
+            className={cn(
+              "w-full h-11 bg-[#B89454] hover:bg-[#A38245] text-slate-950 font-bold text-sm rounded-lg shadow-sm relative overflow-hidden transition-all active:scale-[0.99]",
+            )}
             disabled={busy || !!lockedUntil}
             id="btn-auth-submit"
           >
@@ -667,10 +657,10 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
             <>
               <div className="relative py-1">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
+                  <span className="w-full border-t border-slate-200 dark:border-border" />
                 </div>
                 <div className="relative flex justify-center text-[10px] uppercase">
-                  <span className={nativeMinimal ? "bg-transparent px-2 text-white/50" : "bg-card px-2 text-muted-foreground"}>
+                  <span className={nativeMinimal ? "bg-transparent px-2 text-white/50" : "bg-white dark:bg-card px-2 text-slate-500 dark:text-muted-foreground font-semibold"}>
                     or
                   </span>
                 </div>
@@ -689,7 +679,7 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
               className={
                 nativeMinimal
                   ? "text-[10px] leading-relaxed text-white/55 text-center"
-                  : "text-[10px] leading-relaxed text-muted-foreground text-center"
+                  : "text-[11px] leading-relaxed text-slate-500 dark:text-muted-foreground text-center"
               }
               data-testid="auth-audience-hint"
             >
@@ -697,12 +687,12 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
             </p>
           ) : null}
 
-          <div className="flex flex-col gap-2 pt-2 border-t border-border mt-2 text-center text-xs">
+          <div className="flex flex-col gap-2 pt-2 border-t border-slate-100 dark:border-border mt-2 text-center text-xs">
             {native || nativeMinimal ? (
               <>
                 <button
                   type="button"
-                  className="text-gold font-medium hover:text-gold/85 hover:underline focus:outline-none transition-colors"
+                  className="text-[#8C6D32] dark:text-[#B89454] font-semibold hover:underline focus:outline-none transition-colors"
                   data-testid="auth-link-otp"
                   onClick={() => go("/otp-login")}
                 >
@@ -710,7 +700,7 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
                 </button>
                 <button
                   type="button"
-                  className="text-gold font-medium hover:text-gold/85 hover:underline focus:outline-none transition-colors"
+                  className="text-[#8C6D32] dark:text-[#B89454] font-semibold hover:underline focus:outline-none transition-colors"
                   data-testid="auth-link-forgot"
                   onClick={() => go("/forgot-password")}
                 >
@@ -718,7 +708,7 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
                 </button>
                 <button
                   type="button"
-                  className="text-gold font-medium hover:text-gold/85 hover:underline focus:outline-none inline-flex justify-center items-center gap-1.5 transition-colors mx-auto"
+                  className="text-[#8C6D32] dark:text-[#B89454] font-semibold hover:underline focus:outline-none inline-flex justify-center items-center gap-1.5 transition-colors mx-auto"
                   data-testid="auth-link-invite"
                   onClick={() => go("/invite/accept")}
                 >
@@ -727,21 +717,24 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
               </>
             ) : (
               <>
-                <Link
-                  to="/otp-login"
-                  className="text-gold font-medium hover:text-gold/85 hover:underline focus:outline-none transition-colors"
-                >
-                  {t("auth.otpBtn")}
-                </Link>
-                <Link
-                  to="/forgot-password"
-                  className="text-gold font-medium hover:text-gold/85 hover:underline focus:outline-none transition-colors"
-                >
-                  Forgot Password
-                </Link>
+                <div className="flex items-center justify-center gap-4 text-xs">
+                  <Link
+                    to="/otp-login"
+                    className="text-[#8C6D32] dark:text-[#B89454] font-semibold hover:underline focus:outline-none transition-colors"
+                  >
+                    {t("auth.otpBtn")}
+                  </Link>
+                  <span className="text-slate-300 dark:text-border">·</span>
+                  <Link
+                    to="/forgot-password"
+                    className="text-[#8C6D32] dark:text-[#B89454] font-semibold hover:underline focus:outline-none transition-colors"
+                  >
+                    Forgot Password
+                  </Link>
+                </div>
                 <Link
                   to="/invite/accept"
-                  className="text-gold font-medium hover:text-gold/85 hover:underline focus:outline-none flex justify-center items-center gap-1.5 transition-colors"
+                  className="text-[#8C6D32] dark:text-[#B89454] font-semibold hover:underline focus:outline-none flex justify-center items-center gap-1.5 transition-colors pt-1"
                 >
                   <UserCheck className="h-3.5 w-3.5" /> {t("auth.inviteBtn")}
                 </Link>
@@ -751,7 +744,7 @@ const { isAbortLikeError, abortFriendlyMessage } = await import("@/lib/network-a
         </form>
 
         {!nativeMinimal && (
-          <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+          <p className="text-[10px] text-slate-400 dark:text-muted-foreground text-center leading-relaxed">
             {t("auth.publicSignupDisabled")}
           </p>
         )}
