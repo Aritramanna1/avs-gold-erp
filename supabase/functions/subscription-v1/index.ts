@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
 
       // 2. Create Razorpay order if amount > 0
       let razorpayOrderId = `ord_sim_${Date.now()}`;
-      let publishableKeyId = "rzp_test_AVSErpGateway";
+      let publishableKeyId = "rzp_test_TYMMkJFsIR9agE";
 
       try {
         const creds = await loadRazorpayCredentials(admin);

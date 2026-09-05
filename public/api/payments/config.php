@@ -52,7 +52,7 @@ function getAuthoritativePaymentConfig() {
     $mode = $dbConfig['mode'] ?? (getenv('RAZORPAY_MODE') ?: 'TEST');
     $mode = strtoupper($mode) === 'LIVE' ? 'LIVE' : 'TEST';
 
-    $testKeyId = $dbConfig['test_key_id'] ?? (getenv('RAZORPAY_TEST_KEY_ID') ?: $RAZORPAY_KEY_ID);
+    $testKeyId = $dbConfig['test_key_id'] ?? (getenv('RAZORPAY_TEST_KEY_ID') ?: ($RAZORPAY_KEY_ID ?: 'rzp_test_TYMMkJFsIR9agE'));
     $testKeySecret = $dbConfig['test_key_secret'] ?? (getenv('RAZORPAY_TEST_KEY_SECRET') ?: $RAZORPAY_KEY_SECRET);
     $testWebhookSecret = $dbConfig['test_webhook_secret'] ?? (getenv('RAZORPAY_TEST_WEBHOOK_SECRET') ?: $RAZORPAY_WEBHOOK_SECRET);
     $testReturnUrl = $dbConfig['test_callback_url'] ?? (getenv('RAZORPAY_TEST_RETURN_URL') ?: 'https://erp.arivahly.in/settings/license?payment=callback');

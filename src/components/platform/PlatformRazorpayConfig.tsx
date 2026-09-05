@@ -101,7 +101,7 @@ export function PlatformRazorpayConfig() {
       if (!res.ok) throw new Error("Failed to fetch settings");
       const data: GatewaySettingsResponse = await res.json();
       setSettings(data);
-      setTestKeyId(data.test.key_id || "");
+      setTestKeyId(data.test.key_id || "rzp_test_TYMMkJFsIR9agE");
       setTestReturnUrl(data.test.return_url || "https://erp.arivahly.in/settings/license?payment=callback");
       setTestWebhookUrl(data.test.webhook_url || "https://erp.arivahly.in/api/webhooks/razorpay.php");
 
@@ -116,7 +116,7 @@ export function PlatformRazorpayConfig() {
         is_live: false,
         active: {
           is_configured: false,
-          key_id_masked: "rzp_test_••••••••",
+          key_id_masked: "rzp_test_••••••••agE",
           key_secret_masked: "••••••••",
           webhook_secret_masked: "••••••••",
           return_url: "https://erp.arivahly.in/settings/license?payment=callback",
@@ -124,8 +124,8 @@ export function PlatformRazorpayConfig() {
         },
         test: {
           is_configured: false,
-          key_id: "",
-          key_id_masked: "Not Configured",
+          key_id: "rzp_test_TYMMkJFsIR9agE",
+          key_id_masked: "rzp_test_••••••••agE",
           key_secret_configured: false,
           webhook_secret_configured: false,
           return_url: "https://erp.arivahly.in/settings/license?payment=callback",
