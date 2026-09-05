@@ -483,8 +483,8 @@ async function createRepositoryRegistry() {
     'Notes',
   ];
   const rowsRepo = [
-    ['REPO-UPSTREAM-MAIN', 'avs-gold-erp', 'GitHub', 'https://github.com/Aritramanna1/avs-gold-erp.git', 'Public/Private', 'Primary source repository and development upstream', 'Core ERP Development', 'ALL', 'main', 'feature/production-v1.1.2', 'v1.1.2-hostinger-online-certified', 'v1.1.2-online-production-hardened', 'HEAD', '2026-09-05', 'Aritra Manna', 'ACTIVE', 'Primary origin remote'],
-    ['REPO-HOSTINGER-LIVE', 'avs-erp-hostinger-live', 'GitHub', 'https://github.com/Aritramanna1/avs-erp-hostinger-live.git', 'Public/Private', 'Hostinger production deployment source', 'Hostinger Online SaaS', 'ENV-ONLINE-PROD', 'main', 'feature/production-v1.1.2', 'v1.1.2-hostinger-online-certified', 'v1.1.2-online-production-hardened', 'HEAD', '2026-09-05', 'Aritra Manna', 'ACTIVE', 'Synced directly with Hostinger hPanel git auto-deployment'],
+    ['REPO-UPSTREAM-MAIN', 'avs-gold-erp', 'GitHub', 'https://github.com/Aritramanna1/avs-gold-erp.git', 'Public/Private', 'Primary source repository and development upstream', 'Core ERP Development', 'ALL', 'main', 'feature/production-v1.1.2', 'v1.1.2-hostinger-online-certified', 'v1.1.2-online-production-hardened', '4f1c5da05d4b88705182c31a44c4d5b768dead50', '2026-09-05', 'Aritra Manna', 'ACTIVE', 'Primary origin remote'],
+    ['REPO-HOSTINGER-LIVE', 'avs-erp-hostinger-live', 'GitHub', 'https://github.com/Aritramanna1/avs-erp-hostinger-live.git', 'Public/Private', 'Hostinger production deployment source', 'Hostinger Online SaaS', 'ENV-ONLINE-PROD', 'main', 'feature/production-v1.1.2', 'v1.1.2-hostinger-online-certified', 'v1.1.2-online-production-hardened', '4f1c5da05d4b88705182c31a44c4d5b768dead50', '2026-09-05', 'Aritra Manna', 'ACTIVE', 'Synced directly with Hostinger hPanel git auto-deployment'],
     ['REPO-BASELINE-BACKUP', 'avs-erp-baseline-backup', 'GitHub', 'https://github.com/Aritramanna1/avs-erp-baseline-backup.git', 'Private', 'Immutable recovery archive of verified baseline', 'Recovery Archive', 'ENV-BASELINE-BACKUP', 'main', 'main', 'BASELINE-BACKUP', 'BASELINE-BACKUP', 'e0f2f1f...', '2026-09-05', 'Aritra Manna', 'ACTIVE', 'DO NOT MODIFY. Disaster recovery baseline.'],
   ];
   formatSheet(wsRepo, headersRepo, rowsRepo);
@@ -519,8 +519,8 @@ async function createRepositoryRegistry() {
     'Notes',
   ];
   const rowsTags = [
-    ['REPO-HOSTINGER-LIVE', 'v1.1.2-online-production-hardened', 'HEAD', 'ENV-ONLINE-PROD', '2026-09-05', 'RELEASED', 'YES', 'Final online managed SaaS hardening & Cloudflare security baseline for erp.arivahly.in'],
-    ['REPO-UPSTREAM-MAIN', 'v1.1.2-online-production-hardened', 'HEAD', 'ENV-ONLINE-PROD', '2026-09-05', 'RELEASED', 'YES', 'Mirrored on origin remote'],
+    ['REPO-HOSTINGER-LIVE', 'v1.1.2-online-production-hardened', '4f1c5da05d4b88705182c31a44c4d5b768dead50', 'ENV-ONLINE-PROD', '2026-09-05', 'RELEASED', 'YES', 'Final online managed SaaS hardening & Cloudflare security baseline for erp.arivahly.in'],
+    ['REPO-UPSTREAM-MAIN', 'v1.1.2-online-production-hardened', '4f1c5da05d4b88705182c31a44c4d5b768dead50', 'ENV-ONLINE-PROD', '2026-09-05', 'RELEASED', 'YES', 'Mirrored on origin remote'],
     ['REPO-BASELINE-BACKUP', 'BASELINE-BACKUP', 'e0f2f1f...', 'ENV-BASELINE-BACKUP', '2026-09-05', 'RELEASED', 'YES', 'Baseline recovery checkpoint'],
   ];
   formatSheet(wsTags, headersTags, rowsTags);
@@ -798,7 +798,7 @@ async function createDeploymentRegistry() {
     'Notes',
   ];
   const rowsDep = [
-    ['DEP-ONLINE-20260905-01', 'ENV-ONLINE-PROD', 'REPO-HOSTINGER-LIVE', 'feature/production-v1.1.2', 'HEAD', 'v1.1.2-online-production-hardened', 'PASSED', 'DEPLOYED', 'erp.arivahly.in', 'Supabase PostgreSQL (RLS Active)', 'Cloudflare R2 (Private Vault)', 'Proxied / WAF Active', '2026-09-05 13:20', '2026-09-05 13:20', 'Aritra Manna', 'ACTIVE', 'Final online managed SaaS release with full hardening and edge protection on https://erp.arivahly.in'],
+    ['DEP-ONLINE-20260905-01', 'ENV-ONLINE-PROD', 'REPO-HOSTINGER-LIVE', 'feature/production-v1.1.2', '4f1c5da05d4b88705182c31a44c4d5b768dead50', 'v1.1.2-online-production-hardened', 'PASSED', 'DEPLOYED', 'erp.arivahly.in', 'Supabase PostgreSQL (RLS Active)', 'Cloudflare R2 (Private Vault)', 'Proxied / WAF Active', '2026-09-05 13:20', '2026-09-05 13:20', 'Aritra Manna', 'ACTIVE', 'Final online managed SaaS release with full hardening and edge protection on https://erp.arivahly.in'],
   ];
   formatSheet(wsDep, headersDep, rowsDep);
 
@@ -850,7 +850,7 @@ async function createDeploymentRegistry() {
     'Notes',
   ];
   const rowsRelLog = [
-    ['REL-PROD-V1.1.2', 'ENV-ONLINE-PROD', '1.1.2', 'HEAD', 'v1.1.2-online-production-hardened', '2026-09-05', 'https://erp.arivahly.in', 'https://erp.arivahly.in/api/health.php', 'https://erp.arivahly.in/verify/invoice/:token', 'YES', 'YES (57 files / 437 tests)', 'YES (Zero key leaks)', 'Aritra Manna', 'RELEASED', 'Production certified online managed release on erp.arivahly.in'],
+    ['REL-PROD-V1.1.2', 'ENV-ONLINE-PROD', '1.1.2', '4f1c5da05d4b88705182c31a44c4d5b768dead50', 'v1.1.2-online-production-hardened', '2026-09-05', 'https://erp.arivahly.in', 'https://erp.arivahly.in/api/health.php', 'https://erp.arivahly.in/verify/invoice/:token', 'YES', 'YES (57 files / 437 tests)', 'YES (Zero key leaks)', 'Aritra Manna', 'RELEASED', 'Production certified online managed release on erp.arivahly.in'],
   ];
   formatSheet(wsRelLog, headersRelLog, rowsRelLog);
 
