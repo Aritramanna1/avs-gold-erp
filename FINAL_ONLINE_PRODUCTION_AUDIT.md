@@ -153,6 +153,7 @@ The Admin Control Center (`/company-admin`) operates as the single authoritative
 
 - **Branch**: `feature/production-v1.1.2`
 - **Production Tag**: `v1.1.2-online-production-hardened`
+- **Final Commit SHA**: `a1b104dee9251fd907eb655aa9f407c0256ff427`
 - **Remote 1 (GitHub)**: `https://github.com/Aritramanna1/avs-gold-erp.git`
 - **Remote 2 (Hostinger Live)**: `https://github.com/Aritramanna1/avs-erp-hostinger-live.git`
 - **Baseline Backup Remote**: `https://github.com/Aritramanna1/avs-erp-baseline-backup.git`
