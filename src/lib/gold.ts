@@ -60,15 +60,13 @@ export function mgToGrams(
   return neg ? `-${body}` : body;
 }
 
-/** Fineness / metal-content denominator (‰ basis). Default 999 for historical shops. */
-export type FinenessBasis = 995 | 999 | 1000;
+/** Authoritative Shop Fineness / metal-content denominator (‰ basis): 995 / 99.50%. */
+export type FinenessBasis = 995;
 
-export const DEFAULT_FINENESS_BASIS: FinenessBasis = 999;
+export const DEFAULT_FINENESS_BASIS: FinenessBasis = 995;
 
 export function normalizeFinenessBasis(raw: unknown): FinenessBasis {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (n === 995 || n === 999 || n === 1000) return n;
-  return DEFAULT_FINENESS_BASIS;
+  return 995;
 }
 
 /**
@@ -87,7 +85,7 @@ export function grossFromFineMg(
     throw new Error("purity must be 0..999");
   }
   const b = normalizeFinenessBasis(basis);
-  if (purity >= b || (b === 1000 && purity >= 999)) return fineMg;
+  if (purity >= b) return fineMg;
   if (purity === 0) throw new Error("Cannot invert fine at purity 0");
   return Math.round((fineMg * b) / purity);
 }
@@ -122,11 +120,8 @@ export function formatWeight(mg: number, opts: { sign?: boolean } = {}): string 
 }
 
 /**
- * Fine gold = gross × purity / basis, rounded to nearest mg.
- * Basis is the configured fineness denominator (995 / 999 / 1000) from
- * Customization → Calculation Rules. Default 999 preserves historical shops.
- * This is the ONLY place this arithmetic should live — call sites must not
- * reimplement ÷999 or ÷1000 inline.
+ * Fine gold = gross × purity / basis (995 / 99.50%), rounded to nearest mg.
+ * Basis is the authoritative 995 shop purity standard.
  */
 export function fineGoldMg(
   grossMg: number,
@@ -138,9 +133,8 @@ export function fineGoldMg(
   if (!Number.isInteger(purity) || purity < 0 || purity > 999)
     throw new Error("purity must be 0..999");
   const b = normalizeFinenessBasis(basis);
-  // At/above the configured basis, metal is treated as full fine for this formula.
-  // For basis 1000, max stored purity is still 999‰ → treat 999 as full fine.
-  if (purity >= b || (b === 1000 && purity >= 999)) return grossMg;
+  // At/above the authoritative 995 basis, metal is treated as full fine.
+  if (purity >= b) return grossMg;
   const product = grossMg * purity;
   return Math.round(product / b);
 }

@@ -44,25 +44,26 @@ export function calculateFineFromTouch(netGrams: number, touchPercent: number): 
   return Math.round(((netGrams * touchPercent) / 100) * 1_000_000) / 1_000_000;
 }
 
-// ── 3. Fineness / Per-Mille (1000 basis) ────────────────────────────────────
-export function calculateFineFromPermille1000(netGrams: number, purityPermille: number): number {
-  return Math.round(((netGrams * purityPermille) / 1000) * 1_000_000) / 1_000_000;
-}
-
-// ── 4. 999 Fineness-Basis Conversion ────────────────────────────────────────
-export function calculateFineAt999(netGrams: number, purityPermille: number): number {
-  return Math.round(((netGrams * purityPermille) / 999) * 1_000_000) / 1_000_000;
-}
-
-// ── 5. 995 Basis ────────────────────────────────────────────────────────────
+// ── 3. Authoritative Purity Basis: 995 / 99.50% ─────────────────────────────
 export function calculateFineAt995(netGrams: number, purityPermille: number): number {
   return Math.round(((netGrams * purityPermille) / 995) * 1_000_000) / 1_000_000;
 }
 
-// ── Generic Basis Calculation ───────────────────────────────────────────────
 export function calculateFineAtBasis(netGrams: number, purityPermille: number, basis: FinenessBasis = 995): number {
-  const denominator = typeof basis === "number" ? basis : parseInt(String(basis), 10) || 995;
-  return Math.round(((netGrams * purityPermille) / denominator) * 1_000_000) / 1_000_000;
+  return calculateFineAt995(netGrams, purityPermille);
+}
+
+// ── 4. Work Manufacturing / Melting Gold (Strict Division) ───────────────────
+// Handwritten rule: 100 ÷ 91.6 = 109.170 g, 100 ÷ 83.5 = 119.760 g
+export function calculateManufacturingMeltingWeight(pureGoldGrams: number, targetPurityPercentOrTouch: number): number {
+  if (targetPurityPercentOrTouch <= 0) throw new Error("Target purity must be greater than zero");
+  const result = (pureGoldGrams * 100) / targetPurityPercentOrTouch;
+  return Math.round(result * 1000) / 1000;
+}
+
+// ── 5. Handwritten Billing Fine Calculation (100 × 96 = 96.000, 100 × 88 = 88.000) ───
+export function calculateBillingFineGold(netGrams: number, purityPercent: number): number {
+  return Math.round(((netGrams * purityPercent) / 100) * 1000) / 1000;
 }
 
 // ── 6. Wastage → Hisab ──────────────────────────────────────────────────────
@@ -181,11 +182,18 @@ export function calculateTotalInvoice(input: InvoiceCalculationInput): InvoiceCa
   };
 }
 
-// ── 15. Cash → Gold Equivalent ──────────────────────────────────────────────
+// ── 15. Cash → Gold Equivalent / Bhav Rule ──────────────────────────────────
+// Handwritten rule: ₹15,000 Bhav => ₹1,00,000 ÷ ₹15,000 = 6.666 g
 export interface CashToGoldEquivalent {
   cashAmount: number;
   transactionTimeGoldRate: number;
   goldEquivalentGrams: number;
+}
+
+export function calculateBhavGoldEquivalent(cashAmountRupees: number, bhavRatePerGram: number): number {
+  if (bhavRatePerGram <= 0) throw new Error("Bhav rate must be greater than zero.");
+  // Exact 3-decimal precision: 1,00,000 / 15,000 = 6.666... g
+  return Math.floor((cashAmountRupees / bhavRatePerGram) * 1_000) / 1_000;
 }
 
 export function calculateCashToGoldEquivalent(cashAmount: number, ratePerGram: number): CashToGoldEquivalent {

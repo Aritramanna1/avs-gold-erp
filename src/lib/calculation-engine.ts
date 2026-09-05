@@ -66,9 +66,8 @@ export interface UnitConversionResult {
  */
 export function calculateFineGold(input: FineGoldCalculationInput): FineGoldCalculationResult {
   const { netWeightMg, purityPerMille } = input;
-  // Routes through gold.ts's fineGoldMg() — the single source of truth for
-  // this shop's gross*purity/999 convention. Never reimplement with /1000.
-  const fineGoldMgValue = fineGoldMg(netWeightMg, Math.min(purityPerMille, 999));
+  // Routes through gold.ts's fineGoldMg() — the authoritative shop basis 995 / 99.50%.
+  const fineGoldMgValue = fineGoldMg(netWeightMg, Math.min(purityPerMille, 995));
   const fineGoldGrams = Number((fineGoldMgValue / 1000).toFixed(3));
 
   return {
@@ -76,7 +75,7 @@ export function calculateFineGold(input: FineGoldCalculationInput): FineGoldCalc
     purityPerMille,
     fineGoldMg: fineGoldMgValue,
     fineGoldGrams,
-    explanation: `${netWeightMg}mg Net Wt * (${purityPerMille}/999 Purity) = ${fineGoldMgValue}mg Fine Gold (${fineGoldGrams}g)`,
+    explanation: `${netWeightMg}mg Net Wt * (${purityPerMille}/995 Purity) = ${fineGoldMgValue}mg Fine Gold (${fineGoldGrams}g)`,
   };
 }
 
@@ -127,10 +126,9 @@ export function calculateKarigarWastage(input: KarigarWastageInput): KarigarWast
   const overLossPenaltyFineMg = isOverLoss ? Math.abs(netDueFineMg) : 0;
 
   // 5. Refund in Original Purity
-  // Inverse of fineGoldMg()'s gross*purity/999: fine*999/purity, keeping the
-  // same shop convention rather than an ad-hoc /1000.
+  // Inverse of fineGoldMg()'s gross*purity/995: fine*995/purity.
   const refundMetalWeightMg = Math.round(
-    (Math.abs(netDueFineMg) * 999) / Math.min(targetPurityPerMille, 999),
+    (Math.abs(netDueFineMg) * 995) / Math.min(targetPurityPerMille, 995),
   );
   explanation.push(
     isOverLoss

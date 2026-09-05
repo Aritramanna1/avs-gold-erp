@@ -391,35 +391,36 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             .maybeSingle();
 
           if (subData) {
-            const plan = subData.platform_plans;
+            const rawSub: any = subData;
+            const plan = rawSub.platform_plans;
             const tier = (plan?.code || "avs_30k") as PlanTier;
             const def = get().planDefinitions[tier] || DEFAULT_PLAN_DEFINITIONS[tier];
 
             set({
               subscription: {
-                id: subData.id,
-                tenantId: subData.organization_id,
+                id: rawSub.id,
+                tenantId: rawSub.organization_id,
                 companyName: "AVS Gold & Diamond Jewellers",
                 planTier: tier,
                 planName: plan?.name || def.name,
-                planVersion: subData.plan_version || def.version || 1,
-                status: subData.status as PlanStatus,
-                billingCycle: (subData.billing_interval || subData.billing_cycle || "annual") as BillingCycle,
-                priceInr: Number(subData.amount_paise ? subData.amount_paise / 100 : def.pricingAnnualINR),
-                startDate: subData.starts_at || subData.created_at,
-                renewalDate: subData.renews_at || subData.trial_ends_at || new Date(Date.now() + 365 * 86400000).toISOString(),
-                trialEndDate: subData.trial_ends_at,
-                graceEndDate: subData.grace_ends_at,
+                planVersion: rawSub.plan_version || def.version || 1,
+                status: rawSub.status as PlanStatus,
+                billingCycle: (rawSub.billing_interval || rawSub.billing_cycle || "annual") as BillingCycle,
+                priceInr: Number(rawSub.amount_paise ? rawSub.amount_paise / 100 : def.pricingAnnualINR),
+                startDate: rawSub.starts_at || rawSub.created_at,
+                renewalDate: rawSub.renews_at || rawSub.trial_ends_at || new Date(Date.now() + 365 * 86400000).toISOString(),
+                trialEndDate: rawSub.trial_ends_at || undefined,
+                graceEndDate: rawSub.grace_ends_at || undefined,
                 limits: def.limits,
                 features: def.features,
-                lastPaymentId: subData.last_payment_id,
-                lastInvoiceId: subData.last_invoice_id,
-                updatedAt: subData.updated_at,
+                lastPaymentId: rawSub.last_payment_id || undefined,
+                lastInvoiceId: rawSub.last_invoice_id || undefined,
+                updatedAt: rawSub.updated_at,
               },
             });
           }
 
-          const { data: eventsData } = await supabase
+          const { data: eventsData } = await (supabase as any)
             .from("subscription_events")
             .select("*")
             .order("created_at", { ascending: false })
@@ -504,7 +505,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             updated_at: new Date().toISOString(),
           } as any);
 
-          await supabase.from("subscription_events").insert({
+          await (supabase as any).from("subscription_events").insert({
             event_type: newEvent.eventType,
             previous_tier: prev.planTier,
             new_tier: newTier,
@@ -514,7 +515,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             source: "admin_panel",
             notes: newEvent.notes,
             created_at: newEvent.createdAt,
-          } as any);
+          });
 
           toast.success(`Subscription plan updated to ${planDef.name}`);
           return true;
@@ -557,7 +558,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             .update({ status: newStatus, updated_at: new Date().toISOString() })
             .eq("id", prev.id);
 
-          await supabase.from("subscription_events").insert({
+          await (supabase as any).from("subscription_events").insert({
             event_type: newEvent.eventType,
             previous_tier: prev.planTier,
             new_tier: prev.planTier,
@@ -567,7 +568,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             source: "admin_panel",
             notes: reason,
             created_at: newEvent.createdAt,
-          } as any);
+          });
 
           toast.success(`Subscription status updated to ${newStatus.toUpperCase()}`);
           return true;
@@ -593,7 +594,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         set({ planDefinitions: updatedDefs });
 
         try {
-          await supabase
+          await (supabase as any)
             .from("platform_plans")
             .update({
               monthly_price_paise: monthlyInr * 100,

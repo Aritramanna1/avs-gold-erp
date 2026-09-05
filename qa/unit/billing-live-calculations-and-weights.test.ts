@@ -68,14 +68,10 @@ describe("Live Billing Calculation & Weight Invariants", () => {
     expect(calculated.fineMg).toBeGreaterThan(0);
   });
 
-  it("calculates Fine Gold live for metal_content_1000, metal_content_999, and hisob_100", () => {
-    // Basis 1000: 8.000 g Net @ 916 purity -> 7.328 g Fine
-    const fine1000 = fineGoldMg(8000, 916, 1000);
-    expect(fine1000).toBe(7328);
-
-    // Basis 999: 8.000 g Net @ 916 purity -> 7.335 g Fine
-    const fine999 = fineGoldMg(8000, 916, 999);
-    expect(fine999).toBe(7335);
+  it("calculates Fine Gold live for metal_content on 995 authoritative basis and hisob_100", () => {
+    // Authoritative 995 Basis: 8.000 g Net @ 916 purity -> Math.round(8000 * 916 / 995) = 7.365 g Fine
+    const fine995 = fineGoldMg(8000, 916);
+    expect(fine995).toBe(7365);
 
     // hisob_100: 8.000 g Net @ 84% Touch + 4% Wastage = 88% Hisab -> 7.040 g Fine
     const hisobResult = computeFineGold(
@@ -103,20 +99,20 @@ describe("Live Billing Calculation & Weight Invariants", () => {
     const purity = 916;
     const ratePaisePerGram = 750000; // ₹7,500/g
 
-    const fineMg = fineGoldMg(netMg, purity, 1000);
-    expect(fineMg).toBe(7328);
+    const fineMg = fineGoldMg(netMg, purity);
+    expect(fineMg).toBe(7365);
 
-    // Gold Value = round(7328 * 750000 / 1000) = 5496000 paise = ₹54,960.00
+    // Gold Value = round(7365 * 750000 / 1000) = 5523750 paise = ₹55,237.50
     const goldValuePaise = Math.round((fineMg * ratePaisePerGram) / 1000);
-    expect(goldValuePaise).toBe(5496000);
+    expect(goldValuePaise).toBe(5523750);
 
-    // Making charge @ 12% = round(5496000 * 12 / 100) = 659520 paise = ₹6,595.20
+    // Making charge @ 12% = round(5523750 * 12 / 100) = 662850 paise = ₹6,628.50
     const makingPaise = Math.round((goldValuePaise * 12) / 100);
-    expect(makingPaise).toBe(659520);
+    expect(makingPaise).toBe(662850);
 
-    // Total = Gold Value + Making = 5496000 + 659520 = 6155520 paise = ₹61,555.20
+    // Total = Gold Value + Making = 5523750 + 662850 = 6186600 paise = ₹61,866.00
     const totalPaise = goldValuePaise + makingPaise;
-    expect(totalPaise).toBe(6155520);
+    expect(totalPaise).toBe(6186600);
   });
 });
 

@@ -133,7 +133,7 @@ export const useWebhookManagementStore = create<WebhookManagementState>((set, ge
   fetchLogs: async () => {
     set({ isLoading: true });
     try {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("inbound_webhooks")
         .select("*")
         .order("received_at", { ascending: false })

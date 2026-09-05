@@ -174,7 +174,7 @@ export const useIntegrationsStore = create<IntegrationsState>()(
       fetchIntegrations: async () => {
         set({ isLoading: true });
         try {
-          const { data } = await supabase.from("integrations_registry").select("*");
+          const { data } = await (supabase as any).from("integrations_registry").select("*");
           if (data && data.length > 0) {
             const mapped = DEFAULT_INTEGRATIONS.map((def) => {
               const remote = data.find((r: any) => r.id === def.id);
@@ -207,14 +207,14 @@ export const useIntegrationsStore = create<IntegrationsState>()(
         set({ integrations: updated });
 
         try {
-          await supabase.from("integrations_registry").upsert({
+          await (supabase as any).from("integrations_registry").upsert({
             id,
             provider_name: state.integrations.find((i) => i.id === id)?.name || id,
             is_enabled: enabled,
             updated_at: new Date().toISOString(),
-          } as any);
+          });
 
-          await supabase.from("admin_audit_logs").insert({
+          await (supabase as any).from("admin_audit_logs").insert({
             actor_id: "admin",
             actor_email: "admin@maatarajewellers.shop",
             action: enabled ? "integration_enabled" : "integration_disabled",
@@ -222,7 +222,7 @@ export const useIntegrationsStore = create<IntegrationsState>()(
             entity_id: id,
             result: "success",
             created_at: new Date().toISOString(),
-          } as any);
+          });
 
           toast.success(`Integration ${enabled ? "enabled" : "disabled"}`);
           return true;
@@ -259,15 +259,15 @@ export const useIntegrationsStore = create<IntegrationsState>()(
         set({ integrations: updated });
 
         try {
-          await supabase.from("integrations_registry").upsert({
+          await (supabase as any).from("integrations_registry").upsert({
             id,
             provider_name: existing.name,
             settings_json: { ...existing.settings, ...newSettings },
             secrets_masked_json: maskedSecrets,
             updated_at: new Date().toISOString(),
-          } as any);
+          });
 
-          await supabase.from("admin_audit_logs").insert({
+          await (supabase as any).from("admin_audit_logs").insert({
             actor_id: "admin",
             actor_email: "admin@maatarajewellers.shop",
             action: "api_credential_changed",
@@ -275,7 +275,7 @@ export const useIntegrationsStore = create<IntegrationsState>()(
             entity_id: id,
             result: "success",
             created_at: new Date().toISOString(),
-          } as any);
+          });
 
           toast.success("Integration settings saved securely");
           return true;
@@ -323,14 +323,14 @@ export const useIntegrationsStore = create<IntegrationsState>()(
           );
           set({ integrations: updated });
 
-          void supabase.from("integrations_registry").upsert({
+          void (supabase as any).from("integrations_registry").upsert({
             id,
             provider_name: get().integrations.find((i) => i.id === id)?.name || id,
             health_status: success ? "healthy" : "error",
             last_tested_at: now,
             last_error_message: success ? null : message,
             updated_at: now,
-          } as any);
+          });
 
           if (success) toast.success(message);
           else toast.error(message);

@@ -106,7 +106,7 @@ export const useServiceRequestsStore = create<ServiceRequestsState>()(
       fetchTickets: async () => {
         set({ isLoading: true });
         try {
-          const { data } = await supabase
+          const { data } = await (supabase as any)
             .from("service_requests")
             .select("*")
             .order("created_at", { ascending: false });
@@ -157,7 +157,7 @@ export const useServiceRequestsStore = create<ServiceRequestsState>()(
         set({ tickets: [newTicket, ...state.tickets] });
 
         try {
-          await supabase.from("service_requests").insert({
+          await (supabase as any).from("service_requests").insert({
             id: newTicket.id,
             tenant_id: newTicket.tenantId,
             ticket_no: newTicket.ticketNo,
@@ -169,7 +169,7 @@ export const useServiceRequestsStore = create<ServiceRequestsState>()(
             created_by: newTicket.createdBy,
             created_at: newTicket.createdAt,
             updated_at: newTicket.updatedAt,
-          } as any);
+          });
 
           toast.success(`Service request ${ticketNo} created`);
           return true;
@@ -195,7 +195,7 @@ export const useServiceRequestsStore = create<ServiceRequestsState>()(
         set({ tickets: updated });
 
         try {
-          await supabase
+          await (supabase as any)
             .from("service_requests")
             .update({
               status,

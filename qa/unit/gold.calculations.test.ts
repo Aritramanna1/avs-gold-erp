@@ -7,23 +7,23 @@ import {
   assertNetNotAboveGross,
 } from "../../src/lib/gold";
 
-/** Table-driven boundary tests — jewellery precision is integer mg throughout. */
+/** Table-driven boundary tests — jewellery precision is integer mg throughout on authoritative 995 basis. */
 const FINE_GOLD_CASES: Array<{
   grossMg: number;
   purity: number;
   expectedFineMg: number;
   note: string;
 }> = [
-  { grossMg: 10_000, purity: 916, expectedFineMg: 9169, note: "22K standard issue" },
-  { grossMg: 10_000, purity: 999, expectedFineMg: 10_000, note: "fine / 24K touch" },
+  { grossMg: 10_000, purity: 916, expectedFineMg: 9206, note: "22K standard issue" },
+  { grossMg: 10_000, purity: 995, expectedFineMg: 10_000, note: "fine / 995 touch" },
   { grossMg: 1, purity: 916, expectedFineMg: 1, note: "minimum gross rounding" },
   { grossMg: 0, purity: 916, expectedFineMg: 0, note: "zero gross" },
-  { grossMg: 3000, purity: 916, expectedFineMg: 2751, note: "order workflow sample" },
-  { grossMg: 1000, purity: 916, expectedFineMg: 917, note: "partial return sample" },
-  { grossMg: 50_000, purity: 750, expectedFineMg: 37_538, note: "18K bulk" },
+  { grossMg: 3000, purity: 916, expectedFineMg: 2762, note: "order workflow sample" },
+  { grossMg: 1000, purity: 916, expectedFineMg: 921, note: "partial return sample" },
+  { grossMg: 50_000, purity: 750, expectedFineMg: 37_688, note: "18K bulk" },
 ];
 
-describe("QA-02 Gold calculations (fineGoldMg /999 convention)", () => {
+describe("QA-02 Gold calculations (fineGoldMg /995 authoritative convention)", () => {
   it.each(FINE_GOLD_CASES)(
     "$note: gross=$grossMg purity=$purity → $expectedFineMg mg fine",
     ({ grossMg, purity, expectedFineMg }) => {

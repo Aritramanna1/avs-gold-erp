@@ -182,8 +182,8 @@ describe("Rigorous Mathematical Accounting Invariants & Rules Audit", () => {
 
     // Karigar balance tracks physical custody: total fine given vs total fine returned
     expect(workerBal.givenFine).toBe(100000);
-    expect(workerBal.returnedFine).toBe(82523 + 7335); // 89858 mg
-    expect(workerBal.pendingFine).toBe(100000 - 89858); // 10142 mg (10.142 g still with karigar custody)
+    expect(workerBal.returnedFine).toBe(82854 + 7365); // 90219 mg on 995 basis
+    expect(workerBal.pendingFine).toBe(100000 - 90219); // 9781 mg (9.781 g still with karigar custody)
 
     // Karigar accounting must NOT be confused with Customer Dual Ledger (money due / gold due)
     const customerLedgerForWorker = compileCustomerLedger(karigarId);

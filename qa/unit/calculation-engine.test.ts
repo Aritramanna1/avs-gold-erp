@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import { calculateFineGold, calculateKarigarWastage } from "../../src/lib/calculation-engine";
 
 describe("QA-02 Calculation Engine", () => {
-  it("calculateFineGold explains /999 convention", () => {
+  it("calculateFineGold explains 995 basis rule", () => {
     const r = calculateFineGold({ netWeightMg: 10_000, purityPerMille: 916 });
-    expect(r.fineGoldMg).toBe(9169);
-    expect(r.explanation).toMatch(/999/);
+    expect(r.fineGoldMg).toBe(9206);
+    expect(r.explanation).toMatch(/995/);
   });
 
   it("karigar wastage respects category exclusions", () => {

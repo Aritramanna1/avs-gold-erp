@@ -10,9 +10,9 @@ import { compileCompanyCashLedger } from '../../src/lib/company-cash-ledger';
 describe('Comprehensive Side-by-Side Parity Suite', () => {
   // Domain 1: MTJ Purity & Calculation Rules
   describe('1. Purity & Calculation Engine Parity', () => {
-    it('MTJ default purity is 995 and fineness basis is 999', () => {
+    it('MTJ default purity is 995 and fineness basis is 995', () => {
       expect(getDefaultPurityPermille()).toBe(995);
-      expect(defaultGoldCalculationRules().finenessBasis).toBe(999);
+      expect(defaultGoldCalculationRules().finenessBasis).toBe(995);
       expect(defaultGoldCalculationRules().calculationMode).toBe('basic');
     });
 
@@ -22,10 +22,10 @@ describe('Comprehensive Side-by-Side Parity Suite', () => {
       expect(flags.purityCalculation).toBe(false);
     });
 
-    it('Calculates exact fine on 22K (916) and 18K (750)', () => {
-      expect(fineGoldMg(10_000, 916, 999)).toBe(9169);
-      expect(fineGoldMg(10_000, 750, 999)).toBe(7508);
-      expect(fineGoldMg(10_000, 995, 999)).toBe(9960);
+    it('Calculates exact fine on 22K (916) and 18K (750) on 995 basis', () => {
+      expect(fineGoldMg(10_000, 916)).toBe(9206);
+      expect(fineGoldMg(10_000, 750)).toBe(7538);
+      expect(fineGoldMg(10_000, 995)).toBe(10_000);
     });
   });
 

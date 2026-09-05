@@ -98,7 +98,7 @@ export const useAutomatedReportsStore = create<AutomatedReportsState>()(
       fetchSchedules: async () => {
         set({ isLoading: true });
         try {
-          const { data } = await supabase
+          const { data } = await (supabase as any)
             .from("automated_reports_schedules")
             .select("*")
             .order("created_at", { ascending: false });
@@ -134,7 +134,7 @@ export const useAutomatedReportsStore = create<AutomatedReportsState>()(
         set({ schedules: updated });
 
         try {
-          await supabase
+          await (supabase as any)
             .from("automated_reports_schedules")
             .update({ is_enabled: enabled, updated_at: new Date().toISOString() })
             .eq("id", id);
@@ -173,7 +173,7 @@ export const useAutomatedReportsStore = create<AutomatedReportsState>()(
         set({ schedules: updated });
 
         try {
-          await supabase.from("automated_reports_schedules").upsert({
+          await (supabase as any).from("automated_reports_schedules").upsert({
             id: newRecord.id,
             tenant_id: newRecord.tenantId,
             report_type: newRecord.reportType,

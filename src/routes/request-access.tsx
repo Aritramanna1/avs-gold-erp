@@ -34,7 +34,7 @@ function RequestAccessPage() {
             <Button
               variant="outline"
               className="w-full border-white/20 text-white hover:bg-white/10"
-              onClick={() => void navigate({ to: "/login" })}
+              onClick={() => void navigate({ to: "/login" as any })}
             >
               Sign In to Existing Account
             </Button>
@@ -52,7 +52,7 @@ function RequestAccessPage() {
         <div className="text-center">
           <button
             type="button"
-            onClick={() => void navigate({ to: "/login" })}
+            onClick={() => void navigate({ to: "/login" as any })}
             className="text-xs text-white/75 hover:text-white flex items-center gap-1 mx-auto"
           >
             <ArrowLeft className="h-3 w-3" /> Back to /login

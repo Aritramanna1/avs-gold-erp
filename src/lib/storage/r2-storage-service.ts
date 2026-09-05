@@ -163,7 +163,7 @@ export class R2StorageService {
     tenantId: string = this.defaultTenantId,
   ): Promise<StorageObjectMetadata[]> {
     try {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("storage_objects_registry")
         .select("*")
         .eq("tenant_id", tenantId)

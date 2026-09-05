@@ -86,7 +86,7 @@ export const useNotificationEngine = create<NotificationEngineState>()(
       fetchAlerts: async () => {
         set({ isLoading: true });
         try {
-          const { data } = await supabase
+          const { data } = await (supabase as any)
             .from("service_alerts")
             .select("*")
             .order("created_at", { ascending: false });
@@ -126,7 +126,7 @@ export const useNotificationEngine = create<NotificationEngineState>()(
         set({ alerts: [newAlert, ...state.alerts] });
 
         try {
-          await supabase.from("service_alerts").insert({
+          await (supabase as any).from("service_alerts").insert({
             id: newAlert.id,
             event_id: newAlert.eventId,
             alert_type: newAlert.alertType,
@@ -137,7 +137,7 @@ export const useNotificationEngine = create<NotificationEngineState>()(
             starts_at: newAlert.startsAt,
             ends_at: newAlert.endsAt,
             created_at: newAlert.createdAt,
-          } as any);
+          });
 
           toast.success(`Service alert broadcasted: ${newAlert.title}`);
           return true;
@@ -153,7 +153,7 @@ export const useNotificationEngine = create<NotificationEngineState>()(
         set({ alerts: updated });
 
         try {
-          await supabase.from("service_alerts").update({ is_active: false }).eq("id", id);
+          await (supabase as any).from("service_alerts").update({ is_active: false }).eq("id", id);
           toast.info("Alert dismissed");
           return true;
         } catch {

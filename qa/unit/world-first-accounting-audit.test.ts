@@ -24,12 +24,12 @@ describe("World-First Gold-First Accounting & Billing Scenarios", () => {
     expect(hisab).toBe(94.5);
   });
 
-  // Scenario 3: Fine Metal Weight (999 Base)
-  it("SCENARIO 3: Fine Metal Weight on 999 Fineness Base", () => {
+  // Scenario 3: Fine Metal Weight (Authoritative 995 Base)
+  it("SCENARIO 3: Fine Metal Weight on Authoritative 995 Fineness Base", () => {
     // Net weight: 15.000 g (15000 mg), Purity: 916
-    // MTJ standard formula: (15000 * 916) / 999 = 13753.75 -> 13754 mg
+    // Authoritative 995 basis: (15000 * 916) / 995 = 13809 mg
     const res = calculateFineGold({ netWeightMg: 15000, purityPerMille: 916 });
-    expect(res.fineGoldMg).toBe(13754);
+    expect(res.fineGoldMg).toBe(13809);
   });
 
   // Scenario 4: Metal Value Calculation
@@ -119,7 +119,7 @@ describe("World-First Gold-First Accounting & Billing Scenarios", () => {
     const purityPerMille = 916;
     const fineReceivedMg = calculateFineGold({ netWeightMg: receivedGoldGrossMg, purityPerMille }).fineGoldMg;
 
-    expect(fineReceivedMg).toBe(18338); // 20000 * 916 / 999 = 18338 mg
+    expect(fineReceivedMg).toBe(18412); // 20000 * 916 / 995 = 18412 mg
   });
 
   // Scenario 10: Daily Balance Reconciliation (Opening + Jama - Nave = Closing)
@@ -137,8 +137,8 @@ describe("World-First Gold-First Accounting & Billing Scenarios", () => {
     const res18K = calculateFineGold({ netWeightMg: 10000, purityPerMille: 750 });
     const res24K = calculateFineGold({ netWeightMg: 10000, purityPerMille: 995 });
 
-    expect(res18K.fineGoldMg).toBe(7508); // 10000 * 750 / 999 = 7507.5 -> 7508 mg
-    expect(res24K.fineGoldMg).toBe(9960); // 10000 * 995 / 999 = 9959.9 -> 9960 mg
+    expect(res18K.fineGoldMg).toBe(7538); // 10000 * 750 / 995 = 7538 mg
+    expect(res24K.fineGoldMg).toBe(10000); // 10000 * 995 / 995 = 10000 mg
   });
 
   // Scenario 12: Making / Labour Percentage and Fixed modes
@@ -202,7 +202,7 @@ describe("World-First Gold-First Accounting & Billing Scenarios", () => {
 
     expect(totalGrossMg).toBe(15500);
     expect(totalNetMg).toBe(15200);
-    expect(totalFineMg).toBe(8986 + 4054); // 13040 mg
+    expect(totalFineMg).toBe(9022 + 4070); // 13092 mg
   });
 
   // Scenario 17: Karigar Over-loss penalty calculation

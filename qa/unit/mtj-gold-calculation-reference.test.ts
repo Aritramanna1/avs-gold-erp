@@ -27,10 +27,11 @@ import { describe, it, expect } from "vitest";
 import {
   calculateNetWeight,
   calculateFineFromTouch,
-  calculateFineFromPermille1000,
-  calculateFineAt999,
   calculateFineAt995,
   calculateFineAtBasis,
+  calculateManufacturingMeltingWeight,
+  calculateBillingFineGold,
+  calculateBhavGoldEquivalent,
   calculateHisab,
   calculateFineFromHisab,
   calculateGoldValue,
@@ -85,24 +86,24 @@ describe("MTJ ERP — Gold-First Calculation Master Reference Suite", () => {
     });
   });
 
-  // ── Section 2: Tunch / Purity on 999 Basis ────────────────────────────────
-  describe("Section 2: Tunch / Purity on 999 Basis Examples", () => {
-    it("100 g @ 995 -> 99.5996 g", () => {
-      const fine = calculateFineAt999(100.0, 995);
-      expect(fine).toBeCloseTo(99.5996, 4);
-      expect(formatGoldWeight(fine)).toBe("99.600");
+  // ── Section 2: Tunch / Purity on Authoritative 995 Basis ──────────────────
+  describe("Section 2: Tunch / Purity on Authoritative 995 Basis Examples", () => {
+    it("100 g @ 995 -> 100.000 g", () => {
+      const fine = calculateFineAt995(100.0, 995);
+      expect(fine).toBe(100.0);
+      expect(formatGoldWeight(fine)).toBe("100.000");
     });
 
-    it("100 g @ 916 -> 91.6917 g", () => {
-      const fine = calculateFineAt999(100.0, 916);
-      expect(fine).toBeCloseTo(91.6917, 4);
-      expect(formatGoldWeight(fine)).toBe("91.692");
+    it("100 g @ 916 -> 92.060 g", () => {
+      const fine = calculateFineAt995(100.0, 916);
+      expect(fine).toBeCloseTo(92.060, 3);
+      expect(formatGoldWeight(fine)).toBe("92.060");
     });
 
-    it("100 g @ 750 -> 75.0751 g", () => {
-      const fine = calculateFineAt999(100.0, 750);
-      expect(fine).toBeCloseTo(75.0751, 4);
-      expect(formatGoldWeight(fine)).toBe("75.075");
+    it("100 g @ 750 -> 75.377 g", () => {
+      const fine = calculateFineAt995(100.0, 750);
+      expect(fine).toBeCloseTo(75.377, 3);
+      expect(formatGoldWeight(fine)).toBe("75.377");
     });
   });
 
@@ -201,12 +202,12 @@ describe("MTJ ERP — Gold-First Calculation Master Reference Suite", () => {
   });
   // ── Test Case A: 100 g @ 916 ─────────────────────────────────────────────
   describe("Test Case A: 100 g @ 916", () => {
-    it("Calculates 100 g @ 916‰ on 1000 basis as exactly 91.600 g fine", () => {
+    it("Calculates 100 g @ 916‰ on authoritative 995 basis", () => {
       const net = 100.0;
       const purity = 916;
-      const fine = calculateFineFromPermille1000(net, purity);
-      expect(fine).toBe(91.6);
-      expect(formatGoldWeight(fine)).toBe("91.600");
+      const fine = calculateFineAt995(net, purity);
+      expect(fine).toBeCloseTo(92.060, 3);
+      expect(formatGoldWeight(fine)).toBe("92.060");
     });
 
     it("Calculates 100 g @ 91.6% touch as exactly 91.600 g fine", () => {
@@ -218,16 +219,8 @@ describe("MTJ ERP — Gold-First Calculation Master Reference Suite", () => {
     });
   });
 
-  // ── Test Case B: 100 g @ 995 on 999 basis ────────────────────────────────
-  describe("Test Case B: 100 g @ 995 on 999 basis", () => {
-    it("Calculates 100 g @ 995‰ on 999 basis as 99.599599... ≈ 99.600 g fine", () => {
-      const net = 100.0;
-      const purity = 995;
-      const fine = calculateFineAt999(net, purity);
-      expect(fine).toBeCloseTo(99.6, 2);
-      expect(formatGoldWeight(fine)).toBe("99.600");
-    });
-
+  // ── Test Case B: 100 g @ 995 on 995 basis ────────────────────────────────
+  describe("Test Case B: 100 g @ 995 on 995 basis", () => {
     it("Calculates 100 g @ 995‰ on 995 basis as exactly 100.000 g fine", () => {
       const net = 100.0;
       const purity = 995;

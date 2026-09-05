@@ -110,46 +110,30 @@ describe("MTJ ERP — Master Backend Logic & Calculation Audit", () => {
       expect(() => assertNetNotAboveGross(10000, 10000)).not.toThrow();
     });
 
-    it("verifies exact Fine Gold calculation across all supported purities on 999 basis", () => {
-      // 22K (916‰): 15,200mg Net * 916 / 999 = 13936.736... -> 13937 mg (or basis 1000: 13923 mg)
-      // Basis 999:
-      expect(fineGoldMg(15200, 916, 999)).toBe(13937);
-      // Basis 1000:
-      expect(fineGoldMg(15200, 916, 1000)).toBe(13923);
+    it("verifies exact Fine Gold calculation across all supported purities on authoritative 995 basis", () => {
+      // 22K (916‰): 15,200mg Net * 916 / 995 = 13993 mg
+      expect(fineGoldMg(15200, 916)).toBe(13993);
 
-      // 18K (750‰): 7,100mg Net * 750 / 1000 = 5,325 mg
-      expect(fineGoldMg(7100, 750, 1000)).toBe(5325);
-      expect(fineGoldMg(7100, 750, 999)).toBe(5330);
+      // 18K (750‰): 7,100mg Net * 750 / 995 = 5,352 mg
+      expect(fineGoldMg(7100, 750)).toBe(5352);
 
-      // 21K (875‰): 25,000mg Net * 875 / 1000 = 21,875 mg
-      expect(fineGoldMg(25000, 875, 1000)).toBe(21875);
-      expect(fineGoldMg(25000, 875, 999)).toBe(21897);
+      // 21K (875‰): 25,000mg Net * 875 / 995 = 21,985 mg
+      expect(fineGoldMg(25000, 875)).toBe(21985);
 
-      // 14K (585‰): 5,000mg Net * 585 / 1000 = 2,925 mg
-      expect(fineGoldMg(5000, 585, 1000)).toBe(2925);
-      expect(fineGoldMg(5000, 585, 999)).toBe(2928);
-
-      // 24K (999‰ Fine): 100,000mg
-      expect(fineGoldMg(100000, 999, 999)).toBe(100000);
-      expect(fineGoldMg(100000, 999, 1000)).toBe(100000);
+      // 14K (585‰): 5,000mg Net * 585 / 995 = 2,940 mg
+      expect(fineGoldMg(5000, 585)).toBe(2940);
 
       // 995 TT Bar: 116,640mg on 995 basis
-      expect(fineGoldMg(116640, 995, 995)).toBe(116640);
-
-      // Custom purities: 9K (375‰), 833‰ (20K), 800‰, 500‰
-      expect(fineGoldMg(10000, 375, 1000)).toBe(3750);
-      expect(fineGoldMg(10000, 833, 1000)).toBe(8330);
-      expect(fineGoldMg(10000, 800, 1000)).toBe(8000);
-      expect(fineGoldMg(10000, 500, 1000)).toBe(5000);
+      expect(fineGoldMg(116640, 995)).toBe(116640);
     });
 
     it("verifies Gross from Fine Gold inversion", () => {
-      // 13,923mg fine at 916 purity on 1000 basis -> 15,200mg gross
-      expect(grossFromFineMg(13923, 916, 1000)).toBe(15200);
-      // 5,325mg fine at 750 purity on 1000 basis -> 7,100mg gross
-      expect(grossFromFineMg(5325, 750, 1000)).toBe(7100);
-      // 21,875mg fine at 875 purity on 1000 basis -> 25,000mg gross
-      expect(grossFromFineMg(21875, 875, 1000)).toBe(25000);
+      // 13,993mg fine at 916 purity on 995 basis -> 15,200mg gross
+      expect(grossFromFineMg(13993, 916, 995)).toBe(15200);
+      // 5,352mg fine at 750 purity on 995 basis -> 7,100mg gross
+      expect(grossFromFineMg(5352, 750, 995)).toBe(7100);
+      // 21,985mg fine at 875 purity on 995 basis -> 25,000mg gross
+      expect(grossFromFineMg(21985, 875, 995)).toBe(25000);
     });
 
     it("verifies configurable fine-gold calculation methods in advanced mode", () => {
@@ -166,7 +150,7 @@ describe("MTJ ERP — Master Backend Logic & Calculation Audit", () => {
         },
       };
 
-      // 1. metal_content_999: (Gross - Less) * Purity / 999
+      // 1. metal_content on 995 basis: (Gross - Less) * Purity / 995
       const metalCalc = computeFineGold(
         {
           module: "vault",
@@ -177,7 +161,7 @@ describe("MTJ ERP — Master Backend Logic & Calculation Audit", () => {
         },
         advancedConfig as any,
       );
-      expect(metalCalc.fineMg).toBe(Math.round((10000 * 916) / 999));
+      expect(metalCalc.fineMg).toBe(Math.round((10000 * 916) / 995));
 
       // 2. touch_100: Gross * (Touch% / 100) -> 10,000 * 0.916 = 9,160 mg
       const touchCalc = computeFineGold(
@@ -715,13 +699,13 @@ describe("MTJ ERP — Master Backend Logic & Calculation Audit", () => {
       }
     });
 
-    it("proves Invariant 3: Net × Purity / Basis ≡ Fine Gold Weight", () => {
+    it("proves Invariant 3: Net × Purity / Basis ≡ Fine Gold Weight on authoritative 995 basis", () => {
       const testCases = [
-        { net: 10000, purity: 916, basis: 1000, expectedFine: 9160 },
-        { net: 10000, purity: 750, basis: 1000, expectedFine: 7500 },
-        { net: 10000, purity: 875, basis: 1000, expectedFine: 8750 },
-        { net: 10000, purity: 585, basis: 1000, expectedFine: 5850 },
-        { net: 10000, purity: 999, basis: 999, expectedFine: 10000 },
+        { net: 10000, purity: 916, basis: 995, expectedFine: 9206 },
+        { net: 10000, purity: 750, basis: 995, expectedFine: 7538 },
+        { net: 10000, purity: 875, basis: 995, expectedFine: 8794 },
+        { net: 10000, purity: 585, basis: 995, expectedFine: 5879 },
+        { net: 10000, purity: 995, basis: 995, expectedFine: 10000 },
       ];
 
       for (const tc of testCases) {

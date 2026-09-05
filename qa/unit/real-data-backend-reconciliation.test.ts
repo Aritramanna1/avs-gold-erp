@@ -235,17 +235,17 @@ describe("MTJ ERP — End-to-End Real-Data Backend Reconciliation", () => {
   // =========================================================================
   describe("Chain 4: Old Gold Exchange & Valuation Offset", () => {
     it("converts 15.000g 18K old gold into pure gold credit and offsets invoice payable", () => {
-      // 15.000g Old Gold @ 750 (18K touch)
-      // Fine gold = 15.000 * 750 / 1000 = 11.250g (11,250 mg) Fine
+      // 15.000g Old Gold @ 750 (18K touch) on 995 basis
+      // Fine gold = 15.000 * 750 / 995 = 11.307g (11,307 mg) Fine
       const oldGrossMg = 15000;
       const oldPurity = 750;
-      const oldFineMg = fineGoldMg(oldGrossMg, oldPurity, 1000);
-      expect(oldFineMg).toBe(11250);
+      const oldFineMg = fineGoldMg(oldGrossMg, oldPurity);
+      expect(oldFineMg).toBe(11307);
 
-      // Old gold purchase rate: ₹7,200/g -> Valuation = 11.250 * 7,200 = ₹81,000 (8,100,000 paise)
+      // Old gold purchase rate: ₹7,200/g -> Valuation = 11.307 * 7,200 = ₹81,410.40 (8,141,040 paise)
       const oldGoldRatePaise = 720000;
       const oldGoldValuePaise = calculateGoldValuePaise(oldFineMg, oldGoldRatePaise);
-      expect(oldGoldValuePaise).toBe(8100000);
+      expect(oldGoldValuePaise).toBe(8141040);
 
       // New Invoice of ₹1,50,000 with ₹81,000 Old Gold Adjustment
       const invoice: Invoice = {
@@ -399,13 +399,13 @@ describe("MTJ ERP — End-to-End Real-Data Backend Reconciliation", () => {
       expect(book22K.currentBalanceMg).toBe(6412);
 
       // Mathematical Verification of Over-loss:
-      // Allowed Wastage: 3.5% on 100g = 3.500g (3,206 mg Fine)
+      // Allowed Wastage: 3.5% on 100g = 3.500g (3,222 mg Fine)
       // Total Gross Loss: 100g - 85g - 8g = 7.000g (6,412 mg Fine)
-      // Over-loss: 7.000g - 3.500g = 3.500g Gross (3,206 mg Fine Gold penalty)
-      const allowedWastageFineMg = fineGoldMg(3500, 916, 1000);
-      expect(allowedWastageFineMg).toBe(3206);
+      // Over-loss: 7.000g - 3.500g = 3.500g Gross (3,222 mg Fine Gold penalty)
+      const allowedWastageFineMg = fineGoldMg(3500, 916);
+      expect(allowedWastageFineMg).toBe(3222);
       const overLossFineMg = 6412 - allowedWastageFineMg;
-      expect(overLossFineMg).toBe(3206);
+      expect(overLossFineMg).toBe(3190);
     });
 
     it("verifies multi-purity isolation (22K and 18K) in the same Karigar account", () => {
@@ -481,29 +481,27 @@ describe("MTJ ERP — End-to-End Real-Data Backend Reconciliation", () => {
       // Total GST: 778,134 paise (₹7,781.34)
       // Grand Total: 25,937,780 + 778,134 = 26,715,914 paise (₹2,67,159.14)
 
-      const fineMg = fineGoldMg(33000, 916, 1000);
-      expect(fineMg).toBe(30228);
+      const fineMg = fineGoldMg(33000, 916);
+      expect(fineMg).toBe(30380);
 
       const metalValuePaise = calculateGoldValuePaise(fineMg, 760000);
-      expect(metalValuePaise).toBe(22973280);
+      expect(metalValuePaise).toBe(23088800);
 
       const subtotalPaise = metalValuePaise + 2310000 + 850000 + 4500 - 200000;
-      expect(subtotalPaise).toBe(25937780);
+      expect(subtotalPaise).toBe(26053300);
 
       const cgstPaise = Math.round(subtotalPaise * 0.015);
       const sgstPaise = Math.round(subtotalPaise * 0.015);
       const totalGstPaise = cgstPaise + sgstPaise;
       const grandTotalPaise = subtotalPaise + totalGstPaise;
 
-      expect(cgstPaise).toBe(389067);
-      expect(sgstPaise).toBe(389067);
-      expect(totalGstPaise).toBe(778134);
-      expect(grandTotalPaise).toBe(26715914);
+      expect(cgstPaise).toBe(390800);
+      expect(sgstPaise).toBe(390800);
+      expect(totalGstPaise).toBe(781600);
+      expect(grandTotalPaise).toBe(26834900);
 
-      // Gold equivalent of full invoice obligation @ ₹7,600/g:
-      // 26,715,914 / 760,000 = 35.1525...g -> 35,153 mg Fine Gold
       const invoiceFineEquivMg = paiseToFineGoldMg(grandTotalPaise, 760000);
-      expect(invoiceFineEquivMg).toBe(35153);
+      expect(invoiceFineEquivMg).toBe(35309);
     });
   });
 

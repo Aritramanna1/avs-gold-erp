@@ -2,9 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   calculateNetWeight,
   calculateFineFromTouch,
-  calculateFineFromPermille1000,
-  calculateFineAt999,
   calculateFineAt995,
+  calculateManufacturingMeltingWeight,
+  calculateBillingFineGold,
+  calculateBhavGoldEquivalent,
   calculateHisab,
   calculateFineFromHisab,
   calculateGoldValue,
@@ -36,23 +37,22 @@ describe("MTJ Approved Business Logic Lock — 28 Core Formula Audits", () => {
     expect(calculateFineFromTouch(10.0, 91.6)).toBe(9.16);
   });
 
-  // 3. Fineness / Per-Mille (1000 basis)
-  it("Formula 3: 1000 basis fineness across purities", () => {
-    expect(calculateFineFromPermille1000(15.2, 916)).toBe(13.9232);
-    expect(calculateFineFromPermille1000(7.1, 750)).toBe(5.325);
-    expect(calculateFineFromPermille1000(25.0, 875)).toBe(21.875);
-    expect(calculateFineFromPermille1000(5.0, 585)).toBe(2.925);
-  });
-
-  // 4. 999 Fineness-Basis Conversion
-  it("Formula 4: 999 basis conversion", () => {
-    expect(calculateFineAt999(100.0, 999)).toBe(100.0);
-    expect(calculateFineAt999(10.0, 916)).toBe(9.169169);
-  });
-
-  // 5. 995 Basis
-  it("Formula 5: 995 basis conversion", () => {
+  // 3. Authoritative Purity Basis: 995 / 99.50%
+  it("Formula 3: 995 basis fineness across purities", () => {
     expect(calculateFineAt995(100.0, 995)).toBe(100.0);
+    expect(calculateFineAt995(10.0, 916)).toBeCloseTo(9.206, 3);
+  });
+
+  // 4. Work Manufacturing / Melting Gold (Strict Division)
+  it("Formula 4: Work manufacturing melting division: 100 ÷ 91.6 = 109.170, 100 ÷ 83.5 = 119.760", () => {
+    expect(calculateManufacturingMeltingWeight(100, 91.6)).toBe(109.170);
+    expect(calculateManufacturingMeltingWeight(100, 83.5)).toBe(119.760);
+  });
+
+  // 5. Handwritten Billing Fine (100 × 96% = 96.000, 100 × 88% = 88.000)
+  it("Formula 5: Handwritten billing calculations: 100 × 96 = 96.000, 100 × 88 = 88.000", () => {
+    expect(calculateBillingFineGold(100, 96)).toBe(96.000);
+    expect(calculateBillingFineGold(100, 88)).toBe(88.000);
   });
 
   // 6 & 7. Wastage -> Hisab & Fine from Hisab

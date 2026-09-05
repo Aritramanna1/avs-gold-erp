@@ -69,59 +69,54 @@ describe("G-16-A: MTJ default purity mandate (995)", () => {
 describe("G-16-B: Purity flow — 995 touch through fine-calc path", () => {
   const GROSS_MG = 10_000;
 
-  it("fineGoldMg: 995/999 basis → 9960 mg fine from 10g gross", () => {
-    expect(fineGoldMg(GROSS_MG, 995, 999)).toBe(9960);
-  });
-
   it("fineGoldMg: 995/995 basis → pure-equivalent fine = gross", () => {
-    expect(fineGoldMg(GROSS_MG, 995, 995)).toBe(GROSS_MG);
+    expect(fineGoldMg(GROSS_MG, 995)).toBe(GROSS_MG);
   });
 
-  it("computeFineGold advanced: 995 purity metal_content_999 → 9960 mg fine", () => {
-    const config = advancedRules({ finenessBasis: 999 });
+  it("computeFineGold advanced: 995 purity → 10000 mg fine", () => {
+    const config = advancedRules({ finenessBasis: 995 });
     const result = computeFineGold(
       { module: "gold_settlement", grossMg: GROSS_MG, purityPermille: 995, method: "metal_content_999", base: "gross" },
       config,
     );
-    expect(result.fineMg).toBe(9960);
+    expect(result.fineMg).toBe(10000);
     expect(result.snapshot.purityPermille).toBe(995);
-    expect(result.snapshot.finenessBasis).toBe(999);
+    expect(result.snapshot.finenessBasis).toBe(995);
   });
 
-  it("explicitly selected purity 916 must produce 916-based fine (not default 995)", () => {
-    const config = advancedRules({ finenessBasis: 999 });
+  it("explicitly selected purity 916 must produce 916-based fine on 995 basis", () => {
+    const config = advancedRules({ finenessBasis: 995 });
     const result = computeFineGold(
       { module: "retail_billing", grossMg: GROSS_MG, purityPermille: 916, method: "metal_content_999", base: "gross" },
       config,
     );
-    expect(result.fineMg).toBe(9169);
+    expect(result.fineMg).toBe(9206);
     expect(result.snapshot.purityPermille).toBe(916);
   });
 
-  it("explicitly selected purity 750 must produce 750-based fine", () => {
-    const config = advancedRules({ finenessBasis: 999 });
+  it("explicitly selected purity 750 must produce 750-based fine on 995 basis", () => {
+    const config = advancedRules({ finenessBasis: 995 });
     const result = computeFineGold(
       { module: "retail_billing", grossMg: GROSS_MG, purityPermille: 750, method: "metal_content_999", base: "gross" },
       config,
     );
-    expect(result.fineMg).toBe(7508);
+    expect(result.fineMg).toBe(7538);
   });
 });
 
-// ── G-16-C: finenessBasis != defaultPurityPermille ─────────────────────────
+// ── G-16-C: finenessBasis and defaultPurityPermille ─────────────────────────
 
-describe("G-16-C: finenessBasis (denominator) is distinct from defaultPurityPermille", () => {
-  it("defaultGoldCalculationRules finenessBasis=999, MTJ_DEFAULT_PURITY_PERMILLE=995", () => {
+describe("G-16-C: finenessBasis and defaultPurityPermille on authoritative 995 standard", () => {
+  it("defaultGoldCalculationRules finenessBasis=995, MTJ_DEFAULT_PURITY_PERMILLE=995", () => {
     const rules = defaultGoldCalculationRules();
-    expect(rules.finenessBasis).toBe(999);
+    expect(rules.finenessBasis).toBe(995);
     expect(MTJ_DEFAULT_PURITY_PERMILLE).toBe(995);
-    expect(rules.finenessBasis).not.toBe(MTJ_DEFAULT_PURITY_PERMILLE);
   });
 
-  it("explicitly entered purity=916 is unaffected by firm default purity=995", () => {
-    const config = advancedRules({ finenessBasis: 999 });
-    const fine916 = fineGoldMg(10_000, 916, 999);
-    expect(fine916).toBe(9169);
+  it("explicitly entered purity=916 produces 9206 fine on 995 basis", () => {
+    const config = advancedRules({ finenessBasis: 995 });
+    const fine916 = fineGoldMg(10_000, 916);
+    expect(fine916).toBe(9206);
   });
 });
 
@@ -153,13 +148,13 @@ describe("G-16-D: Karigar fine calculation OFF by default (BASIC mode)", () => {
   });
 
   it("ADVANCED mode: fine IS auto-computed from purity (opt-in path)", () => {
-    const config = advancedRules({ finenessBasis: 999 });
+    const config = advancedRules({ finenessBasis: 995 });
     expect(isAdvancedCalculationMode(config)).toBe(true);
     const result = computeFineGold(
       { module: "karigar_issue", grossMg: 10_000, purityPermille: 995, method: "metal_content_999", base: "gross" },
       config,
     );
-    expect(result.fineMg).toBe(9960);
+    expect(result.fineMg).toBe(10000);
     expect(result.snapshot.userControlledFine).toBeFalsy();
   });
 });
@@ -168,7 +163,7 @@ describe("G-16-D: Karigar fine calculation OFF by default (BASIC mode)", () => {
 
 describe("G-16-E: Settlement fine is frozen at transaction time", () => {
   it("snapshot captures purity, finenessBasis, and fineMg at compute time", () => {
-    const config = advancedRules({ finenessBasis: 999 });
+    const config = advancedRules({ finenessBasis: 995 });
     const result = computeFineGold(
       { module: "gold_settlement", grossMg: 20_000, purityPermille: 916, method: "metal_content_999", base: "gross" },
       config,
@@ -176,21 +171,10 @@ describe("G-16-E: Settlement fine is frozen at transaction time", () => {
     const snap = result.snapshot;
     expect(snap.grossMg).toBe(20_000);
     expect(snap.purityPermille).toBe(916);
-    expect(snap.finenessBasis).toBe(999);
+    expect(snap.finenessBasis).toBe(995);
     expect(snap.fineMg).toBe(result.fineMg);
     expect(typeof snap.computedAt).toBe("number");
     expect(snap.computedAt).toBeGreaterThan(0);
-  });
-
-  it("config changes after post do not affect already-stored snapshot values", () => {
-    const config1 = advancedRules({ finenessBasis: 999 });
-    const config2 = advancedRules({ finenessBasis: 995 });
-    const input = { module: "gold_settlement" as const, grossMg: 10_000, purityPermille: 916, method: "metal_content_999" as const, base: "gross" as const };
-    const r1 = computeFineGold(input, config1);
-    const r2 = computeFineGold(input, config2);
-    expect(r1.snapshot.finenessBasis).toBe(999);
-    expect(r2.snapshot.finenessBasis).toBe(995);
-    expect(r1.fineMg).not.toBe(r2.fineMg);
   });
 });
 
