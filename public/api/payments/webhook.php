@@ -25,6 +25,12 @@ $webhookSecret = $gatewayConfig['active']['webhook_secret'];
 $mode = $gatewayConfig['mode'];
 
 // ── 1. Cryptographic HMAC Signature Verification ────────────────────────────
+if (empty($signature)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Missing required X-Razorpay-Signature header']);
+    exit;
+}
+
 if (!empty($webhookSecret)) {
     $isValid = verifyRazorpayWebhookSignature($rawPayload, $signature, $webhookSecret);
     if (!$isValid) {
