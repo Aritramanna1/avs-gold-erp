@@ -52,8 +52,9 @@ function wrapBrandHtml(title: string, innerHtml: string): string {
 }
 
 /**
- * Routes a payload through the unified Nodemailer/Hostinger "send-email" edge
- * function — the single SMTP relay backend used by the entire ERP.
+ * Routes a payload through the Hostinger server-side email dispatcher (/api/email/send.php)
+ * first to preserve Supabase free-tier limits, falling back to the Supabase Edge Function
+ * only if the Hostinger endpoint is unreachable (e.g. local dev or non-PHP server).
  */
 async function dispatchViaSmtpRelay(payload: EmailPayload): Promise<void> {
   const body = await buildSendEmailInvokeBody({
@@ -69,6 +70,34 @@ async function dispatchViaSmtpRelay(payload: EmailPayload): Promise<void> {
     })),
   });
 
+  // 1. Prioritize Hostinger Server-Side API endpoint (/api/email/send.php)
+  if (typeof window !== "undefined") {
+    try {
+      const resp = await fetch("/api/email/send.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: payload.to,
+          subject: payload.subject,
+          htmlBody: payload.htmlBody,
+          textBody: payload.textBody,
+          attachments: payload.attachments,
+          metadata: payload.metadata,
+        }),
+      });
+
+      if (resp.ok) {
+        const json = await resp.json();
+        if (json.success) {
+          return;
+        }
+      }
+    } catch {
+      // Hostinger API unreachable or local environment, proceed to fallback
+    }
+  }
+
+  // 2. Supabase Edge Function fallback
   const { data, error } = await supabase.functions.invoke("send-email", { body });
 
   if (error) {
