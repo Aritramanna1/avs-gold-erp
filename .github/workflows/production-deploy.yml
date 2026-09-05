@@ -12,7 +12,6 @@ on:
 jobs:
   test-and-build:
     name: Test, Build & Deploy to Hostinger
-    if: github.repository == 'Aritramanna1/avs-gold-erp'
     runs-on: ubuntu-latest
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://dqgrrafuoxaorvyrcuuh.supabase.co' }}
@@ -20,6 +19,9 @@ jobs:
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_test_key' }}
       VITE_APP_URL: 'https://erp.arivahly.in'
       CI: 'true'
+      HOSTINGER_DEPLOY_WEBHOOK_URL: ${{ secrets.HOSTINGER_DEPLOY_WEBHOOK_URL }}
+      HOSTINGER_FTP_SERVER: ${{ secrets.HOSTINGER_FTP_SERVER }}
+      HOSTINGER_FTP_USERNAME: ${{ secrets.HOSTINGER_FTP_USERNAME }}
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -54,20 +56,18 @@ jobs:
 
       # Option A: Deploy via Hostinger hPanel Git Auto-Deploy Webhook (if secret configured)
       - name: Trigger Hostinger Git Auto-Deploy Webhook
-        if: ${{ secrets.HOSTINGER_DEPLOY_WEBHOOK_URL != '' }}
-        env:
-          HOSTINGER_DEPLOY_WEBHOOK_URL: ${{ secrets.HOSTINGER_DEPLOY_WEBHOOK_URL }}
+        if: env.HOSTINGER_DEPLOY_WEBHOOK_URL != ''
         run: |
           echo "Triggering Hostinger hPanel deployment webhook..."
           curl -X POST -s -f "$HOSTINGER_DEPLOY_WEBHOOK_URL" || echo "Webhook trigger completed."
 
       # Option B: Deploy via FTPS / FTP directly to public_html (if secrets configured)
       - name: Deploy to Hostinger via FTPS
-        if: ${{ secrets.HOSTINGER_FTP_SERVER != '' && secrets.HOSTINGER_FTP_USERNAME != '' }}
+        if: env.HOSTINGER_FTP_SERVER != '' && env.HOSTINGER_FTP_USERNAME != ''
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
-          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          server: ${{ env.HOSTINGER_FTP_SERVER }}
+          username: ${{ env.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           local-dir: ./dist/
           server-dir: ./public_html/erp/
