@@ -138,12 +138,55 @@ export async function fetchTenantReceipts(): Promise<PlatformReceiptRow[]> {
   }));
 }
 
+export async function createInternalPaymentOrder(
+  planCode: string,
+  billingPeriod: "monthly" | "annual" = "monthly",
+  firmId?: string,
+): Promise<PaymentCheckoutSession> {
+  try {
+    const res = await fetch("/api/payments/create-order.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan_code: planCode, billing_period: billingPeriod, tenant_id: firmId }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        return {
+          ok: true,
+          orderId: data.razorpay_order_id,
+          amountPaise: data.amount_paise,
+          keyId: data.key_id,
+          invoiceId: data.internal_payment_id,
+        };
+      }
+    }
+  } catch {
+    // Fallback to Edge API
+  }
+  return callPaymentApi("purchase_plan", { planCode, productId: DEFAULT_AVS_PRODUCT });
+}
+
 export async function startPlanPurchase(planCode: string, productId = DEFAULT_AVS_PRODUCT) {
-  return callPaymentApi("purchase_plan", { planCode, productId });
+  return createInternalPaymentOrder(planCode, "monthly");
 }
 
 export async function startInvoicePayment(platformInvoiceId: string, amountPaise: number) {
   return callPaymentApi("create_order", { platformInvoiceId, amountPaise });
+}
+
+export async function verifyPaymentCallback(input: {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+  internal_payment_id?: string;
+}) {
+  const res = await fetch("/api/payments/callback.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ ...input, is_api: true }),
+  });
+  return res.json();
 }
 
 export async function startCreditTopUp(credits: number, walletType: "ai" | "whatsapp" = "ai") {

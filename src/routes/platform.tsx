@@ -34,6 +34,7 @@ import { fetchPlatformFirmStats, type PlatformFirmStats } from "@/lib/platform-s
 import { PlatformCreditsSection } from "@/components/platform/PlatformCreditsSection";
 import { PlatformRazorpayConfig } from "@/components/platform/PlatformRazorpayConfig";
 import { PlatformCommercialBillingHub } from "@/components/platform/PlatformCommercialBillingHub";
+import { PlatformPaymentReconciliation } from "@/components/platform/PlatformPaymentReconciliation";
 import { PlatformBrandingPanel } from "@/components/platform/PlatformBrandingPanel";
 import { PlatformDatabaseHealthPanel } from "@/components/platform/PlatformDatabaseHealthPanel";
 import { PlatformEgressMonitorPanel } from "@/components/platform/PlatformEgressMonitorPanel";
@@ -2334,7 +2335,9 @@ function BillingSection({
 
   return (
     <section className="space-y-6">
-      {billingTab !== "payments" && (
+      {billingTab === "payments" ? (
+        <PlatformPaymentReconciliation />
+      ) : (
         <>
           <PlatformCommercialBillingHub firms={firms.map((f) => ({ id: f.id, name: f.name }))} />
           <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs space-y-4">
