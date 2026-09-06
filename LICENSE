@@ -1,21 +1,107 @@
-MIT License
+ARIVAHLY VENTURE SPHERE — COMMUNITY TESTING LICENSE
 
-Copyright (c) 2026 Arivahly Venture Sphere
+Copyright © 2026 Arivahly Venture Sphere. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the “Software”), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## 1. Grant of License
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Arivahly Venture Sphere (“AVS”) grants a limited, non-exclusive, non-transferable, revocable license to individuals and organizations to access, reproduce, modify, and use this Software solely for evaluation, testing, development, security review, research, and contribution purposes during the designated Community Testing Period.
 
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+The Community Testing Period begins on the date the applicable repository version is publicly released by AVS and continues for approximately three (3) months, unless AVS specifies a different period for a particular release.
+
+## 2. Permitted Use
+
+During the Community Testing Period, the Software may be:
+
+* Downloaded and installed for evaluation and testing.
+* Modified for testing, experimentation, debugging, and development.
+* Used to identify, reproduce, and report defects and security vulnerabilities.
+* Modified for the purpose of preparing and submitting contributions to the official AVS repository.
+* Used internally for non-commercial evaluation and development.
+
+All permitted copies and substantial portions of the Software must retain this copyright notice and this license.
+
+## 3. Prohibited Use
+
+Without prior written permission from Arivahly Venture Sphere, you may not:
+
+* Use the Software for commercial production operations.
+* Offer the Software as a commercial SaaS, hosted, managed, or subscription service.
+* Sell, sublicense, lease, rent, or commercially distribute the Software.
+* White-label, rebrand, or represent the Software as your own product.
+* Remove, obscure, or disable AVS copyright notices, ownership notices, or required branding.
+* Use the Software to create or operate a competing commercial product or service based substantially on the Software.
+* Use AVS's private credentials, infrastructure, production services, customer data, or proprietary resources.
+* Circumvent technical, licensing, security, access-control, or entitlement mechanisms implemented by AVS.
+* Represent a modified or forked version as an official Arivahly Venture Sphere product.
+
+## 4. AVS Branding
+
+“Arivahly Venture Sphere” and associated AVS trademarks, names, logos, and branding remain the property of Arivahly Venture Sphere.
+
+Authorized testing does not grant any trademark or branding rights.
+
+AVS ownership notices and required watermark/branding elements must not be removed from authorized copies where they are included by AVS.
+
+## 5. Contributions
+
+Contributions may be submitted through the official AVS repository.
+
+By submitting a contribution, you represent that you have the legal right to submit it and that it does not knowingly violate another person's intellectual-property rights.
+
+Unless otherwise agreed in writing, contributions submitted to the official AVS repository may be incorporated into AVS products and distributed by AVS under the license terms selected by AVS.
+
+## 6. Third-Party Components
+
+This license applies only to software and materials owned by Arivahly Venture Sphere.
+
+Third-party libraries, frameworks, assets, and other components remain subject to their respective licenses.
+
+Nothing in this license overrides or replaces applicable third-party license obligations.
+
+## 7. Privacy and Data
+
+The Software is provided for testing using appropriate development or synthetic data.
+
+You must not use, disclose, publish, or redistribute confidential AVS information or personal/business data obtained without authorization.
+
+## 8. End of Community Testing Period
+
+At the end of the Community Testing Period, AVS may:
+
+* Change the repository visibility.
+* Publish a new license.
+* Restrict production or commercial use.
+* Require a commercial license.
+* Publish a controlled production release.
+* Discontinue or modify public distribution.
+* Continue selected components under different licensing terms.
+
+Future versions may be distributed under different license terms.
+
+Nothing in a future release automatically changes the terms applicable to a copy that was validly obtained under this license during its applicable period.
+
+## 9. No Implied Rights
+
+Except for the limited rights expressly granted in this license, no patent, trademark, copyright, trade-secret, or other intellectual-property rights are granted.
+
+## 10. Termination
+
+This license terminates automatically if you materially violate its terms.
+
+Upon termination, you must cease the uses that are no longer authorized under this license and delete or destroy unauthorized copies to the extent permitted by applicable law.
+
+Rights and permissions for validly submitted contributions and other matters that by their nature should survive termination remain subject to the applicable agreements and laws.
+
+## 11. Disclaimer
+
+THE SOFTWARE IS PROVIDED “AS IS” AND WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NONINFRINGEMENT.
+
+## 12. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, ARIVAHLY VENTURE SPHERE AND ITS AUTHORS, CONTRIBUTORS, LICENSORS, AND REPRESENTATIVES SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES, LOSS, OR OTHER LIABILITY ARISING FROM OR RELATED TO THE SOFTWARE OR ITS USE.
+
+---
+
+**Copyright © 2026 Arivahly Venture Sphere. All rights reserved.**
+
+**This is a source-available community-testing license and is not intended to be represented as an OSI-approved open-source license.**
