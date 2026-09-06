@@ -83,24 +83,12 @@ export interface GoldSettlementRecord {
 
 /**
  * 1. getFirmProfile()
- * Fetches the firm's profile data from app_settings table.
+ * Fetches the firm's profile data from unified store / settings.
  */
 export async function getFirmProfile(): Promise<FirmProfile | null> {
   try {
-    const { data, error } = await supabase
-      .from("app_settings")
-      .select("data")
-      .eq("id", "firm")
-      .maybeSingle();
-
-    if (error || !data?.data) {
-      console.warn(
-        "[supabase-services] No existing firm profile in DB. Falling back to local state.",
-      );
-      return null;
-    }
-    const fullSettings = data.data as any;
-    const firm = (fullSettings?.firm as FirmProfile) || null;
+    const { useSettings } = await import("@/lib/settings-store");
+    const firm = useSettings.getState().firm;
 
     // Dynamically re-sign logo to prevent expiration of transient signed URLs
     if (firm && firm.logoStoragePath) {
@@ -123,37 +111,14 @@ export async function getFirmProfile(): Promise<FirmProfile | null> {
 
 /**
  * 2. updateFirmProfile()
- * Saves/updates the firm's profile data in app_settings table.
+ * Saves/updates the firm's profile data with dual local/cloud persistence.
  */
 export async function updateFirmProfile(profile: FirmProfile): Promise<boolean> {
   try {
-    const { data: currentFull } = await supabase
-      .from("app_settings")
-      .select("data")
-      .eq("id", "firm")
-      .maybeSingle();
-
-    const currentData = (currentFull?.data as any) || {};
-    const updatedData = {
-      ...currentData,
-      firm: {
-        ...(currentData.firm || {}),
-        ...profile,
-      },
-    };
-
-    const { error } = await supabase.from("app_settings").upsert({
-      id: "firm",
-      scope: "firm",
-      data: updatedData as any,
-      updated_at: new Date().toISOString(),
-    });
-
-    if (error) {
-      console.error("[supabase-services] Failed to update firm profile in DB:", error.message);
-      return false;
-    }
-    return true;
+    const { useSettings, persistAndFlushSettings } = await import("@/lib/settings-store");
+    useSettings.getState().setFirm(profile);
+    const result = await persistAndFlushSettings(true);
+    return result.ok;
   } catch (err) {
     console.error("[supabase-services] Error in updateFirmProfile:", err);
     return false;

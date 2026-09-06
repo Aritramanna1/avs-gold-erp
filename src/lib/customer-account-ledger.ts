@@ -5,7 +5,7 @@
  * tracking both cash (Monetary Ledger) and gold (Gold Ledger) independently but chronologically.
  */
 
-import { useBilling, type Invoice, type PaymentRecord } from "./billing-store";
+import { useBilling, type Invoice, type PaymentRecord, paiseToRupees } from "./billing-store";
 import { useOrders, type Order } from "./orders-store";
 import { useGoldSettlement } from "./gold-settlement-store";
 import { useMfgBills } from "./manufacturing-bill-store";
@@ -22,6 +22,7 @@ import {
 import { resolveLedgerVoucherRoute } from "./ledger-voucher-routes";
 import { getMoneyEntriesForParty } from "./money-voucher";
 import { useWorkerGoldBook } from "./worker-gold-book-store";
+import { useWorkers } from "./workers-store";
 
 /**
  * Where a ledger row came from. Explicit so the Workshop books can relabel /
@@ -316,7 +317,7 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
     });
   }
 
-  // --- 1b. Worker / Karigar Gold Book (issue / return) — same SoT as gold book UI ---
+  // --- 1b. Worker / Karigar Gold Book & Financial Transactions ---
   const isWorkerParty =
     person?.type === "karigar" ||
     person?.type === "worker" ||
@@ -351,6 +352,105 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
         goldInMg: e.type === "return" ? fine : 0,
         goldOutMg: e.type === "given" ? fine : 0,
         moneyDebitPaise: 0,
+        moneyCreditPaise: 0,
+      });
+    }
+
+    // Process Worker Monetary & Salary Advance Transactions
+    const workersState = useWorkers.getState();
+    
+    // Salary advances
+    for (const adv of workersState.advances.filter((a) => a.workerId === customerId)) {
+      const ts = adv.createdAt || Date.parse(adv.date) || 0;
+      const dateStr = new Date(ts || adv.date).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      rawRows.push({
+        id: `w_adv_${adv.id}`,
+        ts,
+        date: dateStr,
+        voucherNo: adv.id.slice(0, 8).toUpperCase(),
+        type: "Salary Advance",
+        description: adv.notes || `Salary advance paid (${adv.mode.toUpperCase()})`,
+        source: "treasury",
+        sourceEntityId: adv.id,
+        goldInMg: 0,
+        goldOutMg: 0,
+        moneyDebitPaise: adv.amountPaise,
+        moneyCreditPaise: 0,
+      });
+    }
+
+    // Worker withdrawals
+    for (const wd of workersState.withdrawals.filter((w) => w.workerId === customerId)) {
+      const ts = wd.createdAt || Date.parse(wd.date) || 0;
+      const dateStr = new Date(ts || wd.date).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      rawRows.push({
+        id: `w_wd_${wd.id}`,
+        ts,
+        date: dateStr,
+        voucherNo: wd.id.slice(0, 8).toUpperCase(),
+        type: "Worker Withdrawal",
+        description: wd.reason || wd.notes || `Cash withdrawal (${wd.mode.toUpperCase()})`,
+        source: "treasury",
+        sourceEntityId: wd.id,
+        goldInMg: 0,
+        goldOutMg: 0,
+        moneyDebitPaise: wd.amountPaise,
+        moneyCreditPaise: 0,
+      });
+    }
+
+    // Worker loans
+    for (const ln of workersState.loans.filter((l) => l.workerId === customerId)) {
+      const ts = ln.createdAt || Date.parse(ln.date) || 0;
+      const dateStr = new Date(ts || ln.date).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      rawRows.push({
+        id: `w_ln_${ln.id}`,
+        ts,
+        date: dateStr,
+        voucherNo: ln.id.slice(0, 8).toUpperCase(),
+        type: "Worker Loan Disbursed",
+        description: ln.reason || ln.notes || "Worker loan disbursed",
+        source: "treasury",
+        sourceEntityId: ln.id,
+        goldInMg: 0,
+        goldOutMg: 0,
+        moneyDebitPaise: ln.amountPaise,
+        moneyCreditPaise: 0,
+      });
+    }
+
+    // Worker allowances (food / pocket)
+    for (const al of workersState.allowances.filter((a) => a.workerId === customerId)) {
+      const ts = al.createdAt || Date.parse(al.date) || 0;
+      const dateStr = new Date(ts || al.date).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      rawRows.push({
+        id: `w_al_${al.id}`,
+        ts,
+        date: dateStr,
+        voucherNo: al.id.slice(0, 8).toUpperCase(),
+        type: "Worker Allowance",
+        description: al.notes || `Allowance payment (${al.kind.replace(/_/g, " ")})`,
+        source: "treasury",
+        sourceEntityId: al.id,
+        goldInMg: 0,
+        goldOutMg: 0,
+        moneyDebitPaise: al.amountPaise,
         moneyCreditPaise: 0,
       });
     }
@@ -518,6 +618,11 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
       let goldIn = 0;
       let goldOut = 0;
       let desc = p.notes || `Payment received (${p.mode.replace("_", " ")})`;
+      const ratePerGramPaise = p.goldRatePerGramPaise || i.items[0]?.goldRatePerGramPaise || 0;
+      const cashGoldEquivMg =
+        ratePerGramPaise > 0 && p.amountPaise > 0
+          ? Math.round((p.amountPaise / ratePerGramPaise) * 1000)
+          : undefined;
 
       if (p.mode === "gold_exchange" && p.goldFineMg) {
         goldIn = p.goldFineMg;
@@ -525,6 +630,8 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
       } else if (p.mode === "customer_gold_credit" && p.goldFineMg) {
         goldOut = p.goldFineMg;
         desc = `Payment adjusted from customer gold balance: ${mgToGrams(p.goldFineMg)} g fine`;
+      } else if (cashGoldEquivMg && cashGoldEquivMg > 0) {
+        desc = `${p.notes ? `${p.notes} · ` : ""}Settled in Cash @ ₹${paiseToRupees(ratePerGramPaise)}/g (Equiv: ${mgToGrams(cashGoldEquivMg)}g Fine Gold)`;
       }
 
       rawRows.push({
@@ -542,6 +649,8 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
         grossMg: p.goldGrossMg,
         purity: p.goldPurity,
         fineMg: p.goldFineMg,
+        ratePerGramPaise: ratePerGramPaise > 0 ? ratePerGramPaise : undefined,
+        cashGoldEquivMg,
         goldInMg: goldIn,
         goldOutMg: goldOut,
         moneyDebitPaise: 0,

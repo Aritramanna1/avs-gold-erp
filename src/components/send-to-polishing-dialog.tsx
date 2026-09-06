@@ -23,9 +23,11 @@ import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
 import { usePolishing } from "@/lib/polishing-store";
 import { useOrders } from "@/lib/orders-store";
 import { useBusinessRules } from "@/lib/business-rules-store";
+import { useWorkflowEngine } from "@/lib/workflow-engine";
 import { gramsToMg, mgToGrams, fineGoldMg, COMMON_PURITIES } from "@/lib/gold";
+import { generateImageThumbnail } from "@/lib/attachments-store";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
-import { Sparkles, AlertTriangle } from "lucide-react";
+import { Flame, AlertTriangle, ImagePlus, X, Camera } from "lucide-react";
 
 /**
  * Send to Polishing — the 6 fields this phase calls for (Polisher, Product,
@@ -67,14 +69,34 @@ export function SendToPolishingDialog({
   const addPolishing = usePolishing((s) => s.add);
   const isEnabled = useBusinessRules((s) => s.isEnabled);
   const requireApproval = isEnabled("require_approval_before_sending_polishing");
+  const workflowConfig = useWorkflowEngine((s) => s.config);
+  const polishingProcessType = workflowConfig.polishingProcessType ?? "outside";
 
-  const polishers = useMemo(
-    () =>
-      people.filter(
-        (p) => p.type === "karigar" || p.type === "worker" || p.type === "outside_worker",
-      ),
-    [people],
-  );
+  const polishers = useMemo(() => {
+    const list = people.filter((p) => p.active);
+    if (polishingProcessType === "outside") {
+      const outside = list.filter(
+        (p) =>
+          p.type === "outside_karigar" ||
+          p.type === "outside_worker" ||
+          p.type === "vendor" ||
+          p.type === "service_provider",
+      );
+      if (outside.length > 0) return outside;
+    } else {
+      const inHouse = list.filter((p) => p.type === "karigar" || p.type === "worker");
+      if (inHouse.length > 0) return inHouse;
+    }
+    return list.filter(
+      (p) =>
+        p.type === "karigar" ||
+        p.type === "worker" ||
+        p.type === "outside_karigar" ||
+        p.type === "outside_worker" ||
+        p.type === "vendor" ||
+        p.type === "service_provider",
+    );
+  }, [people, polishingProcessType]);
   const balances = useMemo(() => computeBalances(entries), [entries]);
   const vaultMg = balances.buckets.vault;
 
@@ -85,9 +107,12 @@ export function SendToPolishingDialog({
   const [expectedReturnDate, setExpectedReturnDate] = useState("");
   const [remarks, setRemarks] = useState("");
   const [approvedBy, setApprovedBy] = useState("");
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const firstFieldRef = useRef<HTMLButtonElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -99,10 +124,26 @@ export function SendToPolishingDialog({
       setRemarks("");
       setApprovedBy("");
       setPickedOrderId("");
+      setPhotoDataUrl(null);
       setError(null);
       setTimeout(() => firstFieldRef.current?.focus(), 50);
     }
   }, [open]);
+
+  async function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const thumb = await generateImageThumbnail(file, 480);
+      setPhotoDataUrl(thumb);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to process photo");
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = "";
+    }
+  }
 
   const grossMg = (() => {
     const n = Number(weightStr);
@@ -157,6 +198,7 @@ export function SendToPolishingDialog({
           purity,
           fineMg,
           expectedReturnDate: expectedReturnDate || undefined,
+          referencePhotoDataUrl: photoDataUrl ?? undefined,
           remarks: remarks.trim() || undefined,
           ledgerEntryId: ledgerEntry.id,
           approvedBy: requireApproval ? approvedBy.trim() : undefined,
@@ -196,7 +238,7 @@ export function SendToPolishingDialog({
       <DialogContent className="max-w-lg" onKeyDown={onKeyDown}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-gold" /> Send to Polishing
+            <Flame className="h-4 w-4 text-amber-500" /> Send to Polishing
           </DialogTitle>
           {orderNo && <DialogDescription>Order {orderNo}</DialogDescription>}
         </DialogHeader>
@@ -281,6 +323,52 @@ export function SendToPolishingDialog({
             </div>
           </div>
 
+          {/* Before Photo Upload */}
+          <div>
+            <Label className="flex items-center justify-between">
+              <span>Before Photo (Recommended)</span>
+              <span className="text-[11px] text-muted-foreground font-normal">
+                Records piece condition before polishing
+              </span>
+            </Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoSelected}
+            />
+            {photoDataUrl ? (
+              <div className="mt-1 relative inline-block">
+                <img
+                  src={photoDataUrl}
+                  alt="Before Polish Preview"
+                  className="h-20 w-20 object-cover rounded-md border border-border"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPhotoDataUrl(null)}
+                  className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 shadow hover:opacity-90"
+                  aria-label="Remove photo"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-1 gap-2 text-xs w-full justify-center border-dashed"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhoto}
+              >
+                <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                {uploadingPhoto ? "Processing photo…" : "Attach Before Photo"}
+              </Button>
+            )}
+          </div>
+
           {grossMg > 0 && purity > 0 && (
             <div className="rounded-lg border border-gold/30 bg-gold/5 p-3 flex items-center justify-between text-sm">
               <div>
@@ -359,7 +447,7 @@ export function SendToPolishingDialog({
             className="gap-2"
             data-testid="polishing-send-submit"
           >
-            <Sparkles className="h-4 w-4" /> {saving ? "Sending…" : "Send (Enter)"}
+            <Flame className="h-4 w-4" /> {saving ? "Sending…" : "Send (Enter)"}
           </Button>
         </DialogFooter>
       </DialogContent>

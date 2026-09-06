@@ -41,8 +41,8 @@ export function CashGoldPaymentSummary({
   const computedCashEquivPaise =
     fineGoldMg > 0 && ratePaise > 0 ? Math.round((fineGoldMg * ratePaise) / 1000) : 0;
 
-  // Auto-generate truthful Gold payment narration
-  const defaultGoldNarration = `Payment done in Gold (${goldPaidGrams.toFixed(3)}g, Touch ${purity} → ${mgToGrams(fineGoldMg)}g fine) — equivalent value ₹ ${paiseToRupees(computedCashEquivPaise)} at ₹ ${paiseToRupees(ratePaise)}/g.`;
+  // Pure gold-only narration
+  const defaultGoldNarration = `Payment done in Gold (${goldPaidGrams > 0 ? `${goldPaidGrams.toFixed(3)}g gross, ` : ""}Touch ${purity} → ${mgToGrams(fineGoldMg)}g fine gold).`;
   // Auto-generate truthful Cash payment narration
   const defaultCashNarration = `Payment done in Cash (₹ ${paiseToRupees(cashPaidPaise)}) — Gold Equivalent ${mgToGrams(cashGoldEquivMg)}g at ₹ ${paiseToRupees(ratePaise)}/g.`;
 
@@ -56,7 +56,7 @@ export function CashGoldPaymentSummary({
           <div className="flex items-center gap-2">
             <Coins className="h-4 w-4 text-gold" />
             <span className="font-bold text-xs uppercase tracking-wider text-gold">
-              Payment Method: Gold
+              Payment Method: Gold Only
             </span>
           </div>
           <Badge
@@ -68,7 +68,7 @@ export function CashGoldPaymentSummary({
           </Badge>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
           <div className="p-2.5 rounded-lg bg-background/80 border border-gold/20">
             <div className="text-[10px] uppercase font-semibold text-muted-foreground">
               Gold Paid (Gross)
@@ -86,15 +86,6 @@ export function CashGoldPaymentSummary({
               <GoldWeightDisplay mg={fineGoldMg} purity={purity} kind="fine" />
             </div>
           </div>
-
-          <div className="p-2.5 rounded-lg bg-background/80 border border-gold/20">
-            <div className="text-[10px] uppercase font-semibold text-muted-foreground">
-              Transaction Gold Rate
-            </div>
-            <div className="text-base font-mono font-bold text-foreground mt-0.5">
-              <MoneyDisplay paise={ratePaise} /> <span className="text-xs font-sans text-muted-foreground">/ g</span>
-            </div>
-          </div>
         </div>
 
         <div className="p-2 rounded-lg bg-gold/10 border border-gold/20 text-[11px] text-muted-foreground flex items-start gap-2">
@@ -104,6 +95,7 @@ export function CashGoldPaymentSummary({
       </div>
     );
   }
+
 
   if (method === "cash") {
     return (

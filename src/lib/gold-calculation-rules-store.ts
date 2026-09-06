@@ -147,7 +147,7 @@ function parseDoc(row: unknown): GoldCalculationRulesDoc {
     (data as { finenessBasis?: unknown }).finenessBasis ?? defaults.finenessBasis,
   );
   const calculationMode: CalculationMode =
-    data.calculationMode === "advanced" ? "advanced" : "basic";
+    data.calculationMode === "basic" ? "basic" : "advanced";
   return {
     id: GOLD_CALC_RULES_ID,
     version: Number.isInteger(data.version) && (data.version ?? 0) > 0 ? data.version! : 1,

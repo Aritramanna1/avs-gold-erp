@@ -487,12 +487,13 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
   // Load and cache firm profile to optimize writes and handle network blips
   let profile = cachedProfile;
   if (!profile) {
-    const { data: userResult } = await supabase.auth.getUser();
-    if (userResult.user?.id) {
+    const { data: sessionResult } = await supabase.auth.getSession();
+    const userId = sessionResult.session?.user?.id;
+    if (userId) {
       const { data: profileData } = await supabase
         .from("user_profiles")
         .select("firm_id, branch_id")
-        .eq("auth_id", userResult.user.id)
+        .eq("auth_id", userId)
         .maybeSingle();
       if (profileData?.firm_id) {
         profile = {

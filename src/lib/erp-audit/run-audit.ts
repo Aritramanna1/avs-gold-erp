@@ -58,8 +58,9 @@ async function resolveFirmId(): Promise<{ firmId: string | null; saasAdmin: bool
 
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return { firmId: null, saasAdmin };
 
     const { data: profile } = await supabase
@@ -1061,31 +1062,68 @@ async function probePerformance(): Promise<{
   };
 }
 
+function withTimeout<T>(promise: Promise<T>, ms = 2500, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 export async function runErpAudit(): Promise<ErpAuditReport> {
-  const { firmId } = await resolveFirmId();
+  const { firmId } = await withTimeout(resolveFirmId(), 1500, { firmId: null, saasAdmin: false });
   const allDefects: AuditDefect[] = [];
   const modules: AuditModuleResult[] = [];
 
-  const pack = async (
-    probe: () => Promise<{
-      result: Omit<AuditModuleResult, "defectIds">;
-      defects: AuditDefect[];
-    }>,
-  ) => {
-    const { result, defects } = await probe();
+  const coreProbes = [
+    probePeople,
+    probeGoldMaterial,
+    probeOrdersKarigar,
+    probeStock,
+    probeBilling,
+    probeCalculations,
+    probeRls,
+    probeBarcodeGen,
+    probePerformance,
+  ];
+
+  const coreResults = await Promise.all(
+    coreProbes.map((probe) =>
+      withTimeout(
+        probe().catch((err) => ({
+          result: {
+            id: probe.name || "core_probe",
+            label: probe.name || "Core Probe",
+            group: "Core",
+            status: "FAIL" as AuditStatus,
+            score: 0,
+            summary: `Probe failed: ${err instanceof Error ? err.message : String(err)}`,
+            evidence: [],
+            durationMs: 0,
+          },
+          defects: [],
+        })),
+        2500,
+        {
+          result: {
+            id: probe.name || "core_probe",
+            label: probe.name || "Core Probe",
+            group: "Core",
+            status: "BLOCKED" as AuditStatus,
+            score: 40,
+            summary: "Probe timed out (soft bound).",
+            evidence: [],
+            durationMs: 2500,
+          },
+          defects: [],
+        },
+      ),
+    ),
+  );
+
+  for (const { result, defects } of coreResults) {
     allDefects.push(...defects);
     modules.push({ ...result, defectIds: defects.map((d) => d.id) });
-  };
-
-  await pack(probePeople);
-  await pack(probeGoldMaterial);
-  await pack(probeOrdersKarigar);
-  await pack(probeStock);
-  await pack(probeBilling);
-  await pack(probeCalculations);
-  await pack(probeRls);
-  await pack(probeBarcodeGen);
-  await pack(probePerformance);
+  }
 
   const hw = await probeHardwareDevices();
   allDefects.push(...hw.defects);
@@ -1095,23 +1133,33 @@ export async function runErpAudit(): Promise<ErpAuditReport> {
 
   // Specialized probes for remaining taxonomy rows (stores / PDF / portals)
   const covered = new Set(modules.map((m) => m.id));
-  for (const def of ERP_AUDIT_MODULES) {
-    if (covered.has(def.id)) continue;
-    const specialized = await probeSpecializedModule(def.id);
-    if (specialized) {
-      allDefects.push(...specialized.defects);
-      modules.push({ ...specialized.result, defectIds: specialized.defects.map((d) => d.id) });
-      continue;
+  const remainingDefs = ERP_AUDIT_MODULES.filter((def) => !covered.has(def.id));
+
+  const specializedResults = await Promise.all(
+    remainingDefs.map(async (def) => {
+      try {
+        const specialized = await withTimeout(probeSpecializedModule(def.id), 2500, null);
+        if (specialized) {
+          return specialized;
+        }
+      } catch {
+        /* fall through to generic */
+      }
+      return probeGeneric(
+        def.id,
+        def.label,
+        def.group,
+        `Automated probe not yet specialized for "${def.label}". Manual golden path (Create→Save→Reload→Print) required — status BLOCKED until exercised.`,
+        "BLOCKED",
+      );
+    }),
+  );
+
+  for (const item of specializedResults) {
+    if (item) {
+      allDefects.push(...item.defects);
+      modules.push({ ...item.result, defectIds: item.defects.map((d) => d.id) });
     }
-    const { result, defects } = await probeGeneric(
-      def.id,
-      def.label,
-      def.group,
-      `Automated probe not yet specialized for "${def.label}". Manual golden path (Create→Save→Reload→Print) required — status BLOCKED until exercised.`,
-      "BLOCKED",
-    );
-    allDefects.push(...defects);
-    modules.push({ ...result, defectIds: defects.map((d) => d.id) });
   }
 
   const { overallScore, overallStatus, readyForRelease } = overallFromModules(modules);

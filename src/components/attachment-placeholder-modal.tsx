@@ -17,6 +17,7 @@ import {
   generateImageThumbnail,
   getAttachmentUrl,
 } from "@/lib/attachments-store";
+import { getSupabasePublicStorageUrl } from "@/lib/supabase-storage";
 import { toast } from "sonner";
 import type { PortalType } from "@/lib/portal/portal-context-service";
 
@@ -279,7 +280,20 @@ export function AttachmentPlaceholderModal({
                         src={fileDataUrl}
                         alt="Attachment preview"
                         referrerPolicy="no-referrer"
-                        onError={() => setFileMissing(true)}
+                        onError={() => {
+                          if (existing?.bucket && existing?.storagePath) {
+                            const fallback = getSupabasePublicStorageUrl(existing.bucket, existing.storagePath);
+                            if (fallback && fallback !== fileDataUrl) {
+                              setFileDataUrl(fallback);
+                              return;
+                            }
+                          }
+                          if (thumbnailDataUrl && thumbnailDataUrl !== fileDataUrl) {
+                            setFileDataUrl(thumbnailDataUrl);
+                            return;
+                          }
+                          setFileMissing(true);
+                        }}
                         className="object-contain max-h-56 max-w-full w-auto h-auto m-auto"
                         data-testid="attachment-preview"
                       />

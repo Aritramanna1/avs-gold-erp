@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Coins,
-  Sparkles,
+  Flame,
   MessageSquare,
   History,
   TrendingDown,
@@ -18,7 +18,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { startCreditTopUp } from "@/lib/platform-payments/platform-payment-service";
-import { PaymentCheckoutCard } from "@/components/billing/RazorpayCheckout";
+import { PaymentCheckoutCard, openRazorpayModal } from "@/components/billing/RazorpayCheckout";
 import { PaymentResultBanner } from "@/components/billing/PaymentResultBanner";
 import { usePaymentConfirmation } from "@/hooks/use-payment-confirmation";
 import { toast } from "sonner";
@@ -60,13 +60,29 @@ export function CreditsTab() {
       toast.error(result.error ?? "Could not start credit purchase");
       return;
     }
-    setCheckout({
+    const orderData = {
       orderId: result.orderId,
-      amountPaise: result.amountPaise ?? 0,
+      amountPaise: result.amountPaise ?? Math.round(amt * 100),
       keyId: result.keyId,
       credits: amt,
-    });
-    toast.success("Ready to pay — complete checkout below");
+    };
+    setCheckout(orderData);
+    toast.success("Opening payment gateway...");
+
+    // Immediately trigger the payment gateway modal
+    try {
+      await openRazorpayModal({
+        orderId: orderData.orderId,
+        amountPaise: orderData.amountPaise,
+        keyId: orderData.keyId,
+        description: `Top-up ${amt} AI & WhatsApp Credits`,
+        onSuccess: () => void onPaymentSuccess(),
+        onFailure: (reason) => markFailed(reason),
+        onDismiss: () => {},
+      });
+    } catch (e: any) {
+      // User dismissed or gateway error handled via banner
+    }
   };
 
   async function onPaymentSuccess() {
@@ -217,7 +233,7 @@ export function CreditsTab() {
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               AI Usage (This Month)
             </span>
-            <Sparkles className="h-4 w-4 text-purple-500" />
+            <Flame className="h-4 w-4 text-amber-500" />
           </div>
           <div className="text-2xl font-bold text-foreground">
             {wallet?.usage?.ai_deducted !== undefined
@@ -225,7 +241,7 @@ export function CreditsTab() {
               : "0.0"}
           </div>
           <p className="text-[11px] text-muted-foreground pt-1">
-            Conversational queries & Vision OCR
+            Calculations, vision & smart automations
           </p>
         </Card>
 
@@ -264,51 +280,65 @@ export function CreditsTab() {
 
       {/* Credit Consumption Rates Reference */}
       <div className="rounded-md border border-border/80 bg-card p-4 space-y-3 shadow-sm">
-        <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-          <TrendingDown className="h-4 w-4 text-muted-foreground" /> Standard Service Rate Card
-        </h4>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
-          <div className="rounded-lg border p-2.5 bg-muted/20">
-            <span className="text-muted-foreground block text-[10px] uppercase font-semibold">
-              AI Query
-            </span>
-            <span className="font-bold text-foreground text-sm">1.0</span>
-            <span className="text-[10px] text-muted-foreground block">per message</span>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+            <TrendingDown className="h-4 w-4 text-muted-foreground" /> Transparent Meta API + AVS Service Rate Card
+          </h4>
+          <span className="text-[11px] text-muted-foreground">
+            Meta Base Pass-Through + ₹0.20 AVS Cloud Gateway Fee (1 Credit = ₹1.00)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">
+                WhatsApp Utility (Invoices & OTP)
+              </span>
+              <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-500">
+                ₹0.31 / msg
+              </Badge>
+            </div>
+            <p className="text-xs font-semibold text-foreground">
+              Meta ₹0.11 + AVS Service Charge ₹0.20
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Tax invoices, Jama slips, order confirmation, Karigar issue alerts, and OTP verification codes.
+            </p>
           </div>
-          <div className="rounded-lg border p-2.5 bg-muted/20">
-            <span className="text-muted-foreground block text-[10px] uppercase font-semibold">
-              AI Vision/OCR
-            </span>
-            <span className="font-bold text-foreground text-sm">5.0</span>
-            <span className="text-[10px] text-muted-foreground block">per image/doc</span>
+
+          <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400">
+                WhatsApp Marketing (Campaigns)
+              </span>
+              <Badge variant="outline" className="text-[10px] border-blue-500/40 text-blue-500">
+                ₹0.98 / msg
+              </Badge>
+            </div>
+            <p className="text-xs font-semibold text-foreground">
+              Meta ₹0.78 + AVS Service Charge ₹0.20
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Jewellery catalog collections, festival greetings, promotional announcements, and customer outreach.
+            </p>
           </div>
-          <div className="rounded-lg border p-2.5 bg-muted/20">
-            <span className="text-muted-foreground block text-[10px] uppercase font-semibold">
-              AI Action
-            </span>
-            <span className="font-bold text-foreground text-sm">2.0</span>
-            <span className="text-[10px] text-muted-foreground block">per write mutation</span>
-          </div>
-          <div className="rounded-lg border p-2.5 bg-muted/20">
-            <span className="text-muted-foreground block text-[10px] uppercase font-semibold">
-              WA Utility
-            </span>
-            <span className="font-bold text-foreground text-sm">1.5</span>
-            <span className="text-[10px] text-muted-foreground block">invoice/receipt</span>
-          </div>
-          <div className="rounded-lg border p-2.5 bg-muted/20">
-            <span className="text-muted-foreground block text-[10px] uppercase font-semibold">
-              WA Marketing
-            </span>
-            <span className="font-bold text-foreground text-sm">3.0</span>
-            <span className="text-[10px] text-muted-foreground block">catalogue share</span>
-          </div>
-          <div className="rounded-lg border p-2.5 bg-muted/20">
-            <span className="text-muted-foreground block text-[10px] uppercase font-semibold">
-              WA Service
-            </span>
-            <span className="font-bold text-foreground text-sm">0.5</span>
-            <span className="text-[10px] text-muted-foreground block">inbound 24h</span>
+
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400">
+                Customer Service (24h Window)
+              </span>
+              <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-500">
+                ₹0.20 / msg
+              </Badge>
+            </div>
+            <p className="text-xs font-semibold text-foreground">
+              Meta FREE + AVS Service Charge ₹0.20
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Customer-initiated inquiries and replies within active 24-hour service conversation windows.
+            </p>
           </div>
         </div>
       </div>

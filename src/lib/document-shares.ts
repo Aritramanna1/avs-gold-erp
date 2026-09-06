@@ -144,7 +144,7 @@ export async function createDocumentShareLink(
         expires_at: expiresAt.toISOString(),
         retention_expires_at: expiresAt.toISOString(),
         branch_id: branchId || null,
-        created_by: (await supabase.auth.getUser()).data.user?.id ?? null,
+        created_by: (await supabase.auth.getSession()).data.session?.user?.id ?? null,
       })
       .select("id")
       .single();

@@ -147,6 +147,13 @@ export const useEmailConfigStore = create<EmailConfigState>()((set, get) => {
             bccAddresses: payload.bccAddresses ?? [],
             eventToggles: { ...DEFAULT_EVENT_TOGGLES, ...(payload.eventToggles ?? {}) },
           });
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+            } catch {
+              // Ignore quota
+            }
+          }
         }
       } catch {
         // Network offline fallback

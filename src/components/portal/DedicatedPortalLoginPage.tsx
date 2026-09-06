@@ -73,11 +73,21 @@ export function DedicatedPortalLoginPage({
     try {
       const { error } =
         otpChannel === "email"
-          ? await supabase.auth.signInWithOtp({ email: target })
-          : await supabase.auth.signInWithOtp({ phone: target });
+          ? await supabase.auth.signInWithOtp({
+              email: target.toLowerCase(),
+              options: { shouldCreateUser: false },
+            })
+          : await supabase.auth.signInWithOtp({
+              phone: target,
+              options: { shouldCreateUser: false },
+            });
 
       if (error) {
-        toast.error(error.message || "Could not send verification code.");
+        if (error.message.includes("Signups not allowed") || error.message.includes("User not found")) {
+          toast.error("No registered account found. Please check your details or sign in with your password.");
+        } else {
+          toast.error(error.message || "Could not send verification code.");
+        }
         return;
       }
       setOtpSent(true);
@@ -171,7 +181,7 @@ export function DedicatedPortalLoginPage({
 
           <CardContent className="space-y-4 pt-1">
             {authMode === "password" ? (
-              <form onSubmit={handlePasswordLogin} className="space-y-3.5">
+              <form onSubmit={handlePasswordLogin} data-testid="auth-form" className="space-y-3.5">
                 <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-xs">
                     Email Address
@@ -181,6 +191,7 @@ export function DedicatedPortalLoginPage({
                     <Input
                       id="email"
                       type="email"
+                      data-testid="auth-email"
                       placeholder="name@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -204,6 +215,7 @@ export function DedicatedPortalLoginPage({
                     <Input
                       id="password"
                       type="password"
+                      data-testid="auth-password"
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -215,6 +227,7 @@ export function DedicatedPortalLoginPage({
 
                 <Button
                   type="submit"
+                  data-testid="auth-submit"
                   disabled={loading}
                   className="w-full bg-gold hover:bg-gold/90 text-black font-semibold text-xs h-9 gap-1.5 mt-2"
                 >

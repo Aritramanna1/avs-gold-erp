@@ -38,15 +38,16 @@ export const useTrainingProgressStore = create<TrainingProgressState>()((set, ge
 
   hydrate: async () => {
     set({ loading: true });
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
+    const { data: sessionResult } = await supabase.auth.getSession();
+    const userId = sessionResult.session?.user?.id;
+    if (!userId) {
       set({ loading: false });
       return;
     }
     const { data, error } = await supabase
       .from("user_tutorial_progress" as never)
       .select("*")
-      .eq("user_id", user.user.id);
+      .eq("user_id", userId);
     if (!error && data) {
       set({ modules: (data as Record<string, unknown>[]).map(mapRow) });
     }
@@ -54,18 +55,20 @@ export const useTrainingProgressStore = create<TrainingProgressState>()((set, ge
   },
 
   upsertProgress: async (input) => {
-    const { data: user } = await supabase.auth.getUser();
+    const { data: sessionResult } = await supabase.auth.getSession();
+    const userId = sessionResult.session?.user?.id;
+    if (!userId) return;
     const { data: profile } = await supabase
       .from("user_profiles" as never)
       .select("firm_id")
-      .eq("auth_id", user.user?.id ?? "")
+      .eq("auth_id", userId)
       .maybeSingle();
     const firmId = (profile as { firm_id?: string } | null)?.firm_id;
-    if (!user.user || !firmId) return;
+    if (!firmId) return;
 
     await supabase.from("user_tutorial_progress" as never).upsert(
       {
-        user_id: user.user.id,
+        user_id: userId,
         firm_id: firmId,
         module_code: input.moduleCode,
         progress_percentage: input.progressPercentage ?? 0,

@@ -219,7 +219,7 @@ export const useWhatsAppInboxStore = create<InboxState>()((set, get) => ({
       .maybeSingle();
     const firmId = (profile as { firm_id?: string } | null)?.firm_id;
     if (!firmId) return;
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: sessionData } = await supabase.auth.getSession();
     await supabase.from("whatsapp_messages" as never).insert({
       firm_id: firmId,
       product_id: DEFAULT_AVS_PRODUCT,
@@ -229,7 +229,7 @@ export const useWhatsAppInboxStore = create<InboxState>()((set, get) => ({
       body_text: note,
       status: "received",
       sender_type: "agent",
-      sender_user_id: userData.user?.id ?? null,
+      sender_user_id: sessionData.session?.user?.id ?? null,
     } as never);
     await get().selectConversation(conversationId);
   },

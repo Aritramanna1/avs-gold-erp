@@ -102,12 +102,12 @@ export function useDbStatus(): {
     setSrc("supabase_online");
     async function check() {
       try {
-        const { data } = await supabase.auth.getUser();
+        const { data } = await supabase.auth.getSession();
         if (cancelled) return;
-        if (data.user) {
+        if (data.session?.user) {
           setStatus("connected_authed");
-          setEmail(data.user.email ?? undefined);
-          setUserId(data.user.id);
+          setEmail(data.session.user.email ?? undefined);
+          setUserId(data.session.user.id);
         } else {
           setStatus("connected_anon");
         }

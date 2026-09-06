@@ -5,22 +5,32 @@ import {
   useMaterialVault,
 } from "./material-vault-store";
 import { issueMaterialToVaultCategory } from "./material-vault-sync";
+import { useLedger, computeBalances } from "./ledger-store";
 import type { ManufacturingMaterialType } from "./manufacturing-materials-store";
 
-/** Available milligrams for one material category × purity in the Material Vault. */
+/** Available milligrams for one material category × purity in the Material Vault (or Gold Vault for raw gold). */
 export function availableMaterialStockMg(
   materialOrCategory: string,
   purity: number,
   metal = "Gold",
 ): number {
   const category = issueMaterialToVaultCategory(materialOrCategory);
+  if (category === "raw_gold" || materialOrCategory.toLowerCase() === "gold") {
+    const entries = useLedger.getState().entries;
+    const balances = computeBalances(entries);
+    return Math.max(0, balances.buckets.vault);
+  }
   const { movements, categories } = useMaterialVault.getState();
   const items = computeMaterialStockItems(movements, categories);
   const purityKey = purity > 0 ? purity : 0;
-  const item = items.find(
-    (i) => i.category === category && i.purity === purityKey && (i.metal ?? "Gold") === metal,
-  );
-  return item?.weightMg ?? 0;
+  if (purityKey > 0) {
+    const item = items.find(
+      (i) => i.category === category && i.purity === purityKey && (i.metal ?? "Gold") === metal,
+    );
+    if (item) return Math.max(0, item.weightMg);
+  }
+  const matching = items.filter((i) => i.category === category && (i.metal ?? "Gold") === metal);
+  return Math.max(0, matching.reduce((sum, i) => sum + i.weightMg, 0));
 }
 
 export interface AlloyStockLine {
@@ -34,9 +44,17 @@ export interface AlloyStockLine {
 
 export function materialStockCaption(material: string, purity: number, issueMg: number): string {
   const available = availableMaterialStockMg(material, purity);
-  const purityLabel = purity > 0 ? getCaratLabel(purity) : "unspecified purity";
-  const issuing = issueMg > 0 ? `${mgToGrams(issueMg)} g issuing` : "nothing issuing yet";
-  return `${material} (${purityLabel}): ${mgToGrams(available)} g in vault · ${issuing}`;
+  const purityLabel = purity > 0 ? getCaratLabel(purity) : "Standard / Vault Stock";
+  const issuing = issueMg > 0 ? `${mgToGrams(issueMg)} g issuing` : "0.000 g entered";
+  const remaining = issueMg > 0 ? Math.max(0, available - issueMg) : available;
+  const isOver = issueMg > available;
+  return `${material} (${purityLabel}): ${mgToGrams(available)} g in vault · ${issuing} ${
+    issueMg > 0
+      ? isOver
+        ? `⚠️ Exceeds vault stock by ${mgToGrams(issueMg - available)} g`
+        : `· ${mgToGrams(remaining)} g remaining after issue`
+      : ""
+  }`;
 }
 
 export function assertMaterialIssueStock(material: string, purity: number, issueMg: number): void {

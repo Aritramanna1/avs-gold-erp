@@ -41,7 +41,7 @@ import { useOrders, ORDER_STATUS_LABELS } from "@/lib/orders-store";
 import { useStock } from "@/lib/stock-store";
 import { assertReadyStockSellable, stockItemHasProductPhoto } from "@/lib/stock-photos";
 import { useJobCards } from "@/lib/jobcards-store";
-import { usePeople } from "@/lib/people-store";
+import { usePeople, type Person } from "@/lib/people-store";
 import { isCustomerParty } from "@/lib/party-types";
 import { applyInvoiceLineGold } from "@/lib/invoice-line-gold";
 import {
@@ -55,6 +55,8 @@ import { PersonFormDialog } from "@/routes/people.index";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { GoldWeightDisplay } from "@/components/ui/GoldWeightDisplay";
 import { CashGoldPaymentSummary } from "@/components/billing/CashGoldPaymentSummary";
+import { JamaSlipDialog } from "@/components/billing/JamaSlipDialog";
+import { soundEffects } from "@/lib/sound-effects";
 import { useLedger } from "@/lib/ledger-store";
 import { useSettings } from "@/lib/settings-store";
 import { resolveMakingCharge } from "@/lib/calculation-engine";
@@ -86,7 +88,7 @@ import {
   Scale,
   Barcode,
   Eye,
-  Sparkles,
+  Flame,
   ChevronDown,
   ChevronRight,
   Coins,
@@ -103,6 +105,8 @@ import {
   Mail,
   Package,
   ArrowLeftRight,
+  Camera,
+  Upload,
 } from "lucide-react";
 import { PageHeader } from "@/components/design-system";
 import { RequireAction } from "@/components/role-gate";
@@ -434,7 +438,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
   const [dueDate, setDueDate] = useState("");
   const [placeOfSupply, setPlaceOfSupply] = useState("");
   const [roundOffRupees, setRoundOffRupees] = useState("");
-  const [settlementKind, setSettlementKind] = useState<"cash" | "gold">("cash");
+  const [settlementKind, setSettlementKind] = useState<"cash" | "gold" | "mixed">("cash");
   const [urdLines, setUrdLines] = useState<InvoiceUrdLine[]>([]);
 
   // GST
@@ -613,6 +617,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     "mtj-billing-payment-received-now-v1",
     true,
   );
+  const [jamaSlipOpen, setJamaSlipOpen] = useState(false);
   const [rawPayments, setPayments, clearPayments] = useDraft<DraftPayment[]>(
     "mtj-billing-payments-v1",
     [
@@ -927,87 +932,40 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
   const goldTotals = useMemo(() => {
     const paymentRecords: PaymentRecord[] = payments
-      .filter((payment) => payment.mode === "outstanding" || rupeesToPaise(payment.amountStr) > 0)
+      .filter((payment) => payment.mode === "outstanding" || rupeesToPaise(payment.amountStr) > 0 || (payment.goldGramsStr && parseFloat(payment.goldGramsStr) > 0))
       .map((payment) => ({
         id: payment.id,
         ts: 0,
         mode: payment.mode,
         amountPaise: rupeesToPaise(payment.amountStr),
         goldFineMg:
-          payment.mode === "gold_exchange" || payment.mode === "customer_gold_credit"
+          payment.mode === "gold_exchange" || payment.mode === "customer_gold_credit" || settlementKind === "gold" || settlementKind === "mixed"
             ? fineGoldMgConfigured(
-                gramsToMg(payment.goldGramsStr),
-                Math.round(Number(payment.goldPurityStr) || 0),
+                gramsToMg(payment.goldGramsStr || "0"),
+                Math.round(Number(payment.goldPurityStr) || 995),
               )
             : undefined,
       }));
-    return computeInvoiceGoldTotals(items, totals, paymentRecords, goldSettlementRatePaise);
-  }, [items, totals, payments, goldSettlementRatePaise]);
+    return computeInvoiceGoldTotals(items, totals, paymentRecords, goldSettlementRatePaise, settlementKind === "gold" || settlementKind === "mixed");
+  }, [items, totals, payments, goldSettlementRatePaise, settlementKind]);
 
   // Synchronize state with useBillingStore
   useEffect(() => {
     const outstandingAmountPaise = customerOutstandingPaise;
-    const customerInvoices = billing?.invoices?.filter((i) => i.customerId === customerId) || [];
-    let totalDebitPaise = 0;
-    let totalCreditPaise = 0;
-    for (const inv of customerInvoices) {
-      totalDebitPaise += inv.grandTotalPaise || 0;
-      totalCreditPaise += inv.paidPaise || 0;
-    }
-
-    const customerLedgerData = {
+    const store = useBillingStore.getState();
+    store.setCustomerId(customerId || null);
+    store.setSelectedOrderId(selectedOrderId || null);
+    store.setBillingType(billingType || null);
+    store.setGst(gst || null);
+    store.setItems(items);
+    store.setCustomerLedger({
       outstandingAmountPaise,
-      totalDebitPaise,
-      totalCreditPaise,
-      advancePaise: Math.round(pendingCashAdvanceRupees * 100),
-      closingBalancePaise: Math.max(0, totalDebitPaise - totalCreditPaise),
-    };
-
-    const goldLedgerData = {
-      totalGrossMg: items.reduce((acc, it) => acc + (it.grossMg || 0), 0),
-      totalFineMg: items.reduce((acc, it) => acc + (it.fineMg || 0), 0),
-      depositMg: Math.round(pendingGoldAdvanceGrams * 1000),
-      advanceMg: 0,
-      exchangeMg: 0,
-      closingGoldMg: Math.max(
-        0,
-        items.reduce((acc, it) => acc + (it.grossMg || 0), 0) -
-          Math.round(pendingGoldAdvanceGrams * 1000),
-      ),
-    };
-
-    useBillingStore.setState({
-      customerId: customerId || null,
-      selectedOrderId: orderId || null,
-      selectedStockId: stockId || null,
-      selectedJobId: jobId || null,
-      billingType: billingType || null,
-      gst: gst || null,
-      items: items || null,
-      payments: rawPayments || null,
-      customerSearch: customerSearch || null,
-      orderSearch: orderSearch || null,
-      stockSearchQuery: stockSearchQuery || null,
-      customerLedger: customerLedgerData,
-      goldLedger: goldLedgerData,
+      totalDebitPaise: null,
+      totalCreditPaise: null,
+      advancePaise: null,
+      closingBalancePaise: null,
     });
-  }, [
-    customerId,
-    orderId,
-    stockId,
-    jobId,
-    billingType,
-    gst,
-    items,
-    rawPayments,
-    customerSearch,
-    orderSearch,
-    stockSearchQuery,
-    customerOutstandingPaise,
-    pendingCashAdvanceRupees,
-    pendingGoldAdvanceGrams,
-    billing?.invoices,
-  ]);
+  }, [customerId, selectedOrderId, billingType, gst, items, customerOutstandingPaise]);
 
   const patchItem = useCallback(
     (id: string, diff: Partial<InvoiceItem>) => {
@@ -1035,6 +993,13 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             const ad = Math.max(0, rawMerged.addMg ?? rawMerged.stoneWeightMg ?? 0);
             rawMerged.lessMg = Math.max(0, gr + ad - rawMerged.netMg);
           }
+
+          // Always ensure fineMg is auto-calculated at 995 standard if not explicitly pinned
+          if (!("fineMg" in diff) || diff.fineMg == null || diff.fineMg === 0) {
+            const purity = rawMerged.purity || 916;
+            rawMerged.fineMg = Math.round((rawMerged.netMg * purity) / 995);
+          }
+
           const goldTouched =
             "grossMg" in diff ||
             "netMg" in diff ||
@@ -1045,6 +1010,12 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             "wastagePct" in diff ||
             "hisobPct" in diff ||
             "stoneWeightMg" in diff ||
+            "hallmarkChargesGoldMg" in diff ||
+            "markingChargesGoldMg" in diff ||
+            "makingChargesGoldMg" in diff ||
+            "otherChargesGoldMg" in diff ||
+            "stoneChargesGoldMg" in diff ||
+            "discountGoldMg" in diff ||
             "goldRatePerGramPaise" in diff;
           const next = goldTouched ? applyInvoiceLineGold(rawMerged, billingType) : rawMerged;
           return { ...next, ...computeItemTotals(next) };
@@ -1251,11 +1222,36 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
   }
 
   function autoFillRemaining(idx: number) {
-    const outstandingPaymentSum = payments
-      .filter((p, i) => i !== idx && p.mode !== "outstanding")
-      .reduce((s, p) => s + rupeesToPaise(p.amountStr), 0);
-    const balance = Math.max(0, totals.grandTotalPaise - outstandingPaymentSum);
-    patchPayment(idx, { amountStr: (balance / 100).toString() });
+    if (settlementKind === "mixed") {
+      const otherGoldMg = payments
+        .filter((p, i) => i !== idx && (p.mode === "gold_exchange" || p.mode === "customer_gold_credit"))
+        .reduce((sum, p) => {
+          const g = parseFloat(p.goldGramsStr || "0") || 0;
+          const purity = Math.round(Number(p.goldPurityStr) || 916);
+          return sum + fineGoldMgConfigured(gramsToMg(g), purity);
+        }, 0);
+      const shortfallMg = Math.max(0, (goldTotals?.grandTotalMg || 0) - otherGoldMg);
+      const ratePaise = goldSettlementRatePaise || currentGoldRatePaise || 700000;
+      const shortfallCashPaise = Math.round((shortfallMg * ratePaise) / 1000);
+
+      const otherCashPaise = payments
+        .filter(
+          (p, i) =>
+            i !== idx &&
+            p.mode !== "gold_exchange" &&
+            p.mode !== "customer_gold_credit" &&
+            p.mode !== "outstanding",
+        )
+        .reduce((s, p) => s + rupeesToPaise(p.amountStr), 0);
+      const remainingCash = Math.max(0, shortfallCashPaise - otherCashPaise);
+      patchPayment(idx, { amountStr: (remainingCash / 100).toString() });
+    } else {
+      const outstandingPaymentSum = payments
+        .filter((p, i) => i !== idx && p.mode !== "outstanding")
+        .reduce((s, p) => s + rupeesToPaise(p.amountStr), 0);
+      const balance = Math.max(0, totals.grandTotalPaise - outstandingPaymentSum);
+      patchPayment(idx, { amountStr: (balance / 100).toString() });
+    }
   }
 
   function autoFillFromGold(
@@ -1288,7 +1284,43 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       const fine = fineGoldMgConfigured(netMg, purity);
       const ratePaise = rupeesToPaise(rateStr) || currentGoldRatePaise;
       const valuePaise = Math.round((fine * ratePaise) / 1000);
-      if (valuePaise > 0) patchPayment(idx, { amountStr: (valuePaise / 100).toString() });
+      if (settlementKind === "gold" || settlementKind === "mixed") {
+        patchPayment(idx, { amountStr: "0" });
+        if (settlementKind === "mixed") {
+          const totalReqMg = goldTotals?.grandTotalMg || 0;
+          const otherGoldMg = payments
+            .filter(
+              (payment, i) =>
+                i !== idx &&
+                (payment.mode === "gold_exchange" || payment.mode === "customer_gold_credit"),
+            )
+            .reduce((sum, payment) => {
+              const g = parseFloat(payment.goldGramsStr || "0") || 0;
+              const pur = Math.round(Number(payment.goldPurityStr) || 916);
+              return sum + fineGoldMgConfigured(gramsToMg(g), pur);
+            }, 0);
+          const totalReceivedFineMg = fine + otherGoldMg;
+          const shortfallMg = Math.max(0, totalReqMg - totalReceivedFineMg);
+          const shortfallCashPaise = Math.round((shortfallMg * ratePaise) / 1000);
+          const cashIdx = payments.findIndex(
+            (payment, i) =>
+              i !== idx &&
+              (payment.mode === "cash" ||
+                payment.mode === "upi" ||
+                payment.mode === "bank" ||
+                payment.mode === "card" ||
+                payment.mode === "cheque"),
+          );
+          if (cashIdx >= 0) {
+            patchPayment(cashIdx, {
+              amountStr: (shortfallCashPaise / 100).toString(),
+              notes: `Remaining ${mgToGrams(shortfallMg)}g gold shortfall settled in cash`,
+            });
+          }
+        }
+      } else if (valuePaise > 0) {
+        patchPayment(idx, { amountStr: (valuePaise / 100).toString() });
+      }
     } catch {
       /* ignore */
     }
@@ -1304,13 +1336,14 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     const grandTotalRupees = (totals.grandTotalPaise / 100).toString();
 
     if (preset === "gold") {
+      setSettlementKind("gold");
       // Pure Gold receipt: at 916 purity (standard retail exchange), gross = fine / 0.916
       const grossG = requiredFineMg > 0 ? (requiredFineMg / 1000 / 0.916).toFixed(3) : "0.000";
       setPayments([
         {
           id: newItemId(),
           mode: "gold_exchange",
-          amountStr: grandTotalRupees,
+          amountStr: "0",
           reference: "RECEIVED IN GOLD",
           notes: "Full payment received in physical gold",
           goldGramsStr: grossG,
@@ -1322,6 +1355,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       ]);
       toast.success("Settlement mode: [GOLD] (Full Gold Receipt)");
     } else if (preset === "cash") {
+      setSettlementKind("cash");
       // Pure Cash payment
       setPayments([
         {
@@ -1339,21 +1373,22 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       ]);
       toast.success("Settlement mode: [CASH] (Full Cash Payment)");
     } else if (preset === "mixed") {
+      setSettlementKind("mixed");
       // Mixed Gold + Cash payment
-      const targetGoldFineMg = Math.round(requiredFineMg * 0.5);
-      const grossG = targetGoldFineMg > 0 ? (targetGoldFineMg / 1000 / 0.916).toFixed(3) : "10.000";
+      // e.g. Customer pays gold, remaining shortfall in cash
+      const grossG = requiredFineMg > 0 ? (Math.floor(requiredFineMg / 1000)).toFixed(3) : "10.000";
       const goldFineMg = fineGoldMgConfigured(gramsToMg(grossG), 916);
-      const goldValPaise = Math.round((goldFineMg * ratePaise) / 1000);
-      const remainingCashPaise = Math.max(0, totals.grandTotalPaise - goldValPaise);
-      const cashStr = (remainingCashPaise / 100).toString();
+      const shortfallMg = Math.max(0, requiredFineMg - goldFineMg);
+      const shortfallCashPaise = Math.round((shortfallMg * ratePaise) / 1000);
+      const cashStr = (shortfallCashPaise / 100).toString();
 
       setPayments([
         {
           id: newItemId(),
           mode: "gold_exchange",
-          amountStr: (goldValPaise / 100).toString(),
-          reference: "Gold Receipt (Part 1)",
-          notes: "Physical gold received",
+          amountStr: "0",
+          reference: "Gold Handed Over (Metal Receipt)",
+          notes: "Physical gold received in pure weight",
           goldGramsStr: grossG,
           goldPurityStr: "916",
           goldRateStr: rateRupees,
@@ -1364,8 +1399,8 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           id: newItemId(),
           mode: "cash",
           amountStr: cashStr,
-          reference: "Cash Payment (Part 2)",
-          notes: "Remainder settled in cash",
+          reference: "Cash Payment (Shortfall)",
+          notes: `Remaining ${mgToGrams(shortfallMg)}g gold shortfall settled in cash`,
           goldGramsStr: "",
           goldPurityStr: "",
           goldRateStr: "",
@@ -1373,7 +1408,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           goldMeltLossPctDeductionStr: "",
         },
       ]);
-      toast.success("Settlement mode: [MIXED] (Gold + Cash Settlement)");
+      toast.success("Settlement mode: [MIXED] (Gold Weight + Cash Shortfall)");
     }
   }
 
@@ -1410,29 +1445,23 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     }
 
     if (billingType === "ready_stock") {
-      if (items.some((it) => !it.stockItemId)) {
-        toast.error(
-          "Ready Stock billing requires selecting tagged inventory items (Select from Ready Stock). Manual lines are not allowed.",
-        );
-        return;
-      }
       for (const it of items) {
-        const stock = stockItems.find((s) => s.id === it.stockItemId);
-        if (!stock) {
-          toast.error(`Stock item missing for "${it.itemName || "line"}".`);
-          return;
-        }
-        try {
-          assertReadyStockSellable(stock);
-        } catch (err) {
-          toast.error(err instanceof Error ? err.message : "Ready stock incomplete");
-          return;
+        if (it.stockItemId) {
+          const stock = stockItems.find((s) => s.id === it.stockItemId);
+          if (stock) {
+            try {
+              assertReadyStockSellable(stock);
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : "Ready stock item incomplete");
+              return;
+            }
+          }
         }
       }
     }
 
     const realPayments: PaymentRecord[] = payments
-      .filter((p) => p.mode === "outstanding" || rupeesToPaise(p.amountStr) > 0)
+      .filter((p) => p.mode === "outstanding" || rupeesToPaise(p.amountStr) > 0 || ((p.mode === "gold_exchange" || p.mode === "customer_gold_credit") && p.goldGramsStr && parseFloat(p.goldGramsStr) > 0))
       .map((p) => {
         const base: PaymentRecord = {
           id: p.id,
@@ -1809,6 +1838,12 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
       console.warn("[Billing] fetch-by-id after save failed; using returned invoice.", reloadErr);
     }
 
+    try {
+      soundEffects.success();
+    } catch {
+      /* ignore audio */
+    }
+
     for (const item of items) {
       if (item.stockItemId) {
         updateStock(item.stockItemId, { linkedCustomerId: customerId });
@@ -1853,7 +1888,14 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
   // Customer walk-in helper
   const addPerson = usePeople((s) => s.add);
   async function selectOrCreateWalkIn() {
-    const existing = people.find((p) => p.fullName === "Walk-In Customer");
+    const existing = people.find(
+      (p) =>
+        p.id === "CUST-WALKIN" ||
+        p.id === "WALK_IN" ||
+        p.fullName.toLowerCase().includes("walk-in") ||
+        p.fullName.toLowerCase().includes("walk in") ||
+        p.phone === "0000000000",
+    );
     if (existing) {
       setCustomerId(existing.id);
       return;
@@ -1866,10 +1908,29 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         active: true,
         branchId: useSettings.getState().selectedBranchId || "MAIN",
       });
-      setCustomerId(walkIn.id);
+      if (walkIn && walkIn.id) {
+        setCustomerId(walkIn.id);
+        return;
+      }
     } catch (err: any) {
-      toast.error("Failed to create walk-in customer: " + err.message);
+      console.warn("Could not persist walk-in customer to database, using memory fallback:", err);
     }
+    // Reliable memory fallback ensuring selection never fails
+    const fallbackWalkIn: Person = {
+      id: "CUST-WALKIN",
+      fullName: "Walk-In Customer",
+      phone: "0000000000",
+      type: "customer",
+      active: true,
+      docs: {},
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      branchId: useSettings.getState().selectedBranchId || "MAIN",
+    };
+    usePeople.setState((s) => ({
+      people: [fallbackWalkIn, ...s.people.filter((p) => p.id !== "CUST-WALKIN")],
+    }));
+    setCustomerId(fallbackWalkIn.id);
   }
 
   // Build items helper
@@ -2110,7 +2171,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
 
   return (
     <div
-      className={`p-3 sm:p-4 md:p-8 max-w-6xl mx-auto space-y-4 sm:space-y-6 ${
+      className={`p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6 ${
         touchCompact ? "pb-28" : ""
       }`}
     >
@@ -2124,12 +2185,27 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
               : "Jewellery billing"
         }
         actions={
-          <Link to="/billing">
-            <Button variant="ghost" className="gap-2 border border-border/60 hover:bg-muted/10">
-              <ArrowLeft className="h-4 w-4" /> All Invoices
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setJamaSlipOpen(true)}
+              className="gap-2 border-gold/40 text-gold hover:bg-gold/10 font-semibold text-xs"
+            >
+              <Receipt className="h-4 w-4" /> Jama Slip / पावती
             </Button>
-          </Link>
+            <Link to="/billing">
+              <Button variant="ghost" className="gap-2 border border-border/60 hover:bg-muted/10">
+                <ArrowLeft className="h-4 w-4" /> All Invoices
+              </Button>
+            </Link>
+          </div>
         }
+      />
+
+      <JamaSlipDialog
+        open={jamaSlipOpen}
+        onClose={() => setJamaSlipOpen(false)}
+        defaultPartyId={customerId || undefined}
       />
 
       <PersonFormDialog
@@ -2171,14 +2247,15 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
           />
         </div>
         <div>
-          <Label className={`${labelTouch} uppercase`}>{t("billing.receiptIn")}</Label>
-          <Select value={settlementKind} onValueChange={(v) => setSettlementKind(v as "cash" | "gold")}>
+          <Label className={`${labelTouch} uppercase`}>{t("billing.receiptIn") || "Receipt Mode"}</Label>
+          <Select value={settlementKind} onValueChange={(v) => setSettlementKind(v as "cash" | "gold" | "mixed")}>
             <SelectTrigger className={touchCompact ? "h-11" : undefined}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="cash">{t("billing.receiptCash")}</SelectItem>
-              <SelectItem value="gold">{t("billing.receiptGold")}</SelectItem>
+              <SelectItem value="cash">{t("billing.receiptCash") || "Cash (₹)"}</SelectItem>
+              <SelectItem value="gold">{t("billing.receiptGold") || "Pure Gold (Weight)"}</SelectItem>
+              <SelectItem value="mixed">Mixed (Gold + Cash Shortfall)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2209,17 +2286,20 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             className={touchCompact ? "h-11" : undefined}
           />
         </div>
-        <div>
-          <Label className={`${labelTouch} uppercase`}>Round Off (₹)</Label>
-          <Input
-            inputMode="decimal"
-            value={roundOffRupees}
-            onChange={(e) => setRoundOffRupees(e.target.value)}
-            placeholder="0.00"
-            className={touchCompact ? "h-11" : undefined}
-          />
-        </div>
+        {settlementKind !== "gold" && (
+          <div>
+            <Label className={`${labelTouch} uppercase`}>Round Off (₹)</Label>
+            <Input
+              inputMode="decimal"
+              value={roundOffRupees}
+              onChange={(e) => setRoundOffRupees(e.target.value)}
+              placeholder="0.00"
+              className={touchCompact ? "h-11" : undefined}
+            />
+          </div>
+        )}
       </div>
+
 
       {/* Compact status bar — F-key strip is desktop-only */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-md border border-dashed border-muted-foreground/20 bg-muted/20 text-[10px] font-mono text-muted-foreground">
@@ -2419,35 +2499,87 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-md border border-gold/30 bg-gold/5 gap-3">
-                    <div className="space-y-0.5">
-                      <div className="font-bold text-sm flex items-center gap-2">
-                        {customer?.fullName}
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] border-gold/30 text-gold bg-gold/5"
-                        >
-                          Customer Selected
-                        </Badge>
+                  <div className="rounded-md border border-gold/30 bg-gold/5 p-3 space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-sm flex items-center gap-2">
+                          {customer?.fullName}
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] border-gold/30 text-gold bg-gold/5"
+                          >
+                            Customer Selected
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Phone: {customer?.phone || "0000000000"}{" "}
+                          {customer?.gstin ? `· GSTIN: ${customer.gstin}` : ""}
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        Phone: {customer?.phone || "0000000000"}{" "}
-                        {customer?.gstin ? `· GSTIN: ${customer.gstin}` : ""}
-                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10 h-8"
+                        onClick={() => {
+                          setCustomerId("");
+                          setCustomerSearch("");
+                          setSelectedOrderId(null);
+                        }}
+                      >
+                        Change Customer
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:bg-destructive/10 h-8"
-                      onClick={() => {
-                        setCustomerId("");
-                        setCustomerSearch("");
-                        setSelectedOrderId(null);
-                      }}
-                    >
-                      Change Customer
-                    </Button>
+
+                    {/* Customer Gold Advance / Available Credit Balance */}
+                    {customer && (() => {
+                      const ledger = compileCustomerLedger(customer.id);
+                      const availGoldMg = ledger.closingGoldMg > 0 ? ledger.closingGoldMg : 0;
+                      if (availGoldMg <= 0) return null;
+                      return (
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-gold/20 text-xs text-gold gap-2">
+                          <span className="flex items-center gap-1.5 font-semibold">
+                            <Flame className="h-3.5 w-3.5 shrink-0" />
+                            Available Gold Advance: <strong>{mgToGrams(availGoldMg)} g Fine Gold</strong>
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-7 text-xs bg-gold hover:bg-gold/90 text-white font-bold whitespace-nowrap"
+                            onClick={() => {
+                              const grandFineMg = settlementKind === "gold" || settlementKind === "mixed" ? goldTotals.grandTotalMg : items.reduce((s, it) => s + it.fineMg, 0);
+                              const toApplyMg = grandFineMg > 0 ? Math.min(availGoldMg, grandFineMg) : availGoldMg;
+                              const gramsStr = mgToGrams(toApplyMg);
+                              const existingIdx = payments.findIndex((p) => p.mode === "customer_gold_credit");
+                              if (existingIdx >= 0) {
+                                patchPayment(existingIdx, {
+                                  goldGramsStr: gramsStr,
+                                  goldPurityStr: "100",
+                                  notes: "Settled from customer gold advance",
+                                });
+                              } else {
+                                setPayments([
+                                  ...payments,
+                                  {
+                                    id: newItemId(),
+                                    mode: "customer_gold_credit",
+                                    amountStr: "0",
+                                    reference: "Gold Advance Usage",
+                                    goldGramsStr: gramsStr,
+                                    goldPurityStr: "100",
+                                    goldRateStr: paiseToRupees(currentGoldRatePaise),
+                                    notes: "Settled from customer gold advance",
+                                  },
+                                ]);
+                              }
+                              toast.success(`Applied ${gramsStr}g from Customer Gold Advance.`);
+                            }}
+                          >
+                            Apply Advance to Bill
+                          </Button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -2745,22 +2877,20 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                   {billingType === "ready_stock" && (
                     <Button
                       size="sm"
-                      className="gap-1.5 h-8 bg-gold hover:bg-gold/90 text-white"
+                      className="gap-1.5 h-8 bg-gold hover:bg-gold/90 text-white font-semibold"
                       onClick={() => setReadyStockPickerOpen(true)}
                     >
                       <Package className="h-3 w-3" /> Select from Ready Stock
                     </Button>
                   )}
-                  {billingType !== "ready_stock" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 h-8 border-gold/40 text-gold hover:bg-gold/5"
-                      onClick={addItem}
-                    >
-                      <Plus className="h-3 w-3" /> F8 Add Line
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 h-8 border-gold/40 text-gold hover:bg-gold/5 font-semibold"
+                    onClick={addItem}
+                  >
+                    <Plus className="h-3 w-3" /> F8 Add Line (Manual)
+                  </Button>
                 </div>
               )
             }
@@ -2887,66 +3017,26 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
               )}
 
               {/* Items — dense table on desktop/tablet-landscape; touch cards on phone/tablet-portrait */}
-              {useHisabTable ? (
-                <div className="overflow-x-auto border rounded-md -mx-0">
-                  <table className="w-full text-[11px] min-w-[880px]">
-                    <thead className="bg-muted/40 text-left sticky top-0 z-[1]">
-                      <tr>
-                        <th className="p-1.5" title={t("billing.itemName")}>{t("billing.itemName")}</th>
-                        <th className="p-1.5" title={t("billing.col_grWt")}>{t("billing.col_grWt")}</th>
-                        <th className="p-1.5" title={t("billing.col_less")}>{t("billing.col_less")}</th>
-                        <th className="p-1.5" title={t("billing.col_add")}>{t("billing.col_add")}</th>
-                        <th className="p-1.5" title={t("billing.col_net")}>{t("billing.col_net")}</th>
-                        <th className="p-1.5" title={t("billing.col_tanch")}>{t("billing.col_tanch")}</th>
-                        <th className="p-1.5" title={t("billing.col_wstg")}>{t("billing.col_wstg")}</th>
-                        <th className="p-1.5" title={t("billing.col_hisob")}>{t("billing.col_hisob")}</th>
-                        <th className="p-1.5" title={t("billing.col_fine")}>{t("billing.col_fine")}</th>
-                        <th className="p-1.5" title={t("billing.col_pcs")}>{t("billing.col_pcs")}</th>
-                        <th className="p-1.5" title={t("billing.col_lab")}>{t("billing.col_lab")}</th>
-                        <th className="p-1.5" title={t("billing.col_rate")}>{t("billing.col_rate")}</th>
-                        <th className="p-1.5" title={t("billing.col_amt")}>{t("billing.col_amt")}</th>
-                        <th className="p-1.5" title={t("billing.col_jn")}>{t("billing.col_jn")}</th>
-                        <th className="p-1.5" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((it, idx) => (
-                        <ItemRow
-                          key={it.id}
-                          it={it}
-                          idx={idx}
-                          billingType={billingType}
-                          variant="table"
-                          touchCompact={false}
-                          scaleReading={scaleReading ?? undefined}
-                          onWeightFocus={(type) => setFocusedWeightField({ itemId: it.id, type })}
-                          onWeightBlur={() => setFocusedWeightField(null)}
-                          onChange={(diff) => patchItem(it.id, diff)}
-                          onRemove={() => removeItem(it.id)}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {items.map((it, idx) => (
-                    <ItemRow
-                      key={it.id}
-                      it={it}
-                      idx={idx}
-                      billingType={billingType}
-                      variant="card"
-                      touchCompact={touchCompact}
-                      scaleReading={scaleReading ?? undefined}
-                      onWeightFocus={(type) => setFocusedWeightField({ itemId: it.id, type })}
-                      onWeightBlur={() => setFocusedWeightField(null)}
-                      onChange={(diff) => patchItem(it.id, diff)}
-                      onRemove={() => removeItem(it.id)}
-                    />
-                  ))}
-                </div>
-              )}
+              {/* Items — clean responsive cards with zero horizontal overflow */}
+              <div className="space-y-3">
+                {items.map((it, idx) => (
+                  <ItemRow
+                    key={it.id}
+                    it={it}
+                    idx={idx}
+                    billingType={billingType}
+                    settlementKind={settlementKind}
+                    variant="card"
+                    touchCompact={touchCompact}
+                    scaleReading={scaleReading ?? undefined}
+                    onWeightFocus={(type) => setFocusedWeightField({ itemId: it.id, type })}
+                    onWeightBlur={() => setFocusedWeightField(null)}
+                    onChange={(diff) => patchItem(it.id, diff)}
+                    onRemove={() => removeItem(it.id)}
+                  />
+                ))}
+              </div>
+
               {partyAccount ? (
                 <div className="mt-3 rounded-md border bg-muted/20 p-3 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 text-[11px] font-mono">
                   <div title="Fine Jama (gold in)">
@@ -2973,7 +3063,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                 </div>
               ) : null}
 
-              {/* Offline URD second grid — cards on touch, table on dense */}
+              {/* Offline URD second grid — responsive cards */}
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <Label className="text-xs font-semibold uppercase tracking-wide">
@@ -3006,47 +3096,18 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                     <Plus className="h-3.5 w-3.5 mr-1" /> Add URD line
                   </Button>
                 </div>
-                {urdLines.length > 0 &&
-                  (useHisabTable ? (
-                    <div className="overflow-x-auto border rounded-md">
-                      <table className="w-full text-[11px] min-w-[640px]">
-                        <thead className="bg-muted/40 text-left">
-                          <tr>
-                            <th className="p-1">Item</th>
-                            <th className="p-1">Gr</th>
-                            <th className="p-1">Less</th>
-                            <th className="p-1">Net</th>
-                            <th className="p-1">Tanch‰</th>
-                            <th className="p-1">Fine</th>
-                            <th className="p-1">Rate</th>
-                            <th className="p-1">Amt</th>
-                            <th className="p-1">J/N</th>
-                            <th className="p-1" />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {urdLines.map((u) => (
-                            <UrdTableRow
-                              key={u.id}
-                              u={u}
-                              setUrdLines={setUrdLines}
-                            />
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {urdLines.map((u) => (
-                        <UrdCard
-                          key={u.id}
-                          u={u}
-                          touchCompact={touchCompact}
-                          setUrdLines={setUrdLines}
-                        />
-                      ))}
-                    </div>
-                  ))}
+                {urdLines.length > 0 && (
+                  <div className="space-y-3">
+                    {urdLines.map((u) => (
+                      <UrdCard
+                        key={u.id}
+                        u={u}
+                        touchCompact={touchCompact}
+                        setUrdLines={setUrdLines}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </Section>
@@ -3542,9 +3603,11 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                       <div className="text-sm font-bold text-rose-500">
                         <GoldWeightDisplay mg={goldTotals.grandTotalMg} kind="fine" />
                       </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        <MoneyDisplay paise={totals.grandTotalPaise} />
-                      </div>
+                      {settlementKind !== "gold" && (
+                        <div className="text-[11px] text-muted-foreground">
+                          <MoneyDisplay paise={totals.grandTotalPaise} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -3722,122 +3785,128 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                                     goldRateStr: rateStr,
                                   });
                                 } else {
-                                  const newId = newItemId();
                                   setPayments([
                                     ...payments,
                                     {
-                                      id: newId,
+                                      id: newItemId(),
                                       mode: "customer_gold_credit",
-                                      amountStr: "",
-                                      reference: "Gold Advance Usage",
-                                      notes: `Settled from customer existing gold balance (${gramsStr}g fine)`,
+                                      amountStr: "0",
+                                      reference: "Applied from Customer Gold Balance",
+                                      notes: "Settled against existing gold advance",
                                       goldGramsStr: gramsStr,
                                       goldPurityStr: "100",
                                       goldRateStr: rateStr,
+                                      goldMeltLossWtDeductionStr: "",
+                                      goldMeltLossPctDeductionStr: "",
                                     },
                                   ]);
                                 }
                                 toast.success(
-                                  `Applied ${gramsStr} g Fine Gold from customer's existing balance.`,
+                                  `Applied ${mgToGrams(autoSettlementGoldMg)}g from customer gold balance`,
                                 );
                               }}
                             >
-                              <Coins className="h-3.5 w-3.5" /> Apply Existing Gold Balance
+                              <Coins className="h-3.5 w-3.5" /> Apply Gold Advance
                             </Button>
                           </div>
                         </div>
                       );
                     })()}
 
+                    {/* Payments List */}
                     <div className="space-y-3">
                       {payments.map((p, idx) => {
-                      const isGold = p.mode === "gold_exchange" || p.mode === "customer_gold_credit";
-                      const paymentFineMg = isGold
-                        ? fineGoldMgConfigured(
-                            gramsToMg(p.goldGramsStr),
-                            Math.round(Number(p.goldPurityStr) || 0),
-                          )
-                        : 0;
-                      const modeColor = isGold
-                        ? "border-gold/30 bg-gold/5"
-                        : p.mode === "cash"
-                          ? "border-emerald-500/20 bg-emerald-500/5"
-                          : "border-border bg-background/30";
-                      const ModeIcon = isGold
-                        ? Coins
-                        : p.mode === "cash"
-                          ? Banknote
-                          : p.mode === "upi"
-                            ? Smartphone
-                            : CreditCard;
-                      return (
-                        <div key={p.id} className={`rounded-md border ${modeColor} overflow-hidden`}>
-                          <div className="flex items-center gap-3 px-4 py-3">
-                            <ModeIcon
-                              className={`h-4 w-4 flex-shrink-0 ${isGold ? "text-gold" : p.mode === "cash" ? "text-emerald-500" : "text-muted-foreground"}`}
-                            />
-                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                              <div>
-                                <Label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                                  Mode
-                                </Label>
-                                <Select
-                                  value={p.mode}
-                                  onValueChange={(v) => changePaymentMode(idx, v as PaymentMode)}
-                                >
-                                  <SelectTrigger className="h-9 text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="gold_exchange">
-                                      <span className="inline-flex items-center gap-1.5">
-                                        <Coins className="h-3.5 w-3.5 text-gold" /> Gold Payment / सोन्यात
-                                        पेमेंट
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="customer_gold_credit">
-                                      <span className="inline-flex items-center gap-1.5">
-                                        <Wallet className="h-3.5 w-3.5 text-gold" /> Use Gold Advance
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="cash">
-                                      <span className="inline-flex items-center gap-1.5">
-                                        <Banknote className="h-3.5 w-3.5" /> Cash / रोख रक्कम
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="anamat">
-                                      <span className="inline-flex items-center gap-1.5">
-                                        <Wallet className="h-3.5 w-3.5" /> Anamat / अमानत (Deposit)
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="upi">
-                                      <span className="inline-flex items-center gap-1.5">
-                                        <Smartphone className="h-3.5 w-3.5" /> UPI (GPay / PhonePe)
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="bank">
-                                      <span className="inline-flex items-center gap-1.5">
-                                        <Landmark className="h-3.5 w-3.5" /> Bank Transfer / NEFT
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="card">
-                                      <span className="inline-flex items-center gap-1.5">
-                                        <CreditCard className="h-3.5 w-3.5" /> Card / Debit / Credit
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="cheque">
-                                      <span className="inline-flex items-center gap-1.5">
-                                        <Receipt className="h-3.5 w-3.5" /> Cheque / धनादेश
-                                      </span>
-                                    </SelectItem>
-                                    <SelectItem value="advance">
-                                      <span className="inline-flex items-center gap-1.5">
-                                        <Undo2 className="h-3.5 w-3.5" /> Advance Adjustment
-                                      </span>
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                        const isGold = p.mode === "gold_exchange" || p.mode === "customer_gold_credit";
+                        const paymentGrossG = parseFloat(p.goldGramsStr) || 0;
+                        const paymentFineMg = isGold && paymentGrossG > 0
+                          ? fineGoldMgConfigured(
+                              gramsToMg(p.goldGramsStr),
+                              Math.round(Number(p.goldPurityStr) || 0),
+                            )
+                          : 0;
+                        const modeColor = isGold
+                          ? "border-gold/30 bg-gold/5"
+                          : p.mode === "cash"
+                            ? "border-emerald-500/20 bg-emerald-500/5"
+                            : "border-border bg-background/30";
+                        const ModeIcon = isGold
+                          ? Coins
+                          : p.mode === "cash"
+                            ? Banknote
+                            : p.mode === "upi"
+                              ? Smartphone
+                              : CreditCard;
+                        return (
+                          <div key={p.id} className={`rounded-md border ${modeColor} overflow-hidden`}>
+                            <div className="flex items-center gap-3 px-4 py-3">
+                              <ModeIcon
+                                className={`h-4 w-4 flex-shrink-0 ${isGold ? "text-gold" : p.mode === "cash" ? "text-emerald-500" : "text-muted-foreground"}`}
+                              />
+                              <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                                <div>
+                                  <Label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                                    Mode
+                                  </Label>
+                                  <Select
+                                    value={p.mode}
+                                    onValueChange={(v) => changePaymentMode(idx, v as PaymentMode)}
+                                  >
+                                    <SelectTrigger className="h-9 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="gold_exchange">
+                                        <span className="inline-flex items-center gap-1.5">
+                                          <Coins className="h-3.5 w-3.5 text-gold" /> Gold Payment / सोन्यात पेमेंट
+                                        </span>
+                                      </SelectItem>
+                                      <SelectItem value="customer_gold_credit">
+                                        <span className="inline-flex items-center gap-1.5">
+                                          <Wallet className="h-3.5 w-3.5 text-gold" /> Use Gold Advance
+                                        </span>
+                                      </SelectItem>
+                                      {settlementKind !== "gold" && (
+                                        <>
+                                          <SelectItem value="cash">
+                                            <span className="inline-flex items-center gap-1.5">
+                                              <Banknote className="h-3.5 w-3.5" /> Cash / रोख रक्कम
+                                            </span>
+                                          </SelectItem>
+                                          <SelectItem value="anamat">
+                                            <span className="inline-flex items-center gap-1.5">
+                                              <Wallet className="h-3.5 w-3.5" /> Anamat / अमानत (Deposit)
+                                            </span>
+                                          </SelectItem>
+                                          <SelectItem value="upi">
+                                            <span className="inline-flex items-center gap-1.5">
+                                              <Smartphone className="h-3.5 w-3.5" /> UPI (GPay / PhonePe)
+                                            </span>
+                                          </SelectItem>
+                                          <SelectItem value="bank">
+                                            <span className="inline-flex items-center gap-1.5">
+                                              <Landmark className="h-3.5 w-3.5" /> Bank Transfer / NEFT
+                                            </span>
+                                          </SelectItem>
+                                          <SelectItem value="card">
+                                            <span className="inline-flex items-center gap-1.5">
+                                              <CreditCard className="h-3.5 w-3.5" /> Card / Debit / Credit
+                                            </span>
+                                          </SelectItem>
+                                          <SelectItem value="cheque">
+                                            <span className="inline-flex items-center gap-1.5">
+                                              <Receipt className="h-3.5 w-3.5" /> Cheque / धनादेश
+                                            </span>
+                                          </SelectItem>
+                                          <SelectItem value="advance">
+                                            <span className="inline-flex items-center gap-1.5">
+                                              <Undo2 className="h-3.5 w-3.5" /> Advance Adjustment
+                                            </span>
+                                          </SelectItem>
+                                        </>
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
 
                         <div>
                           <Label className="text-[10px] font-semibold text-muted-foreground block mb-1">
@@ -3911,7 +3980,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                     {(p.mode === "gold_exchange" || p.mode === "customer_gold_credit") && (
                       <div className="mt-3 pt-3 border-t border-gold/20 bg-gradient-to-b from-gold/5 to-transparent p-4 rounded-md space-y-3">
                         <div className="text-[10px] font-bold uppercase tracking-wider text-gold mb-1 flex items-center gap-1.5">
-                          <Sparkles className="h-3 w-3" />
+                          <Coins className="h-3 w-3" />
                           {p.mode === "gold_exchange"
                             ? "Gold Payment Details / सोने पेमेंट"
                             : "Using Customer's Gold Advance"}
@@ -4061,17 +4130,24 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                                   </div>
                                 </div>
                                 <div className="bg-background/60 border border-gold/20 rounded-lg p-2 text-center">
-                                  <div className="text-muted-foreground mb-0.5">Rate</div>
+                                  <div className="text-muted-foreground mb-0.5">Purity Touch</div>
                                   <div className="font-bold text-foreground">
-                                    <MoneyDisplay paise={rateP} /> / g
+                                    {p.goldPurityStr || "916"} Touch
                                   </div>
                                 </div>
-                                <div className="bg-gold/15 border border-gold/40 rounded-lg p-2 text-center">
-                                  <div className="text-gold/70 mb-0.5">Valued Amount</div>
-                                  <div className="font-bold text-gold text-xs">
-                                    <MoneyDisplay paise={goldValue} />
+                                {settlementKind === "gold" || settlementKind === "mixed" ? (
+                                  <div className="bg-gold/15 border border-gold/40 rounded-lg p-2 text-center flex flex-col justify-center">
+                                    <div className="text-gold/70 text-[9px] uppercase font-bold">Settlement Mode</div>
+                                    <div className="font-bold text-gold text-xs">Pure Gold Weight</div>
                                   </div>
-                                </div>
+                                ) : (
+                                  <div className="bg-gold/15 border border-gold/40 rounded-lg p-2 text-center">
+                                    <div className="text-gold/70 mb-0.5">Valued Amount</div>
+                                    <div className="font-bold text-gold text-xs">
+                                      <MoneyDisplay paise={goldValue} />
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
                           } catch {
@@ -4327,8 +4403,222 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                   );
                 })()}
               </div>
+            ) : settlementKind === "mixed" ? (
+              /* Mixed Settlement Mode: Gold Handed Over in Pure Weight + Shortfall in Cash */
+              <div className="space-y-3">
+                {/* Tier 1: Gold Obligation & Metal Received */}
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3.5 space-y-2 text-xs font-mono">
+                  <div className="flex items-center justify-between text-amber-500 font-black uppercase tracking-wider font-sans">
+                    <span>Mixed Settlement (Gold + Cash)</span>
+                    <Badge variant="outline" className="border-amber-500/40 text-amber-500 bg-amber-500/10 text-[10px]">
+                      MIXED MODE
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground font-sans">Product Fine Gold</span>
+                    <span className="font-bold text-gold">
+                      <GoldWeightDisplay mg={goldTotals.productFineMg} kind="fine" />
+                    </span>
+                  </div>
+                  {goldTotals.makingChargesMg > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground font-sans">Making / Labour (Gold)</span>
+                      <span className="font-bold text-foreground">
+                        <GoldWeightDisplay mg={goldTotals.makingChargesMg} kind="fine" />
+                      </span>
+                    </div>
+                  )}
+                  {goldTotals.stoneChargesMg + goldTotals.hallmarkChargesMg + goldTotals.otherChargesMg > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground font-sans">Stone & Charges (Gold)</span>
+                      <span className="font-bold text-foreground">
+                        <GoldWeightDisplay
+                          mg={
+                            goldTotals.stoneChargesMg +
+                            goldTotals.hallmarkChargesMg +
+                            goldTotals.otherChargesMg
+                          }
+                          kind="fine"
+                        />
+                      </span>
+                    </div>
+                  )}
+                  <div className="border-t border-amber-500/20 pt-2 flex justify-between font-black text-gold">
+                    <span className="font-sans">Total Bill Obligation (Gold)</span>
+                    <span className="text-base font-bold">
+                      <GoldWeightDisplay mg={goldTotals.grandTotalMg} kind="fine" />
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-emerald-500 font-bold">
+                    <span className="font-sans">Gold Received (Metal)</span>
+                    <span className="text-base">
+                      - <GoldWeightDisplay mg={goldTotals.physicalGoldReceivedMg} kind="fine" />
+                    </span>
+                  </div>
+                  <div className="border-t border-amber-500/20 pt-2 flex justify-between font-bold text-amber-500">
+                    <span className="font-sans">Remaining Gold Shortfall</span>
+                    <span className="text-base font-bold">
+                      <GoldWeightDisplay mg={Math.max(0, goldTotals.grandTotalMg - goldTotals.physicalGoldReceivedMg)} kind="fine" />
+                    </span>
+                  </div>
+                </div>
+
+                {/* Tier 2: Shortfall Cash Valuation & Cash Settlement */}
+                {(() => {
+                  const shortfallMg = Math.max(0, goldTotals.grandTotalMg - goldTotals.physicalGoldReceivedMg);
+                  const ratePaise = goldSettlementRatePaise || currentGoldRatePaise || 700000;
+                  const shortfallCashPaise = Math.round((shortfallMg * ratePaise) / 1000);
+                  const cashPaidPaise = payments
+                    .filter((p) => p.mode !== "gold_exchange" && p.mode !== "customer_gold_credit" && p.mode !== "outstanding")
+                    .reduce((sum, p) => sum + rupeesToPaise(p.amountStr), 0);
+                  const cashBalancePaise = Math.max(0, shortfallCashPaise - cashPaidPaise);
+
+                  return (
+                    <div className="rounded-md border border-border bg-card p-3.5 space-y-2.5 text-xs font-mono">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground uppercase font-bold font-sans">
+                          Shortfall Cash Valuation (@ ₹{paiseToRupees(ratePaise)}/g)
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] font-bold ${
+                            cashBalancePaise === 0 && goldTotals.grandTotalMg > 0
+                              ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10"
+                              : cashPaidPaise > 0
+                                ? "border-amber-500/40 text-amber-400 bg-amber-500/10"
+                                : "border-rose-500/40 text-rose-400 bg-rose-500/10"
+                          }`}
+                        >
+                          {goldTotals.grandTotalMg === 0
+                            ? "EMPTY"
+                            : cashBalancePaise === 0
+                              ? "SETTLED IN FULL"
+                              : cashPaidPaise > 0
+                                ? "PARTIALLY SETTLED"
+                                : "UNSETTLED"}
+                        </Badge>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground font-sans">Shortfall Cash Due:</span>
+                        <span className="font-bold text-foreground font-mono text-sm">
+                          <MoneyDisplay paise={shortfallCashPaise} />
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between font-semibold text-emerald-500">
+                        <span className="font-sans">Cash / UPI Paid:</span>
+                        <span className="text-sm font-bold">
+                          <MoneyDisplay paise={cashPaidPaise} />
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between font-bold text-rose-500 border-t border-border pt-2">
+                        <span className="font-sans">Balance Due (Cash):</span>
+                        <span className="text-base font-bold">
+                          <MoneyDisplay paise={cashBalancePaise} />
+                        </span>
+                      </div>
+
+                      {cashBalancePaise === 0 && goldTotals.grandTotalMg > 0 && (
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded p-2 text-center text-xs font-sans font-bold text-emerald-500">
+                          ✓ Fully Settled ({mgToGrams(goldTotals.physicalGoldReceivedMg)}g Gold + ₹{paiseToRupees(cashPaidPaise)} Cash)
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : settlementKind === "gold" ? (
+              /* Pure Gold Mode (100% Metal) for ALL billing types: Ready Stock, Wholesale, Polishing, Repair, Job Work */
+              <div className="space-y-3">
+                <div className="rounded-md border border-gold/30 bg-gold/5 p-3.5 space-y-2 text-xs font-mono">
+                  <div className="flex items-center justify-between text-gold font-black uppercase tracking-wider font-sans">
+                    <span>Gold-First Total (100% Gold)</span>
+                    <Badge variant="outline" className="border-gold/40 text-gold bg-gold/10 text-[10px]">
+                      FINE GOLD
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground font-sans">Product Fine Gold</span>
+                    <span className="font-bold text-gold">
+                      <GoldWeightDisplay mg={goldTotals.productFineMg} kind="fine" />
+                    </span>
+                  </div>
+                  {goldTotals.makingChargesMg > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground font-sans">Making / Labour (Gold)</span>
+                      <span className="font-bold text-foreground">
+                        <GoldWeightDisplay mg={goldTotals.makingChargesMg} kind="fine" />
+                      </span>
+                    </div>
+                  )}
+                  {goldTotals.stoneChargesMg + goldTotals.hallmarkChargesMg + goldTotals.otherChargesMg > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground font-sans">Stone & Charges (Gold)</span>
+                      <span className="font-bold text-foreground">
+                        <GoldWeightDisplay
+                          mg={
+                            goldTotals.stoneChargesMg +
+                            goldTotals.hallmarkChargesMg +
+                            goldTotals.otherChargesMg
+                          }
+                          kind="fine"
+                        />
+                      </span>
+                    </div>
+                  )}
+                  <div className="border-t border-gold/30 pt-2 flex justify-between font-black text-gold">
+                    <span className="font-sans">Grand Total (Gold)</span>
+                    <span className="text-base font-bold">
+                      <GoldWeightDisplay mg={goldTotals.grandTotalMg} kind="fine" />
+                    </span>
+                  </div>
+                </div>
+
+                {/* Settlement breakdown in Gold only */}
+                <div className="rounded-md border border-border bg-card p-3.5 space-y-2.5 text-xs font-mono">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold font-sans">
+                      Settlement Status
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] font-bold ${
+                        goldTotals.balanceMg === 0 && goldTotals.grandTotalMg > 0
+                          ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10"
+                          : goldTotals.paidMg > 0
+                            ? "border-amber-500/40 text-amber-400 bg-amber-500/10"
+                            : "border-rose-500/40 text-rose-400 bg-rose-500/10"
+                      }`}
+                    >
+                      {goldTotals.grandTotalMg === 0
+                        ? "EMPTY"
+                        : goldTotals.balanceMg === 0
+                          ? "SETTLED IN FULL"
+                          : goldTotals.paidMg > 0
+                            ? "PARTIALLY SETTLED"
+                            : "UNSETTLED"}
+                    </Badge>
+                  </div>
+
+                  <div className="flex justify-between font-semibold text-emerald-500">
+                    <span className="font-sans">Total Paid (Gold):</span>
+                    <span className="text-base font-bold">
+                      <GoldWeightDisplay mg={goldTotals.paidMg} kind="fine" />
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between font-bold text-rose-500 border-t border-border pt-2">
+                    <span className="font-sans">Balance Due (Gold):</span>
+                    <span className="text-base font-bold">
+                      <GoldWeightDisplay mg={goldTotals.balanceMg} kind="fine" />
+                    </span>
+                  </div>
+                </div>
+              </div>
             ) : (
-              /* Non-manufacturing billing: 3-Tier Hierarchy */
+              /* Non-manufacturing billing: 3-Tier Hierarchy for Cash/Mixed */
               <>
                 {/* Tier 1: Gold-First Fine Gold Obligation */}
                 <div className="rounded-md border border-gold/30 bg-gold/5 p-3 space-y-2 text-xs">
@@ -4502,13 +4792,14 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
               </>
             )}
 
+
             {/* Advance Adjustment Details */}
             {adjustmentLive && (
               <div className="bg-amber-500/5 border border-amber-500/20 rounded-md p-3 space-y-1.5 text-[11px] text-amber-700 dark:text-amber-400">
                 <div className="font-bold flex items-center gap-1">
-                  <Sparkles className="h-3 w-3 text-amber-500" /> Advance Applied
+                  <Flame className="h-3 w-3 text-amber-500" /> Advance Applied
                 </div>
-                {adjustmentLive.cashAdvancePaise > 0 && (
+                {adjustmentLive.cashAdvancePaise > 0 && settlementKind !== "gold" && (
                   <div className="flex justify-between font-mono">
                     <span>Cash Advance:</span>
                     <span>₹ {paiseToRupees(adjustmentLive.cashAdvancePaise)}</span>
@@ -4516,7 +4807,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                 )}
                 {adjustmentLive.goldGrossMg > 0 && (
                   <div className="flex justify-between font-mono">
-                    <span>Gold:</span>
+                    <span>Gold Advance:</span>
                     <span>
                       {mgToGrams(adjustmentLive.goldGrossMg)}g ({adjustmentLive.goldPurity} touch)
                     </span>
@@ -4542,13 +4833,21 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             <div className="min-w-0 flex-1">
               <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Balance</div>
               <div className="font-mono font-bold text-rose-500 truncate">
-                ₹ {paiseToRupees(totals.balancePaise)}
+                {settlementKind === "gold" ? (
+                  <GoldWeightDisplay mg={goldTotals.balanceMg} kind="fine" />
+                ) : (
+                  `₹ ${paiseToRupees(totals.balancePaise)}`
+                )}
               </div>
             </div>
             <div className="text-right shrink-0">
               <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Total</div>
               <div className="font-mono font-bold text-gold">
-                ₹ {paiseToRupees(totals.grandTotalPaise)}
+                {settlementKind === "gold" ? (
+                  <GoldWeightDisplay mg={goldTotals.grandTotalMg} kind="fine" />
+                ) : (
+                  `₹ ${paiseToRupees(totals.grandTotalPaise)}`
+                )}
               </div>
             </div>
             <Button
@@ -4756,6 +5055,7 @@ function ItemRow(props: {
   it: InvoiceItem;
   idx: number;
   billingType: BillingType;
+  settlementKind?: "cash" | "gold" | "mixed";
   variant: "table" | "card";
   touchCompact: boolean;
   scaleReading?: ScaleReading;
@@ -4776,6 +5076,7 @@ function ItemRow(props: {
       <StandardItemRow
         it={props.it}
         idx={props.idx}
+        settlementKind={props.settlementKind}
         touchCompact={props.touchCompact}
         scaleReading={props.scaleReading}
         onWeightFocus={props.onWeightFocus}
@@ -5192,6 +5493,15 @@ function MfgItemRow({
       hisobPct = expectedHisob;
     }
 
+    let fineMg = 0;
+    if (overrides?.fineMg != null && Number.isFinite(overrides.fineMg)) {
+      fineMg = overrides.fineMg;
+    } else if (wstgPct > 0 || (curHisobStr.trim() !== "" && parseFloat(curHisobStr) > 0)) {
+      fineMg = Math.round((netMg * (hisobPct || expectedHisob)) / 100);
+    } else {
+      fineMg = Math.round((netMg * Math.round(tunchPct * 10)) / 995);
+    }
+
     const patch: Partial<InvoiceItem> = {
       grossMg,
       lessMg,
@@ -5200,6 +5510,7 @@ function MfgItemRow({
       purity: Math.round(tunchPct * 10),
       wastagePct: wstgPct,
       hisobPct,
+      fineMg,
       pcs: parseInt(curPcsStr, 10) || 1,
       makingChargesPaise: rupeesToPaise(curLabourStr),
       otherChargesPaise: 0,
@@ -5208,9 +5519,6 @@ function MfgItemRow({
       jn: it.jn ?? 2,
       metalKind: it.metalKind ?? "gold",
     };
-    if (overrides?.fineMg != null && Number.isFinite(overrides.fineMg)) {
-      patch.fineMg = overrides.fineMg;
-    }
     onChange(patch);
   }
 
@@ -5740,6 +6048,7 @@ function ServiceItemRow({
 // ── STANDARD INVENTORY/STOCK ROW COMPONENT ──
 function StandardItemRow({
   it,
+  settlementKind = "cash",
   touchCompact = false,
   scaleReading,
   onWeightFocus,
@@ -5749,6 +6058,7 @@ function StandardItemRow({
 }: {
   it: InvoiceItem;
   idx: number;
+  settlementKind?: "cash" | "gold" | "mixed";
   touchCompact?: boolean;
   scaleReading?: ScaleReading;
   onWeightFocus?: (type: "gross" | "net") => void;
@@ -5756,14 +6066,27 @@ function StandardItemRow({
   onChange: (diff: Partial<InvoiceItem>) => void;
   onRemove?: () => void;
 }) {
+  const isGoldMode = settlementKind === "gold";
+
+  const totalChargesPaise =
+    it.makingChargesPaise +
+    it.stoneChargesPaise +
+    (it.hallmarkChargesPaise ?? 0) +
+    it.otherChargesPaise;
+
+  const totalChargesGoldMg =
+    (it.hallmarkChargesGoldMg ?? 0) +
+    (it.markingChargesGoldMg ?? 0) +
+    (it.makingChargesGoldMg ?? 0) +
+    (it.otherChargesGoldMg ?? 0);
+
   const [showCharges, setShowCharges] = useState(
     () =>
-      it.makingChargesPaise +
-        it.stoneChargesPaise +
-        (it.hallmarkChargesPaise ?? 0) +
-        it.otherChargesPaise +
-        it.discountPaise >
-      0,
+      (isGoldMode
+        ? totalChargesGoldMg + (it.discountGoldMg ?? 0) > 0
+        : totalChargesPaise + it.discountPaise > 0) ||
+      (it.stoneWeightMg || 0) > 0 ||
+      (it.diamondWeightMg || 0) > 0,
   );
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -5787,6 +6110,14 @@ function StandardItemRow({
   const [hmStr, setHmStr] = useState(() => (it.hallmarkChargesPaise ? paiseToRupees(it.hallmarkChargesPaise).toString() : ""));
   const [otStr, setOtStr] = useState(() => (it.otherChargesPaise ? paiseToRupees(it.otherChargesPaise).toString() : ""));
   const [dcStr, setDcStr] = useState(() => (it.discountPaise ? paiseToRupees(it.discountPaise).toString() : ""));
+
+  // Gold charges state strings
+  const [hmGoldStr, setHmGoldStr] = useState(() => (it.hallmarkChargesGoldMg ? mgToGrams(it.hallmarkChargesGoldMg).toString() : ""));
+  const [markingGoldStr, setMarkingGoldStr] = useState(() => (it.markingChargesGoldMg ? mgToGrams(it.markingChargesGoldMg).toString() : ""));
+  const [makingGoldStr, setMakingGoldStr] = useState(() => (it.makingChargesGoldMg ? mgToGrams(it.makingChargesGoldMg).toString() : ""));
+  const [otGoldStr, setOtGoldStr] = useState(() => (it.otherChargesGoldMg ? mgToGrams(it.otherChargesGoldMg).toString() : ""));
+  const [dcGoldStr, setDcGoldStr] = useState(() => (it.discountGoldMg ? mgToGrams(it.discountGoldMg).toString() : ""));
+
   const [stoneWeightStr, setStoneWeightStr] = useState(() => (it.stoneWeightMg ? mgToGrams(it.stoneWeightMg).toString() : ""));
   const [diamondWeightStr, setDiamondWeightStr] = useState(() =>
     ((it.diamondWeightMg || 0) / 200).toString(),
@@ -5847,7 +6178,117 @@ function StandardItemRow({
     }
   }, [it.makingChargePct, it.goldValuePaise, it.makingChargesPaise, focusedField]);
 
-  const thumbnailImg = getRowItemPhoto(it);
+  useEffect(() => {
+    if (focusedField !== "hmGold") setHmGoldStr(it.hallmarkChargesGoldMg ? mgToGrams(it.hallmarkChargesGoldMg).toString() : "");
+  }, [it.hallmarkChargesGoldMg, focusedField]);
+
+  useEffect(() => {
+    if (focusedField !== "markingGold") setMarkingGoldStr(it.markingChargesGoldMg ? mgToGrams(it.markingChargesGoldMg).toString() : "");
+  }, [it.markingChargesGoldMg, focusedField]);
+
+  useEffect(() => {
+    if (focusedField !== "makingGold") setMakingGoldStr(it.makingChargesGoldMg ? mgToGrams(it.makingChargesGoldMg).toString() : "");
+  }, [it.makingChargesGoldMg, focusedField]);
+
+  useEffect(() => {
+    if (focusedField !== "otGold") setOtGoldStr(it.otherChargesGoldMg ? mgToGrams(it.otherChargesGoldMg).toString() : "");
+  }, [it.otherChargesGoldMg, focusedField]);
+
+  useEffect(() => {
+    if (focusedField !== "dcGold") setDcGoldStr(it.discountGoldMg ? mgToGrams(it.discountGoldMg).toString() : "");
+  }, [it.discountGoldMg, focusedField]);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target?.result as string;
+      if (base64) {
+        onChange({ imageUrl: base64 });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  function commitWeights(overrides?: {
+    gross?: string;
+    less?: string;
+    add?: string;
+    net?: string;
+    purity?: string;
+    wastage?: string;
+    hisob?: string;
+    pcs?: string;
+    fineMg?: number;
+    syncHisob?: boolean;
+  }) {
+    const curGrossStr = overrides?.gross !== undefined ? overrides.gross : grossStr;
+    const curLessStr = overrides?.less !== undefined ? overrides.less : lessStr;
+    const curAddStr = overrides?.add !== undefined ? overrides.add : addStr;
+    const curNetStr = overrides?.net !== undefined ? overrides.net : netStr;
+    const curPurityStr = overrides?.purity !== undefined ? overrides.purity : purityStr;
+    const curWstgStr = overrides?.wastage !== undefined ? overrides.wastage : wstgStr;
+    const curHisobStr = overrides?.hisob !== undefined ? overrides.hisob : hisobStr;
+    const curPcsStr = overrides?.pcs !== undefined ? overrides.pcs : pcsStr;
+
+    const grossGrams = parseFloat(curGrossStr) || 0;
+    const lessGrams = parseFloat(curLessStr) || 0;
+    const addGrams = parseFloat(curAddStr) || 0;
+    const grossMg = Math.round(grossGrams * 1000);
+    const lessMg = Math.round(lessGrams * 1000);
+    const addMg = Math.round(addGrams * 1000);
+
+    let netMg = Math.max(0, grossMg + addMg - lessMg);
+    if (overrides?.net !== undefined) {
+      const parsedNet = parseFloat(overrides.net);
+      if (!isNaN(parsedNet) && parsedNet >= 0) {
+        netMg = Math.round(parsedNet * 1000);
+      }
+    }
+
+    const purity = Math.max(0, Math.min(999, parseInt(curPurityStr, 10) || 916));
+    const tanchPct = purity / 10;
+    const wastagePct = parseFloat(curWstgStr) || 0;
+    const expectedHisob = Math.round((tanchPct + wastagePct) * 100) / 100;
+
+    let hisobPct = expectedHisob;
+    if (overrides?.syncHisob) {
+      hisobPct = expectedHisob;
+      setHisobStr(expectedHisob.toFixed(2));
+    } else if (curHisobStr.trim() !== "") {
+      hisobPct = parseFloat(curHisobStr) || expectedHisob;
+    } else {
+      hisobPct = expectedHisob;
+    }
+
+    let fineMg = 0;
+    if (overrides?.fineMg !== undefined) {
+      fineMg = overrides.fineMg;
+    } else if (wastagePct > 0 || (curHisobStr.trim() !== "" && parseFloat(curHisobStr) > 0)) {
+      fineMg = Math.round((netMg * hisobPct) / 100);
+    } else {
+      fineMg = Math.round((netMg * purity) / 995);
+    }
+
+    const pcs = Math.max(1, parseInt(curPcsStr, 10) || 1);
+
+    onChange({
+      grossMg,
+      lessMg,
+      addMg,
+      netMg,
+      purity,
+      wastagePct,
+      hisobPct,
+      fineMg,
+      pcs,
+    });
+  }
+
+  const thumbnailImg = it.imageUrl || getRowItemPhoto(it);
   const stockItems2 = useStock((s) => s.items);
   const stockRef = it.stockItemId
     ? { id: it.stockItemId }
@@ -5855,41 +6296,68 @@ function StandardItemRow({
       ? stockItems2.find((s) => s.barcode === it.barcode)
       : undefined;
 
-  const totalChargesPaise =
-    it.makingChargesPaise +
-    it.stoneChargesPaise +
-    (it.hallmarkChargesPaise ?? 0) +
-    it.otherChargesPaise;
-  const hasCharges =
-    totalChargesPaise > 0 ||
-    it.discountPaise > 0 ||
-    (it.stoneWeightMg || 0) > 0 ||
-    (it.diamondWeightMg || 0) > 0;
+  const hasCharges = isGoldMode
+    ? totalChargesGoldMg > 0 || (it.discountGoldMg || 0) > 0 || (it.stoneWeightMg || 0) > 0 || (it.diamondWeightMg || 0) > 0
+    : totalChargesPaise > 0 || it.discountPaise > 0 || (it.stoneWeightMg || 0) > 0 || (it.diamondWeightMg || 0) > 0;
 
   return (
     <div className="rounded-md border border-border bg-card shadow-sm overflow-hidden transition-all hover:shadow-md">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border/60">
-        <div className="w-14 h-14 rounded-md overflow-hidden border border-border bg-muted/40 flex-shrink-0 flex items-center justify-center">
+        <div className="relative group w-14 h-14 rounded-md overflow-hidden border border-border bg-muted/40 flex-shrink-0 flex items-center justify-center">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageUpload}
+            accept="image/*"
+            className="hidden"
+          />
           {thumbnailImg ? (
-            <img src={thumbnailImg} alt={it.itemName} className="h-full w-full object-contain p-0.5" />
+            <>
+              <img
+                src={thumbnailImg}
+                alt={it.itemName}
+                className="h-full w-full object-contain p-0.5 cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+                title="Click to change photo"
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange({ imageUrl: undefined });
+                }}
+                className="absolute top-0 right-0 p-0.5 bg-background/90 hover:bg-destructive hover:text-white rounded-bl text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove photo"
+              >
+                ✕
+              </button>
+            </>
           ) : stockRef ? (
-            <StockPhotoImg
-              stockItem={stockRef}
-              className="h-full w-full object-contain p-0.5"
-              fallback={
-                <span className="text-[8px] text-muted-foreground text-center leading-tight px-1">
-                  No
-                  <br />
-                  Photo
-                </span>
-              }
-            />
+            <div
+              className="w-full h-full cursor-pointer flex items-center justify-center"
+              onClick={() => fileInputRef.current?.click()}
+              title="Click to upload photo"
+            >
+              <StockPhotoImg
+                stockItem={stockRef}
+                className="h-full w-full object-contain p-0.5"
+                fallback={
+                  <div className="flex flex-col items-center text-muted-foreground hover:text-foreground text-[8px] text-center leading-tight">
+                    <Camera className="h-4 w-4 mb-0.5 text-gold" />
+                    <span>Upload</span>
+                  </div>
+                }
+              />
+            </div>
           ) : (
-            <span className="text-[8px] text-muted-foreground text-center leading-tight px-1">
-              No
-              <br />
-              Photo
-            </span>
+            <div
+              className="w-full h-full cursor-pointer flex flex-col items-center justify-center text-muted-foreground hover:text-foreground text-[8px] text-center leading-tight"
+              onClick={() => fileInputRef.current?.click()}
+              title="Click to upload photo"
+            >
+              <Camera className="h-4 w-4 mb-0.5 text-gold" />
+              <span>Photo</span>
+            </div>
           )}
         </div>
 
@@ -5936,10 +6404,21 @@ function StandardItemRow({
         </div>
 
         <div className="text-right flex-shrink-0">
-          <div className="font-bold text-gold font-mono text-lg leading-none">
-            ₹{Number(paiseToRupees(it.lineTotalPaise)).toLocaleString("en-IN")}
-          </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Line Total</div>
+          {isGoldMode ? (
+            <>
+              <div className="font-bold text-gold font-mono text-lg leading-none">
+                {mgToGrams(it.fineMg)} g
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Fine Gold</div>
+            </>
+          ) : (
+            <>
+              <div className="font-bold text-gold font-mono text-lg leading-none">
+                ₹{Number(paiseToRupees(it.lineTotalPaise)).toLocaleString("en-IN")}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Line Total</div>
+            </>
+          )}
         </div>
 
         {onRemove && (
@@ -5954,7 +6433,7 @@ function StandardItemRow({
         )}
       </div>
 
-      <div className={`grid grid-cols-2 ${touchCompact ? "sm:grid-cols-2" : "sm:grid-cols-5"} sm:divide-x divide-border/50 bg-background/30 text-xs`}>
+      <div className={`grid grid-cols-2 ${touchCompact ? "sm:grid-cols-2" : isGoldMode ? "sm:grid-cols-4" : "sm:grid-cols-5"} sm:divide-x divide-border/50 bg-background/30 text-xs`}>
         <div className="px-3 py-2.5">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">
             Gross (g)
@@ -5979,15 +6458,7 @@ function StandardItemRow({
             onChange={(e) => {
               const val = e.target.value;
               setGrossStr(val);
-              const num = parseFloat(val);
-              if (!isNaN(num) && num >= 0) {
-                const grossMg = Math.round(num * 1000);
-                const lessMg = it.lessMg ?? 0;
-                const addMg = it.addMg ?? 0;
-                onChange({ grossMg, lessMg, addMg, netMg: Math.max(0, grossMg + addMg - lessMg) });
-              } else if (val === "") {
-                onChange({ grossMg: 0, netMg: Math.max(0, (it.addMg ?? 0) - (it.lessMg ?? 0)) });
-              }
+              commitWeights({ gross: val });
             }}
             placeholder="0.000"
             className={`h-8 text-xs font-mono border-border/60 focus-visible:ring-gold ${touchCompact ? "h-11 text-base" : ""}`}
@@ -6022,17 +6493,7 @@ function StandardItemRow({
             onChange={(e) => {
               const val = e.target.value;
               setLessStr(val);
-              const num = parseFloat(val);
-              if (!isNaN(num) && num >= 0) {
-                const lessMg = Math.round(num * 1000);
-                const grossMg = it.grossMg ?? 0;
-                const addMg = it.addMg ?? 0;
-                onChange({ lessMg, addMg, netMg: Math.max(0, grossMg + addMg - lessMg) });
-              } else if (val === "") {
-                const grossMg = it.grossMg ?? 0;
-                const addMg = it.addMg ?? 0;
-                onChange({ lessMg: 0, addMg, netMg: Math.max(0, grossMg + addMg) });
-              }
+              commitWeights({ less: val });
             }}
             placeholder="0.000"
             className={`h-8 text-xs font-mono border-border/60 focus-visible:ring-gold ${touchCompact ? "h-11 text-base" : ""}`}
@@ -6058,17 +6519,7 @@ function StandardItemRow({
             onChange={(e) => {
               const val = e.target.value;
               setAddStr(val);
-              const num = parseFloat(val);
-              if (!isNaN(num) && num >= 0) {
-                const addMg = Math.round(num * 1000);
-                const grossMg = it.grossMg ?? 0;
-                const lessMg = it.lessMg ?? 0;
-                onChange({ addMg, lessMg, netMg: Math.max(0, grossMg + addMg - lessMg) });
-              } else if (val === "") {
-                const grossMg = it.grossMg ?? 0;
-                const lessMg = it.lessMg ?? 0;
-                onChange({ addMg: 0, lessMg, netMg: Math.max(0, grossMg - lessMg) });
-              }
+              commitWeights({ add: val });
             }}
             placeholder="0.000"
             className={`h-8 text-xs font-mono border-border/60 focus-visible:ring-gold ${touchCompact ? "h-11 text-base" : ""}`}
@@ -6099,16 +6550,7 @@ function StandardItemRow({
             onChange={(e) => {
               const val = e.target.value;
               setNetStr(val);
-              const num = parseFloat(val);
-              if (!isNaN(num) && num >= 0) {
-                const netMg = Math.round(num * 1000);
-                const grossMg = it.grossMg ?? 0;
-                const addMg = it.addMg ?? 0;
-                const lessMg = Math.max(0, grossMg + addMg - netMg);
-                onChange({ netMg, lessMg });
-              } else if (val === "") {
-                onChange({ netMg: 0 });
-              }
+              commitWeights({ net: val });
             }}
             placeholder="0.000"
             aria-invalid={it.netMg > (it.grossMg ?? 0) + (it.addMg ?? 0)}
@@ -6147,7 +6589,7 @@ function StandardItemRow({
                 setFineStr(val);
                 const num = parseFloat(val);
                 if (!isNaN(num) && num >= 0) {
-                  onChange({ fineMg: Math.round(num * 1000) });
+                  commitWeights({ fineMg: Math.round(num * 1000) });
                 }
               }}
               className="h-8 text-xs font-mono font-bold text-gold border-border/60"
@@ -6172,10 +6614,7 @@ function StandardItemRow({
             onChange={(e) => {
               const val = e.target.value;
               setPurityStr(val);
-              const num = Number(val);
-              if (!isNaN(num)) {
-                onChange({ purity: Math.max(0, Math.min(999, Math.round(num))) });
-              }
+              commitWeights({ purity: val, syncHisob: true });
             }}
             className="h-8 text-xs font-mono border-border/60"
             placeholder="916"
@@ -6195,8 +6634,7 @@ function StandardItemRow({
             onChange={(e) => {
               const val = e.target.value;
               setWstgStr(val);
-              const num = parseFloat(val);
-              onChange({ wastagePct: !isNaN(num) && num >= 0 ? num : 0 });
+              commitWeights({ wastage: val, syncHisob: true });
             }}
             className="h-8 text-xs font-mono border-border/60"
             placeholder="0.00"
@@ -6204,8 +6642,8 @@ function StandardItemRow({
         </div>
 
         <div className="px-3 py-2.5 bg-muted/10">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1" title="Hisob %">
-            Hisob
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1" title="Hisob % (Tanch + Wastage)">
+            Hisob %
           </div>
           <Input
             type="text"
@@ -6216,8 +6654,7 @@ function StandardItemRow({
             onChange={(e) => {
               const raw = e.target.value;
               setHisobStr(raw);
-              const num = parseFloat(raw.trim());
-              onChange({ hisobPct: raw.trim() === "" || isNaN(num) ? undefined : num });
+              commitWeights({ hisob: raw });
             }}
             className="h-8 text-xs font-mono border-border/60"
             placeholder="Tanch+Wstg"
@@ -6237,8 +6674,7 @@ function StandardItemRow({
             onChange={(e) => {
               const val = e.target.value;
               setPcsStr(val);
-              const num = parseInt(val, 10);
-              onChange({ pcs: !isNaN(num) && num >= 0 ? num : 1 });
+              commitWeights({ pcs: val });
             }}
             className="h-8 text-xs font-mono border-border/60"
             placeholder="1"
@@ -6281,63 +6717,67 @@ function StandardItemRow({
           </Select>
         </div>
 
-        <div className="px-3 py-2.5">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">
-            Rate ₹/g
+        {!isGoldMode && (
+          <div className="px-3 py-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">
+              Rate ₹/g
+            </div>
+            <div className="flex gap-1 items-center">
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={rateStr}
+                onFocus={() => setFocusedField("rate")}
+                onBlur={() => setFocusedField(null)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setRateStr(val);
+                  const num = rupeesToPaise(val);
+                  onChange({ goldRatePerGramPaise: num });
+                }}
+                className="h-8 text-xs font-mono border-border/60 w-24"
+              />
+              <select
+                className="h-8 text-[10px] border border-border/60 rounded px-1 bg-background focus:outline-none focus:ring-1 focus:ring-gold"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const val = parseInt(e.target.value, 10);
+                    setRateStr(paiseToRupees(val));
+                    onChange({ goldRatePerGramPaise: val });
+                  }
+                }}
+              >
+                <option value="" disabled>
+                  Branch Rate
+                </option>
+                {useSettings.getState().branches.map((b) => {
+                  const rates = getBranchBullionRates(b.id);
+                  let rate = rates.gold22KPerGramPaise;
+                  if (it.purity >= 990) rate = rates.gold24KPerGramPaise;
+                  else if (it.purity <= 780 && it.purity > 0) rate = rates.gold18KPerGramPaise;
+                  return (
+                    <option key={b.id} value={rate}>
+                      {b.code}: ₹{paiseToRupees(rate)}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
-          <div className="flex gap-1 items-center">
-            <Input
-              type="text"
-              inputMode="numeric"
-              value={rateStr}
-              onFocus={() => setFocusedField("rate")}
-              onBlur={() => setFocusedField(null)}
-              onChange={(e) => {
-                const val = e.target.value;
-                setRateStr(val);
-                const num = rupeesToPaise(val);
-                onChange({ goldRatePerGramPaise: num });
-              }}
-              className="h-8 text-xs font-mono border-border/60 w-24"
-            />
-            <select
-              className="h-8 text-[10px] border border-border/60 rounded px-1 bg-background focus:outline-none focus:ring-1 focus:ring-gold"
-              value=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  const val = parseInt(e.target.value, 10);
-                  setRateStr(paiseToRupees(val));
-                  onChange({ goldRatePerGramPaise: val });
-                }
-              }}
-            >
-              <option value="" disabled>
-                Branch Rate
-              </option>
-              {useSettings.getState().branches.map((b) => {
-                const rates = getBranchBullionRates(b.id);
-                let rate = rates.gold22KPerGramPaise;
-                if (it.purity >= 990) rate = rates.gold24KPerGramPaise;
-                else if (it.purity <= 780 && it.purity > 0) rate = rates.gold18KPerGramPaise;
-                return (
-                  <option key={b.id} value={rate}>
-                    {b.code}: ₹{paiseToRupees(rate)}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-        </div>
+        )}
       </div>
 
-      <div className="px-4 py-1.5 bg-gold/5 border-y border-gold/10 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-        <span>
-          Gold Value: {mgToGrams(it.fineMg)}g × ₹{paiseToRupees(it.goldRatePerGramPaise)}/g
-        </span>
-        <span className="font-semibold text-foreground">
-          = ₹{Number(paiseToRupees(it.goldValuePaise)).toLocaleString("en-IN")}
-        </span>
-      </div>
+      {!isGoldMode && (
+        <div className="px-4 py-1.5 bg-gold/5 border-y border-gold/10 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+          <span>
+            Gold Value: {mgToGrams(it.fineMg)}g × ₹{paiseToRupees(it.goldRatePerGramPaise)}/g
+          </span>
+          <span className="font-semibold text-foreground">
+            = ₹{Number(paiseToRupees(it.goldValuePaise)).toLocaleString("en-IN")}
+          </span>
+        </div>
+      )}
 
       <div className="px-4 py-2">
         <button
@@ -6349,13 +6789,21 @@ function StandardItemRow({
             className={`h-3.5 w-3.5 transition-transform duration-200 ${showCharges ? "" : "-rotate-90"}`}
           />
           <span className="font-medium">
-            {showCharges ? "Hide" : "+"} Making · Stone · Diamond · Discount
+            {isGoldMode
+              ? `${showCharges ? "Hide" : "+"} Charges (in Gold) · HUID · Marking · Labour · Other · Discount`
+              : `${showCharges ? "Hide" : "+"} Making · Stone · Diamond · Discount`}
           </span>
           {!showCharges && hasCharges && (
             <span className="ml-auto text-foreground font-semibold font-mono">
-              {it.discountPaise > 0
-                ? `₹${paiseToRupees(totalChargesPaise)} − ₹${paiseToRupees(it.discountPaise)} disc`
-                : `₹${paiseToRupees(totalChargesPaise)}`}
+              {isGoldMode ? (
+                totalChargesGoldMg > 0 || (it.discountGoldMg || 0) > 0 ? (
+                  `+ ${mgToGrams(totalChargesGoldMg)} g gold charges`
+                ) : null
+              ) : it.discountPaise > 0 ? (
+                `₹${paiseToRupees(totalChargesPaise)} − ₹${paiseToRupees(it.discountPaise)} disc`
+              ) : (
+                `₹${paiseToRupees(totalChargesPaise)}`
+              )}
             </span>
           )}
         </button>
@@ -6397,27 +6845,179 @@ function StandardItemRow({
               />
             </div>
 
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
-                Making (%)
-              </Label>
-              <Input
-                value={mkPctStr}
-                onChange={(e) => {
-                  setMkPctStr(e.target.value);
-                  const pct = parseFloat(e.target.value) || 0;
-                  onChange({
-                    makingChargePct: pct,
-                    makingChargesPaise: Math.round((it.goldValuePaise * pct) / 100),
-                  });
-                }}
-                placeholder="e.g. 12"
-                className="h-8 text-xs font-mono"
-              />
-              <div className="text-[10px] text-muted-foreground mt-0.5">
-                ₹ {paiseToRupees(it.makingChargesPaise)}
-              </div>
-            </div>
+            {isGoldMode ? (
+              <>
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-amber-500 block mb-1">
+                    HUID Charge (Gold g)
+                  </Label>
+                  <Input
+                    value={hmGoldStr}
+                    onFocus={() => setFocusedField("hmGold")}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(e) => {
+                      setHmGoldStr(e.target.value);
+                      const mg = gramsToMg(e.target.value || "0");
+                      onChange({ hallmarkChargesGoldMg: mg });
+                    }}
+                    placeholder="0.000"
+                    className="h-8 text-xs font-mono border-amber-500/30"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-amber-500 block mb-1">
+                    Marking Charge (Gold g)
+                  </Label>
+                  <Input
+                    value={markingGoldStr}
+                    onFocus={() => setFocusedField("markingGold")}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(e) => {
+                      setMarkingGoldStr(e.target.value);
+                      const mg = gramsToMg(e.target.value || "0");
+                      onChange({ markingChargesGoldMg: mg });
+                    }}
+                    placeholder="0.000"
+                    className="h-8 text-xs font-mono border-amber-500/30"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-amber-500 block mb-1">
+                    Labour / Making (Gold g)
+                  </Label>
+                  <Input
+                    value={makingGoldStr}
+                    onFocus={() => setFocusedField("makingGold")}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(e) => {
+                      setMakingGoldStr(e.target.value);
+                      const mg = gramsToMg(e.target.value || "0");
+                      onChange({ makingChargesGoldMg: mg });
+                    }}
+                    placeholder="0.000"
+                    className="h-8 text-xs font-mono border-amber-500/30"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-amber-500 block mb-1">
+                    Other Charge (Gold g)
+                  </Label>
+                  <Input
+                    value={otGoldStr}
+                    onFocus={() => setFocusedField("otGold")}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(e) => {
+                      setOtGoldStr(e.target.value);
+                      const mg = gramsToMg(e.target.value || "0");
+                      onChange({ otherChargesGoldMg: mg });
+                    }}
+                    placeholder="0.000"
+                    className="h-8 text-xs font-mono border-amber-500/30"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-rose-500 block mb-1">
+                    Discount (Gold g)
+                  </Label>
+                  <Input
+                    value={dcGoldStr}
+                    onFocus={() => setFocusedField("dcGold")}
+                    onBlur={() => setFocusedField(null)}
+                    onChange={(e) => {
+                      setDcGoldStr(e.target.value);
+                      const mg = gramsToMg(e.target.value || "0");
+                      onChange({ discountGoldMg: mg });
+                    }}
+                    placeholder="0.000"
+                    className="h-8 text-xs font-mono text-rose-500 border-rose-500/20"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
+                    Making (%)
+                  </Label>
+                  <Input
+                    value={mkPctStr}
+                    onChange={(e) => {
+                      setMkPctStr(e.target.value);
+                      const pct = parseFloat(e.target.value) || 0;
+                      onChange({
+                        makingChargePct: pct,
+                        makingChargesPaise: Math.round((it.goldValuePaise * pct) / 100),
+                      });
+                    }}
+                    placeholder="e.g. 12"
+                    className="h-8 text-xs font-mono"
+                  />
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    ₹ {paiseToRupees(it.makingChargesPaise)}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
+                    Stone Charges (₹)
+                  </Label>
+                  <Input
+                    value={stStr}
+                    onChange={(e) => {
+                      setStStr(e.target.value);
+                      onChange({ stoneChargesPaise: rupeesToPaise(e.target.value) });
+                    }}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
+                    Hallmark Charges (₹)
+                  </Label>
+                  <Input
+                    value={hmStr}
+                    onChange={(e) => {
+                      setHmStr(e.target.value);
+                      onChange({ hallmarkChargesPaise: rupeesToPaise(e.target.value) });
+                    }}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
+                    Other Charges (₹)
+                  </Label>
+                  <Input
+                    value={otStr}
+                    onChange={(e) => {
+                      setOtStr(e.target.value);
+                      onChange({ otherChargesPaise: rupeesToPaise(e.target.value) });
+                    }}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-rose-500 block mb-1">
+                    Discount (₹)
+                  </Label>
+                  <Input
+                    value={dcStr}
+                    onChange={(e) => {
+                      setDcStr(e.target.value);
+                      onChange({ discountPaise: rupeesToPaise(e.target.value) });
+                    }}
+                    className="h-8 text-xs font-mono text-rose-500 border-rose-500/20"
+                  />
+                </div>
+              </>
+            )}
 
             <div>
               <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
@@ -6440,34 +7040,6 @@ function StandardItemRow({
 
             <div>
               <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
-                Stone Charges (₹)
-              </Label>
-              <Input
-                value={stStr}
-                onChange={(e) => {
-                  setStStr(e.target.value);
-                  onChange({ stoneChargesPaise: rupeesToPaise(e.target.value) });
-                }}
-                className="h-8 text-xs font-mono"
-              />
-            </div>
-
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
-                Hallmark Charges (₹)
-              </Label>
-              <Input
-                value={hmStr}
-                onChange={(e) => {
-                  setHmStr(e.target.value);
-                  onChange({ hallmarkChargesPaise: rupeesToPaise(e.target.value) });
-                }}
-                className="h-8 text-xs font-mono"
-              />
-            </div>
-
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
                 Diamond (ct)
               </Label>
               <Input
@@ -6483,34 +7055,6 @@ function StandardItemRow({
                 }}
                 placeholder="0.00"
                 className="h-8 text-xs font-mono"
-              />
-            </div>
-
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">
-                Other Charges (₹)
-              </Label>
-              <Input
-                value={otStr}
-                onChange={(e) => {
-                  setOtStr(e.target.value);
-                  onChange({ otherChargesPaise: rupeesToPaise(e.target.value) });
-                }}
-                className="h-8 text-xs font-mono"
-              />
-            </div>
-
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-rose-500 block mb-1">
-                Discount (₹)
-              </Label>
-              <Input
-                value={dcStr}
-                onChange={(e) => {
-                  setDcStr(e.target.value);
-                  onChange({ discountPaise: rupeesToPaise(e.target.value) });
-                }}
-                className="h-8 text-xs font-mono text-rose-500 border-rose-500/20"
               />
             </div>
           </div>

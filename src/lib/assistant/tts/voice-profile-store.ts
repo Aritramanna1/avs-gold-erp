@@ -99,8 +99,9 @@ export async function enrollVoiceProfile(input: {
     };
   }
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) return { ok: false, error: "Sign in required." };
 
   const { data, error } = await supabase

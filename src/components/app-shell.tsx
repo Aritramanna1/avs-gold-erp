@@ -15,6 +15,7 @@ import {
 import { type ReactNode, useState, useEffect, useRef } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSettings } from "@/lib/settings-store";
+import { useBusinessRules } from "@/lib/business-rules-store";
 import { GoldRateEditor } from "@/components/GoldRateEditor";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { OfflineMenuBar } from "@/components/layout/OfflineMenuBar";
@@ -84,8 +85,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const currentUserRole = useSettings((s) => s.currentUserRole);
   const users = useSettings((s) => s.users);
   const { roles, email: currentEmail } = useRoles();
+  const enableAiAssistant = useBusinessRules((s) => s.isEnabled("enable_ai_assistant"));
   const [goldRateOpen, setGoldRateOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSwitchingAccount, setIsSwitchingAccount] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Gate the boot skeleton on the CRITICAL load (settings/branch), not the full
   // background pull - so the shell + route appear as soon as the layout's own
@@ -166,10 +169,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       .slice(0, 2) || "U";
 
   async function handleSignOut() {
+    setIsSwitchingAccount(true);
+    toast.loading("Signing out...");
     await signOutAndLeave();
   }
 
   async function handleSwitchAccount() {
+    setIsSwitchingAccount(true);
+    toast.loading("Switching profile account...");
     await signOutAndLeave();
   }
 
@@ -333,16 +340,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               </select>
             </div>
 
-            <button
-              type="button"
-              onClick={() => openOrnexaAssistant()}
-              className="relative h-9 w-9 grid place-items-center rounded-full border border-border hover:border-gold/50 hover:bg-gold/10 transition-colors focus:outline-none cursor-pointer bg-transparent no-print"
-              aria-label="Open Assistant (Ctrl+J)"
-              title="Assistant (Ctrl+J)"
-              id="header-assistant-trigger"
-            >
-              <Logo variant="svg" className="h-4 w-4 object-contain" />
-            </button>
+            {enableAiAssistant && (
+              <button
+                type="button"
+                onClick={() => openOrnexaAssistant()}
+                className="relative h-9 w-9 grid place-items-center rounded-full border border-border hover:border-gold/50 hover:bg-gold/10 transition-colors focus:outline-none cursor-pointer bg-transparent no-print"
+                aria-label="Open Assistant (Ctrl+J)"
+                title="Assistant (Ctrl+J)"
+                id="header-assistant-trigger"
+              >
+                <Logo variant="svg" className="h-4 w-4 object-contain" />
+              </button>
+            )}
             <button
               onClick={() => setTheme(isDark ? "light" : "dark")}
               className="relative h-9 w-9 grid place-items-center rounded-full border border-border hover:border-gold/50 transition-colors focus:outline-none cursor-pointer bg-transparent no-print"
@@ -374,6 +383,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     personId={currentUser?.id}
                     person={currentUser}
                     name={displayName}
+                    isLoading={isSwitchingAccount}
                     className="h-9 w-9 rounded-md shrink-0"
                     data-testid="app-shell-user-avatar"
                   />
@@ -387,12 +397,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <div className="text-[10px] mt-0.5 text-gold">{displayRole}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={() => openOrnexaAssistant()}
-                  className="gap-2 cursor-pointer"
-                >
-                  <Logo variant="svg" className="h-3.5 w-3.5 object-contain" /> Assistant (Ctrl+J)
-                </DropdownMenuItem>
+                {enableAiAssistant && (
+                  <DropdownMenuItem
+                    onSelect={() => openOrnexaAssistant()}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <Logo variant="svg" className="h-3.5 w-3.5 object-contain" /> Assistant (Ctrl+J)
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                   <Link
                     to="/control/customization"
@@ -495,7 +507,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <ErpStatusBar />
         {isPhoneChrome ? <MobileBottomNav /> : null}
         <GoldRateEditor open={goldRateOpen} onOpenChange={setGoldRateOpen} />
-        <AssistantDrawer />
+        {enableAiAssistant && <AssistantDrawer />}
       </div>
     </div>
   );

@@ -43,7 +43,7 @@ function DocumentVaultPage() {
     <div className="mx-auto max-w-4xl p-4 md:p-8">
       <PageHeader
         title="Document Vault"
-        subtitle="Production document storage is Supabase-backed with R2 object storage behind the authenticated proxy."
+        subtitle="Production document and media storage is powered by Cloudflare R2 object storage with fast authenticated proxy and zero egress fees."
       />
 
       <div className="grid gap-4">
@@ -52,10 +52,10 @@ function DocumentVaultPage() {
             <div className="flex items-start gap-3">
               <FolderLock className="mt-0.5 h-5 w-5 text-primary" />
               <div>
-                <div className="font-semibold">Supabase + R2 storage</div>
+                <div className="font-semibold">Cloudflare R2 Storage Engine</div>
                 <div className="mt-1 text-sm leading-6 text-muted-foreground">
                   Upload, preview, share, WhatsApp, email, and print attachments use the centralized
-                  document engine, storage metadata, and RLS-protected buckets.
+                  document engine and Cloudflare R2 private & CDN buckets.
                 </div>
                 {lastCheck && (
                   <p className="text-xs text-muted-foreground mt-2">Last verified: {lastCheck}</p>
@@ -78,11 +78,11 @@ function DocumentVaultPage() {
           <div className="flex items-start gap-3">
             <Cloud className="mt-0.5 h-5 w-5 text-emerald-600" />
             <div>
-              <div className="font-semibold">Central document engine</div>
+              <div className="font-semibold">Central Document & Media Engine</div>
               <div className="mt-1 text-sm leading-6 text-muted-foreground">
-                Attachments are indexed in `storage_file_metadata` and served through the R2 proxy
-                with session-gated access. Deleting an attachment removes both metadata and the R2
-                object.
+                Attachments are indexed in `storage_file_metadata` and served through the Cloudflare R2
+                high-speed edge proxy with session-gated access. Deleting an attachment removes both
+                metadata and the Cloudflare R2 object.
               </div>
             </div>
           </div>

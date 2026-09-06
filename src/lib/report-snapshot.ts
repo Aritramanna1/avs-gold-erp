@@ -13,8 +13,8 @@ export async function saveReportSnapshot(opts: {
 }): Promise<{ id: string; rowHash: string }> {
   const supabase = getCloudDataClient();
 
-  const { data: userResult } = await supabase.auth.getUser();
-  const userId = userResult.user?.id ?? null;
+  const { data: sessionResult } = await supabase.auth.getSession();
+  const userId = sessionResult.session?.user?.id ?? null;
 
   const { data: profile } = userId
     ? await supabase.from("user_profiles").select("firm_id").eq("auth_id", userId).maybeSingle()

@@ -46,8 +46,11 @@ export const DEFAULT_MATERIAL_CATEGORIES: MaterialCategoryDef[] = [
   { key: "raw_gold", label: "Raw Gold", group: "gold" },
   { key: "fine_gold", label: "Fine Gold", group: "gold" },
   { key: "old_gold", label: "Old Gold", group: "gold" },
+  { key: "filings", label: "Filings / Dust", group: "gold" },
   // Manufacturing Materials — each individually stock-managed.
-  { key: "kdm_balls", label: "KDM Balls", group: "manufacturing_materials" },
+  { key: "kdm_balls", label: "KDM Balls / KDM", group: "manufacturing_materials" },
+  { key: "die", label: "Die", group: "manufacturing_materials" },
+  { key: "ball", label: "Balls", group: "manufacturing_materials" },
   { key: "chains", label: "Chains", group: "manufacturing_materials" },
   { key: "findings", label: "Findings", group: "manufacturing_materials" },
   { key: "locks", label: "Locks", group: "manufacturing_materials" },
@@ -55,12 +58,16 @@ export const DEFAULT_MATERIAL_CATEGORIES: MaterialCategoryDef[] = [
   { key: "components", label: "Components", group: "manufacturing_materials" },
   { key: "wire", label: "Wire", group: "manufacturing_materials" },
   { key: "tube", label: "Tube", group: "manufacturing_materials" },
+  { key: "patti", label: "Patti", group: "manufacturing_materials" },
+  { key: "stone", label: "Stones / Gems", group: "manufacturing_materials" },
+  { key: "item_ornaments", label: "Item / Ornaments", group: "manufacturing_materials" },
   {
     key: "other_material",
     label: "Other Manufacturing Materials",
     group: "manufacturing_materials",
   },
   { key: "recovery_gold", label: "Recovery Gold", group: "recovery" },
+  { key: "scrap", label: "Scrap", group: "recovery" },
 ];
 
 export const MATERIAL_GROUP_LABELS: Record<MaterialGroup, string> = {

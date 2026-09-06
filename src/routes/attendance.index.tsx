@@ -93,20 +93,26 @@ import {
 
 export const Route = createFileRoute("/attendance/")({
   validateSearch: (s: Record<string, unknown>): { tab?: string } => {
+    const raw = typeof s.tab === "string" ? s.tab : "";
+    // Normalize aliases for backward compatibility
+    const normalized =
+      raw === "loans" || raw === "gold_advance"
+        ? "advances"
+        : raw === "withdrawals" || raw === "allowances"
+          ? "allocation"
+          : raw;
+
     const allowed = new Set([
       "daily",
       "monthly",
       "rules",
-      "withdrawals",
-      "loans",
+      "allocation",
       "advances",
-      "allowances",
-      "gold_advance",
       "settlement",
       "passbook",
     ]);
     return {
-      tab: typeof s.tab === "string" && allowed.has(s.tab) ? s.tab : undefined,
+      tab: allowed.has(normalized) ? normalized : undefined,
     };
   },
   head: () => ({ meta: [{ title: "Attendance & Workers · AVS ERP" }] }),
@@ -114,16 +120,13 @@ export const Route = createFileRoute("/attendance/")({
 });
 
 const TABS = [
-  { key: "daily", label: "Worker Status", icon: CalendarDays },
+  { key: "daily", label: "Worker Status & Arrival", icon: CalendarDays },
   { key: "monthly", label: "Stay History", icon: CalendarRange },
   { key: "rules", label: "Salary Rules", icon: ClipboardList },
-  { key: "withdrawals", label: "Withdrawals", icon: Wallet },
-  { key: "loans", label: "Loans", icon: Landmark },
-  { key: "advances", label: "Salary Advance", icon: HandCoins },
-  { key: "allowances", label: "Allowances", icon: UtensilsCrossed },
-  { key: "gold_advance", label: "Gold Advance", icon: Coins },
+  { key: "allocation", label: "Weekly Allocation & Wastage", icon: UtensilsCrossed },
+  { key: "advances", label: "Gold & Material Advances", icon: Coins },
   { key: "settlement", label: "Karigar Period Settlement", icon: FileCheck2 },
-  { key: "passbook", label: "Worker Passbook", icon: BookOpenCheck },
+  { key: "passbook", label: "Worker Passbook & Ledger", icon: BookOpenCheck },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -192,19 +195,10 @@ function AttendancePage() {
               <TabsContent value="rules" className="mt-0">
                 <SalaryRulesTab workers={workers} selectedWorker={selectedWorker} />
               </TabsContent>
-              <TabsContent value="withdrawals" className="mt-0">
-                <WithdrawalsTab workers={workers} selectedWorker={selectedWorker} />
-              </TabsContent>
-              <TabsContent value="loans" className="mt-0">
-                <LoansTab workers={workers} selectedWorker={selectedWorker} />
-              </TabsContent>
-              <TabsContent value="advances" className="mt-0">
-                <SalaryAdvanceTab workers={workers} selectedWorker={selectedWorker} />
-              </TabsContent>
-              <TabsContent value="allowances" className="mt-0">
+              <TabsContent value="allocation" className="mt-0">
                 <AllowancesTab workers={workers} selectedWorker={selectedWorker} />
               </TabsContent>
-              <TabsContent value="gold_advance" className="mt-0">
+              <TabsContent value="advances" className="mt-0">
                 <GoldAdvanceTab workers={workers} selectedWorker={selectedWorker} />
               </TabsContent>
               <TabsContent value="settlement" className="mt-0">

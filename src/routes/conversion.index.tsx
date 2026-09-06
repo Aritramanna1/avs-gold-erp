@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Recycle, Plus, Printer, Sparkles, Building2 } from "lucide-react";
+import { Recycle, Plus, Printer, Flame, Building2 } from "lucide-react";
 import { useMetalConversion } from "@/lib/metal-conversion-store";
 import { useSettings } from "@/lib/settings-store";
 import { gramsToMg, mgToGrams } from "@/lib/gold";
@@ -52,7 +52,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/conversion/")({
-  head: () => ({ meta: [{ title: "Metal Conversion · AVS ERP" }] }),
+  head: () => ({ meta: [{ title: "Melting Process · AVS ERP" }] }),
   component: ConversionIndex,
 });
 
@@ -446,8 +446,8 @@ function ConversionIndex() {
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-7xl mx-auto">
       <PageHeader
-        title="Metal Conversion"
-        subtitle="Takes gold out of the vault/scrap ledger (going) and posts converted gold back into Gold Vault stock (coming). Weights shown are gross first — fine follows your Pure-gold threshold under Customization → Calculations."
+        title="Melting Process"
+        subtitle="Authoritative melting and purity conversion engine. Takes source metal from vault/scrap ledger (input), applies alloy compositions, tracks melting loss/recovery, and deposits converted gold into Gold Vault stock."
         actions={
           <Button
             onClick={() => {
@@ -462,7 +462,7 @@ function ConversionIndex() {
             className="gap-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold"
           >
             <Plus className="h-4 w-4" />
-            New Conversion
+            New Melting Batch
           </Button>
         }
       />
@@ -939,7 +939,7 @@ function ConversionIndex() {
             <div className="p-3.5 rounded-lg border bg-amber-500/5 border-amber-500/30 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-foreground text-xs flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4 text-amber-500" />
+                  <Flame className="h-4 w-4 text-amber-500" />
                   Fine gold audit
                 </span>
               </div>

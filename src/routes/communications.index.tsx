@@ -82,6 +82,7 @@ import { EmailTemplateEditorPanel } from "@/components/communications/EmailTempl
 import { TenantEmailConfigForm } from "@/components/communications/TenantEmailConfigForm";
 import { WhatsAppOnboardingPanel } from "@/components/communications/WhatsAppOnboardingPanel";
 import { ScheduledReportsPanel } from "@/components/communications/ScheduledReportsPanel";
+import { JewelleryCampaignStudio } from "@/components/communications/JewelleryCampaignStudio";
 import { ModuleSkeleton } from "@/components/module-skeleton";
 
 const LazyCommunicationCentre = lazy(async () => ({
@@ -539,6 +540,22 @@ function CommunicationsDashboardPage() {
     toast.success("Activity logged on timeline.");
   };
 
+  // Drag and Drop state for Sales Pipeline
+  const [draggedOppId, setDraggedOppId] = useState<string | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+
+  const handleMoveOppStage = async (oppId: string, newStage: OpportunityStage) => {
+    const opp = opportunities.find((o) => o.id === oppId);
+    if (!opp || opp.stage === newStage) return;
+    await saveOpportunity({
+      ...opp,
+      stage: newStage,
+      updatedAt: new Date().toISOString(),
+    });
+    const targetLabel = PIPELINE_STAGES.find((s) => s.key === newStage)?.label || newStage;
+    toast.success(`Moved "${opp.leadName}" to ${targetLabel}`);
+  };
+
   const handleOpenNewOpp = () => {
     setSelectedOpp(null);
     setOppFormName("");
@@ -588,6 +605,19 @@ function CommunicationsDashboardPage() {
     await saveOpportunity(payload);
     toast.success("Opportunity saved");
     setOppModalOpen(false);
+
+    // Reset form fields completely
+    setSelectedOpp(null);
+    setOppFormName("");
+    setOppFormPersonId("");
+    setOppFormStage("lead");
+    setOppFormPriority("medium");
+    setOppFormSource("unknown");
+    setOppFormBuyerType("individual");
+    setOppFormValue("");
+    setOppFormGold("");
+    setOppFormRemarks("");
+    setOppFormFollowUp("");
   };
 
   const handleOpenNewTask = () => {
@@ -686,18 +716,12 @@ function CommunicationsDashboardPage() {
           </TabsTrigger>
           <TabsTrigger value="pipeline" className="gap-2 text-xs">
             Sales Pipeline
-            <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1">
-              Soon
-            </Badge>
           </TabsTrigger>
           <TabsTrigger value="followups" className="gap-2 text-xs">
             Follow-ups
           </TabsTrigger>
           <TabsTrigger value="campaigns" className="gap-2 text-xs">
             Campaigns
-            <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1">
-              Soon
-            </Badge>
           </TabsTrigger>
           <TabsTrigger value="automation" className="gap-2 text-xs">
             Automation
@@ -1000,105 +1024,206 @@ function CommunicationsDashboardPage() {
         </TabsContent>
 
         {/* 3. PIPELINE */}
-        <TabsContent value="pipeline" className="mt-4">
-          {CRM_PIPELINE_ENABLED ? (
-            <div className="overflow-x-auto pb-4">
-              <div className="flex gap-4 min-w-[1200px]">
-                {PIPELINE_STAGES.map((col) => {
-                  const stageOpps = opportunities.filter(
-                    (o) => o.branchId === branchId && o.stage === col.key,
-                  );
-                  const stageTotalVal = stageOpps.reduce((s, o) => s + o.estimatedValuePaise, 0);
+        <TabsContent value="pipeline" className="mt-4 space-y-4">
+          {/* Pipeline Summary Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 bg-card border border-border p-4 rounded-xl shadow-xs">
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Active Leads</p>
+                <p className="text-xl font-bold font-mono text-blue-400">
+                  {opportunities.filter((o) => o.branchId === branchId && o.stage !== "lost" && o.stage !== "won").length}
+                </p>
+              </div>
+              <div className="border-l border-border pl-6">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Pipeline Value</p>
+                <p className="text-xl font-bold font-mono text-gold">
+                  ₹{paiseToRupees(opportunities.filter((o) => o.branchId === branchId && o.stage !== "lost" && o.stage !== "won").reduce((s, o) => s + o.estimatedValuePaise, 0))}
+                </p>
+              </div>
+              <div className="border-l border-border pl-6">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Won Deals</p>
+                <p className="text-xl font-bold font-mono text-emerald-400">
+                  ₹{paiseToRupees(opportunities.filter((o) => o.branchId === branchId && o.stage === "won").reduce((s, o) => s + o.estimatedValuePaise, 0))}
+                </p>
+              </div>
+            </div>
 
-                  return (
-                    <div
-                      key={col.key}
-                      className="flex-1 min-w-[220px] bg-card/40 rounded-md border border-border p-3 flex flex-col gap-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">
+            <Button
+              className="bg-gold hover:bg-gold-600 text-slate-950 font-bold gap-1.5 text-xs shadow-xs"
+              onClick={handleOpenNewOpp}
+            >
+              <Plus className="h-4 w-4" /> New Opportunity
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto pb-4">
+            <div className="flex gap-4 min-w-[1200px]">
+              {PIPELINE_STAGES.map((col) => {
+                const stageOpps = opportunities.filter(
+                  (o) => o.branchId === branchId && o.stage === col.key,
+                );
+                const stageTotalVal = stageOpps.reduce((s, o) => s + o.estimatedValuePaise, 0);
+
+                return (
+                  <div
+                    key={col.key}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      setDragOverStage(col.key);
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverStage === col.key) setDragOverStage(null);
+                    }}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      setDragOverStage(null);
+                      const oppId = e.dataTransfer.getData("text/plain") || draggedOppId;
+                      if (oppId) {
+                        await handleMoveOppStage(oppId, col.key);
+                        setDraggedOppId(null);
+                      }
+                    }}
+                    className={`flex-1 min-w-[220px] bg-card/60 rounded-xl border p-3 flex flex-col gap-3 shadow-xs transition-all ${
+                      dragOverStage === col.key
+                        ? "border-gold bg-gold/10 ring-2 ring-gold/40"
+                        : "border-border"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                      <div>
+                        <h3 className="font-bold text-xs uppercase tracking-wider text-foreground">
                           {col.label}
                         </h3>
-                        <Badge variant="outline" className="text-[10px]">
+                        <p className="text-[10px] text-gold font-mono font-medium mt-0.5">
+                          ₹{paiseToRupees(stageTotalVal)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-[10px] font-mono">
                           {stageOpps.length}
                         </Badge>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedOpp(null);
+                            setOppFormName("");
+                            setOppFormPersonId("");
+                            setOppFormStage(col.key);
+                            setOppFormPriority("medium");
+                            setOppFormSource("unknown");
+                            setOppFormBuyerType("individual");
+                            setOppFormValue("");
+                            setOppFormGold("");
+                            setOppFormRemarks("");
+                            setOppFormFollowUp("");
+                            setOppModalOpen(true);
+                          }}
+                          className="h-5 w-5 rounded bg-muted hover:bg-gold hover:text-slate-950 grid place-items-center text-xs transition-colors"
+                          title={`Add lead to ${col.label}`}
+                        >
+                          +
+                        </button>
                       </div>
-                      <div className="text-[10px] text-muted-foreground">
-                        Value: ₹{paiseToRupees(stageTotalVal)}
-                      </div>
-                      <div className="space-y-2 flex-1 min-h-[400px] max-h-[600px] overflow-y-auto p-0.5">
-                        {stageOpps.map((opp) => {
-                          const cust = people.find((p) => p.id === opp.personId);
-                          return (
-                            <div
-                              key={opp.id}
-                              className="bg-card hover:bg-muted/30 border border-border p-3 rounded-lg shadow-sm space-y-2 relative group cursor-pointer"
-                              onClick={() => {
-                                setSelectedOpp(opp);
-                                setOppFormName(opp.leadName);
-                                setOppFormPersonId(opp.personId || "");
-                                setOppFormStage(opp.stage);
-                                setOppFormPriority(opp.priority);
-                                setOppFormSource(opp.source);
-                                setOppFormBuyerType(opp.buyerType);
-                                setOppFormValue(String(paiseToRupees(opp.estimatedValuePaise)));
-                                setOppFormGold(
-                                  opp.targetGoldMg ? String(opp.targetGoldMg / 1000) : "",
-                                );
-                                setOppFormRemarks(opp.remarks || "");
-                                setOppFormFollowUp(opp.followUpDate || "");
-                                setOppModalOpen(true);
-                              }}
-                            >
-                              <div className="font-medium text-sm leading-tight pr-5">
-                                {opp.leadName}
+                    </div>
+
+                    <div className="space-y-2 flex-1 min-h-[420px] max-h-[620px] overflow-y-auto p-0.5">
+                      {stageOpps.map((opp) => {
+                        const cust = people.find((p) => p.id === opp.personId);
+                        const isDragging = draggedOppId === opp.id;
+                        return (
+                          <div
+                            key={opp.id}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData("text/plain", opp.id);
+                              e.dataTransfer.effectAllowed = "move";
+                              setDraggedOppId(opp.id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedOppId(null);
+                              setDragOverStage(null);
+                            }}
+                            className={`bg-card hover:bg-muted/40 border border-border/80 hover:border-gold/50 p-3 rounded-lg shadow-xs space-y-2 relative group cursor-grab active:cursor-grabbing transition-all ${
+                              isDragging ? "opacity-30 border-dashed border-gold scale-95" : ""
+                            }`}
+                            onClick={() => {
+                              setSelectedOpp(opp);
+                              setOppFormName(opp.leadName);
+                              setOppFormPersonId(opp.personId || "");
+                              setOppFormStage(opp.stage);
+                              setOppFormPriority(opp.priority);
+                              setOppFormSource(opp.source);
+                              setOppFormBuyerType(opp.buyerType);
+                              setOppFormValue(String(paiseToRupees(opp.estimatedValuePaise)));
+                              setOppFormGold(
+                                opp.targetGoldMg ? String(opp.targetGoldMg / 1000) : "",
+                              );
+                              setOppFormRemarks(opp.remarks || "");
+                              setOppFormFollowUp(opp.followUpDate || "");
+                              setOppModalOpen(true);
+                            }}
+                          >
+                            <div className="font-semibold text-xs leading-tight pr-6 text-foreground">
+                              {opp.leadName}
+                            </div>
+                            {cust && (
+                              <div className="text-[11px] text-gold truncate flex items-center gap-1 font-medium">
+                                <span>{cust.fullName}</span>
+                                {cust.phone && <span className="text-muted-foreground text-[10px]">({cust.phone})</span>}
                               </div>
-                              {cust && (
-                                <div className="text-xs text-gold truncate">{cust.fullName}</div>
-                              )}
-                              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                                <span>₹{paiseToRupees(opp.estimatedValuePaise)}</span>
+                            )}
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/40">
+                              <span className="font-mono font-bold text-foreground">
+                                ₹{paiseToRupees(opp.estimatedValuePaise)}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {opp.targetGoldMg > 0 && (
+                                  <Badge variant="outline" className="text-[9px] py-0 px-1 border-gold/30 text-gold">
+                                    {(opp.targetGoldMg / 1000).toFixed(1)}g
+                                  </Badge>
+                                )}
                                 {opp.priority === "high" && (
                                   <Badge className="bg-red-500/10 text-red-400 border-red-500/20 text-[9px] py-0">
                                     High
                                   </Badge>
                                 )}
                               </div>
-                              <div className="absolute top-2 right-2 flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Select
-                                  value={opp.stage}
-                                  onValueChange={(val) => {
-                                    void moveStage(opp.id, val as OpportunityStage);
-                                    toast.success(`Lead moved to ${val.toUpperCase()}`);
-                                  }}
-                                >
-                                  <SelectTrigger className="w-6 h-6 p-0 border-0 bg-transparent text-muted-foreground hover:text-gold">
-                                    <ChevronRight className="h-3.5 w-3.5" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {PIPELINE_STAGES.map((s) => (
-                                      <SelectItem key={s.key} value={s.key}>
-                                        {s.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
                             </div>
-                          );
-                        })}
-                        {stageOpps.length === 0 && (
-                          <div className="text-center text-xs text-muted-foreground/35 py-10">
-                            No items
+                            <div className="absolute top-2 right-2 flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Select
+                                value={opp.stage}
+                                onValueChange={(val) => {
+                                  void moveStage(opp.id, val as OpportunityStage);
+                                  toast.success(`Lead moved to ${val.toUpperCase()}`);
+                                }}
+                              >
+                                <SelectTrigger className="w-6 h-6 p-0 border-0 bg-transparent text-muted-foreground hover:text-gold">
+                                  <ChevronRight className="h-3.5 w-3.5" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {PIPELINE_STAGES.map((s) => (
+                                    <SelectItem key={s.key} value={s.key}>
+                                      {s.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
-                        )}
-                      </div>
+                        );
+                      })}
+                      {stageOpps.length === 0 && (
+                        <div className="text-center text-xs text-muted-foreground/40 py-12 border border-dashed border-border/60 rounded-lg">
+                          No leads in this stage
+                        </div>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
-          ) : null}
+          </div>
         </TabsContent>
 
         {/* 4. FOLLOW-UPS */}
@@ -1181,125 +1306,7 @@ function CommunicationsDashboardPage() {
 
         {/* 5. CAMPAIGNS */}
         <TabsContent value="campaigns" className="mt-4">
-          {MARKETING_CAMPAIGNS_ENABLED ? (
-            <Card className="p-5 border-border bg-card space-y-4 max-w-2xl mx-auto">
-              <h3 className="font-semibold text-sm flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-gold" /> Bulk Campaign Creator
-              </h3>
-              <div className="space-y-4 text-xs">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label>Channel</Label>
-                    <Select
-                      value={campaignChannel}
-                      onValueChange={(val) => setCampaignChannel(val as any)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="whatsapp">WhatsApp Business API</SelectItem>
-                        <SelectItem value="email">SMTP Email Campaign</SelectItem>
-                        <SelectItem value="sms">SMS Gateway Gateway</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Target Customer Filter Segment</Label>
-                    <Select value={campaignFilterType} onValueChange={setCampaignFilterType}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="birthday">Today's Birthdays</SelectItem>
-                        <SelectItem value="vip">VIP Customers</SelectItem>
-                        <SelectItem value="outstanding">Outstanding Payments Due</SelectItem>
-                        <SelectItem value="all">
-                          Entire Database ({people.length} contacts)
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Label>Campaign Title / Internal Name</Label>
-                  <Input
-                    value={campaignTitle}
-                    onChange={(e) => setCampaignTitle(e.target.value)}
-                    placeholder="e.g. Diwali Festival Wishes 2026"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label>
-                    Message Template Body (Supports variables like{" "}
-                    {"{{customer_name}}, {{invoice_number}}"})
-                  </Label>
-                  <Textarea
-                    value={campaignText}
-                    onChange={(e) => setCampaignText(e.target.value)}
-                    placeholder="Write message template here..."
-                    rows={4}
-                  />
-                </div>
-
-                <div className="rounded-md border border-border bg-muted/20 p-3">
-                  <span className="font-bold">Total Target Receivers:</span> {campaignTargetsCount}{" "}
-                  people
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <Button
-                    className="bg-gold text-primary-foreground font-semibold"
-                    onClick={handleTriggerCampaign}
-                  >
-                    <Play className="h-4 w-4 mr-1.5" /> Launch Campaign
-                  </Button>
-                </div>
-
-                {/* WA queue: popup-blocker-safe sequential sending */}
-                {waQueue.length > 0 && (
-                  <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-gold">
-                        WhatsApp Queue ({waQueueIdx}/{waQueue.length} sent)
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 text-[11px]"
-                        onClick={() => {
-                          setWaQueue([]);
-                          setWaQueueIdx(0);
-                        }}
-                      >
-                        Clear
-                      </Button>
-                    </div>
-                    {waQueueIdx < waQueue.length ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground truncate flex-1">
-                          {waQueue[waQueueIdx].name}
-                        </span>
-                        <a href={waQueue[waQueueIdx].url} target="_blank" rel="noreferrer">
-                          <Button
-                            size="sm"
-                            className="h-7 text-[11px]"
-                            onClick={() => setWaQueueIdx((i) => i + 1)}
-                          >
-                            Open WhatsApp
-                          </Button>
-                        </a>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-emerald-400">All messages opened.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </Card>
-          ) : null}
+          <JewelleryCampaignStudio branchId={branchId} />
         </TabsContent>
 
         {/* 6. AUTOMATION — AVS notification preferences */}

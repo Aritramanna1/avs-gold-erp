@@ -98,6 +98,13 @@ export interface InvoiceItem {
    * round(goldValuePaise * makingChargePct / 100) at entry time.
    */
   makingChargePct?: number;
+  /** Gold-mode additional charges in integer mg (Gold-Only mode) */
+  hallmarkChargesGoldMg?: number;
+  markingChargesGoldMg?: number;
+  makingChargesGoldMg?: number;
+  otherChargesGoldMg?: number;
+  stoneChargesGoldMg?: number;
+  discountGoldMg?: number;
   /**
    * "job_work" (default): the customer (jeweller) already owns the gold —
    * bill only making/stone/hallmark/other charges, goldValuePaise is still
@@ -125,9 +132,12 @@ export interface InvoiceItem {
   jn?: 1 | 2;
   /** Offline line Remark. */
   lineRemark?: string;
+  /** Item photograph or uploaded bill image */
+  imageUrl?: string;
   /** Frozen gold formula at last recalc / post. */
   formulaSnapshot?: import("./gold-calculation-rules").FormulaSnapshot;
 }
+
 
 /** Offline Retail_details2 URD grid on the same sale voucher. */
 export interface InvoiceUrdLine {
@@ -609,6 +619,7 @@ export interface InvoiceGoldTotals {
   makingChargesMg: number;
   stoneChargesMg: number;
   hallmarkChargesMg: number;
+  markingChargesMg?: number;
   otherChargesMg: number;
   discountMg: number;
   subtotalMg: number;
@@ -636,40 +647,84 @@ export function computeInvoiceGoldTotals(
   >,
   payments: PaymentRecord[] = [],
   ratePerGramPaise: number,
+  isGoldSettlementMode: boolean = false,
 ): InvoiceGoldTotals {
-  const productFineMg = items.reduce((sum, item) => sum + Math.max(0, item.fineMg), 0);
-  const goldValuePaise = items.reduce((sum, item) => sum + Math.max(0, item.goldValuePaise), 0);
-  const makingChargesPaise = items.reduce(
-    (sum, item) => sum + Math.max(0, item.makingChargesPaise),
-    0,
-  );
-  const stoneChargesPaise = items.reduce(
-    (sum, item) => sum + Math.max(0, item.stoneChargesPaise),
-    0,
-  );
-  const hallmarkChargesPaise = items.reduce(
-    (sum, item) => sum + Math.max(0, item.hallmarkChargesPaise ?? 0),
-    0,
-  );
-  const otherChargesPaise = items.reduce(
-    (sum, item) => sum + Math.max(0, item.otherChargesPaise),
-    0,
-  );
-  const discountPaise = items.reduce((sum, item) => sum + Math.max(0, item.discountPaise), 0);
+  const productFineMg = items.reduce((sum, item) => sum + Math.max(0, item.fineMg || 0), 0);
+  const goldValuePaise = items.reduce((sum, item) => sum + Math.max(0, item.goldValuePaise || 0), 0);
+
+  const makingChargesMg = items.reduce((sum, item) => {
+    if (item.makingChargesGoldMg != null && item.makingChargesGoldMg > 0) return sum + item.makingChargesGoldMg;
+    return sum + (ratePerGramPaise > 0 ? paiseToFineGoldMg(item.makingChargesPaise || 0, ratePerGramPaise) : 0);
+  }, 0);
+
+  const hallmarkChargesMg = items.reduce((sum, item) => {
+    if (item.hallmarkChargesGoldMg != null && item.hallmarkChargesGoldMg > 0) return sum + item.hallmarkChargesGoldMg;
+    return sum + (ratePerGramPaise > 0 ? paiseToFineGoldMg(item.hallmarkChargesPaise || 0, ratePerGramPaise) : 0);
+  }, 0);
+
+  const markingChargesMg = items.reduce((sum, item) => {
+    return sum + Math.max(0, item.markingChargesGoldMg || 0);
+  }, 0);
+
+  const otherChargesMg = items.reduce((sum, item) => {
+    if (item.otherChargesGoldMg != null && item.otherChargesGoldMg > 0) return sum + item.otherChargesGoldMg;
+    return sum + (ratePerGramPaise > 0 ? paiseToFineGoldMg(item.otherChargesPaise || 0, ratePerGramPaise) : 0);
+  }, 0);
+
+  const stoneChargesMg = items.reduce((sum, item) => {
+    if (item.stoneChargesGoldMg != null && item.stoneChargesGoldMg > 0) return sum + item.stoneChargesGoldMg;
+    return sum + (ratePerGramPaise > 0 ? paiseToFineGoldMg(item.stoneChargesPaise || 0, ratePerGramPaise) : 0);
+  }, 0);
+
+  const discountMg = items.reduce((sum, item) => {
+    if (item.discountGoldMg != null && item.discountGoldMg > 0) return sum + item.discountGoldMg;
+    return sum + (ratePerGramPaise > 0 ? paiseToFineGoldMg(item.discountPaise || 0, ratePerGramPaise) : 0);
+  }, 0);
+
   const physicalGoldReceivedMg = payments.reduce(
     (sum, payment) => sum + Math.max(0, payment.goldFineMg ?? 0),
     0,
   );
 
+  if (isGoldSettlementMode) {
+    const grandTotalMg = Math.max(
+      0,
+      productFineMg + makingChargesMg + hallmarkChargesMg + markingChargesMg + otherChargesMg + stoneChargesMg - discountMg,
+    );
+    const paidMg = physicalGoldReceivedMg;
+    const balanceMg = Math.max(0, grandTotalMg - paidMg);
+
+    return {
+      ratePerGramPaise: 0,
+      productFineMg,
+      goldValueMg: productFineMg,
+      makingChargesMg,
+      stoneChargesMg,
+      hallmarkChargesMg,
+      markingChargesMg,
+      otherChargesMg,
+      discountMg,
+      subtotalMg: grandTotalMg,
+      adjustmentMg: 0,
+      gstMg: 0,
+      tcsMg: 0,
+      grandTotalMg,
+      paidMg,
+      balanceMg,
+      physicalGoldReceivedMg,
+    };
+  }
+
   return {
     ratePerGramPaise,
     productFineMg,
     goldValueMg: paiseToFineGoldMg(goldValuePaise, ratePerGramPaise),
-    makingChargesMg: paiseToFineGoldMg(makingChargesPaise, ratePerGramPaise),
-    stoneChargesMg: paiseToFineGoldMg(stoneChargesPaise, ratePerGramPaise),
-    hallmarkChargesMg: paiseToFineGoldMg(hallmarkChargesPaise, ratePerGramPaise),
-    otherChargesMg: paiseToFineGoldMg(otherChargesPaise, ratePerGramPaise),
-    discountMg: paiseToFineGoldMg(discountPaise, ratePerGramPaise),
+    makingChargesMg,
+    stoneChargesMg,
+    hallmarkChargesMg,
+    markingChargesMg,
+    otherChargesMg,
+    discountMg,
     subtotalMg: paiseToFineGoldMg(
       totals.grandTotalPaise - totals.gstPaise - totals.tcsPaise + totals.adjustmentPaise,
       ratePerGramPaise,
@@ -683,6 +738,7 @@ export function computeInvoiceGoldTotals(
     physicalGoldReceivedMg,
   };
 }
+
 
 /**
  * Splits an invoice's recorded payments by asset type — the "Payment

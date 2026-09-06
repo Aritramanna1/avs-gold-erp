@@ -20,7 +20,7 @@ import { mgToGrams } from "@/lib/gold";
 import { SendToPolishingDialog } from "@/components/send-to-polishing-dialog";
 import { ReceiveFromPolishingDialog } from "@/components/receive-from-polishing-dialog";
 import { TransactionModuleNav } from "@/components/transaction-module-nav";
-import { Sparkles, PackageCheck, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { Flame, PackageCheck, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 
 export const Route = createFileRoute("/workshop/polishing")({
   head: () => ({ meta: [{ title: "Polishing · AVS ERP" }] }),
@@ -69,7 +69,7 @@ function PolishingPage() {
           subtitle="Polishing is part of daily workshop transactions — turn it on to send and receive polish jobs."
         />
         <div className="rounded-md border border-dashed border-border bg-card/40 p-12 mt-6">
-          <Sparkles className="mx-auto h-10 w-10 text-muted-foreground" />
+          <Flame className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="mt-4 font-serif text-xl text-gold">Polishing is currently off</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             Enable it here (or under Settings → Business Rules) so polish jobs stay with the rest of
@@ -90,7 +90,7 @@ function PolishingPage() {
               }
             }}
           >
-            <Sparkles className="h-4 w-4" />
+            <Flame className="h-4 w-4" />
             Turn polishing on
           </Button>
         </div>
@@ -111,7 +111,7 @@ function PolishingPage() {
               onClick={() => setSendOpen(true)}
               data-testid="polishing-send-btn"
             >
-              <Sparkles className="h-4 w-4" /> Send to Polishing
+              <Flame className="h-4 w-4" /> Send to Polishing
             </Button>
             <Button
               variant="outline"

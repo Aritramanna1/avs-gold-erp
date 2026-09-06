@@ -276,7 +276,7 @@ export function buildCustomerLedgerStatementData(recordId: string): PrintDocumen
     debit: "—",
     credit: "—",
     goldBal: `${mgToGrams(goldMg)} g`,
-    moneyBal: `₹${paiseToRupees(moneyPaise)}`,
+    moneyBal: `INR ${paiseToRupees(moneyPaise)}`,
   });
 
   // A transaction row (shared by the monthly and the period path — both carry
@@ -285,7 +285,7 @@ export function buildCustomerLedgerStatementData(recordId: string): PrintDocumen
   const txnRow = (row: TxnLike, mfg: boolean): Row => {
     const equiv =
       row.cashGoldEquivMg && row.ratePerGramPaise
-        ? `\n≈ ${mgToGrams(row.cashGoldEquivMg)} g @ ₹${paiseToRupees(row.ratePerGramPaise)}/g`
+        ? `\n≈ ${mgToGrams(row.cashGoldEquivMg)} g @ INR ${paiseToRupees(row.ratePerGramPaise)}/g`
         : "";
     return {
       date: row.date,
@@ -296,10 +296,10 @@ export function buildCustomerLedgerStatementData(recordId: string): PrintDocumen
       purity: row.purity ? getCaratLabel(row.purity) : "—",
       goldIn: row.goldInMg > 0 ? `${mgToGrams(row.goldInMg)} g` : "—",
       goldOut: row.goldOutMg > 0 ? `${mgToGrams(row.goldOutMg)} g` : "—",
-      debit: row.moneyDebitPaise > 0 ? `₹${paiseToRupees(row.moneyDebitPaise)}` : "—",
-      credit: row.moneyCreditPaise > 0 ? `₹${paiseToRupees(row.moneyCreditPaise)}${equiv}` : "—",
+      debit: row.moneyDebitPaise > 0 ? `INR ${paiseToRupees(row.moneyDebitPaise)}` : "—",
+      credit: row.moneyCreditPaise > 0 ? `INR ${paiseToRupees(row.moneyCreditPaise)}${equiv}` : "—",
       goldBal: `${mgToGrams(row.closingGoldMg)} g`,
-      moneyBal: `₹${paiseToRupees(row.closingMoneyPaise)}`,
+      moneyBal: `INR ${paiseToRupees(row.closingMoneyPaise)}`,
     };
   };
 
@@ -325,10 +325,10 @@ export function buildCustomerLedgerStatementData(recordId: string): PrintDocumen
           purity: "—",
           goldIn: l.goldInMg > 0 ? `${mgToGrams(l.goldInMg)} g` : "—",
           goldOut: l.goldOutMg > 0 ? `${mgToGrams(l.goldOutMg)} g` : "—",
-          debit: l.moneyDebitPaise > 0 ? `₹${paiseToRupees(l.moneyDebitPaise)}` : "—",
-          credit: l.moneyCreditPaise > 0 ? `₹${paiseToRupees(l.moneyCreditPaise)}` : "—",
+          debit: l.moneyDebitPaise > 0 ? `INR ${paiseToRupees(l.moneyDebitPaise)}` : "—",
+          credit: l.moneyCreditPaise > 0 ? `INR ${paiseToRupees(l.moneyCreditPaise)}` : "—",
           goldBal: `${mgToGrams(l.closingGoldMg)} g`,
-          moneyBal: `₹${paiseToRupees(l.closingMoneyPaise)}`,
+          moneyBal: `INR ${paiseToRupees(l.closingMoneyPaise)}`,
         });
       } else {
         rows.push(
@@ -375,9 +375,9 @@ export function buildCustomerLedgerStatementData(recordId: string): PrintDocumen
         : "Gold settled";
   const cashOutstanding =
     ledger.moneyDuePaise > 0
-      ? `₹${paiseToRupees(ledger.moneyDuePaise)} due from party`
+      ? `INR ${paiseToRupees(ledger.moneyDuePaise)} due from party`
       : ledger.moneyAdvancePaise > 0
-        ? `₹${paiseToRupees(ledger.moneyAdvancePaise)} advance held`
+        ? `INR ${paiseToRupees(ledger.moneyAdvancePaise)} advance held`
         : "Cash settled";
 
   const addressParts = [person.currentAddress, person.villageCity, person.state].filter(Boolean);
@@ -404,16 +404,16 @@ export function buildCustomerLedgerStatementData(recordId: string): PrintDocumen
         (hasPeriod ? `Opening: ${mgToGrams(openGoldMg)} g\n` : "") +
         `Total Recd: ${mgToGrams(recdGoldMg)} g\n` +
         `Total Issued: ${mgToGrams(issdGoldMg)} g`,
-      moneyBalanceLabel: `₹ ${paiseToRupees(closeMoneyPaise)}`,
+      moneyBalanceLabel: `INR ${paiseToRupees(closeMoneyPaise)}`,
       moneyBalanceNarrative: MONEY_NARRATIVE(closeMoneyPaise),
       moneyMovementText:
-        (hasPeriod ? `Opening: ₹ ${paiseToRupees(openMoneyPaise)}\n` : "") +
-        `Total Debit: ₹ ${paiseToRupees(debitPaise)}\n` +
-        `Total Credit: ₹ ${paiseToRupees(creditPaise)}`,
+        (hasPeriod ? `Opening: INR ${paiseToRupees(openMoneyPaise)}\n` : "") +
+        `Total Debit: INR ${paiseToRupees(debitPaise)}\n` +
+        `Total Credit: INR ${paiseToRupees(creditPaise)}`,
       // Final Closing Balance section printed at the end of the statement.
-      closingGoldText: `${mgToGrams(closeGoldMg)} g fine\n${goldBalWord(closeGoldMg)}`,
-      closingCashText: `₹ ${paiseToRupees(closeMoneyPaise)}\n${cashBalWord(closeMoneyPaise)}`,
-      closingOutstandingText: `${goldOutstanding}\n${cashOutstanding}`,
+      closingGoldText: `${mgToGrams(closeGoldMg)} g fine (${goldBalWord(closeGoldMg)})`,
+      closingCashText: `INR ${paiseToRupees(closeMoneyPaise)} (${cashBalWord(closeMoneyPaise)})`,
+      closingOutstandingText: `${goldOutstanding} · ${cashOutstanding}`,
     },
     tables: { entries: rows },
     flags: {

@@ -48,10 +48,17 @@ export interface DailyMaterialSlip {
 
 /** All of a worker's entries, oldest first (stable running-balance order). */
 function workerEntriesChrono(workerId: string): WorkerGoldBookEntry[] {
+  if (!workerId) return [];
   return useWorkerGoldBook
     .getState()
-    .entries.filter((e) => e.workerId === workerId)
-    .sort((a, b) => (a.date === b.date ? a.createdAt - b.createdAt : a.date < b.date ? -1 : 1));
+    .entries.filter((e) => e && e.workerId === workerId)
+    .sort((a, b) => {
+      const aDate = a?.date || "";
+      const bDate = b?.date || "";
+      const aTs = Number(a?.createdAt) || 0;
+      const bTs = Number(b?.createdAt) || 0;
+      return aDate === bDate ? aTs - bTs : aDate < bDate ? -1 : 1;
+    });
 }
 
 /**
@@ -60,16 +67,19 @@ function workerEntriesChrono(workerId: string): WorkerGoldBookEntry[] {
  * and closing balance.
  */
 export function compileWorkerDailySlips(workerId: string): DailyMaterialSlip[] {
-  const worker = usePeople.getState().people.find((p) => p.id === workerId) ?? null;
+  if (!workerId) return [];
+  const worker = usePeople.getState().people.find((p) => p && p.id === workerId) ?? null;
   const chrono = workerEntriesChrono(workerId);
   if (chrono.length === 0) return [];
 
   // Group by date in chronological order so we can accumulate custody balance.
   const byDate = new Map<string, WorkerGoldBookEntry[]>();
   for (const e of chrono) {
-    const list = byDate.get(e.date) ?? [];
+    if (!e) continue;
+    const dateKey = e.date || "unknown";
+    const list = byDate.get(dateKey) ?? [];
     list.push(e);
-    byDate.set(e.date, list);
+    byDate.set(dateKey, list);
   }
 
   let running = 0;
@@ -77,10 +87,11 @@ export function compileWorkerDailySlips(workerId: string): DailyMaterialSlip[] {
   for (const [date, list] of byDate) {
     const issues = list.filter((e) => e.type === "given");
     const returns = list.filter((e) => e.type === "return");
-    const totalIssuedFineMg = issues.reduce((s, e) => s + e.fineMg, 0);
-    const totalReturnedFineMg = returns.reduce((s, e) => s + e.fineMg, 0);
+    const totalIssuedFineMg = issues.reduce((s, e) => s + (Number(e.fineMg) || 0), 0);
+    const totalReturnedFineMg = returns.reduce((s, e) => s + (Number(e.fineMg) || 0), 0);
     const before = running;
     running += totalIssuedFineMg - totalReturnedFineMg;
+    const activityTimestamps = list.map((e) => Number(e.createdAt) || 0);
     slips.push({
       slipNumber: dailySlipNumber(date),
       material: "gold",
@@ -95,7 +106,7 @@ export function compileWorkerDailySlips(workerId: string): DailyMaterialSlip[] {
       totalReturnedFineMg,
       custodyBalanceBeforeMg: before,
       custodyBalanceAfterMg: running,
-      lastActivityTs: Math.max(...list.map((e) => e.createdAt)),
+      lastActivityTs: activityTimestamps.length > 0 ? Math.max(...activityTimestamps) : Date.now(),
     });
   }
 
@@ -105,10 +116,11 @@ export function compileWorkerDailySlips(workerId: string): DailyMaterialSlip[] {
 
 /** Every daily slip across all workers, newest first — the "Daily Slips" index. */
 export function compileAllDailySlips(): DailyMaterialSlip[] {
-  const workerIds = new Set(useWorkerGoldBook.getState().entries.map((e) => e.workerId));
+  const entries = useWorkerGoldBook.getState().entries || [];
+  const workerIds = new Set(entries.map((e) => e?.workerId).filter(Boolean) as string[]);
   return Array.from(workerIds)
     .flatMap((id) => compileWorkerDailySlips(id))
-    .sort((a, b) => b.lastActivityTs - a.lastActivityTs);
+    .sort((a, b) => (b.lastActivityTs || 0) - (a.lastActivityTs || 0));
 }
 
 /** One slip by (worker, date) — the reprint path from a Worker Gold Book row. */

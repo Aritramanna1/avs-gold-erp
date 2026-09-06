@@ -128,16 +128,34 @@ export interface WaConfig {
    * auto = Official for automation when ready, else OpenWA if enabled, else native share.
    */
   deliveryPreference: "official_api" | "openwa" | "native_share" | "auto";
+  /** Mode B Partner Billing Card (RBI Tokenization Compliant) */
+  partnerCardholderName?: string;
+  partnerCardLast4?: string;
+  partnerCardNetwork?: "Visa" | "MasterCard" | "RuPay" | "Amex" | "Diners";
+  partnerCardExpiry?: string;
+  partnerCardBank?: string;
+  partnerCardToken?: string;
+  partnerCardTokenizedAt?: string;
+  partnerCardConsent?: boolean;
 }
 
 export const WA_CONFIG_DEFAULTS: WaConfig = {
   waMode: "A",
   providerType: "whatsapp_deep_link",
+  deliveryPreference: "auto",
   enabled: false,
   phoneNumberId: "",
   accessToken: "",
   wabaId: "",
   businessAccountId: "",
+  partnerCardholderName: "",
+  partnerCardLast4: "",
+  partnerCardNetwork: "Visa",
+  partnerCardExpiry: "",
+  partnerCardBank: "",
+  partnerCardToken: "",
+  partnerCardTokenizedAt: "",
+  partnerCardConsent: false,
   businessVerificationStatus: "not_started",
   apiVersion: "v19.0",
   apiBaseUrl: "https://graph.facebook.com",
@@ -166,7 +184,6 @@ export const WA_CONFIG_DEFAULTS: WaConfig = {
   openwaConnectionStatus: "unknown",
   openwaLastCheckAt: "",
   officialApiEnabled: false,
-  deliveryPreference: "auto",
 };
 
 const WA_SECRET_FIELDS: Array<keyof WaConfig> = [

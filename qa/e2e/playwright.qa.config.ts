@@ -82,7 +82,7 @@ export default defineConfig({
   ],
   webServer: IS_LOCAL
     ? {
-        command: "npm run dev",
+        command: "npm run preview:shop",
         url: BASE_URL,
         reuseExistingServer: !CI,
         timeout: 120_000,

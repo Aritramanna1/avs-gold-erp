@@ -404,6 +404,87 @@ function WorkflowSettings() {
         />
       </section>
 
+      {/* Process & Workshop Delegation */}
+      <section className="rounded-md border border-border bg-card p-5 space-y-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Hammer className="h-4 w-4 text-gold" />
+          <h3 className="font-bold text-sm uppercase tracking-wider">Process & Workshop Delegation</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Configure whether specialized workshop processes (Polishing, Meena, Making) are routed to outside workers/vendors or handled by internal in-house karigars.
+        </p>
+
+        <div className="flex items-center justify-between gap-4 py-3 border-b border-border">
+          <div className="flex-1">
+            <div className="text-sm font-medium">Polishing Routing</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Select who performs polishing work. Outside worker restricts selection to outside polishers/vendors.
+            </div>
+          </div>
+          <Select
+            value={config.polishingProcessType ?? "outside"}
+            onValueChange={(v: "outside" | "in_house") => patch({ polishingProcessType: v })}
+          >
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="outside">Outside Worker / Vendor</SelectItem>
+              <SelectItem value="in_house">In-House Karigar</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <ToggleRow
+          label="Polishing Active by Default"
+          description="Automatically enable the Polishing step when creating job cards and manufacturing workflows."
+          checked={config.polishingEnabledByDefault ?? true}
+          onCheckedChange={(v) => patch({ polishingEnabledByDefault: v })}
+        />
+
+        <div className="flex items-center justify-between gap-4 py-3 border-b border-border">
+          <div className="flex-1">
+            <div className="text-sm font-medium">Meena (Enameling) Routing</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Select who performs Meena work.
+            </div>
+          </div>
+          <Select
+            value={config.meenaProcessType ?? "outside"}
+            onValueChange={(v: "outside" | "in_house") => patch({ meenaProcessType: v })}
+          >
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="outside">Outside Worker / Vendor</SelectItem>
+              <SelectItem value="in_house">In-House Karigar</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center justify-between gap-4 py-3">
+          <div className="flex-1">
+            <div className="text-sm font-medium">Making / Manufacturing Routing</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Primary routing for regular jewellery manufacturing.
+            </div>
+          </div>
+          <Select
+            value={config.makingProcessType ?? "in_house"}
+            onValueChange={(v: "in_house" | "outside") => patch({ makingProcessType: v })}
+          >
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="in_house">In-House Karigar</SelectItem>
+              <SelectItem value="outside">Outside Worker / Vendor</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </section>
+
       {/* Payment & Delivery */}
       <section className="rounded-md border border-border bg-card p-5 space-y-1">
         <div className="flex items-center gap-2 mb-4">

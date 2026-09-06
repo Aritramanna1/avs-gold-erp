@@ -98,6 +98,15 @@ export interface WorkflowConfig {
   outsideWorkApprovalRequired: boolean;
   /** When off, a Payment cannot exceed the current Labour Outstanding — blocks recording an advance. */
   outsideWorkAllowAdvancePayments: boolean;
+  // ── Process & Workshop Delegation ─────────────────────────────────────────
+  /** Whether Polishing is delegated to an Outside Vendor/Artisan or In-House Karigar */
+  polishingProcessType: "outside" | "in_house";
+  /** Whether Polishing phase is active/enabled by default on new jobcards/orders */
+  polishingEnabledByDefault: boolean;
+  /** Whether Meena (Enameling) is delegated to an Outside Vendor/Artisan or In-House Karigar */
+  meenaProcessType: "outside" | "in_house";
+  /** Whether Making/Manufacturing is primarily In-House or Outside Jobwork */
+  makingProcessType: "in_house" | "outside";
 }
 
 export const DEFAULT_WORKFLOW_MTJ: WorkflowConfig = {
@@ -129,6 +138,10 @@ export const DEFAULT_WORKFLOW_MTJ: WorkflowConfig = {
   outsideWorkGstRatePct: 5,
   outsideWorkApprovalRequired: false,
   outsideWorkAllowAdvancePayments: true,
+  polishingProcessType: "outside",
+  polishingEnabledByDefault: true,
+  meenaProcessType: "outside",
+  makingProcessType: "in_house",
 };
 
 export const WORKFLOW_PRESETS: Record<string, WorkflowConfig> = {
@@ -172,6 +185,9 @@ type PersistedWorkflowConfig = Omit<WorkflowConfig, "mode"> & {
   mode: PersistedBusinessMode;
 };
 
+const STORAGE_CONFIG_KEY = "avs_workflow_config_v2";
+const STORAGE_MODE_KEY = "avs_workflow_mode_v2";
+
 function normalizeWorkflowConfig(config: WorkflowConfig | PersistedWorkflowConfig): WorkflowConfig {
   return {
     ...config,
@@ -179,8 +195,32 @@ function normalizeWorkflowConfig(config: WorkflowConfig | PersistedWorkflowConfi
   };
 }
 
+function getInitialWorkflowConfig(): WorkflowConfig {
+  if (typeof window === "undefined") return DEFAULT_WORKFLOW_MTJ;
+  try {
+    const raw = localStorage.getItem(STORAGE_CONFIG_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return normalizeWorkflowConfig({ ...DEFAULT_WORKFLOW_MTJ, ...parsed });
+    }
+    const savedMode = localStorage.getItem(STORAGE_MODE_KEY) as BusinessMode | null;
+    if (savedMode) {
+      return normalizeWorkflowConfig({ ...DEFAULT_WORKFLOW_MTJ, mode: savedMode });
+    }
+  } catch {
+    /* fallback */
+  }
+  return DEFAULT_WORKFLOW_MTJ;
+}
+
 function persistWorkflow(config: WorkflowConfig): void {
   const normalized = normalizeWorkflowConfig(config);
+  try {
+    localStorage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(normalized));
+    localStorage.setItem(STORAGE_MODE_KEY, normalized.mode);
+  } catch {
+    /* ignore storage errors */
+  }
   void workflowSettingsRepository.saveAs("workflow_engine", {
     id: "workflow_engine",
     config: normalized,
@@ -188,16 +228,21 @@ function persistWorkflow(config: WorkflowConfig): void {
 }
 
 export const useWorkflowEngine = create<WorkflowEngineState>()((set) => ({
-  config: DEFAULT_WORKFLOW_MTJ,
+  config: getInitialWorkflowConfig(),
   async refresh() {
     const saved = await workflowSettingsRepository.read("workflow_engine").catch(() => null);
     if (saved?.config) {
-      set({
-        config: normalizeWorkflowConfig({
-          ...DEFAULT_WORKFLOW_MTJ,
-          ...(saved.config as WorkflowConfig | PersistedWorkflowConfig),
-        }),
+      const normalized = normalizeWorkflowConfig({
+        ...DEFAULT_WORKFLOW_MTJ,
+        ...(saved.config as WorkflowConfig | PersistedWorkflowConfig),
       });
+      try {
+        localStorage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(normalized));
+        localStorage.setItem(STORAGE_MODE_KEY, normalized.mode);
+      } catch {
+        /* ignore */
+      }
+      set({ config: normalized });
     }
   },
   patch: (diff) =>

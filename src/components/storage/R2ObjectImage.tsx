@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ImageIcon } from "lucide-react";
 import { getDirectR2ObjectUrl } from "@/lib/supabase-storage";
 
 /**
- * Renders an image from Cloudflare R2 via the storage proxy.
- * Resolves persistent, direct URLs with instant loading and resilient error fallback.
+ * Renders an image exclusively from Cloudflare R2 Object Storage with resilient error fallback.
+ * Zero Supabase Storage egress/dependencies.
  */
 export function R2ObjectImage({
   bucket,
@@ -19,9 +19,13 @@ export function R2ObjectImage({
   className?: string;
   fallbackClassName?: string;
 }) {
-  const [broken, setBroken] = useState(false);
+  const [isBroken, setIsBroken] = useState(false);
 
-  if (!storagePath || broken) {
+  useEffect(() => {
+    setIsBroken(false);
+  }, [bucket, storagePath]);
+
+  if (!storagePath || isBroken) {
     return (
       <div className={fallbackClassName}>
         <ImageIcon className="h-6 w-6 opacity-30" />
@@ -29,8 +33,10 @@ export function R2ObjectImage({
     );
   }
 
-  const resolvedUrl = getDirectR2ObjectUrl(bucket, storagePath);
-  if (!resolvedUrl) {
+  const cleanPath = storagePath.replace(/^\/+/, "");
+  const r2Url = getDirectR2ObjectUrl(bucket, cleanPath);
+
+  if (!r2Url) {
     return (
       <div className={fallbackClassName}>
         <ImageIcon className="h-6 w-6 opacity-30" />
@@ -40,12 +46,14 @@ export function R2ObjectImage({
 
   return (
     <img
-      src={resolvedUrl}
+      src={r2Url}
       alt={alt}
       className={className}
       crossOrigin="anonymous"
       loading="lazy"
-      onError={() => setBroken(true)}
+      onError={() => {
+        setIsBroken(true);
+      }}
     />
   );
 }

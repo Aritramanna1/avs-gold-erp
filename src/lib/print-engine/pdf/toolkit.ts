@@ -234,11 +234,21 @@ export async function addPremiumHeader(
   return ruleY + 5;
 }
 
+export function sanitizePdfText(text: string): string {
+  if (!text) return "";
+  return String(text)
+    .replace(/₹/g, "INR ")
+    .replace(/\u20B9/g, "INR ")
+    .replace(/≈/g, "~")
+    .replace(/—/g, "-")
+    .replace(/–/g, "-");
+}
+
 export function addSectionTitle(doc: jsPDF, geo: Geometry, title: string, y: number): number {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(80, 60, 30);
-  doc.text(title.toUpperCase(), geo.margin, y);
+  doc.text(sanitizePdfText(title).toUpperCase(), geo.margin, y);
   doc.setTextColor(0, 0, 0);
   return y + 5;
 }
@@ -255,33 +265,29 @@ export function addFieldGrid(
   let ry = y;
   if (config.title) ry = addSectionTitle(doc, geo, config.title, ry);
   doc.setFontSize(9);
-  const cols = config.columns ?? 1;
-  if (cols === 1 || config.theme === "darkPanel" || config.theme === "goldSummary" || config.theme === "bordered") {
-    for (const f of config.fields) {
-      if (!isVisible(f.showIf, data.flags)) continue;
-      doc.setFont("helvetica", "normal");
-      doc.text(`${f.label}:`, margin, ry);
-      doc.setFont("helvetica", "bold");
-      if (f.variant === "critical") doc.setTextColor(180, 40, 40);
-      else if (f.variant === "warning") doc.setTextColor(150, 100, 20);
-      else if (f.variant === "success") doc.setTextColor(30, 130, 76);
-      doc.text(formatFieldValue(getPath(data.fields, f.valuePath)), colR, ry, { align: "right" });
-      doc.setTextColor(0, 0, 0);
-      ry += 5;
-    }
-  } else {
-    for (const f of config.fields) {
-      if (!isVisible(f.showIf, data.flags)) continue;
-      doc.setFont("helvetica", "normal");
-      doc.text(`${f.label}:`, margin, ry);
-      doc.setFont("helvetica", "bold");
-      if (f.variant === "critical") doc.setTextColor(180, 40, 40);
-      else if (f.variant === "warning") doc.setTextColor(150, 100, 20);
-      else if (f.variant === "success") doc.setTextColor(30, 130, 76);
-      doc.text(formatFieldValue(getPath(data.fields, f.valuePath)), colR, ry, { align: "right" });
-      doc.setTextColor(0, 0, 0);
-      ry += 5;
-    }
+
+  for (const f of config.fields) {
+    if (!isVisible(f.showIf, data.flags)) continue;
+    const rawVal = formatFieldValue(getPath(data.fields, f.valuePath));
+    const cleanVal = sanitizePdfText(rawVal);
+    const cleanLabel = sanitizePdfText(f.label);
+
+    const valLines = doc.splitTextToSize(cleanVal, contentW * 0.55);
+    const labelLines = doc.splitTextToSize(`${cleanLabel}:`, contentW * 0.4);
+
+    doc.setFont("helvetica", "normal");
+    doc.text(labelLines, margin, ry);
+
+    doc.setFont("helvetica", "bold");
+    if (f.variant === "critical") doc.setTextColor(180, 40, 40);
+    else if (f.variant === "warning") doc.setTextColor(150, 100, 20);
+    else if (f.variant === "success") doc.setTextColor(30, 130, 76);
+
+    doc.text(valLines, colR, ry, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+
+    const lineCount = Math.max(labelLines.length, valLines.length);
+    ry += lineCount * 4.5 + 2;
   }
   return ry + 2;
 }
@@ -344,7 +350,7 @@ export function addTable(
     columns.forEach((c, i) => {
       const align = c.align === "right" ? "right" : "left";
       const textX = align === "right" ? cx + colWidths[i] - 2 : cx + 1;
-      doc.text(c.header, textX, yy + 4.2, { align });
+      doc.text(sanitizePdfText(c.header), textX, yy + 4.2, { align });
       cx += colWidths[i];
     });
     doc.setDrawColor(120, 113, 108);
@@ -384,7 +390,8 @@ export function addTable(
       const textX = align === "right" ? colX + colWidths[ci] - 2 : colX + 1;
       // Multi-line cells (item description stacks) — first line only in
       // the PDF's fixed row height, matching the compact table format.
-      const val = formatFieldValue(row[c.key]).split("\n")[0];
+      const rawVal = formatFieldValue(row[c.key]).split("\n")[0];
+      const val = sanitizePdfText(rawVal);
       const lines = doc.splitTextToSize(val, colWidths[ci] - 3);
       doc.text(lines[0] ?? "", textX, rowY + 4.2, { align });
       colX += colWidths[ci];
@@ -430,7 +437,8 @@ export function addTable(
     columns.forEach((c, ci) => {
       const align = c.align === "right" ? "right" : "left";
       const textX = align === "right" ? colX + colWidths[ci] - 2 : colX + 1;
-      doc.text(formatFieldValue(footerRow[c.key]).split("\n")[0], textX, rowY + 4.2, { align });
+      const rawVal = formatFieldValue(footerRow[c.key]).split("\n")[0];
+      doc.text(sanitizePdfText(rawVal), textX, rowY + 4.2, { align });
       colX += colWidths[ci];
     });
     rowY += rowHeight;

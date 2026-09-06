@@ -56,7 +56,14 @@ import { useSettings } from "@/lib/settings-store";
 import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { DocCommActions } from "@/components/doc-comm-actions";
+import {
+  useDeliveryChallans,
+  useCreditNotes,
+  useDebitNotes,
+  type DeliveryChallanItem,
+} from "@/lib/billing-documents-store";
 import { toast } from "sonner";
+import { Truck, PlusCircle, MinusCircle, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/billing/$id")({
   head: () => ({ meta: [{ title: "Invoice · AVS Gold ERP" }] }),
@@ -127,6 +134,108 @@ function InvoiceDetailPage() {
       toast.error(error instanceof Error ? error.message : "Could not cancel invoice.");
     } finally {
       setCancelling(false);
+    }
+  }
+
+  const [dcDialogOpen, setDcDialogOpen] = useState(false);
+  const [dcPurpose, setDcPurpose] = useState<"job_work" | "sale_on_approval" | "transfer" | "other">("job_work");
+  const [dcCarrier, setDcCarrier] = useState("");
+  const [dcAddress, setDcAddress] = useState("");
+  const [generatingDoc, setGeneratingDoc] = useState(false);
+
+  const [dnDialogOpen, setDnDialogOpen] = useState(false);
+  const [dnReason, setDnReason] = useState("");
+  const [dnAmountRupees, setDnAmountRupees] = useState("");
+  const [dnGoldGrams, setDnGoldGrams] = useState("");
+
+  const challans = useDeliveryChallans((s) => s.challans);
+  const creditNotes = useCreditNotes((s) => s.notes);
+  const debitNotes = useDebitNotes((s) => s.notes);
+
+  useEffect(() => {
+    void useDeliveryChallans.getState().refresh?.();
+    void useCreditNotes.getState().refresh?.();
+    void useDebitNotes.getState().refresh?.();
+  }, []);
+
+  const linkedChallans = challans.filter((c) => c.linkedInvoiceId === inv?.id || c.convertedToInvoiceId === inv?.id);
+  const linkedCreditNotes = creditNotes.filter((cn) => cn.invoiceId === inv?.id);
+  const linkedDebitNotes = debitNotes.filter((dn) => dn.invoiceId === inv?.id);
+
+  async function handleCreateDeliveryChallan() {
+    if (!inv) return;
+    setGeneratingDoc(true);
+    try {
+      const items: DeliveryChallanItem[] = inv.items.map((it: any) => ({
+        itemName: it.itemName,
+        category: it.category || "Jewellery",
+        grossMg: it.grossMg || 0,
+        netMg: it.netMg || it.grossMg || 0,
+        purity: it.purity || 916,
+        fineMg: it.fineMg || 0,
+        qty: it.qty || 1,
+      }));
+
+      const dc = await useDeliveryChallans.getState().create({
+        customerId: inv.customerId,
+        customerName: inv.customerName,
+        items,
+        purpose: dcPurpose,
+        carrierName: dcCarrier || undefined,
+        deliveryAddress: dcAddress || undefined,
+        linkedInvoiceId: inv.id,
+        linkedInvoiceNo: inv.invoiceNo,
+        linkedOrderId: inv.orderId || undefined,
+        notes: `Generated from Invoice ${inv.invoiceNo}`,
+      });
+
+      toast.success(`Delivery Challan ${dc.challanNo} generated with 2-way lineage.`);
+      setDcDialogOpen(false);
+      navigate({ to: "/billing/delivery-challans/$id" as any, params: { id: dc.id } as any });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate Delivery Challan");
+    } finally {
+      setGeneratingDoc(false);
+    }
+  }
+
+  async function handleCreateDebitNote() {
+    if (!inv) return;
+    if (!dnReason.trim()) {
+      toast.error("Please enter a reason for the Debit Note");
+      return;
+    }
+    const amtPaise = rupeesToPaise(parseFloat(dnAmountRupees) || 0);
+    const goldMg = Math.round((parseFloat(dnGoldGrams) || 0) * 1000);
+    if (amtPaise <= 0 && goldMg <= 0) {
+      toast.error("Please enter an amount or fine gold weight for the adjustment.");
+      return;
+    }
+
+    setGeneratingDoc(true);
+    try {
+      const dn = await useDebitNotes.getState().issue(
+        {
+          invoiceId: inv.id,
+          invoiceNo: inv.invoiceNo,
+          customerId: inv.customerId,
+          customerName: inv.customerName,
+          amountPaise: amtPaise,
+          goldFineMg: goldMg,
+          reason: dnReason.trim(),
+        },
+        { id: email || "owner", email: email || "owner@avserp.local" },
+      );
+
+      toast.success(`Debit Note ${dn.debitNoteNo} issued and linked to Invoice.`);
+      setDnDialogOpen(false);
+      setDnReason("");
+      setDnAmountRupees("");
+      setDnGoldGrams("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate Debit Note");
+    } finally {
+      setGeneratingDoc(false);
     }
   }
 
@@ -375,14 +484,30 @@ function InvoiceDetailPage() {
                 <Receipt className="h-4 w-4" /> Payment Receipt
               </Button>
             )}
+            <Button
+              variant="outline"
+              className="gap-2 border-blue-500/40 text-blue-400 hover:bg-blue-500/10"
+              onClick={() => setDcDialogOpen(true)}
+            >
+              <Truck className="h-4 w-4" /> Generate Delivery Challan
+            </Button>
             {!inv.isCreditNote && inv.status !== "cancelled" && (
-              <Button
-                variant="outline"
-                className="gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
-                onClick={() => navigate({ to: "/billing/credit-note" as any, search: { invoiceId: inv.id } as any })}
-              >
-                <RotateCcw className="h-4 w-4" /> Credit Note
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  className="gap-2 border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                  onClick={() => navigate({ to: "/billing/credit-note" as any, search: { invoiceId: inv.id } as any })}
+                >
+                  <RotateCcw className="h-4 w-4" /> Credit Note
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2 border-purple-500/40 text-purple-400 hover:bg-purple-500/10"
+                  onClick={() => setDnDialogOpen(true)}
+                >
+                  <PlusCircle className="h-4 w-4" /> Debit Note
+                </Button>
+              </>
             )}
           </div>
         }
@@ -827,8 +952,171 @@ function InvoiceDetailPage() {
                 <Trash2 className="h-4 w-4" /> Delete invoice (raw, no reversal)
               </Button>
             )}
+            {/* 2-Way Lineage: Linked ERP Documents */}
+            {(linkedChallans.length > 0 || linkedCreditNotes.length > 0 || linkedDebitNotes.length > 0) && (
+              <div className="rounded-md border border-border bg-card p-4 mt-3 space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
+                  <ExternalLink className="h-3.5 w-3.5" /> Linked ERP Documents ({linkedChallans.length + linkedCreditNotes.length + linkedDebitNotes.length})
+                </h4>
+                <div className="space-y-1.5 text-xs">
+                  {linkedChallans.map((dc) => (
+                    <Link
+                      key={dc.id}
+                      to="/billing/delivery-challans/$id"
+                      params={{ id: dc.id }}
+                      className="flex items-center justify-between p-2 rounded bg-background border border-border hover:border-blue-500/50 transition-colors"
+                    >
+                      <span className="font-semibold text-blue-400 flex items-center gap-1.5">
+                        <Truck className="h-3.5 w-3.5" /> {dc.challanNo}
+                      </span>
+                      <Badge variant="outline" className="text-[10px] capitalize">
+                        {dc.status}
+                      </Badge>
+                    </Link>
+                  ))}
+                  {linkedCreditNotes.map((cn) => (
+                    <Link
+                      key={cn.id}
+                      to="/billing/credit-notes"
+                      className="flex items-center justify-between p-2 rounded bg-background border border-border hover:border-amber-500/50 transition-colors"
+                    >
+                      <span className="font-semibold text-amber-400 flex items-center gap-1.5">
+                        <RotateCcw className="h-3.5 w-3.5" /> {cn.creditNoteNo}
+                      </span>
+                      <span className="font-mono text-muted-foreground">
+                        ₹{paiseToRupees(cn.amountPaise)}
+                      </span>
+                    </Link>
+                  ))}
+                  {linkedDebitNotes.map((dn) => (
+                    <Link
+                      key={dn.id}
+                      to="/billing/debit-notes"
+                      className="flex items-center justify-between p-2 rounded bg-background border border-border hover:border-purple-500/50 transition-colors"
+                    >
+                      <span className="font-semibold text-purple-400 flex items-center gap-1.5">
+                        <PlusCircle className="h-3.5 w-3.5" /> {dn.debitNoteNo}
+                      </span>
+                      <span className="font-mono text-muted-foreground">
+                        ₹{paiseToRupees(dn.amountPaise)}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </aside>
+
+        {/* Generate Delivery Challan Dialog */}
+        <AlertDialog open={dcDialogOpen} onOpenChange={setDcDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-gold">
+                <Truck className="h-5 w-5" /> Generate Delivery Challan
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Create an authoritative Delivery Challan linked to Invoice <strong>{inv.invoiceNo}</strong> for {inv.customerName}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-3 text-sm py-2">
+              <div>
+                <Label className="text-xs font-semibold">Purpose</Label>
+                <select
+                  value={dcPurpose}
+                  onChange={(e) => setDcPurpose(e.target.value as any)}
+                  className="w-full mt-1 bg-background border border-border rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="job_work">Job Work / Production Dispatch</option>
+                  <option value="sale_on_approval">Sale on Approval / Exhibition</option>
+                  <option value="transfer">Branch Transfer</option>
+                  <option value="other">Other / General Delivery</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Carrier / Transporter (optional)</Label>
+                <Input
+                  value={dcCarrier}
+                  onChange={(e) => setDcCarrier(e.target.value)}
+                  placeholder="e.g. Courier name, Driver name, Hand Delivery"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Delivery Address (optional)</Label>
+                <Input
+                  value={dcAddress}
+                  onChange={(e) => setDcAddress(e.target.value)}
+                  placeholder="e.g. Workshop address or Customer premises"
+                />
+              </div>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={generatingDoc}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleCreateDeliveryChallan}
+                disabled={generatingDoc}
+                className="bg-gold hover:bg-gold/90 text-primary-foreground font-bold"
+              >
+                {generatingDoc ? "Generating..." : "Generate Challan"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Generate Debit Note Dialog */}
+        <AlertDialog open={dnDialogOpen} onOpenChange={setDnDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-purple-400">
+                <PlusCircle className="h-5 w-5" /> Generate Debit Note
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Issue a Debit Adjustment linked to Invoice <strong>{inv.invoiceNo}</strong> for {inv.customerName}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-3 text-sm py-2">
+              <div>
+                <Label className="text-xs font-semibold">Reason for Debit Note *</Label>
+                <Input
+                  value={dnReason}
+                  onChange={(e) => setDnReason(e.target.value)}
+                  placeholder="e.g. Under-billed making charges, additional gold weight, price revision"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-semibold">Amount (₹)</Label>
+                  <Input
+                    type="number"
+                    value={dnAmountRupees}
+                    onChange={(e) => setDnAmountRupees(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold">Fine Gold (Grams)</Label>
+                  <Input
+                    type="number"
+                    value={dnGoldGrams}
+                    onChange={(e) => setDnGoldGrams(e.target.value)}
+                    placeholder="0.000"
+                  />
+                </div>
+              </div>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={generatingDoc}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleCreateDebitNote}
+                disabled={generatingDoc || !dnReason.trim()}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
+              >
+                {generatingDoc ? "Issuing..." : "Issue Debit Note"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
           <AlertDialogContent>

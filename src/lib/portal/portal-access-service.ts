@@ -319,8 +319,9 @@ export async function createAndDispatchPortalInvite(
   }
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
   const inviteCode = makeInviteCode();
   const expiresAt = new Date(Date.now() + PORTAL_INVITE_TTL_MS).toISOString();
   const inviteUrl = buildShareableInviteUrl({

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 export interface PageHeaderProps {
   title: string;
   subtitle?: string;
+  description?: string;
   actions?: ReactNode;
   backTo?: string;
   onBack?: () => void;
@@ -20,6 +21,7 @@ export interface PageHeaderProps {
 export function PageHeader({
   title,
   subtitle,
+  description,
   actions,
   backTo,
   onBack,
@@ -29,6 +31,7 @@ export function PageHeader({
   dense = false,
 }: PageHeaderProps) {
   const showBackControl = Boolean(backTo || onBack || showBack);
+  const resolvedSubtitle = subtitle || description;
 
   return (
     <header className={cn("mb-5 space-y-1", dense && "mb-3", className)}>
@@ -65,8 +68,8 @@ export function PageHeader({
           >
             {title}
           </h1>
-          {subtitle ? (
-            <p className="text-sm text-muted-foreground mt-0.5 max-w-3xl">{subtitle}</p>
+          {resolvedSubtitle ? (
+            <p className="text-sm text-muted-foreground mt-0.5 max-w-3xl">{resolvedSubtitle}</p>
           ) : null}
         </div>
         {actions ? (

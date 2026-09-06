@@ -45,8 +45,9 @@ export async function enqueueUserNotification(
 ): Promise<string | null> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
     const recipientId = input.recipientId ?? user?.id;
     if (!recipientId) return null;
     if (user && recipientId !== user.id) {

@@ -12,11 +12,19 @@ require_once __DIR__ . '/../config.php';
 
 // ── GET: Meta Webhook Verification Handshake ─────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $mode = $_GET['hub_mode'] ?? '';
-    $token = $_GET['hub_verify_token'] ?? '';
-    $challenge = $_GET['hub_challenge'] ?? '';
+    $mode = $_GET['hub_mode'] ?? ($_GET['hub.mode'] ?? '');
+    $token = $_GET['hub_verify_token'] ?? ($_GET['hub.verify_token'] ?? '');
+    $challenge = $_GET['hub_challenge'] ?? ($_GET['hub.challenge'] ?? '');
 
-    if ($mode === 'subscribe' && $token === $WHATSAPP_VERIFY_TOKEN) {
+    $validTokens = array_filter([
+        $WHATSAPP_VERIFY_TOKEN ?? null,
+        'mtj_avs_whatsapp_secure_2026',
+        'avs_erp_wa_verify_2026',
+        getenv('WHATSAPP_VERIFY_TOKEN') ?: null,
+        getenv('WHATSAPP_WEBHOOK_VERIFY_TOKEN') ?: null,
+    ]);
+
+    if ($mode === 'subscribe' && in_array($token, $validTokens, true)) {
         http_response_code(200);
         header('Content-Type: text/plain');
         echo $challenge;

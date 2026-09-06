@@ -689,6 +689,14 @@ export async function pullAppSettings(): Promise<void> {
     // app_settings.users[] snapshot during deployment pulls.
     const { syncCurrentUserRoleFromProfile } = await import("@/lib/role-resolution");
     await syncCurrentUserRoleFromProfile();
+
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem("avs_firm_app_settings_cache", JSON.stringify(useSettings.getState()));
+      }
+    } catch {
+      /* ignore storage quota / private browsing */
+    }
   } else if (organizationName) {
     // Trial created the organization but no firm settings row yet — surface the
     // company name so Settings / prints are not blank or stuck on shared defaults.

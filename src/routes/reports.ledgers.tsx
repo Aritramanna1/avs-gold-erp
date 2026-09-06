@@ -29,7 +29,7 @@ export const Route = createFileRoute("/reports/ledgers")({
   component: PartyLedgersPage,
 });
 
-type LedgerView = "short" | "detailed" | "billwise";
+type LedgerView = "cash" | "gold" | "mixed" | "billwise";
 
 function PartyLedgersPage() {
   const invoices = useBilling((s) => s.invoices);
@@ -39,7 +39,7 @@ function PartyLedgersPage() {
   const settlements = useGoldSettlement((s) => s.settlements);
   const goldBookEntries = useWorkerGoldBook((s) => s.entries);
   const [customerId, setCustomerId] = useState("");
-  const [view, setView] = useState<LedgerView>("short");
+  const [view, setView] = useState<LedgerView>("mixed");
   const [period, setPeriod] = useState<ReportPeriod>("monthly");
   const [customRange, setCustomRange] = useState(thisMonthRange());
 
@@ -64,6 +64,7 @@ function PartyLedgersPage() {
               "worker",
               "supplier",
               "vendor",
+              "employee",
             ].includes(r),
           );
         })
@@ -127,37 +128,75 @@ function PartyLedgersPage() {
       ]);
       return;
     }
-    exportToCSV("party-ledger.csv", [
-      ["Date", "Voucher", "Type", "Description", "Gold In g", "Gold Out g", "Debit", "Credit"],
+    if (view === "cash") {
+      exportToCSV("party-cash-ledger.csv", [
+        ["Date", "Voucher", "Type", "Description", "Debit ₹", "Credit ₹", "Cash Bal ₹"],
+        ...ledger.rows
+          .filter((r) => r.moneyDebitPaise > 0 || r.moneyCreditPaise > 0)
+          .map((row) => [
+            row.date,
+            row.voucherNo,
+            row.type,
+            row.description,
+            fmtRs(row.moneyDebitPaise),
+            fmtRs(row.moneyCreditPaise),
+            fmtRs(row.closingMoneyPaise),
+          ]),
+      ]);
+      return;
+    }
+    if (view === "gold") {
+      exportToCSV("party-gold-ledger.csv", [
+        ["Date", "Voucher", "Type", "Description", "Purity", "Gold In g", "Gold Out g", "Gold Bal g"],
+        ...ledger.rows
+          .filter((r) => r.goldInMg > 0 || r.goldOutMg > 0)
+          .map((row) => [
+            row.date,
+            row.voucherNo,
+            row.type,
+            row.description,
+            row.purity ? String(row.purity) : "—",
+            fmtG(row.goldInMg),
+            fmtG(row.goldOutMg),
+            fmtG(row.closingGoldMg),
+          ]),
+      ]);
+      return;
+    }
+    exportToCSV("party-mixed-ledger.csv", [
+      ["Date", "Voucher", "Type", "Description", "Purity", "Gold In g", "Gold Out g", "Debit ₹", "Credit ₹", "Gold Bal g", "Cash Bal ₹"],
       ...ledger.rows.map((row) => [
         row.date,
         row.voucherNo,
         row.type,
         row.description,
+        row.purity ? String(row.purity) : "—",
         fmtG(row.goldInMg),
         fmtG(row.goldOutMg),
         fmtRs(row.moneyDebitPaise),
         fmtRs(row.moneyCreditPaise),
+        fmtG(row.closingGoldMg),
+        fmtRs(row.closingMoneyPaise),
       ]),
     ]);
   }
 
-  async function openPrint(format: "short" | "detailed" = "detailed") {
+  async function openPrint(format: "cash" | "gold" | "mixed" | "billwise" = view) {
     if (!customerId || !ledger) return;
     const partyName = parties.find((p) => p.id === customerId)?.fullName ?? customerId;
-    if (format === "short") {
+
+    if (format === "cash") {
       await triggerPrint(
-        `Short Ledger (Compact) — ${partyName}`,
+        `Cash Ledger Statement — ${partyName}`,
         dateRange,
         [
           [
-            ["Dt", "Vchr", "Particulars", "Fine In (g)", "Fine Out (g)", "Debit ₹", "Credit ₹", "Bal ₹"],
+            ["Date", "Voucher", "Type / Particulars", "Description / Narration", "Debit (₹)", "Credit (₹)", "Cash Bal (₹)"],
             ...ledger.rows.map((r) => [
               r.date,
               r.voucherNo || "—",
-              r.description || r.type,
-              r.goldInMg > 0 ? fmtG(r.goldInMg) : "—",
-              r.goldOutMg > 0 ? fmtG(r.goldOutMg) : "—",
+              r.type,
+              r.description || "—",
               r.moneyDebitPaise > 0 ? fmtRs(r.moneyDebitPaise) : "—",
               r.moneyCreditPaise > 0 ? fmtRs(r.moneyCreditPaise) : "—",
               fmtRs(r.closingMoneyPaise ?? 0),
@@ -165,9 +204,48 @@ function PartyLedgersPage() {
           ],
         ],
       );
+    } else if (format === "gold") {
+      await triggerPrint(
+        `Gold Passbook Statement — ${partyName}`,
+        dateRange,
+        [
+          [
+            ["Date", "Voucher", "Type / Particulars", "Description / Narration", "Purity", "Jama / In (g)", "Nave / Out (g)", "Gold Bal (g)"],
+            ...ledger.rows.map((r) => [
+              r.date,
+              r.voucherNo || "—",
+              r.type,
+              r.description || "—",
+              r.purity ? `${r.purity}` : "—",
+              r.goldInMg > 0 ? fmtG(r.goldInMg) : "—",
+              r.goldOutMg > 0 ? fmtG(r.goldOutMg) : "—",
+              fmtG(r.closingGoldMg ?? 0),
+            ]),
+          ],
+        ],
+      );
+    } else if (format === "billwise") {
+      await triggerPrint(
+        `Bill-wise Outstanding Statement — ${partyName}`,
+        dateRange,
+        [
+          [
+            ["Invoice", "Date", "Customer / Party", "Grand Total (₹)", "Paid (₹)", "Balance Due (₹)", "Fine Metal (g)"],
+            ...bills.map((row) => [
+              row.invoiceNo,
+              new Date(row.dateMs).toLocaleDateString("en-IN"),
+              row.customerName,
+              fmtRs(row.grandPaise),
+              fmtRs(row.paidPaise),
+              fmtRs(row.balancePaise),
+              fmtG(row.fineMg),
+            ]),
+          ],
+        ],
+      );
     } else {
       await triggerPrint(
-        `Party Account Statement (Detailed) — ${partyName}`,
+        `Mixed Dual-Currency Ledger Statement — ${partyName}`,
         dateRange,
         [
           [
@@ -194,8 +272,8 @@ function PartyLedgersPage() {
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
       <PageHeader
-        title="Accountwise Summary / Details"
-        subtitle="Offline Accountwise — pick a party for summary or detailed Jama/Nave rows. Print Short for compact audits or Print Long for detailed accounts."
+        title="Party Account Ledgers (Cash · Gold · Mixed)"
+        subtitle="Universal Real Ledgers — pick any customer, jeweller, dealer, or karigar to inspect Cash Ledger, Gold Ledger, or Mixed Dual-Currency Statement."
         actions={
           <div className="flex gap-2 items-center flex-wrap">
             <SourceOfTruthBadge variant="report" />
@@ -211,18 +289,10 @@ function PartyLedgersPage() {
               variant="outline"
               size="sm"
               className="gap-1 text-xs"
-              onClick={() => void openPrint("short")}
+              onClick={() => void openPrint(view)}
               disabled={!customerId || !ledger}
             >
-              <Printer className="h-3.5 w-3.5" /> Print Short
-            </Button>
-            <Button
-              size="sm"
-              className="gap-1 text-xs bg-gold text-black hover:bg-gold/90"
-              onClick={() => void openPrint("detailed")}
-              disabled={!customerId || !ledger}
-            >
-              <Printer className="h-3.5 w-3.5" /> Print Long
+              <Printer className="h-3.5 w-3.5" /> Print Statement
             </Button>
           </div>
         }
@@ -246,11 +316,11 @@ function PartyLedgersPage() {
             : undefined
         }
         onExport={handleCSV}
-        onPrint={() => void openPrint()}
+        onPrint={() => void openPrint(view)}
       >
         <div className="no-print flex flex-wrap gap-4 items-end mb-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Party</Label>
+            <Label className="text-xs">Party Account</Label>
             <select
               className="h-9 min-w-[16rem] rounded-md border border-input bg-background px-3 text-sm"
               value={customerId}
@@ -262,15 +332,17 @@ function PartyLedgersPage() {
                   {p.fullName}
                   {p.tradeName ? ` · ${p.tradeName}` : ""}
                   {p.type === "karigar" || p.type === "worker" ? " · Karigar" : ""}
+                  {p.type === "employee" ? " · Employee" : ""}
                 </option>
               ))}
             </select>
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1.5 flex-wrap">
             {(
               [
-                ["short", "Short"],
-                ["detailed", "Detailed"],
+                ["cash", "Cash Ledger (₹)"],
+                ["gold", "Gold Ledger (g)"],
+                ["mixed", "Mixed Ledger (Dual)"],
                 ["billwise", "Bill-wise"],
               ] as const
             ).map(([id, label]) => (
@@ -278,6 +350,7 @@ function PartyLedgersPage() {
                 key={id}
                 size="sm"
                 variant={view === id ? "default" : "outline"}
+                className={view === id ? "bg-primary text-primary-foreground font-semibold" : ""}
                 onClick={() => setView(id)}
               >
                 {label}
@@ -289,20 +362,135 @@ function PartyLedgersPage() {
         <div data-testid="report-print-source">
         {!customerId ? (
           <p className="text-sm text-muted-foreground">
-            Pick a customer, jeweller, dealer, or karigar.
+            Pick a customer, jeweller, dealer, karigar, or worker.
           </p>
         ) : !ledger ? (
           <p className="text-sm text-muted-foreground">No ledger rows.</p>
-        ) : view === "short" ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
-            <SummaryCard label="Opening gold" value={fmtG(ledger.openingGoldMg)} />
-            <SummaryCard label="Closing gold" value={fmtG(ledger.closingGoldMg)} />
-            <SummaryCard label="Gold with us (advance)" value={fmtG(ledger.goldAdvanceMg)} />
-            <SummaryCard label="Gold they owe" value={fmtG(ledger.goldCreditOwedMg)} />
-            <SummaryCard label="Opening ₹" value={fmtRs(ledger.openingMoneyPaise)} />
-            <SummaryCard label="Closing ₹" value={fmtRs(ledger.closingMoneyPaise)} />
-            <SummaryCard label="Money due" value={fmtRs(ledger.moneyDuePaise)} />
-            <SummaryCard label="Money advance" value={fmtRs(ledger.moneyAdvancePaise)} />
+        ) : view === "cash" ? (
+          <div className="space-y-6">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+              <SummaryCard label="Opening Cash ₹" value={fmtRs(ledger.openingMoneyPaise)} />
+              <SummaryCard label="Total Cash Debit (Paid) ₹" value={fmtRs(ledger.totalDebitPaise)} />
+              <SummaryCard label="Total Cash Credit (Received) ₹" value={fmtRs(ledger.totalCreditPaise)} />
+              <SummaryCard
+                label="Closing Cash Balance ₹"
+                value={`${fmtRs(ledger.closingMoneyPaise)} ${ledger.closingMoneyPaise > 0 ? "(Dr)" : ledger.closingMoneyPaise < 0 ? "(Cr)" : ""}`}
+              />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b">
+                    <th className="py-2">Date</th>
+                    <th className="py-2">Voucher</th>
+                    <th className="py-2">Type</th>
+                    <th className="py-2">Description</th>
+                    <th className="py-2 text-right">Debit (₹)</th>
+                    <th className="py-2 text-right">Credit (₹)</th>
+                    <th className="py-2 text-right">Cash Balance (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledger.rows.map((row) => (
+                    <tr key={row.id} className="border-b border-border/40">
+                      <td className="py-1.5 whitespace-nowrap">{row.date}</td>
+                      <td className="py-1.5 font-mono">
+                        {row.sourceRoute ? (
+                          <Link to={row.sourceRoute} className="text-primary hover:underline">
+                            {row.voucherNo}
+                          </Link>
+                        ) : (
+                          row.voucherNo
+                        )}
+                      </td>
+                      <td className="py-1.5">{row.type}</td>
+                      <td className="py-1.5 max-w-xs truncate">{row.description}</td>
+                      <td className="py-1.5 text-right font-mono text-destructive">
+                        {row.moneyDebitPaise ? fmtRs(row.moneyDebitPaise) : "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-mono text-emerald-600">
+                        {row.moneyCreditPaise ? fmtRs(row.moneyCreditPaise) : "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-mono font-semibold">
+                        {fmtRs(row.closingMoneyPaise)}
+                      </td>
+                    </tr>
+                  ))}
+                  {ledger.rows.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-6 text-center text-muted-foreground">
+                        No cash transactions found for this party.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : view === "gold" ? (
+          <div className="space-y-6">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+              <SummaryCard label="Opening Fine Gold" value={fmtG(ledger.openingGoldMg)} />
+              <SummaryCard label="Total Jama / Received" value={fmtG(ledger.totalGoldInMg)} />
+              <SummaryCard label="Total Nave / Issued" value={fmtG(ledger.totalGoldOutMg)} />
+              <SummaryCard
+                label="Closing Gold Balance"
+                value={`${fmtG(ledger.closingGoldMg)} ${ledger.closingGoldMg > 0 ? "(Advance/Cr)" : ledger.closingGoldMg < 0 ? "(Owed/Dr)" : ""}`}
+              />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b">
+                    <th className="py-2">Date</th>
+                    <th className="py-2">Voucher</th>
+                    <th className="py-2">Type</th>
+                    <th className="py-2">Description</th>
+                    <th className="py-2 text-center">Purity</th>
+                    <th className="py-2 text-right">Jama / In (Fine g)</th>
+                    <th className="py-2 text-right">Nave / Out (Fine g)</th>
+                    <th className="py-2 text-right">Gold Balance (Fine g)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledger.rows.map((row) => (
+                    <tr key={row.id} className="border-b border-border/40">
+                      <td className="py-1.5 whitespace-nowrap">{row.date}</td>
+                      <td className="py-1.5 font-mono">
+                        {row.sourceRoute ? (
+                          <Link to={row.sourceRoute} className="text-primary hover:underline">
+                            {row.voucherNo}
+                          </Link>
+                        ) : (
+                          row.voucherNo
+                        )}
+                      </td>
+                      <td className="py-1.5">{row.type}</td>
+                      <td className="py-1.5 max-w-xs truncate">{row.description}</td>
+                      <td className="py-1.5 text-center font-mono text-muted-foreground">
+                        {row.purity || "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-mono text-emerald-600">
+                        {row.goldInMg ? fmtG(row.goldInMg) : "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-mono text-destructive">
+                        {row.goldOutMg ? fmtG(row.goldOutMg) : "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-mono font-semibold text-gold">
+                        {fmtG(row.closingGoldMg)}
+                      </td>
+                    </tr>
+                  ))}
+                  {ledger.rows.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="py-6 text-center text-muted-foreground">
+                        No gold transactions found for this party.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : view === "billwise" ? (
           <table className="w-full text-xs">
@@ -338,55 +526,71 @@ function PartyLedgersPage() {
             </tbody>
           </table>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-left text-muted-foreground border-b">
-                  <th className="py-2">Date</th>
-                  <th className="py-2">Voucher</th>
-                  <th className="py-2">Type</th>
-                  <th className="py-2">Description</th>
-                  <th className="py-2 text-right">Jama (In)</th>
-                  <th className="py-2 text-right">Nave (Out)</th>
-                  <th className="py-2 text-right">Debit</th>
-                  <th className="py-2 text-right">Credit</th>
-                  <th className="py-2 text-right">Gold Cl.</th>
-                  <th className="py-2 text-right">₹ Cl.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ledger.rows.map((row) => (
-                  <tr key={row.id} className="border-b border-border/40">
-                    <td className="py-1.5 whitespace-nowrap">{row.date}</td>
-                    <td className="py-1.5 font-mono">
-                      {row.sourceRoute ? (
-                        <Link to={row.sourceRoute} className="text-primary hover:underline">
-                          {row.voucherNo}
-                        </Link>
-                      ) : (
-                        row.voucherNo
-                      )}
-                    </td>
-                    <td className="py-1.5">{row.type}</td>
-                    <td className="py-1.5 max-w-xs truncate">{row.description}</td>
-                    <td className="py-1.5 text-right font-mono">
-                      {row.goldInMg ? fmtG(row.goldInMg) : "—"}
-                    </td>
-                    <td className="py-1.5 text-right font-mono">
-                      {row.goldOutMg ? fmtG(row.goldOutMg) : "—"}
-                    </td>
-                    <td className="py-1.5 text-right font-mono">
-                      {row.moneyDebitPaise ? fmtRs(row.moneyDebitPaise) : "—"}
-                    </td>
-                    <td className="py-1.5 text-right font-mono">
-                      {row.moneyCreditPaise ? fmtRs(row.moneyCreditPaise) : "—"}
-                    </td>
-                    <td className="py-1.5 text-right font-mono">{fmtG(row.closingGoldMg)}</td>
-                    <td className="py-1.5 text-right font-mono">{fmtRs(row.closingMoneyPaise)}</td>
+          <div className="space-y-6">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+              <SummaryCard label="Opening Gold" value={fmtG(ledger.openingGoldMg)} />
+              <SummaryCard label="Closing Gold" value={fmtG(ledger.closingGoldMg)} />
+              <SummaryCard label="Opening ₹" value={fmtRs(ledger.openingMoneyPaise)} />
+              <SummaryCard label="Closing ₹" value={fmtRs(ledger.closingMoneyPaise)} />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b">
+                    <th className="py-2">Date</th>
+                    <th className="py-2">Voucher</th>
+                    <th className="py-2">Type</th>
+                    <th className="py-2">Description</th>
+                    <th className="py-2 text-center">Purity</th>
+                    <th className="py-2 text-right">Jama (In)</th>
+                    <th className="py-2 text-right">Nave (Out)</th>
+                    <th className="py-2 text-right">Debit ₹</th>
+                    <th className="py-2 text-right">Credit ₹</th>
+                    <th className="py-2 text-right">Gold Cl.</th>
+                    <th className="py-2 text-right">₹ Cl.</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {ledger.rows.map((row) => (
+                    <tr key={row.id} className="border-b border-border/40">
+                      <td className="py-1.5 whitespace-nowrap">{row.date}</td>
+                      <td className="py-1.5 font-mono">
+                        {row.sourceRoute ? (
+                          <Link to={row.sourceRoute} className="text-primary hover:underline">
+                            {row.voucherNo}
+                          </Link>
+                        ) : (
+                          row.voucherNo
+                        )}
+                      </td>
+                      <td className="py-1.5">{row.type}</td>
+                      <td className="py-1.5 max-w-xs truncate">{row.description}</td>
+                      <td className="py-1.5 text-center font-mono text-muted-foreground">
+                        {row.purity || "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-mono">
+                        {row.goldInMg ? fmtG(row.goldInMg) : "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-mono">
+                        {row.goldOutMg ? fmtG(row.goldOutMg) : "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-mono">
+                        {row.moneyDebitPaise ? fmtRs(row.moneyDebitPaise) : "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-mono">
+                        {row.moneyCreditPaise ? fmtRs(row.moneyCreditPaise) : "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-mono font-semibold text-gold">
+                        {fmtG(row.closingGoldMg)}
+                      </td>
+                      <td className="py-1.5 text-right font-mono font-semibold">
+                        {fmtRs(row.closingMoneyPaise)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
         </div>
@@ -399,7 +603,7 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="font-mono text-sm mt-1">{value}</div>
+      <div className="font-mono text-sm mt-1 font-semibold">{value}</div>
     </div>
   );
 }

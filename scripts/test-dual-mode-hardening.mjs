@@ -2,11 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
 
-const SUPABASE_URL = "http://127.0.0.1:8000";
-const PUBLISHABLE_KEY = "sb_publishable_0wEt7qew0XI5Ml8fqfVKyw_l5jjDiMh";
-const SERVICE_ROLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3ODg1MjMxMTMsImV4cCI6MTk0NjIwMzExM30.Q5HWSD5Oc6MMxvStgG7-Z0rIob9La1bsKsBw0r8GtuQ";
-
+const SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:8000";
+const PUBLISHABLE_KEY = process.env.SUPABASE_ANON_KEY || "test_anon_key";
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "test_service_role_key";
 
 const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const supabaseClient = createClient(SUPABASE_URL, PUBLISHABLE_KEY);

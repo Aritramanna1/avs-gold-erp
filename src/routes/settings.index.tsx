@@ -272,9 +272,9 @@ function SettingsPage() {
             <FolderArchive className="h-4 w-4" />
           </span>
           <div className="flex-1">
-            <div className="font-medium text-sm font-semibold">Storage &amp; File Diagnostics</div>
+            <div className="font-medium text-sm font-semibold">Cloudflare R2 Storage &amp; Diagnostics</div>
             <div className="text-xs text-muted-foreground">
-              Verify configured Supabase storage connectivity and synchronized attachment records.
+              Verify configured Cloudflare R2 object storage connectivity and synchronized attachment records.
             </div>
           </div>
         </Link>
@@ -288,7 +288,7 @@ function SettingsPage() {
           <div className="flex-1">
             <div className="font-medium text-sm font-semibold">Document Vault</div>
             <div className="text-xs text-muted-foreground">
-              Supabase-backed document storage and central document engine readiness.
+              Cloudflare R2 object storage and central document engine readiness.
             </div>
           </div>
         </Link>
@@ -888,13 +888,12 @@ function FirmTab() {
         hostingerUploadUrl,
       };
 
-      const success = await updateFirmProfile(updatedProfile);
-      if (!success) {
-        throw new Error("The connected profile service could not save these changes.");
-      }
-
-      // Commit to runtime store configuration for immediate layout/sidebar sync.
+      // Commit to runtime store and persist with flush
       setFirm(updatedProfile);
+      const res = await persistAndFlushSettings(true);
+      if (!res.ok && res.error) {
+        throw new Error(res.error);
+      }
       toast.success("Firm profile and settings saved successfully.");
 
       // Clear draft states

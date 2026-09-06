@@ -55,3 +55,15 @@ export async function generateInvoiceNumber(options?: Record<string, any>): Prom
 export async function generateJobCardNumber(options?: Record<string, any>): Promise<string> {
   return getNextSequenceNumber("jobcard");
 }
+
+/**
+ * Format amount in Rupees with Indian currency localization.
+ */
+export function formatCurrencyRupees(amountInRupees: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(amountInRupees);
+}
+

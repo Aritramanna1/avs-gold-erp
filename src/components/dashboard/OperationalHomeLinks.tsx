@@ -20,8 +20,29 @@ const LINKS = [
   {
     to: "/billing" as const,
     labelKey: "item_sales",
-    fallback: "Sale",
+    fallback: "Sale (Billing)",
     icon: Receipt,
+    search: undefined,
+  },
+  {
+    to: "/stock" as const,
+    labelKey: "item_ready_stock",
+    fallback: "Stock (Inventory)",
+    icon: Package,
+    search: undefined,
+  },
+  {
+    to: "/workshop/gold-book" as const,
+    labelKey: "item_gold_book",
+    fallback: "Karigar Transactions",
+    icon: Hammer,
+    search: undefined,
+  },
+  {
+    to: "/reports/gold-ledger" as const,
+    labelKey: "item_gold_ledger",
+    fallback: "Gold Book",
+    icon: BookOpen,
     search: undefined,
   },
   {
@@ -53,17 +74,17 @@ const LINKS = [
     search: undefined,
   },
   {
-    to: "/catalog" as const,
-    labelKey: "item_catalog",
-    fallback: "Catalogue / Designs",
-    icon: Gem,
-    search: undefined,
-  },
-  {
     to: "/orders" as const,
     labelKey: "item_orders",
     fallback: "Orders",
     icon: ShoppingBag,
+    search: undefined,
+  },
+  {
+    to: "/catalog" as const,
+    labelKey: "item_catalog",
+    fallback: "Catalogue / Designs",
+    icon: Gem,
     search: undefined,
   },
   {
@@ -78,20 +99,6 @@ const LINKS = [
     labelKey: "item_cash_book",
     fallback: "Cash Book",
     icon: Landmark,
-    search: undefined,
-  },
-  {
-    to: "/workshop/gold-book" as const,
-    labelKey: "item_gold_book",
-    fallback: "Karigar Issue / Return",
-    icon: Hammer,
-    search: undefined,
-  },
-  {
-    to: "/stock" as const,
-    labelKey: "item_ready_stock",
-    fallback: "Stock",
-    icon: Package,
     search: undefined,
   },
   {

@@ -584,6 +584,11 @@ function PeopleList({
                   <Badge variant="secondary" className="text-[10px]">
                     {PERSON_TYPE_LABELS[p.type]}
                   </Badge>
+                  {p.stampMark && (
+                    <Badge variant="outline" className="text-[10px] font-mono border-amber-500/40 text-amber-400 bg-amber-500/10">
+                      Stamp: {p.stampMark}
+                    </Badge>
+                  )}
                   {!p.active && (
                     <Badge variant="outline" className="text-[10px]">
                       {t("people.inactive")}
@@ -1141,6 +1146,8 @@ export function PersonFormDialog({
     roles: initial?.roles ?? [defaultType ?? initial?.type ?? ("customer" as PersonType)],
     active: initial?.active ?? true,
     fullName: initial?.fullName ?? "",
+    stampMark: initial?.stampMark ?? initial?.shortName ?? "",
+    shortName: initial?.shortName ?? initial?.stampMark ?? "",
     tradeName: initial?.tradeName ?? "",
     legalName: initial?.legalName ?? "",
     contactPerson: initial?.contactPerson ?? "",
@@ -1467,6 +1474,17 @@ export function PersonFormDialog({
                 value={form.fullName}
                 onChange={(e) => set("fullName", e.target.value)}
                 placeholder="e.g. Raju Das or Maa Tara Jewellers"
+              />
+            </Field>
+            <Field label="Account Stamp / Punch Mark (Short Name)">
+              <Input
+                value={form.stampMark || ""}
+                onChange={(e) => {
+                  const val = e.target.value.toUpperCase();
+                  set("stampMark", val);
+                  set("shortName", val);
+                }}
+                placeholder="e.g. SRM (Punched on finished jewellery)"
               />
             </Field>
             <Field label="Trade / Shop Name (DBA)">

@@ -4,17 +4,18 @@ MTJ ERP Backend Test Suite
 Tests Supabase backend (PostgREST + Edge Functions) directly.
 """
 
+import os
 import requests
 import json
 import random
 import string
 from typing import Dict, Any, Optional
 
-# Supabase connection details
-SUPABASE_URL = "https://kjfjsfhftytezsjyegmb.supabase.co"
-ANON_KEY = "sb_publishable_fThRlMsK8N5t_wU9_fzd7g_XBvvr-zW"
-TEST_USER_EMAIL = "staging.superowner@mtj-erp.test"
-TEST_USER_PASSWORD = "StagingOwner@2025"
+# Supabase connection details from environment
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "http://localhost:8000")
+ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
+TEST_USER_EMAIL = os.environ.get("TEST_USER_EMAIL", "test.owner@avs-erp.test")
+TEST_USER_PASSWORD = os.environ.get("TEST_USER_PASSWORD", "TestOwnerPass@2026")
 
 # Test results tracking
 test_results = []

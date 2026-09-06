@@ -13,13 +13,13 @@ describe('Comprehensive Side-by-Side Parity Suite', () => {
     it('MTJ default purity is 995 and fineness basis is 995', () => {
       expect(getDefaultPurityPermille()).toBe(995);
       expect(defaultGoldCalculationRules().finenessBasis).toBe(995);
-      expect(defaultGoldCalculationRules().calculationMode).toBe('basic');
+      expect(defaultGoldCalculationRules().calculationMode).toBe('advanced');
     });
 
-    it('Karigar fine calculation is OFF by default', () => {
+    it('Karigar fine calculation is active by default in locked advanced mode', () => {
       const flags = effectiveJewelleryCalcFeatures(defaultGoldCalculationRules());
-      expect(flags.fineCalculation).toBe(false);
-      expect(flags.purityCalculation).toBe(false);
+      expect(flags.fineCalculation).toBe(true);
+      expect(flags.purityCalculation).toBe(true);
     });
 
     it('Calculates exact fine on 22K (916) and 18K (750) on 995 basis', () => {

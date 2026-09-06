@@ -38,23 +38,8 @@ loadEnvFile(__DIR__ . '/../../.env.local');
 loadEnvFile(__DIR__ . '/../../.env.production');
 
 // ── Master Configuration Values ─────────────────────────────────────────────
-// Authoritative Supabase Production Project
-$AUTHORITATIVE_SUPABASE_URL = 'https://dqgrrafuoxaorvyrcuuh.supabase.co';
-$AUTHORITATIVE_SUPABASE_ANON_KEY = 'sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN';
-
-$envUrl = getenv('VITE_SUPABASE_URL') ?: (getenv('SUPABASE_URL') ?: '');
-if (empty($envUrl) || strpos($envUrl, 'xrvsvzfqjptzbxjscnvf') !== false || strpos($envUrl, 'mtj-erp') !== false) {
-    $SUPABASE_URL = $AUTHORITATIVE_SUPABASE_URL;
-} else {
-    $SUPABASE_URL = $envUrl;
-}
-
-$envKey = getenv('VITE_SUPABASE_ANON_KEY') ?: (getenv('SUPABASE_ANON_KEY') ?: (getenv('VITE_SUPABASE_PUBLISHABLE_KEY') ?: ''));
-if (empty($envKey) || strpos($envKey, 'sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN') !== false || $SUPABASE_URL === $AUTHORITATIVE_SUPABASE_URL) {
-    $SUPABASE_ANON_KEY = $AUTHORITATIVE_SUPABASE_ANON_KEY;
-} else {
-    $SUPABASE_ANON_KEY = $envKey;
-}
+$SUPABASE_URL = getenv('VITE_SUPABASE_URL') ?: (getenv('SUPABASE_URL') ?: '');
+$SUPABASE_ANON_KEY = getenv('VITE_SUPABASE_ANON_KEY') ?: (getenv('SUPABASE_ANON_KEY') ?: (getenv('VITE_SUPABASE_PUBLISHABLE_KEY') ?: ''));
 $SUPABASE_SERVICE_ROLE_KEY = getenv('SUPABASE_SERVICE_ROLE_KEY') ?: '';
 
 $RAZORPAY_KEY_ID = getenv('RAZORPAY_KEY_ID') ?: '';

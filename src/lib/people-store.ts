@@ -112,6 +112,9 @@ export interface Person {
   fullName: string;
   /** Firm-scoped party / customer / karigar code */
   partyCode?: string;
+  /** Account punch mark / stamp initials (e.g. SRM punched on finished jewellery) */
+  stampMark?: string;
+  shortName?: string;
   /** Trade / DBA name (displayed on invoices / documents) */
   tradeName?: string;
   /** Legal registered company name */
@@ -254,20 +257,16 @@ export const usePeople = create<PeopleState>()((set, get) => ({
     const { currentUserRole, selectedBranchId } = useSettings.getState();
     let resolvedRole = currentUserRole;
     if (!resolvedRole) {
-      const [{ data: sessionResult }, { data: profileResult }] = await Promise.all([
-        supabase.auth.getSession(),
-        supabase.auth.getUser(),
-      ]).then(async ([session, user]) => {
-        if (!session.data.session?.user.id) return [session, { data: null }] as const;
-        const profile = await supabase
+      const { data: sessionResult } = await supabase.auth.getSession();
+      const sessionUserId = sessionResult?.session?.user?.id;
+      if (sessionUserId) {
+        const { data: profileResult } = await supabase
           .from("user_profiles")
           .select("role")
-          .eq("auth_id", session.data.session.user.id)
+          .eq("auth_id", sessionUserId)
           .maybeSingle();
-        return [session, profile] as const;
-      });
-      resolvedRole = profileResult?.role ?? null;
-      void sessionResult;
+        resolvedRole = profileResult?.role ?? null;
+      }
     }
     // The persisted Supabase role values are lower-case (`owner`, `admin`,
     // `saas_admin`) while older local profiles used display labels. Owners

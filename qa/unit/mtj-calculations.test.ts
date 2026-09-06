@@ -122,13 +122,13 @@ describe("G-16-C: finenessBasis and defaultPurityPermille on authoritative 995 s
 
 // ── G-16-D: Karigar fine calculation OFF by default (G-05) ────────────────
 
-describe("G-16-D: Karigar fine calculation OFF by default (BASIC mode)", () => {
-  it("defaultGoldCalculationRules produces calculationMode=basic", () => {
-    expect(defaultGoldCalculationRules().calculationMode).toBe("basic");
+describe("G-16-D: Calculation Mode & Jewellery Flags", () => {
+  it("defaultGoldCalculationRules produces calculationMode=advanced as default", () => {
+    expect(defaultGoldCalculationRules().calculationMode).toBe("advanced");
   });
 
-  it("BASIC mode: effectiveJewelleryCalcFeatures returns all-false fine flags", () => {
-    const flags = effectiveJewelleryCalcFeatures(defaultGoldCalculationRules());
+  it("BASIC mode (when configured): effectiveJewelleryCalcFeatures returns all-false fine flags", () => {
+    const flags = effectiveJewelleryCalcFeatures(basicRules());
     expect(flags.fineCalculation).toBe(false);
     expect(flags.purityCalculation).toBe(false);
     expect(flags.wastageCalculation).toBe(false);

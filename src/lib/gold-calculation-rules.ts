@@ -263,8 +263,8 @@ export function defaultGoldCalculationRules(): GoldCalculationRulesDoc {
   return {
     id: GOLD_CALC_RULES_ID,
     version: 1,
-    calculationMode: "basic",
-    featureFlags: { ...DEFAULT_JEWELLERY_CALC_FEATURES_BASIC },
+    calculationMode: "advanced",
+    featureFlags: { ...DEFAULT_JEWELLERY_CALC_FEATURES_ADVANCED },
     moduleMap: { ...DEFAULT_MODULE_GOLD_RULES },
     displayPrecision: { ...DEFAULT_GOLD_DISPLAY_PRECISION },
     pureGoldMinPermille: DEFAULT_PURE_GOLD_MIN_PERMILLE,
@@ -276,6 +276,7 @@ export function defaultGoldCalculationRules(): GoldCalculationRulesDoc {
     updatedAt: 0,
   };
 }
+
 
 /** Effective flags: BASIC forces all deep jewellery rules off. */
 export function effectiveJewelleryCalcFeatures(
@@ -518,12 +519,16 @@ export function computeFineGold(
   const finenessBasis = normalizeFinenessBasis(config?.finenessBasis ?? DEFAULT_FINENESS_BASIS);
   const flagsSnapshot = effectiveJewelleryCalcFeatures(config);
 
-  // BASIC / fine OFF — user fine is authoritative; do not apply deep jewellery formulas.
+  // BASIC / fine OFF — user fine is authoritative when provided; auto-computes at 995 basis when not provided.
   if (!features.fineCalculation) {
-    const userFine =
-      input.userFineMg != null && Number.isFinite(input.userFineMg)
-        ? Math.max(0, Math.round(input.userFineMg))
+    const autoFine =
+      purityPermille != null && purityPermille > 0 && netMg > 0
+        ? fineGoldMg(netMg, Math.min(purityPermille, 999), finenessBasis)
         : 0;
+    const userFine =
+      input.userFineMg != null && Number.isFinite(input.userFineMg) && input.userFineMg > 0
+        ? Math.max(0, Math.round(input.userFineMg))
+        : autoFine;
     const snapshot: FormulaSnapshot = {
       ruleId,
       ruleVersion,
@@ -542,13 +547,14 @@ export function computeFineGold(
       fineMg: userFine,
       computedAt: Date.now(),
       formulaLabel:
-        mode === "basic"
-          ? "BASIC — Net = Gross + Add − Less; Fine = user-entered"
-          : "Fine calculation OFF — Fine = user-entered",
-      userControlledFine: true,
+        input.userFineMg != null && input.userFineMg > 0
+          ? "Fine = user-entered"
+          : formulaLabel(method, base, finenessBasis),
+      userControlledFine: input.userFineMg != null && input.userFineMg > 0 ? true : undefined,
     };
     return { netMg, fineMg: userFine, method, base, snapshot };
   }
+
 
   let fineMg = 0;
   let hisobPct: number | undefined;

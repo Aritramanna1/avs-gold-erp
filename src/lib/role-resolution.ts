@@ -150,9 +150,9 @@ export async function fetchAuthoritativeUserRole(
 }
 
 export async function syncCurrentUserRoleFromProfile(): Promise<string | null> {
-  const { data: authData } = await supabase.auth.getUser();
-  const userId = authData?.user?.id;
-  const email = authData?.user?.email;
+  const { data: authData } = await supabase.auth.getSession();
+  const userId = authData?.session?.user?.id;
+  const email = authData?.session?.user?.email;
   if (!userId || !email) return null;
 
   const role = await fetchAuthoritativeUserRole(userId, email);

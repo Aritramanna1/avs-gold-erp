@@ -46,7 +46,12 @@ export interface FamilyWithdrawal {
   personId: string;
   personName?: string;
   relationship?: FamilyRelationship;
+  drawingType?: "cash" | "gold" | "mixed";
   amountPaise: number;
+  cashAmountPaise?: number;
+  goldGrossWeightMg?: number;
+  goldPurity?: number;
+  goldFineWeightMg?: number;
   goldEquivalentMg?: number;
   goldRatePerGramPaise?: number;
   paymentMode: "cash" | "upi" | "bank" | "other";

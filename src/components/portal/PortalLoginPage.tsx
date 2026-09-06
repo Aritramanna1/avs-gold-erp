@@ -99,8 +99,16 @@ export function PortalLoginPage({ role }: PortalLoginPageProps) {
     setBusy(true);
     setErr(null);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
-      if (error) throw error;
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: { shouldCreateUser: false },
+      });
+      if (error) {
+        if (error.message.includes("Signups not allowed") || error.message.includes("User not found")) {
+          throw new Error("No registered account found for this email. Please check your credentials.");
+        }
+        throw error;
+      }
       setCodeSent(true);
       toast.success("Verification code sent.");
     } catch (ex) {

@@ -52,7 +52,9 @@ export type BusinessRuleKey =
   | "auto_generate_barcode"
   | "auto_print_after_generation"
   | "require_polishing_before_barcode"
-  | "require_approval_before_printing_barcode";
+  | "require_approval_before_printing_barcode"
+  | "enable_orders_module"
+  | "enable_ai_assistant";
 
 /** Who may change a given rule. Mirrors the coarse Super Owner/Owner/Administrator tier already used elsewhere (escalation.ts, financial-lock-store.ts) rather than inventing a parallel permission system. */
 export type RulePermissionTier = "owner_or_admin" | "super_owner_only";
@@ -418,6 +420,24 @@ export const BUSINESS_RULE_REGISTRY: Record<BusinessRuleKey, BusinessRuleDefinit
     name: "Require Approval Before Printing Barcode/Tag",
     description:
       "Requires a named approver before a jewellery tag, barcode label, or QR label can be printed.",
+    defaultValue: false,
+    permissionRequired: "owner_or_admin",
+    category: "automation",
+  },
+  enable_orders_module: {
+    key: "enable_orders_module",
+    name: "Enable Orders Module",
+    description:
+      "Turn customer & manufacturing order tracking on or off across the system. When turned off, transactions proceed directly to billing/manufacturing without mandatory order creation.",
+    defaultValue: true,
+    permissionRequired: "owner_or_admin",
+    category: "automation",
+  },
+  enable_ai_assistant: {
+    key: "enable_ai_assistant",
+    name: "Enable AI Assistant",
+    description:
+      "Display the AI assistant trigger in the top navigation bar and floating assistant drawer.",
     defaultValue: false,
     permissionRequired: "owner_or_admin",
     category: "automation",

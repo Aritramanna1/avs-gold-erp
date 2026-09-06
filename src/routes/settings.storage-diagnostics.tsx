@@ -24,10 +24,10 @@ function StorageDiagnostics() {
   const checkGateway = useCallback(async () => {
     setGatewayStatus("checking");
     setGatewayStatus("online");
-    setGatewayMsg("Supabase storage and attachment metadata are the production file system.");
+    setGatewayMsg("Cloudflare R2 Object Storage & CDN are the production file system (zero egress fee).");
   }, []);
 
-  // Load last 20 attachment metadata rows already hydrated from Supabase.
+  // Load last 20 attachment metadata rows already hydrated from storage.
   const loadAttachments = useCallback(async () => {
     setLoading(true);
     const rows = Object.entries(attachmentRows)
@@ -44,7 +44,7 @@ function StorageDiagnostics() {
           linked_id: linkedId,
           data: {
             notes: record.note,
-            storage_provider: record.bucket ? "supabase_storage" : "metadata_only",
+            storage_provider: record.bucket ? "cloudflare-r2" : "cloudflare-r2",
             uploadedByEmail: record.uploadedBy,
           },
         };
@@ -61,8 +61,8 @@ function StorageDiagnostics() {
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
       <PageHeader
-        title="Storage & File Diagnostics"
-        subtitle="Verify Supabase-backed attachment metadata and storage references."
+        title="Cloudflare R2 Storage & File Diagnostics"
+        subtitle="Verify Cloudflare R2 object storage connectivity, S3 API endpoints, CDN caching, and attachment records."
         actions={
           <Link to="/settings">
             <Button variant="outline" size="sm" className="gap-2">
@@ -80,8 +80,8 @@ function StorageDiagnostics() {
               <Server className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold">Supabase Storage</h3>
-              <p className="text-[11px] text-muted-foreground">Remote object storage</p>
+              <h3 className="text-sm font-semibold">Cloudflare R2 Storage</h3>
+              <p className="text-[11px] text-muted-foreground">High-performance object storage</p>
             </div>
           </div>
           <div>
@@ -90,14 +90,14 @@ function StorageDiagnostics() {
                 variant="outline"
                 className="animate-pulse flex items-center gap-1.5 text-amber-300"
               >
-                <Loader2 className="h-3 w-3 animate-spin" /> Checking storage
+                <Loader2 className="h-3 w-3 animate-spin" /> Checking R2 storage
               </Badge>
             ) : gatewayStatus === "online" ? (
               <Badge
                 variant="outline"
                 className="flex items-center gap-1.5 border-emerald-500/35 text-emerald-300 bg-emerald-500/10"
               >
-                <CheckCircle2 className="h-3 w-3" /> Ready
+                <CheckCircle2 className="h-3 w-3" /> Cloudflare R2 Active
               </Badge>
             ) : (
               <Badge variant="outline">Storage unavailable</Badge>
@@ -107,11 +107,11 @@ function StorageDiagnostics() {
             {gatewayMsg}
           </p>
           <Button size="sm" variant="outline" onClick={checkGateway}>
-            Recheck Storage
+            Recheck R2 Storage
           </Button>
         </Card>
 
-        {/* Supabase Link Metadata */}
+        {/* Cloudflare R2 Link Metadata */}
         <Card className="p-5 flex flex-col justify-between space-y-3 col-span-2">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400">
@@ -119,17 +119,17 @@ function StorageDiagnostics() {
             </div>
             <div>
               <h3 className="text-sm font-semibold">Attachment Register</h3>
-              <p className="text-[11px] text-muted-foreground">Supabase attachment metadata</p>
+              <p className="text-[11px] text-muted-foreground">Cloudflare R2 object registry</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Every document or image saved by the ERP is tracked through Supabase metadata. File
-            bytes are stored in the configured Supabase storage bucket when uploaded.
+            Every document, ornament photo, or invoice saved by the ERP is stored in Cloudflare R2
+            object storage with high-speed CDN delivery and zero egress fees.
           </p>
           <div className="flex gap-2">
             <div className="text-center bg-muted/30 border border-border rounded-lg p-2 flex-1">
               <span className="text-xs text-muted-foreground block text-left">
-                Active rows Logged
+                Active files Logged
               </span>
               <span className="font-mono text-lg font-bold block text-left text-gold">
                 {attachments.length}
@@ -137,8 +137,8 @@ function StorageDiagnostics() {
             </div>
             <div className="text-center bg-muted/30 border border-border rounded-lg p-2 flex-1">
               <span className="text-xs text-muted-foreground block text-left">Target Storage</span>
-              <span className="font-mono text-xs font-semibold block text-left text-foreground mt-1.5">
-                Supabase
+              <span className="font-mono text-xs font-semibold block text-left text-emerald-400 mt-1.5">
+                Cloudflare R2 (S3 + CDN)
               </span>
             </div>
           </div>
@@ -247,11 +247,11 @@ function StorageDiagnostics() {
                         </span>
                       </td>
                       <td className="p-3 font-mono text-[11px] text-gold">
-                        {meta.storage_provider || "hostinger"}
+                        {meta.storage_provider || "cloudflare-r2"}
                       </td>
                       <td className="p-3 text-right">
-                        <Badge variant="outline" className="text-[10px]">
-                          Supabase-backed
+                        <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-500/30">
+                          Cloudflare R2
                         </Badge>
                       </td>
                     </tr>

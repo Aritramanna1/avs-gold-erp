@@ -269,6 +269,39 @@ export function LegacyParityConfigurationPanel() {
 
                 <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
                   <div>
+                    <Label className="text-sm font-semibold">Disable Box &amp; Tray Master</Label>
+                    <p className="text-xs text-muted-foreground">Hide box/tray location tracking when managing bulk inventory.</p>
+                  </div>
+                  <Switch
+                    checked={featDraft.disableBoxTrayMaster}
+                    onCheckedChange={(c) => setFeatDraft({ ...featDraft, disableBoxTrayMaster: c })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                  <div>
+                    <Label className="text-sm font-semibold">Disable DHADI Group</Label>
+                    <p className="text-xs text-muted-foreground">Hide DHADI classifications in wholesale items and masters.</p>
+                  </div>
+                  <Switch
+                    checked={featDraft.disableDhadiGroup}
+                    onCheckedChange={(c) => setFeatDraft({ ...featDraft, disableDhadiGroup: c })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                  <div>
+                    <Label className="text-sm font-semibold">Disable Scheme Management (Manufacturing Mode)</Label>
+                    <p className="text-xs text-muted-foreground">Hide B2C chit fund / Swarna Nidhi schemes for pure manufacturing setups.</p>
+                  </div>
+                  <Switch
+                    checked={featDraft.disableSchemeManagement}
+                    onCheckedChange={(c) => setFeatDraft({ ...featDraft, disableSchemeManagement: c })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                  <div>
                     <Label className="text-sm font-semibold">Use Commission Agent</Label>
                     <p className="text-xs text-muted-foreground">Track external brokers and agent commissions on wholesale.</p>
                   </div>

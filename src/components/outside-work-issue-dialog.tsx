@@ -277,7 +277,7 @@ export function OutsideWorkIssueDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg" onKeyDown={onKeyDown}>
+      <DialogContent className="max-w-xl md:max-w-2xl max-h-[90vh] overflow-y-auto" onKeyDown={onKeyDown}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Truck className="h-4 w-4 text-gold" /> Issue to Outside Jeweller

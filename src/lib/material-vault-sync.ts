@@ -38,9 +38,15 @@ export function issueMaterialToVaultCategory(material: string): string {
       return "raw_gold";
     case "kdm":
     case "kdm balls":
+    case "kdm_balls":
       return "kdm_balls";
+    case "die":
+    case "die set":
+    case "dies":
+      return "die";
     case "ball":
-      return "kdm_balls";
+    case "balls":
+      return "ball";
     case "wire":
       return "wire";
     case "chain":
@@ -51,17 +57,25 @@ export function issueMaterialToVaultCategory(material: string): string {
       return "findings";
     case "tube":
       return "tube";
-    case "die":
     case "patti":
+      return "patti";
     case "stone":
+    case "stones":
+      return "stone";
     case "item / ornaments":
+    case "item":
+    case "ornaments":
+      return "item_ornaments";
     case "other":
-      return "other_material";
     default:
       if (key.includes("filing") || key.includes("dust")) return "filings";
       if (key.includes("wire")) return "wire";
-      if (key.includes("kdm") || key.includes("ball")) return "kdm_balls";
+      if (key.includes("kdm")) return "kdm_balls";
+      if (key.includes("die")) return "die";
+      if (key.includes("ball")) return "ball";
       if (key.includes("chain")) return "chains";
+      if (key.includes("patti")) return "patti";
+      if (key.includes("stone")) return "stone";
       return "other_material";
   }
 }

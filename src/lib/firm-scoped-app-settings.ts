@@ -84,8 +84,8 @@ export async function resolveCurrentFirmId(): Promise<string | null> {
       cachedFirmId = String(rpcFirm);
       return cachedFirmId;
     }
-    const { data: userResult } = await supabase.auth.getUser();
-    const userId = userResult.user?.id;
+    const { data: sessionResult } = await supabase.auth.getSession();
+    const userId = sessionResult.session?.user?.id;
     if (!userId) {
       cachedFirmId = null;
       return null;

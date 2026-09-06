@@ -47,11 +47,12 @@ export async function uploadFileToHostinger(args: UploadArgs) {
   const { file, module, relatedTable, relatedRecordId, relatedModule, branchId, notes } = args;
 
   const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+  const user = session?.user;
 
-  if (userError || !user) {
+  if (sessionError || !user) {
     throw new Error("You must be logged in to upload files.");
   }
 

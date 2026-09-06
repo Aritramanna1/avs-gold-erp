@@ -92,17 +92,83 @@ export function isSettingsPullStale(rowUpdatedAt: string | null | undefined): bo
   return rowMs < lastLocalSettingsWriteAt;
 }
 
+const LOCAL_STORAGE_SETTINGS_CACHE_KEY = "avs_firm_app_settings_cache";
+
+export function loadInitialCachedSettings(defaults: typeof DEFAULTS): typeof DEFAULTS {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return defaults;
+  }
+  try {
+    const raw = window.localStorage.getItem(LOCAL_STORAGE_SETTINGS_CACHE_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return defaults;
+
+    return {
+      ...defaults,
+      ...parsed,
+      firm: { ...defaults.firm, ...(parsed.firm || {}) },
+      branding: { ...defaults.branding, ...(parsed.branding || {}) },
+      print: { ...defaults.print, ...(parsed.print || {}) },
+      gst: { ...defaults.gst, ...(parsed.gst || {}) },
+      makingCharge: { ...defaults.makingCharge, ...(parsed.makingCharge || {}) },
+      hardware: { ...defaults.hardware, ...(parsed.hardware || {}) },
+      catalog: { ...defaults.catalog, ...(parsed.catalog || {}) },
+      language: { ...defaults.language, ...(parsed.language || {}) },
+      developer: { ...defaults.developer, ...(parsed.developer || {}) },
+      purities:
+        Array.isArray(parsed.purities) && parsed.purities.length > 0
+          ? parsed.purities
+          : defaults.purities,
+      workshopProcesses:
+        Array.isArray(parsed.workshopProcesses) && parsed.workshopProcesses.length > 0
+          ? parsed.workshopProcesses
+          : defaults.workshopProcesses,
+      alloyFormulas:
+        Array.isArray(parsed.alloyFormulas) && parsed.alloyFormulas.length > 0
+          ? parsed.alloyFormulas
+          : defaults.alloyFormulas,
+      purityHelper: { ...defaults.purityHelper, ...(parsed.purityHelper || {}) },
+      dropdowns: { ...defaults.dropdowns, ...(parsed.dropdowns || {}) },
+      disabledDropdowns: { ...defaults.disabledDropdowns, ...(parsed.disabledDropdowns || {}) },
+      printerProfiles:
+        Array.isArray(parsed.printerProfiles) && parsed.printerProfiles.length > 0
+          ? parsed.printerProfiles
+          : defaults.printerProfiles,
+      documentTemplates:
+        Array.isArray(parsed.documentTemplates) && parsed.documentTemplates.length > 0
+          ? parsed.documentTemplates
+          : defaults.documentTemplates,
+      complianceProfile: { ...defaults.complianceProfile, ...(parsed.complianceProfile || {}) },
+      formsMetadata:
+        Array.isArray(parsed.formsMetadata) && parsed.formsMetadata.length > 0
+          ? parsed.formsMetadata
+          : defaults.formsMetadata,
+      campaignTemplates: { ...defaults.campaignTemplates, ...(parsed.campaignTemplates || {}) },
+      commAutomation: { ...defaults.commAutomation, ...(parsed.commAutomation || {}) },
+      branchSettings: Array.isArray(parsed.branchSettings)
+        ? parsed.branchSettings
+        : defaults.branchSettings,
+      emailTemplates: Array.isArray(parsed.emailTemplates)
+        ? parsed.emailTemplates
+        : defaults.emailTemplates,
+    };
+  } catch (e) {
+    console.warn("[settings] Failed to parse initial cached settings:", e);
+    return defaults;
+  }
+}
+
 async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<void> {
   // Stamped before the await: a pull that raced this write must lose regardless
   // of when the round trip happens to complete.
   lastLocalSettingsWriteAt = Date.now();
   lastSettingsPersistError = null;
   try {
-    const { data: auth } = await supabase.auth.getUser();
-    const userId = auth?.user?.id;
+    const { data: auth } = await supabase.auth.getSession();
+    const userId = auth?.session?.user?.id;
     if (!userId) {
-      notifySettingsPersistFailure("You must be signed in to save firm settings.");
-      console.warn("[settings] Skipping app_settings persistence: not signed in.");
+      console.warn("[settings] Skipping remote database persistence: not signed in (cached locally).");
       return;
     }
 
@@ -144,48 +210,89 @@ async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<v
       firmId = (membership as { organization_id?: string } | null)?.organization_id ?? null;
     }
     if (!firmId) {
-      notifySettingsPersistFailure(
-        "Firm identity is missing on your user profile. Complete setup / trial company name, or ask support to link your account to a firm.",
-      );
-      console.warn("[settings] Skipping app_settings persistence: firm identity is unavailable.");
-      return;
+      try {
+        const { data: org } = await supabase
+          .from("organizations" as never)
+          .select("id")
+          .limit(1)
+          .maybeSingle();
+        firmId = (org as { id?: string } | null)?.id ?? null;
+      } catch {
+        /* fall through */
+      }
     }
 
-    // Prefer the membership-checked RPC. Plain PostgREST upsert under RLS can
-    // return HTTP 200 with zero rows changed (no error) — firm profile then
-    // "saves" in memory, disappears on refresh, while material issue inserts
-    // still work. The RPC writes as SECURITY DEFINER after authz checks and
-    // raises if the row was not actually updated.
-    const { data: rpcResult, error: rpcWriteError } = await (supabase as any).rpc(
-      "upsert_my_firm_app_settings",
-      { p_data: snapshot },
-    );
-    if (rpcWriteError) {
-      const hint =
-        /row-level security|rls|permission|policy|viewer|customer/i.test(rpcWriteError.message)
-          ? " Your role may not be allowed to edit firm settings (viewer/customer roles are blocked)."
-          : "";
-      notifySettingsPersistFailure(
-        (rpcWriteError.message || "Failed to persist firm settings.") + hint,
+    let savedToDb = false;
+
+    // Prefer the membership-checked RPC. The RPC writes as SECURITY DEFINER
+    // after authz checks and raises if the row was not actually updated.
+    try {
+      const { data: rpcResult, error: rpcWriteError } = await (supabase as any).rpc(
+        "upsert_my_firm_app_settings",
+        { p_data: snapshot },
       );
-      console.warn("[settings] Failed to persist via RPC:", rpcWriteError.message);
-      return;
+      if (!rpcWriteError && rpcResult && (rpcResult as { ok?: boolean }).ok !== false) {
+        savedToDb = true;
+      } else if (rpcWriteError) {
+        console.warn(
+          "[settings] RPC upsert_my_firm_app_settings failed, falling back to direct table upsert:",
+          rpcWriteError.message,
+        );
+      }
+    } catch (rpcEx) {
+      console.warn("[settings] RPC invocation exception, falling back to direct table upsert:", rpcEx);
     }
-    if (!rpcResult || (rpcResult as { ok?: boolean }).ok === false) {
-      notifySettingsPersistFailure("Firm settings write was not confirmed by the server.");
-      console.warn("[settings] upsert_my_firm_app_settings returned no confirmation:", rpcResult);
-      return;
+
+    // Direct table upsert fallback (if RPC failed, was missing, or unconfirmed)
+    if (!savedToDb) {
+      const targetId = firmId || userId || "main_settings";
+      try {
+        const { error: directErr } = await (supabase.from("app_settings") as any).upsert(
+          {
+            id: targetId,
+            scope: "firm",
+            data: snapshot as any,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" },
+        );
+        if (!directErr) {
+          savedToDb = true;
+        } else {
+          console.warn("[settings] Direct app_settings upsert fallback error:", directErr.message);
+          // If we had no firmId, try again with "main_settings"
+          if (firmId && firmId !== "main_settings") {
+            const { error: fallbackErr } = await (supabase.from("app_settings") as any).upsert(
+              {
+                id: "main_settings",
+                scope: "firm",
+                data: snapshot as any,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "id" },
+            );
+            if (!fallbackErr) savedToDb = true;
+          }
+        }
+      } catch (directEx) {
+        console.warn("[settings] Direct app_settings upsert exception:", directEx);
+      }
+    }
+
+    if (!savedToDb) {
+      notifySettingsPersistFailure("Could not persist settings to cloud database. Settings are preserved locally.");
     }
 
     // Also sync normalized dropdown masters
     if (snapshot.dropdowns) {
       try {
         const ddRows: any[] = [];
+        const masterFirmId = firmId || "default_firm";
         for (const [key, items] of Object.entries(snapshot.dropdowns as Record<string, string[]>)) {
           (items || []).forEach((val, idx) => {
             ddRows.push({
-              id: `${firmId}_${key}_${idx}`,
-              firm_id: firmId,
+              id: `${masterFirmId}_${key}_${idx}`,
+              firm_id: masterFirmId,
               master_key: key,
               value: val,
               sort_order: idx,
@@ -206,10 +313,11 @@ async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<v
     if (Array.isArray(snapshot.formsMetadata)) {
       try {
         const fieldRows: any[] = [];
+        const customFirmId = firmId || "default_firm";
         for (const form of snapshot.formsMetadata as FormMetadata[]) {
           (form.fields || []).forEach((f, idx) => {
             fieldRows.push({
-              firm_id: firmId,
+              firm_id: customFirmId,
               entity_type: form.type || form.id,
               field_code: f.name,
               field_label: f.label,
@@ -253,8 +361,8 @@ async function saveBranchToDb(b: {
   isDefault?: boolean;
 }): Promise<void> {
   try {
-    const { data: auth } = await supabase.auth.getUser();
-    const userId = auth?.user?.id;
+    const { data: auth } = await supabase.auth.getSession();
+    const userId = auth?.session?.user?.id;
     if (!userId) {
       console.warn("[settings] Skipping branch persistence: not signed in.");
       return;
@@ -309,8 +417,8 @@ async function saveWorkshopToDb(w: {
   description?: string;
 }): Promise<void> {
   try {
-    const { data: auth } = await supabase.auth.getUser();
-    const userId = auth?.user?.id;
+    const { data: auth } = await supabase.auth.getSession();
+    const userId = auth?.session?.user?.id;
     if (!userId) {
       console.warn("[settings] Skipping workshop persistence: not signed in.");
       return;
@@ -358,18 +466,6 @@ async function deleteWorkshopFromDb(id: string): Promise<void> {
 function persistSettings(get: () => any, force = false): void {
   const s = get();
 
-  // Never write before the stored settings have been read back.
-  //
-  // On every page load the store starts at its compiled-in DEFAULTS. Boot-time
-  // code paths call setters (branch selection, default bootstrapping) which land
-  // here — and if the pull hasn't resolved yet, this persisted the DEFAULT
-  // snapshot straight over the real row. Anything the user had added that isn't
-  // in the defaults (a custom form definition, most visibly) was destroyed on the
-  // next app start, which is exactly the "custom fields don't survive a restart"
-  // report. Until hydration lands, the in-memory state is not a fact about this
-  // workshop and must not be written down.
-  if (!s.settingsHydrated && !force) return;
-
   const snapshot = {
     firm: s.firm,
     branding: s.branding,
@@ -410,6 +506,20 @@ function persistSettings(get: () => any, force = false): void {
     }),
     emailTemplates: s.emailTemplates,
   };
+
+  // 1. Immediately cache snapshot to localStorage synchronously for instant offline & reload recovery
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      window.localStorage.setItem(LOCAL_STORAGE_SETTINGS_CACHE_KEY, JSON.stringify(snapshot));
+    }
+  } catch (err) {
+    console.warn("[settings] Failed to cache snapshot in localStorage:", err);
+  }
+
+  // Never write DEFAULT snapshot over the real database row before stored settings are read back.
+  // Explicit saves or user changes with force=true bypass this gate.
+  if (!s.settingsHydrated && !force) return;
+
   // Several related rate fields are updated by one dialog action. Serialize
   // the snapshots so concurrent upserts cannot finish out of order and leave
   // the remote row with only one of the edited rates.
@@ -803,7 +913,21 @@ export interface Purity {
 
 /** Workshop process types this ERP supports on the shared workshop-books framework. */
 export type WorkshopProcessType =
-  "manufacturing" | "melting" | "kdm" | "meena" | "stone_setting" | "polish" | "cutting";
+  | "manufacturing"
+  | "melting"
+  | "kdm"
+  | "meena"
+  | "stone_setting"
+  | "polish"
+  | "cutting"
+  | "casting"
+  | "filing"
+  | "setting"
+  | "engraving"
+  | "plating"
+  | "rhodium"
+  | "outside_work"
+  | (string & {});
 
 /**
  * Per-process configuration — allowable loss and labour calculation, driven
@@ -1268,9 +1392,79 @@ const DEFAULT_WORKSHOP_PROCESSES: WorkshopProcessConfig[] = [
     id: "wp_cutting",
     processType: "cutting",
     label: "Cutting",
-    active: false,
+    active: true,
     allowedLossPct: 0.5,
     labourCalcMethod: "per_gram",
+    labourRatePaise: 0,
+    recoveryApplicable: true,
+  },
+  {
+    id: "wp_casting",
+    processType: "casting",
+    label: "Casting",
+    active: true,
+    allowedLossPct: 1.5,
+    labourCalcMethod: "per_gram",
+    labourRatePaise: 0,
+    recoveryApplicable: true,
+  },
+  {
+    id: "wp_filing",
+    processType: "filing",
+    label: "Filing / Ghasai",
+    active: true,
+    allowedLossPct: 1.0,
+    labourCalcMethod: "per_gram",
+    labourRatePaise: 0,
+    recoveryApplicable: true,
+  },
+  {
+    id: "wp_setting",
+    processType: "setting",
+    label: "Setting / Jadhai",
+    active: true,
+    allowedLossPct: 0.5,
+    labourCalcMethod: "per_piece",
+    labourRatePaise: 0,
+    recoveryApplicable: false,
+  },
+  {
+    id: "wp_engraving",
+    processType: "engraving",
+    label: "Engraving / Chhilai",
+    active: true,
+    allowedLossPct: 0.5,
+    labourCalcMethod: "per_piece",
+    labourRatePaise: 0,
+    recoveryApplicable: true,
+  },
+  {
+    id: "wp_plating",
+    processType: "plating",
+    label: "Plating / Electroplating",
+    active: true,
+    allowedLossPct: 0.2,
+    labourCalcMethod: "fixed",
+    labourRatePaise: 0,
+    recoveryApplicable: false,
+  },
+  {
+    id: "wp_rhodium",
+    processType: "rhodium",
+    label: "Rhodium / Two-Tone",
+    active: true,
+    allowedLossPct: 0.2,
+    labourCalcMethod: "per_piece",
+    labourRatePaise: 0,
+    recoveryApplicable: false,
+  },
+  {
+    id: "wp_outside_work",
+    processType: "outside_work",
+    label: "Outside Work / Bahar Ka Kaam",
+    active: true,
+    allowedLossPct: 1.0,
+    labourCalcMethod: "fixed",
     labourRatePaise: 0,
     recoveryApplicable: true,
   },
@@ -2095,7 +2289,7 @@ function id(prefix: string) {
 }
 
 export const useSettings = create<SettingsState>()((set, get) => ({
-  ...DEFAULTS,
+  ...loadInitialCachedSettings(DEFAULTS),
   setFirm: (p) => {
     set({ firm: { ...get().firm, ...p } });
     persistSettings(get);

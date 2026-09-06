@@ -516,13 +516,14 @@ export const useWorkers = create<WorkersState>()((set, get) => ({
       return entry;
     });
 
-    const { data: userResult } = await supabase.auth.getUser();
+    const { data: sessionResult } = await supabase.auth.getSession();
     let firmId: string | null = null;
-    if (userResult.user?.id) {
+    const userId = sessionResult.session?.user?.id;
+    if (userId) {
       const { data: profile } = await supabase
         .from("user_profiles")
         .select("firm_id")
-        .eq("auth_id", userResult.user.id)
+        .eq("auth_id", userId)
         .maybeSingle();
       firmId = profile?.firm_id ?? null;
     }

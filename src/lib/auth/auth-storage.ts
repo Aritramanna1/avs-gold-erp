@@ -8,30 +8,52 @@
 
 export const REMEMBER_DEVICE_KEY = "ornexa-remember-device";
 
+const memoryStorage: Storage = {
+  length: 0,
+  clear: () => {},
+  getItem: () => null,
+  key: () => null,
+  removeItem: () => {},
+  setItem: () => {},
+};
+
+function getLocalStorage(): Storage {
+  if (typeof window !== "undefined" && window.localStorage) return window.localStorage;
+  if (typeof globalThis !== "undefined" && (globalThis as any).localStorage)
+    return (globalThis as any).localStorage;
+  return memoryStorage;
+}
+
+function getSessionStorage(): Storage {
+  if (typeof window !== "undefined" && window.sessionStorage) return window.sessionStorage;
+  if (typeof globalThis !== "undefined" && (globalThis as any).sessionStorage)
+    return (globalThis as any).sessionStorage;
+  return memoryStorage;
+}
+
 /** Default true: trusted browsers restore session without re-login. */
 export function isRememberDeviceEnabled(): boolean {
   if (typeof window === "undefined") return true;
-  return localStorage.getItem(REMEMBER_DEVICE_KEY) !== "false";
+  return getLocalStorage().getItem(REMEMBER_DEVICE_KEY) !== "false";
 }
 
 export function setRememberDevice(enabled: boolean): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(REMEMBER_DEVICE_KEY, enabled ? "true" : "false");
+  getLocalStorage().setItem(REMEMBER_DEVICE_KEY, enabled ? "true" : "false");
 }
 
 function activeStorage(): Storage {
-  if (typeof window === "undefined") return localStorage;
-  return isRememberDeviceEnabled() ? localStorage : sessionStorage;
+  return isRememberDeviceEnabled() ? getLocalStorage() : getSessionStorage();
 }
 
 function inactiveStorage(): Storage {
-  return isRememberDeviceEnabled() ? sessionStorage : localStorage;
+  return isRememberDeviceEnabled() ? getSessionStorage() : getLocalStorage();
 }
 
 /** Scan both storages for Supabase auth token key (used by rbac fast-hydration). */
 export function findSupabaseAuthTokenKey(): string | null {
   if (typeof window === "undefined") return null;
-  for (const store of [localStorage, sessionStorage]) {
+  for (const store of [getLocalStorage(), getSessionStorage()]) {
     for (let i = 0; i < store.length; i++) {
       const key = store.key(i);
       if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) return key;
@@ -43,7 +65,7 @@ export function findSupabaseAuthTokenKey(): string | null {
 export function readSupabaseAuthTokenRaw(): string | null {
   const key = findSupabaseAuthTokenKey();
   if (!key) return null;
-  return localStorage.getItem(key) ?? sessionStorage.getItem(key);
+  return getLocalStorage().getItem(key) ?? getSessionStorage().getItem(key);
 }
 
 /**
@@ -61,7 +83,7 @@ export const supabaseAuthStorage = {
     inactiveStorage().removeItem(key);
   },
   removeItem(key: string): void {
-    localStorage.removeItem(key);
-    sessionStorage.removeItem(key);
+    getLocalStorage().removeItem(key);
+    getSessionStorage().removeItem(key);
   },
 };

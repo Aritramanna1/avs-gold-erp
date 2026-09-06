@@ -20,13 +20,8 @@ function sanitizeEnvValue(value: string | undefined | null): string {
   return normalized.trim();
 }
 
-const PROD_SUPABASE_URL = "https://dqgrrafuoxaorvyrcuuh.supabase.co";
-const PROD_SUPABASE_KEY = "sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN";
-const PROD_SUPABASE_PROJECT_ID = "dqgrrafuoxaorvyrcuuh";
-
 function getResolvedConfig() {
   const isBrowser = typeof window !== "undefined";
-  const isRemoteDomain = isBrowser && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
 
   // 1. Runtime window / global injection
   const windowEnv = isBrowser ? ((window as any).__ENV__ || (window as any).ENV || {}) : {};
@@ -37,15 +32,8 @@ function getResolvedConfig() {
   let storedProjectId = "";
   if (isBrowser) {
     try {
-      const legacyKeys = ["VITE_SUPABASE_URL", "MTJ_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY", "MTJ_SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_PROJECT_ID"];
-      for (const k of legacyKeys) {
-        const val = localStorage.getItem(k);
-        if (val && (val.includes("xrvsvzfqjptzbxjscnvf") || val.includes("mtj-erp") || val.includes("0wEt7qew0XI5Ml8fqfVKyw"))) {
-          localStorage.removeItem(k);
-        }
-      }
-      storedUrl = localStorage.getItem("VITE_SUPABASE_URL") || localStorage.getItem("MTJ_SUPABASE_URL") || "";
-      storedKey = localStorage.getItem("VITE_SUPABASE_PUBLISHABLE_KEY") || localStorage.getItem("MTJ_SUPABASE_PUBLISHABLE_KEY") || "";
+      storedUrl = localStorage.getItem("VITE_SUPABASE_URL") || "";
+      storedKey = localStorage.getItem("VITE_SUPABASE_PUBLISHABLE_KEY") || "";
       storedProjectId = localStorage.getItem("VITE_SUPABASE_PROJECT_ID") || "";
     } catch {
       // Ignore localStorage access restrictions
@@ -60,36 +48,14 @@ function getResolvedConfig() {
   );
   const envProjectId = sanitizeEnvValue(import.meta.env.VITE_SUPABASE_PROJECT_ID);
 
-  let resolvedUrl = sanitizeEnvValue(windowEnv.VITE_SUPABASE_URL) || storedUrl || envUrl;
-  let resolvedKey = sanitizeEnvValue(windowEnv.VITE_SUPABASE_PUBLISHABLE_KEY || windowEnv.VITE_SUPABASE_ANON_KEY) || storedKey || envKey;
-  let resolvedProjectId = sanitizeEnvValue(windowEnv.VITE_SUPABASE_PROJECT_ID) || storedProjectId || envProjectId;
-
-  // 4. Production Resilience Gate:
-  // On remote production domain or if legacy/decommissioned project is referenced,
-  // enforce the authoritative production Supabase backend.
-  const isDecommissioned =
-    resolvedUrl.includes("xrvsvzfqjptzbxjscnvf") ||
-    resolvedUrl.includes("mtj-erp") ||
-    resolvedKey.includes("0wEt7qew0XI5Ml8fqfVKyw");
-
-  if (
-    !resolvedUrl ||
-    isDecommissioned ||
-    (isRemoteDomain && (resolvedUrl.includes("localhost") || resolvedUrl.includes("127.0.0.1") || resolvedUrl.includes("default") || resolvedUrl !== PROD_SUPABASE_URL))
-  ) {
-    resolvedUrl = PROD_SUPABASE_URL;
-    resolvedKey = PROD_SUPABASE_KEY;
-    resolvedProjectId = PROD_SUPABASE_PROJECT_ID;
-  }
-
-  if (!resolvedKey) {
-    resolvedKey = PROD_SUPABASE_KEY;
-  }
+  const resolvedUrl = sanitizeEnvValue(windowEnv.VITE_SUPABASE_URL) || storedUrl || envUrl;
+  const resolvedKey = sanitizeEnvValue(windowEnv.VITE_SUPABASE_PUBLISHABLE_KEY || windowEnv.VITE_SUPABASE_ANON_KEY) || storedKey || envKey;
+  const resolvedProjectId = sanitizeEnvValue(windowEnv.VITE_SUPABASE_PROJECT_ID) || storedProjectId || envProjectId;
 
   return {
     url: resolvedUrl,
     key: resolvedKey,
-    projectId: resolvedProjectId || PROD_SUPABASE_PROJECT_ID,
+    projectId: resolvedProjectId || "default",
   };
 }
 

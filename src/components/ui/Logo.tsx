@@ -54,6 +54,11 @@ export function Logo({ variant = "svg", alt, className, ...props }: LogoProps) {
       alt={alt || fallbackAlt}
       className={className}
       referrerPolicy="no-referrer"
+      onError={() => {
+        if (resolvedSrc !== fallbackSrc) {
+          setResolvedSrc(fallbackSrc);
+        }
+      }}
       {...props}
     />
   );

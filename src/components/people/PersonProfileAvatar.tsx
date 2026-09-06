@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from "react";
 import { useAttachmentUrl } from "@/lib/attachments-store";
-import { getDirectR2ObjectUrl } from "@/lib/supabase-storage";
+import { getDirectR2ObjectUrl, getSupabasePublicStorageUrl } from "@/lib/supabase-storage";
 import { cn } from "@/lib/utils";
 
 /** Same initials rule as the tenant profile chip in AppShell. */
@@ -29,6 +29,7 @@ type Props = {
   className?: string;
   imgClassName?: string;
   docKey?: string;
+  isLoading?: boolean;
   "data-testid"?: string;
 };
 
@@ -40,9 +41,10 @@ export function PersonProfileAvatar({
   className,
   imgClassName,
   docKey = "photo",
+  isLoading = false,
   "data-testid": testId,
 }: Props) {
-  const [broken, setBroken] = useState(false);
+  const [attempt, setAttempt] = useState<"r2" | "supabase" | "broken">("r2");
 
   const pid = personId || person?.id || "";
 
@@ -66,6 +68,13 @@ export function PersonProfileAvatar({
   const r2StorageUrl = storagePathCandidate
     ? getDirectR2ObjectUrl(bucket, storagePathCandidate)
     : null;
+  const supabaseStorageUrl = storagePathCandidate
+    ? getSupabasePublicStorageUrl(bucket, storagePathCandidate)
+    : null;
+
+  useEffect(() => {
+    setAttempt("r2");
+  }, [pid, explicitAvatarUrl, storagePathCandidate]);
 
   // 3. Direct property candidates
   const rawCandidate =
@@ -94,26 +103,36 @@ export function PersonProfileAvatar({
     (validDirectCandidate && (validDirectCandidate.startsWith("http") || validDirectCandidate.startsWith("data:")))
       ? validDirectCandidate
       : (validDirectCandidate && (validDirectCandidate.startsWith("firms/") || validDirectCandidate.startsWith("platform/")))
-      ? getDirectR2ObjectUrl(bucket, validDirectCandidate)
-      : r2StorageUrl ||
-        validDirectCandidate ||
+      ? (attempt === "r2" ? getDirectR2ObjectUrl(bucket, validDirectCandidate) : getSupabasePublicStorageUrl(bucket, validDirectCandidate))
+      : (attempt === "r2" ? (r2StorageUrl || validDirectCandidate) : (supabaseStorageUrl || validDirectCandidate)) ||
         null;
 
-  const showPhoto = Boolean(finalPhotoUrl) && !broken;
+  const showPhoto = Boolean(finalPhotoUrl) && attempt !== "broken";
   const initials = nameInitials(name || person?.fullName || person?.name || "");
 
   if (showPhoto && finalPhotoUrl) {
     return (
-      <div className={cn("overflow-hidden bg-accent shrink-0 select-none", className)}>
+      <div className={cn("overflow-hidden bg-accent shrink-0 select-none relative", className)}>
         <img
           src={finalPhotoUrl}
           alt={name || person?.fullName || "Avatar"}
           crossOrigin="anonymous"
           loading="lazy"
-          onError={() => setBroken(true)}
+          onError={() => {
+            if (attempt === "r2" && supabaseStorageUrl && supabaseStorageUrl !== r2StorageUrl) {
+              setAttempt("supabase");
+            } else {
+              setAttempt("broken");
+            }
+          }}
           className={cn("h-full w-full object-cover", imgClassName)}
           data-testid={testId}
         />
+        {isLoading && (
+          <div className="absolute inset-0 bg-background/60 backdrop-blur-[1px] flex items-center justify-center">
+            <div className="h-3.5 w-3.5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
       </div>
     );
   }
@@ -122,14 +141,18 @@ export function PersonProfileAvatar({
   return (
     <div
       className={cn(
-        "bg-primary text-primary-foreground grid place-items-center font-bold text-sm shrink-0 select-none",
+        "bg-primary text-primary-foreground grid place-items-center font-bold text-sm shrink-0 select-none relative",
         className,
       )}
       aria-label={name}
       data-testid={testId}
       title={name}
     >
-      <span className="leading-none tracking-tight">{initials}</span>
+      {isLoading ? (
+        <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      ) : (
+        <span className="leading-none tracking-tight">{initials}</span>
+      )}
     </div>
   );
 }

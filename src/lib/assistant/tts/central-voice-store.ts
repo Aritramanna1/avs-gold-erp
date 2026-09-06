@@ -122,8 +122,9 @@ export async function enrollCentralVoice(input: {
     return { ok: false, error: "Reference transcript is required." };
   }
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) return { ok: false, error: "Sign in as Platform Owner." };
 
   let audioMeta: { path: string; bucket: string; durationMs?: number };

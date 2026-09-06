@@ -5,6 +5,9 @@
 
 export interface LegacyFeaturesConfig {
   disableDiamondStoneFeature: boolean;
+  disableBoxTrayMaster: boolean;
+  disableDhadiGroup: boolean;
+  disableSchemeManagement: boolean;
   useAgent: boolean;
   useSalesman: boolean;
   useSubAccounts: boolean;
@@ -159,13 +162,16 @@ export interface LegacyVoucherConfig {
 
 export const DEFAULT_LEGACY_FEATURES: LegacyFeaturesConfig = {
   disableDiamondStoneFeature: false,
+  disableBoxTrayMaster: false,
+  disableDhadiGroup: false,
+  disableSchemeManagement: false,
   useAgent: false,
-  useSalesman: false,
+  useSalesman: true,
   useSubAccounts: false,
-  companyNo: "1001",
-  enableAppPurchase: false,
+  companyNo: "",
+  enableAppPurchase: true,
   enableAppSale: true,
-  enablePurchaseOrder: false,
+  enablePurchaseOrder: true,
   enableHindiDate: false,
   autoInsureAmount: 0,
   defaultCurrency: "RS.",

@@ -114,28 +114,122 @@ function filterNavTree(
 }
 
 import { useInstallationConfig } from "@/lib/installation-config";
+import { useBusinessRules } from "@/lib/business-rules-store";
+import { useCustomizationHubPreferences } from "@/lib/customization-hub-preferences-store";
+import { useWorkflowEngine } from "@/lib/workflow-engine";
 
-function isPortalRouteAllowed(to: string): boolean {
+function isNavRouteAllowed(to: string): boolean {
   try {
     const portals = useInstallationConfig.getState().activePortals;
     if (to === "/karigar-portal" && portals && portals.karigar === false) return false;
     if (to === "/customer-portal" && portals && portals.customer === false) return false;
     if (to === "/supplier-portal" && portals && portals.supplier === false) return false;
+
+    // Sub-accounts disabled in this edition profile
+    if (to === "/utilities/sub-accounts") return false;
+
+    const rules = useBusinessRules.getState();
+    if (to.startsWith("/orders") && !rules.isEnabled("enable_orders_module")) return false;
+    if (to === "/assistant" && !rules.isEnabled("enable_ai_assistant")) return false;
+
+    // ── Customization Hub Features & Business Mode Filter ──
+    const feat = useCustomizationHubPreferences.getState().features;
+    const wfMode = useWorkflowEngine.getState().config.mode;
+
+    // Strict Manufacturing Mode: Completely hide Retail CRM, retail marketing, retail box/tray, schemes, retail estimates, bank reconciliation, URD purchase, duplicate item transactions & obsolete stock transfers
+    if (wfMode === "manufacturing_only" || wfMode !== "retail_only") {
+      if (
+        to === "/treasury/bank-reconciliation" ||
+        to === "/utilities/urd-purchase" ||
+        to === "/stock/transfers" ||
+        to === "/utilities/item-transaction" ||
+        to === "/reports/item-transaction" ||
+        to === "/manufacturing/owner-transactions"
+      ) {
+        return false;
+      }
+    }
+
+    if (wfMode === "manufacturing_only") {
+      if (
+        to.startsWith("/crm") ||
+        to === "/communications" ||
+        to === "/whatsapp" ||
+        to.startsWith("/scheme") ||
+        to === "/reports/scheme" ||
+        to === "/billing/estimates" ||
+        to.includes("box") ||
+        to.includes("tray")
+      ) {
+        return false;
+      }
+    }
+
+    // Strict Retail-Only Mode: Completely hide Manufacturing, workshop, karigar, melt, refinery, hallmarking
+    if (wfMode === "retail_only") {
+      if (
+        to.startsWith("/manufacturing") ||
+        to.startsWith("/workshop") ||
+        to === "/melt" ||
+        to === "/refinery" ||
+        to === "/conversion" ||
+        to === "/stock/hallmark" ||
+        to === "/repair"
+      ) {
+        return false;
+      }
+    }
+
+    // Always block duplicate owner transaction route (owner drawings belong to /expenses)
+    if (to === "/manufacturing/owner-transactions") return false;
+
+    // Schemes: Hide if explicitly disabled in features
+    if (feat?.disableSchemeManagement && (to.startsWith("/scheme") || to === "/reports/scheme")) {
+      return false;
+    }
+
+    // Box & Tray Master: Hide if explicitly disabled in features
+    if (feat?.disableBoxTrayMaster && (to.includes("box") || to.includes("tray"))) {
+      return false;
+    }
+
+    // DHADI Group: Hide if explicitly disabled
+    if (feat?.disableDhadiGroup && to.includes("dhadi")) {
+      return false;
+    }
+
+    // Diamond / Stone: Hide if explicitly disabled
+    if (feat?.disableDiamondStoneFeature && (to.includes("diamond") || to.includes("stone"))) {
+      return false;
+    }
   } catch {
     /* fallback to allowed */
   }
   return true;
 }
 
-/** Keep folders that still have at least one permitted leaf. */
+/** Keep folders that still have at least one permitted leaf and enforce top-level group restrictions. */
 export function filterNavGroupsByPermission(
   groups: NavGroupDef[],
   allow: (to: string) => boolean,
 ): NavGroupDef[] {
+  const wfMode = useWorkflowEngine.getState().config.mode;
+
   return groups
+    .filter((group) => {
+      // In strict Manufacturing-only mode, completely exclude Retail CRM and Scheme groups
+      if (wfMode === "manufacturing_only" && (group.id === "crm" || group.id === "scheme")) {
+        return false;
+      }
+      // In strict Retail-only mode, completely exclude Production/Workshop group
+      if (wfMode === "retail_only" && group.id === "production") {
+        return false;
+      }
+      return true;
+    })
     .map((group) => ({
       ...group,
-      items: filterNavTree(group.items, (to) => allow(to) && isPortalRouteAllowed(to)),
+      items: filterNavTree(group.items, (to) => allow(to) && isNavRouteAllowed(to)),
     }))
     .filter((group) => group.items.length > 0);
 }
@@ -154,7 +248,25 @@ export const navigationGroups: NavGroupDef[] = [
     label: "Home",
     i18nKey: "group_home",
     icon: Home,
-    items: [{ to: "/app", label: "Dashboard", i18nKey: "item_dashboard", icon: Home }],
+    items: [
+      { to: "/app", label: "Dashboard", i18nKey: "item_dashboard", icon: Home },
+      { to: "/dashboard/ceo", label: "Founder Cockpit", i18nKey: "item_ceo", icon: Building2 },
+    ],
+  },
+  {
+    id: "crm",
+    label: "CRM & Showroom",
+    i18nKey: "group_crm",
+    subtitleKey: "subtitle_crm",
+    icon: Users,
+    items: [
+      { to: "/crm/360/cust-1", label: "Customer 360", i18nKey: "item_customer_360", icon: User },
+      { to: "/crm/leads", label: "Leads & Enquiries", i18nKey: "item_leads", icon: MessageSquare },
+      { to: "/crm/appointments", label: "Appointments Desk", i18nKey: "item_appointments", icon: Briefcase },
+      { to: "/people", label: "Customer Directory", i18nKey: "item_account_master", icon: Users },
+      { to: "/stock/boxes", label: "Showroom Box & Tray", i18nKey: "item_boxes", icon: Package },
+      { to: "/communications", label: "Marketing Campaigns", i18nKey: "item_marketing", icon: Mail },
+    ],
   },
   {
     id: "master",
@@ -165,7 +277,7 @@ export const navigationGroups: NavGroupDef[] = [
     items: [
       {
         id: "master-accounts",
-        label: "Accounts",
+        label: "Account",
         i18nKey: "folder_accounts",
         icon: Users,
         children: [
@@ -175,107 +287,15 @@ export const navigationGroups: NavGroupDef[] = [
             i18nKey: "item_account_master",
             icon: Users,
           },
-          {
-            to: "/people",
-            label: "Customers",
-            i18nKey: "item_customers",
-            icon: User,
-            search: { tab: "customers" },
-          },
-          {
-            to: "/people",
-            label: "Suppliers",
-            i18nKey: "item_suppliers",
-            icon: Truck,
-            search: { tab: "vendors" },
-          },
-          {
-            to: "/people",
-            label: "Karigars",
-            i18nKey: "item_karigars",
-            icon: Hammer,
-            search: { tab: "karigars" },
-          },
-          {
-            to: "/utilities/sub-accounts",
-            label: "Sub Acc. Master",
-            i18nKey: "item_sub_accounts",
-            icon: Landmark,
-          },
-          {
-            to: "/ledger",
-            label: "Gold & Material Ledger",
-            i18nKey: "item_gold_ledger",
-            icon: BookOpen,
-          },
         ],
       },
       {
         id: "master-ac-group",
-        label: "A/c Group",
+        label: "Account Group",
         i18nKey: "folder_ac_group",
         icon: Landmark,
         children: [
           { to: "/control/accounts", label: "Account Group", i18nKey: "item_coa", icon: Landmark },
-        ],
-      },
-      {
-        id: "master-item",
-        label: "Item",
-        i18nKey: "folder_item",
-        icon: Package,
-        separatorBefore: true,
-        children: [
-          {
-            to: "/utilities/item-masters",
-            label: "Item Master",
-            i18nKey: "item_item_masters",
-            icon: Package,
-            search: { tab: "items" },
-          },
-          {
-            to: "/utilities/item-masters",
-            label: "Item Group",
-            i18nKey: "item_item_group",
-            icon: Layers,
-            search: { tab: "groups" },
-          },
-          {
-            to: "/utilities/item-masters",
-            label: "Item Stamp",
-            i18nKey: "item_item_stamp",
-            icon: BadgeCheck,
-            search: { tab: "stamps" },
-          },
-          {
-            to: "/utilities/item-masters",
-            label: "Item Type",
-            i18nKey: "item_item_type",
-            icon: Package,
-            search: { tab: "types" },
-          },
-          { to: "/catalog", label: "Item Design", i18nKey: "item_catalog", icon: Gem },
-          {
-            to: "/stock/entry",
-            label: "Item Opening Stock",
-            i18nKey: "item_stock_entry",
-            icon: Package,
-          },
-        ],
-      },
-      {
-        id: "master-stamp",
-        label: "Stamp",
-        i18nKey: "folder_stamp",
-        icon: BadgeCheck,
-        children: [
-          {
-            to: "/utilities/item-masters",
-            label: "Item Stamp / Purity",
-            i18nKey: "item_item_stamp",
-            icon: BadgeCheck,
-            search: { tab: "stamps" },
-          },
         ],
       },
       {
@@ -344,18 +364,6 @@ export const navigationGroups: NavGroupDef[] = [
             search: { tab: "users" },
           },
         ],
-      },
-      {
-        to: "/stock/boxes",
-        label: "Box & Tray Masters",
-        i18nKey: "item_boxes",
-        icon: Package,
-      },
-      {
-        to: "/workshop/dhadi-groups",
-        label: "Dhadi Group",
-        i18nKey: "item_dhadi_groups",
-        icon: Users,
       },
     ],
   },
@@ -430,18 +438,6 @@ export const navigationGroups: NavGroupDef[] = [
             icon: BookOpen,
           },
         ],
-      },
-      {
-        to: "/stock/transfers",
-        label: "Stock Transfer",
-        i18nKey: "item_transfers",
-        icon: ArrowLeftRight,
-      },
-      {
-        to: "/utilities/item-transaction",
-        label: "Item Transaction",
-        i18nKey: "item_item_txn_entry",
-        icon: Package,
       },
       {
         to: "/reports/fine-margin",
@@ -627,12 +623,6 @@ export const navigationGroups: NavGroupDef[] = [
     items: [
       { to: "/control/rates", label: "Daily Bhav / Rate Master", i18nKey: "item_rate_master", icon: Scale },
       {
-        to: "/treasury/bank-reconciliation",
-        label: "Bank Reconciliation",
-        i18nKey: "item_bank_rec",
-        icon: Landmark,
-      },
-      {
         id: "utility-cheque",
         label: "Cheque",
         i18nKey: "folder_cheque",
@@ -645,36 +635,10 @@ export const navigationGroups: NavGroupDef[] = [
             icon: Printer,
           },
           {
-            to: "/treasury/bank-reconciliation",
-            label: "Register",
-            i18nKey: "item_cheque_register",
-            icon: List,
-          },
-          {
             to: "/treasury/cash-book",
             label: "Checkbook",
             i18nKey: "item_cheque_checkbook",
             icon: Wallet,
-          },
-        ],
-      },
-      {
-        id: "utility-box-tag",
-        label: "Box Tag",
-        i18nKey: "folder_box_tag",
-        icon: Package,
-        children: [
-          {
-            to: "/stock/boxes",
-            label: "Box Tag In",
-            i18nKey: "item_box_tag_in",
-            icon: Package,
-          },
-          {
-            to: "/stock/transfers",
-            label: "Box Tag Out",
-            i18nKey: "item_box_tag_out",
-            icon: ArrowLeftRight,
           },
         ],
       },
@@ -820,12 +784,6 @@ export const navigationGroups: NavGroupDef[] = [
             i18nKey: "item_city_wise",
             icon: Building2,
           },
-          {
-            to: "/reports/item-transaction",
-            label: "Item Transaction Register",
-            i18nKey: "item_item_txn",
-            icon: Package,
-          },
         ],
       },
       {
@@ -903,6 +861,12 @@ export const navigationGroups: NavGroupDef[] = [
     icon: Wrench,
     items: [
       {
+        to: "/manufacturing/karigar-transactions",
+        label: "Karigar Transaction Hub",
+        i18nKey: "item_karigar_hub",
+        icon: Hammer,
+      },
+      {
         id: "prod-dhadi",
         label: "Dhadi / Job Cards",
         i18nKey: "folder_dhadi",
@@ -913,12 +877,6 @@ export const navigationGroups: NavGroupDef[] = [
             label: "Dhadi List / Job Cards",
             i18nKey: "item_job_cards",
             icon: Wrench,
-          },
-          {
-            to: "/workshop/dhadi-groups",
-            label: "Dhadi Group",
-            i18nKey: "item_dhadi_groups",
-            icon: Users,
           },
           {
             to: "/workshop/gold-book",
@@ -941,23 +899,6 @@ export const navigationGroups: NavGroupDef[] = [
         icon: BookOpen,
       },
       { to: "/workshop/vibrator", label: "Vibrator Out", i18nKey: "item_vibrator", icon: Wrench },
-      { to: "/workshop/jangad", label: "Jangad Pending", i18nKey: "item_jangad", icon: FileText },
-      {
-        id: "prod-outside",
-        label: "Outside Work",
-        i18nKey: "folder_outside",
-        icon: Truck,
-        children: [
-          {
-            to: "/workshop/outside-work",
-            label: "Outside Work",
-            i18nKey: "item_outside_work",
-            icon: Truck,
-          },
-          { to: "/workshop/polishing", label: "Polishing", i18nKey: "item_polishing", icon: Gem },
-          { to: "/workshop/process/meena", label: "Meena", i18nKey: "item_meena", icon: Gem },
-        ],
-      },
       { to: "/orders", label: "Orders", i18nKey: "item_orders", icon: ShoppingBag },
       { to: "/repair", label: "Repair Orders", i18nKey: "item_repair_orders", icon: ShoppingBag },
       {
@@ -968,7 +909,7 @@ export const navigationGroups: NavGroupDef[] = [
       },
       { to: "/melt", label: "Melt & Refinery", i18nKey: "item_melt", icon: FlameKindling },
       { to: "/refinery", label: "Refinery Operations", i18nKey: "item_refinery", icon: FlameKindling },
-      { to: "/conversion", label: "Metal Conversion", i18nKey: "item_conversion", icon: Scale },
+      { to: "/conversion", label: "Melting Process", i18nKey: "item_melting_process", icon: Scale },
     ],
   },
   {
@@ -1027,68 +968,6 @@ export const navigationGroups: NavGroupDef[] = [
     ],
   },
   {
-    id: "bullion",
-    label: "Bullion",
-    i18nKey: "group_bullion",
-    subtitleKey: "subtitle_bullion",
-    icon: Scale,
-    items: [
-      {
-        to: "/utilities/sauda-book",
-        label: "Bullion",
-        i18nKey: "item_bullion",
-        icon: Scale,
-        search: { book: "bullion" },
-      },
-      {
-        to: "/utilities/sauda-book",
-        label: "Sauda Book",
-        i18nKey: "item_sauda",
-        icon: BookOpen,
-        search: { book: "sauda" },
-      },
-      {
-        to: "/reports/bullion-ledger",
-        label: "Bullion Ledger",
-        i18nKey: "item_bullion_ledger",
-        icon: BookOpen,
-      },
-      {
-        to: "/settlement/new",
-        label: "Settlement",
-        i18nKey: "item_gold_settlement",
-        icon: ArrowLeftRight,
-      },
-    ],
-  },
-  {
-    id: "portals",
-    label: "Portals",
-    i18nKey: "group_portals",
-    subtitleKey: "subtitle_portals",
-    icon: Users,
-    items: [
-      {
-        to: "/karigar-portal",
-        label: "Karigar Portal",
-        i18nKey: "item_karigar_portal",
-        icon: Hammer,
-      },
-      {
-        to: "/customer-portal",
-        label: "Customer Portal",
-        i18nKey: "item_customer_portal",
-        icon: Users,
-      },
-      {
-        to: "/supplier-portal",
-        label: "Supplier Portal",
-        i18nKey: "item_supplier_portal",
-        icon: Truck,
-      },
-    ],
-  },
-  {
     id: "avs-platform",
     label: "AVS Platform",
     i18nKey: "group_avs_platform",
@@ -1109,10 +988,11 @@ export const navigationGroups: NavGroupDef[] = [
       },
       { to: "/whatsapp", label: "WhatsApp Status", i18nKey: "item_whatsapp", icon: MessageSquare },
       { to: "/communications", label: "Email & Comms", i18nKey: "item_email_comms", icon: Mail },
-      { to: "/assistant", label: "AI Assistant", i18nKey: "item_assistant", icon: Bot },
+      { to: "/ai-center", label: "AI Center (Disabled)", i18nKey: "item_ai_center", icon: Cpu },
+      { to: "/settings/automation", label: "Automation Center", i18nKey: "item_automation", icon: Sliders },
       { to: "/notifications", label: "Notifications", i18nKey: "item_notifications", icon: Bell },
       { to: "/branches", label: "Branches", i18nKey: "item_branches", icon: Building2 },
-      { to: "/dashboard/ceo", label: "CEO Dashboard", i18nKey: "item_ceo", icon: Building2 },
+      { to: "/dashboard/ceo", label: "Founder Cockpit", i18nKey: "item_ceo", icon: Building2 },
       { to: "/reports/erp-audit", label: "ERP Audit", i18nKey: "item_erp_audit", icon: ShieldCheck },
       {
         to: "/control/tally-export",

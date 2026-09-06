@@ -6,7 +6,7 @@ export interface DatabaseProvider {
 }
 
 export interface StorageProvider {
-  kind: "supabase-storage";
+  kind: "cloudflare-r2";
   synchronizesFiles: true;
 }
 
@@ -31,7 +31,7 @@ export function resolveRuntimeProviders(mode: DeploymentMode): RuntimeProviders 
   return {
     mode,
     database: { kind: "managed", localPrimary: false },
-    storage: { kind: "supabase-storage", synchronizesFiles: true },
+    storage: { kind: "cloudflare-r2", synchronizesFiles: true },
     authentication: { kind: "managed" },
     synchronization: { kind: "managed", enabled: false },
   };

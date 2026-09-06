@@ -47,8 +47,8 @@ export async function verifyUserRoleAndStatus(
 
   if (!matched) {
     try {
-      const { data: userResult } = await supabase.auth.getUser();
-      const userId = userResult?.user?.id;
+      const { data: sessionResult } = await supabase.auth.getSession();
+      const userId = sessionResult?.session?.user?.id;
       if (userId) {
         const { data: profile } = await supabase
           .from("user_profiles")
@@ -87,21 +87,21 @@ export async function verifyUserRoleAndStatus(
   if (!matched) {
     return {
       allowed: false,
-      error: "Your account exists, but AVS ERP profile is not linked. Contact admin.",
+      error: "Your account exists, but Onyxa ERP profile is not linked. Please contact your firm admin or AVS support.",
     };
   }
 
   if (!matched.active) {
     return {
       allowed: false,
-      error: "Your account is deactivated. Contact admin.",
+      error: "Your account is deactivated. Please contact your firm admin or AVS support.",
     };
   }
 
   if (!matched.role) {
     return {
       allowed: false,
-      error: "Your account exists, but no role is assigned to it under AVS ERP. Contact admin.",
+      error: "Your account exists, but no role is assigned under Onyxa ERP. Contact your admin.",
     };
   }
 
@@ -432,7 +432,7 @@ export function AuthLayout({
           {err && (
             <div
               className={cn(
-                "text-xs font-medium leading-relaxed rounded-lg p-3 flex items-start gap-2.5 border",
+                "text-xs font-medium leading-relaxed rounded-lg p-3 flex flex-col gap-1.5 border",
                 nativeMinimal
                   ? "text-white/85 bg-white/5 border-white/15"
                   : "text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900",
@@ -440,13 +440,38 @@ export function AuthLayout({
               data-testid="auth-error"
               id="auth-error-banner"
             >
-              <ShieldAlert
-                className={cn(
-                  "h-4 w-4 shrink-0 mt-0.5",
-                  nativeMinimal ? "text-[#B89454]" : "text-red-600 dark:text-red-400",
-                )}
-              />
-              <span>{err}</span>
+              <div className="flex items-start gap-2.5">
+                <ShieldAlert
+                  className={cn(
+                    "h-4 w-4 shrink-0 mt-0.5",
+                    nativeMinimal ? "text-[#B89454]" : "text-red-600 dark:text-red-400",
+                  )}
+                />
+                <span>{err}</span>
+              </div>
+              <div className="pl-6.5 text-[11px] flex items-center gap-3">
+                <Link
+                  to="/invite/accept"
+                  className={cn(
+                    "font-semibold underline hover:opacity-80 transition-opacity",
+                    nativeMinimal ? "text-[#B89454]" : "text-red-900 dark:text-red-200",
+                  )}
+                >
+                  Accept Invitation
+                </Link>
+                <span>·</span>
+                <a
+                  href="https://arivahly.in/products/onyxa-erp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "font-semibold underline hover:opacity-80 transition-opacity",
+                    nativeMinimal ? "text-[#B89454]" : "text-red-900 dark:text-red-200",
+                  )}
+                >
+                  Request Demo ↗
+                </a>
+              </div>
             </div>
           )}
 

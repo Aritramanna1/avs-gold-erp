@@ -7,10 +7,15 @@ test.describe("Customer portal security boundaries", () => {
     expectNoPageErrors(authedPage);
   });
 
-  test("customer portal route is not rendered as a public anonymous page", async ({ page }) => {
-    await page.goto("/customer-portal");
-    await expect(page.getByText(/welcome,/i)).toHaveCount(0);
-    await expect(page.getByTestId("auth-form")).toBeVisible({ timeout: 10_000 });
-    expectNoPageErrors(page);
+  test.describe("Anonymous access", () => {
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    test("customer portal route is not rendered as a public anonymous page", async ({ page }) => {
+      await page.goto("/customer-portal");
+      await expect(page.getByText(/welcome,/i)).toHaveCount(0);
+      await expect(page.getByTestId("auth-form")).toBeVisible({ timeout: 10_000 });
+      expectNoPageErrors(page);
+    });
   });
 });
+

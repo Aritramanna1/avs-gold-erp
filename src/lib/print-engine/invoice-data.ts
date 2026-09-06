@@ -298,11 +298,41 @@ export function buildInvoicePrintData(inv: Invoice): PrintDocumentData {
     },
   ];
 
-  const payments = (Array.isArray(inv.payments) ? inv.payments : []).map((p) => ({
-    modeLabel: PAYMENT_MODE_LABELS[p.mode],
-    reference: p.reference || "",
-    amountLabel: rupees(p.amountPaise),
-  }));
+  const fallbackRatePaise =
+    inv.items[0]?.goldRatePerGramPaise ||
+    (Array.isArray(inv.payments) ? inv.payments : []).find((p) => (p.goldRatePerGramPaise ?? 0) > 0)?.goldRatePerGramPaise ||
+    750000;
+
+  const payments = (Array.isArray(inv.payments) ? inv.payments : []).map((p) => {
+    const isGoldPayment = p.mode === "gold_exchange" || p.mode === "customer_gold_credit";
+    const goldFine = p.goldFineMg ?? (p.goldGrossMg ? Math.round((p.goldGrossMg * (p.goldPurity || 916)) / 995) : 0);
+
+    if (isGoldPayment && goldFine > 0) {
+      return {
+        modeLabel: PAYMENT_MODE_LABELS[p.mode] || "Gold Handed Over",
+        reference: p.reference
+          ? `${p.reference} (${mgToGrams(goldFine)}g Fine Gold @ ${p.goldPurity || 916} Touch)`
+          : `Physical Metal Receipt: ${mgToGrams(p.goldGrossMg || goldFine)}g Gross → ${mgToGrams(goldFine)}g Fine Gold (${p.goldPurity || 916} Touch)`,
+        amountLabel: `${mgToGrams(goldFine)} g Fine Gold`,
+      };
+    }
+
+    const rateP = p.goldRatePerGramPaise || fallbackRatePaise;
+    const equivMg = rateP > 0 ? Math.round((p.amountPaise * 1000) / rateP) : 0;
+    const rateNote = rateP > 0 ? `Rate: ₹${paiseToRupees(rateP)}/g` : "";
+    const equivNote = equivMg > 0 ? `Gold Equiv: ${mgToGrams(equivMg)}g Fine` : "";
+    const metaNotes = [rateNote, equivNote].filter(Boolean).join(" | ");
+
+    return {
+      modeLabel: PAYMENT_MODE_LABELS[p.mode] || p.mode,
+      reference: p.reference
+        ? `${p.reference}${metaNotes ? ` (${metaNotes})` : ""}`
+        : metaNotes
+          ? `Settled in Cash (${metaNotes})`
+          : "Cash Settlement",
+      amountLabel: rupees(p.amountPaise),
+    };
+  });
 
   const ticketInfo = [
     { label: "Voucher", value: inv.invoiceNo },
@@ -311,8 +341,17 @@ export function buildInvoicePrintData(inv: Invoice): PrintDocumentData {
     ...(inv.customerPhone ? [{ label: "Phone", value: inv.customerPhone }] : []),
   ];
 
+  const isPureGoldInvoice =
+    (inv.payments || []).length > 0 &&
+    (inv.payments || []).every(
+      (p) => p.mode === "gold_exchange" || p.mode === "customer_gold_credit",
+    );
+  const totalPaidGoldMg = (inv.payments || []).reduce((sum, p) => sum + (p.goldFineMg || 0), 0);
+  const remainingGoldDueMg = Math.max(0, totalFineMg - totalPaidGoldMg);
+
   const thermalTotals = [
     { label: "Gross Metal Value", value: rupees(totalGoldValuePaise) },
+    { label: "Total Fine Gold", value: `${mgToGrams(totalFineMg)} g Fine` },
     { label: "Labour / Making", value: rupees(totalMakingChargesPaise) },
     ...(totalStoneChargesPaise > 0
       ? [{ label: "Stone Valuation", value: rupees(totalStoneChargesPaise) }]
@@ -326,9 +365,17 @@ export function buildInvoicePrintData(inv: Invoice): PrintDocumentData {
     ...(totalDiscountPaise > 0
       ? [{ label: "Discount Reduction", value: `-${rupees(totalDiscountPaise)}` }]
       : []),
-    { label: "GRAND TOTAL", value: rupees(inv.grandTotalPaise) },
-    { label: "Amount Paid", value: rupees(inv.paidPaise) },
-    { label: "OUTSTANDING DUE", value: rupees(inv.balancePaise) },
+    ...(isPureGoldInvoice
+      ? [
+          { label: "GRAND TOTAL (GOLD)", value: `${mgToGrams(totalFineMg)} g Fine` },
+          { label: "Total Paid (Gold)", value: `${mgToGrams(totalPaidGoldMg)} g Fine` },
+          { label: "OUTSTANDING DUE (GOLD)", value: `${mgToGrams(remainingGoldDueMg)} g Fine` },
+        ]
+      : [
+          { label: "GRAND TOTAL", value: rupees(inv.grandTotalPaise) },
+          { label: "Amount Paid", value: rupees(inv.paidPaise) },
+          { label: "OUTSTANDING DUE", value: rupees(inv.balancePaise) },
+        ]),
   ];
 
   return {

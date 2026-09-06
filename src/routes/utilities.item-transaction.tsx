@@ -133,19 +133,21 @@ function ItemTransactionEntryPage() {
             </select>
           </div>
           <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="party">Party</Label>
+            <Label htmlFor="party">Customer / Party (Customers Only)</Label>
             <select
               id="party"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               value={partyId}
               onChange={(e) => setPartyId(e.target.value)}
             >
-              <option value="">Optional…</option>
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.fullName}
-                </option>
-              ))}
+              <option value="">Select Customer (Optional)…</option>
+              {people
+                .filter((p) => p.type === "customer" || (!p.type && !p.id.startsWith("karigar_") && !p.id.startsWith("worker_")))
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.fullName} (Customer)
+                  </option>
+                ))}
             </select>
           </div>
           <div className="space-y-1.5 sm:col-span-2">

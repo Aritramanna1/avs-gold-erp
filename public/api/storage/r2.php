@@ -68,6 +68,7 @@ if ($method === 'GET') {
         $signature = base64_encode(hash_hmac('sha1', $signaturePayload, $r2SecretKey, true));
         $signedUrl = "{$r2PublicEndpoint}/{$objectKey}?AWSAccessKeyId={$r2AccessKey}&Expires={$expires}&Signature=" . urlencode($signature);
 
+        header('Cache-Control: public, max-age=1800');
         http_response_code(200);
         echo json_encode([
             'success' => true,
@@ -79,8 +80,48 @@ if ($method === 'GET') {
     }
 }
 
-// ── POST Actions: Upload Media & Register Metadata ──────────────────────────
+// ── POST Actions: Upload, Batch Resolve & Delete ────────────────────────────
 if ($method === 'POST') {
+    if ($action === 'batch_download_urls') {
+        $raw = file_get_contents('php://input');
+        $body = json_decode($raw, true) ?: [];
+        $tenantId = trim($body['tenant_id'] ?? 'tenant_default');
+        $keys = $body['object_keys'] ?? [];
+
+        if (!is_array($keys) || empty($keys)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid or empty object_keys array']);
+            exit;
+        }
+
+        $expectedPrefix = "tenant/{$tenantId}/";
+        $expires = time() + 3600;
+        $urls = [];
+
+        foreach ($keys as $objectKey) {
+            $objectKey = trim((string)$objectKey);
+            if (empty($objectKey)) continue;
+
+            // Strict tenant boundary check
+            if (strpos($objectKey, $expectedPrefix) !== 0) {
+                continue;
+            }
+
+            $signaturePayload = "GET\n\n\n{$expires}\n/{$r2Bucket}/{$objectKey}";
+            $signature = base64_encode(hash_hmac('sha1', $signaturePayload, $r2SecretKey, true));
+            $signedUrl = "{$r2PublicEndpoint}/{$objectKey}?AWSAccessKeyId={$r2AccessKey}&Expires={$expires}&Signature=" . urlencode($signature);
+            $urls[$objectKey] = $signedUrl;
+        }
+
+        header('Cache-Control: public, max-age=1800');
+        http_response_code(200);
+        echo json_encode([
+            'success' => true,
+            'urls' => $urls,
+            'expires_at' => date('c', $expires),
+        ]);
+        exit;
+    }
     if ($action === 'upload') {
         $tenantId = trim($_POST['tenant_id'] ?? 'tenant_default');
         $category = preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['category'] ?? 'documents');

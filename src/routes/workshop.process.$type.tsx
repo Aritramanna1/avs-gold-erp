@@ -37,6 +37,7 @@ import {
 } from "@/lib/workshop-process-store";
 import { useSettings, type WorkshopProcessType } from "@/lib/settings-store";
 import { usePeople } from "@/lib/people-store";
+import { useWorkflowEngine } from "@/lib/workflow-engine";
 import { useLedger } from "@/lib/ledger-store";
 import { useOrders } from "@/lib/orders-store";
 import { useMaterialVault, DEFAULT_MATERIAL_CATEGORIES } from "@/lib/material-vault-store";
@@ -74,19 +75,41 @@ export const Route = createFileRoute("/workshop/process/$type")({
   component: WorkshopProcessPage,
 });
 
+function getProcessConfig(type: string) {
+  const processes = useSettings.getState().workshopProcesses || [];
+  return processes.find(
+    (p) =>
+      p.processType === type ||
+      p.id === type ||
+      p.id === `wp_${type}` ||
+      p.label.toLowerCase().replace(/\s+/g, "_") === type.toLowerCase(),
+  );
+}
+
 function processLabel(type: string): string {
+  const custom = getProcessConfig(type);
+  if (custom) return custom.label;
   const labels: Record<string, string> = {
     kdm: "Manufacturing Material Making",
     meena: "Meena (Enamel)",
     stone_setting: "Stone Setting",
     polish: "Polish",
     cutting: "Cutting",
+    casting: "Casting",
+    filing: "Filing / Ghasai",
+    setting: "Setting / Jadhai",
+    engraving: "Engraving / Chhilai",
+    plating: "Plating / Electroplating",
+    rhodium: "Rhodium / Two-Tone",
+    outside_work: "Outside Work / Bahar Ka Kaam",
   };
-  return labels[type] ?? type;
+  return labels[type] ?? type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function isLabourPaymentProcess(type: WorkshopProcessType): boolean {
-  return type === "stone_setting" || type === "cutting";
+  const cfg = getProcessConfig(type);
+  if (cfg) return cfg.labourRatePaise > 0 || cfg.labourCalcMethod !== "per_gram";
+  return type === "stone_setting" || type === "cutting" || type === "setting" || type === "engraving" || type === "plating" || type === "rhodium";
 }
 
 function safeGramsToMg(val: string): number {
@@ -131,7 +154,35 @@ function WorkshopProcessPage() {
   const { transactions, refresh } = useWorkshopProcess();
   const cfg = useSettings((s) => s.workshopProcesses.find((p) => p.processType === processType));
   const people = usePeople((s) => s.people);
-  const karigars = useMemo(() => people.filter((p) => p.type === "karigar" && p.active), [people]);
+  const workflowConfig = useWorkflowEngine((s) => s.config);
+  const meenaProcessType = workflowConfig.meenaProcessType ?? "outside";
+
+  const karigars = useMemo(() => {
+    const active = people.filter((p) => p.active);
+    if (isMeena) {
+      if (meenaProcessType === "outside") {
+        const outside = active.filter(
+          (p) =>
+            p.type === "outside_karigar" ||
+            p.type === "outside_worker" ||
+            p.type === "vendor" ||
+            p.type === "service_provider",
+        );
+        if (outside.length > 0) return outside;
+      } else {
+        const inHouse = active.filter((p) => p.type === "karigar" || p.type === "worker");
+        if (inHouse.length > 0) return inHouse;
+      }
+    }
+    return active.filter(
+      (p) =>
+        p.type === "karigar" ||
+        p.type === "worker" ||
+        p.type === "outside_karigar" ||
+        p.type === "outside_worker",
+    );
+  }, [people, isMeena, meenaProcessType]);
+
   const labourPayOnly = isLabourPaymentProcess(processType);
   const entries = useLedger((s) => s.entries);
   const appendVault = useMaterialVault((s) => s.append);
@@ -681,7 +732,7 @@ function WorkshopProcessPage() {
       </Card>
 
       <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl md:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-serif text-gold">
               {fromVault ? (

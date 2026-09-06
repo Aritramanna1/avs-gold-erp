@@ -33,6 +33,8 @@ import {
   Keyboard,
   ChevronRight,
   ExternalLink,
+  MessageSquare,
+  Mail,
 } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { ModuleSkeleton } from "@/components/module-skeleton";
@@ -538,8 +540,11 @@ function HelpPage() {
       </Card>
 
       {/* Main Tabs */}
-      <Tabs defaultValue="curriculum" className="space-y-6">
-        <TabsList className="grid grid-cols-3 max-w-md">
+      <Tabs defaultValue="support" className="space-y-6">
+        <TabsList className="grid grid-cols-4 max-w-xl">
+          <TabsTrigger value="support" className="text-xs font-semibold text-emerald-500">
+            Free Support Desk
+          </TabsTrigger>
           <TabsTrigger value="curriculum" className="text-xs">
             Interactive Tracks
           </TabsTrigger>
@@ -549,10 +554,71 @@ function HelpPage() {
           <TabsTrigger value="faq" className="text-xs">
             Jewellery FAQ
           </TabsTrigger>
-          <TabsTrigger value="agent" className="text-xs">
-            Help Agent
-          </TabsTrigger>
         </TabsList>
+
+        {/* ── Free Support Desk Tab ────────────────────────────────────────── */}
+        <TabsContent value="support" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="p-5 border-emerald-500/30 bg-emerald-500/5 space-y-3">
+              <div className="flex items-center gap-2 text-emerald-500">
+                <HelpCircle className="h-5 w-5" />
+                <h3 className="text-sm font-bold text-foreground">100% Free In-App Support</h3>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Direct official support from Arivahly Venture Sphere. Built right into your ERP with zero third-party subscription costs.
+              </p>
+              <div className="pt-2">
+                <a
+                  href="https://wa.me/918459721575?text=Hello%20AVS%20Support%20Team%2C%20I%20need%20assistance%20with%20AVS%20ERP"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 font-bold">
+                    <MessageSquare className="h-4 w-4" /> Open WhatsApp Support Chat
+                  </Button>
+                </a>
+              </div>
+            </Card>
+
+            <Card className="p-5 border-border bg-card space-y-3">
+              <div className="flex items-center gap-2 text-gold">
+                <ShieldCheck className="h-5 w-5" />
+                <h3 className="text-sm font-bold text-foreground">System Health & Diagnostic</h3>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center py-1 border-b border-border/50">
+                  <span className="text-muted-foreground">Supabase Database</span>
+                  <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/40">ONLINE</Badge>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-border/50">
+                  <span className="text-muted-foreground">Meta WhatsApp API</span>
+                  <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/40">CONNECTED</Badge>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-border/50">
+                  <span className="text-muted-foreground">R2 Cloud Media Storage</span>
+                  <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/40">ACTIVE</Badge>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-muted-foreground">Web Audio Feedback</span>
+                  <Badge variant="outline" className="text-[10px] text-emerald-500 border-emerald-500/40">READY</Badge>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-5 border-border bg-card space-y-3">
+              <div className="flex items-center gap-2 text-blue-500">
+                <Mail className="h-5 w-5" />
+                <h3 className="text-sm font-bold text-foreground">Direct Desk Helpline</h3>
+              </div>
+              <div className="space-y-1.5 text-xs text-muted-foreground">
+                <p><strong>Support Email:</strong> support@arivahly.in</p>
+                <p><strong>Hotline:</strong> +91 84597 21575</p>
+                <p><strong>Response SLA:</strong> Under 15 minutes</p>
+                <p><strong>Operational Hours:</strong> 9:00 AM – 9:00 PM IST</p>
+              </div>
+            </Card>
+          </div>
+        </TabsContent>
 
         {/* ── Curriculum Tab ──────────────────────────────────────────────── */}
         <TabsContent value="curriculum" className="space-y-6">

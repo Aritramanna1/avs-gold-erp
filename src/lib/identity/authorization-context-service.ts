@@ -129,8 +129,8 @@ export async function fetchAuthorizationContextFromMemberships(
 }
 
 export async function fetchAuthorizationContext(): Promise<AuthorizationContext | null> {
-  const { data: userData } = await supabase.auth.getUser();
-  const authUserId = userData.user?.id;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const authUserId = sessionData.session?.user?.id;
   if (!authUserId) return null;
 
   const { data, error } = await (supabase as any).rpc("get_authorization_context");
@@ -146,8 +146,10 @@ export async function fetchAuthorizationContext(): Promise<AuthorizationContext 
 }
 
 export async function activatePlatformWorkspace(): Promise<void> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const authUserId = sessionData.session?.user?.id;
   const { error } = await (supabase as any).from("identity_active_context").upsert({
-    auth_user_id: (await supabase.auth.getUser()).data.user?.id,
+    auth_user_id: authUserId,
     organization_id: null,
     product_id: "ORNEXA",
     portal_type: null,

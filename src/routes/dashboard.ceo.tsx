@@ -52,6 +52,8 @@ import {
 } from "lucide-react";
 
 import { guardRoute } from "@/lib/permissions";
+import { getFounderMetrics } from "@/lib/founder-cockpit-store";
+import { formatCurrencyRupees } from "@/lib/numbers";
 
 export const Route = createFileRoute("/dashboard/ceo")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
@@ -678,22 +680,130 @@ function BranchPanel({ branch }: { branch: Branch }) {
 function CeoDashboard() {
   const branches = useSettings((s) => s.branches);
   const activeBranches = branches.filter((b) => b.active);
+  const founderMetrics = getFounderMetrics();
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="font-serif text-3xl text-gold leading-tight">CEO Dashboard</h1>
+          <h1 className="font-serif text-3xl text-gold leading-tight">Founder Command Center</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Company-wide analytics · Read-only management view · {activeBranches.length} active
+            Arivahly Venture Sphere (MTJ Retail Edition) · Live Showroom Cockpit · {activeBranches.length} active
             branch{activeBranches.length !== 1 ? "es" : ""}
           </p>
         </div>
         <Badge className="bg-gold/15 text-gold border-gold/30 text-xs gap-1.5">
           <Building2 className="h-3.5 w-3.5" />
-          {activeBranches.length} of {branches.length} Active
+          {activeBranches.length} of {branches.length} Active Showrooms
         </Badge>
+      </div>
+
+      {/* Founder Action Required Matrix */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-rose-500" />
+            <h2 className="text-lg font-bold tracking-tight text-foreground">ACTION REQUIRED</h2>
+          </div>
+          <Badge variant="outline" className="text-xs font-mono">
+            {founderMetrics.actionRequired.length} Items Require Human Attention
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {founderMetrics.actionRequired.map((item) => (
+            <div
+              key={item.id}
+              className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition-colors ${
+                item.severity === 'CRITICAL'
+                  ? 'border-rose-500/40 bg-rose-500/5'
+                  : item.severity === 'HIGH'
+                  ? 'border-amber-500/40 bg-amber-500/5'
+                  : item.severity === 'MEDIUM'
+                  ? 'border-sky-500/40 bg-sky-500/5'
+                  : 'border-border bg-card'
+              }`}
+            >
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] font-bold ${
+                      item.severity === 'CRITICAL'
+                        ? 'text-rose-500 border-rose-500/40'
+                        : item.severity === 'HIGH'
+                        ? 'text-amber-500 border-amber-500/40'
+                        : item.severity === 'MEDIUM'
+                        ? 'text-sky-500 border-sky-500/40'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    {item.severity}
+                  </Badge>
+                  <span className="text-[10px] uppercase font-mono text-muted-foreground">{item.category}</span>
+                </div>
+                <h4 className="font-bold text-sm text-foreground">{item.title}</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">{item.description}</p>
+              </div>
+
+              <div className="pt-2 border-t border-border/60 flex items-center justify-between">
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <Link
+                  to={item.actionUrl}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-gold hover:underline"
+                >
+                  {item.actionLabel} →
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Showroom Daily Operations Telemetry */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 rounded-xl border bg-card/60 space-y-1">
+          <span className="text-xs text-muted-foreground font-medium">Today's Sales</span>
+          <div className="text-xl font-bold font-mono text-emerald-500">
+            {formatCurrencyRupees(founderMetrics.sales.todayPaise / 100)}
+          </div>
+          <span className="text-[11px] text-muted-foreground block font-mono">
+            {founderMetrics.sales.transactionCount} Bills · ATV: {formatCurrencyRupees(founderMetrics.sales.averageTransactionValuePaise / 100)}
+          </span>
+        </div>
+
+        <div className="p-4 rounded-xl border bg-card/60 space-y-1">
+          <span className="text-xs text-muted-foreground font-medium">Month to Date Sales</span>
+          <div className="text-xl font-bold font-mono text-foreground">
+            {formatCurrencyRupees(founderMetrics.sales.monthToDatePaise / 100)}
+          </div>
+          <span className="text-[11px] text-muted-foreground block">
+            Target: {formatCurrencyRupees(founderMetrics.sales.targetPaise / 100)}
+          </span>
+        </div>
+
+        <div className="p-4 rounded-xl border bg-card/60 space-y-1">
+          <span className="text-xs text-muted-foreground font-medium">Hot Leads & Pipeline</span>
+          <div className="text-xl font-bold font-mono text-amber-500">
+            {founderMetrics.leads.hotLeadsCount} Hot ({formatCurrencyRupees(founderMetrics.leads.pipelineValuePaise / 100)})
+          </div>
+          <span className="text-[11px] text-muted-foreground block">
+            {founderMetrics.leads.followupsDueTodayCount} Follow-ups due today
+          </span>
+        </div>
+
+        <div className="p-4 rounded-xl border bg-card/60 space-y-1">
+          <span className="text-xs text-muted-foreground font-medium">Showroom Stock Value</span>
+          <div className="text-xl font-bold font-mono text-gold">
+            {formatCurrencyRupees(founderMetrics.inventory.stockValuationPaise / 100)}
+          </div>
+          <span className="text-[11px] text-muted-foreground block">
+            {founderMetrics.inventory.availablePieces} Available Pieces
+          </span>
+        </div>
       </div>
 
       {/* Gold Dashboard — gold is the primary accounting unit, so its trend

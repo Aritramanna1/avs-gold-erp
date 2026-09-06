@@ -29,8 +29,8 @@ export async function syncPersonToCentralParty(person: Person): Promise<void> {
   // Resolve and cache firm_id
   let firmId = cachedCentralFirmId;
   if (!firmId) {
-    const { data: userResult } = await centralDb.auth.getUser();
-    const userId = userResult?.user?.id;
+    const { data: sessionResult } = await centralDb.auth.getSession();
+    const userId = sessionResult?.session?.user?.id;
     if (userId) {
       const { data: profile } = await centralDb
         .from("user_profiles")

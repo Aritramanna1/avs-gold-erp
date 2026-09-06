@@ -49,6 +49,70 @@ export type RazorpayCheckoutProps = {
   onDismiss?: () => void;
 };
 
+/** Directly open the Razorpay payment gateway modal programmatically */
+export async function openRazorpayModal({
+  orderId,
+  amountPaise,
+  keyId,
+  description = "Prepaid wallet & communication credits",
+  invoiceNo,
+  onSuccess,
+  onFailure,
+  onDismiss,
+}: {
+  orderId: string;
+  amountPaise: number;
+  keyId: string;
+  description?: string;
+  invoiceNo?: string;
+  onSuccess?: () => void;
+  onFailure?: (reason?: string) => void;
+  onDismiss?: () => void;
+}): Promise<void> {
+  await loadRazorpayScript();
+  if (!window.Razorpay) throw new Error("Payment gateway service unavailable");
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const email = sessionData.session?.user?.email ?? undefined;
+  const name =
+    (sessionData.session?.user?.user_metadata?.full_name as string | undefined) ??
+    (sessionData.session?.user?.user_metadata?.name as string | undefined);
+
+  return new Promise<void>((resolve, reject) => {
+    const rzp = new window.Razorpay!({
+      key: keyId,
+      amount: amountPaise,
+      currency: "INR",
+      order_id: orderId,
+      name: "AVS Gold ERP",
+      description: invoiceNo ? `Invoice ${invoiceNo}` : description,
+      prefill: { email, name, contact: "" },
+      theme: { color: "#b8860b" },
+      modal: {
+        ondismiss: () => {
+          onDismiss?.();
+          resolve();
+        },
+      },
+      handler: () => {
+        onSuccess?.();
+        resolve();
+      },
+    });
+
+    rzp.on("payment.failed", (response: unknown) => {
+      const reason =
+        (response as { error?: { description?: string } })?.error?.description ??
+        "Payment was declined";
+      toast.error(reason);
+      onFailure?.(reason);
+      reject(new Error(reason));
+    });
+
+    rzp.open();
+  });
+}
+
 export function RazorpayCheckoutButton({
   orderId,
   amountPaise,
@@ -77,11 +141,11 @@ export function RazorpayCheckoutButton({
       await loadRazorpayScript();
       if (!window.Razorpay) throw new Error("Payment service unavailable");
 
-      const { data: userData } = await supabase.auth.getUser();
-      const email = userData.user?.email ?? undefined;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const email = sessionData.session?.user?.email ?? undefined;
       const name =
-        (userData.user?.user_metadata?.full_name as string | undefined) ??
-        (userData.user?.user_metadata?.name as string | undefined);
+        (sessionData.session?.user?.user_metadata?.full_name as string | undefined) ??
+        (sessionData.session?.user?.user_metadata?.name as string | undefined);
 
       const rzp = new window.Razorpay({
         key: keyId,

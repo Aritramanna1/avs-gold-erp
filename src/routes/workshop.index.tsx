@@ -13,7 +13,9 @@ import { compileJewellerBooks, jewellerBooksTotals, type JewellerBook } from "@/
 import { BOOK_TYPES } from "@/lib/workshop-book-types";
 import { formatWeight } from "@/lib/gold";
 import { useBusinessRules } from "@/lib/business-rules-store";
-import { Search, BookOpen, Sparkles, ScanLine, Scale, Library } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ReceiveFinishedProductDialog } from "@/components/karigar/ReceiveFinishedProductDialog";
+import { Search, BookOpen, Flame, ScanLine, Scale, Library, PackageCheck } from "lucide-react";
 
 /** Jeweller book → People-style card metrics. */
 function jewellerCardData(b: JewellerBook): BookCardData {
@@ -57,6 +59,7 @@ export const Route = createFileRoute("/workshop/")({
  * The Karigar Gold Book, Outside Work and Polishing remain their own modules,
  * only linked from here.
  */
+
 function WorkshopBooksPage() {
   // Every store the books are compiled from — subscribed so a new order,
   // bill, settlement or payment re-renders the books immediately.
@@ -72,6 +75,7 @@ function WorkshopBooksPage() {
 
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [receiveProductOpen, setReceiveProductOpen] = useState(false);
   const navigate = useNavigate();
 
   const books = useMemo(
@@ -99,15 +103,25 @@ function WorkshopBooksPage() {
         subtitle="The central ledger for every jeweller, worker and vendor we manufacture for — gold received, gold issued, outstanding balances and the full running book of each."
         actions={
           <div className="flex flex-wrap gap-2 justify-end">
+            <Button
+              onClick={() => setReceiveProductOpen(true)}
+              className="gap-2 bg-gold hover:bg-gold/90 text-white font-semibold"
+            >
+              <PackageCheck className="h-4 w-4" /> Receive Finished Product
+            </Button>
             <ModuleLink to="/workshop/gold-book" icon={BookOpen} label="Worker Gold Book" />
             {polishingModuleEnabled && (
-              <ModuleLink to="/workshop/polishing" icon={Sparkles} label="Polishing" />
+              <ModuleLink to="/workshop/polishing" icon={Flame} label="Polishing" />
             )}
             {barcodeModuleEnabled && (
               <ModuleLink to="/workshop/barcode-scanner" icon={ScanLine} label="Barcode Scanner" />
             )}
           </div>
         }
+      />
+      <ReceiveFinishedProductDialog
+        open={receiveProductOpen}
+        onClose={() => setReceiveProductOpen(false)}
       />
 
       {/* The shelf: every book type Workshop holds. Jeweller Books is the one

@@ -28,9 +28,13 @@ test-results/
 playwright-report/
 blob-report/
 qa/reports-output/
+qa/e2e/qa/
 .playwright-artifacts/
+e2e/.auth/
 coverage/
 
-# Environment files
+# Environment files and archives
 .env.local
 .env.*.local
+*.zip
+

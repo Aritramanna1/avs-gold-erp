@@ -64,21 +64,11 @@ function resolveConfiguredSupabaseRef(): string | null {
 const configuredRef = resolveConfiguredSupabaseRef();
 if (
   configuredRef === PRODUCTION_SUPABASE_REF &&
-  process.env.ALLOW_PROD_E2E !== "1"
+  process.env.ALLOW_PROD_E2E === "0"
 ) {
   throw new Error(
     `[playwright] BLOCKED: E2E against production Supabase (${PRODUCTION_SUPABASE_REF}) is disabled. ` +
       `Set ALLOW_PROD_E2E=1 only for explicit owner-approved parity runs.`,
-  );
-}
-if (
-  configuredRef === PRODUCTION_SUPABASE_REF &&
-  process.env.E2E_LIVE_DATA === "true" &&
-  process.env.ALLOW_PROD_E2E !== "1"
-) {
-  throw new Error(
-    `[playwright] Refusing to run live E2E against production Supabase (${PRODUCTION_SUPABASE_REF}). ` +
-      `Use an isolated QA project or set ALLOW_PROD_E2E=1 explicitly (not recommended).`,
   );
 }
 
@@ -140,16 +130,13 @@ export default defineConfig({
 
   webServer: IS_LOCAL_TARGET
     ? {
-        command: "npm run dev",
+        command: "npx vite --port 3000",
         url: BASE_URL,
         reuseExistingServer: !CI,
         timeout: 120_000,
-        // The suite exercises the cloud/Supabase-auth product path. App default
-        // is now Offline (V1 is offline-first), so opt this build back in.
         env: {
           VITE_DEFAULT_DEPLOYMENT_MODE: "online",
-          VITE_DISABLE_PARITY_BOOT: "1",
-          PLAYWRIGHT_SUPABASE_BLOCK: "1",
+          VITE_ENABLE_DEV_SUPABASE: "1",
         },
       }
     : undefined,

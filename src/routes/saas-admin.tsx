@@ -157,11 +157,11 @@ function SaaSAdminPage() {
   async function startSupportSession() {
     if (!supportOrg || supportReason.trim().length < 10)
       return setError("Select a firm and provide a support reason of at least 10 characters.");
-    const { data: user } = await supabase.auth.getUser();
+    const { data: sessionResult } = await supabase.auth.getSession();
     const { error: sessionError } = await supabase.from("support_sessions" as never).insert([
       {
         organization_id: supportOrg,
-        actor_id: user.user?.id,
+        actor_id: sessionResult.session?.user?.id,
         reason: supportReason.trim(),
         expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
       },

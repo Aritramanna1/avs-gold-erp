@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/sheet";
 import { TransactionModuleNav } from "@/components/transaction-module-nav";
 import { GoldPurityHelper } from "@/components/gold-purity-helper";
+import { useStock } from "@/lib/stock-store";
+import { ReceiveFinishedProductDialog } from "@/components/karigar/ReceiveFinishedProductDialog";
 import {
   Printer,
   BookOpen,
@@ -49,6 +51,10 @@ import {
   History,
   X,
   Receipt,
+  PackageCheck,
+  Tag,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react";
 
 export const Route = createFileRoute("/workshop/gold-book")({
@@ -95,6 +101,7 @@ function WorkerGoldBookPage() {
   const searchMode = searchParams.mode === "issue" || searchParams.mode === "receive" ? searchParams.mode : undefined;
   const people = usePeople((s) => s.people);
   const ledgerEntries = useLedger((s) => s.entries);
+  const stockItems = useStock((s) => s.items);
   const { entries, removeEntry, getWorkerBalance, refresh } = useWorkerGoldBook();
   const refreshVault = useMaterialVault((s) => s.refresh);
   const masterMaterials = useManufacturingMaterials((s) => s.materials);
@@ -114,6 +121,7 @@ function WorkerGoldBookPage() {
     void refreshVault();
     void refreshMasterMaterials();
     void useLedger.getState().refresh();
+    void useStock.getState().refresh();
   }, [refresh, refreshVault, refreshMasterMaterials]);
 
   useEffect(() => {
@@ -141,13 +149,14 @@ function WorkerGoldBookPage() {
     };
   }, []);
 
-  const [activeTab, setActiveTab] = useDraft<"ledger" | "balances" | "daily_slips">(
-    "mtj-goldbook-activeTab-v4",
-    "ledger",
-  );
+  const [activeTab, setActiveTab] = useDraft<
+    "ledger" | "balances" | "daily_slips" | "receive_ready_stock"
+  >("mtj-goldbook-activeTab-v5", "ledger");
+  const [receiveProductDialogOpen, setReceiveProductDialogOpen] = useState(false);
+  const [receiveWorkerId, setReceiveWorkerId] = useState<string>("");
   // Search box for the Daily Slips tab (by slip number or worker).
   const [slipSearch, setSlipSearch] = useState<string>("");
-  const [entryType, setEntryType, clearEntryType] = useDraft<"given" | "return">(
+  const [entryType, setEntryType, clearEntryType] = useDraft<"given" | "return" | "overloss">(
     "mtj-goldbook-entryType-v1",
     "given",
   );
@@ -158,7 +167,7 @@ function WorkerGoldBookPage() {
     grossMg: number;
     purity: number;
     qty: number;
-    type: "given" | "return";
+    type: "given" | "return" | "overloss";
     payload: Parameters<ReturnType<typeof useWorkerGoldBook.getState>["addEntry"]>[0];
   } | null>(null);
 
@@ -167,8 +176,14 @@ function WorkerGoldBookPage() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [materialFilter, setMaterialFilter] = useState<string>("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "given" | "return">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "given" | "return" | "overloss">("all");
   const [pendingOnly, setPendingOnly] = useState<boolean>(false);
+
+  // Over-loss specific state
+  const [formExpectedGrossG, setFormExpectedGrossG] = useState("");
+  const [formActualReturnedGrossG, setFormActualReturnedGrossG] = useState("");
+  const [formOverLossRatePerG, setFormOverLossRatePerG] = useState("7500");
+  const [formOverLossReason, setFormOverLossReason] = useState("Excess process/melting loss");
 
   // Form State
   const [formWorkerId, setFormWorkerId, clearFormWorkerId] = useDraft<string>(
@@ -200,6 +215,10 @@ function WorkerGoldBookPage() {
   );
   const [formLabourCash, setFormLabourCash, clearFormLabourCash] = useDraft<string>(
     "mtj-goldbook-formLabourCash-v1",
+    "",
+  );
+  const [formOverLossG, setFormOverLossG, clearFormOverLossG] = useDraft<string>(
+    "mtj-goldbook-formOverLossG-v1",
     "",
   );
   const [formProcessType, setFormProcessType, clearFormProcessType] = useDraft<string>(
@@ -332,9 +351,9 @@ function WorkerGoldBookPage() {
   };
 
   // Switch entry type
-  const handleEntryTypeChange = (type: "given" | "return") => {
+  const handleEntryTypeChange = (type: "given" | "return" | "overloss") => {
     setEntryType(type);
-    setFormParticulars("");
+    setFormParticulars(type === "overloss" ? "Over-Loss" : "");
     setFormCustomParticulars("");
     setFormGrossG("");
     setFormLessG("");
@@ -342,6 +361,7 @@ function WorkerGoldBookPage() {
     setFormWstgPct("");
     setFormPlusFineG("");
     setFormLabourCash("");
+    setFormOverLossG("");
     setFormProcessType("");
     setFormStampCode("");
     setFormQty("0");
@@ -354,9 +374,12 @@ function WorkerGoldBookPage() {
       if (type === "given") {
         setFormGivenBy("Authorized Staff");
         setFormReceivedBy(selectedFormWorker.fullName);
-      } else {
+      } else if (type === "return") {
         setFormGivenBy(selectedFormWorker.fullName);
         setFormReceivedBy("Authorized Staff");
+      } else {
+        setFormGivenBy(selectedFormWorker.fullName);
+        setFormReceivedBy("Loss Account / System");
       }
     }
   };
@@ -388,6 +411,61 @@ function WorkerGoldBookPage() {
     const workerObj = workers.find((w) => w.id === formWorkerId);
     if (!workerObj) {
       setFormError("Selected worker not found.");
+      return;
+    }
+
+    if (entryType === "overloss") {
+      const expG = parseFloat(formExpectedGrossG) || 0;
+      const actG = parseFloat(formActualReturnedGrossG) || 0;
+      if (expG <= 0) {
+        setFormError("Please enter the expected return weight.");
+        return;
+      }
+      const expMg = Math.round(expG * 1000);
+      const actMg = Math.round(actG * 1000);
+      const lossGrossMg = Math.max(0, expMg - actMg);
+      if (lossGrossMg <= 0) {
+        setFormError("Actual returned weight must be less than expected weight to record an over-loss.");
+        return;
+      }
+      const purityVal = Number(formPurity) || 916;
+      const lossFineMg = Math.round((lossGrossMg * purityVal) / 1000);
+      const ratePaise = Math.round((parseFloat(formOverLossRatePerG) || 7500) * 100);
+      const valPaise = Math.round((lossFineMg * ratePaise) / 1000);
+
+      const payload = {
+        workerId: formWorkerId,
+        workerName: workerObj.fullName,
+        particulars: `Over-Loss (${formOverLossReason})`,
+        grossMg: lossGrossMg,
+        netMg: lossGrossMg,
+        purity: purityVal,
+        fineMg: lossFineMg,
+        expectedGrossMg: expMg,
+        actualReturnedGrossMg: actMg,
+        overLossGrossMg: lossGrossMg,
+        overLossFineMg: lossFineMg,
+        overLossRatePaisePerGram: ratePaise,
+        overLossValuePaise: valPaise,
+        overLossReason: formOverLossReason,
+        quantity: 1,
+        notes: `${formNotes.trim()} [Over-Loss: ${mgToGrams(lossGrossMg)}g Gross, ${mgToGrams(lossFineMg)}g Fine @ ₹${ratePaise / 100}/g = ₹${valPaise / 100}]`.trim(),
+        givenBy: workerObj.fullName,
+        receivedBy: "Loss Relief / Admin",
+        type: "overloss" as const,
+        reference: formReference.trim() || `Over-Loss ${new Date().toISOString().slice(0, 10)}`,
+      };
+
+      setPendingSummary({
+        workerName: workerObj.fullName,
+        particulars: payload.particulars,
+        grossMg: lossGrossMg,
+        purity: purityVal,
+        qty: 1,
+        type: "overloss",
+        payload,
+      });
+      setConfirmOpen(true);
       return;
     }
 
@@ -434,19 +512,14 @@ function WorkerGoldBookPage() {
     }
     const labourCashPaise = Math.round((Number(formLabourCash) || 0) * 100);
 
-    if (entryType === "given" && grossMg > 0) {
-      try {
-        assertMaterialIssueStock(finalParticulars, purityVal, Math.max(0, grossMg - lessMg + addMg));
-      } catch (stockErr) {
-        setFormError(stockErr instanceof Error ? stockErr.message : String(stockErr));
-        return;
-      }
-      if (goldMaterialSelected && purityVal > 0) {
+    // Vault stock pre-validation
+    if (entryType === "given" && goldMaterialSelected) {
+      if (vaultStockMode === "required" || (vaultStockMode === "optional" && formVaultStockId)) {
         try {
           const fineMg =
             computeFineGold(
               {
-                module: "karigar_issue",
+                module: "workshop",
                 grossMg,
                 lessMg,
                 addMg,
@@ -476,6 +549,9 @@ function WorkerGoldBookPage() {
       return;
     }
 
+    const overLossG = Number(formOverLossG) || 0;
+    const notesWithOverloss = `${formNotes.trim()}${overLossG > 0 ? ` [Over-loss: ${overLossG.toFixed(3)}g]` : ""}`.trim();
+
     const payload = {
       workerId: formWorkerId,
       workerName: workerObj.fullName,
@@ -496,7 +572,7 @@ function WorkerGoldBookPage() {
         : undefined,
       fineMg: 0,
       quantity: qtyVal,
-      notes: formNotes.trim(),
+      notes: notesWithOverloss,
       givenBy: formGivenBy.trim() || "Authorized Staff",
       receivedBy: formReceivedBy.trim() || "Authorized Staff",
       type: entryType,
@@ -543,6 +619,7 @@ function WorkerGoldBookPage() {
     clearFormWstgPct();
     clearFormPlusFineG();
     clearFormLabourCash();
+    clearFormOverLossG();
     clearFormProcessType();
     clearFormStampCode();
     clearFormDhadiGroupId();
@@ -667,7 +744,16 @@ function WorkerGoldBookPage() {
                 returned by workers.
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => {
+                  setReceiveWorkerId("");
+                  setReceiveProductDialogOpen(true);
+                }}
+                className="bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 gap-1.5 font-semibold"
+              >
+                <PackageCheck className="h-4 w-4" /> Receive Ready Stock
+              </Button>
               <Button
                 onClick={() => {
                   handleEntryTypeChange("given");
@@ -697,6 +783,15 @@ function WorkerGoldBookPage() {
               >
                 <Minus className="h-4 w-4" /> Receive
               </Button>
+              <Button
+                onClick={() => {
+                  handleEntryTypeChange("overloss");
+                  setEntrySheetOpen(true);
+                }}
+                className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 gap-1.5 font-semibold"
+              >
+                <AlertTriangle className="h-4 w-4" /> Record Over-Loss
+              </Button>
             </div>
           </div>
 
@@ -712,6 +807,12 @@ function WorkerGoldBookPage() {
               className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === "balances" ? "border-gold text-gold" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
               <Scale className="h-4 w-4" /> Custody Balances
+            </button>
+            <button
+              onClick={() => setActiveTab("receive_ready_stock")}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${activeTab === "receive_ready_stock" ? "border-gold text-gold" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              <PackageCheck className="h-4 w-4" /> Receive Ready Stock
             </button>
             <button
               onClick={() => setActiveTab("daily_slips")}
@@ -777,12 +878,13 @@ function WorkerGoldBookPage() {
                     </label>
                     <select
                       value={typeFilter}
-                      onChange={(e) => setTypeFilter(e.target.value as "all" | "given" | "return")}
+                      onChange={(e) => setTypeFilter(e.target.value as any)}
                       className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-gold"
                     >
                       <option value="all">All Entries</option>
                       <option value="given">Issue / Given</option>
                       <option value="return">Receive / Return</option>
+                      <option value="overloss">Record Over-Loss</option>
                     </select>
                   </div>
 
@@ -851,22 +953,25 @@ function WorkerGoldBookPage() {
                     </div>
                   ) : (
                     filteredEntries.map((e) => {
+                      const isOverloss = e.type === "overloss";
                       const isGiven = e.type === "given";
                       return (
-                        <div key={e.id} className="p-3 space-y-1">
+                        <div key={e.id} className={`p-3 space-y-1 ${isOverloss ? "bg-rose-500/5" : ""}`}>
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold text-sm">{e.workerName}</span>
                                 <span
-                                  className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border ${isGiven ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}
+                                  className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border ${isOverloss ? "bg-rose-500/10 text-rose-400 border-rose-500/20" : isGiven ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}
                                 >
-                                  {isGiven ? (
+                                  {isOverloss ? (
+                                    <AlertTriangle className="h-3 w-3" />
+                                  ) : isGiven ? (
                                     <TrendingUp className="h-3 w-3" />
                                   ) : (
                                     <TrendingDown className="h-3 w-3" />
                                   )}
-                                  {isGiven ? "Issued" : "Returned"}
+                                  {isOverloss ? "Over-Loss" : isGiven ? "Issued" : "Returned"}
                                 </span>
                               </div>
                               <div className="text-xs text-muted-foreground truncate mt-0.5">
@@ -877,7 +982,7 @@ function WorkerGoldBookPage() {
                             </div>
                             <div className="text-right shrink-0">
                               <div
-                                className={`font-mono text-sm font-bold ${isGiven ? "text-red-400" : "text-green-400"}`}
+                                className={`font-mono text-sm font-bold ${isOverloss ? "text-rose-400" : isGiven ? "text-red-400" : "text-green-400"}`}
                               >
                                 {e.fineMg > 0 ? `${mgToGrams(e.fineMg)} g` : "—"}
                               </div>
@@ -936,11 +1041,12 @@ function WorkerGoldBookPage() {
                         </tr>
                       ) : (
                         filteredEntries.map((e) => {
+                          const isOverloss = e.type === "overloss";
                           const isGiven = e.type === "given";
                           return (
                             <tr
                               key={e.id}
-                              className="border-b border-border hover:bg-muted/30 transition-colors"
+                              className={`border-b border-border hover:bg-muted/30 transition-colors ${isOverloss ? "bg-rose-500/5" : ""}`}
                             >
                               <td className="p-4 whitespace-nowrap">
                                 <div className="font-semibold">{e.date}</div>
@@ -979,14 +1085,16 @@ function WorkerGoldBookPage() {
                               </td>
                               <td className="p-4">
                                 <span
-                                  className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide border ${isGiven ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}
+                                  className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide border ${isOverloss ? "bg-rose-500/10 text-rose-400 border-rose-500/20" : isGiven ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}
                                 >
-                                  {isGiven ? (
+                                  {isOverloss ? (
+                                    <AlertTriangle className="h-3 w-3" />
+                                  ) : isGiven ? (
                                     <TrendingUp className="h-3 w-3" />
                                   ) : (
                                     <TrendingDown className="h-3 w-3" />
                                   )}
-                                  {isGiven ? "Issued" : "Returned"}
+                                  {isOverloss ? "Over-Loss" : isGiven ? "Issued" : "Returned"}
                                 </span>
                               </td>
                               <td className="p-4 text-right font-mono font-medium">
@@ -996,7 +1104,7 @@ function WorkerGoldBookPage() {
                                 {e.purity > 0 ? e.purity : "—"}
                               </td>
                               <td
-                                className={`p-4 text-right font-mono font-bold ${isGiven ? "text-red-400" : "text-green-400"}`}
+                                className={`p-4 text-right font-mono font-bold ${isOverloss ? "text-rose-400" : isGiven ? "text-red-400" : "text-green-400"}`}
                               >
                                 {e.fineMg > 0 ? `${mgToGrams(e.fineMg)} g` : "—"}
                               </td>
@@ -1369,35 +1477,215 @@ function WorkerGoldBookPage() {
             </div>
           )}
 
-          {/* ==================== ENTRY SHEET (ledger stays visible) ==================== */}
+          {/* ==================== TAB CONTENT: RECEIVE READY STOCK ==================== */}
+          {activeTab === "receive_ready_stock" && (
+            <div className="space-y-6">
+              {/* Hero Banner Card */}
+              <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-xl p-5 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
+                        <PackageCheck className="h-5 w-5" />
+                      </span>
+                      <h2 className="text-lg font-bold text-foreground">
+                        Receive Finished Jewellery into Ready Stock
+                      </h2>
+                    </div>
+                    <p className="text-xs text-muted-foreground max-w-2xl">
+                      When a karigar finishes work (e.g. returns 47.000g finished item against 50.000g issued gold), deposit the ready-made jewellery into your Ready Stock inventory with an auto-generated Barcode & Item Code, and credit the Karigar's gold ledger to reduce their outstanding custody balance.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setReceiveWorkerId("");
+                      setReceiveProductDialogOpen(true);
+                    }}
+                    className="bg-gold hover:bg-gold/90 text-primary-foreground font-semibold gap-2 shadow-sm shrink-0"
+                  >
+                    <Plus className="h-4 w-4" /> Receive Finished Product
+                  </Button>
+                </div>
+              </div>
+
+              {/* Workers with Pending Balances Quick Selection */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-gold" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Workers with Pending Custody Gold
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {workerBalances
+                    .filter((b) => b.pendingFine > 0 || b.pendingQty > 0)
+                    .slice(0, 6)
+                    .map((b) => (
+                      <div
+                        key={b.worker.id}
+                        className="bg-card border border-border/80 hover:border-gold/50 rounded-lg p-3.5 transition-all flex items-center justify-between shadow-xs"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm text-foreground truncate">
+                            {b.worker.fullName}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Custody: <span className="font-mono font-bold text-amber-400">{mgToGrams(b.pendingFine)} g fine</span>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setReceiveWorkerId(b.worker.id);
+                            setReceiveProductDialogOpen(true);
+                          }}
+                          className="bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 text-xs font-semibold h-8 gap-1"
+                        >
+                          <PackageCheck className="h-3.5 w-3.5" /> Receive Work
+                        </Button>
+                      </div>
+                    ))}
+                  {workerBalances.filter((b) => b.pendingFine > 0 || b.pendingQty > 0).length === 0 && (
+                    <div className="col-span-full p-6 text-center text-muted-foreground italic text-xs border border-dashed border-border rounded-lg">
+                      No workers have pending custody balance. You can still receive finished stock from any worker.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Recent Finished Stock Received from Karigars */}
+              <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-border flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-gold" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
+                      Recent Ready Stock Received from Karigars ({stockItems.filter((i) => i.notes?.includes("Manufactured by") || i.notes?.includes("Karigar")).length})
+                    </h3>
+                  </div>
+                  <Link to="/stock">
+                    <Button variant="ghost" size="sm" className="text-xs font-semibold text-gold gap-1">
+                      View All Ready Stock <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[750px] text-left text-sm">
+                    <thead className="bg-muted/50 border-b border-border text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="p-3 w-[15%]">Item Code</th>
+                        <th className="p-3 w-[15%]">Barcode</th>
+                        <th className="p-3 w-[25%]">Item / Category</th>
+                        <th className="p-3 w-[10%] text-center">Purity</th>
+                        <th className="p-3 w-[12%] text-right">Gross (g)</th>
+                        <th className="p-3 w-[12%] text-right">Net (g)</th>
+                        <th className="p-3 w-[11%] text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {stockItems
+                        .filter((i) => i.notes?.includes("Manufactured by") || i.notes?.includes("Karigar"))
+                        .slice(0, 15)
+                        .map((item) => (
+                          <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="p-3 font-mono font-bold text-foreground">{item.itemCode}</td>
+                            <td className="p-3 font-mono text-xs text-gold">{item.barcode}</td>
+                            <td className="p-3">
+                              <div className="font-semibold text-foreground">{item.itemName}</div>
+                              <div className="text-xs text-muted-foreground truncate">{item.notes}</div>
+                            </td>
+                            <td className="p-3 text-center font-mono text-xs font-semibold text-amber-400">
+                              {item.purity}‰
+                            </td>
+                            <td className="p-3 text-right font-mono">{mgToGrams(item.grossMg)}</td>
+                            <td className="p-3 text-right font-mono font-bold text-foreground">
+                              {mgToGrams(item.netMg)}
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Link to="/stock/$id" params={{ id: item.id }}>
+                                  <Button size="sm" variant="outline" className="h-7 text-xs px-2">
+                                    View
+                                  </Button>
+                                </Link>
+                                <Link to="/stock/print/$id" params={{ id: item.id }}>
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-gold">
+                                    <Printer className="h-3.5 w-3.5" />
+                                  </Button>
+                                </Link>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      {stockItems.filter((i) => i.notes?.includes("Manufactured by") || i.notes?.includes("Karigar")).length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-muted-foreground italic text-xs">
+                            No finished stock received from karigars yet. Click "Receive Ready Stock" to record completed work and deposit jewellery into Ready Stock inventory.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ==================== ENTRY SHEET (ledger stays visible & scrolls smoothly) ==================== */}
           <Sheet open={entrySheetOpen} onOpenChange={setEntrySheetOpen}>
-            <SheetContent side="right" className="sm:max-w-xl md:max-w-2xl w-full">
-              <SheetHeader>
-                <SheetTitle>Record Worker Custody Voucher</SheetTitle>
-                <SheetDescription>
-                  Issue or receive against the karigar ledger. Gold Vault remains the gold source of
-                  truth.
+            <SheetContent side="right" className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl w-full flex flex-col h-full p-0 overflow-hidden bg-card text-foreground">
+              <SheetHeader className="p-5 pb-3 border-b border-border bg-card/95 shrink-0">
+                <SheetTitle className="flex items-center gap-2 font-serif text-gold text-lg">
+                  {entryType === "given" ? (
+                    <Plus className="h-5 w-5 text-red-400" />
+                  ) : entryType === "return" ? (
+                    <Minus className="h-5 w-5 text-green-400" />
+                  ) : (
+                    <AlertTriangle className="h-5 w-5 text-rose-500" />
+                  )}
+                  {entryType === "given"
+                    ? "Issue Material / Gold to Karigar"
+                    : entryType === "return"
+                      ? "Receive Material / Gold from Karigar"
+                      : "Record Over-Loss / Excess Ghata"}
+                </SheetTitle>
+                <SheetDescription className="text-xs">
+                  {entryType === "given"
+                    ? "Draw from live Material / Gold Vault and debit to Karigar custody balance."
+                    : entryType === "return"
+                      ? "Credit returned metal/material and settle against Karigar custody ledger."
+                      : "Record verified manufacturing over-loss, relieve Karigar custody balance, and post to Gold Ledger."}
                 </SheetDescription>
               </SheetHeader>
-              <div className="mt-4">
-                <div className="grid grid-cols-2 gap-2 bg-background border border-border p-1 rounded-md mb-4">
-                    <button
-                      type="button"
-                      onClick={() => handleEntryTypeChange("given")}
-                      className={`py-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${entryType === "given" ? "bg-red-500/10 text-red-400 font-bold border border-red-500/20" : "text-muted-foreground hover:text-foreground bg-transparent"}`}
-                    >
-                      <Plus className="h-4 w-4" /> Give / Issue Material (Debit)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleEntryTypeChange("return")}
-                      className={`py-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${entryType === "return" ? "bg-green-500/10 text-green-400 font-bold border border-green-500/20" : "text-muted-foreground hover:text-foreground bg-transparent"}`}
-                    >
-                      <Minus className="h-4 w-4" /> Receive / Return Material (Credit)
-                    </button>
-                  </div>
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                <div className="grid grid-cols-3 gap-2 bg-background border border-border p-1 rounded-md mb-2">
+                  <button
+                    type="button"
+                    onClick={() => handleEntryTypeChange("given")}
+                    className={`py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${entryType === "given" ? "bg-red-500/10 text-red-400 font-bold border border-red-500/20" : "text-muted-foreground hover:text-foreground bg-transparent"}`}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Issue (Debit)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEntryTypeChange("return")}
+                    className={`py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${entryType === "return" ? "bg-green-500/10 text-green-400 font-bold border border-green-500/20" : "text-muted-foreground hover:text-foreground bg-transparent"}`}
+                  >
+                    <Minus className="h-3.5 w-3.5" /> Receive (Credit)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEntryTypeChange("overloss")}
+                    className={`py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${entryType === "overloss" ? "bg-rose-500/10 text-rose-400 font-bold border border-rose-500/20" : "text-muted-foreground hover:text-foreground bg-transparent"}`}
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5" /> Over-Loss
+                  </button>
+                </div>
 
-                <form onSubmit={handleSubmitEntry} className="space-y-4">
+                <form onSubmit={handleSubmitEntry} className="space-y-4 pb-8">
                   {formError && (
                     <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-sm font-semibold rounded-md">
                       {formError}
@@ -1425,62 +1713,185 @@ function WorkerGoldBookPage() {
                     </select>
                   </div>
 
-                  {/* Material Name / Particulars */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                        Particulars / Material <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formParticulars}
-                        onChange={(e) => handleMaterialChange(e.target.value)}
-                        className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-gold"
-                        required
-                      >
-                        <option value="">-- Select Material --</option>
-                        {entryType === "given"
-                          ? materialOptions.map((opt) => (
-                              <option key={opt} value={opt}>
-                                {opt}
-                              </option>
-                            ))
-                          : RETURN_PARTICULAR_OPTIONS.map((opt) => (
-                              <option key={opt} value={opt}>
-                                {opt}
-                              </option>
-                            ))}
-                      </select>
-                    </div>
+                  {/* DEDICATED OVER-LOSS FORM SECTION */}
+                  {entryType === "overloss" ? (
+                    <div className="space-y-4 border-t border-border/40 pt-3">
+                      <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs text-rose-300">
+                        Recording an Over-Loss will credit the Karigar's custody balance for the unreturned metal and record a loss relief entry in the Gold Ledger with full audit provenance.
+                      </div>
 
-                    {/* Custom input if "Other" is chosen */}
-                    {(formParticulars === "Other" || !formParticulars) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                            Expected Weight (g) *
+                          </label>
+                          <DecimalInput
+                            placeholder="0.000"
+                            value={formExpectedGrossG}
+                            onChange={setFormExpectedGrossG}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                            Actual Returned (g) *
+                          </label>
+                          <DecimalInput
+                            placeholder="0.000"
+                            value={formActualReturnedGrossG}
+                            onChange={setFormActualReturnedGrossG}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                            Gold Purity (‰)
+                          </label>
+                          <select
+                            value={formPurity}
+                            onChange={(e) => setFormPurity(e.target.value)}
+                            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm"
+                          >
+                            <option value="916">22K / 916‰</option>
+                            <option value="750">18K / 750‰</option>
+                            <option value="999">24K / 999‰ Pure</option>
+                            <option value="585">14K / 585‰</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                            Valuation Rate (₹/g)
+                          </label>
+                          <Input
+                            type="number"
+                            value={formOverLossRatePerG}
+                            onChange={(e) => setFormOverLossRatePerG(e.target.value)}
+                            placeholder="7500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Over-Loss Live Calculation Box */}
+                      {(() => {
+                        const expG = parseFloat(formExpectedGrossG) || 0;
+                        const actG = parseFloat(formActualReturnedGrossG) || 0;
+                        const lossG = Math.max(0, expG - actG);
+                        const purityNum = Number(formPurity) || 916;
+                        const fineG = (lossG * purityNum) / 1000;
+                        const rateNum = parseFloat(formOverLossRatePerG) || 7500;
+                        const valRupees = fineG * rateNum;
+
+                        return (
+                          <div className="p-3.5 bg-background border border-border rounded-xl space-y-2">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">Calculated Over-Loss:</span>
+                              <span className="font-mono font-bold text-rose-400 text-sm">
+                                {lossG.toFixed(3)} g Gross ({fineG.toFixed(3)} g Fine)
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs border-t border-border/40 pt-1.5">
+                              <span className="text-muted-foreground">Financial Impact:</span>
+                              <span className="font-mono font-bold text-foreground">
+                                ₹ {valRupees.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       <div>
                         <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                          Custom Material Description <span className="text-red-500">*</span>
+                          Reason for Over-Loss *
+                        </label>
+                        <select
+                          value={formOverLossReason}
+                          onChange={(e) => setFormOverLossReason(e.target.value)}
+                          className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm mb-2"
+                        >
+                          <option value="Excess process/melting loss">Excess Process / Melting Loss</option>
+                          <option value="Spillage / filings loss">Spillage / Scrap Loss</option>
+                          <option value="Casting / die defect">Casting / Die Defect</option>
+                          <option value="Acid / chemical reaction">Acid / Chemical Reaction</option>
+                          <option value="Other manufacturing loss">Other Manufacturing Loss</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                          Job Card / Reference
                         </label>
                         <Input
-                          placeholder="e.g. Returned filings with solder, Die set, Ball wire"
-                          value={formCustomParticulars}
-                          onChange={(e) => setFormCustomParticulars(e.target.value)}
-                          required
+                          placeholder="e.g. Job #JC-102 or Melting batch ref"
+                          value={formReference}
+                          onChange={(e) => setFormReference(e.target.value)}
                         />
                       </div>
-                    )}
-                  </div>
 
-                  {/* Weights block */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border/40 pt-3">
-                    <div>
-                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                        Gross Weight (grams)
-                      </label>
-                      <DecimalInput
-                        placeholder="0.000"
-                        value={formGrossG}
-                        onChange={setFormGrossG}
-                      />
-                      {entryType === "given" && formParticulars ? (
-                        <p className="mt-1 text-[11px] font-mono text-gold">
+                      <div>
+                        <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                          Audit Notes
+                        </label>
+                        <Input
+                          placeholder="Approver remarks or loss explanation"
+                          value={formNotes}
+                          onChange={(e) => setFormNotes(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Material Name / Particulars */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                            Particulars / Material <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={formParticulars}
+                            onChange={(e) => handleMaterialChange(e.target.value)}
+                            className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:border-gold"
+                            required
+                          >
+                            <option value="">-- Select Material --</option>
+                            {entryType === "given"
+                              ? materialOptions.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))
+                              : RETURN_PARTICULAR_OPTIONS.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                          </select>
+                        </div>
+
+                        {/* Custom input if "Other" is chosen */}
+                        {(formParticulars === "Other" || !formParticulars) && (
+                          <div>
+                            <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                              Custom Material Description <span className="text-red-500">*</span>
+                            </label>
+                            <Input
+                              placeholder="e.g. Returned filings with solder, Die set, Ball wire"
+                              value={formCustomParticulars}
+                              onChange={(e) => setFormCustomParticulars(e.target.value)}
+                              required
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                  {/* Real-time Material Stock Card */}
+                  {entryType === "given" && formParticulars && (
+                    <div className="rounded-lg border border-gold/40 bg-gold/5 p-3 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
+                          Material Vault Stock Status
+                        </span>
+                        <span className="font-mono font-bold text-gold">
                           {materialStockCaption(
                             formParticulars === "Other" ? formCustomParticulars : formParticulars,
                             formPurity === "custom"
@@ -1488,8 +1899,22 @@ function WorkerGoldBookPage() {
                               : Number(formPurity) || 0,
                             Number(formGrossG) > 0 ? gramsToMg(formGrossG) : 0,
                           )}
-                        </p>
-                      ) : null}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Weights block */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border/40 pt-3">
+                    <div>
+                      <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                        Gross Weight (grams) *
+                      </label>
+                      <DecimalInput
+                        placeholder="0.000"
+                        value={formGrossG}
+                        onChange={setFormGrossG}
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
@@ -1542,13 +1967,23 @@ function WorkerGoldBookPage() {
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                            Labour cash (₹)
+                            Labour cash (INR)
                           </label>
                           <Input
                             inputMode="decimal"
                             value={formLabourCash}
                             onChange={(e) => setFormLabourCash(e.target.value)}
                             placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-red-400 uppercase tracking-wider mb-1.5">
+                            Over-loss (g) / Excess Ghata
+                          </label>
+                          <DecimalInput
+                            placeholder="0.000"
+                            value={formOverLossG}
+                            onChange={setFormOverLossG}
                           />
                         </div>
                         <div>
@@ -1650,7 +2085,7 @@ function WorkerGoldBookPage() {
                           Material type
                         </label>
                         <p className="text-sm text-muted-foreground py-2">
-                          Non-gold accessory — no vault purity required.
+                          Manufacturing material / accessory
                         </p>
                         <input type="hidden" value="0" readOnly />
                       </div>
@@ -1658,7 +2093,7 @@ function WorkerGoldBookPage() {
 
                     <div>
                       <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                        Pieces / Quantity (Non-Gold)
+                        Pieces / Quantity (Optional)
                       </label>
                       <Input
                         type="number"
@@ -1730,10 +2165,10 @@ function WorkerGoldBookPage() {
                     </div>
                   </div>
 
-                  {/* Notes */}
+                  {/* Notes / Narration */}
                   <div>
                     <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                      Narration
+                      Narration / Remarks
                     </label>
                     <textarea
                       placeholder="Provide detailed description of manufacturing requirements, die number, ball wire size..."
@@ -1743,13 +2178,20 @@ function WorkerGoldBookPage() {
                     />
                   </div>
 
+                    </>
+                  )}
+
                   {/* Submission Button */}
                   <div className="pt-3 border-t border-border/40">
                     <Button
                       type="submit"
-                      className={`w-full font-bold uppercase tracking-wider py-3 h-auto ${entryType === "given" ? "bg-red-500 hover:bg-red-600 text-white" : "bg-green-600 hover:bg-green-700 text-white"}`}
+                      className={`w-full font-bold uppercase tracking-wider py-3 h-auto ${entryType === "given" ? "bg-red-500 hover:bg-red-600 text-white" : entryType === "return" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"}`}
                     >
-                      {entryType === "given" ? "Record Material Issue" : "Record Material Return"}
+                      {entryType === "given"
+                        ? "Record Material Issue"
+                        : entryType === "return"
+                          ? "Record Material Return"
+                          : "Post Over-Loss Relief Voucher"}
                     </Button>
                   </div>
                 </form>
@@ -1760,7 +2202,11 @@ function WorkerGoldBookPage() {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title={
-          pendingSummary?.type === "return" ? "Confirm gold receive" : "Confirm gold issue"
+          pendingSummary?.type === "return"
+            ? "Confirm gold receive"
+            : pendingSummary?.type === "overloss"
+              ? "Confirm Over-Loss Relief"
+              : "Confirm gold issue"
         }
         description="Review the voucher before it posts to Karigar Transactions."
         rows={
@@ -1769,7 +2215,12 @@ function WorkerGoldBookPage() {
                 { label: "Worker", value: pendingSummary.workerName },
                 {
                   label: "Type",
-                  value: pendingSummary.type === "given" ? "Issue (given)" : "Receive (return)",
+                  value:
+                    pendingSummary.type === "given"
+                      ? "Issue (given)"
+                      : pendingSummary.type === "return"
+                        ? "Receive (return)"
+                        : "Record Over-Loss (Relief)",
                 },
                 { label: "Particulars", value: pendingSummary.particulars },
                 {
@@ -1790,8 +2241,27 @@ function WorkerGoldBookPage() {
               ]
             : []
         }
-        confirmLabel={pendingSummary?.type === "given" ? "Post issue" : "Post receive"}
+        confirmLabel={
+          pendingSummary?.type === "given"
+            ? "Post issue"
+            : pendingSummary?.type === "return"
+              ? "Post receive"
+              : "Post Over-Loss"
+        }
         onConfirm={commitPendingEntry}
+      />
+      <ReceiveFinishedProductDialog
+        open={receiveProductDialogOpen}
+        onClose={() => setReceiveProductDialogOpen(false)}
+        defaultWorkerId={receiveWorkerId || undefined}
+        onSaved={({ itemName, barcode, fineMg, workerName }) => {
+          void refresh();
+          void refreshVault();
+          void useStock.getState().refresh();
+          toast.success(
+            `Received ${itemName} (${(fineMg / 1000).toFixed(3)}g fine) from ${workerName} into Ready Stock!`,
+          );
+        }}
       />
     </div>
   );

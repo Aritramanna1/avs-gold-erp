@@ -55,6 +55,7 @@ import { Route as BarcodeRouteImport } from './routes/barcode'
 import { Route as AttendanceRouteImport } from './routes/attendance'
 import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AiCenterRouteImport } from './routes/ai-center'
 import { Route as AcceptInvitationRouteImport } from './routes/accept-invitation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkshopIndexRouteImport } from './routes/workshop.index'
@@ -218,9 +219,12 @@ import { Route as MobileMasterRouteImport } from './routes/mobile.master'
 import { Route as MobileGoldStockRouteImport } from './routes/mobile.gold-stock'
 import { Route as MobileBusinessRouteImport } from './routes/mobile.business'
 import { Route as MobileAssistantRouteImport } from './routes/mobile.assistant'
+import { Route as ManufacturingOwnerTransactionsRouteImport } from './routes/manufacturing.owner-transactions'
 import { Route as InviteAcceptRouteImport } from './routes/invite.accept'
 import { Route as DocTokenRouteImport } from './routes/doc.$token'
 import { Route as DashboardCeoRouteImport } from './routes/dashboard.ceo'
+import { Route as CrmLeadsRouteImport } from './routes/crm.leads'
+import { Route as CrmAppointmentsRouteImport } from './routes/crm.appointments'
 import { Route as ControlTerminologyRouteImport } from './routes/control.terminology'
 import { Route as ControlTallyExportRouteImport } from './routes/control.tally-export'
 import { Route as ControlShortcutsRouteImport } from './routes/control.shortcuts'
@@ -267,6 +271,7 @@ import { Route as PlatformBillingPrintIdRouteImport } from './routes/platform.bi
 import { Route as PeoplePrintIdRouteImport } from './routes/people.print.$id'
 import { Route as PeopleLedgerPrintIdRouteImport } from './routes/people.ledger-print.$id'
 import { Route as ManufacturingBillIdRouteImport } from './routes/manufacturing.bill.$id'
+import { Route as Crm360IdRouteImport } from './routes/crm.360.$id'
 import { Route as ConversionSlipIdRouteImport } from './routes/conversion.slip.$id'
 import { Route as BillingSettlementSlipIdRouteImport } from './routes/billing.settlement-slip.$id'
 import { Route as BillingReceiptIdRouteImport } from './routes/billing.receipt.$id'
@@ -517,6 +522,11 @@ const AssistantRoute = AssistantRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiCenterRoute = AiCenterRouteImport.update({
+  id: '/ai-center',
+  path: '/ai-center',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcceptInvitationRoute = AcceptInvitationRouteImport.update({
@@ -1351,6 +1361,12 @@ const MobileAssistantRoute = MobileAssistantRouteImport.update({
   path: '/mobile/assistant',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ManufacturingOwnerTransactionsRoute =
+  ManufacturingOwnerTransactionsRouteImport.update({
+    id: '/owner-transactions',
+    path: '/owner-transactions',
+    getParentRoute: () => ManufacturingRoute,
+  } as any)
 const InviteAcceptRoute = InviteAcceptRouteImport.update({
   id: '/accept',
   path: '/accept',
@@ -1365,6 +1381,16 @@ const DashboardCeoRoute = DashboardCeoRouteImport.update({
   id: '/ceo',
   path: '/ceo',
   getParentRoute: () => DashboardRoute,
+} as any)
+const CrmLeadsRoute = CrmLeadsRouteImport.update({
+  id: '/crm/leads',
+  path: '/crm/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmAppointmentsRoute = CrmAppointmentsRouteImport.update({
+  id: '/crm/appointments',
+  path: '/crm/appointments',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ControlTerminologyRoute = ControlTerminologyRouteImport.update({
   id: '/control/terminology',
@@ -1607,6 +1633,11 @@ const ManufacturingBillIdRoute = ManufacturingBillIdRouteImport.update({
   path: '/bill/$id',
   getParentRoute: () => ManufacturingRoute,
 } as any)
+const Crm360IdRoute = Crm360IdRouteImport.update({
+  id: '/crm/360/$id',
+  path: '/crm/360/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConversionSlipIdRoute = ConversionSlipIdRouteImport.update({
   id: '/conversion/slip/$id',
   path: '/conversion/slip/$id',
@@ -1723,6 +1754,7 @@ const AttendancePrintKindIdRoute = AttendancePrintKindIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accept-invitation': typeof AcceptInvitationRoute
+  '/ai-center': typeof AiCenterRoute
   '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/attendance': typeof AttendanceRouteWithChildren
@@ -1788,9 +1820,12 @@ export interface FileRoutesByFullPath {
   '/control/shortcuts': typeof ControlShortcutsRoute
   '/control/tally-export': typeof ControlTallyExportRoute
   '/control/terminology': typeof ControlTerminologyRoute
+  '/crm/appointments': typeof CrmAppointmentsRoute
+  '/crm/leads': typeof CrmLeadsRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
+  '/manufacturing/owner-transactions': typeof ManufacturingOwnerTransactionsRoute
   '/mobile/assistant': typeof MobileAssistantRoute
   '/mobile/business': typeof MobileBusinessRoute
   '/mobile/gold-stock': typeof MobileGoldStockRoute
@@ -1967,6 +2002,7 @@ export interface FileRoutesByFullPath {
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
   '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
   '/conversion/slip/$id': typeof ConversionSlipIdRoute
+  '/crm/360/$id': typeof Crm360IdRoute
   '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
@@ -2004,6 +2040,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accept-invitation': typeof AcceptInvitationRoute
+  '/ai-center': typeof AiCenterRoute
   '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/barcode': typeof BarcodeRoute
@@ -2053,9 +2090,12 @@ export interface FileRoutesByTo {
   '/control/shortcuts': typeof ControlShortcutsRoute
   '/control/tally-export': typeof ControlTallyExportRoute
   '/control/terminology': typeof ControlTerminologyRoute
+  '/crm/appointments': typeof CrmAppointmentsRoute
+  '/crm/leads': typeof CrmLeadsRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
+  '/manufacturing/owner-transactions': typeof ManufacturingOwnerTransactionsRoute
   '/mobile/assistant': typeof MobileAssistantRoute
   '/mobile/business': typeof MobileBusinessRoute
   '/mobile/gold-stock': typeof MobileGoldStockRoute
@@ -2232,6 +2272,7 @@ export interface FileRoutesByTo {
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
   '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
   '/conversion/slip/$id': typeof ConversionSlipIdRoute
+  '/crm/360/$id': typeof Crm360IdRoute
   '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
@@ -2270,6 +2311,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/accept-invitation': typeof AcceptInvitationRoute
+  '/ai-center': typeof AiCenterRoute
   '/app': typeof AppRoute
   '/assistant': typeof AssistantRoute
   '/attendance': typeof AttendanceRouteWithChildren
@@ -2335,9 +2377,12 @@ export interface FileRoutesById {
   '/control/shortcuts': typeof ControlShortcutsRoute
   '/control/tally-export': typeof ControlTallyExportRoute
   '/control/terminology': typeof ControlTerminologyRoute
+  '/crm/appointments': typeof CrmAppointmentsRoute
+  '/crm/leads': typeof CrmLeadsRoute
   '/dashboard/ceo': typeof DashboardCeoRoute
   '/doc/$token': typeof DocTokenRoute
   '/invite/accept': typeof InviteAcceptRoute
+  '/manufacturing/owner-transactions': typeof ManufacturingOwnerTransactionsRoute
   '/mobile/assistant': typeof MobileAssistantRoute
   '/mobile/business': typeof MobileBusinessRoute
   '/mobile/gold-stock': typeof MobileGoldStockRoute
@@ -2514,6 +2559,7 @@ export interface FileRoutesById {
   '/billing/receipt/$id': typeof BillingReceiptIdRoute
   '/billing/settlement-slip/$id': typeof BillingSettlementSlipIdRoute
   '/conversion/slip/$id': typeof ConversionSlipIdRoute
+  '/crm/360/$id': typeof Crm360IdRoute
   '/manufacturing/bill/$id': typeof ManufacturingBillIdRoute
   '/people/ledger-print/$id': typeof PeopleLedgerPrintIdRoute
   '/people/print/$id': typeof PeoplePrintIdRoute
@@ -2553,6 +2599,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/accept-invitation'
+    | '/ai-center'
     | '/app'
     | '/assistant'
     | '/attendance'
@@ -2618,9 +2665,12 @@ export interface FileRouteTypes {
     | '/control/shortcuts'
     | '/control/tally-export'
     | '/control/terminology'
+    | '/crm/appointments'
+    | '/crm/leads'
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
+    | '/manufacturing/owner-transactions'
     | '/mobile/assistant'
     | '/mobile/business'
     | '/mobile/gold-stock'
@@ -2797,6 +2847,7 @@ export interface FileRouteTypes {
     | '/billing/receipt/$id'
     | '/billing/settlement-slip/$id'
     | '/conversion/slip/$id'
+    | '/crm/360/$id'
     | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
@@ -2834,6 +2885,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/accept-invitation'
+    | '/ai-center'
     | '/app'
     | '/assistant'
     | '/barcode'
@@ -2883,9 +2935,12 @@ export interface FileRouteTypes {
     | '/control/shortcuts'
     | '/control/tally-export'
     | '/control/terminology'
+    | '/crm/appointments'
+    | '/crm/leads'
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
+    | '/manufacturing/owner-transactions'
     | '/mobile/assistant'
     | '/mobile/business'
     | '/mobile/gold-stock'
@@ -3062,6 +3117,7 @@ export interface FileRouteTypes {
     | '/billing/receipt/$id'
     | '/billing/settlement-slip/$id'
     | '/conversion/slip/$id'
+    | '/crm/360/$id'
     | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
@@ -3099,6 +3155,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/accept-invitation'
+    | '/ai-center'
     | '/app'
     | '/assistant'
     | '/attendance'
@@ -3164,9 +3221,12 @@ export interface FileRouteTypes {
     | '/control/shortcuts'
     | '/control/tally-export'
     | '/control/terminology'
+    | '/crm/appointments'
+    | '/crm/leads'
     | '/dashboard/ceo'
     | '/doc/$token'
     | '/invite/accept'
+    | '/manufacturing/owner-transactions'
     | '/mobile/assistant'
     | '/mobile/business'
     | '/mobile/gold-stock'
@@ -3343,6 +3403,7 @@ export interface FileRouteTypes {
     | '/billing/receipt/$id'
     | '/billing/settlement-slip/$id'
     | '/conversion/slip/$id'
+    | '/crm/360/$id'
     | '/manufacturing/bill/$id'
     | '/people/ledger-print/$id'
     | '/people/print/$id'
@@ -3381,6 +3442,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcceptInvitationRoute: typeof AcceptInvitationRoute
+  AiCenterRoute: typeof AiCenterRoute
   AppRoute: typeof AppRoute
   AssistantRoute: typeof AssistantRoute
   AttendanceRoute: typeof AttendanceRouteWithChildren
@@ -3439,6 +3501,8 @@ export interface RootRouteChildren {
   ControlShortcutsRoute: typeof ControlShortcutsRoute
   ControlTallyExportRoute: typeof ControlTallyExportRoute
   ControlTerminologyRoute: typeof ControlTerminologyRoute
+  CrmAppointmentsRoute: typeof CrmAppointmentsRoute
+  CrmLeadsRoute: typeof CrmLeadsRoute
   DocTokenRoute: typeof DocTokenRoute
   MobileAssistantRoute: typeof MobileAssistantRoute
   MobileBusinessRoute: typeof MobileBusinessRoute
@@ -3467,6 +3531,7 @@ export interface RootRouteChildren {
   PeopleIndexRoute: typeof PeopleIndexRoute
   RefineryIndexRoute: typeof RefineryIndexRoute
   ConversionSlipIdRoute: typeof ConversionSlipIdRoute
+  Crm360IdRoute: typeof Crm360IdRoute
   PeopleLedgerPrintIdRoute: typeof PeopleLedgerPrintIdRoute
   PeoplePrintIdRoute: typeof PeoplePrintIdRoute
   SettlementDraftPrintIdRoute: typeof SettlementDraftPrintIdRoute
@@ -3794,6 +3859,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-center': {
+      id: '/ai-center'
+      path: '/ai-center'
+      fullPath: '/ai-center'
+      preLoaderRoute: typeof AiCenterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accept-invitation': {
@@ -4937,6 +5009,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MobileAssistantRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/manufacturing/owner-transactions': {
+      id: '/manufacturing/owner-transactions'
+      path: '/owner-transactions'
+      fullPath: '/manufacturing/owner-transactions'
+      preLoaderRoute: typeof ManufacturingOwnerTransactionsRouteImport
+      parentRoute: typeof ManufacturingRoute
+    }
     '/invite/accept': {
       id: '/invite/accept'
       path: '/accept'
@@ -4957,6 +5036,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/ceo'
       preLoaderRoute: typeof DashboardCeoRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/crm/leads': {
+      id: '/crm/leads'
+      path: '/crm/leads'
+      fullPath: '/crm/leads'
+      preLoaderRoute: typeof CrmLeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm/appointments': {
+      id: '/crm/appointments'
+      path: '/crm/appointments'
+      fullPath: '/crm/appointments'
+      preLoaderRoute: typeof CrmAppointmentsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/control/terminology': {
       id: '/control/terminology'
@@ -5280,6 +5373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ManufacturingBillIdRouteImport
       parentRoute: typeof ManufacturingRoute
     }
+    '/crm/360/$id': {
+      id: '/crm/360/$id'
+      path: '/crm/360/$id'
+      fullPath: '/crm/360/$id'
+      preLoaderRoute: typeof Crm360IdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/conversion/slip/$id': {
       id: '/conversion/slip/$id'
       path: '/conversion/slip/$id'
@@ -5554,12 +5654,14 @@ const InviteRouteWithChildren =
   InviteRoute._addFileChildren(InviteRouteChildren)
 
 interface ManufacturingRouteChildren {
+  ManufacturingOwnerTransactionsRoute: typeof ManufacturingOwnerTransactionsRoute
   ManufacturingIndexRoute: typeof ManufacturingIndexRoute
   ManufacturingBillIdRoute: typeof ManufacturingBillIdRoute
   ManufacturingBillNewJobIdRoute: typeof ManufacturingBillNewJobIdRoute
 }
 
 const ManufacturingRouteChildren: ManufacturingRouteChildren = {
+  ManufacturingOwnerTransactionsRoute: ManufacturingOwnerTransactionsRoute,
   ManufacturingIndexRoute: ManufacturingIndexRoute,
   ManufacturingBillIdRoute: ManufacturingBillIdRoute,
   ManufacturingBillNewJobIdRoute: ManufacturingBillNewJobIdRoute,
@@ -6010,6 +6112,7 @@ const WorkshopRouteWithChildren = WorkshopRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcceptInvitationRoute: AcceptInvitationRoute,
+  AiCenterRoute: AiCenterRoute,
   AppRoute: AppRoute,
   AssistantRoute: AssistantRoute,
   AttendanceRoute: AttendanceRouteWithChildren,
@@ -6068,6 +6171,8 @@ const rootRouteChildren: RootRouteChildren = {
   ControlShortcutsRoute: ControlShortcutsRoute,
   ControlTallyExportRoute: ControlTallyExportRoute,
   ControlTerminologyRoute: ControlTerminologyRoute,
+  CrmAppointmentsRoute: CrmAppointmentsRoute,
+  CrmLeadsRoute: CrmLeadsRoute,
   DocTokenRoute: DocTokenRoute,
   MobileAssistantRoute: MobileAssistantRoute,
   MobileBusinessRoute: MobileBusinessRoute,
@@ -6096,6 +6201,7 @@ const rootRouteChildren: RootRouteChildren = {
   PeopleIndexRoute: PeopleIndexRoute,
   RefineryIndexRoute: RefineryIndexRoute,
   ConversionSlipIdRoute: ConversionSlipIdRoute,
+  Crm360IdRoute: Crm360IdRoute,
   PeopleLedgerPrintIdRoute: PeopleLedgerPrintIdRoute,
   PeoplePrintIdRoute: PeoplePrintIdRoute,
   SettlementDraftPrintIdRoute: SettlementDraftPrintIdRoute,

@@ -8,13 +8,13 @@ export async function resolveStoragePathContext(
   branchId?: string | null,
   portalType?: PortalType | null,
 ): Promise<StoragePathContext> {
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError || !authData.user) throw new Error("You must be logged in to access files.");
+  const { data: authData, error: authError } = await supabase.auth.getSession();
+  if (authError || !authData.session?.user) throw new Error("You must be logged in to access files.");
 
   const { data, error } = await supabase
     .from("user_profiles" as never)
     .select("firm_id,branch_id")
-    .eq("auth_id", authData.user.id)
+    .eq("auth_id", authData.session.user.id)
     .maybeSingle();
   const profile = data as { firm_id: string | null; branch_id: string | null } | null;
   if (!error && profile?.firm_id) {

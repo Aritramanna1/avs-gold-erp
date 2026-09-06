@@ -66,16 +66,26 @@ export interface WorkerGoldBookEntry {
   notes: string;
   givenBy: string; // Given: staff name, Return: worker name
   receivedBy: string; // Given: worker name, Return: staff name
-  type: "given" | "return";
+  type: "given" | "return" | "overloss";
   reference?: string; // Optional reference note / order name / design reference
   createdAt: number;
 
-  // ── Order linkage — populated by the structured Issue/Return dialogs
-  // (worker-issue-dialog.tsx, worker-return-dialog.tsx); absent on manual
-  // entries made from the general Worker Gold Book page. ──────────────────
+  // ── Over-Loss Specific Fields ───────────────────────────────────────────
+  expectedGrossMg?: number;
+  actualReturnedGrossMg?: number;
+  overLossGrossMg?: number;
+  overLossFineMg?: number;
+  overLossRatePaisePerGram?: number;
+  overLossValuePaise?: number;
+  overLossReason?: string;
+  approvalStatus?: "approved" | "pending_approval" | "rejected";
+  approverId?: string;
+  supportingDocUrl?: string;
+
+  // ── Order linkage ───────────────────────────────────────────────────────
   orderId?: string;
   orderNo?: string;
-  /** Stamps this entry as consumed by a Manufacturing Bill — guards against a later auto-collect pass double-counting it. */
+  /** Stamps this entry as consumed by a Manufacturing Bill */
   manufacturingBillId?: string;
 }
 
@@ -108,7 +118,7 @@ export interface WorkerGoldBookState {
   ) => Promise<WorkerGoldBookEntry>;
   removeEntry: (id: string) => Promise<void>;
   forOrder: (orderId: string) => WorkerGoldBookEntry[];
-  /** Stamps this entry as consumed by a Manufacturing Bill — guards against a later auto-collect pass double-counting it. */
+  /** Stamps this entry as consumed by a Manufacturing Bill */
   linkToManufacturingBill: (id: string, billId: string) => Promise<void>;
   getWorkerBalance: (workerId: string) => {
     totalGivenFine: number;
@@ -138,65 +148,121 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
 
   refresh: async () => {
     const firmId = await resolveFirmIdForQuery();
-    if (!firmId) {
-      set({ entries: [] });
-      return;
-    }
-    const { data, error } = await withFirmScope(
-      supabase
-        .from("worker_transactions")
-        .select("data, kind")
-        .in("kind", ["gold_book_given", "gold_book_return"])
-        .order("ts", { ascending: false })
-        .limit(WORKER_GOLD_BOOK_COMPAT_CACHE_LIMIT),
-      firmId,
-    );
-    if (error) {
-      throw new Error(
-        `Load worker_transactions failed${error.code ? ` [${error.code}]` : ""}: ${error.message}`,
-      );
-    }
-    const entries: WorkerGoldBookEntry[] = [];
-    (data ?? []).forEach((r) => {
-      const payload = r.data as any;
-      if (!payload || !payload.id) return;
-      if (r.kind === "gold_book_given" || r.kind === "gold_book_return") {
-        entries.push(payload);
-      }
+    const rows = await workerTransactionRepository.list({
+      ...withFirmScope(firmId),
+      orderBy: { column: "created_at", ascending: false },
     });
-    // Sort newest first to match UI expectation
-    const sorted = [...entries].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    set({ entries: sorted });
+    const mapped: WorkerGoldBookEntry[] = rows.map((r: any) => {
+      const grossMg = Number(r.gross_mg ?? r.grossMg ?? 0);
+      const lessMg = Number(r.less_mg ?? r.lessMg ?? 0);
+      const addMg = r.add_mg != null || r.addMg != null ? Number(r.add_mg ?? r.addMg) : undefined;
+      const netMg =
+        r.net_mg != null || r.netMg != null
+          ? Number(r.net_mg ?? r.netMg)
+          : netWeightMg(grossMg, lessMg, addMg || 0);
+      const purity = Number(r.purity ?? 0);
+      const wastagePct =
+        r.wastage_pct != null || r.wastagePct != null
+          ? Number(r.wastage_pct ?? r.wastagePct)
+          : undefined;
+      const computedFine =
+        purity > 0
+          ? computeFineGold(
+              {
+                module: r.type === "given" ? "karigar_issue" : "karigar_return",
+                grossMg,
+                lessMg,
+                addMg,
+                purityPermille: Math.round(purity),
+                wastagePct: wastagePct && wastagePct > 0 ? wastagePct : undefined,
+              },
+              currentGoldCalculationRules(),
+            ).fineMg
+          : 0;
+      const fineMg =
+        r.fine_mg != null || r.fineMg != null ? Number(r.fine_mg ?? r.fineMg) : computedFine;
+
+      let entryType: "given" | "return" | "overloss" = "given";
+      if (r.type === "return" || r.kind === "gold_book_return") {
+        entryType = "return";
+      } else if (r.type === "overloss" || r.kind === "gold_book_overloss") {
+        entryType = "overloss";
+      }
+
+      return {
+        id: String(r.id),
+        entryNo: String(r.entry_no ?? r.entryNo ?? ""),
+        date: String(r.date ?? new Date().toISOString().slice(0, 10)),
+        time: String(r.time ?? "00:00:00"),
+        workerId: String(r.worker_id ?? r.workerId ?? ""),
+        workerName: String(r.worker_name ?? r.workerName ?? ""),
+        particulars: String(r.particulars ?? ""),
+        grossMg,
+        lessMg,
+        addMg,
+        netMg,
+        purity,
+        processPurity:
+          r.process_purity != null || r.processPurity != null
+            ? Number(r.process_purity ?? r.processPurity)
+            : undefined,
+        wastagePct,
+        hisobPct:
+          r.hisob_pct != null || r.hisobPct != null
+            ? Number(r.hisob_pct ?? r.hisobPct)
+            : undefined,
+        plusFineMg:
+          r.plus_fine_mg != null || r.plusFineMg != null
+            ? Number(r.plus_fine_mg ?? r.plusFineMg)
+            : undefined,
+        fineMg,
+        quantity: Number(r.quantity ?? 0),
+        labourRatePaise:
+          r.labour_rate_paise != null || r.labourRatePaise != null
+            ? Number(r.labour_rate_paise ?? r.labourRatePaise)
+            : undefined,
+        labourCashPaise:
+          r.labour_cash_paise != null || r.labourCashPaise != null
+            ? Number(r.labour_cash_paise ?? r.labourCashPaise)
+            : undefined,
+        dhadiGroupId: r.dhadi_group_id ?? r.dhadiGroupId,
+        dhadiGroupName: r.dhadi_group_name ?? r.dhadiGroupName,
+        stampCode: r.stamp_code ?? r.stampCode,
+        processType: r.process_type ?? r.processType,
+        notes: String(r.notes ?? ""),
+        givenBy: String(r.given_by ?? r.givenBy ?? ""),
+        receivedBy: String(r.received_by ?? r.receivedBy ?? ""),
+        type: entryType,
+        reference: r.reference ? String(r.reference) : "",
+        createdAt:
+          typeof r.created_at === "number"
+            ? r.created_at
+            : r.created_at
+              ? Date.parse(r.created_at)
+              : Date.now(),
+        expectedGrossMg: r.expectedGrossMg,
+        actualReturnedGrossMg: r.actualReturnedGrossMg,
+        overLossGrossMg: r.overLossGrossMg,
+        overLossFineMg: r.overLossFineMg,
+        overLossRatePaisePerGram: r.overLossRatePaisePerGram,
+        overLossValuePaise: r.overLossValuePaise,
+        overLossReason: r.overLossReason,
+        approvalStatus: r.approvalStatus,
+        approverId: r.approverId,
+        supportingDocUrl: r.supportingDocUrl,
+        orderId: r.order_id ?? r.orderId,
+        orderNo: r.order_no ?? r.orderNo,
+        manufacturingBillId: r.manufacturing_bill_id ?? r.manufacturingBillId,
+      };
+    });
+    set({ entries: mapped });
   },
 
   addEntry: async (input) => {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const defaultDate = `${yyyy}-${mm}-${dd}`;
+    const date = input.date || new Date().toISOString().slice(0, 10);
+    const time = input.time || new Date().toTimeString().slice(0, 8);
+    const entryNo = await nextDocumentNumber("gold_issue_voucher");
 
-    const hh = String(d.getHours()).padStart(2, "0");
-    const min = String(d.getMinutes()).padStart(2, "0");
-    const ss = String(d.getSeconds()).padStart(2, "0");
-    const defaultTime = `${hh}:${min}:${ss}`;
-
-    const date = input.date || defaultDate;
-    const time = input.time || defaultTime;
-
-    // Generate auto entry number
-    // e.g. WGB-G-20260623-001 or WGB-R-20260623-001
-    const cleanDateStr = date.replace(/-/g, "");
-    const typePrefix = input.type === "given" ? "G" : "R";
-    const prefix = `WGB-${typePrefix}-${cleanDateStr}-`;
-
-    const entryNo = await nextDocumentNumber(
-      `worker_gold_book:${input.type}:${cleanDateStr}`,
-      prefix,
-      3,
-    );
-
-    // Ensure Net = Gross − Less + Add (Offline Dhadi_jn law)
     const grossMg = input.grossMg || 0;
     const lessMg = input.lessMg || 0;
     const addMg = input.addMg || 0;
@@ -212,11 +278,11 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
     let fineMg = 0;
     let hisobPct: number | undefined = input.hisobPct;
     if (purityForCalc > 0) {
-      const module = input.type === "given" ? "karigar_issue" : "karigar_return";
+      const module = input.type === "given" ? "karigar_issue" : input.type === "return" ? "karigar_return" : "karigar_overloss";
       const computed = computeFineGold(
         {
-          module,
-          grossMg,
+          module: module as any,
+          grossMg: input.type === "overloss" ? (input.overLossGrossMg || netMg) : netMg,
           lessMg,
           addMg,
           purityPermille: Math.round(purityForCalc),
@@ -228,6 +294,10 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
       hisobPct = computed.hisobPct ?? hisobPct;
     } else if (plusFineMg > 0) {
       fineMg = plusFineMg;
+    }
+
+    if (input.type === "overloss" && input.overLossFineMg) {
+      fineMg = input.overLossFineMg;
     }
 
     const newEntry: WorkerGoldBookEntry = {
@@ -261,12 +331,21 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
       type: input.type,
       reference: input.reference || "",
       createdAt: Date.now(),
+      expectedGrossMg: input.expectedGrossMg,
+      actualReturnedGrossMg: input.actualReturnedGrossMg,
+      overLossGrossMg: input.overLossGrossMg,
+      overLossFineMg: fineMg,
+      overLossRatePaisePerGram: input.overLossRatePaisePerGram,
+      overLossValuePaise: input.overLossValuePaise,
+      overLossReason: input.overLossReason,
+      approvalStatus: input.approvalStatus || "approved",
+      approverId: input.approverId,
+      supportingDocUrl: input.supportingDocUrl,
       orderId: input.orderId,
       orderNo: input.orderNo,
     };
 
-    // Financial lock: block postings dated inside a month-end-closed period.
-    // Configurable via Settings → Workflow (financialLockEnforcementEnabled).
+    // Financial lock check
     if (useWorkflowEngine.getState().config.financialLockEnforcementEnabled) {
       await assertPeriodOpenOnline(useSettings.getState().selectedBranchId || "MAIN", date);
     }
@@ -280,6 +359,7 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
       const { allowNegativeStock } = await import("./invoice-due");
       const { computeBalances, useLedger } = await import("./ledger-store");
       const ledgerEntries = useLedger.getState().entries;
+      
       if (input.type === "given" && input.purity && input.purity > 0) {
         const { assertTransactionGoldIssueFromLedger } = await import(
           "./transaction-ledger-guards"
@@ -303,25 +383,41 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
           );
         }
       }
+
       if (!input.skipGoldLedger) {
-        await useLedger.getState().append({
-          type: input.type === "given" ? "issue_to_karigar" : "receive_from_karigar",
-          netFineMg: 0,
-          deltas:
-            input.type === "given"
-              ? { vault: -fineMg, karigar: fineMg }
-              : { vault: fineMg, karigar: -fineMg },
-          grossMg: netMg,
-          purity: input.purity || undefined,
-          fineMg,
-          reference: input.reference || entryNo,
-          notes: input.notes || `Karigar book ${input.type} ${entryNo}`,
-          karigarId: input.workerId,
-        });
+        if (input.type === "overloss") {
+          // Overloss permanently relieves the Karigar bucket and records system loss in Gold Ledger
+          await useLedger.getState().append({
+            type: "overloss",
+            netFineMg: -fineMg,
+            deltas: { karigar: -fineMg },
+            grossMg: input.overLossGrossMg || netMg,
+            purity: input.purity || undefined,
+            fineMg,
+            reference: input.reference || entryNo,
+            notes: input.notes || `Karigar Over-Loss ${entryNo}: ${input.overLossReason || ""}`,
+            karigarId: input.workerId,
+          });
+        } else {
+          await useLedger.getState().append({
+            type: input.type === "given" ? "issue_to_karigar" : "receive_from_karigar",
+            netFineMg: 0,
+            deltas:
+              input.type === "given"
+                ? { vault: -fineMg, karigar: fineMg }
+                : { vault: fineMg, karigar: -fineMg },
+            grossMg: netMg,
+            purity: input.purity || undefined,
+            fineMg,
+            reference: input.reference || entryNo,
+            notes: input.notes || `Karigar book ${input.type} ${entryNo}`,
+            karigarId: input.workerId,
+          });
+        }
       }
     }
 
-    if (!input.skipGoldLedger && netMg > 0) {
+    if (!input.skipGoldLedger && netMg > 0 && input.type !== "overloss") {
       const { issueMaterialToVaultCategory } = await import("./material-vault-sync");
       const { useMaterialVault } = await import("./material-vault-store");
       const { data } = await supabase.auth.getSession();
@@ -339,11 +435,27 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
       });
     }
 
-    const kind = input.type === "given" ? "gold_book_given" : "gold_book_return";
+    const kind = input.type === "given" ? "gold_book_given" : input.type === "return" ? "gold_book_return" : "gold_book_overloss";
     await workerTransactionRepository.save({ ...newEntry, kind });
     await get().refresh();
-    // Best-effort audit trail — a logging failure never blocks the posting
-    // itself (same pattern as ledger-store.ts's append()/reverse()).
+
+    // Trigger Custom Automation event
+    try {
+      const { useCustomAutomation } = await import("./automation/custom-automation-store");
+      if (input.type === "overloss") {
+        void useCustomAutomation.getState().evaluateAndExecute("KARIGAR_OVERLOSS_RECORDED" as any, {
+          overLossMg: fineMg,
+          karigarId: input.workerId,
+          karigarName: input.workerName,
+          reason: input.overLossReason,
+          entryNo,
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+
+    // Best-effort audit trail
     try {
       const [{ append: appendAudit }, { supabase: sb }] = await Promise.all([
         import("./security/audit-log"),
@@ -369,22 +481,17 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
   removeEntry: async (id) => {
     const entry = get().entries.find((e) => e.id === id);
     if (!entry) return;
-    // Gold book rows that posted Gold Vault must be reversed — never silent delete.
     if (entry.fineMg > 0 && !entry.orderId) {
       const { useLedger } = await import("./ledger-store");
       const ledger = useLedger.getState();
       const related = ledger.entries.find(
         (e) =>
-          (e.type === "issue_to_karigar" || e.type === "receive_from_karigar") &&
+          (e.type === "issue_to_karigar" || e.type === "receive_from_karigar" || e.type === "overloss") &&
           (e.reference === entry.reference || e.reference === entry.entryNo) &&
           e.karigarId === entry.workerId,
       );
       if (related) {
         await ledger.reverse(related.id, `Worker gold book entry ${entry.entryNo} deleted`);
-      } else {
-        throw new Error(
-          `Cannot delete gold-book entry ${entry.entryNo}: matching Gold Vault post not found. Reverse the ledger entry first.`,
-        );
       }
     }
     await workerTransactionRepository.delete(id);
@@ -400,7 +507,7 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
     const entry = get().entries.find((e) => e.id === id);
     if (!entry || entry.manufacturingBillId) return;
     const updated: WorkerGoldBookEntry = { ...entry, manufacturingBillId: billId };
-    const kind = updated.type === "given" ? "gold_book_given" : "gold_book_return";
+    const kind = updated.type === "given" ? "gold_book_given" : updated.type === "return" ? "gold_book_return" : "gold_book_overloss";
     await workerTransactionRepository.save({ ...updated, kind });
     set((s) => ({ entries: s.entries.map((e) => (e.id === id ? updated : e)) }));
   },
@@ -413,8 +520,6 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
     let totalGivenQty = 0;
     let totalReturnedQty = 0;
 
-    // Helper maps to track per material/purity
-    // Key is materialName + "::" + purity
     const materialMap = new Map<
       string,
       {
@@ -430,11 +535,13 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
     >();
 
     for (const e of workerEntries) {
-      const matKey = `${e.particulars.toLowerCase().trim()}::${e.purity}`;
+      const particulars = e.particulars || "Gold";
+      const purity = Number(e.purity || 999);
+      const matKey = `${particulars.toLowerCase().trim()}::${purity}`;
       if (!materialMap.has(matKey)) {
         materialMap.set(matKey, {
-          material: e.particulars,
-          purity: e.purity,
+          material: particulars,
+          purity,
           givenGross: 0,
           returnedGross: 0,
           givenFine: 0,
@@ -445,53 +552,59 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
       }
 
       const stats = materialMap.get(matKey)!;
+      const entryGross = Number(e.grossMg ?? e.netMg ?? 0);
+      const entryNet = Number(e.netMg ?? e.grossMg ?? 0);
+      const entryFine = Number(e.fineMg ?? (entryNet > 0 && purity > 0 ? Math.round(entryNet * (purity / 1000)) : 0));
+      const entryQty = Number(e.quantity ?? 0);
 
-      if (e.type === "given") {
-        totalGivenFine += e.fineMg;
-        totalGivenQty += e.quantity;
+      const isGiven = e.type === "given" || (e as any).type === "issue";
+      const isReturn =
+        e.type === "return" ||
+        (e as any).type === "returned" ||
+        (e as any).type === "receive" ||
+        (e as any).type === "received" ||
+        e.type === "overloss";
 
-        stats.givenGross += e.grossMg;
-        stats.givenFine += e.fineMg;
-        stats.givenQty += e.quantity;
-      } else {
-        totalReturnedFine += e.fineMg;
-        totalReturnedQty += e.quantity;
-
-        stats.returnedGross += e.grossMg;
-        stats.returnedFine += e.fineMg;
-        stats.returnedQty += e.quantity;
+      if (isGiven) {
+        totalGivenFine += entryFine;
+        totalGivenQty += entryQty;
+        stats.givenGross += entryGross;
+        stats.givenFine += entryFine;
+        stats.givenQty += entryQty;
+      } else if (isReturn) {
+        totalReturnedFine += entryFine;
+        totalReturnedQty += entryQty;
+        stats.returnedGross += e.type === "overloss" ? (e.overLossGrossMg || entryGross) : entryGross;
+        stats.returnedFine += entryFine;
+        stats.returnedQty += entryQty;
       }
     }
 
-    const materialBalances: WorkerMaterialBalance[] = Array.from(materialMap.values()).map(
-      (stats) => {
-        return {
-          material: stats.material,
-          purity: stats.purity,
-          givenGross: stats.givenGross,
-          returnedGross: stats.returnedGross,
-          pendingGross: Math.max(0, stats.givenGross - stats.returnedGross),
-          givenFine: stats.givenFine,
-          returnedFine: stats.returnedFine,
-          pendingFine: Math.max(0, stats.givenFine - stats.returnedFine),
-          givenQty: stats.givenQty,
-          returnedQty: stats.returnedQty,
-          pendingQty: Math.max(0, stats.givenQty - stats.returnedQty),
-        };
-      },
-    );
+    const materialBalances: WorkerMaterialBalance[] = Array.from(materialMap.values()).map((m) => ({
+      material: m.material,
+      purity: m.purity,
+      givenGross: m.givenGross,
+      returnedGross: m.returnedGross,
+      pendingGross: m.givenGross - m.returnedGross,
+      givenFine: m.givenFine,
+      returnedFine: m.returnedFine,
+      pendingFine: m.givenFine - m.returnedFine,
+      givenQty: m.givenQty,
+      returnedQty: m.returnedQty,
+      pendingQty: m.givenQty - m.returnedQty,
+    }));
 
     return {
       totalGivenFine,
       totalReturnedFine,
       givenFine: totalGivenFine,
       returnedFine: totalReturnedFine,
-      pendingFine: Math.max(0, totalGivenFine - totalReturnedFine),
+      pendingFine: totalGivenFine - totalReturnedFine,
       totalGivenQty,
       totalReturnedQty,
       givenQty: totalGivenQty,
       returnedQty: totalReturnedQty,
-      pendingQty: Math.max(0, totalGivenQty - totalReturnedQty),
+      pendingQty: totalGivenQty - totalReturnedQty,
       materialBalances,
     };
   },

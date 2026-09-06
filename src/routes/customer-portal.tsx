@@ -24,6 +24,8 @@ import { formatDateMedium as fmtDate } from "@/lib/format-date";
 import { R2ObjectImage } from "@/components/storage/R2ObjectImage";
 import { getPortalHubPreferences } from "@/lib/customization-hub-preferences-store";
 import { Logo } from "@/components/ui/Logo";
+import { ManufacturingCustomerPortal } from "@/components/portal/ManufacturingCustomerPortal";
+import { Factory } from "lucide-react";
 
 type PortalData = {
   profile: {
@@ -166,6 +168,16 @@ function CustomerPortal() {
   const [tab, setTab] = useState<
     "dashboard" | "invoices" | "orders" | "repairs" | "ledger" | "catalog" | "support"
   >("dashboard");
+  const [portalType, setPortalType] = useState<"retail" | "manufacturing">(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("portal") === "manufacturing" || urlParams.get("context") === "manufacturing") {
+        return "manufacturing";
+      }
+      return (localStorage.getItem("avs_customer_portal_context") as "retail" | "manufacturing") || "retail";
+    }
+    return "retail";
+  });
 
   const portalPrefs = getPortalHubPreferences();
 
@@ -372,9 +384,25 @@ function CustomerPortal() {
   }
 
   // Calculate totals
+  const totalInvoiced = data.invoices.reduce((sum, inv) => sum + (inv.grand_total_paise || 0), 0);
   const outstandingCash = data.invoices.reduce((sum, inv) => sum + (inv.balance_paise || 0), 0);
   const paidCash = data.invoices.reduce((sum, inv) => sum + (inv.paid_paise || 0), 0);
-  const totalInvoiced = data.invoices.reduce((sum, inv) => sum + (inv.grand_total_paise || 0), 0);
+  if (portalType === "manufacturing") {
+    return (
+      <ManufacturingCustomerPortal
+        customerId={data.profile.id}
+        customerName={data.profile.full_name}
+        onSwitchPortal={() => {
+          setPortalType("retail");
+          try {
+            localStorage.setItem("avs_customer_portal_context", "retail");
+          } catch {
+            /* ignore */
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -387,12 +415,26 @@ function CustomerPortal() {
             <div>
               <div className="text-sm font-bold text-foreground flex items-center gap-1.5">
                 <Coins className="h-4 w-4 text-gold" />
-                Customer Portal
+                Customer Portal (Retail)
               </div>
               <div className="text-xs text-muted-foreground">{data.profile.full_name}</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setPortalType("manufacturing");
+                try {
+                  localStorage.setItem("avs_customer_portal_context", "manufacturing");
+                } catch {
+                  /* ignore */
+                }
+              }}
+              className="text-xs px-2.5 py-1 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1.5 hover:bg-amber-500/20 transition-all cursor-pointer"
+            >
+              <Factory className="h-3.5 w-3.5" /> Workshop Portal
+            </button>
             <BusinessSwitcher compact />
             <button
               type="button"

@@ -16,11 +16,14 @@ export const MATERIAL_PREFIX: Record<SlipMaterial, string> = { gold: "MTS" };
  * for a rare same-day reissue.
  * ponytail: seq fixed at 1 by callers; bump it if multi-slip-per-day is ever needed.
  */
-export function dailySlipNumber(date: string, seq = 1, material: SlipMaterial = "gold"): string {
-  return `${MATERIAL_PREFIX[material]}-${date.replace(/-/g, "")}-${String(seq).padStart(3, "0")}`;
+export function dailySlipNumber(date?: string | null, seq = 1, material: SlipMaterial = "gold"): string {
+  const safeDate = typeof date === "string" ? date.replace(/-/g, "") : "00000000";
+  const prefix = MATERIAL_PREFIX[material] || "MTS";
+  return `${prefix}-${safeDate}-${String(seq).padStart(3, "0")}`;
 }
 
 /** The slip number an individual ledger entry belongs to. Use anywhere an entry is shown. */
-export function slipNumberForEntry(entry: { date: string }): string {
-  return dailySlipNumber(entry.date);
+export function slipNumberForEntry(entry?: { date?: string | null } | null): string {
+  return dailySlipNumber(entry?.date);
 }
+

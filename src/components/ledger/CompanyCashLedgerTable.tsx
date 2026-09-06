@@ -73,7 +73,7 @@ export function CompanyCashLedgerTable({
                     <Link
                       to={r.sourceRoute}
                       className="text-primary hover:underline"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     >
                       {r.voucherNo}
                     </Link>
