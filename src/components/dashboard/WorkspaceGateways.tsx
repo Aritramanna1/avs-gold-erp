@@ -4,6 +4,7 @@ import {
   Hammer,
   Package,
   Scale,
+  Users,
   FileSpreadsheet,
   Settings,
   ArrowRight,
@@ -27,9 +28,9 @@ interface WorkspaceGatewayDef {
 const WORKSPACES: WorkspaceGatewayDef[] = [
   {
     id: "retail",
-    title: "Sell & Retail",
-    subtitle: "Showroom Operations",
-    description: "POS billing, customer orders, design catalogue, and customer KYC.",
+    title: "Sell & Customers",
+    subtitle: "Showroom & POS",
+    description: "POS billing, customer orders, design catalogue, delivery challans, and customer KYC.",
     icon: ShoppingCart,
     accentColor: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
     to: "/billing",
@@ -43,7 +44,7 @@ const WORKSPACES: WorkspaceGatewayDef[] = [
   {
     id: "workshop",
     title: "Workshop & Karigars",
-    subtitle: "Manufacturing & WIP",
+    subtitle: "Production & WIP",
     description: "Karigar gold book, active job cards, outside work, polishing, and melts.",
     icon: Hammer,
     accentColor: "text-amber-500 bg-amber-500/10 border-amber-500/20",
@@ -86,6 +87,21 @@ const WORKSPACES: WorkspaceGatewayDef[] = [
     ],
   },
   {
+    id: "people",
+    title: "People & HR",
+    subtitle: "Staff & Attendance",
+    description: "Employee registry, daily attendance, salary rules, advances, and payroll.",
+    icon: Users,
+    accentColor: "text-teal-500 bg-teal-500/10 border-teal-500/20",
+    to: "/attendance",
+    links: [
+      { label: "Attendance", to: "/attendance" },
+      { label: "Staff", to: "/people", search: { tab: "workers" } },
+      { label: "Salary Rules", to: "/attendance", search: { tab: "rules" } },
+      { label: "Payroll", to: "/attendance", search: { tab: "payroll" } },
+    ],
+  },
+  {
     id: "reports",
     title: "Reports & Analytics",
     subtitle: "Business Intelligence",
@@ -102,17 +118,17 @@ const WORKSPACES: WorkspaceGatewayDef[] = [
   },
   {
     id: "settings",
-    title: "Settings & Config",
-    subtitle: "Administration & Rules",
-    description: "Firm profile, automation rules, hardware devices, and custom templates.",
+    title: "Administration & Tools",
+    subtitle: "System Setup",
+    description: "Firm profile, automation rules, hardware devices, bullion rates, and customization.",
     icon: Settings,
     accentColor: "text-zinc-400 bg-zinc-500/10 border-zinc-500/20",
     to: "/settings",
     links: [
       { label: "Firm Profile", to: "/settings" },
       { label: "Automation", to: "/settings/automation" },
+      { label: "Live Rates", to: "/control/rates" },
       { label: "Hardware", to: "/hardware" },
-      { label: "Customization", to: "/control/customization" },
     ],
   },
 ];

@@ -21,6 +21,7 @@ import { GoldRateEditor } from "@/components/GoldRateEditor";
 import { QuickCommandPalette } from "@/components/layout/QuickCommandPalette";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { UniversalActionMenu } from "@/components/layout/UniversalActionMenu";
+import { WorkspaceHeader } from "@/components/layout/WorkspaceHeader";
 import { ErpStatusBar } from "@/components/desktop/ErpStatusBar";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/button";
@@ -461,6 +462,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
 
         <ConnectivityStrip />
+        <WorkspaceHeader />
         <main
           className={
             isPhoneChrome
