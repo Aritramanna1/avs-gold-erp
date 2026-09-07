@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-09-07T19:40:09.903Z",
+  "filesScanned": 1277,
+  "findingsSummary": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "INFO": 0
+  },
+  "findings": {
+    "CRITICAL": [],
+    "HIGH": [],
+    "MEDIUM": [],
+    "LOW": [],
+    "INFO": []
+  }
+}

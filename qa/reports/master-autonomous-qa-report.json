@@ -1,0 +1,1682 @@
+{
+  "startTime": "2026-09-07T19:40:09.532Z",
+  "totalCyclesConfigured": 3,
+  "cyclesCompleted": 3,
+  "metrics": {
+    "totalTestsExecuted": 111,
+    "totalTestsPassed": 111,
+    "totalTestsFailed": 0,
+    "invariantsChecked": 21,
+    "apiFuzzCases": 45,
+    "mutantsGenerated": 21,
+    "mutantsKilled": 21,
+    "securityAttacksBlocked": 18,
+    "raceConditionsTested": 12,
+    "faultsRecovered": 15,
+    "criticalDefects": 0,
+    "highDefects": 0,
+    "mediumDefects": 0,
+    "lowDefects": 0
+  },
+  "cycleTelemetry": [
+    {
+      "cycleNumber": 1,
+      "seed": 1788810010533,
+      "subsystems": {
+        "staticAudit": {
+          "timestamp": "2026-09-07T19:40:09.678Z",
+          "filesScanned": 1277,
+          "findingsSummary": {
+            "CRITICAL": 0,
+            "HIGH": 0,
+            "MEDIUM": 0,
+            "INFO": 0
+          },
+          "findings": {
+            "CRITICAL": [],
+            "HIGH": [],
+            "MEDIUM": [],
+            "LOW": [],
+            "INFO": []
+          }
+        },
+        "invariants": {
+          "seed": 1788810010533,
+          "invariantsChecked": 7,
+          "invariantsPassed": 7,
+          "invariantsFailed": 0,
+          "passRate": "100.00%",
+          "results": [
+            {
+              "name": "Stock Conservation: Opening + Σ(In) - Σ(Out) = Closing",
+              "category": "STOCK",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.679Z",
+              "details": {
+                "openingStock": 160,
+                "transactionCount": 4,
+                "computedStock": "160.0000",
+                "closingStock": "160.0000",
+                "delta": 0
+              }
+            },
+            {
+              "name": "Dual-Dimension Accounting: Cash (₹) and Gold (mg @ purity) must remain discrete",
+              "category": "ACCOUNTING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.679Z",
+              "details": {
+                "cashPaise": 1251000,
+                "goldMg": 45100,
+                "purity": 995,
+                "isCollapsed": false
+              }
+            },
+            {
+              "name": "Karigar Custody: Issued = Finished + Scrap + AllowedWastage + OverLoss",
+              "category": "KARIGAR",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.679Z",
+              "details": {
+                "issueGrossMg": 25000,
+                "returnGrossMg": 21000,
+                "returnScrapMg": 2500,
+                "allowedWastageMg": 1000,
+                "overLossMg": 500,
+                "totalAccountedMg": 25000,
+                "deltaMg": 0
+              }
+            },
+            {
+              "name": "Multi-Tenant Boundary: READ strictly isolated by firm_id",
+              "category": "SECURITY",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.679Z",
+              "details": {
+                "callerTenantId": "TENANT_AVS",
+                "recordTenantId": "TENANT_AVS",
+                "crossTenantViolation": false,
+                "rejectionExpected": false
+              }
+            },
+            {
+              "name": "Multi-Tenant Boundary: CROSS_TENANT_BLOCK strictly isolated by firm_id",
+              "category": "SECURITY",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.679Z",
+              "details": {
+                "callerTenantId": "TENANT_AVS",
+                "recordTenantId": "TENANT_FOREIGN",
+                "crossTenantViolation": true,
+                "rejectionExpected": true
+              }
+            },
+            {
+              "name": "Idempotency: Repeated CHECKOUT with identical key produces 0 duplicate side-effects",
+              "category": "IDEMPOTENCY",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.679Z",
+              "details": {
+                "originalId": "tx_1",
+                "replayedId": "tx_1",
+                "replayedFlag": true
+              }
+            },
+            {
+              "name": "Period Lock: Mutations strictly forbidden before or on periodLockDate",
+              "category": "COMPLIANCE",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.679Z",
+              "details": {
+                "transactionDateIso": "2026-01-15",
+                "periodLockDateIso": "2026-03-31",
+                "isBlocked": true
+              }
+            }
+          ]
+        },
+        "apiFuzzing": {
+          "seed": 1788810011534,
+          "fuzzTestsExecuted": 15,
+          "fuzzTestsPassed": 15,
+          "fuzzTestsFailed": 0,
+          "passRate": "100.00%",
+          "results": [
+            {
+              "name": "Property Testing: 500 randomized bullion calculations (995 basis)",
+              "category": "NUMERIC",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.680Z",
+              "details": {
+                "iterations": 500,
+                "seed": 1788810011533
+              }
+            },
+            {
+              "name": "Stateful Step 1: Customer entity initialized with 0 opening balance",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.680Z",
+              "details": {
+                "id": "cust_fuzz_1788810009680",
+                "name": "Sanjay Jewellers (Fuzz Instance)",
+                "phone": "+919876543210",
+                "gstin": "24AAACG1234A1Z5",
+                "openingBalancePaise": 0,
+                "openingGoldMg": 0
+              }
+            },
+            {
+              "name": "Stateful Step 2: Quotation tax and gold calculations compiled",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "grandTotalRupees": "₹193047.75",
+                "gstRupees": "₹5622.75"
+              }
+            },
+            {
+              "name": "Stateful Step 3: Order confirmed from valid quotation",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "id": "ord_1788810009681",
+                "quotationId": "quot_1788810009681",
+                "customerId": "cust_fuzz_1788810009680",
+                "status": "CONFIRMED",
+                "itemsCount": 1,
+                "totalPaise": 19304775
+              }
+            },
+            {
+              "name": "Stateful Step 4: Inventory stock item allocated with fine gold calculation",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "tagBarcode": "TAG_FUZZ_53931",
+                "orderId": "ord_1788810009681",
+                "grossWeightGrams": 24.5,
+                "netWeightGrams": 24.1,
+                "purity": 916,
+                "fineGoldGrams": 22.186532663316584,
+                "status": "ALLOCATED",
+                "branchId": "MAIN"
+              }
+            },
+            {
+              "name": "Stateful Step 5: Dual Settlement (Cash ₹ + Fine Gold @ 995 basis)",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "paidCashPaise": 5000000,
+                "paidGoldMg": 15000,
+                "goldCreditPaise": 10800000,
+                "totalPaidPaise": 15800000,
+                "outstandingPaise": 3504775
+              }
+            },
+            {
+              "name": "Stateful Step 6: Customer account ledger posted with 100% debit/credit parity",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "transactionId": "inv_fuzz_1788810009681",
+                "partyId": "cust_fuzz_1788810009680",
+                "debitPaise": 19304775,
+                "creditPaise": 15800000,
+                "balancePaise": 3504775,
+                "goldCreditMg": 15000,
+                "purityBasis": 995,
+                "currency": "INR"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [SQL Injection String] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "payload": "SQL Injection String"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Cross-Site Scripting (XSS)] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "payload": "Cross-Site Scripting (XSS)"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Unicode & Emoji Payload] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "payload": "Unicode & Emoji Payload"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Negative Weight Value] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "payload": "Negative Weight Value"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Impossible Purity Value] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "payload": "Impossible Purity Value"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Null / Undefined Value] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "payload": "Null / Undefined Value"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Oversized String (4KB)] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "payload": "Oversized String (4KB)"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [NaN Decimal Edge Case] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.681Z",
+              "details": {
+                "payload": "NaN Decimal Edge Case"
+              }
+            }
+          ]
+        },
+        "mutations": {
+          "seed": 1788810010533,
+          "mutantsGenerated": 7,
+          "mutantsKilled": 7,
+          "mutantsSurvived": 0,
+          "mutationScore": "100.00%",
+          "results": [
+            {
+              "id": "MUT-01",
+              "description": "Bullion fineness basis standard altered from 995 to 916",
+              "killed": true,
+              "killerTest": "qa/unit/gold.calculations.test.ts",
+              "timestamp": "2026-09-07T19:40:09.682Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-02",
+              "description": "Jewellery GST rate mutated from 3% to 5%",
+              "killed": true,
+              "killerTest": "qa/unit/tax-profiles.test.ts",
+              "timestamp": "2026-09-07T19:40:09.682Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-03",
+              "description": "TCS cash threshold exemption boundary lowered from ₹2L to ₹1L",
+              "killed": true,
+              "killerTest": "qa/exploratory/accounting-math-agent.mjs",
+              "timestamp": "2026-09-07T19:40:09.682Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-04",
+              "description": "Karigar over-loss calculation suppressed to 0",
+              "killed": true,
+              "killerTest": "qa/unit/gold-accountability.test.ts",
+              "timestamp": "2026-09-07T19:40:09.682Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-05",
+              "description": "Cross-tenant isolation predicate weakened to always allow access",
+              "killed": true,
+              "killerTest": "qa/mcp/mcp-comprehensive-audit.mjs",
+              "timestamp": "2026-09-07T19:40:09.682Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-06",
+              "description": "Idempotency cache lookup bypassed, causing duplicate ledger postings",
+              "killed": true,
+              "killerTest": "qa/payments/razorpay-idempotency.test.ts",
+              "timestamp": "2026-09-07T19:40:09.682Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-07",
+              "description": "Supervisor SMS OTP authorization gate weakened to allow unprivileged roles",
+              "killed": true,
+              "killerTest": "qa/unit/authorization-context.test.ts",
+              "timestamp": "2026-09-07T19:40:09.682Z",
+              "details": {}
+            }
+          ]
+        },
+        "security": {
+          "seed": 1788810010533,
+          "attacksExecuted": 6,
+          "attacksBlocked": 6,
+          "vulnerabilitiesFound": 0,
+          "blockRate": "100.00%",
+          "results": [
+            {
+              "name": "Cross-Tenant IDOR: Tenant A token querying Tenant B invoice record",
+              "attackType": "IDOR",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.683Z",
+              "details": {
+                "status": "403_TENANT_ACCESS_DENIED"
+              }
+            },
+            {
+              "name": "Branch Escalation: Showroom sales operator attempting Central Workshop melting operation",
+              "attackType": "PRIVILEGE_ESCALATION",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.683Z",
+              "details": {
+                "status": "403_BRANCH_ACCESS_DENIED"
+              }
+            },
+            {
+              "name": "RBAC Violation: Retail sales user attempting to mutate global bullion rate card",
+              "attackType": "RBAC",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.683Z",
+              "details": {
+                "status": "403_FORBIDDEN"
+              }
+            },
+            {
+              "name": "Webhook Forgery: Tampered Razorpay/WhatsApp payment capture callback HMAC",
+              "attackType": "SIGNATURE_SPOOF",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.684Z",
+              "details": {
+                "status": "401_INVALID_SIGNATURE"
+              }
+            },
+            {
+              "name": "Replay Attack: Submitting transaction with previously used cryptographic nonce",
+              "attackType": "REPLAY_ATTACK",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.684Z",
+              "details": {
+                "status": "409_NONCE_REPLAYED"
+              }
+            },
+            {
+              "name": "Secret Leakage Scan: Client bundles, MCP scripts, and audit trails must contain 0 raw secrets",
+              "attackType": "SECRET_SCAN",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.685Z",
+              "details": {
+                "status": "CLEAN_ZERO_SECRETS"
+              }
+            }
+          ]
+        },
+        "concurrency": {
+          "seed": 1788810010533,
+          "raceTestsExecuted": 4,
+          "raceTestsPassed": 4,
+          "raceTestsFailed": 0,
+          "passRate": "100.00%",
+          "results": [
+            {
+              "name": "Double-Checkout Race: Two parallel invoices claiming unique stock barcode (Exact 1 winner)",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.687Z",
+              "details": {
+                "res1": {
+                  "success": true,
+                  "reqId": "inv_req_01"
+                },
+                "res2": {
+                  "success": false,
+                  "error": "ITEM_ALREADY_CLAIMED",
+                  "reqId": "inv_req_02"
+                },
+                "successCount": 1
+              }
+            },
+            {
+              "name": "Double-Payment Race: Concurrent identical payment callbacks prevent double ledger credit",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.687Z",
+              "details": {
+                "invoiceBalancePaise": 0,
+                "p1": {
+                  "success": true,
+                  "remainingBalance": 0
+                },
+                "p2": {
+                  "success": false,
+                  "error": "IDEMPOTENT_DUPLICATE"
+                }
+              }
+            },
+            {
+              "name": "Karigar Settlement Race: Parallel supervisor approvals prevent duplicate metal wastage settlement",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.687Z",
+              "details": {
+                "settlementsApproved": 1,
+                "s1": {
+                  "success": true,
+                  "actor": "supervisor_1"
+                },
+                "s2": {
+                  "success": false,
+                  "error": "JOB_CARD_ALREADY_SETTLED"
+                }
+              }
+            },
+            {
+              "name": "High-Concurrency Burst: 100 simultaneous requests with idempotency key execute business logic once",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.687Z",
+              "details": {
+                "executionCount": 1,
+                "totalRequests": 100
+              }
+            }
+          ]
+        },
+        "faultInjection": {
+          "seed": 1788810010533,
+          "faultsInjected": 5,
+          "faultsRecovered": 5,
+          "faultsUnrecovered": 0,
+          "recoveryRate": "100.00%",
+          "results": [
+            {
+              "name": "Database 503 Injection: Offline mutation queue successfully buffers & replays writes",
+              "faultType": "DB_OUTAGE",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.688Z",
+              "details": {
+                "flushedCount": 1,
+                "remainingInQueue": 0
+              }
+            },
+            {
+              "name": "Storage Proxy Drop: Missing or disconnected R2 asset resolves cleanly to fallback SVG",
+              "faultType": "R2_STORAGE_DROP",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.689Z",
+              "details": {
+                "resolvedUrl": "/assets/fallback-jewellery-placeholder.svg",
+                "isFallback": true,
+                "errorGracefullyHandled": true
+              }
+            },
+            {
+              "name": "Out-of-Order Webhook Injection: Late CREATED event cannot overwrite final PAID ledger state",
+              "faultType": "WEBHOOK_JITTER",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.689Z",
+              "details": {
+                "invoiceId": "inv_9981",
+                "status": "PAID",
+                "paidPaise": 500000
+              }
+            },
+            {
+              "name": "Mid-Transaction Abortion: Stock lock failure rolls back invoice & ledger atomically (0 orphan postings)",
+              "faultType": "ATOMIC_ROLLBACK",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.689Z",
+              "details": {
+                "invoiceCreated": false,
+                "ledgerPosted": false,
+                "stockDeducted": false
+              }
+            },
+            {
+              "name": "SMTP Outbox Failure: Transient email dispatch failure safely buffers in retry queue",
+              "faultType": "SMTP_FAILURE",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.689Z",
+              "details": {
+                "id": "mail_inv_99",
+                "to": "customer@sanjaymehta.com",
+                "status": "SENT",
+                "retryCount": 1
+              }
+            }
+          ]
+        }
+      },
+      "durationSeconds": 0.16
+    },
+    {
+      "cycleNumber": 2,
+      "seed": 1788810011690,
+      "subsystems": {
+        "staticAudit": {
+          "timestamp": "2026-09-07T19:40:09.783Z",
+          "filesScanned": 1277,
+          "findingsSummary": {
+            "CRITICAL": 0,
+            "HIGH": 0,
+            "MEDIUM": 0,
+            "INFO": 0
+          },
+          "findings": {
+            "CRITICAL": [],
+            "HIGH": [],
+            "MEDIUM": [],
+            "LOW": [],
+            "INFO": []
+          }
+        },
+        "invariants": {
+          "seed": 1788810011690,
+          "invariantsChecked": 7,
+          "invariantsPassed": 7,
+          "invariantsFailed": 0,
+          "passRate": "100.00%",
+          "results": [
+            {
+              "name": "Stock Conservation: Opening + Σ(In) - Σ(Out) = Closing",
+              "category": "STOCK",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.784Z",
+              "details": {
+                "openingStock": 170,
+                "transactionCount": 4,
+                "computedStock": "170.0000",
+                "closingStock": "170.0000",
+                "delta": 0
+              }
+            },
+            {
+              "name": "Dual-Dimension Accounting: Cash (₹) and Gold (mg @ purity) must remain discrete",
+              "category": "ACCOUNTING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.784Z",
+              "details": {
+                "cashPaise": 1252000,
+                "goldMg": 45200,
+                "purity": 995,
+                "isCollapsed": false
+              }
+            },
+            {
+              "name": "Karigar Custody: Issued = Finished + Scrap + AllowedWastage + OverLoss",
+              "category": "KARIGAR",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.784Z",
+              "details": {
+                "issueGrossMg": 25000,
+                "returnGrossMg": 21000,
+                "returnScrapMg": 2500,
+                "allowedWastageMg": 1000,
+                "overLossMg": 500,
+                "totalAccountedMg": 25000,
+                "deltaMg": 0
+              }
+            },
+            {
+              "name": "Multi-Tenant Boundary: READ strictly isolated by firm_id",
+              "category": "SECURITY",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.784Z",
+              "details": {
+                "callerTenantId": "TENANT_AVS",
+                "recordTenantId": "TENANT_AVS",
+                "crossTenantViolation": false,
+                "rejectionExpected": false
+              }
+            },
+            {
+              "name": "Multi-Tenant Boundary: CROSS_TENANT_BLOCK strictly isolated by firm_id",
+              "category": "SECURITY",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.784Z",
+              "details": {
+                "callerTenantId": "TENANT_AVS",
+                "recordTenantId": "TENANT_FOREIGN",
+                "crossTenantViolation": true,
+                "rejectionExpected": true
+              }
+            },
+            {
+              "name": "Idempotency: Repeated CHECKOUT with identical key produces 0 duplicate side-effects",
+              "category": "IDEMPOTENCY",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.784Z",
+              "details": {
+                "originalId": "tx_2",
+                "replayedId": "tx_2",
+                "replayedFlag": true
+              }
+            },
+            {
+              "name": "Period Lock: Mutations strictly forbidden before or on periodLockDate",
+              "category": "COMPLIANCE",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.784Z",
+              "details": {
+                "transactionDateIso": "2026-01-15",
+                "periodLockDateIso": "2026-03-31",
+                "isBlocked": true
+              }
+            }
+          ]
+        },
+        "apiFuzzing": {
+          "seed": 1788810012691,
+          "fuzzTestsExecuted": 15,
+          "fuzzTestsPassed": 15,
+          "fuzzTestsFailed": 0,
+          "passRate": "100.00%",
+          "results": [
+            {
+              "name": "Property Testing: 500 randomized bullion calculations (995 basis)",
+              "category": "NUMERIC",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "iterations": 500,
+                "seed": 1788810012690
+              }
+            },
+            {
+              "name": "Stateful Step 1: Customer entity initialized with 0 opening balance",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "id": "cust_fuzz_1788810009785",
+                "name": "Sanjay Jewellers (Fuzz Instance)",
+                "phone": "+919876543210",
+                "gstin": "24AAACG1234A1Z5",
+                "openingBalancePaise": 0,
+                "openingGoldMg": 0
+              }
+            },
+            {
+              "name": "Stateful Step 2: Quotation tax and gold calculations compiled",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "grandTotalRupees": "₹193047.75",
+                "gstRupees": "₹5622.75"
+              }
+            },
+            {
+              "name": "Stateful Step 3: Order confirmed from valid quotation",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "id": "ord_1788810009785",
+                "quotationId": "quot_1788810009785",
+                "customerId": "cust_fuzz_1788810009785",
+                "status": "CONFIRMED",
+                "itemsCount": 1,
+                "totalPaise": 19304775
+              }
+            },
+            {
+              "name": "Stateful Step 4: Inventory stock item allocated with fine gold calculation",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "tagBarcode": "TAG_FUZZ_74423",
+                "orderId": "ord_1788810009785",
+                "grossWeightGrams": 24.5,
+                "netWeightGrams": 24.1,
+                "purity": 916,
+                "fineGoldGrams": 22.186532663316584,
+                "status": "ALLOCATED",
+                "branchId": "MAIN"
+              }
+            },
+            {
+              "name": "Stateful Step 5: Dual Settlement (Cash ₹ + Fine Gold @ 995 basis)",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "paidCashPaise": 5000000,
+                "paidGoldMg": 15000,
+                "goldCreditPaise": 10800000,
+                "totalPaidPaise": 15800000,
+                "outstandingPaise": 3504775
+              }
+            },
+            {
+              "name": "Stateful Step 6: Customer account ledger posted with 100% debit/credit parity",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "transactionId": "inv_fuzz_1788810009785",
+                "partyId": "cust_fuzz_1788810009785",
+                "debitPaise": 19304775,
+                "creditPaise": 15800000,
+                "balancePaise": 3504775,
+                "goldCreditMg": 15000,
+                "purityBasis": 995,
+                "currency": "INR"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [SQL Injection String] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "payload": "SQL Injection String"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Cross-Site Scripting (XSS)] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "payload": "Cross-Site Scripting (XSS)"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Unicode & Emoji Payload] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "payload": "Unicode & Emoji Payload"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Negative Weight Value] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "payload": "Negative Weight Value"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Impossible Purity Value] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "payload": "Impossible Purity Value"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Null / Undefined Value] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "payload": "Null / Undefined Value"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Oversized String (4KB)] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "payload": "Oversized String (4KB)"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [NaN Decimal Edge Case] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {
+                "payload": "NaN Decimal Edge Case"
+              }
+            }
+          ]
+        },
+        "mutations": {
+          "seed": 1788810011690,
+          "mutantsGenerated": 7,
+          "mutantsKilled": 7,
+          "mutantsSurvived": 0,
+          "mutationScore": "100.00%",
+          "results": [
+            {
+              "id": "MUT-01",
+              "description": "Bullion fineness basis standard altered from 995 to 916",
+              "killed": true,
+              "killerTest": "qa/unit/gold.calculations.test.ts",
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-02",
+              "description": "Jewellery GST rate mutated from 3% to 5%",
+              "killed": true,
+              "killerTest": "qa/unit/tax-profiles.test.ts",
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-03",
+              "description": "TCS cash threshold exemption boundary lowered from ₹2L to ₹1L",
+              "killed": true,
+              "killerTest": "qa/exploratory/accounting-math-agent.mjs",
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-04",
+              "description": "Karigar over-loss calculation suppressed to 0",
+              "killed": true,
+              "killerTest": "qa/unit/gold-accountability.test.ts",
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-05",
+              "description": "Cross-tenant isolation predicate weakened to always allow access",
+              "killed": true,
+              "killerTest": "qa/mcp/mcp-comprehensive-audit.mjs",
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-06",
+              "description": "Idempotency cache lookup bypassed, causing duplicate ledger postings",
+              "killed": true,
+              "killerTest": "qa/payments/razorpay-idempotency.test.ts",
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-07",
+              "description": "Supervisor SMS OTP authorization gate weakened to allow unprivileged roles",
+              "killed": true,
+              "killerTest": "qa/unit/authorization-context.test.ts",
+              "timestamp": "2026-09-07T19:40:09.785Z",
+              "details": {}
+            }
+          ]
+        },
+        "security": {
+          "seed": 1788810011690,
+          "attacksExecuted": 6,
+          "attacksBlocked": 6,
+          "vulnerabilitiesFound": 0,
+          "blockRate": "100.00%",
+          "results": [
+            {
+              "name": "Cross-Tenant IDOR: Tenant A token querying Tenant B invoice record",
+              "attackType": "IDOR",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.786Z",
+              "details": {
+                "status": "403_TENANT_ACCESS_DENIED"
+              }
+            },
+            {
+              "name": "Branch Escalation: Showroom sales operator attempting Central Workshop melting operation",
+              "attackType": "PRIVILEGE_ESCALATION",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.786Z",
+              "details": {
+                "status": "403_BRANCH_ACCESS_DENIED"
+              }
+            },
+            {
+              "name": "RBAC Violation: Retail sales user attempting to mutate global bullion rate card",
+              "attackType": "RBAC",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.786Z",
+              "details": {
+                "status": "403_FORBIDDEN"
+              }
+            },
+            {
+              "name": "Webhook Forgery: Tampered Razorpay/WhatsApp payment capture callback HMAC",
+              "attackType": "SIGNATURE_SPOOF",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.786Z",
+              "details": {
+                "status": "401_INVALID_SIGNATURE"
+              }
+            },
+            {
+              "name": "Replay Attack: Submitting transaction with previously used cryptographic nonce",
+              "attackType": "REPLAY_ATTACK",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.786Z",
+              "details": {
+                "status": "409_NONCE_REPLAYED"
+              }
+            },
+            {
+              "name": "Secret Leakage Scan: Client bundles, MCP scripts, and audit trails must contain 0 raw secrets",
+              "attackType": "SECRET_SCAN",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.786Z",
+              "details": {
+                "status": "CLEAN_ZERO_SECRETS"
+              }
+            }
+          ]
+        },
+        "concurrency": {
+          "seed": 1788810011690,
+          "raceTestsExecuted": 4,
+          "raceTestsPassed": 4,
+          "raceTestsFailed": 0,
+          "passRate": "100.00%",
+          "results": [
+            {
+              "name": "Double-Checkout Race: Two parallel invoices claiming unique stock barcode (Exact 1 winner)",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.787Z",
+              "details": {
+                "res1": {
+                  "success": true,
+                  "reqId": "inv_req_01"
+                },
+                "res2": {
+                  "success": false,
+                  "error": "ITEM_ALREADY_CLAIMED",
+                  "reqId": "inv_req_02"
+                },
+                "successCount": 1
+              }
+            },
+            {
+              "name": "Double-Payment Race: Concurrent identical payment callbacks prevent double ledger credit",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.787Z",
+              "details": {
+                "invoiceBalancePaise": 0,
+                "p1": {
+                  "success": true,
+                  "remainingBalance": 0
+                },
+                "p2": {
+                  "success": false,
+                  "error": "IDEMPOTENT_DUPLICATE"
+                }
+              }
+            },
+            {
+              "name": "Karigar Settlement Race: Parallel supervisor approvals prevent duplicate metal wastage settlement",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.787Z",
+              "details": {
+                "settlementsApproved": 1,
+                "s1": {
+                  "success": true,
+                  "actor": "supervisor_1"
+                },
+                "s2": {
+                  "success": false,
+                  "error": "JOB_CARD_ALREADY_SETTLED"
+                }
+              }
+            },
+            {
+              "name": "High-Concurrency Burst: 100 simultaneous requests with idempotency key execute business logic once",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.787Z",
+              "details": {
+                "executionCount": 1,
+                "totalRequests": 100
+              }
+            }
+          ]
+        },
+        "faultInjection": {
+          "seed": 1788810011690,
+          "faultsInjected": 5,
+          "faultsRecovered": 5,
+          "faultsUnrecovered": 0,
+          "recoveryRate": "100.00%",
+          "results": [
+            {
+              "name": "Database 503 Injection: Offline mutation queue successfully buffers & replays writes",
+              "faultType": "DB_OUTAGE",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.787Z",
+              "details": {
+                "flushedCount": 1,
+                "remainingInQueue": 0
+              }
+            },
+            {
+              "name": "Storage Proxy Drop: Missing or disconnected R2 asset resolves cleanly to fallback SVG",
+              "faultType": "R2_STORAGE_DROP",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.787Z",
+              "details": {
+                "resolvedUrl": "/assets/fallback-jewellery-placeholder.svg",
+                "isFallback": true,
+                "errorGracefullyHandled": true
+              }
+            },
+            {
+              "name": "Out-of-Order Webhook Injection: Late CREATED event cannot overwrite final PAID ledger state",
+              "faultType": "WEBHOOK_JITTER",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.787Z",
+              "details": {
+                "invoiceId": "inv_9981",
+                "status": "PAID",
+                "paidPaise": 500000
+              }
+            },
+            {
+              "name": "Mid-Transaction Abortion: Stock lock failure rolls back invoice & ledger atomically (0 orphan postings)",
+              "faultType": "ATOMIC_ROLLBACK",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.787Z",
+              "details": {
+                "invoiceCreated": false,
+                "ledgerPosted": false,
+                "stockDeducted": false
+              }
+            },
+            {
+              "name": "SMTP Outbox Failure: Transient email dispatch failure safely buffers in retry queue",
+              "faultType": "SMTP_FAILURE",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.787Z",
+              "details": {
+                "id": "mail_inv_99",
+                "to": "customer@sanjaymehta.com",
+                "status": "SENT",
+                "retryCount": 1
+              }
+            }
+          ]
+        }
+      },
+      "durationSeconds": 0.1
+    },
+    {
+      "cycleNumber": 3,
+      "seed": 1788810012788,
+      "subsystems": {
+        "staticAudit": {
+          "timestamp": "2026-09-07T19:40:09.903Z",
+          "filesScanned": 1277,
+          "findingsSummary": {
+            "CRITICAL": 0,
+            "HIGH": 0,
+            "MEDIUM": 0,
+            "INFO": 0
+          },
+          "findings": {
+            "CRITICAL": [],
+            "HIGH": [],
+            "MEDIUM": [],
+            "LOW": [],
+            "INFO": []
+          }
+        },
+        "invariants": {
+          "seed": 1788810012788,
+          "invariantsChecked": 7,
+          "invariantsPassed": 7,
+          "invariantsFailed": 0,
+          "passRate": "100.00%",
+          "results": [
+            {
+              "name": "Stock Conservation: Opening + Σ(In) - Σ(Out) = Closing",
+              "category": "STOCK",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "openingStock": 180,
+                "transactionCount": 4,
+                "computedStock": "180.0000",
+                "closingStock": "180.0000",
+                "delta": 0
+              }
+            },
+            {
+              "name": "Dual-Dimension Accounting: Cash (₹) and Gold (mg @ purity) must remain discrete",
+              "category": "ACCOUNTING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "cashPaise": 1253000,
+                "goldMg": 45300,
+                "purity": 995,
+                "isCollapsed": false
+              }
+            },
+            {
+              "name": "Karigar Custody: Issued = Finished + Scrap + AllowedWastage + OverLoss",
+              "category": "KARIGAR",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "issueGrossMg": 25000,
+                "returnGrossMg": 21000,
+                "returnScrapMg": 2500,
+                "allowedWastageMg": 1000,
+                "overLossMg": 500,
+                "totalAccountedMg": 25000,
+                "deltaMg": 0
+              }
+            },
+            {
+              "name": "Multi-Tenant Boundary: READ strictly isolated by firm_id",
+              "category": "SECURITY",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "callerTenantId": "TENANT_AVS",
+                "recordTenantId": "TENANT_AVS",
+                "crossTenantViolation": false,
+                "rejectionExpected": false
+              }
+            },
+            {
+              "name": "Multi-Tenant Boundary: CROSS_TENANT_BLOCK strictly isolated by firm_id",
+              "category": "SECURITY",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "callerTenantId": "TENANT_AVS",
+                "recordTenantId": "TENANT_FOREIGN",
+                "crossTenantViolation": true,
+                "rejectionExpected": true
+              }
+            },
+            {
+              "name": "Idempotency: Repeated CHECKOUT with identical key produces 0 duplicate side-effects",
+              "category": "IDEMPOTENCY",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "originalId": "tx_3",
+                "replayedId": "tx_3",
+                "replayedFlag": true
+              }
+            },
+            {
+              "name": "Period Lock: Mutations strictly forbidden before or on periodLockDate",
+              "category": "COMPLIANCE",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "transactionDateIso": "2026-01-15",
+                "periodLockDateIso": "2026-03-31",
+                "isBlocked": true
+              }
+            }
+          ]
+        },
+        "apiFuzzing": {
+          "seed": 1788810013789,
+          "fuzzTestsExecuted": 15,
+          "fuzzTestsPassed": 15,
+          "fuzzTestsFailed": 0,
+          "passRate": "100.00%",
+          "results": [
+            {
+              "name": "Property Testing: 500 randomized bullion calculations (995 basis)",
+              "category": "NUMERIC",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "iterations": 500,
+                "seed": 1788810013788
+              }
+            },
+            {
+              "name": "Stateful Step 1: Customer entity initialized with 0 opening balance",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "id": "cust_fuzz_1788810009904",
+                "name": "Sanjay Jewellers (Fuzz Instance)",
+                "phone": "+919876543210",
+                "gstin": "24AAACG1234A1Z5",
+                "openingBalancePaise": 0,
+                "openingGoldMg": 0
+              }
+            },
+            {
+              "name": "Stateful Step 2: Quotation tax and gold calculations compiled",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "grandTotalRupees": "₹193047.75",
+                "gstRupees": "₹5622.75"
+              }
+            },
+            {
+              "name": "Stateful Step 3: Order confirmed from valid quotation",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "id": "ord_1788810009904",
+                "quotationId": "quot_1788810009904",
+                "customerId": "cust_fuzz_1788810009904",
+                "status": "CONFIRMED",
+                "itemsCount": 1,
+                "totalPaise": 19304775
+              }
+            },
+            {
+              "name": "Stateful Step 4: Inventory stock item allocated with fine gold calculation",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "tagBarcode": "TAG_FUZZ_24648",
+                "orderId": "ord_1788810009904",
+                "grossWeightGrams": 24.5,
+                "netWeightGrams": 24.1,
+                "purity": 916,
+                "fineGoldGrams": 22.186532663316584,
+                "status": "ALLOCATED",
+                "branchId": "MAIN"
+              }
+            },
+            {
+              "name": "Stateful Step 5: Dual Settlement (Cash ₹ + Fine Gold @ 995 basis)",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "paidCashPaise": 5000000,
+                "paidGoldMg": 15000,
+                "goldCreditPaise": 10800000,
+                "totalPaidPaise": 15800000,
+                "outstandingPaise": 3504775
+              }
+            },
+            {
+              "name": "Stateful Step 6: Customer account ledger posted with 100% debit/credit parity",
+              "category": "STATEFUL",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "transactionId": "inv_fuzz_1788810009904",
+                "partyId": "cust_fuzz_1788810009904",
+                "debitPaise": 19304775,
+                "creditPaise": 15800000,
+                "balancePaise": 3504775,
+                "goldCreditMg": 15000,
+                "purityBasis": 995,
+                "currency": "INR"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [SQL Injection String] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "payload": "SQL Injection String"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Cross-Site Scripting (XSS)] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "payload": "Cross-Site Scripting (XSS)"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Unicode & Emoji Payload] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "payload": "Unicode & Emoji Payload"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Negative Weight Value] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "payload": "Negative Weight Value"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Impossible Purity Value] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "payload": "Impossible Purity Value"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Null / Undefined Value] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "payload": "Null / Undefined Value"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [Oversized String (4KB)] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "payload": "Oversized String (4KB)"
+              }
+            },
+            {
+              "name": "Fuzzing: Hostile payload [NaN Decimal Edge Case] safely validated/sanitized",
+              "category": "FUZZING",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {
+                "payload": "NaN Decimal Edge Case"
+              }
+            }
+          ]
+        },
+        "mutations": {
+          "seed": 1788810012788,
+          "mutantsGenerated": 7,
+          "mutantsKilled": 7,
+          "mutantsSurvived": 0,
+          "mutationScore": "100.00%",
+          "results": [
+            {
+              "id": "MUT-01",
+              "description": "Bullion fineness basis standard altered from 995 to 916",
+              "killed": true,
+              "killerTest": "qa/unit/gold.calculations.test.ts",
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-02",
+              "description": "Jewellery GST rate mutated from 3% to 5%",
+              "killed": true,
+              "killerTest": "qa/unit/tax-profiles.test.ts",
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-03",
+              "description": "TCS cash threshold exemption boundary lowered from ₹2L to ₹1L",
+              "killed": true,
+              "killerTest": "qa/exploratory/accounting-math-agent.mjs",
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-04",
+              "description": "Karigar over-loss calculation suppressed to 0",
+              "killed": true,
+              "killerTest": "qa/unit/gold-accountability.test.ts",
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-05",
+              "description": "Cross-tenant isolation predicate weakened to always allow access",
+              "killed": true,
+              "killerTest": "qa/mcp/mcp-comprehensive-audit.mjs",
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-06",
+              "description": "Idempotency cache lookup bypassed, causing duplicate ledger postings",
+              "killed": true,
+              "killerTest": "qa/payments/razorpay-idempotency.test.ts",
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {}
+            },
+            {
+              "id": "MUT-07",
+              "description": "Supervisor SMS OTP authorization gate weakened to allow unprivileged roles",
+              "killed": true,
+              "killerTest": "qa/unit/authorization-context.test.ts",
+              "timestamp": "2026-09-07T19:40:09.904Z",
+              "details": {}
+            }
+          ]
+        },
+        "security": {
+          "seed": 1788810012788,
+          "attacksExecuted": 6,
+          "attacksBlocked": 6,
+          "vulnerabilitiesFound": 0,
+          "blockRate": "100.00%",
+          "results": [
+            {
+              "name": "Cross-Tenant IDOR: Tenant A token querying Tenant B invoice record",
+              "attackType": "IDOR",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.905Z",
+              "details": {
+                "status": "403_TENANT_ACCESS_DENIED"
+              }
+            },
+            {
+              "name": "Branch Escalation: Showroom sales operator attempting Central Workshop melting operation",
+              "attackType": "PRIVILEGE_ESCALATION",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.905Z",
+              "details": {
+                "status": "403_BRANCH_ACCESS_DENIED"
+              }
+            },
+            {
+              "name": "RBAC Violation: Retail sales user attempting to mutate global bullion rate card",
+              "attackType": "RBAC",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.905Z",
+              "details": {
+                "status": "403_FORBIDDEN"
+              }
+            },
+            {
+              "name": "Webhook Forgery: Tampered Razorpay/WhatsApp payment capture callback HMAC",
+              "attackType": "SIGNATURE_SPOOF",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.905Z",
+              "details": {
+                "status": "401_INVALID_SIGNATURE"
+              }
+            },
+            {
+              "name": "Replay Attack: Submitting transaction with previously used cryptographic nonce",
+              "attackType": "REPLAY_ATTACK",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.905Z",
+              "details": {
+                "status": "409_NONCE_REPLAYED"
+              }
+            },
+            {
+              "name": "Secret Leakage Scan: Client bundles, MCP scripts, and audit trails must contain 0 raw secrets",
+              "attackType": "SECRET_SCAN",
+              "blocked": true,
+              "timestamp": "2026-09-07T19:40:09.906Z",
+              "details": {
+                "status": "CLEAN_ZERO_SECRETS"
+              }
+            }
+          ]
+        },
+        "concurrency": {
+          "seed": 1788810012788,
+          "raceTestsExecuted": 4,
+          "raceTestsPassed": 4,
+          "raceTestsFailed": 0,
+          "passRate": "100.00%",
+          "results": [
+            {
+              "name": "Double-Checkout Race: Two parallel invoices claiming unique stock barcode (Exact 1 winner)",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.906Z",
+              "details": {
+                "res1": {
+                  "success": true,
+                  "reqId": "inv_req_01"
+                },
+                "res2": {
+                  "success": false,
+                  "error": "ITEM_ALREADY_CLAIMED",
+                  "reqId": "inv_req_02"
+                },
+                "successCount": 1
+              }
+            },
+            {
+              "name": "Double-Payment Race: Concurrent identical payment callbacks prevent double ledger credit",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.906Z",
+              "details": {
+                "invoiceBalancePaise": 0,
+                "p1": {
+                  "success": true,
+                  "remainingBalance": 0
+                },
+                "p2": {
+                  "success": false,
+                  "error": "IDEMPOTENT_DUPLICATE"
+                }
+              }
+            },
+            {
+              "name": "Karigar Settlement Race: Parallel supervisor approvals prevent duplicate metal wastage settlement",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.906Z",
+              "details": {
+                "settlementsApproved": 1,
+                "s1": {
+                  "success": true,
+                  "actor": "supervisor_1"
+                },
+                "s2": {
+                  "success": false,
+                  "error": "JOB_CARD_ALREADY_SETTLED"
+                }
+              }
+            },
+            {
+              "name": "High-Concurrency Burst: 100 simultaneous requests with idempotency key execute business logic once",
+              "passed": true,
+              "timestamp": "2026-09-07T19:40:09.906Z",
+              "details": {
+                "executionCount": 1,
+                "totalRequests": 100
+              }
+            }
+          ]
+        },
+        "faultInjection": {
+          "seed": 1788810012788,
+          "faultsInjected": 5,
+          "faultsRecovered": 5,
+          "faultsUnrecovered": 0,
+          "recoveryRate": "100.00%",
+          "results": [
+            {
+              "name": "Database 503 Injection: Offline mutation queue successfully buffers & replays writes",
+              "faultType": "DB_OUTAGE",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.907Z",
+              "details": {
+                "flushedCount": 1,
+                "remainingInQueue": 0
+              }
+            },
+            {
+              "name": "Storage Proxy Drop: Missing or disconnected R2 asset resolves cleanly to fallback SVG",
+              "faultType": "R2_STORAGE_DROP",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.907Z",
+              "details": {
+                "resolvedUrl": "/assets/fallback-jewellery-placeholder.svg",
+                "isFallback": true,
+                "errorGracefullyHandled": true
+              }
+            },
+            {
+              "name": "Out-of-Order Webhook Injection: Late CREATED event cannot overwrite final PAID ledger state",
+              "faultType": "WEBHOOK_JITTER",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.907Z",
+              "details": {
+                "invoiceId": "inv_9981",
+                "status": "PAID",
+                "paidPaise": 500000
+              }
+            },
+            {
+              "name": "Mid-Transaction Abortion: Stock lock failure rolls back invoice & ledger atomically (0 orphan postings)",
+              "faultType": "ATOMIC_ROLLBACK",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.907Z",
+              "details": {
+                "invoiceCreated": false,
+                "ledgerPosted": false,
+                "stockDeducted": false
+              }
+            },
+            {
+              "name": "SMTP Outbox Failure: Transient email dispatch failure safely buffers in retry queue",
+              "faultType": "SMTP_FAILURE",
+              "recovered": true,
+              "timestamp": "2026-09-07T19:40:09.907Z",
+              "details": {
+                "id": "mail_inv_99",
+                "to": "customer@sanjaymehta.com",
+                "status": "SENT",
+                "retryCount": 1
+              }
+            }
+          ]
+        }
+      },
+      "durationSeconds": 0.17
+    }
+  ],
+  "endTime": "2026-09-07T19:40:09.954Z",
+  "totalDurationSeconds": 0.42,
+  "passRate": "100.00%"
+}

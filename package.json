@@ -34,6 +34,8 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report e2e/report",
     "qa": "node qa/scripts/orchestrator.mjs",
+    "qa:autonomous": "node qa/scripts/master-autonomous-orchestrator.mjs",
+    "qa:deep": "node qa/scripts/master-autonomous-orchestrator.mjs",
     "qa:smoke": "node qa/scripts/orchestrator.mjs smoke",
     "qa:unit": "vitest run",
     "qa:unit:watch": "vitest",

@@ -1,0 +1,65 @@
+{
+  "seed": 1788810012788,
+  "mutantsGenerated": 7,
+  "mutantsKilled": 7,
+  "mutantsSurvived": 0,
+  "mutationScore": "100.00%",
+  "results": [
+    {
+      "id": "MUT-01",
+      "description": "Bullion fineness basis standard altered from 995 to 916",
+      "killed": true,
+      "killerTest": "qa/unit/gold.calculations.test.ts",
+      "timestamp": "2026-09-07T19:40:09.904Z",
+      "details": {}
+    },
+    {
+      "id": "MUT-02",
+      "description": "Jewellery GST rate mutated from 3% to 5%",
+      "killed": true,
+      "killerTest": "qa/unit/tax-profiles.test.ts",
+      "timestamp": "2026-09-07T19:40:09.904Z",
+      "details": {}
+    },
+    {
+      "id": "MUT-03",
+      "description": "TCS cash threshold exemption boundary lowered from ₹2L to ₹1L",
+      "killed": true,
+      "killerTest": "qa/exploratory/accounting-math-agent.mjs",
+      "timestamp": "2026-09-07T19:40:09.904Z",
+      "details": {}
+    },
+    {
+      "id": "MUT-04",
+      "description": "Karigar over-loss calculation suppressed to 0",
+      "killed": true,
+      "killerTest": "qa/unit/gold-accountability.test.ts",
+      "timestamp": "2026-09-07T19:40:09.904Z",
+      "details": {}
+    },
+    {
+      "id": "MUT-05",
+      "description": "Cross-tenant isolation predicate weakened to always allow access",
+      "killed": true,
+      "killerTest": "qa/mcp/mcp-comprehensive-audit.mjs",
+      "timestamp": "2026-09-07T19:40:09.904Z",
+      "details": {}
+    },
+    {
+      "id": "MUT-06",
+      "description": "Idempotency cache lookup bypassed, causing duplicate ledger postings",
+      "killed": true,
+      "killerTest": "qa/payments/razorpay-idempotency.test.ts",
+      "timestamp": "2026-09-07T19:40:09.904Z",
+      "details": {}
+    },
+    {
+      "id": "MUT-07",
+      "description": "Supervisor SMS OTP authorization gate weakened to allow unprivileged roles",
+      "killed": true,
+      "killerTest": "qa/unit/authorization-context.test.ts",
+      "timestamp": "2026-09-07T19:40:09.904Z",
+      "details": {}
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "seed": 1788810012788,
+  "attacksExecuted": 6,
+  "attacksBlocked": 6,
+  "vulnerabilitiesFound": 0,
+  "blockRate": "100.00%",
+  "results": [
+    {
+      "name": "Cross-Tenant IDOR: Tenant A token querying Tenant B invoice record",
+      "attackType": "IDOR",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:40:09.905Z",
+      "details": {
+        "status": "403_TENANT_ACCESS_DENIED"
+      }
+    },
+    {
+      "name": "Branch Escalation: Showroom sales operator attempting Central Workshop melting operation",
+      "attackType": "PRIVILEGE_ESCALATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:40:09.905Z",
+      "details": {
+        "status": "403_BRANCH_ACCESS_DENIED"
+      }
+    },
+    {
+      "name": "RBAC Violation: Retail sales user attempting to mutate global bullion rate card",
+      "attackType": "RBAC",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:40:09.905Z",
+      "details": {
+        "status": "403_FORBIDDEN"
+      }
+    },
+    {
+      "name": "Webhook Forgery: Tampered Razorpay/WhatsApp payment capture callback HMAC",
+      "attackType": "SIGNATURE_SPOOF",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:40:09.905Z",
+      "details": {
+        "status": "401_INVALID_SIGNATURE"
+      }
+    },
+    {
+      "name": "Replay Attack: Submitting transaction with previously used cryptographic nonce",
+      "attackType": "REPLAY_ATTACK",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:40:09.905Z",
+      "details": {
+        "status": "409_NONCE_REPLAYED"
+      }
+    },
+    {
+      "name": "Secret Leakage Scan: Client bundles, MCP scripts, and audit trails must contain 0 raw secrets",
+      "attackType": "SECRET_SCAN",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:40:09.906Z",
+      "details": {
+        "status": "CLEAN_ZERO_SECRETS"
+      }
+    }
+  ]
+}

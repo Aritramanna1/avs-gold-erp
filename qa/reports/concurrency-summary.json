@@ -1,0 +1,67 @@
+{
+  "seed": 1788810012788,
+  "raceTestsExecuted": 4,
+  "raceTestsPassed": 4,
+  "raceTestsFailed": 0,
+  "passRate": "100.00%",
+  "results": [
+    {
+      "name": "Double-Checkout Race: Two parallel invoices claiming unique stock barcode (Exact 1 winner)",
+      "passed": true,
+      "timestamp": "2026-09-07T19:40:09.906Z",
+      "details": {
+        "res1": {
+          "success": true,
+          "reqId": "inv_req_01"
+        },
+        "res2": {
+          "success": false,
+          "error": "ITEM_ALREADY_CLAIMED",
+          "reqId": "inv_req_02"
+        },
+        "successCount": 1
+      }
+    },
+    {
+      "name": "Double-Payment Race: Concurrent identical payment callbacks prevent double ledger credit",
+      "passed": true,
+      "timestamp": "2026-09-07T19:40:09.906Z",
+      "details": {
+        "invoiceBalancePaise": 0,
+        "p1": {
+          "success": true,
+          "remainingBalance": 0
+        },
+        "p2": {
+          "success": false,
+          "error": "IDEMPOTENT_DUPLICATE"
+        }
+      }
+    },
+    {
+      "name": "Karigar Settlement Race: Parallel supervisor approvals prevent duplicate metal wastage settlement",
+      "passed": true,
+      "timestamp": "2026-09-07T19:40:09.906Z",
+      "details": {
+        "settlementsApproved": 1,
+        "s1": {
+          "success": true,
+          "actor": "supervisor_1"
+        },
+        "s2": {
+          "success": false,
+          "error": "JOB_CARD_ALREADY_SETTLED"
+        }
+      }
+    },
+    {
+      "name": "High-Concurrency Burst: 100 simultaneous requests with idempotency key execute business logic once",
+      "passed": true,
+      "timestamp": "2026-09-07T19:40:09.906Z",
+      "details": {
+        "executionCount": 1,
+        "totalRequests": 100
+      }
+    }
+  ]
+}
