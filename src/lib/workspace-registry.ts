@@ -169,18 +169,51 @@ export const WORKSPACES: Record<string, WorkspaceDefinition> = {
 export function getActiveWorkspace(pathname: string): WorkspaceDefinition | null {
   if (!pathname || pathname === "/app" || pathname === "/") return null;
 
-  if (pathname.startsWith("/billing") || pathname.startsWith("/orders") || pathname.startsWith("/catalog") || pathname.startsWith("/crm")) {
+  // 1. Sell & Customers
+  if (
+    pathname.startsWith("/billing") ||
+    pathname.startsWith("/orders") ||
+    pathname.startsWith("/catalog") ||
+    pathname.startsWith("/crm") ||
+    pathname.startsWith("/scheme") ||
+    pathname.startsWith("/repair")
+  ) {
     return WORKSPACES.retail;
   }
-  if (pathname.startsWith("/workshop") || pathname.startsWith("/melt") || pathname.startsWith("/settlement")) {
+
+  // 2. Workshop & Manufacturing
+  if (
+    pathname.startsWith("/workshop") ||
+    pathname.startsWith("/melt") ||
+    pathname.startsWith("/settlement") ||
+    pathname.startsWith("/manufacturing") ||
+    pathname.startsWith("/refinery") ||
+    pathname.startsWith("/mtg")
+  ) {
     return WORKSPACES.workshop;
   }
-  if (pathname.startsWith("/stock") || pathname.startsWith("/barcode")) {
+
+  // 3. Inventory & Stock
+  if (
+    pathname.startsWith("/stock") ||
+    pathname.startsWith("/barcode")
+  ) {
     return WORKSPACES.stock;
   }
-  if (pathname.startsWith("/ledger") || pathname.startsWith("/treasury") || pathname.startsWith("/expenses") || pathname.startsWith("/conversion") || pathname.startsWith("/control/accounts")) {
+
+  // 4. Accounts & Treasury
+  if (
+    pathname.startsWith("/ledger") ||
+    pathname.startsWith("/treasury") ||
+    pathname.startsWith("/expenses") ||
+    pathname.startsWith("/conversion") ||
+    pathname.startsWith("/control/accounts") ||
+    pathname.startsWith("/utilities")
+  ) {
     return WORKSPACES.accounts;
   }
+
+  // 5. People & HR
   if (pathname.startsWith("/attendance")) {
     return WORKSPACES.people;
   }
@@ -188,10 +221,23 @@ export function getActiveWorkspace(pathname: string): WorkspaceDefinition | null
     // If people route, check query or default to retail if customers, else people
     return WORKSPACES.retail;
   }
-  if (pathname.startsWith("/reports")) {
+
+  // 6. Reports & Analytics
+  if (pathname.startsWith("/reports") || pathname.startsWith("/dashboard")) {
     return WORKSPACES.reports;
   }
-  if (pathname.startsWith("/settings") || pathname.startsWith("/control") || pathname.startsWith("/hardware") || pathname.startsWith("/communications")) {
+
+  // 7. Administration & Tools
+  if (
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/control") ||
+    pathname.startsWith("/hardware") ||
+    pathname.startsWith("/communications") ||
+    pathname.startsWith("/whatsapp") ||
+    pathname.startsWith("/branches") ||
+    pathname.startsWith("/ai-center") ||
+    pathname.startsWith("/notifications")
+  ) {
     return WORKSPACES.settings;
   }
 
