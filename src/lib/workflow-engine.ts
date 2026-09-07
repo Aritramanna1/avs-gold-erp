@@ -768,6 +768,8 @@ function persistWorkflow(config: WorkflowConfig, tenantId: string = "default"): 
   void workflowSettingsRepository.saveAs("workflow_engine", {
     id: "workflow_engine",
     config: normalized,
+  }).catch(() => {
+    /* gracefully ignore network/RLS write errors during unauthenticated offline mode */
   });
 }
 // Allowed State Transitions in the Manufacturing/Jobcard Lifecycle

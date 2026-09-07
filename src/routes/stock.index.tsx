@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowRightLeft, Package, Plus, ScanLine } from "lucide-react";
 import { ModuleWorkspace } from "@/components/module-workspace";
 import { EmptyState, WebAppState } from "@/components/web-app-state";
+import { ActionableEmptyState } from "@/components/ui/ActionableEmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -209,24 +210,24 @@ function StockWorkspace() {
           </div>
         ) : items.length === 0 ? (
           <div className="mt-4">
-            <EmptyState
-              title={
-                q || status !== "all" ? "No stock matches this filter" : "No ready stock found"
-              }
-              description={
-                q || status !== "all"
-                  ? "Change the search or status filter. The result is empty after applying Supabase/RLS visibility and current filters."
-                  : "Add finished jewellery, import a stock sheet, or generate stock from the manufacturing flow. Each item should carry location, barcode or HUID where applicable, status, and movement history."
-              }
-              action={
-                q || status !== "all"
-                  ? {
-                      label: "Clear filters",
-                      onClick: () => updateSearch({ q: "", status: "all", page: 1 }),
-                    }
-                  : undefined
-              }
-            />
+            {q || status !== "all" ? (
+              <EmptyState
+                title="No stock matches this filter"
+                description="Change the search or status filter. The result is empty after applying Supabase/RLS visibility and current filters."
+                action={{
+                  label: "Clear filters",
+                  onClick: () => updateSearch({ q: "", status: "all", page: 1 }),
+                }}
+              />
+            ) : (
+              <ActionableEmptyState
+                variant="stock"
+                title="No Ready Stock yet"
+                description="Your showroom inventory is empty. Add finished jewellery items with weight, purity, barcode, and product photo to start selling."
+                actionLabel="Add Ready Stock"
+                onAction={() => void navigate({ to: "/stock/entry" })}
+              />
+            )}
           </div>
         ) : (
           <>

@@ -75,6 +75,7 @@ import { CustomerPersonalLedgerView } from "@/components/customer-personal-ledge
 import { findPersonIdForCentralParty } from "@/lib/central-foundation";
 import { fetchPeoplePage, fetchPeopleTabCounts, type PeopleTabCounts } from "@/lib/people-query";
 import { EmptyState, InlineSavingState, WebAppState } from "@/components/web-app-state";
+import { ActionableEmptyState } from "@/components/ui/ActionableEmptyState";
 
 import { guardRoute } from "@/lib/permissions";
 import { fineGoldMg } from "@/lib/gold";
@@ -316,6 +317,7 @@ function PeoplePage() {
             {addOptions.map((o) => (
               <Button
                 key={o.type}
+                id={o.type === "customer" ? "people-add-customer-btn" : undefined}
                 data-testid={o.type === "customer" ? "people-add-button" : `people-add-${o.type}`}
                 size="sm"
                 variant={o.type === "customer" ? "default" : "secondary"}
@@ -544,14 +546,24 @@ function PeopleList({
   }
   if (list.length === 0) {
     const filtered = totalCount > 0 && query.trim().length > 0;
+    if (filtered) {
+      return (
+        <EmptyState
+          title="No people match this search"
+          description="Clear or change the search text to see the rest of this party group."
+        />
+      );
+    }
     return (
-      <EmptyState
-        title={filtered ? "No people match this search" : t("people.no_records")}
-        description={
-          filtered
-            ? "Clear or change the search text to see the rest of this party group."
-            : "Create the first party from the buttons above. Customers, karigars, workers, employees, vendors, and firm customers all sync into the central Party system."
-        }
+      <ActionableEmptyState
+        variant="customer"
+        title="No contacts found yet"
+        description="Create your first customer, karigar, worker, or vendor to start tracking transactions, gold balances, and GST invoices."
+        actionLabel="Add Customer / Party"
+        onAction={() => {
+          const btn = document.getElementById("people-add-customer-btn");
+          if (btn) btn.click();
+        }}
       />
     );
   }

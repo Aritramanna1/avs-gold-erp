@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/sheet";
 import { TransactionModuleNav } from "@/components/transaction-module-nav";
 import { GoldPurityHelper } from "@/components/gold-purity-helper";
+import { ContextualHelp } from "@/components/ui/ContextualHelp";
 import { useStock } from "@/lib/stock-store";
 import { ReceiveFinishedProductDialog } from "@/components/karigar/ReceiveFinishedProductDialog";
 import {
@@ -1719,8 +1720,11 @@ function WorkerGoldBookPage() {
                   {/* DEDICATED OVER-LOSS FORM SECTION */}
                   {entryType === "overloss" ? (
                     <div className="space-y-4 border-t border-border/40 pt-3">
-                      <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs text-rose-300">
-                        Recording an Over-Loss will credit the Karigar's custody balance for the unreturned metal and record a loss relief entry in the Gold Ledger with full audit provenance.
+                      <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs text-rose-300 flex items-start gap-2">
+                        <ContextualHelp glossaryKey="over_loss" />
+                        <span>
+                          Recording an Over-Loss will credit the Karigar's custody balance for the unreturned metal and record a loss relief entry in the Gold Ledger with full audit provenance.
+                        </span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1748,8 +1752,9 @@ function WorkerGoldBookPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                            Gold Purity (‰)
+                          <label className="flex items-center gap-1 text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                            <span>Gold Purity (‰)</span>
+                            <ContextualHelp glossaryKey="purity_916" />
                           </label>
                           <select
                             value={formPurity}
