@@ -1,5 +1,5 @@
 {
-  "seed": 1788810012788,
+  "seed": 1788810836106,
   "raceTestsExecuted": 4,
   "raceTestsPassed": 4,
   "raceTestsFailed": 0,
@@ -8,7 +8,7 @@
     {
       "name": "Double-Checkout Race: Two parallel invoices claiming unique stock barcode (Exact 1 winner)",
       "passed": true,
-      "timestamp": "2026-09-07T19:40:09.906Z",
+      "timestamp": "2026-09-07T19:53:53.231Z",
       "details": {
         "res1": {
           "success": true,
@@ -25,7 +25,7 @@
     {
       "name": "Double-Payment Race: Concurrent identical payment callbacks prevent double ledger credit",
       "passed": true,
-      "timestamp": "2026-09-07T19:40:09.906Z",
+      "timestamp": "2026-09-07T19:53:53.231Z",
       "details": {
         "invoiceBalancePaise": 0,
         "p1": {
@@ -41,7 +41,7 @@
     {
       "name": "Karigar Settlement Race: Parallel supervisor approvals prevent duplicate metal wastage settlement",
       "passed": true,
-      "timestamp": "2026-09-07T19:40:09.906Z",
+      "timestamp": "2026-09-07T19:53:53.231Z",
       "details": {
         "settlementsApproved": 1,
         "s1": {
@@ -57,7 +57,7 @@
     {
       "name": "High-Concurrency Burst: 100 simultaneous requests with idempotency key execute business logic once",
       "passed": true,
-      "timestamp": "2026-09-07T19:40:09.906Z",
+      "timestamp": "2026-09-07T19:53:53.231Z",
       "details": {
         "executionCount": 1,
         "totalRequests": 100

@@ -41,4 +41,6 @@ coverage/
 .env.local
 .env.*.local
 *.zip
+strix_runs/
+
 

@@ -51,11 +51,16 @@ if (guard.status === 2) {
   process.exit(2);
 }
 
-if (!process.env.LLM_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GOOGLE_API_KEY) {
+if (!process.env.LLM_API_KEY && !process.env.OPENAI_API_KEY && !process.env.GOOGLE_API_KEY && !process.env.GEMINI_API_KEY) {
   console.error(
     "[strix] BLOCKED: Set LLM_API_KEY (or provider-specific key) and STRIX_LLM before running Strix.",
   );
   process.exit(2);
+}
+
+if (process.env.LLM_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) process.env.GEMINI_API_KEY = process.env.LLM_API_KEY;
+  if (!process.env.GOOGLE_API_KEY) process.env.GOOGLE_API_KEY = process.env.LLM_API_KEY;
 }
 
 const cfg = JSON.parse(
@@ -103,9 +108,9 @@ const strixArgs = [
   "-t",
   targetUrl,
   "-t",
-  root,
+  `"${root}"`,
   "--instruction-file",
-  scopeRuntime,
+  `"${scopeRuntime}"`,
   "--max-budget",
   maxBudget,
   "--max-turns",
@@ -118,13 +123,18 @@ if (process.env.STRIX_REASONING_EFFORT) {
   process.env.STRIX_REASONING_EFFORT = cfg.reasoningEffort || "medium";
 }
 
+process.env.STRIX_LLM = cfg.defaultLlm || "gemini/gemini-3.6-flash";
+
 const proc = spawnSync("strix", strixArgs, {
   cwd: root,
   shell: true,
   stdio: "inherit",
   env: {
     ...process.env,
-    STRIX_LLM: process.env.STRIX_LLM || cfg.defaultLlm || "gemini/gemini-3.6-flash",
+    STRIX_LLM: process.env.STRIX_LLM,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY || process.env.LLM_API_KEY,
+    GOOGLE_API_KEY: process.env.GOOGLE_API_KEY || process.env.LLM_API_KEY,
+    LLM_API_KEY: process.env.LLM_API_KEY,
   },
 });
 

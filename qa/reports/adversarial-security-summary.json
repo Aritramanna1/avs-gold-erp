@@ -1,0 +1,350 @@
+{
+  "seed": 1788810836106,
+  "attacksExecuted": 32,
+  "attacksBlocked": 32,
+  "vulnerabilitiesFound": 0,
+  "protectionScore": "100.00%",
+  "results": [
+    {
+      "name": "Anonymous API Access: Unauthenticated request to protected ERP orders API",
+      "category": "AUTHENTICATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "response": "401_UNAUTHORIZED"
+      }
+    },
+    {
+      "name": "Supervisor OTP Channel: Attempting Supervisor authorization via prohibited WhatsApp channel",
+      "category": "AUTHENTICATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "status": "REJECTED_SMS_ONLY"
+      }
+    },
+    {
+      "name": "OTP Replay Attack: Reusing previously consumed SMS OTP token",
+      "category": "AUTHENTICATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "status": "409_OTP_ALREADY_USED"
+      }
+    },
+    {
+      "name": "OTP Expiration Guard: Submitting expired SMS OTP token",
+      "category": "AUTHENTICATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "status": "401_OTP_EXPIRED"
+      }
+    },
+    {
+      "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Customer Record (cust_aurum_101)",
+      "category": "IDOR_TENANT_ISOLATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "caller": "TENANT_MTJ",
+        "targetTenant": "TENANT_AURUM",
+        "entity": "Customer Record",
+        "status": "403_TENANT_ACCESS_DENIED"
+      }
+    },
+    {
+      "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Sales Invoice (inv_aurum_9921)",
+      "category": "IDOR_TENANT_ISOLATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "caller": "TENANT_MTJ",
+        "targetTenant": "TENANT_AURUM",
+        "entity": "Sales Invoice",
+        "status": "403_TENANT_ACCESS_DENIED"
+      }
+    },
+    {
+      "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Stock Inventory Tag (tag_aurum_gold_001)",
+      "category": "IDOR_TENANT_ISOLATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "caller": "TENANT_MTJ",
+        "targetTenant": "TENANT_AURUM",
+        "entity": "Stock Inventory Tag",
+        "status": "403_TENANT_ACCESS_DENIED"
+      }
+    },
+    {
+      "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Account Chart of Accounts (acc_aurum_cash)",
+      "category": "IDOR_TENANT_ISOLATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "caller": "TENANT_MTJ",
+        "targetTenant": "TENANT_AURUM",
+        "entity": "Account Chart of Accounts",
+        "status": "403_TENANT_ACCESS_DENIED"
+      }
+    },
+    {
+      "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Financial Ledger Entry (led_aurum_2026)",
+      "category": "IDOR_TENANT_ISOLATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "caller": "TENANT_MTJ",
+        "targetTenant": "TENANT_AURUM",
+        "entity": "Financial Ledger Entry",
+        "status": "403_TENANT_ACCESS_DENIED"
+      }
+    },
+    {
+      "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Karigar Custody Book (kar_aurum_babu)",
+      "category": "IDOR_TENANT_ISOLATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "caller": "TENANT_MTJ",
+        "targetTenant": "TENANT_AURUM",
+        "entity": "Karigar Custody Book",
+        "status": "403_TENANT_ACCESS_DENIED"
+      }
+    },
+    {
+      "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Business P&L Report (rep_aurum_pnl)",
+      "category": "IDOR_TENANT_ISOLATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "caller": "TENANT_MTJ",
+        "targetTenant": "TENANT_AURUM",
+        "entity": "Business P&L Report",
+        "status": "403_TENANT_ACCESS_DENIED"
+      }
+    },
+    {
+      "name": "Cross-Branch Isolation: retail_sales in SHOWROOM_CENTRAL executing Workshop Melting Lot Mutation",
+      "category": "BRANCH_ISOLATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "userBranch": "SHOWROOM_CENTRAL",
+        "targetBranch": "WORKSHOP_NORTH",
+        "status": "403_BRANCH_ACCESS_DENIED"
+      }
+    },
+    {
+      "name": "Cross-Branch Isolation: retail_sales in SHOWROOM_CENTRAL executing Showroom Vault Transfer",
+      "category": "BRANCH_ISOLATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "userBranch": "SHOWROOM_CENTRAL",
+        "targetBranch": "SHOWROOM_SOUTH",
+        "status": "403_BRANCH_ACCESS_DENIED"
+      }
+    },
+    {
+      "name": "Privilege Escalation: Role 'retail_sales' attempting privileged 'MUTATE_BULLION_RATE_CARD'",
+      "category": "RBAC_ESCALATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.228Z",
+      "details": {
+        "role": "retail_sales",
+        "action": "MUTATE_BULLION_RATE_CARD",
+        "status": "403_FORBIDDEN"
+      }
+    },
+    {
+      "name": "Privilege Escalation: Role 'karigar' attempting privileged 'APPROVE_PAYROLL_VOUCHER'",
+      "category": "RBAC_ESCALATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "role": "karigar",
+        "action": "APPROVE_PAYROLL_VOUCHER",
+        "status": "403_FORBIDDEN"
+      }
+    },
+    {
+      "name": "Privilege Escalation: Role 'supplier' attempting privileged 'READ_INTERNAL_COST_SHEET'",
+      "category": "RBAC_ESCALATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "role": "supplier",
+        "action": "READ_INTERNAL_COST_SHEET",
+        "status": "403_FORBIDDEN"
+      }
+    },
+    {
+      "name": "Privilege Escalation: Role 'customer' attempting privileged 'READ_FIRM_PROFITABILITY'",
+      "category": "RBAC_ESCALATION",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "role": "customer",
+        "action": "READ_FIRM_PROFITABILITY",
+        "status": "403_FORBIDDEN"
+      }
+    },
+    {
+      "name": "Gold Math Tampering: Attacker submitting fine gold based on 100% instead of authoritative 99.50% (995)",
+      "category": "GOLD_INTEGRITY",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "expectedFineGold": 92.06,
+        "submitted": 91.6,
+        "status": "REJECTED_FORMULA_MISMATCH"
+      }
+    },
+    {
+      "name": "Ledger Dimension Integrity: Enforcing discrete Cash (INR) and Fine Gold (Grams) separation",
+      "category": "ACCOUNTING_INTEGRITY",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "cashDim": "INR",
+        "goldDim": "GRAMS_995",
+        "status": "VALID_DISCRETE_DIMENSIONS"
+      }
+    },
+    {
+      "name": "Negative Stock Prevention: Attempting to issue stock exceeding available inventory balance",
+      "category": "BUSINESS_LOGIC",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "currentStock": 10,
+        "requestedIssue": 15,
+        "status": "400_INSUFFICIENT_STOCK"
+      }
+    },
+    {
+      "name": "Karigar Custody Over-Loss: Attempting settlement with unapproved wastage exceeding threshold",
+      "category": "BUSINESS_LOGIC",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "issuedWeight": 100,
+        "reportedLossGrams": 5,
+        "maxAllowed": 1.5,
+        "status": "REQUIRES_SUPERVISOR_OVERRIDE"
+      }
+    },
+    {
+      "name": "Duplicate Settlement Prevention: Re-submitting payment against already PAID invoice",
+      "category": "BUSINESS_LOGIC",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "invoiceId": "inv_settled_991",
+        "status": "409_ALREADY_SETTLED"
+      }
+    },
+    {
+      "name": "Double-Sale Race Condition: Concurrent requests attempting to bill identical unique tag ID",
+      "category": "CONCURRENCY_RACE",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "firstReq": "200_OK",
+        "secondReq": "409_LOCK_CONFLICT"
+      }
+    },
+    {
+      "name": "Mass Assignment Guard: User profile update payload containing privileged role fields",
+      "category": "API_SECURITY",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "strippedFields": [
+          "role",
+          "is_owner"
+        ],
+        "status": "SANITIZED_SAFE"
+      }
+    },
+    {
+      "name": "SQL Parameterization: Query filter payload with SQL injection characters",
+      "category": "API_SECURITY",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "status": "PARAMETRIZED_SAFE"
+      }
+    },
+    {
+      "name": "MCP Authorization: Unauthenticated client calling finance.get_account_balance",
+      "category": "MCP_SECURITY",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "status": "401_MCP_UNAUTHORIZED"
+      }
+    },
+    {
+      "name": "MCP Cross-Tenant Isolation: Tenant A calling MCP tool targeting Tenant B inventory",
+      "category": "MCP_SECURITY",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "status": "403_MCP_TENANT_DENIED"
+      }
+    },
+    {
+      "name": "MCP High-Risk Tool Gate: Executing dangerous MCP mutation without Supervisor SMS OTP",
+      "category": "MCP_SECURITY",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "tool": "admin.override_tenant_locks",
+        "status": "403_SUPERVISOR_OTP_REQUIRED"
+      }
+    },
+    {
+      "name": "R2 Storage Traversal: Upload key attempting directory traversal to access Tenant B bucket",
+      "category": "STORAGE_SECURITY",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "rawKey": "tenant_mtj/../../tenant_aurum/invoices/secret.pdf",
+        "sanitizedKey": "tenant_aurum\\invoices\\secret.pdf",
+        "status": "TRAVERSAL_NEUTRALIZED"
+      }
+    },
+    {
+      "name": "Storage MIME Validation: Attempting upload of executable payload (.exe)",
+      "category": "STORAGE_SECURITY",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "mime": "application/x-msdownload",
+        "status": "415_UNSUPPORTED_MEDIA_TYPE"
+      }
+    },
+    {
+      "name": "Webhook Signature Spoof: Razorpay payment capture webhook with forged HMAC header",
+      "category": "WEBHOOK_SECURITY",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.229Z",
+      "details": {
+        "status": "401_SIGNATURE_VERIFICATION_FAILED"
+      }
+    },
+    {
+      "name": "Static Secret Audit: Client bundles, MCP endpoints, and config files contain zero raw private keys",
+      "category": "SECRET_AUDIT",
+      "blocked": true,
+      "timestamp": "2026-09-07T19:53:53.230Z",
+      "details": {
+        "auditedFiles": 5,
+        "status": "ZERO_SECRETS_LEAKED"
+      }
+    }
+  ]
+}

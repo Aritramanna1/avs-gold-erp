@@ -1,5 +1,5 @@
 {
-  "seed": 1788810012788,
+  "seed": 1788810836106,
   "faultsInjected": 5,
   "faultsRecovered": 5,
   "faultsUnrecovered": 0,
@@ -9,7 +9,7 @@
       "name": "Database 503 Injection: Offline mutation queue successfully buffers & replays writes",
       "faultType": "DB_OUTAGE",
       "recovered": true,
-      "timestamp": "2026-09-07T19:40:09.907Z",
+      "timestamp": "2026-09-07T19:53:53.232Z",
       "details": {
         "flushedCount": 1,
         "remainingInQueue": 0
@@ -19,7 +19,7 @@
       "name": "Storage Proxy Drop: Missing or disconnected R2 asset resolves cleanly to fallback SVG",
       "faultType": "R2_STORAGE_DROP",
       "recovered": true,
-      "timestamp": "2026-09-07T19:40:09.907Z",
+      "timestamp": "2026-09-07T19:53:53.232Z",
       "details": {
         "resolvedUrl": "/assets/fallback-jewellery-placeholder.svg",
         "isFallback": true,
@@ -30,7 +30,7 @@
       "name": "Out-of-Order Webhook Injection: Late CREATED event cannot overwrite final PAID ledger state",
       "faultType": "WEBHOOK_JITTER",
       "recovered": true,
-      "timestamp": "2026-09-07T19:40:09.907Z",
+      "timestamp": "2026-09-07T19:53:53.232Z",
       "details": {
         "invoiceId": "inv_9981",
         "status": "PAID",
@@ -41,7 +41,7 @@
       "name": "Mid-Transaction Abortion: Stock lock failure rolls back invoice & ledger atomically (0 orphan postings)",
       "faultType": "ATOMIC_ROLLBACK",
       "recovered": true,
-      "timestamp": "2026-09-07T19:40:09.907Z",
+      "timestamp": "2026-09-07T19:53:53.232Z",
       "details": {
         "invoiceCreated": false,
         "ledgerPosted": false,
@@ -52,7 +52,7 @@
       "name": "SMTP Outbox Failure: Transient email dispatch failure safely buffers in retry queue",
       "faultType": "SMTP_FAILURE",
       "recovered": true,
-      "timestamp": "2026-09-07T19:40:09.907Z",
+      "timestamp": "2026-09-07T19:53:53.232Z",
       "details": {
         "id": "mail_inv_99",
         "to": "customer@sanjaymehta.com",
