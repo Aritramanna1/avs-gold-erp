@@ -183,22 +183,23 @@ export const MCP_TOOL_REGISTRY: Record<string, MCPToolDefinition<any, any>> = {
 
       const matches = people
         .filter((p) => p.type === "customer" || (p as any).category === "customer" || !p.type)
-        .filter(
-          (p) =>
-            p.fullName.toLowerCase().includes(q) ||
-            p.phone.includes(q) ||
-            (p.email && p.email.toLowerCase().includes(q)) ||
-            p.id.toLowerCase().includes(q)
-        )
+        .filter((p) => {
+          const name = String(p.fullName || (p as any).name || "").toLowerCase();
+          const phone = String(p.phone || "");
+          const email = String(p.email || "").toLowerCase();
+          const id = String(p.id || "").toLowerCase();
+          return name.includes(q) || phone.includes(q) || email.includes(q) || id.includes(q);
+        })
         .slice(0, limit)
         .map((p) => ({
           id: p.id,
-          fullName: p.fullName,
-          phone: p.phone,
-          email: p.email,
-          city: p.villageCity || p.area || p.currentAddress || "",
+          fullName: p.fullName || (p as any).name || "",
+          name: p.fullName || (p as any).name || "",
+          phone: p.phone || "",
+          email: p.email || "",
+          city: p.villageCity || p.area || p.currentAddress || (p as any).city || "",
           pan: p.pan,
-          active: p.active,
+          active: p.active !== false,
         }));
 
       return { count: matches.length, customers: matches };
