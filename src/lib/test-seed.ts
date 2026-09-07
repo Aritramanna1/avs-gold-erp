@@ -35,6 +35,7 @@ import { useStock } from "./stock-store";
 import { useWhatsapp } from "./whatsapp-store";
 import { useWorkers } from "./workers-store";
 import { useWorkerGoldBook } from "./worker-gold-book-store";
+import { useMaterialVault } from "./material-vault-store";
 import { useCatalog } from "./catalog-store";
 
 function makeId() {

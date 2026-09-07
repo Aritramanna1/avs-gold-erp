@@ -538,8 +538,15 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
   );
 
   for (const i of customerInvoices) {
-    const ts = i.createdAt;
-    const dateStr = new Date(i.createdAt).toLocaleDateString("en-IN", {
+    const ts =
+      typeof i.createdAt === "number"
+        ? i.createdAt
+        : i.createdAt
+          ? new Date(i.createdAt).getTime()
+          : i.date
+            ? new Date(i.date).getTime()
+            : Date.now();
+    const dateStr = new Date(ts).toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -547,7 +554,11 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
 
     // A. Invoice Sale Entry
     // The total value of items before the order advance adjustments.
-    const totalTaxablePaise = i.subtotalPaise + i.gstPaise + (i.tcsPaise ?? 0);
+    const computedGst =
+      typeof i.gstPaise === "number"
+        ? i.gstPaise
+        : (i.cgstPaise || 0) + (i.sgstPaise || 0) + (i.igstPaise || 0);
+    const totalTaxablePaise = (i.subtotalPaise || 0) + computedGst + (i.tcsPaise ?? 0);
 
     rawRows.push({
       id: `${i.id}-sale`,
