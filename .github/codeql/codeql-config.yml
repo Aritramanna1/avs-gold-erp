@@ -1,8 +1,5 @@
 name: "CodeQL Custom Configuration"
 
-queries:
-  - uses: security-extended
-
 paths-ignore:
   - '**/node_modules/**'
   - '**/dist/**'
