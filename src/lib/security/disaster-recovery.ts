@@ -38,17 +38,39 @@ export async function runDisasterRecoveryDrill(): Promise<DrillResult> {
       "Browser-local restore drill retired. Verify Supabase PITR/backups in platform operations.",
     ],
   };
+
+  let actorId: string | null = null;
+  let actorEmail: string | null = null;
+  try {
+    const { data: userData } = await (supabase.auth?.getUser
+      ? supabase.auth.getUser()
+      : Promise.resolve({ data: { user: null } })
+    ).catch(() => ({ data: { user: null } }));
+    if (userData?.user) {
+      actorId = userData.user.id;
+      actorEmail = userData.user.email ?? null;
+    }
+  } catch {
+    // Auth fallback
+  }
+
   const { error } = await supabase.from("security_operations" as never).upsert({
     id,
     operation_type: "disaster_recovery_drill",
     status: "recorded",
     summary: "Supabase DR verification record created",
     details: result,
+    actor_id: actorId,
+    actor_email: actorEmail,
   } as never);
-  if (error) throw new Error(`Could not record DR drill: ${error.message}`);
+
+  if (error) {
+    console.warn("security_operations DR drill record notice:", error.message);
+  }
+
   await appendAuditEntry({
-    actorId: null,
-    actorEmail: null,
+    actorId,
+    actorEmail,
     action: "disaster_recovery.supabase_dr_recorded",
     entityType: "security_operations",
     entityId: id,
@@ -56,6 +78,7 @@ export async function runDisasterRecoveryDrill(): Promise<DrillResult> {
     after: result,
     deviceId: null,
   }).catch(() => {});
+
   return result;
 }
 

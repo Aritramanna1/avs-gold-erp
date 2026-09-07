@@ -1,9 +1,8 @@
 const translations = {
   title: "Settings",
-  subtitle: "Firm profile, masters, GST, hardware, backup and pilot controls.",
-  pilotNoticeStrong: "Pilot Notice — ",
-  pilotNoticeDesc:
-    "AVS ERP pilot is for controlled testing. Maintain manual registers in parallel until final production approval.",
+  subtitle: "Business profile, team permissions, security, integrations, and developer controls.",
+  pilotNoticeStrong: "",
+  pilotNoticeDesc: "",
   // Tabs
   tab_firm: "Firm Profile",
   tab_language: "Language",

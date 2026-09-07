@@ -21,6 +21,7 @@ import { GoldRateEditor } from "@/components/GoldRateEditor";
 import { QuickCommandPalette } from "@/components/layout/QuickCommandPalette";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { UniversalActionMenu } from "@/components/layout/UniversalActionMenu";
+import { ChargeTokenBadge } from "@/components/layout/ChargeTokenBadge";
 import { WorkspaceHeader } from "@/components/layout/WorkspaceHeader";
 import { ErpStatusBar } from "@/components/desktop/ErpStatusBar";
 import { Logo } from "@/components/ui/Logo";
@@ -319,6 +320,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
 
           <UniversalActionMenu />
+          <ChargeTokenBadge />
 
           <div className="ml-auto flex items-center gap-3 shrink-0">
             <div className="hidden md:flex items-center gap-2" data-desktop-chrome>

@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import { useTrainingProgressStore } from "@/lib/training-progress-store";
 import { startGuidedTour, useAvailableTours } from "@/components/training/InteractiveGuidedTour";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { ConsumerSupportDesk } from "@/components/support/ConsumerSupportDesk";
 
 export const Route = createFileRoute("/help")({
   head: () => ({ meta: [{ title: "Training Centre & Learning Hub · Ornexa ERP" }] }),
@@ -558,7 +559,9 @@ function HelpPage() {
 
         {/* ── Free Support Desk Tab ────────────────────────────────────────── */}
         <TabsContent value="support" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <ConsumerSupportDesk />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-border/60">
             <Card className="p-5 border-emerald-500/30 bg-emerald-500/5 space-y-3">
               <div className="flex items-center gap-2 text-emerald-500">
                 <HelpCircle className="h-5 w-5" />

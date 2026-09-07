@@ -474,3 +474,21 @@ export async function replySupportTicket(ticketId: string, body: string): Promis
     .eq("id", ticketId)
     .in("status", ["resolved", "closed"]);
 }
+
+export async function resolveSupportTicket(ticketId: string): Promise<void> {
+  const profile = await getActiveFirmProfile();
+  await restRequest(
+    `platform_support_tickets?id=eq.${encodeURIComponent(ticketId)}&firm_id=eq.${encodeURIComponent(profile.firmId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status: "resolved" }),
+    },
+  ).catch(() => null);
+
+  await supabase
+    .from("platform_support_tickets")
+    .update({ status: "resolved" })
+    .eq("id", ticketId)
+    .eq("firm_id", profile.firmId);
+}
+

@@ -1,9 +1,8 @@
 const translations = {
   title: "सेटिंग्स",
-  subtitle: "फर्म प्रोफाइल, मास्टर्स, GST, हार्डवेयर, बैकअप और पायलट नियंत्रण।",
-  pilotNoticeStrong: "पायलट सूचना — ",
-  pilotNoticeDesc:
-    "MTJ ERP v1 पायलट नियंत्रित परीक्षण के लिए है। अंतिम उत्पादन अनुमोदन तक मैन्युअल रजिस्टर बनाए रखें।",
+  subtitle: "व्यापार प्रोफ़ाइल, टीम अनुमतियाँ, सुरक्षा, एकीकरण और डेवलपर नियंत्रण।",
+  pilotNoticeStrong: "",
+  pilotNoticeDesc: "",
   tab_firm: "फर्म प्रोफाइल",
   tab_language: "भाषा",
   tab_users: "उपयोगकर्ता और भूमिकाएं",

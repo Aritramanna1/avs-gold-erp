@@ -94,8 +94,30 @@ async function recordSecurityOperation(entry: {
   summary: string;
   details: Record<string, unknown>;
 }): Promise<void> {
-  const { error } = await supabase.from("security_operations" as never).upsert(entry as never);
-  if (error) throw new Error(`Could not record security operation: ${error.message}`);
+  let actorId: string | null = null;
+  let actorEmail: string | null = null;
+  try {
+    const { data: userData } = await (supabase.auth?.getUser
+      ? supabase.auth.getUser()
+      : Promise.resolve({ data: { user: null } })
+    ).catch(() => ({ data: { user: null } }));
+    if (userData?.user) {
+      actorId = userData.user.id;
+      actorEmail = userData.user.email ?? null;
+    }
+  } catch {
+    // Auth fallback
+  }
+
+  const { error } = await supabase.from("security_operations" as never).upsert({
+    ...entry,
+    actor_id: actorId,
+    actor_email: actorEmail,
+  } as never);
+
+  if (error) {
+    console.warn("security_operations backup record notice:", error.message);
+  }
 }
 
 /** Records a platform backup request. Supabase project backup execution is external to the browser. */

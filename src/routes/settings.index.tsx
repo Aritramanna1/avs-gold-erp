@@ -82,6 +82,8 @@ import {
   LifeBuoy,
   HardDriveDownload,
   Bell,
+  Building2,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme, type Theme } from "@/contexts/ThemeContext";
@@ -111,6 +113,7 @@ import { Route as WaTemplatesRoute } from "@/routes/settings.whatsapp-templates"
 import { CustomizationDeepLink } from "@/components/settings/CustomizationDeepLink";
 import { CatalogDesignSettingsPanel } from "@/components/settings/CatalogDesignSettingsPanel";
 import { CreditsTab } from "@/components/settings/CreditsTab";
+import { DeveloperMCPPanel } from "@/components/settings/DeveloperMCPPanel";
 
 const SearchSchema = z.object({
   tab: z.string().optional(),
@@ -130,11 +133,24 @@ const WhatsAppSettingsPage = WhatsAppSettingsRoute.options.component as Embedded
 const WhatsAppIntegrationPage = WhatsAppIntegrationRoute.options.component as EmbeddedWhatsAppPage;
 const WaTemplatesPage = WaTemplatesRoute.options.component as EmbeddedWhatsAppPage;
 
+function mapLegacyTab(t?: string): string {
+  if (!t) return "general";
+  if (["firm", "branches", "compliance", "gst", "business"].includes(t)) return "business";
+  if (["users", "roles", "staff"].includes(t)) return "users";
+  if (["security", "logs", "backup", "recovery"].includes(t)) return "security";
+  if (["notifications", "email", "automation"].includes(t)) return "notifications";
+  if (["integrations", "whatsapp", "hardware", "printers"].includes(t)) return "integrations";
+  if (["billing", "credits", "license", "subscription"].includes(t)) return "billing";
+  if (["customization", "branding", "catalog", "print", "templates", "purity", "workshop", "rate", "making", "dropdowns"].includes(t)) return "customization";
+  if (["developer", "mcp", "modules", "forms", "migration", "db", "advanced"].includes(t)) return "developer";
+  return "general";
+}
+
 function SettingsPage() {
   const s = useSettings();
   const navigate = useNavigate();
   const { tab, waSection } = useSearch({ from: "/settings/" });
-  const [activeTab, setActiveTab] = useState(tab || "firm");
+  const [activeTab, setActiveTab] = useState(() => mapLegacyTab(tab));
   const [isFactoryResetOpen, setIsFactoryResetOpen] = useState(false);
 
   useEffect(() => {
@@ -143,416 +159,184 @@ function SettingsPage() {
       return;
     }
     if (tab) {
-      setActiveTab(tab);
+      setActiveTab(mapLegacyTab(tab));
     }
   }, [tab, navigate]);
 
+  const SETTINGS_CATEGORIES = [
+    { id: "general", label: "General", icon: Sliders, description: "Language, theme, and application defaults" },
+    { id: "business", label: "Business & Branches", icon: Building2, description: "Firm identity, GSTIN, PAN, and store branches" },
+    { id: "users", label: "Users & Roles", icon: UserCheck, description: "Staff directory, RBAC permissions, and access invitations" },
+    { id: "security", label: "Security", icon: Lock, description: "Audit trail, encrypted backups, and safety controls" },
+    { id: "notifications", label: "Notifications", icon: Bell, description: "Email SMTP and automated alert triggers" },
+    { id: "integrations", label: "Integrations", icon: MessageSquare, description: "WhatsApp API and hardware device scales" },
+    { id: "billing", label: "Billing & Usage", icon: KeyRound, description: "AVS Charge Tokens, credits top-up, and invoices" },
+    { id: "customization", label: "Customization", icon: Sparkles, description: "Print branding, templates, and catalogue theme" },
+    { id: "developer", label: "Advanced / Developer", icon: ShieldCheck, description: "MCP Server, JSON-RPC tools, and diagnostics" },
+  ];
+
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6">
       <PageHeader
         title="Settings"
-        subtitle="Brand, WhatsApp, firm, masters, compliance, hardware, and backup."
+        subtitle="Manage business profile, team permissions, security, integrations, and developer controls."
       />
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <Link
-          to="/settings"
-          search={{ tab: "branding" }}
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <Sliders className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm">Brand Settings</div>
-            <div className="text-xs text-muted-foreground">
-              Product identity, logo, colors, support details, and print branding.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/settings/license"
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <KeyRound className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm">Subscription &amp; Billing</div>
-            <div className="text-xs text-muted-foreground">
-              Plans, invoices, secure payments, receipts, and usage credits.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/settings"
-          search={{ tab: "whatsapp", waSection: "business" }}
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <MessageSquare className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm">WhatsApp Settings</div>
-            <div className="text-xs text-muted-foreground">
-              Providers, WasenderAPI, templates, automation, retries, and fallback behavior.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/settings/print-templates"
-          className="erp-surface rounded-md border border-border bg-gold/5 border-gold/20 hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <Printer className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm text-gold font-semibold">Printing Module</div>
-            <div className="text-xs text-muted-foreground">
-              Unified templates, paper sizes, PDF output, reprint audit, and document coverage.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/karigar-login"
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <Hammer className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm font-semibold">Karigar Portal</div>
-            <div className="text-xs text-muted-foreground">
-              Worker OTP login for gold balance, issue/return ledger, wages, and attendance.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/customer-login"
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <UserCheck className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm font-semibold">Customer Portal</div>
-            <div className="text-xs text-muted-foreground">
-              Customer OTP login for orders, invoices, repairs, documents, and support threads.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/verify"
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <ShieldCheck className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm">Security · Verify Receipt</div>
-            <div className="text-xs text-muted-foreground">
-              Paste a QR payload from any MTJ print to confirm it is genuine.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/settings/storage-diagnostics"
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <FolderArchive className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm font-semibold">Cloudflare R2 Storage &amp; Diagnostics</div>
-            <div className="text-xs text-muted-foreground">
-              Verify configured Cloudflare R2 object storage connectivity and synchronized attachment records.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/settings/document-vault"
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <Archive className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm font-semibold">Document Vault</div>
-            <div className="text-xs text-muted-foreground">
-              Cloudflare R2 object storage and central document engine readiness.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/settings/security-center"
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <Lock className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm font-semibold">Security Center</div>
-            <div className="text-xs text-muted-foreground">
-              Registered devices, trust status, and encryption key rotation.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/settings/support"
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <LifeBuoy className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm font-semibold">Support</div>
-            <div className="text-xs text-muted-foreground">
-              Raise a ticket and chat live with Arivahly support.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/settings/backup-recovery"
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <HardDriveDownload className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm font-semibold">Backup &amp; Disaster Recovery</div>
-            <div className="text-xs text-muted-foreground">
-              Run a restore drill or download an encrypted backup snapshot.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/communications"
-          className="erp-surface rounded-md border border-border bg-gold/5 border-gold/20 hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <Mail className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm text-gold font-semibold">Communications Hub</div>
-            <div className="text-xs text-muted-foreground">
-              Configure communication providers, templates, automation and CRM campaigns.
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/settings/automation"
-          className="erp-surface rounded-md border border-border bg-card hover:border-gold/40 transition p-4 flex items-center gap-3"
-        >
-          <span className="h-9 w-9 rounded-md bg-gold/15 grid place-items-center text-gold border border-gold/20">
-            <Bell className="h-4 w-4" />
-          </span>
-          <div className="flex-1">
-            <div className="font-medium text-sm font-semibold">Communication Automation</div>
-            <div className="text-xs text-muted-foreground">
-              Toggle auto-sent messages per event — off by default, gold/financial reminders stay
-              manual.
-            </div>
-          </div>
-        </Link>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        {/* Mobile View: Select Dropdown to keep layout clean */}
-        <div className="block md:hidden mb-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        {/* Mobile View: Select Dropdown */}
+        <div className="block md:hidden">
           <Select value={activeTab} onValueChange={setActiveTab}>
-            <SelectTrigger className="w-full bg-white border border-border rounded-md px-4 py-3 text-sm font-semibold shadow-sm focus:ring-2 focus:ring-gold focus:ring-offset-1 focus:border-transparent">
-              <SelectValue placeholder="Select settings section" />
+            <SelectTrigger className="w-full bg-card border border-border rounded-lg px-3 py-2.5 text-xs font-semibold shadow-xs">
+              <SelectValue placeholder="Select Settings Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="firm">Firm Settings</SelectItem>
-              <SelectItem value="branches">Branches</SelectItem>
-              <SelectItem value="branding">Branding &amp; Logo</SelectItem>
-              <SelectItem value="whatsapp">WhatsApp Integration</SelectItem>
-              <SelectItem value="appearance">Appearance &amp; Theme</SelectItem>
-              <SelectItem value="print">Print Margins</SelectItem>
-              <SelectItem value="printers">Printer Profiles</SelectItem>
-              <SelectItem value="templates">Document Templates</SelectItem>
-              <SelectItem value="compliance">Compliance Profile</SelectItem>
-              <SelectItem value="forms">Dynamic Forms</SelectItem>
-              <SelectItem value="users">Users &amp; Roles</SelectItem>
-              <SelectItem value="logs">Security Audit Logs</SelectItem>
-              {useModuleStore.getState().isModuleEnabled("gst") && (
-                <SelectItem value="gst">GST Registration</SelectItem>
-              )}
-              <SelectItem value="hardware">Hardware Scales</SelectItem>
-              <SelectItem value="language">Language Preference</SelectItem>
-              <SelectItem value="credits">Credits &amp; Usage Wallet</SelectItem>
-              <SelectItem value="modules">Modules Manager</SelectItem>
-              <SelectItem value="email">Email &amp; SMTP</SelectItem>
-              <SelectItem value="backup">Data Backup &amp; Sync</SelectItem>
-              <SelectItem value="about">About ERP</SelectItem>
+              {SETTINGS_CATEGORIES.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Desktop View: Full horizontal tab triggers list */}
-        <TabsList className="hidden md:flex flex-wrap h-auto">
-          <TabsTrigger value="firm">Firm</TabsTrigger>
-          <TabsTrigger value="branches">Branches</TabsTrigger>
-          <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          <TabsTrigger value="print">Print</TabsTrigger>
-          <TabsTrigger value="printers">Printer Profiles</TabsTrigger>
-          <TabsTrigger value="templates">Document Templates</TabsTrigger>
-          <TabsTrigger value="compliance">Compliance</TabsTrigger>
-          <TabsTrigger value="forms">Dynamic Forms</TabsTrigger>
-          <TabsTrigger value="users">Users &amp; Roles</TabsTrigger>
-          <TabsTrigger value="logs">Security Logs</TabsTrigger>
-          {useModuleStore.getState().isModuleEnabled("gst") && (
-            <TabsTrigger value="gst">GST</TabsTrigger>
-          )}
-          <TabsTrigger value="catalog">Catalog Design</TabsTrigger>
-          <TabsTrigger value="hardware">Hardware</TabsTrigger>
-          <TabsTrigger value="language">Language</TabsTrigger>
-          <TabsTrigger value="credits">Credits Wallet</TabsTrigger>
-          <TabsTrigger value="modules">Modules Manager</TabsTrigger>
-          <TabsTrigger value="email">Email &amp; SMTP</TabsTrigger>
-          <TabsTrigger value="backup">Backup</TabsTrigger>
-          <TabsTrigger value="about">About</TabsTrigger>
+        {/* Desktop View: Clean 9 Category Tab Navigation */}
+        <TabsList className="hidden md:grid grid-cols-3 lg:grid-cols-9 h-auto p-1.5 bg-muted/60 rounded-xl border border-border/80 gap-1">
+          {SETTINGS_CATEGORIES.map((cat) => {
+            const CatIcon = cat.icon;
+            return (
+              <TabsTrigger
+                key={cat.id}
+                value={cat.id}
+                className="flex flex-col items-center justify-center py-2 px-1 rounded-lg text-[11px] font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all gap-1"
+                title={cat.description}
+              >
+                <CatIcon className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                <span className="truncate max-w-[90px]">{cat.label}</span>
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
-        <TabsContent value="firm">
-          <FirmTab />
-        </TabsContent>
-        <TabsContent value="branches">
-          <BranchesTab />
-        </TabsContent>
-        <TabsContent value="branding">
-          <BrandingTab />
-        </TabsContent>
-        <TabsContent value="whatsapp">
-          <WhatsAppTab initialSection={waSection} />
-        </TabsContent>
-        <TabsContent value="appearance">
+        {/* ── 1. General Tab ──────────────────────────────────────────────── */}
+        <TabsContent value="general" className="space-y-6">
           <AppearanceTab />
+          <LanguageTab />
+          <AboutTab />
         </TabsContent>
-        <TabsContent value="print">
-          <CustomizationDeepLink
-            title="Print & Stamp Configuration"
-            description="Company logo, authorized signature, stamp images, and print profiles."
-            tab="print"
-          />
-        </TabsContent>
-        <TabsContent value="printers">
-          <CustomizationDeepLink
-            title="Printer Profiles"
-            description="Printer routing, margins, and device-specific print profiles."
-            tab="print"
-          />
-        </TabsContent>
-        <TabsContent value="templates">
-          <CustomizationDeepLink
-            title="Document Templates"
-            description="Invoice layouts, ledger formats, and document template designer."
-            tab="documents"
-          />
-        </TabsContent>
-        <TabsContent value="compliance">
+
+        {/* ── 2. Business & Branches Tab ──────────────────────────────────── */}
+        <TabsContent value="business" className="space-y-6">
+          <FirmTab />
+          <BranchesTab />
           <ComplianceTab />
+          {useModuleStore.getState().isModuleEnabled("gst") && <GstTab />}
         </TabsContent>
-        <TabsContent value="forms">
-          <FormsTab />
-        </TabsContent>
-        <TabsContent value="users">
+
+        {/* ── 3. Users & Roles Tab ────────────────────────────────────────── */}
+        <TabsContent value="users" className="space-y-6">
           <UsersTab />
         </TabsContent>
-        <TabsContent value="logs">
+
+        {/* ── 4. Security Tab ─────────────────────────────────────────────── */}
+        <TabsContent value="security" className="space-y-6">
           <SecurityLogsTab />
-        </TabsContent>
-        {useModuleStore.getState().isModuleEnabled("gst") && (
-          <TabsContent value="gst">
-            <GstTab />
-          </TabsContent>
-        )}
-        <TabsContent value="purity">
-          <CustomizationDeepLink
-            title="Purity & Fineness"
-            description="Configure purity grades, fineness rules, and hallmark mappings for your manufacturing books."
-            tab="purity"
-          />
-        </TabsContent>
-        <TabsContent value="workshop">
-          <CustomizationDeepLink
-            title="Workshop Processes"
-            description="Define workshop stages, WIP rules, and manufacturing process definitions."
-            tab="workshop"
-          />
-        </TabsContent>
-        <TabsContent value="rate">
-          <CustomizationDeepLink
-            title="Rates & Bullion Rules"
-            description="Daily bhav, metal rate policies, and branch rate override rules."
-            tab="rates"
-          />
-        </TabsContent>
-        <TabsContent value="making">
-          <CustomizationDeepLink
-            title="Making & Labour Rules"
-            description="Making charge slabs, labour rules, and wastage policies."
-            tab="making"
-          />
-        </TabsContent>
-        <TabsContent value="hardware">
-          <HardwareTab />
-        </TabsContent>
-        <TabsContent value="catalog">
-          <CatalogDesignSettingsPanel />
-        </TabsContent>
-        <TabsContent value="dropdowns">
-          <CustomizationDeepLink
-            title="Custom Dropdowns & Fields"
-            description="Dropdown masters, custom fields, and business vocabulary aliases."
-            tab="dropdowns"
-          />
-        </TabsContent>
-        <TabsContent value="language">
-          <LanguageTab />
-        </TabsContent>
-        <TabsContent value="credits">
-          <CreditsTab />
-        </TabsContent>
-        <TabsContent value="migration">
-          <Card className="p-6 space-y-4">
-            <h3 className="font-serif text-lg text-gold">Data Import & Migration</h3>
-            <p className="text-sm text-muted-foreground">
-              Historical data migration runs from the dedicated import area. After completion or
-              choosing Start Fresh, the onboarding prompt will not reappear on your dashboard.
-            </p>
-            <Button asChild className="bg-gold hover:bg-gold/90 text-black">
-              <Link to="/control/migration">Open Migration Tools</Link>
-            </Button>
+          <BackupTab />
+          <Card className="p-5 border-border bg-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-foreground">Data Protection & Factory Reset</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Securely wipe demo or test records with double-confirmation safeguards.
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setIsFactoryResetOpen(true)}
+                className="text-xs h-8"
+              >
+                Reset Test Data
+              </Button>
+            </div>
           </Card>
         </TabsContent>
-        <TabsContent value="modules">
-          <ModulesManagerTab />
-        </TabsContent>
-        <TabsContent value="email">
+
+        {/* ── 5. Notifications Tab ────────────────────────────────────────── */}
+        <TabsContent value="notifications" className="space-y-6">
+          <Card className="p-5 border-border bg-card">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-gold/15 border border-gold/30 grid place-items-center text-gold">
+                  <Bell className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-foreground">Automated Notification Rules</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Configure automated event alerts for sales confirmation, daily close, and low stock.
+                  </p>
+                </div>
+              </div>
+              <Button asChild variant="outline" size="sm" className="text-xs gap-1 h-8">
+                <Link to="/settings/automation">Open Automation Engine</Link>
+              </Button>
+            </div>
+          </Card>
           <EmailTab />
         </TabsContent>
-        <TabsContent value="backup">
-          <BackupTab />
+
+        {/* ── 6. Integrations Tab ─────────────────────────────────────────── */}
+        <TabsContent value="integrations" className="space-y-6">
+          <WhatsAppTab initialSection={waSection} />
+          <HardwareTab />
         </TabsContent>
-        <TabsContent value="db">
-          <Card className="p-6 space-y-3">
-            <h3 className="font-serif text-lg text-gold">Platform Administration</h3>
-            <p className="text-sm text-muted-foreground">
-              Database administration, provider secrets, and infrastructure controls are managed in
-              the Platform Owner console — not in tenant ERP Settings.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              For connection status and business integrations, use WhatsApp, Email, and Hardware
-              tabs above.
-            </p>
+
+        {/* ── 7. Billing & Usage Tab ──────────────────────────────────────── */}
+        <TabsContent value="billing" className="space-y-6">
+          <CreditsTab />
+        </TabsContent>
+
+        {/* ── 8. Customization Tab ────────────────────────────────────────── */}
+        <TabsContent value="customization" className="space-y-6">
+          <Card className="p-5 border-gold/30 bg-gold/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-gold/20 border border-gold/40 grid place-items-center text-gold">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-foreground">Customization Hub</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Manage making charges, custom dropdowns, purity rates, and print templates in one dedicated surface.
+                  </p>
+                </div>
+              </div>
+              <Button asChild className="bg-gold hover:bg-gold/90 text-black text-xs font-bold h-8">
+                <Link to="/control/customization">Open Customization Hub</Link>
+              </Button>
+            </div>
           </Card>
+          <BrandingTab />
+          <CatalogDesignSettingsPanel />
         </TabsContent>
-        <TabsContent value="about">
-          <AboutTab />
+
+        {/* ── 9. Advanced / Developer Tab ─────────────────────────────────── */}
+        <TabsContent value="developer" className="space-y-6">
+          <DeveloperMCPPanel />
+          <ModulesManagerTab />
+          <FormsTab />
+          <Card className="p-5 border-border bg-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-foreground">Historical Data Migration</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Import parties, opening gold balances, and stock inventory from CSV or Excel spreadsheets.
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm" className="text-xs h-8">
+                <Link to="/control/migration">Open Migration Wizard</Link>
+              </Button>
+            </div>
+          </Card>
         </TabsContent>
       </Tabs>
 
