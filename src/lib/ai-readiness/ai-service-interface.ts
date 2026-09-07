@@ -86,6 +86,28 @@ export function resolveConfiguredApiKey(): string | null {
   return null;
 }
 
+function encodeAIStorage(config: AIConfiguration): string {
+  try {
+    const serialized = JSON.stringify(config);
+    return typeof btoa === 'function' ? btoa(unescape(encodeURIComponent(serialized))) : serialized;
+  } catch {
+    return '';
+  }
+}
+
+function decodeAIStorage(raw: string): Partial<AIConfiguration> | null {
+  try {
+    const decoded = typeof atob === 'function' ? decodeURIComponent(escape(atob(raw))) : raw;
+    return JSON.parse(decoded);
+  } catch {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+}
+
 export function getAIConfig(): AIConfiguration {
   const envKey = resolveConfiguredApiKey() || "";
   const hasKey = Boolean(envKey && envKey.trim().length > 0);
@@ -113,7 +135,7 @@ export function getAIConfig(): AIConfiguration {
     if (!raw) {
       return defaultConfig;
     }
-    const parsed = JSON.parse(raw);
+    const parsed = decodeAIStorage(raw) || {};
     const resolvedKey = parsed.apiKey || envKey;
     const isEnabled = parsed.enabled !== undefined ? parsed.enabled : Boolean(resolvedKey);
     const resolvedProvider = parsed.provider && parsed.provider !== 'none' 
@@ -135,7 +157,7 @@ export function getAIConfig(): AIConfiguration {
 export function saveAIConfig(config: AIConfiguration): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    localStorage.setItem(STORAGE_KEY, encodeAIStorage(config));
   } catch (e) {
     console.error('Failed to save AI config', e);
   }

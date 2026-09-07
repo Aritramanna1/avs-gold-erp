@@ -125,15 +125,16 @@ export async function downloadPdfBlob(
     await hapticSuccess();
     return { saved: !!written, uri: written?.uri };
   }
-  const url = URL.createObjectURL(blob);
+  const rawUrl = URL.createObjectURL(blob);
+  if (!rawUrl.startsWith("blob:")) return { saved: false };
   const a = document.createElement("a");
-  a.href = url;
-  a.download = safeName;
+  a.setAttribute("href", rawUrl);
+  a.setAttribute("download", safeName.replace(/[^a-zA-Z0-9._\-]/g, "_"));
   a.rel = "noopener";
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 250);
+  setTimeout(() => URL.revokeObjectURL(rawUrl), 250);
   return { saved: true };
 }
 

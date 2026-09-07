@@ -26,6 +26,7 @@ import {
 import { useSettings } from "@/lib/settings-store";
 import { Eye, Send, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import DOMPurify from "dompurify";
 
 export function EmailTemplateEditorPanel({ branchId }: { branchId: string }) {
   const { firm } = useSettings();
@@ -171,7 +172,7 @@ export function EmailTemplateEditorPanel({ branchId }: { branchId: string }) {
           </div>
           <p className="text-xs font-medium mb-2">{preview.subject}</p>
           <div className="prose prose-sm max-w-none text-xs border border-border rounded-sm p-3 bg-muted/10 overflow-auto max-h-96">
-            <div dangerouslySetInnerHTML={{ __html: preview.html }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(preview.html || "") }} />
           </div>
         </div>
       </div>

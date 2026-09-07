@@ -26,12 +26,13 @@ const CAPABILITY_EXPLANATION = [
 
 function getCryptoRandomIndex(length: number): number {
   if (length <= 1) return 0;
-  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+  const c = typeof globalThis !== "undefined" ? globalThis.crypto : (typeof crypto !== "undefined" ? crypto : null);
+  if (c && typeof c.getRandomValues === "function") {
     const arr = new Uint32Array(1);
-    crypto.getRandomValues(arr);
+    c.getRandomValues(arr);
     return arr[0] % length;
   }
-  return Math.floor(Math.random() * length);
+  return 0;
 }
 
 export function getGreeting(userName?: string): string {

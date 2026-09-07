@@ -165,13 +165,16 @@ function downloadBlob(blob: Blob, filename: string): void {
   if (typeof document === "undefined") return;
 
   const triggerBrowserDownload = () => {
-    const url = URL.createObjectURL(blob);
+    const rawUrl = URL.createObjectURL(blob);
+    if (!rawUrl.startsWith("blob:")) return;
     const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
+    a.setAttribute("href", rawUrl);
+    a.setAttribute("download", filename.replace(/[^a-zA-Z0-9._\-]/g, "_"));
     a.rel = "noopener";
+    document.body.appendChild(a);
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(rawUrl), 100);
   };
 
   // Web: fire download synchronously so Playwright (and the browser) observe the event.

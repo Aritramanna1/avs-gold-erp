@@ -83,30 +83,14 @@ export interface SeedResult {
   receiveSlipNo: string;
 }
 
-const E2E_SEED_CACHE_KEY = "avs_e2e_seed_result_v1";
+let inMemorySeedCache: SeedResult | null = null;
 
 function readSeedCache(): SeedResult | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(E2E_SEED_CACHE_KEY);
-    if (!raw) return null;
-    const decoded = typeof atob === "function" ? atob(raw) : raw;
-    const parsed = JSON.parse(decoded);
-    return parsed && parsed.orderId && parsed.invoiceId ? (parsed as SeedResult) : null;
-  } catch {
-    return null;
-  }
+  return inMemorySeedCache && inMemorySeedCache.orderId && inMemorySeedCache.invoiceId ? inMemorySeedCache : null;
 }
 
 function writeSeedCache(result: SeedResult): void {
-  if (typeof window === "undefined") return;
-  try {
-    const json = JSON.stringify(result);
-    const encoded = typeof btoa === "function" ? btoa(json) : json;
-    window.sessionStorage.setItem(E2E_SEED_CACHE_KEY, encoded);
-  } catch {
-    // Test seed cache is a speed-up only; seed data itself is still returned.
-  }
+  inMemorySeedCache = result;
 }
 
 export async function seedPilotDataset(): Promise<SeedResult> {

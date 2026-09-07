@@ -98,16 +98,39 @@ export function getSampleAppointments(): AppointmentRecord[] {
   ];
 }
 
+function encodeStorageData(data: unknown): string {
+  try {
+    const str = JSON.stringify(data);
+    return typeof btoa === "function" ? btoa(unescape(encodeURIComponent(str))) : str;
+  } catch {
+    return "";
+  }
+}
+
+function decodeStorageData<T>(raw: string): T | null {
+  try {
+    const decoded = typeof atob === "function" ? decodeURIComponent(escape(atob(raw))) : raw;
+    return JSON.parse(decoded) as T;
+  } catch {
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;
+    }
+  }
+}
+
 export function getAppointments(): AppointmentRecord[] {
   if (typeof window === 'undefined') return getSampleAppointments();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       const initial = getSampleAppointments();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
+      localStorage.setItem(STORAGE_KEY, encodeStorageData(initial));
       return initial;
     }
-    return JSON.parse(raw);
+    const parsed = decodeStorageData<AppointmentRecord[]>(raw);
+    return parsed && Array.isArray(parsed) ? parsed : getSampleAppointments();
   } catch {
     return getSampleAppointments();
   }
@@ -115,5 +138,9 @@ export function getAppointments(): AppointmentRecord[] {
 
 export function saveAppointments(appointments: AppointmentRecord[]): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appointments));
+  try {
+    localStorage.setItem(STORAGE_KEY, encodeStorageData(appointments));
+  } catch {
+    // ignore storage write errors
+  }
 }
