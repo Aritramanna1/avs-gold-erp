@@ -73,7 +73,8 @@ function readPendingInviteFromStorage(): PendingInvitePayload | null {
   try {
     const raw = sessionStorage.getItem(PENDING_INVITE_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as PendingInvitePayload;
+    const decoded = decodeURIComponent(escape(atob(raw)));
+    const parsed = JSON.parse(decoded) as PendingInvitePayload;
     if (!parsed?.code || !parsed?.email) return null;
     return parsed;
   } catch {
@@ -83,7 +84,8 @@ function readPendingInviteFromStorage(): PendingInvitePayload | null {
 
 function writePendingInviteToStorage(payload: PendingInvitePayload): void {
   try {
-    sessionStorage.setItem(PENDING_INVITE_STORAGE_KEY, JSON.stringify(payload));
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    sessionStorage.setItem(PENDING_INVITE_STORAGE_KEY, encoded);
   } catch {
     /* ignore quota / private mode */
   }

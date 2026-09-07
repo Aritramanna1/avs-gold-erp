@@ -149,6 +149,7 @@ export function DrawingFormDialog({
               grossMg: -goldGrossMg,
               purity: numPurity,
               fineMg: -goldFineMg,
+              netFineMg: -goldFineMg,
               deltas: { vault: -goldFineMg },
               reference: `DRAWING-${personName}`,
               notes: `Owner physical gold drawing: ${mgToGrams(goldGrossMg)}g @ ${numPurity} touch for ${personName}`,

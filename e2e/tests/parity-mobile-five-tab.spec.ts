@@ -40,7 +40,10 @@ test.describe("Mobile 5-tab ERP parity", () => {
       const nav = authedPage.getByRole("navigation", { name: /primary navigation/i });
       await expect(nav).toBeVisible({ timeout: 20_000 });
       await nav.getByRole("link", { name: tab.label }).click();
-      await authedPage.waitForURL(new RegExp(tab.href.replace(/\//g, "\\/")), { timeout: 15_000 });
+      await authedPage.waitForURL(
+        (url) => url.pathname.startsWith(tab.href) || url.pathname === tab.href,
+        { timeout: 15_000 },
+      );
       const body = await authedPage.locator("body").innerText();
       expect(body).not.toMatch(/something went wrong|couldn't load this section/i);
       expect(body.length).toBeGreaterThan(40);

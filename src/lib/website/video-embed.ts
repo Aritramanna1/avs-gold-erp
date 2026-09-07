@@ -22,8 +22,9 @@ export function parseYouTubeId(url: string): string | null {
 export function parseVimeoId(url: string): string | null {
   if (!url?.trim()) return null;
   try {
-    const u = new URL(url.trim());
-    if (!u.hostname.includes("vimeo.com")) return null;
+    const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+    const host = u.hostname.replace(/^www\./, "").toLowerCase();
+    if (host !== "vimeo.com" && !host.endsWith(".vimeo.com")) return null;
     const parts = u.pathname.split("/").filter(Boolean);
     const id = parts[parts.length - 1];
     return id && /^\d+$/.test(id) ? id : null;

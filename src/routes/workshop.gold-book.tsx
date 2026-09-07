@@ -55,6 +55,7 @@ import {
   Tag,
   ArrowRight,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/workshop/gold-book")({
@@ -102,6 +103,7 @@ function WorkerGoldBookPage() {
   const people = usePeople((s) => s.people);
   const ledgerEntries = useLedger((s) => s.entries);
   const stockItems = useStock((s) => s.items);
+  const vaultStockMode = "optional";
   const { entries, removeEntry, getWorkerBalance, refresh } = useWorkerGoldBook();
   const refreshVault = useMaterialVault((s) => s.refresh);
   const masterMaterials = useManufacturingMaterials((s) => s.materials);
@@ -438,6 +440,7 @@ function WorkerGoldBookPage() {
         workerName: workerObj.fullName,
         particulars: `Over-Loss (${formOverLossReason})`,
         grossMg: lossGrossMg,
+        lessMg: 0,
         netMg: lossGrossMg,
         purity: purityVal,
         fineMg: lossFineMg,
@@ -514,12 +517,12 @@ function WorkerGoldBookPage() {
 
     // Vault stock pre-validation
     if (entryType === "given" && goldMaterialSelected) {
-      if (vaultStockMode === "required" || (vaultStockMode === "optional" && formVaultStockId)) {
+      if ((vaultStockMode as string) === "required" || ((vaultStockMode as string) === "optional" && formVaultStockId)) {
         try {
           const fineMg =
             computeFineGold(
               {
-                module: "workshop",
+                module: "karigar_issue",
                 grossMg,
                 lessMg,
                 addMg,

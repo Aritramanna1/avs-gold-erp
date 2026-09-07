@@ -31,9 +31,7 @@ console.log(
   JSON.stringify(
     {
       status: auth.status,
-      ok: !!body.access_token,
-      email: email.replace(/(.{2}).+(@)/, "$1***$2"),
-      error: body.error_description || body.msg || null,
+      authenticated: !!body.access_token,
     },
     null,
     2,

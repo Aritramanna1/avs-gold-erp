@@ -24,21 +24,31 @@ const CAPABILITY_EXPLANATION = [
   "I'm here to help you operate Ornexa faster. I can answer questions about the system, pull up gold balances, check stock, or draft transactions for you.",
 ];
 
+function getCryptoRandomIndex(length: number): number {
+  if (length <= 1) return 0;
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return arr[0] % length;
+  }
+  return Math.floor(Math.random() * length);
+}
+
 export function getGreeting(userName?: string): string {
-  const base = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+  const base = GREETINGS[getCryptoRandomIndex(GREETINGS.length)];
   return userName ? `Hi ${userName}! ${base.split("! ")[1] || base}` : base;
 }
 
 export function getAcknowledgement(): string {
-  return ACKNOWLEDGEMENTS[Math.floor(Math.random() * ACKNOWLEDGEMENTS.length)];
+  return ACKNOWLEDGEMENTS[getCryptoRandomIndex(ACKNOWLEDGEMENTS.length)];
 }
 
 export function getHowAreYouResponse(): string {
-  return CASUAL_HOW_ARE_YOU[Math.floor(Math.random() * CASUAL_HOW_ARE_YOU.length)];
+  return CASUAL_HOW_ARE_YOU[getCryptoRandomIndex(CASUAL_HOW_ARE_YOU.length)];
 }
 
 export function getCapabilityExplanation(): string {
-  return CAPABILITY_EXPLANATION[Math.floor(Math.random() * CAPABILITY_EXPLANATION.length)];
+  return CAPABILITY_EXPLANATION[getCryptoRandomIndex(CAPABILITY_EXPLANATION.length)];
 }
 
 export function getFallbackClarification(): string {

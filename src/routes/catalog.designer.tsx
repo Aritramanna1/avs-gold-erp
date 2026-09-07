@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import DOMPurify from "dompurify";
 import { useCatalog, type Design } from "@/lib/catalog-store";
 import { useDesignCatalogStore } from "@/lib/design-catalog-store";
 import {
@@ -493,7 +494,7 @@ function DesignerCatalogPage() {
             <style dangerouslySetInnerHTML={{ __html: activeTemplate?.css || "" }} />
             {pagesHtml.map((pageHtml, idx) => (
               <div key={idx} className="border border-border/80 rounded-xl overflow-hidden shadow-2xl mx-auto max-w-[210mm]">
-                <div dangerouslySetInnerHTML={{ __html: pageHtml }} />
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(pageHtml) }} />
               </div>
             ))}
           </div>

@@ -306,10 +306,22 @@ export function formatErrorDetails(error: NormalizedAppError): string {
     .join("\n");
 }
 
+function scrubSensitiveText(text: string | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/(?:bearer|token|key|password|secret|auth|apikey|api_key|authorization)[\s:=]+([^\s,;'"&]{6,})/gi, "$1: [REDACTED]")
+    .replace(/eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}/g, "[REDACTED_JWT]");
+}
+
 function storeLog(error: NormalizedAppError): void {
   try {
+    const sanitizedError: NormalizedAppError = {
+      ...error,
+      technicalMessage: scrubSensitiveText(error.technicalMessage),
+      stack: error.stack ? scrubSensitiveText(error.stack) : undefined,
+    };
     const logs = JSON.parse(sessionStorage.getItem(LOG_KEY) ?? "[]") as NormalizedAppError[];
-    logs.unshift(error);
+    logs.unshift(sanitizedError);
     sessionStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(0, MAX_LOGS)));
   } catch {
     // Diagnostics must never become a user-facing failure.

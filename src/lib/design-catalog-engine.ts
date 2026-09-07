@@ -6,6 +6,7 @@
  */
 
 import { jsPDF } from "jspdf";
+import DOMPurify from "dompurify";
 import type { Design } from "@/lib/catalog-store";
 import type { DesignerTemplateManifest, DynamicTextBlock } from "@/lib/designer-templates-library";
 import { DEFAULT_DYNAMIC_TEXT_BLOCKS } from "@/lib/designer-templates-library";
@@ -311,7 +312,7 @@ export async function generateDesignerCatalogPdf(
     container.appendChild(styleEl);
 
     const bodyEl = document.createElement("div");
-    bodyEl.innerHTML = pagesHtml[i];
+    bodyEl.innerHTML = DOMPurify.sanitize(pagesHtml[i]);
     container.appendChild(bodyEl);
 
     document.body.appendChild(container);

@@ -46,7 +46,7 @@ export async function fetchOrdersPage(input: OrdersPageInput): Promise<OrdersPag
     request = request.filter("data->>type", "eq", input.type) as typeof request;
   }
   if (query) {
-    const escaped = query.replace(/[%_]/g, "\\$&");
+    const escaped = query.replace(/[\\,%_()]/g, "\\$&");
     request = request.or(
       `data->>orderNo.ilike.%${escaped}%,data->design->>customerCode.ilike.%${escaped}%,data->design->>designNumber.ilike.%${escaped}%`,
     ) as typeof request;

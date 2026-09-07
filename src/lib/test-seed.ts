@@ -90,7 +90,8 @@ function readSeedCache(): SeedResult | null {
   try {
     const raw = window.sessionStorage.getItem(E2E_SEED_CACHE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
+    const decoded = typeof atob === "function" ? atob(raw) : raw;
+    const parsed = JSON.parse(decoded);
     return parsed && parsed.orderId && parsed.invoiceId ? (parsed as SeedResult) : null;
   } catch {
     return null;
@@ -100,7 +101,9 @@ function readSeedCache(): SeedResult | null {
 function writeSeedCache(result: SeedResult): void {
   if (typeof window === "undefined") return;
   try {
-    window.sessionStorage.setItem(E2E_SEED_CACHE_KEY, JSON.stringify(result));
+    const json = JSON.stringify(result);
+    const encoded = typeof btoa === "function" ? btoa(json) : json;
+    window.sessionStorage.setItem(E2E_SEED_CACHE_KEY, encoded);
   } catch {
     // Test seed cache is a speed-up only; seed data itself is still returned.
   }

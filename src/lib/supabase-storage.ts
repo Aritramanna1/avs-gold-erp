@@ -21,10 +21,16 @@ async function r2AuthHeader(): Promise<string> {
 /** True when URL points at our authenticated Cloudflare R2 proxy. */
 export function isR2ProxyUrl(url: string): boolean {
   if (!url) return false;
-  if (url.includes("mtj-storage-proxy") || url.includes("r2.cloudflarestorage.com")) return true;
-  if (R2_PROXY_URL && url.startsWith(R2_PROXY_URL)) return true;
   try {
-    return R2_PROXY_URL ? new URL(url).host === new URL(R2_PROXY_URL).host : false;
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (host === "r2.cloudflarestorage.com" || host.endsWith(".r2.cloudflarestorage.com")) return true;
+    if (host.endsWith(".workers.dev") && host.includes("mtj-storage-proxy")) return true;
+    if (R2_PROXY_URL) {
+      const proxyHost = new URL(R2_PROXY_URL).hostname.toLowerCase();
+      if (host === proxyHost) return true;
+    }
+    return false;
   } catch {
     return false;
   }

@@ -129,7 +129,6 @@ function checkHttpEndpoint(urlStr, timeoutMs = 2500) {
           port: parsed.port || (isHttps ? 443 : 80),
           path: parsed.pathname || "/",
           timeout: timeoutMs,
-          rejectUnauthorized: false,
         },
         (res) => {
           const latencyMs = Date.now() - startTime;

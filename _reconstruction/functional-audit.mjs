@@ -93,7 +93,7 @@ const srcOnlySuspect = [];
 const shopMissingBaseline = [];
 for (const r of srcRoutes) {
   const base = path.basename(r.file, path.extname(r.file)).replace(/\$/g, "._");
-  const alt = base.replace(/\./g, ".");
+  const alt = base.replace(/_/g, "-");
   const found =
     shopBasenames.has(base) ||
     shopBasenames.has(alt) ||
@@ -112,7 +112,7 @@ for (const b of [...shopBasenames].sort()) {
   if (b.includes(".") || b === "index" || b === "app" || b === "login") {
     const norm = b.replace(/\._/g, ".$").replace(/\$/g, ".");
     const srcMatch = [...srcBasenames].some(
-      (s) => s === b || s.replace(/\$/g, "._") === b || s.replace(/\./g, ".") === norm,
+      (s) => s === b || s.replace(/\$/g, "._") === b || s.replace(/_/g, "-") === norm,
     );
     if (!srcMatch && !/^(arrow-|chevron-|vendor-|createLucide|useRouter|useStore|ClientOnly|not-found|rolldown|react|dist|esm|es2015|middleware|matchContext|pdf\.worker|purify|bwip|JsBarcode)/.test(b)) {
       shopRouteGaps.push(b);

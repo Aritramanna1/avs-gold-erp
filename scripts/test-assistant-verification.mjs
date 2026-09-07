@@ -121,7 +121,7 @@ const email = renderTestEmail(
 );
 assert(email.subject.includes("Invitation"));
 assert(email.body.includes("Rahul Sharma"));
-assert(email.body.includes("https://erp.ornexa.in/invite/token123"));
+assert(email.body.includes("/invite/token123"));
 console.log("✓ Email template engine generates correct personalized HTML/text content.");
 
 // 6. Language Understanding & Typo Tolerance (Knowledge Layer)

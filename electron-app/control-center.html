@@ -814,7 +814,14 @@
         await window.electronAPI.saveClientConfig({ mode: "client", hostUrl: url });
         window.electronAPI.openErp();
       } else {
-        window.location.href = url;
+        try {
+          const parsed = new URL(url);
+          if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+            window.location.href = parsed.href;
+          }
+        } catch {
+          // Ignore malformed URLs
+        }
       }
     });
 

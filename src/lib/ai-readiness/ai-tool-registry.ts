@@ -10,7 +10,7 @@ import { usePeople } from "@/lib/people-store";
 import { useStock } from "@/lib/stock-store";
 import { useLedger, computeBalances } from "@/lib/ledger-store";
 import { useBilling } from "@/lib/billing-store";
-import { useJobCards } from "@/lib/jobcards-store";
+import { useJobCards, type JobCard } from "@/lib/jobcards-store";
 import { useOrders } from "@/lib/orders-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { mgToGrams } from "@/lib/gold";
@@ -42,20 +42,29 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
       const q = String(params.query || "").toLowerCase();
       const people = usePeople.getState().people;
       const matches = people
-        .filter((p) => p.category === "customer" || !p.category)
-        .filter((p) => 
-          p.name.toLowerCase().includes(q) || 
-          p.phone.includes(q) || 
-          (p.email && p.email.toLowerCase().includes(q)) ||
-          p.id.toLowerCase().includes(q)
-        )
+        .filter((p) => {
+          const type = p.type || (p as any).category;
+          return type === "customer" || type === "firm_customer" || !type;
+        })
+        .filter((p) => {
+          const name = p.fullName || (p as any).name || "";
+          const phone = p.phone || "";
+          const email = (p as any).email || "";
+          const id = p.id || "";
+          return (
+            name.toLowerCase().includes(q) ||
+            phone.includes(q) ||
+            email.toLowerCase().includes(q) ||
+            id.toLowerCase().includes(q)
+          );
+        })
         .slice(0, 10)
         .map((p) => ({
           id: p.id,
-          name: p.name,
-          phone: p.phone,
-          city: p.city,
-          category: p.category,
+          name: p.fullName || (p as any).name || "",
+          phone: p.phone || "",
+          city: (p as any).city || (p as any).address || "",
+          category: p.type || (p as any).category || "customer",
         }));
       return { status: 'success', count: matches.length, matches };
     },
@@ -73,19 +82,27 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
       const q = String(params.query || "").toLowerCase();
       const people = usePeople.getState().people;
       const matches = people
-        .filter((p) => p.category === "supplier" || p.category === "dealer")
-        .filter((p) => 
-          p.name.toLowerCase().includes(q) || 
-          p.phone.includes(q) || 
-          p.id.toLowerCase().includes(q)
-        )
+        .filter((p) => {
+          const type = p.type || (p as any).category;
+          return type === "supplier" || type === "dealer" || type === "refinery";
+        })
+        .filter((p) => {
+          const name = p.fullName || (p as any).name || "";
+          const phone = p.phone || "";
+          const id = p.id || "";
+          return (
+            name.toLowerCase().includes(q) ||
+            phone.includes(q) ||
+            id.toLowerCase().includes(q)
+          );
+        })
         .slice(0, 10)
         .map((p) => ({
           id: p.id,
-          name: p.name,
-          phone: p.phone,
-          city: p.city,
-          category: p.category,
+          name: p.fullName || (p as any).name || "",
+          phone: p.phone || "",
+          city: (p as any).city || (p as any).address || "",
+          category: p.type || (p as any).category || "supplier",
         }));
       return { status: 'success', count: matches.length, matches };
     },
@@ -103,19 +120,27 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
       const q = String(params.query || "").toLowerCase();
       const people = usePeople.getState().people;
       const matches = people
-        .filter((p) => p.category === "worker" || p.category === "karigar" || p.category === "artisan")
-        .filter((p) => 
-          p.name.toLowerCase().includes(q) || 
-          p.phone.includes(q) || 
-          p.id.toLowerCase().includes(q)
-        )
+        .filter((p) => {
+          const type = p.type || (p as any).category;
+          return type === "worker" || type === "karigar" || type === "outside_karigar" || type === "artisan";
+        })
+        .filter((p) => {
+          const name = p.fullName || (p as any).name || "";
+          const phone = p.phone || "";
+          const id = p.id || "";
+          return (
+            name.toLowerCase().includes(q) ||
+            phone.includes(q) ||
+            id.toLowerCase().includes(q)
+          );
+        })
         .slice(0, 10)
         .map((p) => ({
           id: p.id,
-          name: p.name,
-          phone: p.phone,
-          city: p.city,
-          category: p.category,
+          name: p.fullName || (p as any).name || "",
+          phone: p.phone || "",
+          city: (p as any).city || (p as any).address || "",
+          category: p.type || (p as any).category || "karigar",
         }));
       return { status: 'success', count: matches.length, matches };
     },
@@ -133,18 +158,26 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
       const q = String(params.query || "").toLowerCase();
       const people = usePeople.getState().people;
       const matches = people
-        .filter((p) => p.category === "employee" || p.category === "staff")
-        .filter((p) => 
-          p.name.toLowerCase().includes(q) || 
-          p.phone.includes(q) || 
-          p.id.toLowerCase().includes(q)
-        )
+        .filter((p) => {
+          const type = p.type || (p as any).category;
+          return type === "employee" || type === "staff";
+        })
+        .filter((p) => {
+          const name = p.fullName || (p as any).name || "";
+          const phone = p.phone || "";
+          const id = p.id || "";
+          return (
+            name.toLowerCase().includes(q) ||
+            phone.includes(q) ||
+            id.toLowerCase().includes(q)
+          );
+        })
         .slice(0, 10)
         .map((p) => ({
           id: p.id,
-          name: p.name,
-          phone: p.phone,
-          category: p.category,
+          name: p.fullName || (p as any).name || "",
+          phone: p.phone || "",
+          category: p.type || (p as any).category || "employee",
         }));
       return { status: 'success', count: matches.length, matches };
     },
@@ -162,21 +195,27 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
       const q = String(params.query || "").toLowerCase();
       const items = useStock.getState().items;
       const matches = items
-        .filter((i) => 
-          i.itemCode.toLowerCase().includes(q) ||
-          i.name.toLowerCase().includes(q) ||
-          (i.category && i.category.toLowerCase().includes(q)) ||
-          (i.barcode && i.barcode.toLowerCase().includes(q))
-        )
+        .filter((i) => {
+          const itemCode = i.itemCode || "";
+          const itemName = i.itemName || (i as any).name || "";
+          const category = i.category || "";
+          const barcode = i.barcode || "";
+          return (
+            itemCode.toLowerCase().includes(q) ||
+            itemName.toLowerCase().includes(q) ||
+            category.toLowerCase().includes(q) ||
+            barcode.toLowerCase().includes(q)
+          );
+        })
         .slice(0, 10)
         .map((i) => ({
           id: i.id,
           itemCode: i.itemCode,
-          name: i.name,
+          name: i.itemName || (i as any).name || "",
           category: i.category,
           purity: i.purity,
-          grossWeightG: i.grossWeightG,
-          netWeightG: i.netWeightG,
+          grossWeightG: i.grossMg ? Number(mgToGrams(i.grossMg)) : Number((i as any).grossWeightG || 0),
+          netWeightG: i.netMg ? Number(mgToGrams(i.netMg)) : Number((i as any).netWeightG || 0),
           status: i.status || 'in_stock',
         }));
       return { status: 'success', count: matches.length, matches };
@@ -195,11 +234,14 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
       const cat = params.category ? String(params.category).toLowerCase() : undefined;
       const items = useStock.getState().items;
       const filtered = cat
-        ? items.filter((i) => (i.category || "").toLowerCase().includes(cat) || i.itemCode.toLowerCase().includes(cat))
+        ? items.filter((i) => (i.category || "").toLowerCase().includes(cat) || (i.itemCode || "").toLowerCase().includes(cat))
         : items;
       
-      const inStock = filtered.filter((i) => i.status === "in_stock" || !i.status);
-      const totalWeightG = inStock.reduce((acc, i) => acc + Number(i.grossWeightG || 0), 0);
+      const inStock = filtered.filter((i) => (i.status as string) === "in_stock" || i.status === "available" || !i.status);
+      const totalWeightG = inStock.reduce((acc, i) => {
+        const wt = i.grossMg ? Number(mgToGrams(i.grossMg)) : Number((i as any).grossWeightG || 0);
+        return acc + wt;
+      }, 0);
 
       return {
         status: 'success',
@@ -209,10 +251,10 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
         sampleItems: inStock.slice(0, 5).map((i) => ({
           id: i.id,
           itemCode: i.itemCode,
-          name: i.name,
+          name: i.itemName || (i as any).name || "",
           category: i.category,
           purity: i.purity,
-          grossWeightG: i.grossWeightG,
+          grossWeightG: i.grossMg ? Number(mgToGrams(i.grossMg)) : Number((i as any).grossWeightG || 0),
         })),
       };
     },
@@ -229,9 +271,9 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
     handler: async (params) => {
       const code = String(params.barcode || "").trim().toLowerCase();
       const items = useStock.getState().items;
-      const jobCards = useJobCards.getState().cards;
+      const jobCards = useJobCards.getState().jobs || (useJobCards.getState() as any).cards || [];
 
-      const matchedStock = items.find((i) => (i.barcode && i.barcode.toLowerCase() === code) || i.itemCode.toLowerCase() === code);
+      const matchedStock = items.find((i) => (i.barcode && i.barcode.toLowerCase() === code) || (i.itemCode && i.itemCode.toLowerCase() === code));
       if (matchedStock) {
         return {
           status: 'success',
@@ -239,28 +281,30 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
           item: {
             id: matchedStock.id,
             itemCode: matchedStock.itemCode,
-            name: matchedStock.name,
+            name: matchedStock.itemName || (matchedStock as any).name || "",
             category: matchedStock.category,
             purity: matchedStock.purity,
-            grossWeightG: matchedStock.grossWeightG,
-            netWeightG: matchedStock.netWeightG,
+            grossWeightG: matchedStock.grossMg ? Number(mgToGrams(matchedStock.grossMg)) : Number((matchedStock as any).grossWeightG || 0),
+            netWeightG: matchedStock.netMg ? Number(mgToGrams(matchedStock.netMg)) : Number((matchedStock as any).netWeightG || 0),
             status: matchedStock.status || 'in_stock',
           },
         };
       }
 
-      const matchedJob = jobCards.find((j) => (j.jobCardNumber && j.jobCardNumber.toLowerCase() === code) || j.id.toLowerCase() === code);
+      const matchedJob = jobCards.find((j: any) => {
+        const jNo = j.jobNo || j.jobCardNumber || "";
+        return (jNo && jNo.toLowerCase() === code) || (j.id && j.id.toLowerCase() === code);
+      });
       if (matchedJob) {
         return {
           status: 'success',
           type: 'job_card',
           job: {
             id: matchedJob.id,
-            jobCardNumber: matchedJob.jobCardNumber,
-            productName: matchedJob.productName,
+            jobNo: matchedJob.jobNo || (matchedJob as any).jobCardNumber || "",
+            itemName: matchedJob.itemName || (matchedJob as any).productName || "",
             status: matchedJob.status,
-            workerId: matchedJob.workerId,
-            dueDeliveryDate: matchedJob.dueDeliveryDate,
+            expectedDelivery: matchedJob.expectedDelivery || (matchedJob as any).dueDeliveryDate || "",
           },
         };
       }
@@ -278,13 +322,19 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
     handler: async () => {
       const entries = useLedger.getState().entries;
       const balances = computeBalances(entries);
+      const totalGoldMg =
+        balances.buckets.vault +
+        balances.buckets.karigar +
+        balances.buckets.customer +
+        balances.buckets.scrap +
+        balances.buckets.finished;
       return {
         status: 'success',
-        vaultFineG: Number(mgToGrams(balances.vault)),
-        karigarFineG: Number(mgToGrams(balances.karigar)),
-        customerFineG: Number(mgToGrams(balances.customer)),
-        scrapFineG: Number(mgToGrams(balances.scrap)),
-        totalGoldUnderManagementG: Number(mgToGrams(balances.total)),
+        vaultFineG: Number(mgToGrams(balances.buckets.vault)),
+        karigarFineG: Number(mgToGrams(balances.buckets.karigar)),
+        customerFineG: Number(mgToGrams(balances.buckets.customer)),
+        scrapFineG: Number(mgToGrams(balances.buckets.scrap)),
+        totalGoldUnderManagementG: Number(mgToGrams(totalGoldMg)),
       };
     },
   },
@@ -336,10 +386,10 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
       const bal = computeBalances(ledger);
       return {
         status: 'success',
-        vaultFineG: Number(mgToGrams(bal.vault)),
-        karigarFineG: Number(mgToGrams(bal.karigar)),
-        customerFineG: Number(mgToGrams(bal.customer)),
-        scrapFineG: Number(mgToGrams(bal.scrap)),
+        vaultFineG: Number(mgToGrams(bal.buckets.vault)),
+        karigarFineG: Number(mgToGrams(bal.buckets.karigar)),
+        customerFineG: Number(mgToGrams(bal.buckets.customer)),
+        scrapFineG: Number(mgToGrams(bal.buckets.scrap)),
       };
     },
   },
@@ -402,7 +452,10 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
     ],
     handler: async (params) => {
       const workerId = String(params.workerId);
-      const entries = useWorkerGoldBook.getState().entries.filter((e) => e.workerId === workerId && e.type === 'over_loss');
+      const entries = useWorkerGoldBook.getState().entries.filter((e) => {
+        const t = e.type as string;
+        return e.workerId === workerId && (t === 'overloss' || t === 'over_loss');
+      });
       return {
         status: 'success',
         workerId,
@@ -411,7 +464,7 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
           id: e.id,
           date: e.createdAt,
           purity: e.purity,
-          weightGrams: e.weightGrams,
+          weightGrams: e.grossMg ? Number(mgToGrams(e.grossMg)) : Number((e as any).weightGrams || 0),
           notes: e.notes,
         })),
       };
@@ -428,14 +481,17 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
     ],
     handler: async (params) => {
       const invoices = useBilling.getState().invoices;
-      const unpaid = invoices.filter((i) => i.status === "unpaid" || i.status === "partially_paid" || !i.status);
+      const unpaid = invoices.filter((i) => {
+        const s = i.status as string;
+        return s === "issued" || s === "partial" || s === "unpaid" || s === "partially_paid" || !s;
+      });
       const totalDuePaise = unpaid.reduce((acc, i) => acc + (i.grandTotalPaise || 0), 0);
       return {
         status: 'success',
         unpaidInvoiceCount: unpaid.length,
         totalOutstandingRupees: totalDuePaise / 100,
         sampleInvoices: unpaid.slice(0, 5).map((i) => ({
-          invoiceNumber: i.invoiceNumber,
+          invoiceNumber: i.invoiceNo || (i as any).invoiceNumber || "",
           customerName: i.customerName,
           amountRupees: (i.grandTotalPaise || 0) / 100,
           date: i.createdAt,
@@ -450,30 +506,26 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
     description: 'Check active manufacturing requests, workshop jobs, and completion timelines.',
     permissionLevel: 0,
     parameters: [
-      { name: 'workerId', type: 'string', description: 'Optional worker ID filter', required: false },
-      { name: 'status', type: 'string', description: 'active, in_progress, completed', required: false },
+      { name: 'status', type: 'string', description: 'awaiting_gold_issue, in_progress, work_received', required: false },
     ],
     handler: async (params) => {
-      const cards = useJobCards.getState().cards;
-      const workerId = params.workerId ? String(params.workerId) : null;
+      const jobs = useJobCards.getState().jobs || (useJobCards.getState() as any).cards || [];
       const status = params.status ? String(params.status) : null;
 
-      let filtered = cards;
-      if (workerId) filtered = filtered.filter((c) => c.workerId === workerId);
-      if (status) filtered = filtered.filter((c) => c.status === status);
+      let filtered = jobs;
+      if (status) filtered = filtered.filter((c: any) => c.status === status);
 
       return {
         status: 'success',
         totalJobs: filtered.length,
-        activeJobs: filtered.filter((c) => c.status === "active" || c.status === "in_progress").length,
-        completedJobs: filtered.filter((c) => c.status === "completed").length,
-        jobs: filtered.slice(0, 10).map((c) => ({
+        activeJobs: filtered.filter((c: any) => c.status === "in_progress" || c.status === "gold_issued" || c.status === "active").length,
+        completedJobs: filtered.filter((c: any) => c.status === "ready_for_billing" || c.status === "closed" || c.status === "completed").length,
+        jobs: filtered.slice(0, 10).map((c: any) => ({
           id: c.id,
-          jobCardNumber: c.jobCardNumber,
-          productName: c.productName,
-          workerId: c.workerId,
+          jobNo: c.jobNo || c.jobCardNumber || "",
+          itemName: c.itemName || c.productName || "",
           status: c.status,
-          dueDeliveryDate: c.dueDeliveryDate,
+          expectedDelivery: c.expectedDelivery || c.dueDeliveryDate || "",
         })),
       };
     },
@@ -488,21 +540,27 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
     handler: async () => {
       const invoices = useBilling.getState().invoices;
       const stockItems = useStock.getState().items;
-      const jobCards = useJobCards.getState().cards;
+      const jobCards = useJobCards.getState().jobs || (useJobCards.getState() as any).cards || [];
       const ledger = useLedger.getState().entries;
       const goldBal = computeBalances(ledger);
 
-      const today = new Date().toISOString().slice(0, 10);
-      const todayInvoices = invoices.filter((i) => i.createdAt.startsWith(today));
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const startOfDayTs = startOfDay.getTime();
+      const todayInvoices = invoices.filter((i) => {
+        if (typeof i.createdAt === "number") return i.createdAt >= startOfDayTs;
+        if (typeof i.createdAt === "string") return (i.createdAt as string).startsWith(new Date().toISOString().slice(0, 10));
+        return false;
+      });
       const todaySalesPaise = todayInvoices.reduce((acc, i) => acc + (i.grandTotalPaise || 0), 0);
 
       return {
         status: 'success',
         todaySalesRupees: todaySalesPaise / 100,
         todayInvoiceCount: todayInvoices.length,
-        activeJobCards: jobCards.filter((c) => c.status === "active" || c.status === "in_progress").length,
-        readyStockCount: stockItems.filter((i) => i.status === "in_stock" || !i.status).length,
-        vaultGoldGrams: Number(mgToGrams(goldBal.vault)),
+        activeJobCards: jobCards.filter((c: any) => c.status === "in_progress" || c.status === "gold_issued" || c.status === "active").length,
+        readyStockCount: stockItems.filter((i) => (i.status as string) === "in_stock" || i.status === "available" || !i.status).length,
+        vaultGoldGrams: Number(mgToGrams(goldBal.buckets.vault)),
       };
     },
   },

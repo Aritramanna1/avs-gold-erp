@@ -1,16 +1,14 @@
-/**
- * Sanitize tenant-edited email HTML — strip scripts, iframes, event handlers.
- */
-const BLOCKED_TAGS =
-  /<\s*\/?\s*(script|iframe|object|embed|form|input|button|link|meta|base)\b[^>]*>/gi;
-const ON_EVENT_ATTRS = /\s+on\w+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi;
-const JAVASCRIPT_URL =
-  /\s+(href|src|xlink:href)\s*=\s*("javascript:[^"]*"|'javascript:[^']*'|javascript:[^\s>]+)/gi;
+import DOMPurify from "dompurify";
 
+/**
+ * Sanitize tenant-edited email HTML — strip scripts, iframes, event handlers using DOMPurify.
+ */
 export function sanitizeEmailHtml(html: string): string {
-  return html
-    .replace(BLOCKED_TAGS, "")
-    .replace(ON_EVENT_ATTRS, "")
-    .replace(JAVASCRIPT_URL, "")
-    .trim();
+  if (!html) return "";
+  return DOMPurify.sanitize(html, {
+    FORBID_TAGS: ["script", "iframe", "object", "embed", "form", "input", "button", "link", "meta", "base"],
+    FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur"],
+    ALLOW_DATA_ATTR: false,
+  }).trim();
 }
+

@@ -117,7 +117,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
     "@eslint/js": "^9.32.0",
-    "@lhci/cli": "^0.14.0",
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -143,8 +143,14 @@
     "wait-on": "^9.0.10"
   },
   "overrides": {
-    "exceljs": {
-      "uuid": "11.1.1"
-    }
+    "uuid": "^11.1.1",
+    "cookie": "^0.7.2",
+    "qs": "^6.15.4",
+    "nanoid": "^3.3.18",
+    "brace-expansion": "^2.1.4",
+    "browserslist": "^4.28.7",
+    "js-yaml": "^4.3.1",
+    "dompurify": "^3.4.13",
+    "tmp": "^0.2.7"
   }
 }

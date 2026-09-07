@@ -147,11 +147,7 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
   entries: [],
 
   refresh: async () => {
-    const firmId = await resolveFirmIdForQuery();
-    const rows = await workerTransactionRepository.list({
-      ...withFirmScope(firmId),
-      orderBy: { column: "created_at", ascending: false },
-    });
+    const rows = (await workerTransactionRepository.readAll()) as any[];
     const mapped: WorkerGoldBookEntry[] = rows.map((r: any) => {
       const grossMg = Number(r.gross_mg ?? r.grossMg ?? 0);
       const lessMg = Number(r.less_mg ?? r.lessMg ?? 0);
@@ -261,7 +257,7 @@ export const useWorkerGoldBook = create<WorkerGoldBookState>()((set, get) => ({
   addEntry: async (input) => {
     const date = input.date || new Date().toISOString().slice(0, 10);
     const time = input.time || new Date().toTimeString().slice(0, 8);
-    const entryNo = await nextDocumentNumber("gold_issue_voucher");
+    const entryNo = await nextDocumentNumber("gold_issue_voucher", "GIV-", 4);
 
     const grossMg = input.grossMg || 0;
     const lessMg = input.lessMg || 0;
