@@ -96,9 +96,9 @@ BEGIN
 
     -- Aggregate this month's usage
     SELECT jsonb_build_object(
-        'total_deducted', COALESCE(ABS(SUM(amount_credits)) FILTER (WHERE amount_credits < 0 AND created_at >= date_trunc('month', now())), 0),
-        'ai_deducted', COALESCE(ABS(SUM(amount_credits)) FILTER (WHERE entry_type = 'deduction_ai' AND created_at >= date_trunc('month', now())), 0),
-        'wa_deducted', COALESCE(ABS(SUM(amount_credits)) FILTER (WHERE entry_type = 'deduction_wa' AND created_at >= date_trunc('month', now())), 0),
+        'total_deducted', ABS(COALESCE(SUM(amount_credits) FILTER (WHERE amount_credits < 0 AND created_at >= date_trunc('month', now())), 0)),
+        'ai_deducted', ABS(COALESCE(SUM(amount_credits) FILTER (WHERE entry_type = 'deduction_ai' AND created_at >= date_trunc('month', now())), 0)),
+        'wa_deducted', ABS(COALESCE(SUM(amount_credits) FILTER (WHERE entry_type = 'deduction_wa' AND created_at >= date_trunc('month', now())), 0)),
         'recent_entries', COALESCE(jsonb_agg(
             jsonb_build_object(
                 'id', l.id,

@@ -35,6 +35,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@capacitor/core": path.resolve(__dirname, "./src/lib/native/capacitor-core-shim.ts"),
     },
   },
   server: {

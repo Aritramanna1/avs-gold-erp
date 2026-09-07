@@ -145,6 +145,14 @@ export async function sendWhatsAppDocument(req: WhatsAppDocRequest): Promise<Wha
         },
       });
       const ok = !error && result?.ok === true;
+      if (ok) {
+        void (supabase as any).rpc("deduct_tenant_credits", {
+          p_service_code: "wa_utility",
+          p_units: 1,
+          p_reference_id: req.linkedId || req.recordId,
+          p_description: `WhatsApp document (${req.docType}) to ${req.phone}`,
+        });
+      }
       return {
         ok,
         error: error?.message || result?.error,

@@ -559,17 +559,25 @@ export const QuickCommandPalette: React.FC = () => {
 
     // Live Orders & Job Cards (Direct Order opening)
     const matchedOrders: CommandItem[] = Object.values(orders)
-      .filter((o) => o.orderNo?.toLowerCase().includes(q) || o.customerName?.toLowerCase().includes(q) || o.itemType?.toLowerCase().includes(q))
+      .filter((o) => {
+        const custName = people.find((p) => p.id === o.customerId)?.fullName || "";
+        const itemType = o.items?.[0]?.itemName || o.item?.itemName || o.productionType || o.items?.[0]?.category || "";
+        return o.orderNo?.toLowerCase().includes(q) || custName.toLowerCase().includes(q) || itemType.toLowerCase().includes(q);
+      })
       .slice(0, 5)
-      .map((o) => ({
-        id: `order_${o.id}`,
-        title: `Order ${o.orderNo} — ${o.itemType || "Jewellery"}`,
-        category: "Manufacturing",
-        subtitle: `${o.customerName || "Customer"} · Status: ${o.status || "In Progress"}`,
-        to: `/orders/${o.id}`,
-        icon: <Factory className="h-4 w-4 text-purple-500" />,
-        keywords: [o.orderNo || "", o.customerName || "", o.itemType || ""],
-      }));
+      .map((o) => {
+        const custName = people.find((p) => p.id === o.customerId)?.fullName || "Customer";
+        const itemType = o.items?.[0]?.itemName || o.item?.itemName || o.productionType || o.items?.[0]?.category || "Jewellery";
+        return {
+          id: `order_${o.id}`,
+          title: `Order ${o.orderNo} — ${itemType}`,
+          category: "Manufacturing",
+          subtitle: `${custName} · Status: ${o.status || "In Progress"}`,
+          to: `/orders/${o.id}`,
+          icon: <Factory className="h-4 w-4 text-purple-500" />,
+          keywords: [o.orderNo || "", custName, itemType],
+        };
+      });
 
     // Live Ready Stock / Barcode (Direct Stock Item opening)
     const matchedStock: CommandItem[] = (Array.isArray(stockItems) ? stockItems : Object.values(stockItems || {}))

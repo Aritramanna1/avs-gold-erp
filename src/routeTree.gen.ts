@@ -81,6 +81,7 @@ import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
 import { Route as BranchesIndexRouteImport } from './routes/branches.index'
 import { Route as BillingIndexRouteImport } from './routes/billing.index'
 import { Route as AttendanceIndexRouteImport } from './routes/attendance.index'
+import { Route as AccountsIndexRouteImport } from './routes/accounts.index'
 import { Route as WorkshopWorkerBooksRouteImport } from './routes/workshop.worker-books'
 import { Route as WorkshopVibratorRouteImport } from './routes/workshop.vibrator'
 import { Route as WorkshopPolishingBooksRouteImport } from './routes/workshop.polishing-books'
@@ -654,6 +655,11 @@ const AttendanceIndexRoute = AttendanceIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AttendanceRoute,
+} as any)
+const AccountsIndexRoute = AccountsIndexRouteImport.update({
+  id: '/accounts/',
+  path: '/accounts/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const WorkshopWorkerBooksRoute = WorkshopWorkerBooksRouteImport.update({
   id: '/worker-books',
@@ -1971,6 +1977,7 @@ export interface FileRoutesByFullPath {
   '/workshop/polishing-books': typeof WorkshopPolishingBooksRoute
   '/workshop/vibrator': typeof WorkshopVibratorRoute
   '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
+  '/accounts/': typeof AccountsIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/billing/': typeof BillingIndexRoute
   '/branches/': typeof BranchesIndexRoute
@@ -2242,6 +2249,7 @@ export interface FileRoutesByTo {
   '/workshop/polishing-books': typeof WorkshopPolishingBooksRoute
   '/workshop/vibrator': typeof WorkshopVibratorRoute
   '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
+  '/accounts': typeof AccountsIndexRoute
   '/attendance': typeof AttendanceIndexRoute
   '/billing': typeof BillingIndexRoute
   '/branches': typeof BranchesIndexRoute
@@ -2530,6 +2538,7 @@ export interface FileRoutesById {
   '/workshop/polishing-books': typeof WorkshopPolishingBooksRoute
   '/workshop/vibrator': typeof WorkshopVibratorRoute
   '/workshop/worker-books': typeof WorkshopWorkerBooksRoute
+  '/accounts/': typeof AccountsIndexRoute
   '/attendance/': typeof AttendanceIndexRoute
   '/billing/': typeof BillingIndexRoute
   '/branches/': typeof BranchesIndexRoute
@@ -2819,6 +2828,7 @@ export interface FileRouteTypes {
     | '/workshop/polishing-books'
     | '/workshop/vibrator'
     | '/workshop/worker-books'
+    | '/accounts/'
     | '/attendance/'
     | '/billing/'
     | '/branches/'
@@ -3090,6 +3100,7 @@ export interface FileRouteTypes {
     | '/workshop/polishing-books'
     | '/workshop/vibrator'
     | '/workshop/worker-books'
+    | '/accounts'
     | '/attendance'
     | '/billing'
     | '/branches'
@@ -3377,6 +3388,7 @@ export interface FileRouteTypes {
     | '/workshop/polishing-books'
     | '/workshop/vibrator'
     | '/workshop/worker-books'
+    | '/accounts/'
     | '/attendance/'
     | '/billing/'
     | '/branches/'
@@ -3535,6 +3547,7 @@ export interface RootRouteChildren {
   TreasuryVouchersRoute: typeof TreasuryVouchersRoute
   TrialStartRoute: typeof TrialStartRoute
   UnsubscribeTokenRoute: typeof UnsubscribeTokenRoute
+  AccountsIndexRoute: typeof AccountsIndexRoute
   BranchesIndexRoute: typeof BranchesIndexRoute
   ConversionIndexRoute: typeof ConversionIndexRoute
   ExpensesIndexRoute: typeof ExpensesIndexRoute
@@ -4054,6 +4067,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/attendance/'
       preLoaderRoute: typeof AttendanceIndexRouteImport
       parentRoute: typeof AttendanceRoute
+    }
+    '/accounts/': {
+      id: '/accounts/'
+      path: '/accounts'
+      fullPath: '/accounts/'
+      preLoaderRoute: typeof AccountsIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/workshop/worker-books': {
       id: '/workshop/worker-books'
@@ -6214,6 +6234,7 @@ const rootRouteChildren: RootRouteChildren = {
   TreasuryVouchersRoute: TreasuryVouchersRoute,
   TrialStartRoute: TrialStartRoute,
   UnsubscribeTokenRoute: UnsubscribeTokenRoute,
+  AccountsIndexRoute: AccountsIndexRoute,
   BranchesIndexRoute: BranchesIndexRoute,
   ConversionIndexRoute: ConversionIndexRoute,
   ExpensesIndexRoute: ExpensesIndexRoute,

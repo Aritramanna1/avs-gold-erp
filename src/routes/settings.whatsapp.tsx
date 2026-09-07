@@ -707,24 +707,27 @@ function WhatsAppSettingsPage({ embedded = false }: { embedded?: boolean } = {})
                 payment receipts are sent with guaranteed 99.9% delivery via AVS ERP's Tier-1 Meta
                 Partner infrastructure.
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs pt-1">
-                <div className="rounded-lg border bg-background/50 p-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
+                <div className="rounded-lg border bg-background/50 p-2.5 space-y-0.5">
                   <span className="text-muted-foreground block text-[10px]">
-                    Utility Message Rate
+                    Utility (Invoices &amp; OTP)
                   </span>
-                  <span className="font-bold text-foreground">₹0.35 / msg</span>
+                  <div className="font-bold text-foreground">₹0.31 / msg</div>
+                  <div className="text-[9px] text-muted-foreground">Meta ₹0.11 + AVS ₹0.20</div>
                 </div>
-                <div className="rounded-lg border bg-background/50 p-2.5">
+                <div className="rounded-lg border bg-background/50 p-2.5 space-y-0.5">
                   <span className="text-muted-foreground block text-[10px]">
-                    Marketing / Reminder
+                    Marketing (Campaigns)
                   </span>
-                  <span className="font-bold text-foreground">₹0.85 / msg</span>
+                  <div className="font-bold text-foreground">₹0.98 / msg</div>
+                  <div className="text-[9px] text-muted-foreground">Meta ₹0.78 + AVS ₹0.20</div>
                 </div>
-                <div className="rounded-lg border bg-background/50 p-2.5">
+                <div className="rounded-lg border bg-background/50 p-2.5 space-y-0.5">
                   <span className="text-muted-foreground block text-[10px]">
-                    Active Line Status
+                    Customer Service (24h)
                   </span>
-                  <span className="font-bold text-emerald-500">Connected &amp; Verified</span>
+                  <div className="font-bold text-foreground">₹0.20 / msg</div>
+                  <div className="text-[9px] text-muted-foreground">Meta FREE + AVS ₹0.20</div>
                 </div>
               </div>
 

@@ -62,7 +62,8 @@
     "qa:release": "node qa/scripts/orchestrator.mjs release",
     "qa:guard": "node qa/scripts/staging-guard.mjs generic-check",
     "qa:install:docker": "node qa/scripts/docker-pull-images.mjs",
-    "qa:install": "node qa/scripts/install-qa-tools.mjs"
+    "qa:install": "node qa/scripts/install-qa-tools.mjs",
+    "qa:exploratory": "node qa/exploratory/run-all-exploratory-passes.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.1",
@@ -128,12 +129,14 @@
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^3.2.4",
     "concurrently": "^10.0.3",
+    "crawlix": "^0.1.8",
     "cross-env": "^10.1.0",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "explorbot": "^0.4.4",
     "globals": "^15.15.0",
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",

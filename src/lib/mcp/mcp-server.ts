@@ -85,7 +85,13 @@ export class MCPServer {
       totalRegisteredTools: allTools.length,
       enabledToolsCount: enabledTools.length,
       namespaces: Array.from(new Set(allTools.map((t) => t.namespace))),
-      uptimeSeconds: Math.floor(process.uptime ? process.uptime() : 3600),
+      uptimeSeconds: Math.floor(
+        typeof process !== "undefined" && typeof process?.uptime === "function"
+          ? process.uptime()
+          : typeof performance !== "undefined"
+          ? performance.now() / 1000
+          : 3600
+      ),
       timestamp: new Date().toISOString(),
     };
   }

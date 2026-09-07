@@ -48,26 +48,114 @@ function mapRow(row: Record<string, unknown>): CommunicationRateCard {
   };
 }
 
+export const CANONICAL_WHATSAPP_PRICING = {
+  utility: {
+    category: "utility" as MessageCategory,
+    title: "WhatsApp Utility (Invoices & OTP)",
+    metaCostRupees: 0.11,
+    avsMarkupRupees: 0.20,
+    totalRupees: 0.31,
+    creditsPerUnit: 0.31,
+    description: "Tax invoices, Jama slips, order confirmation, Karigar issue alerts, and OTP verification codes.",
+  },
+  marketing: {
+    category: "marketing" as MessageCategory,
+    title: "WhatsApp Marketing (Campaigns)",
+    metaCostRupees: 0.78,
+    avsMarkupRupees: 0.20,
+    totalRupees: 0.98,
+    creditsPerUnit: 0.98,
+    description: "Jewellery catalog collections, festival greetings, promotional announcements, and customer outreach.",
+  },
+  service: {
+    category: "service" as MessageCategory,
+    title: "Customer Service (24h Window)",
+    metaCostRupees: 0.00,
+    avsMarkupRupees: 0.20,
+    totalRupees: 0.20,
+    creditsPerUnit: 0.20,
+    description: "Customer-initiated inquiries and replies within active 24-hour service conversation windows.",
+  },
+} as const;
+
+export const DEFAULT_COMMUNICATION_RATE_CARDS: CommunicationRateCard[] = [
+  {
+    id: "rc_wa_utility",
+    rateCardVersion: "v1.0",
+    provider: "meta_whatsapp",
+    pricingSource: "official_meta_tier1",
+    countryCode: "IN",
+    messageCategory: "utility",
+    effectiveFrom: "2026-01-01",
+    metaUnitCost: 0.11,
+    currency: "INR",
+    avsMarkupType: "FIXED",
+    markupValue: 0.20,
+    creditsPerUnit: 0.31,
+    isActive: true,
+  },
+  {
+    id: "rc_wa_marketing",
+    rateCardVersion: "v1.0",
+    provider: "meta_whatsapp",
+    pricingSource: "official_meta_tier1",
+    countryCode: "IN",
+    messageCategory: "marketing",
+    effectiveFrom: "2026-01-01",
+    metaUnitCost: 0.78,
+    currency: "INR",
+    avsMarkupType: "FIXED",
+    markupValue: 0.20,
+    creditsPerUnit: 0.98,
+    isActive: true,
+  },
+  {
+    id: "rc_wa_service",
+    rateCardVersion: "v1.0",
+    provider: "meta_whatsapp",
+    pricingSource: "official_meta_tier1",
+    countryCode: "IN",
+    messageCategory: "service",
+    effectiveFrom: "2026-01-01",
+    metaUnitCost: 0.00,
+    currency: "INR",
+    avsMarkupType: "FIXED",
+    markupValue: 0.20,
+    creditsPerUnit: 0.20,
+    isActive: true,
+  },
+];
+
 export async function fetchCommunicationRateCards(opts?: {
   firmId?: string;
   messageCategory?: MessageCategory;
 }): Promise<CommunicationRateCard[]> {
-  let query = supabase
-    .from("communication_rate_cards" as never)
-    .select("*")
-    .eq("is_active", true)
-    .order("effective_from", { ascending: false });
+  try {
+    let query = supabase
+      .from("communication_rate_cards" as never)
+      .select("*")
+      .eq("is_active", true)
+      .order("effective_from", { ascending: false });
+
+    if (opts?.messageCategory) {
+      query = query.eq("message_category", opts.messageCategory);
+    }
+    if (opts?.firmId) {
+      query = query.or(`firm_id.is.null,firm_id.eq.${opts.firmId}`);
+    } else {
+      query = query.is("firm_id", null);
+    }
+
+    const { data, error } = await query;
+    if (!error && data && (data as Record<string, unknown>[]).length > 0) {
+      return (data as Record<string, unknown>[]).map(mapRow);
+    }
+  } catch {
+    // Fall back to canonical rates
+  }
 
   if (opts?.messageCategory) {
-    query = query.eq("message_category", opts.messageCategory);
+    return DEFAULT_COMMUNICATION_RATE_CARDS.filter((rc) => rc.messageCategory === opts.messageCategory);
   }
-  if (opts?.firmId) {
-    query = query.or(`firm_id.is.null,firm_id.eq.${opts.firmId}`);
-  } else {
-    query = query.is("firm_id", null);
-  }
-
-  const { data, error } = await query;
-  if (error || !data) return [];
-  return (data as Record<string, unknown>[]).map(mapRow);
+  return DEFAULT_COMMUNICATION_RATE_CARDS;
 }

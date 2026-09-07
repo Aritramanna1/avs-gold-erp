@@ -1,0 +1,43 @@
+name: MCP Protocol & ERP Tool Registry Validation
+
+on:
+  push:
+    branches: [main, master, develop, "release/**"]
+    paths:
+      - "src/lib/mcp/**"
+      - "scripts/mcp/**"
+      - "qa/mcp/**"
+      - ".github/workflows/mcp-validation.yml"
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - "src/lib/mcp/**"
+      - "scripts/mcp/**"
+      - "qa/mcp/**"
+
+jobs:
+  mcp-validation:
+    name: MCP Protocol, Security & Gold-First Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: TypeScript Typecheck
+        run: npm run typecheck
+
+      - name: Run MCP Comprehensive Protocol Suite
+        run: node qa/mcp/mcp-comprehensive-audit.mjs
+
+      - name: Security & Secrets Scan
+        run: node scripts/security-scan.mjs
