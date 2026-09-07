@@ -9,6 +9,7 @@ import {
   DEFAULT_BULLION_RATE_PROVIDER_CONFIG,
   type BullionRateProviderConfig,
 } from "./bullion-rate/types";
+import { normalizeR2Url } from "./supabase-storage";
 
 import {
   redactBullionRateProvider,
@@ -104,11 +105,24 @@ export function loadInitialCachedSettings(defaults: typeof DEFAULTS): typeof DEF
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return defaults;
 
+    const firm = { ...defaults.firm, ...(parsed.firm || {}) };
+    if (firm.logoUrl) firm.logoUrl = normalizeR2Url(firm.logoUrl);
+    const branding = { ...defaults.branding, ...(parsed.branding || {}) };
+    if (branding.logoUrl) branding.logoUrl = normalizeR2Url(branding.logoUrl);
+    const branchSettings = (Array.isArray(parsed.branchSettings)
+      ? parsed.branchSettings
+      : defaults.branchSettings
+    ).map((bs: BranchSettings) => ({
+      ...bs,
+      logoUrl: bs.logoUrl ? normalizeR2Url(bs.logoUrl) : bs.logoUrl,
+    }));
+
     return {
       ...defaults,
       ...parsed,
-      firm: { ...defaults.firm, ...(parsed.firm || {}) },
-      branding: { ...defaults.branding, ...(parsed.branding || {}) },
+      firm,
+      branding,
+      branchSettings,
       print: { ...defaults.print, ...(parsed.print || {}) },
       gst: { ...defaults.gst, ...(parsed.gst || {}) },
       makingCharge: { ...defaults.makingCharge, ...(parsed.makingCharge || {}) },
@@ -146,9 +160,6 @@ export function loadInitialCachedSettings(defaults: typeof DEFAULTS): typeof DEF
           : defaults.formsMetadata,
       campaignTemplates: { ...defaults.campaignTemplates, ...(parsed.campaignTemplates || {}) },
       commAutomation: { ...defaults.commAutomation, ...(parsed.commAutomation || {}) },
-      branchSettings: Array.isArray(parsed.branchSettings)
-        ? parsed.branchSettings
-        : defaults.branchSettings,
       emailTemplates: Array.isArray(parsed.emailTemplates)
         ? parsed.emailTemplates
         : defaults.emailTemplates,

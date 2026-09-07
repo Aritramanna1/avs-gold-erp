@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from "react";
 import { useAttachmentUrl } from "@/lib/attachments-store";
-import { getDirectR2ObjectUrl, getSupabasePublicStorageUrl } from "@/lib/supabase-storage";
+import { getDirectR2ObjectUrl, getSupabasePublicStorageUrl, normalizeR2Url } from "@/lib/supabase-storage";
 import { cn } from "@/lib/utils";
 
 /** Same initials rule as the tenant profile chip in AppShell. */
@@ -95,17 +95,19 @@ export function PersonProfileAvatar({
   // Discard empty strings
   const validDirectCandidate =
     rawCandidate && typeof rawCandidate === "string" && rawCandidate.trim() !== ""
-      ? rawCandidate.trim()
+      ? normalizeR2Url(rawCandidate.trim())
       : null;
 
   // If candidate is a storage path (e.g. starts with firms/ or branches/ or platform/), resolve to R2
-  const finalPhotoUrl =
+  const resolvedUrl =
     (validDirectCandidate && (validDirectCandidate.startsWith("http") || validDirectCandidate.startsWith("data:")))
       ? validDirectCandidate
       : (validDirectCandidate && (validDirectCandidate.startsWith("firms/") || validDirectCandidate.startsWith("platform/")))
       ? (attempt === "r2" ? getDirectR2ObjectUrl(bucket, validDirectCandidate) : getSupabasePublicStorageUrl(bucket, validDirectCandidate))
       : (attempt === "r2" ? (r2StorageUrl || validDirectCandidate) : (supabaseStorageUrl || validDirectCandidate)) ||
         null;
+
+  const finalPhotoUrl = resolvedUrl ? normalizeR2Url(resolvedUrl) : null;
 
   const showPhoto = Boolean(finalPhotoUrl) && attempt !== "broken";
   const initials = nameInitials(name || person?.fullName || person?.name || "");

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ImgHTMLAttributes } from "react";
 import { useSettings } from "@/lib/settings-store";
-import { getAttachmentSignedUrl } from "@/lib/supabase-storage";
+import { getAttachmentSignedUrl, normalizeR2Url } from "@/lib/supabase-storage";
 
 interface LogoProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "alt"> {
   /**
@@ -25,17 +25,19 @@ const REFRESH_INTERVAL_MS = 40 * 60 * 1000;
 export function Logo({ variant = "svg", alt, className, ...props }: LogoProps) {
   const { firm } = useSettings();
   const fallbackSrc = variant === "svg" ? "/assets/logo.svg" : "/assets/logo.png";
-  const [resolvedSrc, setResolvedSrc] = useState(firm.logoUrl || fallbackSrc);
+  const [resolvedSrc, setResolvedSrc] = useState(
+    normalizeR2Url(firm.logoUrl || "") || fallbackSrc,
+  );
 
   useEffect(() => {
     if (!firm.logoStoragePath) {
-      setResolvedSrc(firm.logoUrl || fallbackSrc);
+      setResolvedSrc(normalizeR2Url(firm.logoUrl || "") || fallbackSrc);
       return;
     }
     let cancelled = false;
     const resign = (forceRefresh = false) => {
       getAttachmentSignedUrl("firm-assets", firm.logoStoragePath!, forceRefresh).then((url) => {
-        if (!cancelled && url) setResolvedSrc(url);
+        if (!cancelled && url) setResolvedSrc(normalizeR2Url(url));
       });
     };
     resign();

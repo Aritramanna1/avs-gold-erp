@@ -18,6 +18,7 @@
  * not by a permission check alone.
  */
 import { create } from "zustand";
+import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { createRepository } from "./repositories/base-repository";
 import { append as appendAuditEntry } from "./security/audit-log";
 import { fineGoldMg } from "./gold";
@@ -163,9 +164,6 @@ export interface GroupedBalances {
 }
 
 const movementRepository = createRepository<MaterialMovement>("material_vault_movements");
-const materialConfigRepository = createRepository<{ id: string; key: string; value?: unknown }>(
-  "platform_settings",
-);
 
 // ── Admin-configurable materials — persisted, nothing hard-coded ────────────
 const CUSTOM_CATEGORIES_KEY = "material_custom_categories";
@@ -175,12 +173,44 @@ export function readCustomCategories(): MaterialCategoryDef[] {
   return [];
 }
 
+async function fetchRemoteCustomCategories(): Promise<MaterialCategoryDef[]> {
+  try {
+    const { data, error } = await supabase
+      .from("platform_settings")
+      .select("key, value")
+      .eq("key", CUSTOM_CATEGORIES_KEY)
+      .maybeSingle();
+    if (error || !data) return [];
+    const val = (data as any)?.value;
+    if (Array.isArray(val)) {
+      return (val as MaterialCategoryDef[]).filter(
+        (c) => c && typeof c.key === "string" && typeof c.label === "string" && c.group,
+      );
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 async function writeCustomCategories(list: MaterialCategoryDef[]): Promise<void> {
-  await materialConfigRepository.save({
-    id: CUSTOM_CATEGORIES_KEY,
-    key: CUSTOM_CATEGORIES_KEY,
-    value: list,
-  });
+  try {
+    const { error } = await supabase
+      .from("platform_settings")
+      .upsert(
+        {
+          key: CUSTOM_CATEGORIES_KEY,
+          value: list,
+          updated_at: new Date().toISOString(),
+        } as any,
+        { onConflict: "key" },
+      );
+    if (error) {
+      console.warn("[material-vault-store] Failed to save custom categories:", error.message);
+    }
+  } catch (err) {
+    console.warn("[material-vault-store] Error writing custom categories:", err);
+  }
 }
 
 function customCategoriesFrom(categories: MaterialCategoryDef[]): MaterialCategoryDef[] {
@@ -363,11 +393,10 @@ export const useMaterialVault = create<MaterialVaultState>()((set, get) => ({
   movements: [],
   categories: mergeCategories(readCustomCategories()),
   refresh: async () => {
-    const persisted = await fetchMaterialVaultMovements();
-    const settings = await materialConfigRepository.read(CUSTOM_CATEGORIES_KEY).catch(() => null);
-    const remoteCustom = Array.isArray(settings?.value)
-      ? (settings.value as MaterialCategoryDef[]).filter((c) => c && c.key && c.label && c.group)
-      : [];
+    const [persisted, remoteCustom] = await Promise.all([
+      fetchMaterialVaultMovements(),
+      fetchRemoteCustomCategories(),
+    ]);
     set({
       movements: persisted,
       // Custom materials are admin-configurable and persisted — reload them so a
