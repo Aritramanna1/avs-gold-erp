@@ -17,15 +17,20 @@ function requestUrl(input: RequestInfo | URL): string {
 
 /** True when this browser/build must not call production Supabase over the network. */
 export function isProductionSupabaseEgressBlocked(): boolean {
-  if (import.meta.env.VITE_ENABLE_DEV_SUPABASE === "1") return false;
-  if (import.meta.env.ALLOW_PROD_E2E === "1") return false;
+  const env: Record<string, string | boolean | undefined> =
+    typeof import.meta !== "undefined" && import.meta.env
+      ? import.meta.env
+      : (typeof process !== "undefined" && process.env ? process.env : {});
+
+  if (env.VITE_ENABLE_DEV_SUPABASE === "1") return false;
+  if (env.ALLOW_PROD_E2E === "1") return false;
   const block =
-    import.meta.env.VITE_DISABLE_PARITY_BOOT === "1" ||
-    import.meta.env.VITE_DISABLE_PARITY_BOOT === "true" ||
-    import.meta.env.PLAYWRIGHT_SUPABASE_BLOCK === "1" ||
-    import.meta.env.PLAYWRIGHT_SUPABASE_BLOCK === "true";
+    env.VITE_DISABLE_PARITY_BOOT === "1" ||
+    env.VITE_DISABLE_PARITY_BOOT === "true" ||
+    env.PLAYWRIGHT_SUPABASE_BLOCK === "1" ||
+    env.PLAYWRIGHT_SUPABASE_BLOCK === "true";
   if (block) return true;
-  return import.meta.env.DEV;
+  return Boolean(env.DEV);
 }
 
 export function isProductionSupabaseUrl(url: string): boolean {

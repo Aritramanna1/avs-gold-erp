@@ -41,12 +41,13 @@ function getResolvedConfig() {
   }
 
   // 3. Build-time environment variable
-  const envUrl = sanitizeEnvValue(import.meta.env.VITE_SUPABASE_URL);
+  const metaEnv = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : (typeof process !== "undefined" && process.env ? process.env : {});
+  const envUrl = sanitizeEnvValue(metaEnv.VITE_SUPABASE_URL as string | undefined);
   const envKey = sanitizeEnvValue(
-    (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
-    (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)
+    (metaEnv.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ||
+    (metaEnv.VITE_SUPABASE_ANON_KEY as string | undefined)
   );
-  const envProjectId = sanitizeEnvValue(import.meta.env.VITE_SUPABASE_PROJECT_ID);
+  const envProjectId = sanitizeEnvValue(metaEnv.VITE_SUPABASE_PROJECT_ID as string | undefined);
 
   const DEFAULT_SUPABASE_URL = "https://dqgrrafuoxaorvyrcuuh.supabase.co";
   const DEFAULT_SUPABASE_KEY = "sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN";

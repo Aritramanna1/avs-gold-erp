@@ -227,6 +227,9 @@ export interface BusinessTransactionPayload {
   // Custody Specific
   isCustodyOnly?: boolean;
 
+  // Owner Specific
+  isDrawing?: boolean;
+
   user?: string;
 }
 
@@ -462,7 +465,13 @@ export function generateJournalForTransaction(tx: BusinessTransactionPayload): J
       addLine("1020", 0, 0, grossMg, 0, fineMg, 0, "Promoter Bullion Capital Inward", "vault");
       addLine("3001", 0, 0, 0, grossMg, 0, fineMg, "Owner Capital Metal Account");
     }
-  } else if (tx.transactionType === "DRAWINGS" || tx.transactionType === "drawings") {
+  } else if (
+    tx.transactionType === "DRAWINGS" ||
+    tx.transactionType === "drawings" ||
+    tx.transactionType === "OWNER_DRAWING" ||
+    tx.transactionType === "owner_drawing" ||
+    (tx.transactionType === "OWNER_TRANSACTION" && tx.isDrawing)
+  ) {
     addLine("3010", tx.totalAmountPaise, 0, 0, 0, 0, 0, "Proprietor Drawings");
     const cashAcc = tx.paymentMode === "bank" ? "1002" : "1001";
     addLine(cashAcc, 0, tx.totalAmountPaise, 0, 0, 0, 0, "Drawings Payout");

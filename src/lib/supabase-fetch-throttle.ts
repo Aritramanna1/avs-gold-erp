@@ -16,10 +16,12 @@ import {
 
 /** Owner-opted live dev Supabase — same request budget as production builds. */
 function devLiveSupabaseEnabled(): boolean {
+  if (typeof import.meta === "undefined" || !import.meta.env) return false;
   return import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEV_SUPABASE === "1";
 }
 
-const relaxedEgress = import.meta.env.PROD || devLiveSupabaseEnabled();
+const isProdEnv = typeof import.meta !== "undefined" && import.meta.env?.PROD;
+const relaxedEgress = Boolean(isProdEnv || devLiveSupabaseEnabled());
 const WINDOW_MS = 10_000;
 const MAX_REQUESTS_PER_WINDOW = relaxedEgress ? 80 : 10;
 const MAX_REQUESTS_BOOT = relaxedEgress ? 120 : 22;
