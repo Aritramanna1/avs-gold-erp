@@ -1,5 +1,5 @@
 {
-  "seed": 1788810836106,
+  "seed": 1788811245978,
   "attacksExecuted": 32,
   "attacksBlocked": 32,
   "vulnerabilitiesFound": 0,
@@ -9,7 +9,7 @@
       "name": "Anonymous API Access: Unauthenticated request to protected ERP orders API",
       "category": "AUTHENTICATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.979Z",
       "details": {
         "response": "401_UNAUTHORIZED"
       }
@@ -18,7 +18,7 @@
       "name": "Supervisor OTP Channel: Attempting Supervisor authorization via prohibited WhatsApp channel",
       "category": "AUTHENTICATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.980Z",
       "details": {
         "status": "REJECTED_SMS_ONLY"
       }
@@ -27,7 +27,7 @@
       "name": "OTP Replay Attack: Reusing previously consumed SMS OTP token",
       "category": "AUTHENTICATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.980Z",
       "details": {
         "status": "409_OTP_ALREADY_USED"
       }
@@ -36,7 +36,7 @@
       "name": "OTP Expiration Guard: Submitting expired SMS OTP token",
       "category": "AUTHENTICATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.980Z",
       "details": {
         "status": "401_OTP_EXPIRED"
       }
@@ -45,7 +45,7 @@
       "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Customer Record (cust_aurum_101)",
       "category": "IDOR_TENANT_ISOLATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "caller": "TENANT_MTJ",
         "targetTenant": "TENANT_AURUM",
@@ -57,7 +57,7 @@
       "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Sales Invoice (inv_aurum_9921)",
       "category": "IDOR_TENANT_ISOLATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "caller": "TENANT_MTJ",
         "targetTenant": "TENANT_AURUM",
@@ -69,7 +69,7 @@
       "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Stock Inventory Tag (tag_aurum_gold_001)",
       "category": "IDOR_TENANT_ISOLATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "caller": "TENANT_MTJ",
         "targetTenant": "TENANT_AURUM",
@@ -81,7 +81,7 @@
       "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Account Chart of Accounts (acc_aurum_cash)",
       "category": "IDOR_TENANT_ISOLATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "caller": "TENANT_MTJ",
         "targetTenant": "TENANT_AURUM",
@@ -93,7 +93,7 @@
       "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Financial Ledger Entry (led_aurum_2026)",
       "category": "IDOR_TENANT_ISOLATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "caller": "TENANT_MTJ",
         "targetTenant": "TENANT_AURUM",
@@ -105,7 +105,7 @@
       "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Karigar Custody Book (kar_aurum_babu)",
       "category": "IDOR_TENANT_ISOLATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "caller": "TENANT_MTJ",
         "targetTenant": "TENANT_AURUM",
@@ -117,7 +117,7 @@
       "name": "Cross-Tenant IDOR: Tenant A querying Tenant B Business P&L Report (rep_aurum_pnl)",
       "category": "IDOR_TENANT_ISOLATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "caller": "TENANT_MTJ",
         "targetTenant": "TENANT_AURUM",
@@ -129,7 +129,7 @@
       "name": "Cross-Branch Isolation: retail_sales in SHOWROOM_CENTRAL executing Workshop Melting Lot Mutation",
       "category": "BRANCH_ISOLATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "userBranch": "SHOWROOM_CENTRAL",
         "targetBranch": "WORKSHOP_NORTH",
@@ -140,7 +140,7 @@
       "name": "Cross-Branch Isolation: retail_sales in SHOWROOM_CENTRAL executing Showroom Vault Transfer",
       "category": "BRANCH_ISOLATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "userBranch": "SHOWROOM_CENTRAL",
         "targetBranch": "SHOWROOM_SOUTH",
@@ -151,7 +151,7 @@
       "name": "Privilege Escalation: Role 'retail_sales' attempting privileged 'MUTATE_BULLION_RATE_CARD'",
       "category": "RBAC_ESCALATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.228Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "role": "retail_sales",
         "action": "MUTATE_BULLION_RATE_CARD",
@@ -162,7 +162,7 @@
       "name": "Privilege Escalation: Role 'karigar' attempting privileged 'APPROVE_PAYROLL_VOUCHER'",
       "category": "RBAC_ESCALATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "role": "karigar",
         "action": "APPROVE_PAYROLL_VOUCHER",
@@ -173,7 +173,7 @@
       "name": "Privilege Escalation: Role 'supplier' attempting privileged 'READ_INTERNAL_COST_SHEET'",
       "category": "RBAC_ESCALATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "role": "supplier",
         "action": "READ_INTERNAL_COST_SHEET",
@@ -184,7 +184,7 @@
       "name": "Privilege Escalation: Role 'customer' attempting privileged 'READ_FIRM_PROFITABILITY'",
       "category": "RBAC_ESCALATION",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "role": "customer",
         "action": "READ_FIRM_PROFITABILITY",
@@ -195,7 +195,7 @@
       "name": "Gold Math Tampering: Attacker submitting fine gold based on 100% instead of authoritative 99.50% (995)",
       "category": "GOLD_INTEGRITY",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "expectedFineGold": 92.06,
         "submitted": 91.6,
@@ -206,7 +206,7 @@
       "name": "Ledger Dimension Integrity: Enforcing discrete Cash (INR) and Fine Gold (Grams) separation",
       "category": "ACCOUNTING_INTEGRITY",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "cashDim": "INR",
         "goldDim": "GRAMS_995",
@@ -217,7 +217,7 @@
       "name": "Negative Stock Prevention: Attempting to issue stock exceeding available inventory balance",
       "category": "BUSINESS_LOGIC",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "currentStock": 10,
         "requestedIssue": 15,
@@ -228,7 +228,7 @@
       "name": "Karigar Custody Over-Loss: Attempting settlement with unapproved wastage exceeding threshold",
       "category": "BUSINESS_LOGIC",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "issuedWeight": 100,
         "reportedLossGrams": 5,
@@ -240,7 +240,7 @@
       "name": "Duplicate Settlement Prevention: Re-submitting payment against already PAID invoice",
       "category": "BUSINESS_LOGIC",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "invoiceId": "inv_settled_991",
         "status": "409_ALREADY_SETTLED"
@@ -250,7 +250,7 @@
       "name": "Double-Sale Race Condition: Concurrent requests attempting to bill identical unique tag ID",
       "category": "CONCURRENCY_RACE",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.981Z",
       "details": {
         "firstReq": "200_OK",
         "secondReq": "409_LOCK_CONFLICT"
@@ -260,7 +260,7 @@
       "name": "Mass Assignment Guard: User profile update payload containing privileged role fields",
       "category": "API_SECURITY",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.982Z",
       "details": {
         "strippedFields": [
           "role",
@@ -273,7 +273,7 @@
       "name": "SQL Parameterization: Query filter payload with SQL injection characters",
       "category": "API_SECURITY",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.982Z",
       "details": {
         "status": "PARAMETRIZED_SAFE"
       }
@@ -282,7 +282,7 @@
       "name": "MCP Authorization: Unauthenticated client calling finance.get_account_balance",
       "category": "MCP_SECURITY",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.982Z",
       "details": {
         "status": "401_MCP_UNAUTHORIZED"
       }
@@ -291,7 +291,7 @@
       "name": "MCP Cross-Tenant Isolation: Tenant A calling MCP tool targeting Tenant B inventory",
       "category": "MCP_SECURITY",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.982Z",
       "details": {
         "status": "403_MCP_TENANT_DENIED"
       }
@@ -300,7 +300,7 @@
       "name": "MCP High-Risk Tool Gate: Executing dangerous MCP mutation without Supervisor SMS OTP",
       "category": "MCP_SECURITY",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.982Z",
       "details": {
         "tool": "admin.override_tenant_locks",
         "status": "403_SUPERVISOR_OTP_REQUIRED"
@@ -310,7 +310,7 @@
       "name": "R2 Storage Traversal: Upload key attempting directory traversal to access Tenant B bucket",
       "category": "STORAGE_SECURITY",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.982Z",
       "details": {
         "rawKey": "tenant_mtj/../../tenant_aurum/invoices/secret.pdf",
         "sanitizedKey": "tenant_aurum\\invoices\\secret.pdf",
@@ -321,7 +321,7 @@
       "name": "Storage MIME Validation: Attempting upload of executable payload (.exe)",
       "category": "STORAGE_SECURITY",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.982Z",
       "details": {
         "mime": "application/x-msdownload",
         "status": "415_UNSUPPORTED_MEDIA_TYPE"
@@ -331,7 +331,7 @@
       "name": "Webhook Signature Spoof: Razorpay payment capture webhook with forged HMAC header",
       "category": "WEBHOOK_SECURITY",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.229Z",
+      "timestamp": "2026-09-07T20:00:45.986Z",
       "details": {
         "status": "401_SIGNATURE_VERIFICATION_FAILED"
       }
@@ -340,7 +340,7 @@
       "name": "Static Secret Audit: Client bundles, MCP endpoints, and config files contain zero raw private keys",
       "category": "SECRET_AUDIT",
       "blocked": true,
-      "timestamp": "2026-09-07T19:53:53.230Z",
+      "timestamp": "2026-09-07T20:00:45.998Z",
       "details": {
         "auditedFiles": 5,
         "status": "ZERO_SECRETS_LEAKED"

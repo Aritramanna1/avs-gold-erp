@@ -1,0 +1,99 @@
+{
+  "timestamp": "2026-09-07T19:56:18.527Z",
+  "target": {
+    "baseUrl": "http://localhost:3000",
+    "isProduction": false,
+    "tenantId": "TENANT_SECURITY_TEST_A",
+    "branchId": "BRANCH_TEST_MAIN",
+    "userId": "usr_security_auditor"
+  },
+  "startupValidation": {
+    "ok": true,
+    "checks": [
+      {
+        "step": "API Key Existence",
+        "passed": true,
+        "details": "Present (Length: 30 chars, masked)"
+      },
+      {
+        "step": "Target Base URL",
+        "passed": true,
+        "details": "http://localhost:3000"
+      },
+      {
+        "step": "Environment Classification",
+        "passed": true,
+        "details": "✓ ISOLATED TEST/STAGING — Full Adversarial Testing Allowed"
+      },
+      {
+        "step": "Tenant Context",
+        "passed": true,
+        "details": "TENANT_SECURITY_TEST_A"
+      },
+      {
+        "step": "Branch Scope",
+        "passed": true,
+        "details": "BRANCH_TEST_MAIN"
+      },
+      {
+        "step": "Identity Scope",
+        "passed": true,
+        "details": "usr_security_auditor"
+      }
+    ]
+  },
+  "securityTests": {
+    "total": 7,
+    "passed": 7,
+    "score": "100.00%",
+    "results": [
+      {
+        "name": "Authenticated Handshake & Token Context Validation",
+        "category": "AUTH",
+        "passed": true,
+        "timestamp": "2026-09-07T19:56:18.222Z"
+      },
+      {
+        "name": "Tenant Boundary Enforcement: Attempting Cross-Tenant Mutate with Test Key",
+        "category": "TENANT_ISOLATION",
+        "passed": true,
+        "timestamp": "2026-09-07T19:56:18.223Z"
+      },
+      {
+        "name": "Branch Boundary Enforcement: Showroom Test Identity Accessing Melting Lot",
+        "category": "BRANCH_ISOLATION",
+        "passed": true,
+        "timestamp": "2026-09-07T19:56:18.223Z"
+      },
+      {
+        "name": "Privilege Boundary: Non-Owner Identity Attempting Rate Card Mutation",
+        "category": "RBAC",
+        "passed": true,
+        "timestamp": "2026-09-07T19:56:18.223Z"
+      },
+      {
+        "name": "MCP Tool Gate: High-Risk Settlement Calling Requires Supervisor SMS OTP",
+        "category": "MCP_SECURITY",
+        "passed": true,
+        "timestamp": "2026-09-07T19:56:18.223Z"
+      },
+      {
+        "name": "Gold Accounting Invariant: 995 Fineness Standard Mathematical Defense",
+        "category": "GOLD_INTEGRITY",
+        "passed": true,
+        "timestamp": "2026-09-07T19:56:18.223Z"
+      },
+      {
+        "name": "Secret Non-Leakage: Zero Key Residue in Execution Memory / Headers",
+        "category": "SECRET_HYGIENE",
+        "passed": true,
+        "timestamp": "2026-09-07T19:56:18.223Z"
+      }
+    ]
+  },
+  "leakAudit": {
+    "filesAudited": 9,
+    "leaksCleaned": 0,
+    "clean": true
+  }
+}
