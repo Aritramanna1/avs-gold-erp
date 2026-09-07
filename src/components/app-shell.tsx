@@ -20,7 +20,8 @@ import { useBusinessRules } from "@/lib/business-rules-store";
 import { GoldRateEditor } from "@/components/GoldRateEditor";
 import { QuickCommandPalette } from "@/components/layout/QuickCommandPalette";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { ConsumerNavRail } from "@/components/layout/ConsumerNavRail";
+import { WorkspaceNavRail } from "@/components/layout/WorkspaceNavRail";
+import { UniversalActionMenu } from "@/components/layout/UniversalActionMenu";
 import { ErpStatusBar } from "@/components/desktop/ErpStatusBar";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/button";
@@ -317,14 +318,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </kbd>
           </button>
 
-          <Link
-            to="/billing/new"
-            className="hidden lg:flex items-center gap-1.5 rounded-full bg-gold/15 text-gold hover:bg-gold hover:text-black border border-gold/40 px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer shadow-xs"
-            title="Create New Bill"
-          >
-            <span className="text-sm leading-none font-bold">+</span>
-            <span>New Sale</span>
-          </Link>
+          <UniversalActionMenu />
 
           <div className="ml-auto flex items-center gap-3 shrink-0">
             <div className="hidden md:flex items-center gap-2" data-desktop-chrome>
@@ -466,77 +460,83 @@ export function AppShell({ children }: { children: ReactNode }) {
             </DropdownMenu>
           </div>
         </header>
-        {/* Modern Consumer Navigation Rail (YouTube / Spotify Style) */}
-        <ConsumerNavRail className="hidden md:flex" />
-        <ConnectivityStrip />
-        <main
-          className={
-            isPhoneChrome
-              ? "flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y relative page-enter pb-[calc(var(--mobile-nav-height,4.25rem)+var(--ornexa-inset-bottom))]"
-              : "flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y relative page-enter pb-[max(0.5rem,var(--ornexa-inset-bottom))]"
-          }
-          id="main-view-scroll-container"
-        >
-          <MaintenanceNotice />
-          {criticalLoadFailed && criticalLoadDone && criticalLoadError ? (
-            <div
-              className="mx-3 mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2"
-              role="status"
+
+        {/* Unified Application Workspace: Persistent Left Rail + Dynamic Viewport */}
+        <div className="flex-1 flex min-w-0 min-h-0 relative" id="workspace-layout-container">
+          <WorkspaceNavRail className="hidden md:flex" />
+
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
+            <ConnectivityStrip />
+            <main
+              className={
+                isPhoneChrome
+                  ? "flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y relative page-enter pb-[calc(var(--mobile-nav-height,4.25rem)+var(--ornexa-inset-bottom))]"
+                  : "flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y relative page-enter pb-[max(0.5rem,var(--ornexa-inset-bottom))]"
+              }
+              id="main-view-scroll-container"
             >
-              <span>
-                {criticalLoadError ??
-                  "Workspace settings incomplete — some rates or modules may be limited."}
-              </span>
-              <button
-                type="button"
-                className="font-semibold underline underline-offset-2"
-                onClick={retryWorkspaceLoad}
-              >
-                Retry
-              </button>
-            </div>
-          ) : null}
-          <div className="min-h-full relative">
-            {criticalLoadFailed && !criticalLoadDone ? (
-              <div className="p-4 md:p-8 max-w-xl">
-                <StagedLoadPanel
-                  phase="failed"
-                  title="We couldn’t load the workspace"
-                  onRetry={retryWorkspaceLoad}
-                  onGoHome={() => {
-                    window.location.href = "/app";
-                  }}
-                  onReportIssue={() => {
-                    window.location.href = `/settings/support?subject=${encodeURIComponent("Boot failure")}`;
-                  }}
-                />
-              </div>
-            ) : (
-              children
-            )}
-            {!criticalLoadDone && !criticalLoadFailed && (
-              <div
-                className="absolute inset-0 z-10 bg-background/80 backdrop-blur-[1px] pointer-events-none"
-                aria-hidden="true"
-              >
-                <ModuleSkeleton />
-                {(stagedBoot.phase === "slow" || stagedBoot.phase === "retry") && (
-                  <div className="absolute inset-x-0 bottom-8 flex justify-center px-4 pointer-events-auto">
-                    <div className="w-full max-w-lg">
-                      <StagedLoadPanel
-                        phase={stagedBoot.phase}
-                        title="Loading workspace"
-                        onRetry={retryWorkspaceLoad}
-                      />
-                    </div>
+              <MaintenanceNotice />
+              {criticalLoadFailed && criticalLoadDone && criticalLoadError ? (
+                <div
+                  className="mx-3 mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2"
+                  role="status"
+                >
+                  <span>
+                    {criticalLoadError ??
+                      "Workspace settings incomplete — some rates or modules may be limited."}
+                  </span>
+                  <button
+                    type="button"
+                    className="font-semibold underline underline-offset-2"
+                    onClick={retryWorkspaceLoad}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : null}
+              <div className="min-h-full relative">
+                {criticalLoadFailed && !criticalLoadDone ? (
+                  <div className="p-4 md:p-8 max-w-xl">
+                    <StagedLoadPanel
+                      phase="failed"
+                      title="We couldn’t load the workspace"
+                      onRetry={retryWorkspaceLoad}
+                      onGoHome={() => {
+                        window.location.href = "/app";
+                      }}
+                      onReportIssue={() => {
+                        window.location.href = `/settings/support?subject=${encodeURIComponent("Boot failure")}`;
+                      }}
+                    />
+                  </div>
+                ) : (
+                  children
+                )}
+                {!criticalLoadDone && !criticalLoadFailed && (
+                  <div
+                    className="absolute inset-0 z-10 bg-background/80 backdrop-blur-[1px] pointer-events-none"
+                    aria-hidden="true"
+                  >
+                    <ModuleSkeleton />
+                    {(stagedBoot.phase === "slow" || stagedBoot.phase === "retry") && (
+                      <div className="absolute inset-x-0 bottom-8 flex justify-center px-4 pointer-events-auto">
+                        <div className="w-full max-w-lg">
+                          <StagedLoadPanel
+                            phase={stagedBoot.phase}
+                            title="Loading workspace"
+                            onRetry={retryWorkspaceLoad}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
+              <GuidedTourOffer />
+              <MobileGuidedTour />
+            </main>
           </div>
-          <GuidedTourOffer />
-          <MobileGuidedTour />
-        </main>
+        </div>
         <ErpStatusBar />
         {isPhoneChrome ? <MobileBottomNav /> : null}
         <GoldRateEditor open={goldRateOpen} onOpenChange={setGoldRateOpen} />
