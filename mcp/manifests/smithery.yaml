@@ -1,0 +1,20 @@
+name: avs-jewellery-erp
+version: 1.1.2
+description: Model Context Protocol (MCP) server for AVS Jewellery ERP — 995 bullion standard, discrete cash & gold dual-dimension accounting, inventory stock search, and Karigar preparation.
+author: AVS ERP Engineering
+homepage: https://erp.arivahly.in
+repository: https://github.com/Aritramanna1/avs-gold-erp
+
+transport:
+  type: http
+  url: https://erp.arivahly.in/api/mcp
+
+authentication:
+  type: bearer
+  env: AVS_BEARER_TOKEN
+
+capabilities:
+  tools: true
+  resources: true
+  prompts: false
+  logging: true

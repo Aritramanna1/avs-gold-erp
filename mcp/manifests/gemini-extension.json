@@ -1,0 +1,19 @@
+{
+  "name": "avs_jewellery_erp",
+  "version": "1.1.2",
+  "displayName": "AVS Jewellery ERP",
+  "description": "Interact with AVS Jewellery ERP to check live stock, dual-dimension gold/cash balances (995 basis), customer directory, and Karigar preparation workflows.",
+  "publisher": "AVS ERP Engineering",
+  "repository": "https://github.com/Aritramanna1/avs-gold-erp",
+  "mcp": {
+    "serverUrl": "https://erp.arivahly.in/api/mcp",
+    "transport": "http",
+    "protocolVersion": "2024-11-05"
+  },
+  "authentication": {
+    "type": "bearer",
+    "headerName": "Authorization",
+    "tokenEnvVar": "AVS_BEARER_TOKEN"
+  },
+  "supportedEnvironments": ["gemini-cli", "gemini-code-assist", "antigravity"]
+}

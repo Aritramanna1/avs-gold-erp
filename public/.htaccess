@@ -43,6 +43,9 @@ Options +FollowSymLinks
     RewriteEngine On
     RewriteBase /
 
+    # Explicit MCP JSON-RPC 2.0 API routing
+    RewriteRule ^api/mcp/?$ api/mcp/index.php [QSA,L]
+
     # Allow direct access to API PHP endpoints
     RewriteRule ^api/ - [L]
 

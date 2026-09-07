@@ -1,0 +1,34 @@
+{
+  "name": "AVS Jewellery ERP",
+  "app_id": "app_avs_jewellery_erp_mcp",
+  "description": "Natural language ERP operations for retail and manufacturing jewellery enterprises. Check stock, balance cash and fine gold ledgers, review Karigar settlements, and inspect customer profiles.",
+  "developer_name": "AVS ERP Engineering",
+  "privacy_policy_url": "https://erp.arivahly.in/privacy",
+  "terms_of_service_url": "https://erp.arivahly.in/terms",
+  "support_url": "https://erp.arivahly.in/help",
+  "icon_url": "https://erp.arivahly.in/apple-touch-icon.png",
+  "mcp_server": {
+    "url": "https://erp.arivahly.in/api/mcp",
+    "transport": "http",
+    "protocol_version": "2024-11-05"
+  },
+  "authentication": {
+    "type": "oauth2",
+    "client_id": "avs-erp-chatgpt-client",
+    "authorization_endpoint": "https://erp.arivahly.in/login",
+    "token_endpoint": "https://erp.arivahly.in/api/oauth/token",
+    "scopes": ["erp:read", "erp:prepare"]
+  },
+  "tools": [
+    "server/health",
+    "core.get_system_status",
+    "core.get_current_user",
+    "core.get_current_tenant",
+    "finance.get_account_balance",
+    "stock.search_stock",
+    "karigar.prepare_karigar_settlement",
+    "customers.search_customers"
+  ],
+  "categories": ["Productivity", "Finance", "Business"],
+  "regions": ["IN", "AE", "US", "GB", "SG"]
+}

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "avs-erp-remote": {
+      "url": "https://erp.arivahly.in/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${AVS_BEARER_TOKEN}",
+        "X-Tenant-Id": "${AVS_TENANT_ID:-MTJ_FIRM}",
+        "X-Branch-Id": "${AVS_BRANCH_ID:-MAIN}"
+      }
+    }
+  }
+}

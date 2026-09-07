@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AVS ERP MCP Tool Registry Schemas",
+  "type": "object",
+  "properties": {
+    "finance.get_account_balance": {
+      "type": "object",
+      "properties": {
+        "partyId": { "type": "string", "description": "Customer, Karigar, or Supplier ID" },
+        "asOfDate": { "type": "string", "description": "Optional ISO date filter" }
+      },
+      "required": ["partyId"]
+    },
+    "stock.search_stock": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "description": "Search query or SKU/tag barcode" },
+        "category": { "type": "string", "description": "Jewellery category filter" },
+        "purity": { "type": "string", "description": "Metal purity filter (e.g. 22K, 18K)" }
+      }
+    },
+    "karigar.prepare_karigar_settlement": {
+      "type": "object",
+      "properties": {
+        "karigarId": { "type": "string", "description": "Karigar identifier" },
+        "jobCardIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Completed job card IDs"
+        }
+      },
+      "required": ["karigarId"]
+    }
+  }
+}

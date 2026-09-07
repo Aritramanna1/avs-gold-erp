@@ -1,0 +1,15 @@
+{
+  "name": "avs-erp",
+  "version": "1.1.2",
+  "description": "AVS Jewellery ERP remote Model Context Protocol plugin for Claude and Claude Code.",
+  "mcpServer": {
+    "url": "https://erp.arivahly.in/api/mcp",
+    "transport": "http",
+    "headers": {
+      "Authorization": "Bearer ${AVS_BEARER_TOKEN}",
+      "X-Tenant-Id": "${AVS_TENANT_ID:-MTJ_FIRM}",
+      "X-Branch-Id": "${AVS_BRANCH_ID:-MAIN}"
+    }
+  },
+  "capabilities": ["tools", "resources"]
+}

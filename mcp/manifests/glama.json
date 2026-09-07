@@ -1,0 +1,14 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "name": "avs-jewellery-erp",
+  "displayName": "AVS Jewellery ERP",
+  "description": "Enterprise Jewellery ERP server providing real-time 995 Fine Gold & Cash dual-dimension ledger queries, inventory search, and Karigar preparation.",
+  "url": "https://erp.arivahly.in/api/mcp",
+  "transport": "http",
+  "protocol": "2024-11-05",
+  "authentication": {
+    "type": "bearer",
+    "description": "User session token or API key obtained from ERP Settings > Developer"
+  },
+  "tags": ["erp", "jewellery", "accounting", "bullion", "gold-995", "finance", "inventory"]
+}

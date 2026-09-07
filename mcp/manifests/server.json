@@ -1,0 +1,72 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/registry/main/schema/server.json",
+  "name": "io.arivahly.erp.mcp",
+  "title": "AVS Jewellery ERP Model Context Protocol Server",
+  "description": "Enterprise Jewellery Ecosystem ERP Model Context Protocol (MCP) server. Provides tools for 995 Fine Gold vs Cash dual-dimension accounting, inventory stock scanning, Karigar job card settlement preparation, customer profiles, and multi-tenant ledger verification.",
+  "version": "1.1.2",
+  "protocolVersion": "2024-11-05",
+  "homepage": "https://erp.arivahly.in",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Aritramanna1/avs-gold-erp"
+  },
+  "license": "Proprietary",
+  "author": {
+    "name": "AVS ERP Engineering",
+    "url": "https://erp.arivahly.in"
+  },
+  "transport": {
+    "type": "http",
+    "url": "https://erp.arivahly.in/api/mcp",
+    "streaming": true
+  },
+  "authentication": {
+    "type": "oauth2",
+    "authorizationUrl": "https://erp.arivahly.in/login",
+    "tokenUrl": "https://erp.arivahly.in/api/oauth/token",
+    "scopes": {
+      "erp:read": "Read inventory, balances, and customer profiles",
+      "erp:prepare": "Prepare settlements, draft orders, and estimates"
+    }
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": false,
+    "logging": true
+  },
+  "tools": [
+    {
+      "name": "server/health",
+      "description": "Returns live ERP diagnostics, database latency, and 995 fineness standard."
+    },
+    {
+      "name": "core.get_system_status",
+      "description": "Returns overall ERP health, active tenant context, and current shop fineness standard (995)."
+    },
+    {
+      "name": "core.get_current_user",
+      "description": "Returns authenticated user details, assigned role, and permitted branch scopes."
+    },
+    {
+      "name": "core.get_current_tenant",
+      "description": "Returns active tenant configuration, firm identity, branch list, and rate card rules."
+    },
+    {
+      "name": "finance.get_account_balance",
+      "description": "Returns party ledger balance preserving separate discrete dimensions for Cash (₹) and Fine Gold (grams @ 995 basis)."
+    },
+    {
+      "name": "stock.search_stock",
+      "description": "Searches inventory items and barcode tags scoped strictly to caller tenant and branch."
+    },
+    {
+      "name": "karigar.prepare_karigar_settlement",
+      "description": "Calculates labour, wastage, and allowed loss for Karigar job card settlement in PREPARE-only mode."
+    },
+    {
+      "name": "customers.search_customers",
+      "description": "Finds customer profiles with KYC status, outstanding credit, and fine gold balances."
+    }
+  ]
+}
