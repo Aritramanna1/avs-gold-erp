@@ -11,7 +11,7 @@ const CF_CONFIG_FILE = path.join(app.getPath("userData"), "cloudflare-tunnel.jso
 const INSTALLATION_LOCK_FILE = path.join(app.getPath("userData"), "installation-lock.json");
 const SUPABASE_DIR = path.resolve(__dirname, "../../supabase-self-hosted");
 
-const SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3ODg1MjMxMTMsImV4cCI6MTk0NjIwMzExM30.Q5HWSD5Oc6MMxvStgG7-Z0rIob9La1bsKsBw0r8GtuQ";
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 let mainWindow = null;
 let tunnelProcess = null;
@@ -61,10 +61,10 @@ function loadCloudflareConfig() {
   return {
     enabled: true,
     tunnelName: "mtj-erp-host",
-    tunnelId: "ed3a82d1-3298-48c6-b0cd-a1fa0dd46e65",
-    hostname: "mtj-erp.aritramanna222.workers.dev",
+    tunnelId: "mtj-erp-tunnel-id",
+    hostname: "mtj-erp.local",
     localService: "http://localhost:3000",
-    token: "eyJhIjoiMzllZmRjYzBlMmNlYWE4NDZjNzMxOTgwMzA2MzliZjYiLCJ0IjoiZWQzYTgyZDEtMzI5OC00OGM2LWIwY2QtYTFmYTBkZDQ2ZTY1IiwicyI6Ik1UVmpZVEJtTmpZdFltWTJZUzAwTURRM0xUaGpNREV0TTJKaU9UaGxaRFV5TnpBNSJ9",
+    token: process.env.CLOUDFLARE_TUNNEL_TOKEN || "",
     status: "active",
     lastTested: null,
   };
