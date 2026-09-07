@@ -301,18 +301,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="hidden sm:inline text-[10px] text-muted-foreground">{goldRateStatus}</span>
           </button>
 
-          {/* Quick Task Command Palette Button (Ctrl+K) */}
+          {/* Global Omnisearch Bar (YouTube / Gmail / WhatsApp Search Pattern) */}
           <button
             type="button"
             onClick={() => {
               window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
             }}
-            className="hidden lg:flex items-center gap-2 rounded-md border border-border/80 bg-background/60 px-2.5 py-1 text-xs text-muted-foreground hover:border-gold/50 hover:bg-gold/5 hover:text-foreground transition-colors cursor-pointer"
-            title="Quick Action Finder (Ctrl+K)"
+            className="hidden md:flex items-center gap-3 rounded-full border border-border/80 bg-background/70 px-4 py-1.5 text-xs text-muted-foreground hover:border-gold/50 hover:bg-gold/5 hover:text-foreground transition-all cursor-pointer w-64 lg:w-80 shadow-sm"
+            title="Global Search & Quick Actions (Ctrl+K)"
+            aria-label="Global Search & Quick Actions"
           >
-            <Search className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs">Quick Tasks</span>
-            <kbd className="rounded border bg-muted px-1 py-0.2 text-[9px] font-mono text-muted-foreground">
+            <Search className="h-3.5 w-3.5 text-gold shrink-0" />
+            <span className="text-xs truncate flex-1 text-left">Search customer, invoice, barcode, tasks...</span>
+            <kbd className="rounded border bg-muted/80 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground shrink-0">
               Ctrl K
             </kbd>
           </button>
@@ -328,19 +329,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="hidden sm:block" data-desktop-chrome>
               <BranchSelector />
             </div>
-
-            {/* Quick Actions Search / Palette Trigger (Desktop / Laptop / Tablet) */}
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
-              className="hidden lg:flex items-center gap-2 px-2.5 py-1 text-xs font-medium rounded-md border border-border bg-background/60 hover:border-gold/50 hover:bg-gold/5 text-muted-foreground hover:text-foreground transition-all no-print cursor-pointer"
-              title="Quick Search & Tasks (Ctrl+K)"
-              aria-label="Quick Search and Tasks"
-            >
-              <Search className="h-3.5 w-3.5 text-gold" />
-              <span>Quick Tasks</span>
-              <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/60 border border-border/80 text-muted-foreground">Ctrl+K</kbd>
-            </button>
 
             {/* Language — visible from tablet (md) up; was lg-only and missing on iPad */}
             <div
