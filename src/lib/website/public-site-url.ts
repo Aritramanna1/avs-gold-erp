@@ -4,7 +4,7 @@
  */
 export function getPublicSiteOrigin(): string {
   const configured = import.meta.env.VITE_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
   if (origin && !/localhost|127\.0\.0\.1/i.test(origin)) return origin;
   if (configured && !/localhost|127\.0\.0\.1/i.test(configured)) return configured;
   if (origin) return origin;

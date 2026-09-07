@@ -132,9 +132,10 @@ export function startRealtimeSync() {
       } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
         state.setStatus("reconnecting");
         if (channel) {
-          recordRealtimeConnection("disconnect");
-          void supabase.removeChannel(channel);
+          const ch = channel;
           channel = null;
+          recordRealtimeConnection("disconnect");
+          void supabase.removeChannel(ch);
         }
         clearTimeout(reconnectTimer);
         if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
@@ -156,8 +157,9 @@ export function stopRealtimeSync() {
   clearTimeout(reconnectTimer);
   reconnectAttempts = 0;
   if (channel) {
-    void supabase.removeChannel(channel);
+    const ch = channel;
     channel = null;
+    void supabase.removeChannel(ch);
   }
   for (const timer of pullTimers.values()) clearTimeout(timer);
   pullTimers.clear();

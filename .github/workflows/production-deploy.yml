@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://dqgrrafuoxaorvyrcuuh.supabase.co' }}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_test_key' }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_test_key' }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN' }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN' }}
       VITE_APP_URL: 'https://erp.arivahly.in'
       CI: 'true'
       HOSTINGER_DEPLOY_WEBHOOK_URL: ${{ secrets.HOSTINGER_DEPLOY_WEBHOOK_URL }}

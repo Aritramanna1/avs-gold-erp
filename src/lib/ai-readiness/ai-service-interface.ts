@@ -51,14 +51,65 @@ export interface AIGenerationResponse {
 
 const STORAGE_KEY = 'avs_ai_config_v1';
 
+function safeBtoa(str: string): string {
+  try {
+    if (typeof btoa === 'function') {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(str, 'utf-8').toString('base64');
+    }
+  } catch {
+    /* fallback */
+  }
+  return str;
+}
+
+function safeAtob(b64: string): string {
+  try {
+    if (typeof atob === 'function') {
+      return decodeURIComponent(escape(atob(b64)));
+    }
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(b64, 'base64').toString('utf-8');
+    }
+  } catch {
+    /* fallback */
+  }
+  return b64;
+}
+
+function encodeAIStorage(config: AIConfiguration): string {
+  try {
+    const serialized = JSON.stringify(config);
+    return safeBtoa(serialized);
+  } catch {
+    return '';
+  }
+}
+
+function decodeAIStorage(raw: string): Partial<AIConfiguration> | null {
+  try {
+    const decoded = safeAtob(raw);
+    return JSON.parse(decoded);
+  } catch {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+}
+
 export function resolveConfiguredApiKey(): string | null {
   // 1. Stored configuration in app
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' || typeof localStorage !== 'undefined') {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const storage = typeof localStorage !== 'undefined' ? localStorage : (typeof window !== 'undefined' ? window.localStorage : null);
+      const raw = storage?.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.apiKey && String(parsed.apiKey).trim().length > 5) {
+        const parsed = decodeAIStorage(raw);
+        if (parsed?.apiKey && String(parsed.apiKey).trim().length > 5) {
           return String(parsed.apiKey).trim();
         }
       }
@@ -84,28 +135,6 @@ export function resolveConfiguredApiKey(): string | null {
   }
 
   return null;
-}
-
-function encodeAIStorage(config: AIConfiguration): string {
-  try {
-    const serialized = JSON.stringify(config);
-    return typeof btoa === 'function' ? btoa(unescape(encodeURIComponent(serialized))) : serialized;
-  } catch {
-    return '';
-  }
-}
-
-function decodeAIStorage(raw: string): Partial<AIConfiguration> | null {
-  try {
-    const decoded = typeof atob === 'function' ? decodeURIComponent(escape(atob(raw))) : raw;
-    return JSON.parse(decoded);
-  } catch {
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  }
 }
 
 export function getAIConfig(): AIConfiguration {

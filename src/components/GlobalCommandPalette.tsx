@@ -62,9 +62,9 @@ export function GlobalCommandPalette() {
     const key = `${result.type}:${result.id}:${result.route}`;
     return all.findIndex((item) => `${item.type}:${item.id}:${item.route}` === key) === index;
   });
-  const moduleResults = navigationItems.filter(
-    (item) => typeof item.to === "string" && hasRoutePermission(role, item.to),
-  );
+  const moduleResults = navigationItems
+    .filter((item) => typeof item.to === "string" && hasRoutePermission(role, item.to))
+    .filter((item, index, self) => self.findIndex((i) => i.to === item.to && i.label === item.label) === index);
 
   useEffect(() => {
     function onOpen() {
@@ -143,9 +143,9 @@ export function GlobalCommandPalette() {
           </CommandGroup>
         )}
         <CommandGroup heading="Modules">
-          {moduleResults.map((item) => (
+          {moduleResults.map((item, idx) => (
             <CommandItem
-              key={item.to}
+              key={`${item.to}-${item.label}-${idx}`}
               value={item.label}
               onSelect={() => {
                 setOpen(false);

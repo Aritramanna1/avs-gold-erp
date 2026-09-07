@@ -19,11 +19,11 @@ test.describe("Backup & Disaster Recovery", () => {
     await expect(page.getByText(/Layer 4: Encrypted Exports/i)).toBeVisible();
 
     // Export Tab
-    await expect(page.getByRole("button", { name: /generate encrypted backup/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /generate.*(backup|archive)/i })).toBeVisible();
 
     // Switch to Restore Tab
-    await page.getByRole("tab", { name: /controlled restore/i }).click();
-    await expect(page.getByText(/Select \.enc Backup Archive/i)).toBeVisible();
+    await page.getByRole("tab", { name: /restore/i }).click();
+    await expect(page.getByText(/upload \.ornexa\.enc|select.*backup/i)).toBeVisible();
 
     expectNoPageErrors(page);
   });

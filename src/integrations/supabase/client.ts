@@ -67,8 +67,8 @@ export function isSupabaseConfigured(): boolean {
 function createSupabaseClient() {
   const { url: configUrl, key: configKey } = getResolvedConfig();
 
-  const supabaseUrl = configUrl || "https://placeholder.supabase.co";
-  const supabasePublishableKey = configKey || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder_anon_key";
+  const supabaseUrl = configUrl || "https://dqgrrafuoxaorvyrcuuh.supabase.co";
+  const supabasePublishableKey = configKey || "sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN";
 
   return createClient<Database>(supabaseUrl, supabasePublishableKey, {
     auth: {

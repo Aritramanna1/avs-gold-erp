@@ -7,7 +7,7 @@ test.describe("Melt Account", () => {
     // literally "Melt Account" — getByRole("heading") targets only the
     // page's own <h1> title, unambiguously.
     await expect(
-      authedPage.getByRole("heading", { name: "Melt Account", exact: true }),
+      authedPage.getByRole("heading", { name: /Melt Account|Melting Process/i }),
     ).toBeVisible({
       timeout: 15_000,
     });

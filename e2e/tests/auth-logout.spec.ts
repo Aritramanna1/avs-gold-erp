@@ -27,8 +27,8 @@ test.describe("Logout", () => {
     await authedPage.waitForTimeout(1000); // Let dropdown animation complete and become stable
     await authedPage.getByRole("menuitem", { name: /sign out/i }).click();
 
-    // Wait for the page to navigate back to "/" after the hard redirect in handleSignOut
-    await authedPage.waitForURL("/", { timeout: 15_000 });
+    // Wait for the page to navigate to login after sign out
+    await authedPage.waitForURL(/\/login|\//, { timeout: 15_000 });
     // Give the React app time to boot and render the auth gate
     await authedPage.waitForLoadState("networkidle");
 

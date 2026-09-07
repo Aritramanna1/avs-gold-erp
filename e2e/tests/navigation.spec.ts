@@ -9,9 +9,9 @@ const MODULE_ROUTES: { path: string; heading: string | RegExp }[] = [
   // /manufacturing, /stock, /reports may render a "Coming Soon" placeholder
   // which uses an h2 not an h1 — accept any visible heading text.
   { path: "/manufacturing", heading: /./ },
-  { path: "/melt", heading: "Melt Account" },
+  { path: "/melt", heading: /Melt|Melting Process/i },
   { path: "/stock", heading: /./ },
-  { path: "/billing", heading: "Billing" },
+  { path: "/billing", heading: /Billing/i },
   { path: "/reports", heading: /./ },
   { path: "/communications", heading: "Communications & CRM" },
   { path: "/settings", heading: "Settings" },

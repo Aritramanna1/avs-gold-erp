@@ -118,8 +118,39 @@ export async function seedPilotDataset(): Promise<SeedResult> {
   useWorkers.getState().reset();
   useCommLog.getState().reset?.();
   useWorkerGoldBook.getState().reset();
+  useMaterialVault.getState().reset();
   useAttachments.setState({ items: {} });
   useCatalog.setState({ designs: [] });
+
+  // 1a. Opening Vault Stock for test seed operations
+  await useLedger.getState().append({
+    type: "purchase",
+    netFineMg: 5000000,
+    deltas: { vault: 5000000, karigar: 0 },
+    grossMg: 5000000,
+    purity: 999,
+    fineMg: 5000000,
+    notes: "Opening Vault Fine Gold Stock",
+    reference: "VAULT-OPENING-01",
+  });
+  await useMaterialVault.getState().append({
+    category: "raw_gold",
+    purity: 916,
+    metal: "Gold",
+    deltaMg: 2000000,
+    source: "purchase",
+    remarks: "Opening Material Vault 916 Stock",
+    actor: { id: "seed", email: "admin@avs.in" },
+  });
+  await useMaterialVault.getState().append({
+    category: "fine_gold",
+    purity: 999,
+    metal: "Gold",
+    deltaMg: 5000000,
+    source: "purchase",
+    remarks: "Opening Material Vault 999 Stock",
+    actor: { id: "seed", email: "admin@avs.in" },
+  });
 
   // 1b. Seed Catalog Designs
   useCatalog.getState().add({
