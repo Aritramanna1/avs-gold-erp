@@ -21,6 +21,7 @@ import { GoldRateEditor } from "@/components/GoldRateEditor";
 import { QuickCommandPalette } from "@/components/layout/QuickCommandPalette";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { OfflineMenuBar } from "@/components/layout/OfflineMenuBar";
+import { GlobalBreadcrumbs } from "@/components/layout/GlobalBreadcrumbs";
 import { ErpStatusBar } from "@/components/desktop/ErpStatusBar";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/button";
@@ -466,6 +467,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         {/* Primary nav: Offline ERP menu + form strip (desktop, laptop, iPad) */}
         <OfflineMenuBar className="hidden md:block" />
+        <GlobalBreadcrumbs />
         <ConnectivityStrip />
         <main
           className={
