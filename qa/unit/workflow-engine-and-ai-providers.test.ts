@@ -197,6 +197,89 @@ describe("Authoritative Workflow Engine", () => {
     expect(useWorkflowEngine.getState().config.activeVersion).toBe(publishResult.version);
     expect(useWorkflowEngine.getState().config.versions.length).toBeGreaterThanOrEqual(2);
   });
+
+  it("8. AVS_OFFICIAL_DEFAULT_WORKFLOW is the immutable shop baseline", async () => {
+    const { AVS_OFFICIAL_DEFAULT_WORKFLOW } = await import("../../src/lib/workflow-engine");
+    expect(AVS_OFFICIAL_DEFAULT_WORKFLOW).toBeDefined();
+    expect(AVS_OFFICIAL_DEFAULT_WORKFLOW.mode).toBe("manufacturing_only");
+    expect(AVS_OFFICIAL_DEFAULT_WORKFLOW.mfgBillEnabled).toBe(true);
+    expect(AVS_OFFICIAL_DEFAULT_WORKFLOW.mfgBillMandatoryBeforeDelivery).toBe(true);
+    expect(AVS_OFFICIAL_DEFAULT_WORKFLOW.processes.length).toBeGreaterThanOrEqual(8);
+    expect(AVS_OFFICIAL_DEFAULT_WORKFLOW.books.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("9. Multi-tenant inheritance & isolation: custom overrides on Tenant A do not mutate Tenant B or AVS Default", async () => {
+    const {
+      computeEffectiveWorkflow,
+      AVS_OFFICIAL_DEFAULT_WORKFLOW,
+      getTenantWorkflowConfig,
+      saveTenantWorkflowConfig,
+    } = await import("../../src/lib/workflow-engine");
+
+    // Tenant A customizes: changes mode to retail_only and adds a custom process
+    const tenantACfg = {
+      tenantId: "tenant_jeweller_a",
+      useOfficialDefault: false,
+      activeVersion: "1.1.0",
+      customOverrides: {
+        mode: "retail_only" as BusinessMode,
+        outsideWorkDefaultLabourMethod: "per_piece",
+      },
+    };
+    saveTenantWorkflowConfig(tenantACfg);
+
+    // Tenant B uses official default
+    const tenantBCfg = getTenantWorkflowConfig("tenant_jeweller_b");
+    expect(tenantBCfg.useOfficialDefault).toBe(true);
+
+    const effectiveA = computeEffectiveWorkflow(tenantACfg);
+    const effectiveB = computeEffectiveWorkflow(tenantBCfg);
+
+    // Tenant A reflects overrides
+    expect(effectiveA.mode).toBe("retail_only");
+    expect(effectiveA.workflowScope).toBe("retail");
+    expect(effectiveA.outsideWorkDefaultLabourMethod).toBe("per_piece");
+    // Inherits base processes from AVS Default
+    expect(effectiveA.processes.length).toBeGreaterThanOrEqual(8);
+
+    // Tenant B remains on AVS Default
+    expect(effectiveB.mode).toBe("manufacturing_only");
+    expect(effectiveB.workflowScope).toBe("manufacturing");
+    expect(effectiveB.outsideWorkDefaultLabourMethod).toBe("per_gram");
+
+    // Master Default remains untouched
+    expect(AVS_OFFICIAL_DEFAULT_WORKFLOW.mode).toBe("manufacturing_only");
+    expect(AVS_OFFICIAL_DEFAULT_WORKFLOW.outsideWorkDefaultLabourMethod).toBe("per_gram");
+  });
+
+  it("10. Reset to AVS Default restores baseline while preserving historical audit versions", () => {
+    const engine = useWorkflowEngine.getState();
+
+    // Make custom changes
+    engine.patch({ mode: "retail_only", outsideWorkDefaultLabourMethod: "fixed" });
+    expect(useWorkflowEngine.getState().config.mode).toBe("retail_only");
+    expect(useWorkflowEngine.getState().useOfficialDefault).toBe(false);
+
+    // Reset to AVS default
+    engine.resetToOfficialDefault();
+    const restored = useWorkflowEngine.getState().config;
+    expect(restored.mode).toBe("manufacturing_only");
+    expect(restored.workflowScope).toBe("manufacturing");
+    expect(restored.outsideWorkDefaultLabourMethod).toBe("per_gram");
+    expect(useWorkflowEngine.getState().useOfficialDefault).toBe(true);
+    expect(restored.versions.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("11. Historical transaction workflow version snapshot is recoverable", async () => {
+    const engine = useWorkflowEngine.getState();
+
+    await engine.publishWorkflow("Version 1.2.0 with custom hallmark policies");
+    const snapshot = engine.getWorkflowVersionSnapshot("1.2.0");
+
+    expect(snapshot).toBeDefined();
+    expect(snapshot?.activeVersion).toBe("1.2.0");
+    expect(snapshot?.processes.length).toBeGreaterThanOrEqual(8);
+  });
 });
 
 describe("Universal AI Provider Abstraction", () => {

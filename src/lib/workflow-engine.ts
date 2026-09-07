@@ -460,7 +460,7 @@ export const DEFAULT_WORKFLOW_MTJ: WorkflowConfig = {
       status: "active",
       publishedAt: new Date().toISOString(),
       publishedBy: "system_admin",
-      changeNotes: "Authoritative AVS Manufacturing Workflow Core",
+      changeNotes: "Authoritative AVS Manufacturing Workflow Core (Shop Baseline)",
     },
   ],
   mfgBillEnabled: true,
@@ -496,6 +496,28 @@ export const DEFAULT_WORKFLOW_MTJ: WorkflowConfig = {
   makingProcessType: "in_house",
 };
 
+/**
+ * Authoritative, immutable AVS Default Workflow Baseline designed for the jeweller's shop operations.
+ * Out of the box, every new tenant inherits this complete configuration.
+ */
+export const AVS_OFFICIAL_DEFAULT_WORKFLOW: WorkflowConfig = Object.freeze({
+  ...DEFAULT_WORKFLOW_MTJ,
+});
+
+export interface TenantWorkflowConfig {
+  tenantId: string;
+  useOfficialDefault: boolean;
+  activeVersion: string;
+  customOverrides?: Partial<WorkflowConfig>;
+  customProcesses?: WorkflowProcessConfig[];
+  customBooks?: WorkflowBookConfig[];
+  customSteps?: WorkflowStepConfig[];
+  customFields?: WorkflowFieldConfig[];
+  versionHistory?: WorkflowVersion[];
+  lastModifiedAt?: string;
+  lastModifiedBy?: string;
+}
+
 export const WORKFLOW_PRESETS: Record<string, WorkflowConfig> = {
   mtj_default: DEFAULT_WORKFLOW_MTJ,
   retail_only: {
@@ -530,12 +552,86 @@ export const WORKFLOW_PRESETS: Record<string, WorkflowConfig> = {
   },
 };
 
+/**
+ * Computes effective workflow configuration through deterministic inheritance.
+ * If tenant has not customized a field/process/book, it cleanly inherits from AVS_OFFICIAL_DEFAULT_WORKFLOW.
+ */
+export function computeEffectiveWorkflow(
+  tenantConfig?: Partial<TenantWorkflowConfig> | null,
+  baseDefault: WorkflowConfig = AVS_OFFICIAL_DEFAULT_WORKFLOW
+): WorkflowConfig {
+  if (!tenantConfig || tenantConfig.useOfficialDefault === true && !tenantConfig.customOverrides) {
+    return { ...baseDefault };
+  }
+
+  const overrides = tenantConfig.customOverrides || {};
+  const mode: BusinessMode = overrides.mode || baseDefault.mode;
+  const workflowScope: WorkflowScope =
+    mode === "retail_only" ? "retail" : mode === "manufacturing_only" ? "manufacturing" : "shared";
+
+  // Merge processes: base + custom
+  const overriddenProcessIds = new Set((overrides.processes || []).map((p) => p.id));
+  const mergedProcesses = [
+    ...baseDefault.processes.map((bp) => {
+      const foundOverride = (overrides.processes || []).find((p) => p.id === bp.id || p.processType === bp.processType);
+      return foundOverride ? { ...bp, ...foundOverride } : bp;
+    }),
+    ...(overrides.processes || []).filter((p) => !baseDefault.processes.some((bp) => bp.id === p.id || bp.processType === p.processType)),
+  ];
+
+  // Merge books: base + custom
+  const mergedBooks = [
+    ...baseDefault.books.map((bb) => {
+      const foundOverride = (overrides.books || []).find((b) => b.id === bb.id);
+      return foundOverride ? { ...bb, ...foundOverride } : bb;
+    }),
+    ...(overrides.books || []).filter((b) => !baseDefault.books.some((bb) => bb.id === b.id)),
+  ];
+
+  // Merge steps: base + custom
+  const mergedSteps = [
+    ...baseDefault.steps.map((bs) => {
+      const foundOverride = (overrides.steps || []).find((s) => s.id === bs.id);
+      return foundOverride ? { ...bs, ...foundOverride } : bs;
+    }),
+    ...(overrides.steps || []).filter((s) => !baseDefault.steps.some((bs) => bs.id === s.id)),
+  ].sort((a, b) => a.sequence - b.sequence);
+
+  // Merge fields
+  const mergedFields = [
+    ...baseDefault.fields.map((bf) => {
+      const foundOverride = (overrides.fields || []).find((f) => f.fieldKey === bf.fieldKey);
+      return foundOverride ? { ...bf, ...foundOverride } : bf;
+    }),
+    ...(overrides.fields || []).filter((f) => !baseDefault.fields.some((bf) => bf.fieldKey === f.fieldKey)),
+  ];
+
+  return {
+    ...baseDefault,
+    ...overrides,
+    mode,
+    workflowScope,
+    activeVersion: tenantConfig.activeVersion || overrides.activeVersion || baseDefault.activeVersion,
+    processes: mergedProcesses,
+    books: mergedBooks,
+    steps: mergedSteps,
+    fields: mergedFields,
+    versions: tenantConfig.versionHistory || overrides.versions || baseDefault.versions,
+  };
+}
+
 interface WorkflowEngineState {
   config: WorkflowConfig;
+  tenantId: string;
+  useOfficialDefault: boolean;
+  setTenantId: (tenantId: string) => void;
   refresh: () => Promise<void>;
   patch: (diff: Partial<WorkflowConfig>) => void;
   applyPreset: (presetKey: keyof typeof WORKFLOW_PRESETS) => void;
   reset: () => void;
+  resetToOfficialDefault: () => void;
+  getEffectiveConfig: (tenantId?: string) => WorkflowConfig;
+  getWorkflowVersionSnapshot: (versionNumber: string) => WorkflowConfig | undefined;
 
   // ── Process Operations ──────────────────────────────────────────────────
   addProcess: (proc: Omit<WorkflowProcessConfig, "id" | "orderIndex">) => WorkflowProcessConfig;
@@ -570,6 +666,45 @@ const workflowSettingsRepository = createRepository<{ id: string; config: Workfl
 
 const STORAGE_CONFIG_KEY = "avs_workflow_config_v2";
 const STORAGE_MODE_KEY = "avs_workflow_mode_v2";
+const STORAGE_TENANT_PREFIX = "avs_tenant_workflow_";
+
+function getTenantStorageKey(tenantId: string = "default"): string {
+  return `${STORAGE_TENANT_PREFIX}${tenantId}`;
+}
+
+export function getTenantWorkflowConfig(tenantId: string = "default"): TenantWorkflowConfig {
+  const defaultTenant: TenantWorkflowConfig = {
+    tenantId,
+    useOfficialDefault: true,
+    activeVersion: AVS_OFFICIAL_DEFAULT_WORKFLOW.activeVersion,
+    customOverrides: {},
+    versionHistory: [...AVS_OFFICIAL_DEFAULT_WORKFLOW.versions],
+  };
+
+  if (typeof window === "undefined" && typeof localStorage === "undefined") return defaultTenant;
+
+  try {
+    const storage = typeof localStorage !== "undefined" ? localStorage : window.localStorage;
+    const raw = storage.getItem(getTenantStorageKey(tenantId));
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch {
+    /* fallback */
+  }
+
+  return defaultTenant;
+}
+
+export function saveTenantWorkflowConfig(tenantConfig: TenantWorkflowConfig): void {
+  if (typeof window === "undefined" && typeof localStorage === "undefined") return;
+  try {
+    const storage = typeof localStorage !== "undefined" ? localStorage : window.localStorage;
+    storage.setItem(getTenantStorageKey(tenantConfig.tenantId), JSON.stringify(tenantConfig));
+  } catch {
+    /* ignore storage errors */
+  }
+}
 
 function normalizeWorkflowConfig(config: WorkflowConfig | (Omit<WorkflowConfig, "mode"> & { mode: PersistedBusinessMode })): WorkflowConfig {
   const mode: BusinessMode = config.mode === "hybrid" ? "combined_commerce_manufacturing" : (config.mode || "manufacturing_only");
@@ -591,14 +726,15 @@ function normalizeWorkflowConfig(config: WorkflowConfig | (Omit<WorkflowConfig, 
 }
 
 function getInitialWorkflowConfig(): WorkflowConfig {
-  if (typeof window === "undefined") return DEFAULT_WORKFLOW_MTJ;
+  if (typeof window === "undefined" && typeof localStorage === "undefined") return DEFAULT_WORKFLOW_MTJ;
   try {
-    const raw = localStorage.getItem(STORAGE_CONFIG_KEY);
+    const storage = typeof localStorage !== "undefined" ? localStorage : window.localStorage;
+    const raw = storage.getItem(STORAGE_CONFIG_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       return normalizeWorkflowConfig({ ...DEFAULT_WORKFLOW_MTJ, ...parsed });
     }
-    const savedMode = localStorage.getItem(STORAGE_MODE_KEY) as BusinessMode | null;
+    const savedMode = storage.getItem(STORAGE_MODE_KEY) as BusinessMode | null;
     if (savedMode) {
       return normalizeWorkflowConfig({ ...DEFAULT_WORKFLOW_MTJ, mode: savedMode });
     }
@@ -608,11 +744,24 @@ function getInitialWorkflowConfig(): WorkflowConfig {
   return DEFAULT_WORKFLOW_MTJ;
 }
 
-function persistWorkflow(config: WorkflowConfig): void {
+function persistWorkflow(config: WorkflowConfig, tenantId: string = "default"): void {
   const normalized = normalizeWorkflowConfig(config);
   try {
-    localStorage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(normalized));
-    localStorage.setItem(STORAGE_MODE_KEY, normalized.mode);
+    const storage = typeof localStorage !== "undefined" ? localStorage : (typeof window !== "undefined" ? window.localStorage : null);
+    if (storage) {
+      storage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(normalized));
+      storage.setItem(STORAGE_MODE_KEY, normalized.mode);
+      
+      const tenantCfg: TenantWorkflowConfig = {
+        tenantId,
+        useOfficialDefault: JSON.stringify(normalized) === JSON.stringify(AVS_OFFICIAL_DEFAULT_WORKFLOW),
+        activeVersion: normalized.activeVersion,
+        customOverrides: normalized,
+        versionHistory: normalized.versions,
+        lastModifiedAt: new Date().toISOString(),
+      };
+      storage.setItem(getTenantStorageKey(tenantId), JSON.stringify(tenantCfg));
+    }
   } catch {
     /* ignore storage errors */
   }
@@ -621,7 +770,6 @@ function persistWorkflow(config: WorkflowConfig): void {
     config: normalized,
   });
 }
-
 // Allowed State Transitions in the Manufacturing/Jobcard Lifecycle
 const VALID_STATE_TRANSITIONS: Record<string, string[]> = {
   draft: ["awaiting_gold_issue", "gold_issued"],
@@ -638,17 +786,24 @@ const VALID_STATE_TRANSITIONS: Record<string, string[]> = {
 
 export const useWorkflowEngine = create<WorkflowEngineState>()((set, get) => ({
   config: getInitialWorkflowConfig(),
+  tenantId: "default",
+  useOfficialDefault: true,
+
+  setTenantId: (tenantId: string) => {
+    const tenantCfg = getTenantWorkflowConfig(tenantId);
+    const effective = computeEffectiveWorkflow(tenantCfg);
+    set({
+      tenantId,
+      config: effective,
+      useOfficialDefault: tenantCfg.useOfficialDefault,
+    });
+  },
 
   async refresh() {
     const saved = await workflowSettingsRepository.read("workflow_engine").catch(() => null);
     if (saved?.config) {
       const normalized = normalizeWorkflowConfig(saved.config as WorkflowConfig);
-      try {
-        localStorage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(normalized));
-        localStorage.setItem(STORAGE_MODE_KEY, normalized.mode);
-      } catch {
-        /* ignore */
-      }
+      persistWorkflow(normalized, get().tenantId);
       set({ config: normalized });
     }
   },
@@ -656,20 +811,56 @@ export const useWorkflowEngine = create<WorkflowEngineState>()((set, get) => ({
   patch: (diff) =>
     set((s) => {
       const config = normalizeWorkflowConfig({ ...s.config, ...diff });
-      persistWorkflow(config);
-      return { config };
+      persistWorkflow(config, s.tenantId);
+      return { config, useOfficialDefault: false };
     }),
 
   applyPreset: (key) =>
-    set(() => {
+    set((s) => {
       const config = { ...WORKFLOW_PRESETS[key] };
-      persistWorkflow(config);
-      return { config };
+      persistWorkflow(config, s.tenantId);
+      return { config, useOfficialDefault: false };
     }),
 
   reset: () => {
-    persistWorkflow(DEFAULT_WORKFLOW_MTJ);
-    set({ config: DEFAULT_WORKFLOW_MTJ });
+    const tenantId = get().tenantId;
+    persistWorkflow(AVS_OFFICIAL_DEFAULT_WORKFLOW, tenantId);
+    set({ config: AVS_OFFICIAL_DEFAULT_WORKFLOW, useOfficialDefault: true });
+  },
+
+  resetToOfficialDefault: () => {
+    const { tenantId, config } = get();
+    const newVersion: WorkflowVersion = {
+      versionId: `ver_reset_${Date.now()}`,
+      versionNumber: config.activeVersion,
+      status: "active",
+      publishedAt: new Date().toISOString(),
+      publishedBy: "admin",
+      changeNotes: "Restored to official AVS Default Workflow Baseline",
+    };
+    const restored = {
+      ...AVS_OFFICIAL_DEFAULT_WORKFLOW,
+      versions: [newVersion, ...config.versions],
+    };
+    persistWorkflow(restored, tenantId);
+    set({ config: restored, useOfficialDefault: true });
+  },
+
+  getEffectiveConfig: (tenantId?: string) => {
+    if (!tenantId || tenantId === get().tenantId) {
+      return get().config;
+    }
+    const tenantCfg = getTenantWorkflowConfig(tenantId);
+    return computeEffectiveWorkflow(tenantCfg);
+  },
+
+  getWorkflowVersionSnapshot: (versionNumber: string) => {
+    const { config } = get();
+    const ver = config.versions.find((v) => v.versionNumber === versionNumber || v.versionId === versionNumber);
+    if (ver?.configSnapshot) {
+      return normalizeWorkflowConfig(ver.configSnapshot as WorkflowConfig);
+    }
+    return undefined;
   },
 
   // ── Process Management ────────────────────────────────────────────────────
@@ -880,7 +1071,7 @@ export const useWorkflowEngine = create<WorkflowEngineState>()((set, get) => ({
       publishedAt: new Date().toISOString(),
       publishedBy: "system_admin",
       changeNotes: changeNotes || "Workflow configuration updated & published",
-      configSnapshot: { ...config },
+      configSnapshot: { ...config, activeVersion: nextMinor },
     };
 
     const updated: WorkflowConfig = {

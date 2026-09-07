@@ -66,6 +66,8 @@ export const WorkflowManagerPanel: React.FC = () => {
     patch,
     applyPreset,
     reset,
+    resetToOfficialDefault,
+    useOfficialDefault,
     addProcess,
     toggleProcess,
     deleteProcess,
@@ -207,10 +209,19 @@ export const WorkflowManagerPanel: React.FC = () => {
       <Card className="p-5 border-l-4 border-l-gold bg-card/60 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="bg-gold/10 text-gold border-gold/30 font-semibold px-2.5 py-0.5">
                 ACTIVE WORKFLOW SCOPE: {config.mode.replace(/_/g, " ").toUpperCase()}
               </Badge>
+              {useOfficialDefault ? (
+                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-xs">
+                  Official AVS Baseline
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30 text-xs">
+                  Tenant Custom Overrides Active
+                </Badge>
+              )}
               <Badge variant="outline" className="text-xs font-mono">
                 v{config.activeVersion}
               </Badge>
@@ -219,11 +230,24 @@ export const WorkflowManagerPanel: React.FC = () => {
               Enterprise Workflow Configuration & Lifecycle
             </h3>
             <p className="text-xs text-muted-foreground">
-              Authoritative rules governing manufacturing processes, books, required fields, and state transitions.
+              Authoritative baseline governing manufacturing processes, physical books, required fields, and state transitions.
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (window.confirm("Reset workflow configuration to official AVS Default Baseline? All default processes and purity books will be restored.")) {
+                  resetToOfficialDefault();
+                  toast.success("Restored to official AVS Default Workflow Baseline");
+                }
+              }}
+              className="text-xs h-8 gap-1 border-muted-foreground/30 text-muted-foreground hover:text-foreground"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Reset to AVS Default
+            </Button>
             <Button
               size="sm"
               variant="outline"
