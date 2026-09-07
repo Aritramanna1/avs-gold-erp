@@ -441,6 +441,31 @@ test.describe("AVS ERP — Master System Configuration & Automated E2E Suite", (
       const { Route } = await import("../../src/routes/reports.ca-pack");
       expect(Route).toBeDefined();
     });
+
+    test("ca pack exports genuine PDF document with %PDF- header and application/pdf MIME", async () => {
+      const { exportReportToPdf, buildCAPackReportData } = await import("../../src/lib/pdf/report-pdf-service");
+      const data = buildCAPackReportData("trial_balance", "2026-2027", "Q2 (Jul - Sep)");
+      const { blob, fileName } = await exportReportToPdf(data, false);
+
+      expect(blob.type).toBe("application/pdf");
+      expect(fileName.endsWith(".pdf")).toBe(true);
+      expect(blob.size).toBeGreaterThan(1000);
+
+      const buffer = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      const magic = String.fromCharCode(...bytes.slice(0, 5));
+      expect(magic).toBe("%PDF-");
+    });
+
+    test("ca pack exports genuine Excel spreadsheet with openxmlformats MIME", async () => {
+      const { exportReportToExcel, buildCAPackReportData } = await import("../../src/lib/pdf/report-pdf-service");
+      const data = buildCAPackReportData("sales_register", "2026-2027", "Q2");
+      const { blob, fileName } = await exportReportToExcel(data, false);
+
+      expect(blob.type).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      expect(fileName.endsWith(".xlsx")).toBe(true);
+      expect(blob.size).toBeGreaterThan(1000);
+    });
   });
 
   // ── 17. REAL RUNNING MCP SERVER PROTOCOL & GOLD-FIRST DISPATCH ─────────────

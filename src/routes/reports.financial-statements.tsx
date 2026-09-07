@@ -18,6 +18,10 @@ import { useExpensesStore } from "@/lib/expenses-store";
 import { compileOperationalBooks } from "@/lib/operational-books";
 import { thisMonthRange } from "@/lib/report-engine";
 
+import { Button } from "@/components/ui/button";
+import { Download, FileText } from "lucide-react";
+import { exportReportToPdf, exportReportToExcel, exportReportToCsv } from "@/lib/pdf/report-pdf-service";
+
 export const Route = createFileRoute("/reports/financial-statements")({
   head: () => ({ meta: [{ title: "Financial Statements · AVS ERP" }] }),
   component: FinancialStatementsPage,
@@ -54,12 +58,57 @@ function FinancialStatementsPage() {
     return compileOperationalBooks(invoices, expensePaise, fromMs, toMs);
   }, [invoices, expenses, from, to]);
 
+  const handleExport = async (format: "PDF" | "EXCEL" | "CSV") => {
+    const rows = bundle.trialBalance.map((r: any) => [
+      r.code,
+      r.name,
+      r.debit || "-",
+      r.credit || "-",
+    ]);
+
+    const options = {
+      title: "Trial Balance & Financial Statements",
+      subtitle: `Period: ${from} to ${to}`,
+      financialYear: "2026-2027",
+      statutoryRef: "ICAI AS-1 / Ind AS 1",
+      columns: [
+        { header: "Account Code", widthRatio: 1 },
+        { header: "Account Name", widthRatio: 3 },
+        { header: "Debit (₹)", widthRatio: 1.5, isMoney: true },
+        { header: "Credit (₹)", widthRatio: 1.5, isMoney: true },
+      ],
+      rows,
+      totals: ["TOTAL", "Balanced Ledger", paise(operational.debitPaise), paise(operational.creditPaise)],
+    };
+
+    if (format === "PDF") {
+      await exportReportToPdf(options);
+    } else if (format === "EXCEL") {
+      await exportReportToExcel(options);
+    } else {
+      exportReportToCsv(options);
+    }
+  };
+
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-6xl mx-auto">
-      <PageHeader
-        title="Financial Statements"
-        subtitle="CoA trial balance stays as stored. Operational books dual-run from invoices and expenses — they do not write ledger_accounts."
-      />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <PageHeader
+          title="Financial Statements"
+          subtitle="CoA trial balance stays as stored. Operational books dual-run from invoices and expenses — they do not write ledger_accounts."
+        />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => handleExport("PDF")} className="gap-1 text-xs">
+            <Download className="h-3.5 w-3.5" /> PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleExport("EXCEL")} className="gap-1 text-xs">
+            <Download className="h-3.5 w-3.5" /> Excel
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleExport("CSV")} className="gap-1 text-xs">
+            <Download className="h-3.5 w-3.5" /> CSV
+          </Button>
+        </div>
+      </div>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading chart of accounts…</p>

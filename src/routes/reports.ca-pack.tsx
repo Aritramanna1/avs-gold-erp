@@ -22,6 +22,13 @@ import { useBilling } from "@/lib/billing-store";
 import { useStock } from "@/lib/stock-store";
 import { MASTER_CHART_OF_ACCOUNTS } from "@/lib/dual-ledger-engine";
 import { toast } from "sonner";
+import {
+  exportReportToPdf,
+  exportReportToExcel,
+  exportReportToCsv,
+  buildCAPackReportData,
+  generateCAPackCompleteBooklet,
+} from "@/lib/pdf/report-pdf-service";
 
 export const Route = createFileRoute("/reports/ca-pack")({
   component: CAPackWorkspace,
@@ -140,42 +147,37 @@ function CAPackWorkspace() {
     },
   ], [ledgerEntries, invoices, stockItems]);
 
-  const handleDownloadSingle = (report: ExportReportItem, format: string) => {
-    setExporting(report.id);
-    setTimeout(() => {
-      // Generate clean CSV/Data export
-      const rows = [
-        ["Report", report.name],
-        ["Financial Year", financialYear],
-        ["Period", periodQuarter],
-        ["Statutory Reference", report.statutoryRef],
-        ["Fineness Standard", "995 / 99.50%"],
-        ["Generated At", new Date().toISOString()],
-        [],
-        ["Record Count", String(report.recordCount)],
-        ["Status", "Reconciled with General Ledger"],
-      ];
-
-      const csvContent = "data:text/csv;charset=utf-8," + rows.map((e) => e.join(",")).join("\n");
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `AVS_CA_${report.id}_${financialYear}_${format.toLowerCase()}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
+  const handleDownloadSingle = async (report: ExportReportItem, format: string) => {
+    setExporting(`${report.id}_${format}`);
+    try {
+      const data = buildCAPackReportData(report.id, financialYear, periodQuarter);
+      if (format === "PDF") {
+        await exportReportToPdf(data, true);
+        toast.success(`Generated official PDF for ${report.name}`);
+      } else if (format === "EXCEL") {
+        await exportReportToExcel(data, true);
+        toast.success(`Generated Excel (.xlsx) for ${report.name}`);
+      } else if (format === "CSV") {
+        exportReportToCsv(data, true);
+        toast.success(`Exported CSV for ${report.name}`);
+      }
+    } catch (err: any) {
+      toast.error(`Export failed: ${err?.message || "Unknown error"}`);
+    } finally {
       setExporting(null);
-      toast.success(`${report.name} (${format}) exported successfully.`);
-    }, 600);
+    }
   };
 
-  const handleDownloadAllZip = () => {
+  const handleDownloadAllZip = async () => {
     setExporting("ALL");
-    setTimeout(() => {
-      toast.success(`Complete CA Pack (${caReportItems.length} Reports) prepared for ${financialYear} ${periodQuarter}.`);
+    try {
+      await generateCAPackCompleteBooklet(financialYear, periodQuarter);
+      toast.success(`Complete CA Report Package PDF downloaded for ${financialYear} ${periodQuarter}.`);
+    } catch (err: any) {
+      toast.error(`Failed to generate CA pack: ${err?.message || "Unknown error"}`);
+    } finally {
       setExporting(null);
-    }, 1200);
+    }
   };
 
   return (
@@ -322,10 +324,14 @@ function CAPackWorkspace() {
                     variant="outline"
                     size="sm"
                     className="text-xs h-8 px-2.5 font-medium"
-                    disabled={exporting === item.id}
+                    disabled={exporting === `${item.id}_${fmt}` || exporting === "ALL"}
                     onClick={() => handleDownloadSingle(item, fmt)}
                   >
-                    <Download className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                    {exporting === `${item.id}_${fmt}` ? (
+                      <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin text-gold" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                    )}
                     {fmt}
                   </Button>
                 ))}
