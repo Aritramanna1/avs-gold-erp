@@ -49,7 +49,7 @@ interface BackupRecord {
   status: "READY" | "CREATING" | "FAILED";
 }
 
-export function BackupRecoveryPage() {
+function BackupRecoveryPage() {
   const { firm, branches } = useSettings();
   const [activeTab, setActiveTab] = useState<"export" | "restore" | "rehearsal">("export");
 

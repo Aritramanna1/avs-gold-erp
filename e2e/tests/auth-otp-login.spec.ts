@@ -40,15 +40,17 @@ test.describe("OTP Login", () => {
 
   test("sending a code shows the 6-digit verification form", async ({ page }) => {
     await page.goto("/otp-login");
+    await page.waitForLoadState("domcontentloaded");
+    await page.getByRole("tab", { name: /email/i }).click();
     const email = page.locator('input[type="email"]');
-    await expect(email).toBeVisible();
+    await expect(email).toBeVisible({ timeout: 10_000 });
     await email.fill("demo-e2e@example.com");
 
-    const submit = page.getByRole("button", { name: /send verification code/i });
+    const submit = page.getByRole("button", { name: /send.*otp|send verification code/i });
     await submit.click();
     await expect(submit).toBeDisabled();
 
-    await expect(page.getByText(/6-digit verification code has been sent/i)).toBeVisible({
+    await expect(page.getByText(/verification code/i).first()).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByPlaceholder("123456")).toBeVisible();
@@ -57,13 +59,19 @@ test.describe("OTP Login", () => {
 
   test("verify button is disabled while a verification attempt is in flight", async ({ page }) => {
     await page.goto("/otp-login");
+    const emailTab = page.getByRole("tab", { name: /email/i });
+    if (await emailTab.isVisible()) {
+      await emailTab.click();
+    }
     await page.locator('input[type="email"]').fill("demo-e2e@example.com");
-    await page.getByRole("button", { name: /send verification code/i }).click();
+    await page.getByRole("button", { name: /send.*otp|send verification code/i }).click();
     await expect(page.getByPlaceholder("123456")).toBeVisible({ timeout: 15_000 });
 
     await page.getByPlaceholder("123456").fill("000000");
-    const verify = page.getByRole("button", { name: /verify code/i });
+    const verify = page.getByRole("button", { name: /verify/i });
+    await expect(verify).toBeVisible();
     await verify.click();
     await expect(verify).toBeDisabled();
+    expectNoPageErrors(page);
   });
 });

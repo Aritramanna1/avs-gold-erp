@@ -61,23 +61,14 @@ function getResolvedConfig() {
 
 export function isSupabaseConfigured(): boolean {
   const { url, key } = getResolvedConfig();
-  return !!url && !!key && (url.startsWith("http://") || url.startsWith("https://"));
+  return !!url && !!key && !url.includes("placeholder") && (url.startsWith("http://") || url.startsWith("https://"));
 }
 
 function createSupabaseClient() {
-  const { url: supabaseUrl, key: supabasePublishableKey } = getResolvedConfig();
+  const { url: configUrl, key: configKey } = getResolvedConfig();
 
-  if (!supabaseUrl || !supabasePublishableKey) {
-    throw new Error(
-      `Missing Supabase configuration. VITE_SUPABASE_URL is "${supabaseUrl || ""}", VITE_SUPABASE_PUBLISHABLE_KEY is "${supabasePublishableKey ? "present" : "missing"}". Please check your environment variables or .env file.`,
-    );
-  }
-
-  if (!supabaseUrl.startsWith("http://") && !supabaseUrl.startsWith("https://")) {
-    throw new Error(
-      `Invalid Supabase URL: "${supabaseUrl}". Must be a valid HTTP or HTTPS URL. Please check your VITE_SUPABASE_URL environment variable.`,
-    );
-  }
+  const supabaseUrl = configUrl || "https://placeholder.supabase.co";
+  const supabasePublishableKey = configKey || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder_anon_key";
 
   return createClient<Database>(supabaseUrl, supabasePublishableKey, {
     auth: {

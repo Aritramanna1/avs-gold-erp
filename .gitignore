@@ -31,6 +31,8 @@ qa/reports-output/
 qa/e2e/qa/
 .playwright-artifacts/
 e2e/.auth/
+e2e/report/
+e2e/test-results/
 coverage/
 
 # Environment files and archives
