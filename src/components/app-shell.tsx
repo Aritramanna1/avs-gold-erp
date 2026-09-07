@@ -20,8 +20,7 @@ import { useBusinessRules } from "@/lib/business-rules-store";
 import { GoldRateEditor } from "@/components/GoldRateEditor";
 import { QuickCommandPalette } from "@/components/layout/QuickCommandPalette";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { OfflineMenuBar } from "@/components/layout/OfflineMenuBar";
-import { GlobalBreadcrumbs } from "@/components/layout/GlobalBreadcrumbs";
+import { ConsumerNavRail } from "@/components/layout/ConsumerNavRail";
 import { ErpStatusBar } from "@/components/desktop/ErpStatusBar";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/button";
@@ -312,11 +311,20 @@ export function AppShell({ children }: { children: ReactNode }) {
             aria-label="Global Search & Quick Actions"
           >
             <Search className="h-3.5 w-3.5 text-gold shrink-0" />
-            <span className="text-xs truncate flex-1 text-left">Search customer, invoice, barcode, tasks...</span>
+            <span className="text-xs truncate flex-1 text-left">Search customer, bill, barcode (Ctrl+K)...</span>
             <kbd className="rounded border bg-muted/80 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground shrink-0">
               Ctrl K
             </kbd>
           </button>
+
+          <Link
+            to="/billing/new"
+            className="hidden lg:flex items-center gap-1.5 rounded-full bg-gold/15 text-gold hover:bg-gold hover:text-black border border-gold/40 px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer shadow-xs"
+            title="Create New Bill"
+          >
+            <span className="text-sm leading-none font-bold">+</span>
+            <span>New Sale</span>
+          </Link>
 
           <div className="ml-auto flex items-center gap-3 shrink-0">
             <div className="hidden md:flex items-center gap-2" data-desktop-chrome>
@@ -439,6 +447,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <Settings className="h-3.5 w-3.5" /> Settings
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/customer-portal" className="flex items-center gap-2 cursor-pointer text-muted-foreground">
+                    <UserIcon className="h-3.5 w-3.5" /> External Portals
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={handleSwitchAccount} className="gap-2 cursor-pointer">
                   <Repeat className="h-3.5 w-3.5" /> Switch Account
@@ -453,9 +466,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             </DropdownMenu>
           </div>
         </header>
-        {/* Primary nav: Offline ERP menu + form strip (desktop, laptop, iPad) */}
-        <OfflineMenuBar className="hidden md:block" />
-        <GlobalBreadcrumbs />
+        {/* Modern Consumer Navigation Rail (YouTube / Spotify Style) */}
+        <ConsumerNavRail className="hidden md:flex" />
         <ConnectivityStrip />
         <main
           className={

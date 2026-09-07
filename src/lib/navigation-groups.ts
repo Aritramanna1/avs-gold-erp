@@ -460,17 +460,6 @@ export const navigationGroups: NavGroupDef[] = [
     ],
   },
   {
-    id: "portals",
-    label: "Portals",
-    i18nKey: "group_portals",
-    icon: Users,
-    items: [
-      { to: "/customer-portal", label: "Customer Portal", i18nKey: "item_customers", icon: Users },
-      { to: "/karigar-portal", label: "Karigar Portal", i18nKey: "item_karigars", icon: Hammer },
-      { to: "/supplier-portal", label: "Supplier Portal", i18nKey: "item_suppliers", icon: Truck },
-    ],
-  },
-  {
     id: "documents",
     label: "Documents",
     i18nKey: "group_documents",
