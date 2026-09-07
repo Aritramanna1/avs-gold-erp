@@ -20,6 +20,7 @@ import { mgToGrams, fineGoldMg, FinenessBasis, DEFAULT_FINENESS_BASIS } from "@/
 import { calculateFineGold, calculateKarigarWastage, calculateLabourCharge } from "@/lib/calculation-engine";
 import { MASTER_CHART_OF_ACCOUNTS, generateJournalForTransaction } from "@/lib/dual-ledger-engine";
 import { calculateTaxDecision } from "@/lib/statutory-tax-engine";
+import { searchKnowledgeRepository } from "@/lib/assistant/knowledge-repository";
 
 export const MCP_TOOL_REGISTRY: Record<string, MCPToolDefinition<any, any>> = {
   // ── 1. CORE NAMESPACE ───────────────────────────────────────────────────────
@@ -2401,6 +2402,60 @@ export const MCP_TOOL_REGISTRY: Record<string, MCPToolDefinition<any, any>> = {
     rateLimit: { maxPerMinute: 30 },
     enabled: true,
     handler: async (_params, _context) => ({ auditLogs: [] }),
+  },
+
+  // ── 16. KNOWLEDGE & RAG NAMESPACE ───────────────────────────────────────────
+  "knowledge.search_knowledge_base": {
+    name: "knowledge.search_knowledge_base",
+    version: "v1",
+    description: "Searches ERP knowledge base for standard operating procedures (SOPs), GST/TCS tax rules, Hallmark standards, and accounting guidelines.",
+    namespace: "knowledge",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Search terms or question" },
+        tier: {
+          type: "string",
+          enum: ["product", "industry", "india", "tenant", "faq"],
+          description: "Optional knowledge tier filter",
+        },
+      },
+      required: ["query"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        results: { type: "array" },
+        count: { type: "number" },
+      },
+    },
+    allowedRoles: ["owner", "admin", "supervisor", "retail_sales", "karigar", "worker", "accountant", "saas_admin"],
+    requiredPermissions: [],
+    tenantScoped: true,
+    branchScoped: false,
+    readWriteLevel: "READ",
+    approvalRequired: false,
+    auditRequired: false,
+    rateLimit: { maxPerMinute: 60 },
+    enabled: true,
+    handler: async (params, _context) => {
+      const results = searchKnowledgeRepository(params.query || "", {
+        tiers: params.tier ? [params.tier] : undefined,
+        limit: 5,
+      });
+      return {
+        results: results.map((r) => ({
+          id: r.article.id,
+          title: r.article.title,
+          topic: r.article.topic,
+          knowledgeTier: r.article.knowledgeTier,
+          summary: r.article.summary,
+          content: r.article.content,
+          score: r.score,
+        })),
+        count: results.length,
+      };
+    },
   },
 };
 

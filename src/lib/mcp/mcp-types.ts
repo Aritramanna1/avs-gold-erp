@@ -21,6 +21,7 @@ export type MCPNamespace =
   | "hallmark"
   | "documents"
   | "reports"
+  | "knowledge"
   | "system";
 
 export type MCPReadWriteLevel = "READ" | "PREPARE" | "RECOMMEND" | "EXECUTE";
