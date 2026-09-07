@@ -151,18 +151,8 @@ function SettingsPage() {
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <PageHeader
         title="Settings"
-        subtitle="Brand, WhatsApp, firm, masters, compliance, hardware, backup, and pilot controls."
+        subtitle="Brand, WhatsApp, firm, masters, compliance, hardware, and backup."
       />
-
-      <Card className="p-4 mb-5 border-gold/40 bg-gold/5 text-sm">
-        <strong>Pilot Notice — </strong>
-        AVS ERP pilot is for controlled six-month testing. Maintain manual / physical registers in
-        parallel until final production approval. See{" "}
-        <Link to="/help" className="text-gold underline">
-          Help &amp; Pilot Guide
-        </Link>
-        .
-      </Card>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <Link
