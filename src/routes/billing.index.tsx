@@ -197,31 +197,6 @@ function BillingIndex() {
         subtitle="Fine gold accounting, bullion balances, invoice registry and customer ledger."
         actions={
           <div className="flex gap-2 flex-wrap">
-            <Link to="/billing/credit-notes">
-              <Button variant="outline" size="sm">
-                Credit Notes
-              </Button>
-            </Link>
-            <Link to="/billing/debit-notes">
-              <Button variant="outline" size="sm">
-                Debit Notes
-              </Button>
-            </Link>
-            <Link to="/billing/estimates">
-              <Button variant="outline" size="sm">
-                Estimates & Quotations
-              </Button>
-            </Link>
-            <Link to="/billing/delivery-challans">
-              <Button variant="outline" size="sm">
-                Delivery Challans
-              </Button>
-            </Link>
-            <Link to="/billing/purchases">
-              <Button variant="outline" size="sm">
-                Supplier Purchases
-              </Button>
-            </Link>
             {can("billing.create") ? (
               <Link to="/settlement/new">
                 <Button variant="outline" data-testid="billing-create-settlement" className="gap-2">
@@ -231,7 +206,7 @@ function BillingIndex() {
             ) : null}
             {can("billing.create") ? (
               <Link to="/billing/new">
-                <Button data-testid="billing-create-invoice" className="gap-2">
+                <Button data-testid="billing-create-invoice" className="gap-2 bg-gold hover:bg-gold/90 text-white font-semibold">
                   <Plus className="h-4 w-4" /> New Invoice
                 </Button>
               </Link>

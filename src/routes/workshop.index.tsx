@@ -10,12 +10,11 @@ import { useBilling, paiseToRupees } from "@/lib/billing-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
 import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
 import { compileJewellerBooks, jewellerBooksTotals, type JewellerBook } from "@/lib/workshop-books";
-import { BOOK_TYPES } from "@/lib/workshop-book-types";
 import { formatWeight } from "@/lib/gold";
 import { useBusinessRules } from "@/lib/business-rules-store";
 import { Button } from "@/components/ui/button";
 import { ReceiveFinishedProductDialog } from "@/components/karigar/ReceiveFinishedProductDialog";
-import { Search, BookOpen, Flame, ScanLine, Scale, Library, PackageCheck } from "lucide-react";
+import { Search, Scale, Library, PackageCheck, BookOpen } from "lucide-react";
 
 /** Jeweller book → People-style card metrics. */
 function jewellerCardData(b: JewellerBook): BookCardData {
@@ -109,13 +108,6 @@ function WorkshopBooksPage() {
             >
               <PackageCheck className="h-4 w-4" /> Receive Finished Product
             </Button>
-            <ModuleLink to="/workshop/gold-book" icon={BookOpen} label="Worker Gold Book" />
-            {polishingModuleEnabled && (
-              <ModuleLink to="/workshop/polishing" icon={Flame} label="Polishing" />
-            )}
-            {barcodeModuleEnabled && (
-              <ModuleLink to="/workshop/barcode-scanner" icon={ScanLine} label="Barcode Scanner" />
-            )}
           </div>
         }
       />
@@ -123,66 +115,6 @@ function WorkshopBooksPage() {
         open={receiveProductOpen}
         onClose={() => setReceiveProductOpen(false)}
       />
-
-      {/* The shelf: every book type Workshop holds. Jeweller Books is the one
-          implemented here today; the rest are separate modules linked out.
-          Adding a book type is a new BOOK_TYPES entry — this renders it. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-        {BOOK_TYPES.map((bt) => {
-          const Icon = bt.icon;
-          const active = bt.status === "implemented";
-          const planned = bt.status === "planned";
-          const content = (
-            <>
-              <Icon
-                className={`h-5 w-5 mt-0.5 shrink-0 ${active ? "text-gold" : "text-muted-foreground"}`}
-              />
-              <div className="min-w-0">
-                <div className="text-sm font-semibold flex items-center gap-2">
-                  {bt.title}
-                  {bt.status === "section" && (
-                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-0.5">
-                      Workshop section
-                    </span>
-                  )}
-                  {planned && (
-                    <span className="text-[9px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-0.5">
-                      Planned
-                    </span>
-                  )}
-                </div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">
-                  {bt.note ?? bt.description}
-                </div>
-              </div>
-            </>
-          );
-          if (planned) {
-            return (
-              <div
-                key={bt.key}
-                className="rounded-md border border-border bg-card p-4 flex gap-3 opacity-60 cursor-not-allowed"
-                aria-disabled="true"
-              >
-                {content}
-              </div>
-            );
-          }
-          return (
-            <Link
-              key={bt.key}
-              to={bt.indexRoute as never}
-              className={`rounded-md border p-4 flex gap-3 transition-colors ${
-                active
-                  ? "border-gold/40 bg-gold/5 hover:bg-gold/10"
-                  : "border-border bg-card hover:bg-muted/20"
-              }`}
-            >
-              {content}
-            </Link>
-          );
-        })}
-      </div>
 
       {/* Where the workshop stands across every jeweller book. */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">

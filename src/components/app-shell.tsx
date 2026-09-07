@@ -57,7 +57,6 @@ import { PersonProfileAvatar } from "@/components/people/PersonProfileAvatar";
 import { AssistantDrawer, openOrnexaAssistant } from "@/components/assistant/AssistantDrawer";
 import { PageHeader } from "@/components/design-system";
 import { BusinessSwitcher } from "@/components/identity/BusinessSwitcher";
-import { WorkspaceSwitcher } from "@/components/identity/WorkspaceSwitcher";
 import { prefetchLikelyRoutes } from "@/lib/performance/route-prefetch";
 import { recordRecentRoute, patchStartupPreferences } from "@/lib/startup-preferences";
 import {
@@ -324,7 +323,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="ml-auto flex items-center gap-3 shrink-0">
             <div className="hidden md:flex items-center gap-2" data-desktop-chrome>
-              <WorkspaceSwitcher compact />
               <BusinessSwitcher />
             </div>
             <div className="md:hidden">

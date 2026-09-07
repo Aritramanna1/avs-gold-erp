@@ -35,6 +35,7 @@ import { usePeople } from "@/lib/people-store";
 import { useStock } from "@/lib/stock-store";
 import { useBilling } from "@/lib/billing-store";
 import { useWorkers } from "@/lib/workers-store";
+import { useOrders } from "@/lib/orders-store";
 
 interface CommandItem {
   id: string;
@@ -478,6 +479,7 @@ export const QuickCommandPalette: React.FC = () => {
   const people = usePeople((s) => s.people);
   const stockItems = useStock((s) => s.items);
   const invoices = useBilling((s) => s.invoices);
+  const orders = useOrders((s) => s.orders);
 
   // Recents state
   const [recents, setRecents] = useState<Array<{ id: string; title: string; to: string; category: string }>>(() => {
@@ -541,7 +543,7 @@ export const QuickCommandPalette: React.FC = () => {
         cmd.keywords.some((kw) => kw.includes(q)),
     );
 
-    // Live Customers
+    // Live Customers (Direct 360 profile opening)
     const matchedPeople: CommandItem[] = Object.values(people)
       .filter((p) => p.fullName?.toLowerCase().includes(q) || p.phone?.includes(q) || (p.villageCity && p.villageCity.toLowerCase().includes(q)) || (p.area && p.area.toLowerCase().includes(q)))
       .slice(0, 5)
@@ -550,12 +552,26 @@ export const QuickCommandPalette: React.FC = () => {
         title: p.fullName,
         category: "Customer",
         subtitle: `${p.phone || "No phone"} · ${p.villageCity || p.area || p.partyCode || "Customer"} (${p.type})`,
-        to: `/people?tab=customers&selected=${p.id}`,
+        to: `/people/${p.id}`,
         icon: <User className="h-4 w-4 text-blue-500" />,
         keywords: [p.fullName, p.phone || "", p.villageCity || p.area || ""],
       }));
 
-    // Live Ready Stock / Barcode
+    // Live Orders & Job Cards (Direct Order opening)
+    const matchedOrders: CommandItem[] = Object.values(orders)
+      .filter((o) => o.orderNo?.toLowerCase().includes(q) || o.customerName?.toLowerCase().includes(q) || o.itemType?.toLowerCase().includes(q))
+      .slice(0, 5)
+      .map((o) => ({
+        id: `order_${o.id}`,
+        title: `Order ${o.orderNo} — ${o.itemType || "Jewellery"}`,
+        category: "Manufacturing",
+        subtitle: `${o.customerName || "Customer"} · Status: ${o.status || "In Progress"}`,
+        to: `/orders/${o.id}`,
+        icon: <Factory className="h-4 w-4 text-purple-500" />,
+        keywords: [o.orderNo || "", o.customerName || "", o.itemType || ""],
+      }));
+
+    // Live Ready Stock / Barcode (Direct Stock Item opening)
     const matchedStock: CommandItem[] = (Array.isArray(stockItems) ? stockItems : Object.values(stockItems || {}))
       .filter((s: any) => s.barcode?.toLowerCase().includes(q) || s.name?.toLowerCase().includes(q))
       .slice(0, 5)
@@ -564,12 +580,12 @@ export const QuickCommandPalette: React.FC = () => {
         title: `${s.barcode || "Item"} - ${s.name || "Stock"}`,
         category: "Stock",
         subtitle: `${s.karat || "22"}K · Gross: ${s.grossWeight || 0}g · Net: ${s.netWeight || 0}g`,
-        to: `/stock?search=${encodeURIComponent(s.barcode || s.name || "")}`,
+        to: `/stock/${s.id || s.barcode}`,
         icon: <Barcode className="h-4 w-4 text-gold" />,
         keywords: [s.barcode || "", s.name || ""],
       }));
 
-    // Live Invoices
+    // Live Invoices (Direct Invoice opening)
     const matchedInvoices: CommandItem[] = Object.values(invoices)
       .filter((inv) => inv.invoiceNo?.toLowerCase().includes(q) || inv.customerName?.toLowerCase().includes(q))
       .slice(0, 5)
@@ -578,12 +594,12 @@ export const QuickCommandPalette: React.FC = () => {
         title: `Bill ${inv.invoiceNo}`,
         category: "Invoice",
         subtitle: `${inv.customerName || "Walk-in"} · ₹${((inv.grandTotalPaise || 0) / 100).toLocaleString("en-IN")}`,
-        to: `/billing?selected=${inv.id}`,
+        to: `/billing/${inv.id}`,
         icon: <Receipt className="h-4 w-4 text-emerald-500" />,
         keywords: [inv.invoiceNo, inv.customerName || ""],
       }));
 
-    // Live Karigars (Artisans in people store)
+    // Live Karigars (Artisans in people store - Direct Gold Book opening)
     const matchedWorkers: CommandItem[] = Object.values(people)
       .filter(
         (p) =>
@@ -601,8 +617,8 @@ export const QuickCommandPalette: React.FC = () => {
         keywords: [p.fullName, p.phone || ""],
       }));
 
-    return [...matchedStatic, ...matchedPeople, ...matchedStock, ...matchedInvoices, ...matchedWorkers];
-  }, [query, people, stockItems, invoices, recents]);
+    return [...matchedStatic, ...matchedPeople, ...matchedOrders, ...matchedStock, ...matchedInvoices, ...matchedWorkers];
+  }, [query, people, stockItems, invoices, orders, recents]);
 
   const handleSelect = (item: CommandItem) => {
     saveRecent({ id: item.id, title: item.title, to: item.to, category: item.category });

@@ -152,11 +152,17 @@ function PeoplePage() {
     employees: 0,
     vendors: 0,
   });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => search.selected || search.central || null);
   const [viewingLedgerId, setViewingLedgerId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Person | null>(null);
   const [addingType, setAddingType] = useState<PersonType | null>(null);
   const [storageNotice, setStorageNotice] = useState(false);
+
+  useEffect(() => {
+    if (search.selected || search.central) {
+      setSelectedId(search.selected || search.central || null);
+    }
+  }, [search.selected, search.central]);
 
   const { triggerPrint } = usePrintEngine();
   const selected = useMemo(
