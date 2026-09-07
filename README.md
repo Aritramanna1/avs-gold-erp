@@ -136,6 +136,6 @@ During the **2–3 month testing period**, community feedback and fixes are welc
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+
 Copyright (c) 2026 **Arivahly Venture Sphere**.
 
