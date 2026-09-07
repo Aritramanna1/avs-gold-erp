@@ -60,16 +60,19 @@ test.describe("AVS ERP — Master System Configuration & Automated E2E Suite", (
 
     test("navigation groups correctly resolve permissions without global mode switches", () => {
       const allGroups = navigationGroups;
-      expect(allGroups.length).toBeGreaterThan(0);
+      expect(allGroups.length).toBe(9);
 
       // Verify no "both" or "mode" toggle is embedded in navigation groups
       const groupIds = allGroups.map((g) => g.id);
-      expect(groupIds).toContain("crm");
-      expect(groupIds).toContain("production");
-      expect(groupIds).toContain("master");
-      expect(groupIds).toContain("transaction");
+      expect(groupIds).toContain("home");
+      expect(groupIds).toContain("retail");
+      expect(groupIds).toContain("manufacturing");
+      expect(groupIds).toContain("accounts");
       expect(groupIds).toContain("payroll");
+      expect(groupIds).toContain("portals");
+      expect(groupIds).toContain("documents");
       expect(groupIds).toContain("reports");
+      expect(groupIds).toContain("settings");
 
       // Verify Retail & Manufacturing groups exist side-by-side cleanly
       const leaves = allGroups.flatMap((g) => collectNavLeaves(g.items));
@@ -77,7 +80,7 @@ test.describe("AVS ERP — Master System Configuration & Automated E2E Suite", (
 
       expect(routes).toContain("/crm/leads");
       expect(routes).toContain("/billing");
-      expect(routes).toContain("/manufacturing/karigar-transactions");
+      expect(routes).toContain("/workshop/gold-book");
       expect(routes).toContain("/workshop");
       expect(routes).toContain("/stock");
     });

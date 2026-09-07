@@ -1,9 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Hammer, Briefcase, BarChart3, MoreHorizontal } from "lucide-react";
+import { Home, ShoppingBag, Hammer, Landmark, MoreHorizontal } from "lucide-react";
 import { hapticLight } from "@/lib/native/haptics";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-/** Offline ERP ops on mobile: Home · Production · Transaction · Reports · More */
+/** Clean separation: Home · Retail · Manufacturing · Accounts · More */
 const TABS = [
   {
     to: "/app",
@@ -12,51 +12,40 @@ const TABS = [
     match: (p: string) => p === "/app" || p === "/dashboard" || p === "/",
   },
   {
-    to: "/mobile/work",
-    i18nKey: "mobile_production",
+    to: "/billing",
+    i18nKey: "group_retail",
+    icon: ShoppingBag,
+    match: (p: string) =>
+      p.startsWith("/billing") ||
+      p.startsWith("/crm") ||
+      p.startsWith("/catalog") ||
+      (p.startsWith("/people") && !p.includes("employees")),
+  },
+  {
+    to: "/workshop",
+    i18nKey: "group_manufacturing",
     icon: Hammer,
     match: (p: string) =>
-      p === "/workshop/gold-book" ||
-      p === "/transactions" ||
-      p === "/mobile/work" ||
-      p === "/mobile/gold-stock" ||
       p.startsWith("/workshop") ||
       p.startsWith("/orders") ||
-      p === "/master" ||
       p.startsWith("/melt") ||
       p.startsWith("/refinery") ||
       p.startsWith("/conversion") ||
       p.startsWith("/barcode") ||
-      p.startsWith("/stock") ||
       p.startsWith("/manufacturing") ||
-      p.startsWith("/repair"),
+      p.startsWith("/repair") ||
+      p.startsWith("/stock"),
   },
   {
-    to: "/mobile/business",
-    i18nKey: "mobile_transaction",
-    icon: Briefcase,
+    to: "/ledger",
+    i18nKey: "group_accounts",
+    icon: Landmark,
     match: (p: string) =>
-      p === "/mobile/business" ||
-      p === "/transaction-hub" ||
-      p.startsWith("/billing") ||
-      p.startsWith("/people") ||
-      p.startsWith("/treasury") ||
-      p.startsWith("/expenses") ||
-      p.startsWith("/settlement") ||
-      p.startsWith("/utilities") ||
-      p.startsWith("/catalog") ||
-      p.startsWith("/scheme"),
-  },
-  {
-    to: "/mobile/reports",
-    i18nKey: "mobile_reports",
-    icon: BarChart3,
-    match: (p: string) =>
-      p === "/mobile/reports" ||
-      p.startsWith("/reports") ||
       p.startsWith("/ledger") ||
-      p.startsWith("/documents") ||
-      p.startsWith("/dashboard"),
+      p.startsWith("/control/accounts") ||
+      p.startsWith("/treasury") ||
+      p.startsWith("/settlement") ||
+      p.startsWith("/reports"),
   },
   {
     to: "/mobile/more",
@@ -74,7 +63,11 @@ const TABS = [
       p.startsWith("/branches") ||
       p.startsWith("/attendance") ||
       p.startsWith("/hardware") ||
-      p.startsWith("/notifications"),
+      p.startsWith("/notifications") ||
+      p.startsWith("/customer-portal") ||
+      p.startsWith("/karigar-portal") ||
+      p.startsWith("/supplier-portal") ||
+      p.startsWith("/verify"),
   },
 ] as const;
 

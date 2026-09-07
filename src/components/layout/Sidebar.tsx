@@ -20,8 +20,8 @@ import { getNavShortcutHint, SIDEBAR_KEYBOARD_HINT } from "@/lib/nav-shortcut-hi
 
 export { navigationGroups, navigationItems } from "@/lib/navigation-items";
 
-/** Bumped when Offline ERP menu hierarchy replaced factory-order groups. */
-const STORAGE_KEY = "ornexa_sidebar_groups_v6";
+/** Bumped for final 9-group Retail vs Manufacturing separation. */
+const STORAGE_KEY = "ornexa_sidebar_groups_v7";
 
 interface SidebarProps {
   onOpenGoldRateEditor: () => void;

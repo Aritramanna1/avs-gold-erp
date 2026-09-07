@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const STORAGE_KEY = "avs_offline_menu_active_v2";
+const STORAGE_KEY = "avs_offline_menu_active_v3";
 
 function isItemActive(
   pathname: string,
@@ -100,11 +100,11 @@ export function OfflineMenuBar({ className = "" }: { className?: string }) {
   );
 
   const [activeGroupId, setActiveGroupId] = useState<string>(() => {
-    if (typeof window === "undefined") return "master";
+    if (typeof window === "undefined") return "retail";
     try {
-      return localStorage.getItem(STORAGE_KEY) || "master";
+      return localStorage.getItem(STORAGE_KEY) || "retail";
     } catch {
-      return "master";
+      return "retail";
     }
   });
 
