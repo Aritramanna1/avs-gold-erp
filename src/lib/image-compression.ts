@@ -31,19 +31,26 @@ export const IMAGE_COMPRESS_PRESETS = {
     jpegQuality: 0.75,
     preferOriginalUnderBytes: 80 * 1024,
   } satisfies CompressImageOptions,
-  /** Catalogue / design photos — nearly original */
+  /** Catalogue / design photos — crisp high-definition without multi-megabyte bloat */
   catalog: {
-    maxEdge: 4096,
-    webpQuality: 0.95,
-    jpegQuality: 0.95,
-    preferOriginalUnderBytes: 10 * 1024 * 1024,
+    maxEdge: 1600,
+    webpQuality: 0.85,
+    jpegQuality: 0.88,
+    preferOriginalUnderBytes: 300 * 1024,
   } satisfies CompressImageOptions,
   /** Stock item photos */
   stock: {
-    maxEdge: 2400,
-    webpQuality: 0.9,
-    jpegQuality: 0.92,
-    preferOriginalUnderBytes: 2 * 1024 * 1024,
+    maxEdge: 1200,
+    webpQuality: 0.8,
+    jpegQuality: 0.82,
+    preferOriginalUnderBytes: 150 * 1024,
+  } satisfies CompressImageOptions,
+  /** Thumbnail variant for fast grid/list rendering */
+  thumbnail: {
+    maxEdge: 320,
+    webpQuality: 0.7,
+    jpegQuality: 0.7,
+    preferOriginalUnderBytes: 40 * 1024,
   } satisfies CompressImageOptions,
 } as const;
 

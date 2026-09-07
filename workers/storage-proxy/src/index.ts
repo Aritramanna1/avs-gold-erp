@@ -125,7 +125,7 @@ function pathTenant(key: string): { firmId: string; branchId?: string } | null {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: { waitUntil: (p: Promise<unknown>) => void }): Promise<Response> {
     const origin = resolveCorsOrigin(request, env.ALLOWED_ORIGIN);
     const cors = {
       "Access-Control-Allow-Origin": "*",
@@ -147,9 +147,16 @@ export default {
     }
     const objectKey = parts.slice(1).join("/");
 
-    // GET / HEAD: Public/direct object read. Enables <img> tags, PDF rendering,
-    // public documents (/doc/$token), and portals without needing ephemeral blob hacks.
+    // GET / HEAD: Public/direct object read. Uses Cloudflare edge cache for sub-second retrieval.
     if (request.method === "GET" || request.method === "HEAD") {
+      const cache = typeof caches !== "undefined" && (caches as any).default ? (caches as any).default : null;
+      if (cache && request.method === "GET") {
+        const cachedRes = await cache.match(request);
+        if (cachedRes) {
+          return cachedRes;
+        }
+      }
+
       const obj = await env.STORAGE.get(objectKey);
       if (!obj) return new Response("Not Found", { status: 404, headers: cors });
       const headers = new Headers(cors);
@@ -159,7 +166,11 @@ export default {
       if (request.method === "HEAD") {
         return new Response(null, { headers });
       }
-      return new Response(obj.body, { headers });
+      const response = new Response(obj.body, { headers });
+      if (cache && ctx?.waitUntil) {
+        ctx.waitUntil(cache.put(request, response.clone()));
+      }
+      return response;
     }
 
     // PUT / DELETE: Require valid Supabase user JWT and strict tenant scoping.

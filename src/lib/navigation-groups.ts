@@ -116,7 +116,6 @@ function filterNavTree(
 import { useInstallationConfig } from "@/lib/installation-config";
 import { useBusinessRules } from "@/lib/business-rules-store";
 import { useCustomizationHubPreferences } from "@/lib/customization-hub-preferences-store";
-import { useWorkflowEngine } from "@/lib/workflow-engine";
 
 function isNavRouteAllowed(to: string): boolean {
   try {
@@ -132,53 +131,8 @@ function isNavRouteAllowed(to: string): boolean {
     if (to.startsWith("/orders") && !rules.isEnabled("enable_orders_module")) return false;
     if (to === "/assistant" && !rules.isEnabled("enable_ai_assistant")) return false;
 
-    // ── Customization Hub Features & Business Mode Filter ──
+    // ── Customization Hub Features Filter ──
     const feat = useCustomizationHubPreferences.getState().features;
-    const wfMode = useWorkflowEngine.getState().config.mode;
-
-    // Strict Manufacturing Mode: Completely hide Retail CRM, retail marketing, retail box/tray, schemes, retail estimates, bank reconciliation, URD purchase, duplicate item transactions & obsolete stock transfers
-    if (wfMode === "manufacturing_only" || wfMode !== "retail_only") {
-      if (
-        to === "/treasury/bank-reconciliation" ||
-        to === "/utilities/urd-purchase" ||
-        to === "/stock/transfers" ||
-        to === "/utilities/item-transaction" ||
-        to === "/reports/item-transaction" ||
-        to === "/manufacturing/owner-transactions"
-      ) {
-        return false;
-      }
-    }
-
-    if (wfMode === "manufacturing_only") {
-      if (
-        to.startsWith("/crm") ||
-        to === "/communications" ||
-        to === "/whatsapp" ||
-        to.startsWith("/scheme") ||
-        to === "/reports/scheme" ||
-        to === "/billing/estimates" ||
-        to.includes("box") ||
-        to.includes("tray")
-      ) {
-        return false;
-      }
-    }
-
-    // Strict Retail-Only Mode: Completely hide Manufacturing, workshop, karigar, melt, refinery, hallmarking
-    if (wfMode === "retail_only") {
-      if (
-        to.startsWith("/manufacturing") ||
-        to.startsWith("/workshop") ||
-        to === "/melt" ||
-        to === "/refinery" ||
-        to === "/conversion" ||
-        to === "/stock/hallmark" ||
-        to === "/repair"
-      ) {
-        return false;
-      }
-    }
 
     // Always block duplicate owner transaction route (owner drawings belong to /expenses)
     if (to === "/manufacturing/owner-transactions") return false;
@@ -208,25 +162,12 @@ function isNavRouteAllowed(to: string): boolean {
   return true;
 }
 
-/** Keep folders that still have at least one permitted leaf and enforce top-level group restrictions. */
+/** Keep folders that still have at least one permitted leaf and enforce top-level group permissions. */
 export function filterNavGroupsByPermission(
   groups: NavGroupDef[],
   allow: (to: string) => boolean,
 ): NavGroupDef[] {
-  const wfMode = useWorkflowEngine.getState().config.mode;
-
   return groups
-    .filter((group) => {
-      // In strict Manufacturing-only mode, completely exclude Retail CRM and Scheme groups
-      if (wfMode === "manufacturing_only" && (group.id === "crm" || group.id === "scheme")) {
-        return false;
-      }
-      // In strict Retail-only mode, completely exclude Production/Workshop group
-      if (wfMode === "retail_only" && group.id === "production") {
-        return false;
-      }
-      return true;
-    })
     .map((group) => ({
       ...group,
       items: filterNavTree(group.items, (to) => allow(to) && isNavRouteAllowed(to)),

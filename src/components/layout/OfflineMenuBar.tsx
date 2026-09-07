@@ -23,7 +23,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 
 const STORAGE_KEY = "avs_offline_menu_active_v2";
 
@@ -73,9 +72,6 @@ function folderContainsActive(
  * Top menu → dropdown → nested submenu (▸) → leaf form only.
  * Example: Utility → Cheque → Print | Register | Checkbook.
  */
-import { useWorkflowEngine, type BusinessMode } from "@/lib/workflow-engine";
-import { Factory, ShoppingBag, Sparkles } from "lucide-react";
-
 export function OfflineMenuBar({ className = "" }: { className?: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const search = useRouterState({
@@ -86,12 +82,11 @@ export function OfflineMenuBar({ className = "" }: { className?: string }) {
   const { t } = useLanguage();
   const tTerm = useTerminology((s) => s.tTerm);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const { config: wfConfig, patch: patchWf } = useWorkflowEngine();
 
   const filteredGroups = useMemo(
     () =>
       filterNavGroupsByPermission(navigationGroups, (to) => hasRoutePermission(role, to)),
-    [role, wfConfig.mode],
+    [role],
   );
 
   const flatVisible = useMemo(
@@ -122,17 +117,6 @@ export function OfflineMenuBar({ className = "" }: { className?: string }) {
       /* ignore */
     }
   }, [routeGroup?.id]);
-
-  function handleModeSwitch(newMode: BusinessMode) {
-    patchWf({ mode: newMode });
-    const label =
-      newMode === "manufacturing_only"
-        ? "Manufacturing Strictly (Retail CRM hidden)"
-        : newMode === "retail_only"
-          ? "Retail Showroom Only (Workshop hidden)"
-          : "Full Combined Suite";
-    toast.success(`Operational Mode: ${label}`);
-  }
 
   function itemLabel(item: NavItemDef): string {
     const termKey =
@@ -265,46 +249,6 @@ export function OfflineMenuBar({ className = "" }: { className?: string }) {
             );
           })}
         </nav>
-
-        {/* Operational Domain Switcher Pill */}
-        <div className="hidden lg:flex items-center gap-1 border border-border/80 rounded-md p-0.5 bg-muted/30 text-[10px] shrink-0 no-print" id="operational-mode-switcher">
-          <button
-            type="button"
-            onClick={() => handleModeSwitch("manufacturing_only")}
-            className={`px-2 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-              wfConfig.mode === "manufacturing_only"
-                ? "bg-amber-500 text-black shadow-xs font-bold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-            }`}
-            title="Switch to Strict Manufacturing Mode (Retail CRM hidden)"
-          >
-            <Factory className="h-3 w-3" /> Manufacturing
-          </button>
-          <button
-            type="button"
-            onClick={() => handleModeSwitch("retail_only")}
-            className={`px-2 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-              wfConfig.mode === "retail_only"
-                ? "bg-blue-600 text-white shadow-xs font-bold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-            }`}
-            title="Switch to Strict Retail Showroom Mode (Manufacturing hidden)"
-          >
-            <ShoppingBag className="h-3 w-3" /> Retail
-          </button>
-          <button
-            type="button"
-            onClick={() => handleModeSwitch("combined_commerce_manufacturing")}
-            className={`px-2 py-0.5 rounded font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-              wfConfig.mode === "combined_commerce_manufacturing"
-                ? "bg-gold text-gold-foreground shadow-xs font-bold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-            }`}
-            title="Combined Commerce + Manufacturing Suite"
-          >
-            <Sparkles className="h-3 w-3" /> Both
-          </button>
-        </div>
       </div>
 
       {/* Breadcrumb of open cascade path for current form */}
