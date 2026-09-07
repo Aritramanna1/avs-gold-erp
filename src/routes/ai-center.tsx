@@ -33,6 +33,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { toast } from "sonner";
+import { MCPDiagnosticsPanel } from "@/components/mcp/MCPDiagnosticsPanel";
 
 export const Route = createFileRoute("/ai-center")({
   head: () => ({
@@ -437,6 +438,9 @@ function AICenterPage() {
           </div>
         </Card>
       </div>
+
+      {/* MCP Diagnostics & Foundation Registry Panel */}
+      <MCPDiagnosticsPanel />
 
       {/* AI Action Audit Log */}
       <Card className="p-5 border space-y-3">

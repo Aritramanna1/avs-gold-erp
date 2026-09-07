@@ -293,4 +293,65 @@ test.describe("AVS ERP — Master System Configuration & Automated E2E Suite", (
       expect(decision.tcsApplicable).toBe(false);
     });
   });
+
+  // ── 8. AI CAPABILITIES & MCP FOUNDATION READINESS ─────────────────────────
+  test.describe("8. AI Capabilities & MCP Foundation Readiness", () => {
+    test("centralized AI capability registry activates read, prepare, and recommend boundaries", async () => {
+      const { AI_CAPABILITY_REGISTRY, isCapabilityAllowedForRole } = await import(
+        "../../src/lib/ai-readiness/ai-capability-registry"
+      );
+
+      expect(AI_CAPABILITY_REGISTRY.AI_READ_CUSTOMER.enabled).toBe(true);
+      expect(AI_CAPABILITY_REGISTRY.AI_PREPARE_SALE.enabled).toBe(true);
+      expect(AI_CAPABILITY_REGISTRY.AI_PREPARE_SETTLEMENT.approvalRequired).toBe(true);
+
+      // Verify role boundary enforcement
+      expect(isCapabilityAllowedForRole("AI_READ_CUSTOMER", "retail_sales", "READ")).toBe(true);
+      expect(isCapabilityAllowedForRole("AI_READ_LEDGER", "retail_sales", "READ")).toBe(false);
+    });
+
+    test("MCP Tool Registry declares versioned schemas across all enterprise namespaces", async () => {
+      const { listMCPTools } = await import("../../src/lib/mcp/mcp-tool-registry");
+      const tools = listMCPTools();
+
+      expect(tools.length).toBeGreaterThanOrEqual(40);
+      const namespaces = new Set(tools.map((t) => t.namespace));
+      expect(namespaces.has("core")).toBe(true);
+      expect(namespaces.has("customers")).toBe(true);
+      expect(namespaces.has("retail")).toBe(true);
+      expect(namespaces.has("inventory")).toBe(true);
+      expect(namespaces.has("manufacturing")).toBe(true);
+      expect(namespaces.has("karigar")).toBe(true);
+      expect(namespaces.has("payroll")).toBe(true);
+      expect(namespaces.has("finance")).toBe(true);
+      expect(namespaces.has("production")).toBe(true);
+      expect(namespaces.has("barcode")).toBe(true);
+      expect(namespaces.has("reports")).toBe(true);
+      expect(namespaces.has("system")).toBe(true);
+    });
+
+    test("Supervisor profile requires SMS OTP authentication and rejects WhatsApp OTP", async () => {
+      const { createMCPAuthContext } = await import("../../src/lib/mcp/mcp-auth-context");
+
+      const validSms = createMCPAuthContext({
+        userId: "u_sup_1",
+        role: "supervisor",
+        tenantId: "tenant_demo",
+        sessionId: "sess_sms_1",
+        authMethod: "sms_otp",
+        otpTransport: "sms",
+      });
+      expect(validSms.context?.isSupervisor).toBe(true);
+
+      const rejectedWa = createMCPAuthContext({
+        userId: "u_sup_1",
+        role: "supervisor",
+        tenantId: "tenant_demo",
+        sessionId: "sess_wa_1",
+        authMethod: "sms_otp",
+        otpTransport: "whatsapp",
+      });
+      expect(rejectedWa.error?.code).toBe("UNAUTHORIZED");
+    });
+  });
 });
