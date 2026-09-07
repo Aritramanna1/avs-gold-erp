@@ -23,7 +23,7 @@ import { StagedLoadPanel } from "@/components/staged-load-panel";
 import { useStagedLoad } from "@/hooks/use-staged-load";
 import { WidgetErrorBoundary } from "@/components/widget-error-boundary";
 import { HomeDashboardSkeleton } from "@/components/dashboard/HomeDashboardSkeleton";
-import { OperationalHomeLinks } from "@/components/dashboard/OperationalHomeLinks";
+import { WorkspaceGateways } from "@/components/dashboard/WorkspaceGateways";
 import { ProgressiveDisclosure } from "@/components/ui/progressive-disclosure";
 import { recordStartupMetric, markStartup } from "@/lib/performance/startup-metrics";
 import { mgToGrams } from "@/lib/gold";
@@ -192,7 +192,7 @@ function Home() {
     <div data-tour="home-dashboard" className="p-4 md:p-7 max-w-7xl mx-auto page-enter">
       <PageHeader title={t("dashboard.goodDay")} subtitle={t("dashboard.overview")} />
 
-      <OperationalHomeLinks />
+      <WorkspaceGateways />
 
       {/* ── 13-Stage Onboarding & Migration Banner ──────────────────────── */}
       {showMigrationBanner && (
