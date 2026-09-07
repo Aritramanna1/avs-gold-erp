@@ -8,3 +8,4 @@ export * from "./mcp-tool-registry";
 export * from "./mcp-executor";
 export * from "./mcp-rate-limiter";
 export * from "./mcp-audit";
+export * from "./mcp-server";

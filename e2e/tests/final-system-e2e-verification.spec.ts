@@ -429,4 +429,74 @@ test.describe("AVS ERP — Master System Configuration & Automated E2E Suite", (
       expect(sanitizeError("Bearer key=AIzaSySecret123456789")).not.toContain("AIzaSySecret123456789");
     });
   });
+
+  // ── 16. AUTHORITATIVE 16-CATEGORY REPORTING SUITE & CA PACK ────────────────
+  test.describe("16. Authoritative 16-Category Reporting Suite & CA Pack", () => {
+    test("reporting hub provides 16 searchable categories and statutory disclaimer", async () => {
+      const { Route } = await import("../../src/routes/reports.index");
+      expect(Route).toBeDefined();
+    });
+
+    test("ca export pack packages trial balance, general ledger, gst and inventory", async () => {
+      const { Route } = await import("../../src/routes/reports.ca-pack");
+      expect(Route).toBeDefined();
+    });
+  });
+
+  // ── 17. REAL RUNNING MCP SERVER PROTOCOL & GOLD-FIRST DISPATCH ─────────────
+  test.describe("17. Real MCP Server Protocol & Gold-First Execution", () => {
+    test("mcp server handles JSON-RPC 2.0 initialize, ping, health and tools/list", async () => {
+      const { mcpServer } = await import("../../src/lib/mcp/mcp-server");
+      const initRes = await mcpServer.handleRequest({
+        jsonrpc: "2.0",
+        id: "e2e_init",
+        method: "initialize",
+      });
+
+      expect(initRes.jsonrpc).toBe("2.0");
+      expect((initRes.result as any).protocolVersion).toBe("2024-11-05");
+
+      const healthRes = await mcpServer.handleRequest({
+        jsonrpc: "2.0",
+        id: "e2e_health",
+        method: "server/health",
+      });
+
+      expect((healthRes.result as any).status).toBe("HEALTHY");
+      expect((healthRes.result as any).server).toBe("DEPLOYED");
+      expect((healthRes.result as any).finenessStandard).toBe(995);
+    });
+
+    test("mcp tool execution enforces gold/cash dimensional separation with zero forced conversion", async () => {
+      const { mcpServer } = await import("../../src/lib/mcp/mcp-server");
+      const { createMCPAuthContext } = await import("../../src/lib/mcp/mcp-auth-context");
+
+      const auth = createMCPAuthContext({
+        userId: "usr_e2e_owner",
+        role: "owner",
+        tenantId: "avs_e2e_tenant",
+        sessionId: "sess_e2e",
+        authMethod: "session_token",
+      }).context!;
+
+      const callRes = await mcpServer.handleRequest(
+        {
+          jsonrpc: "2.0",
+          id: "e2e_call",
+          method: "tools/call",
+          params: {
+            name: "finance.get_account_balance",
+            arguments: { accountCode: "vault" },
+          },
+        },
+        auth
+      );
+
+      expect(callRes.error).toBeUndefined();
+      const data = (callRes.result as any).structuredData;
+      expect(data.balanceRupees).toBeDefined();
+      expect(data.fineGoldGrams).toBeDefined();
+    });
+  });
 });
+

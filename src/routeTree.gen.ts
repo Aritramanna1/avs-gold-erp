@@ -188,6 +188,7 @@ import { Route as ReportsDailyCloseRouteImport } from './routes/reports.daily-cl
 import { Route as ReportsCommunicationAnalyticsRouteImport } from './routes/reports.communication-analytics'
 import { Route as ReportsCityWiseRouteImport } from './routes/reports.city-wise'
 import { Route as ReportsCashFlowRouteImport } from './routes/reports.cash-flow'
+import { Route as ReportsCaPackRouteImport } from './routes/reports.ca-pack'
 import { Route as ReportsBullionLedgerRouteImport } from './routes/reports.bullion-ledger'
 import { Route as ReportsBranchRouteImport } from './routes/reports.branch'
 import { Route as ReportsBarcodeStockRouteImport } from './routes/reports.barcode-stock'
@@ -1204,6 +1205,11 @@ const ReportsCashFlowRoute = ReportsCashFlowRouteImport.update({
   path: '/cash-flow',
   getParentRoute: () => ReportsRoute,
 } as any)
+const ReportsCaPackRoute = ReportsCaPackRouteImport.update({
+  id: '/ca-pack',
+  path: '/ca-pack',
+  getParentRoute: () => ReportsRoute,
+} as any)
 const ReportsBullionLedgerRoute = ReportsBullionLedgerRouteImport.update({
   id: '/bullion-ledger',
   path: '/bullion-ledger',
@@ -1857,6 +1863,7 @@ export interface FileRoutesByFullPath {
   '/reports/barcode-stock': typeof ReportsBarcodeStockRoute
   '/reports/branch': typeof ReportsBranchRoute
   '/reports/bullion-ledger': typeof ReportsBullionLedgerRoute
+  '/reports/ca-pack': typeof ReportsCaPackRoute
   '/reports/cash-flow': typeof ReportsCashFlowRoute
   '/reports/city-wise': typeof ReportsCityWiseRoute
   '/reports/communication-analytics': typeof ReportsCommunicationAnalyticsRoute
@@ -2127,6 +2134,7 @@ export interface FileRoutesByTo {
   '/reports/barcode-stock': typeof ReportsBarcodeStockRoute
   '/reports/branch': typeof ReportsBranchRoute
   '/reports/bullion-ledger': typeof ReportsBullionLedgerRoute
+  '/reports/ca-pack': typeof ReportsCaPackRoute
   '/reports/cash-flow': typeof ReportsCashFlowRoute
   '/reports/city-wise': typeof ReportsCityWiseRoute
   '/reports/communication-analytics': typeof ReportsCommunicationAnalyticsRoute
@@ -2414,6 +2422,7 @@ export interface FileRoutesById {
   '/reports/barcode-stock': typeof ReportsBarcodeStockRoute
   '/reports/branch': typeof ReportsBranchRoute
   '/reports/bullion-ledger': typeof ReportsBullionLedgerRoute
+  '/reports/ca-pack': typeof ReportsCaPackRoute
   '/reports/cash-flow': typeof ReportsCashFlowRoute
   '/reports/city-wise': typeof ReportsCityWiseRoute
   '/reports/communication-analytics': typeof ReportsCommunicationAnalyticsRoute
@@ -2702,6 +2711,7 @@ export interface FileRouteTypes {
     | '/reports/barcode-stock'
     | '/reports/branch'
     | '/reports/bullion-ledger'
+    | '/reports/ca-pack'
     | '/reports/cash-flow'
     | '/reports/city-wise'
     | '/reports/communication-analytics'
@@ -2972,6 +2982,7 @@ export interface FileRouteTypes {
     | '/reports/barcode-stock'
     | '/reports/branch'
     | '/reports/bullion-ledger'
+    | '/reports/ca-pack'
     | '/reports/cash-flow'
     | '/reports/city-wise'
     | '/reports/communication-analytics'
@@ -3258,6 +3269,7 @@ export interface FileRouteTypes {
     | '/reports/barcode-stock'
     | '/reports/branch'
     | '/reports/bullion-ledger'
+    | '/reports/ca-pack'
     | '/reports/cash-flow'
     | '/reports/city-wise'
     | '/reports/communication-analytics'
@@ -4792,6 +4804,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsCashFlowRouteImport
       parentRoute: typeof ReportsRoute
     }
+    '/reports/ca-pack': {
+      id: '/reports/ca-pack'
+      path: '/ca-pack'
+      fullPath: '/reports/ca-pack'
+      preLoaderRoute: typeof ReportsCaPackRouteImport
+      parentRoute: typeof ReportsRoute
+    }
     '/reports/bullion-ledger': {
       id: '/reports/bullion-ledger'
       path: '/bullion-ledger'
@@ -5762,6 +5781,7 @@ interface ReportsRouteChildren {
   ReportsBarcodeStockRoute: typeof ReportsBarcodeStockRoute
   ReportsBranchRoute: typeof ReportsBranchRoute
   ReportsBullionLedgerRoute: typeof ReportsBullionLedgerRoute
+  ReportsCaPackRoute: typeof ReportsCaPackRoute
   ReportsCashFlowRoute: typeof ReportsCashFlowRoute
   ReportsCityWiseRoute: typeof ReportsCityWiseRoute
   ReportsCommunicationAnalyticsRoute: typeof ReportsCommunicationAnalyticsRoute
@@ -5828,6 +5848,7 @@ const ReportsRouteChildren: ReportsRouteChildren = {
   ReportsBarcodeStockRoute: ReportsBarcodeStockRoute,
   ReportsBranchRoute: ReportsBranchRoute,
   ReportsBullionLedgerRoute: ReportsBullionLedgerRoute,
+  ReportsCaPackRoute: ReportsCaPackRoute,
   ReportsCashFlowRoute: ReportsCashFlowRoute,
   ReportsCityWiseRoute: ReportsCityWiseRoute,
   ReportsCommunicationAnalyticsRoute: ReportsCommunicationAnalyticsRoute,
