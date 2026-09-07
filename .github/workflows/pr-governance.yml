@@ -30,8 +30,9 @@ jobs:
           cache: 'npm'
 
       - name: Validate PR Title (Conventional Commits)
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
           echo "Validating PR Title: $PR_TITLE"
           REGEX="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9_\.\-]+\))?:\s.+$"
           if [[ ! "$PR_TITLE" =~ $REGEX ]] && [[ ! "$PR_TITLE" =~ ^\[Stack\]: ]]; then

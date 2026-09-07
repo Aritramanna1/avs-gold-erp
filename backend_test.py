@@ -14,8 +14,8 @@ from typing import Dict, Any, Optional
 # Supabase connection details from environment
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "http://localhost:8000")
 ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
-TEST_USER_EMAIL = os.environ.get("TEST_USER_EMAIL", "test.owner@avs-erp.test")
-TEST_USER_PASSWORD = os.environ.get("TEST_USER_PASSWORD", "TestOwnerPass@2026")
+TEST_USER_EMAIL = os.environ.get("TEST_USER_EMAIL", "")
+TEST_USER_PASSWORD = os.environ.get("TEST_USER_PASSWORD", "")
 
 # Test results tracking
 test_results = []
