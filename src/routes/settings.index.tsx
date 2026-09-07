@@ -50,6 +50,7 @@ import { useModuleStore, ERP_MODULES, type ERPModuleKey } from "@/lib/module-sto
 import { hardwareService } from "@/lib/hardware-service";
 import { CashDrawerButton } from "@/components/hardware/CashDrawerButton";
 import { HardwareDevicesRegistry } from "@/components/hardware/HardwareDevicesRegistry";
+import { StatutoryTaxControlTable } from "@/components/settings/StatutoryTaxControlTable";
 import {
   Trash2,
   Plus,
@@ -3036,6 +3037,8 @@ function GstTab() {
             </div>
           </Field>
         </div>
+
+        <StatutoryTaxControlTable />
       </Card>
 
       <Card className="p-5 space-y-6">

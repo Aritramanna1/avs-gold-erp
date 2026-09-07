@@ -543,9 +543,7 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
         ? i.createdAt
         : i.createdAt
           ? new Date(i.createdAt).getTime()
-          : i.date
-            ? new Date(i.date).getTime()
-            : Date.now();
+          : Date.now();
     const dateStr = new Date(ts).toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
@@ -557,7 +555,7 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
     const computedGst =
       typeof i.gstPaise === "number"
         ? i.gstPaise
-        : (i.cgstPaise || 0) + (i.sgstPaise || 0) + (i.igstPaise || 0);
+        : (i.cgstPaise || 0) + (i.sgstPaise || 0);
     const totalTaxablePaise = (i.subtotalPaise || 0) + computedGst + (i.tcsPaise ?? 0);
 
     rawRows.push({
@@ -566,7 +564,7 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
       date: dateStr,
       voucherNo: i.invoiceNo,
       type: "Invoice Sale",
-      description: `Billed Invoice ${i.invoiceNo} · ${i.items.map((it) => it.itemName).join(", ")}`,
+      description: `Billed Invoice ${i.invoiceNo} · ${i.items.map((it) => it.itemName || it.category || "Item").join(", ")}`,
       source: "invoice",
       sourceEntityId: i.id,
       goldInMg: 0,
