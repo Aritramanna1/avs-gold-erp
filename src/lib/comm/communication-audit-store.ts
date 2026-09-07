@@ -70,18 +70,27 @@ export const useCommunicationAuditStore = create<CommAuditState>()((set, get) =>
         }
       }
 
-      try {
-        await supabase.from("email_outbox" as never).insert({
-          recipient_email: fullEntry.recipientEmail,
-          subject: `${fullEntry.documentType} ${fullEntry.documentNumber}`,
-          template_key: fullEntry.eventKey,
-          status: fullEntry.status,
-          external_message_id: fullEntry.id,
-          sent_at: fullEntry.timestamp,
-          error_message: fullEntry.errorMessage,
-        } as never);
-      } catch {
-        // Fallback
+      if (fullEntry.recipientEmail && fullEntry.recipientEmail.includes("@")) {
+        try {
+          const validStatuses = new Set(["queued", "sending", "sent", "delivered", "failed", "retrying"]);
+          const dbStatus = validStatuses.has(fullEntry.status)
+            ? fullEntry.status
+            : fullEntry.status === "sent"
+              ? "sent"
+              : "failed";
+
+          await supabase.from("email_outbox" as never).insert({
+            recipient_email: fullEntry.recipientEmail,
+            subject: `${fullEntry.documentType} ${fullEntry.documentNumber}`,
+            template_key: fullEntry.eventKey,
+            status: dbStatus,
+            external_message_id: fullEntry.id,
+            sent_at: fullEntry.timestamp,
+            error_message: fullEntry.errorMessage || null,
+          } as never);
+        } catch {
+          // Fallback / offline mode
+        }
       }
 
       return fullEntry;

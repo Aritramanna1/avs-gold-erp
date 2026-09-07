@@ -49,7 +49,7 @@ export async function probeSupabaseReachable(timeoutMs = 8000): Promise<{
   if (!isSupabaseConfigured()) {
     return { ok: false, detail: "Supabase is not configured in this APK build." };
   }
-  const { url: configUrl } = getResolvedConfig();
+  const { url: configUrl, key } = getResolvedConfig();
   const url = configUrl?.replace(/\/$/, "");
   if (!url) return { ok: false, detail: "Missing VITE_SUPABASE_URL." };
 
@@ -58,7 +58,10 @@ export async function probeSupabaseReachable(timeoutMs = 8000): Promise<{
   try {
     const res = await fetch(`${url}/auth/v1/health`, {
       method: "GET",
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        ...(key ? { apikey: key } : {}),
+      },
       signal: controller?.signal,
     });
     // 2xx/4xx both prove TCP/TLS/DNS worked; only network errors mean offline.

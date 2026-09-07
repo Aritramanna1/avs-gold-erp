@@ -21,8 +21,8 @@ async function r2AuthHeader(): Promise<string> {
 export function normalizeR2Url(url: string): string {
   if (!url) return "";
   return url
-    .replace(/https?:\/\/mtj-storage-proxy\.arivahly\.workers\.dev/gi, R2_PROXY_URL)
-    .replace(/https?:\/\/mtj-storage-proxy\.aritramanna222\.workers\.dev/gi, R2_PROXY_URL);
+    .replace(/https?:\/\/[a-zA-Z0-9-_.]*arivahly\.workers\.dev/gi, R2_PROXY_URL)
+    .replace(/https?:\/\/mtj-storage-proxy\.[a-zA-Z0-9-_.]+\.workers\.dev/gi, R2_PROXY_URL);
 }
 
 /** True when URL points at our authenticated Cloudflare R2 proxy. */

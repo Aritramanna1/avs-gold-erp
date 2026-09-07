@@ -4,7 +4,7 @@ import {
   redactSmtpSettings,
   redactWaConfig,
 } from "@/lib/security/client-secret-redaction";
-import { getAttachmentSignedUrl } from "@/lib/supabase-storage";
+import { getAttachmentSignedUrl, normalizeR2Url } from "@/lib/supabase-storage";
 import { usePeople, type Person } from "@/lib/people-store";
 import { rowToPerson } from "@/lib/people-query";
 import { useLedger, type LedgerEntry } from "@/lib/ledger-store";
@@ -637,13 +637,21 @@ export async function pullAppSettings(): Promise<void> {
         console.warn("[data-loader] Failed to dynamically sign firm logo:", err);
       }
     }
+    if (firm && firm.logoUrl) {
+      firm.logoUrl = normalizeR2Url(firm.logoUrl);
+    }
 
     const updatedUsers = payload.users ?? useSettings.getState().users;
+    const incomingBranding = payload.branding ?? {};
+    if (incomingBranding.logoUrl) {
+      incomingBranding.logoUrl = normalizeR2Url(incomingBranding.logoUrl);
+    }
+
     useSettings.setState({
       firm,
       branding: {
         ...useSettings.getState().branding,
-        ...(payload.branding ?? {}),
+        ...incomingBranding,
       },
       print: payload.print ?? useSettings.getState().print,
       gst: payload.gst ?? useSettings.getState().gst,
@@ -904,7 +912,7 @@ export async function pullBranchSettings(): Promise<void> {
         goldRateSource: (r.gold_rate_source as "manual" | "api" | undefined) ?? undefined,
         invoiceTemplateId: (r.invoice_template_id as string | null) ?? undefined,
         receiptTemplateId: (r.receipt_template_id as string | null) ?? undefined,
-        logoUrl: (r.logo_url as string | null) ?? undefined,
+        logoUrl: r.logo_url ? normalizeR2Url(r.logo_url as string) : undefined,
         logoStoragePath: (r.logo_storage_path as string | null) ?? undefined,
         goldRate24KOverridePaise:
           (r.gold_rate_24k_override_paise as number | null) ??

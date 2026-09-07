@@ -77,17 +77,19 @@ export class CentralEmailService {
       if (data?.error) throw new Error(String(data.error));
 
       // Log to email_outbox for delivery tracking in Supabase PostgreSQL
-      void supabase.from("email_outbox" as never).insert({
-        recipient_email: vars.recipientEmail,
-        subject: rendered.subject,
-        template_key: templateType,
-        event_key: options.jobContext?.eventKey ?? null,
-        entity_type: options.jobContext?.referenceType ?? null,
-        entity_id: options.jobContext?.referenceId ?? null,
-        status: "sent",
-        external_message_id: data?.messageId ?? emailId,
-        sent_at: new Date().toISOString(),
-      } as never);
+      if (vars.recipientEmail && vars.recipientEmail.includes("@")) {
+        void (supabase.from("email_outbox" as never).insert({
+          recipient_email: vars.recipientEmail,
+          subject: rendered.subject || "Notification",
+          template_key: templateType,
+          event_key: options.jobContext?.eventKey ?? null,
+          entity_type: options.jobContext?.referenceType ?? null,
+          entity_id: options.jobContext?.referenceId ?? null,
+          status: "sent",
+          external_message_id: data?.messageId ?? emailId,
+          sent_at: new Date().toISOString(),
+        } as never) as any).catch?.(() => {});
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Email delivery failed";
       if (attempt < maxRetries) {
