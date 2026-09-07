@@ -2,24 +2,41 @@
  * AVS ERP — Authoritative Statutory Tax & Compliance Engine
  *
  * Provides deterministic, effective-date aware rule resolution for:
- * 1. Indian GST (HSN 7113 Retail Jewellery, HSN 7108 Bullion, SAC 9988 Job Work)
- * 2. Old Gold Supplier Capacities (Personal, Unregistered, Registered, Custody, Exchange)
- * 3. Income Tax Provisions (Section 194Q Buyer TDS, Section 206C(1H) Inactive TCS, Section 269ST)
+ * 1. Statutory Supply Classifications:
+ *    - RETAIL_JEWELLERY (3% composite GST on total value under HSN 7113; making charges are integrated)
+ *    - JOB_WORK (5% GST on Karigar labour/making charges under SAC 9988)
+ *    - OLD_GOLD_PURCHASE (Personal: Exempt 0%, Unregistered: REVIEW_REQUIRED RCM, Registered: 3% B2B)
+ *    - CUSTOMER_GOLD_CUSTODY (Fiduciary safe-deposit non-supply with 0% tax)
+ *    - GOLD_EXCHANGE (Old gold consideration is a settlement credit, NOT a taxable base discount)
+ *    - REPAIR / POLISHING (Appropriate service tax configuration)
+ *    - BULLION (3% GST on pure metal under HSN 7108)
+ * 2. Explicit Rule States: ON, OFF, CONDITIONAL, REVIEW_REQUIRED, CONFIGURATION_REQUIRED
+ * 3. Explainable Tax Decision Snapshots with machine-readable `taxReason`
  * 4. Double Taxation Prevention and Single-Source Tax Snapshots
- * 5. Explicit Rule Statuses: ON, OFF, CONFIGURATION_REQUIRED, REVIEW_REQUIRED
- * 6. Audit Trail for Authorized Tax Overrides
+ * 5. Section 194Q Buyer Withholding and Section 206C(1H) Historical Inactivity
+ * 6. Authorized Admin Tax Override Audit Trail
  *
  * Invariant: Every tax decision is frozen into an immutable snapshot.
  */
 
 import { create } from "zustand";
 
-export type TaxRuleStatus = "ON" | "OFF" | "CONFIGURATION_REQUIRED" | "REVIEW_REQUIRED";
+export type TaxRuleStatus = "ON" | "OFF" | "CONDITIONAL" | "CONFIGURATION_REQUIRED" | "REVIEW_REQUIRED";
 
 export type StatutoryTaxType = "GST" | "TCS" | "TDS" | "EXEMPT";
 
+export type StatutorySupplyClassification =
+  | "RETAIL_JEWELLERY"
+  | "JOB_WORK"
+  | "OLD_GOLD_PURCHASE"
+  | "CUSTOMER_GOLD_CUSTODY"
+  | "GOLD_EXCHANGE"
+  | "REPAIR"
+  | "POLISHING"
+  | "BULLION";
+
 export type SupplierCapacity =
-  | "personal_customer"     // Individual selling personal old jewellery (Non-business / 0% Tax)
+  | "personal_customer"     // Individual selling personal old jewellery (Non-business / 0% Tax / RCM OFF)
   | "unregistered_business"  // Unregistered trader/dealer (Flagged as REVIEW_REQUIRED)
   | "registered_supplier"    // Registered GST dealer (Normal B2B supply with ITC)
   | "customer_custody"      // Temporary custody safe deposit (Non-supply / 0% Tax)
@@ -65,7 +82,7 @@ export const DEFAULT_STATUTORY_TAX_RULES: StatutoryRule[] = [
     hsnSacCode: "7113",
     appliesTo: "Retail jewellery (HSN 7113 composite supply)",
     description: "3% GST (1.5% CGST + 1.5% SGST or 3% IGST) on total transaction value of jewellery.",
-    applicableTransactionTypes: ["retail_sale", "invoice", "credit_note", "debit_note"],
+    applicableTransactionTypes: ["retail_sale", "invoice", "credit_note", "debit_note", "RETAIL_JEWELLERY"],
     statusCategory: "STATUTORY RULE VERIFIED",
     conditionNotes: "Applicable on full taxable value (metal + making + stones + hallmark) per GST Council FAQ Q7. No separate double-taxation on making charges.",
     ruleVersion: "2026.1",
@@ -81,7 +98,7 @@ export const DEFAULT_STATUTORY_TAX_RULES: StatutoryRule[] = [
     hsnSacCode: "7108",
     appliesTo: "Taxable bullion supply (B2B)",
     description: "3% GST on pure gold bars/bullion (ITC claimable by registered dealers).",
-    applicableTransactionTypes: ["purchase", "supplier_purchase"],
+    applicableTransactionTypes: ["purchase", "supplier_purchase", "BULLION"],
     statusCategory: "STATUTORY RULE VERIFIED",
     conditionNotes: "Requires valid tax invoice with GSTIN and HSN 7108.",
     ruleVersion: "2026.1",
@@ -97,7 +114,7 @@ export const DEFAULT_STATUTORY_TAX_RULES: StatutoryRule[] = [
     hsnSacCode: "9988",
     appliesTo: "Genuine job work & manufacturing labour charges",
     description: "5% GST on job-work / manufacturing making charges when principal supplies the metal.",
-    applicableTransactionTypes: ["job_work", "manufacturing_bill"],
+    applicableTransactionTypes: ["job_work", "manufacturing_bill", "JOB_WORK"],
     statusCategory: "STATUTORY RULE VERIFIED",
     conditionNotes: "Tax base is strictly restricted to labour, stones, and hallmarking charges.",
     ruleVersion: "2026.1",
@@ -113,7 +130,7 @@ export const DEFAULT_STATUTORY_TAX_RULES: StatutoryRule[] = [
     hsnSacCode: "9988",
     appliesTo: "Repair, alterations, and polishing services",
     description: "5% or 18% GST on repair/polishing depending on composite vs standalone supply.",
-    applicableTransactionTypes: ["repair", "service", "polishing"],
+    applicableTransactionTypes: ["repair", "service", "polishing", "REPAIR", "POLISHING"],
     statusCategory: "CONFIGURATION-DEPENDENT",
     conditionNotes: "Requires business configuration of SAC classification (9988 vs 9987).",
     ruleVersion: "2026.1",
@@ -130,7 +147,7 @@ export const DEFAULT_STATUTORY_TAX_RULES: StatutoryRule[] = [
     defaultRatePct: 0.0,
     appliesTo: "Personal customer old jewellery sale",
     description: "Sale of personal old jewellery by an individual is not in course/furtherance of business.",
-    applicableTransactionTypes: ["old_gold_purchase", "customer_settlement"],
+    applicableTransactionTypes: ["old_gold_purchase", "customer_settlement", "OLD_GOLD_PURCHASE"],
     applicableSupplierCapacities: ["personal_customer"],
     statusCategory: "STATUTORY RULE VERIFIED",
     conditionNotes: "No GST payable; no RCM applicable under section 9(4) notifications.",
@@ -146,7 +163,7 @@ export const DEFAULT_STATUTORY_TAX_RULES: StatutoryRule[] = [
     defaultRatePct: 0.0,
     appliesTo: "Notified transactions / Unregistered bullion dealers",
     description: "Gold sourced from unregistered commercial traders/dealers.",
-    applicableTransactionTypes: ["old_gold_purchase", "scrap_inward"],
+    applicableTransactionTypes: ["old_gold_purchase", "scrap_inward", "OLD_GOLD_PURCHASE"],
     applicableSupplierCapacities: ["unregistered_business"],
     statusCategory: "PROFESSIONAL REVIEW REQUIRED",
     conditionNotes: "Section 9(4) RCM notification status must be verified with CA for notified classes.",
@@ -163,7 +180,7 @@ export const DEFAULT_STATUTORY_TAX_RULES: StatutoryRule[] = [
     hsnSacCode: "7113",
     appliesTo: "Registered B2B supplier scrap metal",
     description: "Normal B2B taxable supply with full Input Tax Credit (ITC) eligibility.",
-    applicableTransactionTypes: ["purchase", "supplier_purchase", "old_gold_purchase"],
+    applicableTransactionTypes: ["purchase", "supplier_purchase", "old_gold_purchase", "OLD_GOLD_PURCHASE"],
     applicableSupplierCapacities: ["registered_supplier"],
     statusCategory: "STATUTORY RULE VERIFIED",
     conditionNotes: "3% GST charged by seller on tax invoice.",
@@ -179,7 +196,7 @@ export const DEFAULT_STATUTORY_TAX_RULES: StatutoryRule[] = [
     defaultRatePct: 0.0,
     appliesTo: "Customer gold safe custody / fiduciary deposit",
     description: "Fiduciary custody / bailment of customer gold for safekeeping or future order.",
-    applicableTransactionTypes: ["customer_gold_received", "custody_deposit"],
+    applicableTransactionTypes: ["customer_gold_received", "custody_deposit", "CUSTOMER_GOLD_CUSTODY"],
     applicableSupplierCapacities: ["customer_custody"],
     statusCategory: "STATUTORY RULE VERIFIED",
     conditionNotes: "Not a supply of goods or services under Section 7 of CGST Act. 0 monetary entry.",
@@ -206,7 +223,7 @@ export const DEFAULT_STATUTORY_TAX_RULES: StatutoryRule[] = [
     ruleId: "tds_section_194q_buyer_purchases",
     name: "Section 194Q TDS",
     taxType: "TDS",
-    status: "ON",
+    status: "CONDITIONAL",
     effectiveFrom: "2021-07-01",
     effectiveTo: null,
     defaultRatePct: 0.1,
@@ -257,7 +274,6 @@ function loadSavedRules(): StatutoryRule[] {
     if (!raw) return DEFAULT_STATUTORY_TAX_RULES;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Merge with defaults to ensure all keys and latest descriptions exist
       return DEFAULT_STATUTORY_TAX_RULES.map((defRule) => {
         const found = parsed.find((r: StatutoryRule) => r.ruleId === defRule.ruleId);
         return found ? { ...defRule, ...found } : defRule;
@@ -316,12 +332,15 @@ export interface TaxOverrideRecord {
 }
 
 export interface TaxResolutionContext {
-  transactionType: string;
+  classification?: StatutorySupplyClassification;
+  transactionType?: string;
   transactionDate: string | number; // ISO string or epoch ms
   taxableAmountPaise?: number;
   makingChargesPaise?: number;
   stoneChargesPaise?: number;
   hallmarkChargesPaise?: number;
+  oldGoldConsiderationPaise?: number;
+  newJewelleryValuePaise?: number;
   supplierCapacity?: SupplierCapacity;
   buyerTurnoverPrecedingFyPaise?: number;
   sellerPurchasesCurrentFyPaise?: number;
@@ -332,27 +351,36 @@ export interface TaxResolutionContext {
 
 export interface TaxDecisionSnapshot {
   taxApplicable: boolean;
-  taxReason: string;
-  ruleId: string;
-  ruleVersion: string;
-  ruleStatus: TaxRuleStatus;
-  taxType: StatutoryTaxType;
-  taxRatePct: number;
-  taxableValuePaise: number;
-  cgstPaise: number;
-  sgstPaise: number;
-  igstPaise: number;
-  totalTaxPaise: number;
+  taxRuleId: string;
+  taxRuleVersion: string;
+  taxStatus: TaxRuleStatus;
+  taxRate: number;
+  taxableValue: number;       // in rupees
+  taxableValuePaise: number;  // in paise
+  cgst: number;               // in rupees
+  sgst: number;               // in rupees
+  igst: number;               // in rupees
+  cgstPaise: number;          // in paise
+  sgstPaise: number;          // in paise
+  igstPaise: number;          // in paise
+  totalTax: number;           // in rupees
+  totalTaxPaise: number;      // in paise
   rcmApplicable: boolean;
   rcmStatus?: TaxRuleStatus;
+  taxReason: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  ruleId: string;             // alias for backward compatibility
+  ruleVersion: string;        // alias for backward compatibility
+  ruleStatus: TaxRuleStatus;  // alias for backward compatibility
+  taxType: StatutoryTaxType;
+  taxRatePct: number;         // alias for backward compatibility
   tdsApplicable: boolean;
   tdsRatePct?: number;
   tdsAmountPaise?: number;
   tcsApplicable: boolean;
   tcsRatePct?: number;
   tcsAmountPaise?: number;
-  effectiveFrom: string;
-  effectiveTo: string | null;
   statusCategory: StatutoryComplianceCategory;
   override?: TaxOverrideRecord;
   calculatedAt: string;
@@ -367,9 +395,9 @@ export type TaxResolutionResult = TaxDecisionSnapshot & {
 // ── Core Tax Decision & Pipeline Execution ───────────────────────────────────
 
 /**
- * Executes the complete 10-step automatic tax decision pipeline:
- * Transaction -> Type -> Capacity -> Classification -> Place of Supply -> Effective Date ->
- * Rule Status (ON/OFF/CONFIG/REVIEW) -> Statutory Conditions -> Computation -> Frozen Snapshot.
+ * Executes the complete deterministic tax decision pipeline:
+ * Supply Classification -> Capacity -> Place of Supply -> Effective Date ->
+ * Rule Status (ON/OFF/CONDITIONAL/REVIEW_REQUIRED) -> Statutory Conditions -> Computation -> Frozen Snapshot.
  */
 export function calculateTaxDecision(
   context: TaxResolutionContext,
@@ -377,13 +405,46 @@ export function calculateTaxDecision(
 ): TaxDecisionSnapshot {
   const activeRules = customRules || useStatutoryTaxStore.getState().rules || DEFAULT_STATUTORY_TAX_RULES;
 
+  // Resolve classification from explicit classification or transactionType
+  let classification: StatutorySupplyClassification = "RETAIL_JEWELLERY";
+  const rawType = (context.classification || context.transactionType || "retail_sale").toUpperCase();
+
+  if (rawType === "JOB_WORK" || rawType === "MANUFACTURING_BILL") {
+    classification = "JOB_WORK";
+  } else if (rawType === "OLD_GOLD_PURCHASE" || rawType === "CUSTOMER_SETTLEMENT") {
+    classification = "OLD_GOLD_PURCHASE";
+  } else if (
+    rawType === "CUSTOMER_GOLD_CUSTODY" ||
+    rawType === "CUSTOMER_GOLD_RECEIVED" ||
+    rawType === "CUSTODY_DEPOSIT" ||
+    context.supplierCapacity === "customer_custody"
+  ) {
+    classification = "CUSTOMER_GOLD_CUSTODY";
+  } else if (rawType === "GOLD_EXCHANGE") {
+    classification = "GOLD_EXCHANGE";
+  } else if (rawType === "REPAIR" || rawType === "SERVICE") {
+    classification = "REPAIR";
+  } else if (rawType === "POLISHING") {
+    classification = "POLISHING";
+  } else if (rawType === "BULLION" || rawType === "PURCHASE" || rawType === "SUPPLIER_PURCHASE") {
+    classification = "BULLION";
+  } else {
+    classification = "RETAIL_JEWELLERY";
+  }
+
   const txMs =
     typeof context.transactionDate === "number"
       ? context.transactionDate
       : new Date(context.transactionDate).getTime();
   const txDateStr = new Date(txMs).toISOString().split("T")[0]!;
   const calculatedAt = new Date().toISOString();
-  const taxableValuePaise = context.taxableAmountPaise ?? 0;
+
+  // For gold exchange, taxable supply base is the full value of new jewellery, NOT reduced by old gold consideration
+  let taxableValuePaise = context.taxableAmountPaise ?? 0;
+  if (classification === "GOLD_EXCHANGE" && context.newJewelleryValuePaise !== undefined) {
+    taxableValuePaise = context.newJewelleryValuePaise;
+  }
+
   const isInterState = !!context.isInterState;
 
   // Helper to construct zero-tax snapshot
@@ -393,22 +454,31 @@ export function calculateTaxDecision(
     ruleStatus: TaxRuleStatus = rule.status,
   ): TaxDecisionSnapshot => ({
     taxApplicable: false,
+    taxRuleId: rule.ruleId,
+    taxRuleVersion: rule.ruleVersion,
+    taxStatus: ruleStatus,
+    taxRate: 0,
+    taxableValue: taxableValuePaise / 100,
+    taxableValuePaise,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    cgstPaise: 0,
+    sgstPaise: 0,
+    igstPaise: 0,
+    totalTax: 0,
+    totalTaxPaise: 0,
+    rcmApplicable: false,
     taxReason: reason,
+    effectiveFrom: rule.effectiveFrom,
+    effectiveTo: rule.effectiveTo,
     ruleId: rule.ruleId,
     ruleVersion: rule.ruleVersion,
     ruleStatus,
     taxType: rule.taxType,
     taxRatePct: 0,
-    taxableValuePaise,
-    cgstPaise: 0,
-    sgstPaise: 0,
-    igstPaise: 0,
-    totalTaxPaise: 0,
-    rcmApplicable: false,
     tdsApplicable: false,
     tcsApplicable: false,
-    effectiveFrom: rule.effectiveFrom,
-    effectiveTo: rule.effectiveTo,
     statusCategory: rule.statusCategory,
     calculatedAt,
   });
@@ -422,34 +492,49 @@ export function calculateTaxDecision(
   const computeGstSplit = (basePaise: number, ratePct: number) => {
     const totalTaxPaise = Math.round((basePaise * ratePct) / 100);
     if (isInterState) {
-      return { cgstPaise: 0, sgstPaise: 0, igstPaise: totalTaxPaise, totalTaxPaise };
+      return {
+        cgstPaise: 0,
+        sgstPaise: 0,
+        igstPaise: totalTaxPaise,
+        totalTaxPaise,
+        cgst: 0,
+        sgst: 0,
+        igst: totalTaxPaise / 100,
+        totalTax: totalTaxPaise / 100,
+      };
     }
     const sgstPaise = Math.floor(totalTaxPaise / 2);
     const cgstPaise = totalTaxPaise - sgstPaise;
-    return { cgstPaise, sgstPaise, igstPaise: 0, totalTaxPaise };
+    return {
+      cgstPaise,
+      sgstPaise,
+      igstPaise: 0,
+      totalTaxPaise,
+      cgst: cgstPaise / 100,
+      sgst: sgstPaise / 100,
+      igst: 0,
+      totalTax: totalTaxPaise / 100,
+    };
   };
 
-  // ── Step 1: Customer Gold Custody ─────────────────────────────────────────
-  if (
-    context.transactionType === "customer_gold_received" ||
-    context.supplierCapacity === "customer_custody"
-  ) {
+  // ── 1. CUSTOMER GOLD CUSTODY ──────────────────────────────────────────────
+  if (classification === "CUSTOMER_GOLD_CUSTODY") {
     const rule = getRule("customer_gold_custody");
     return zeroTaxSnapshot(
       rule,
-      "CUSTOMER_CUSTODY_NON_SUPPLY: Customer gold custody is fiduciary bailment with 0 tax.",
+      "CUSTOMER_CUSTODY_NON_SUPPLY: Customer gold custody is fiduciary bailment with 0 tax. Physical gold resides in customer custody bucket; business inventory is unchanged.",
     );
   }
 
-  // ── Step 2: Old Gold Purchase ──────────────────────────────────────────────
-  if (context.transactionType === "old_gold_purchase") {
+  // ── 2. OLD GOLD PURCHASE ──────────────────────────────────────────────────
+  if (classification === "OLD_GOLD_PURCHASE") {
     const capacity = context.supplierCapacity || "personal_customer";
 
     if (capacity === "personal_customer") {
       const rule = getRule("old_gold_personal_capacity");
       return zeroTaxSnapshot(
         rule,
-        "PERSONAL_OLD_GOLD_EXEMPT: Personal customer old gold sale is not a taxable supply in business course.",
+        "PERSONAL_OLD_GOLD_EXEMPT: Personal customer sale of old jewellery is not a supply in the course/furtherance of business; no GST or RCM applies.",
       );
     }
 
@@ -462,57 +547,103 @@ export function calculateTaxDecision(
       const split = computeGstSplit(taxableValuePaise, rate);
       return {
         taxApplicable: rate > 0 && split.totalTaxPaise > 0,
+        taxRuleId: rule.ruleId,
+        taxRuleVersion: rule.ruleVersion,
+        taxStatus: rule.status,
+        taxRate: rate,
+        taxableValue: taxableValuePaise / 100,
+        taxableValuePaise,
+        ...split,
+        rcmApplicable: false,
         taxReason: "REGISTERED_SUPPLIER_SCRAP: 3% GST on B2B scrap supply from registered supplier.",
+        effectiveFrom: rule.effectiveFrom,
+        effectiveTo: rule.effectiveTo,
         ruleId: rule.ruleId,
         ruleVersion: rule.ruleVersion,
         ruleStatus: rule.status,
         taxType: "GST",
         taxRatePct: rate,
-        taxableValuePaise,
-        ...split,
-        rcmApplicable: false,
         tdsApplicable: false,
         tcsApplicable: false,
-        effectiveFrom: rule.effectiveFrom,
-        effectiveTo: rule.effectiveTo,
         statusCategory: rule.statusCategory,
         calculatedAt,
       };
     }
 
-    // Unregistered Business Supplier -> Must be marked REVIEW_REQUIRED / CONFIGURATION_REQUIRED
+    // Unregistered Business Supplier -> Flagged as REVIEW_REQUIRED
     const rule = getRule("old_gold_unregistered_dealer");
     return {
       taxApplicable: false,
+      taxRuleId: rule.ruleId,
+      taxRuleVersion: rule.ruleVersion,
+      taxStatus: "REVIEW_REQUIRED",
+      taxRate: 0,
+      taxableValue: taxableValuePaise / 100,
+      taxableValuePaise,
+      cgst: 0,
+      sgst: 0,
+      igst: 0,
+      cgstPaise: 0,
+      sgstPaise: 0,
+      igstPaise: 0,
+      totalTax: 0,
+      totalTaxPaise: 0,
+      rcmApplicable: false,
+      rcmStatus: "REVIEW_REQUIRED",
       taxReason:
-        "REVIEW_REQUIRED: Unregistered business supplier requires professional verification before RCM application.",
+        "REVIEW_REQUIRED: Unregistered business supplier selling in business course — statutory RCM treatment requires verification with Chartered Accountant.",
+      effectiveFrom: rule.effectiveFrom,
+      effectiveTo: rule.effectiveTo,
       ruleId: rule.ruleId,
       ruleVersion: rule.ruleVersion,
       ruleStatus: "REVIEW_REQUIRED",
       taxType: "GST",
       taxRatePct: 0,
-      taxableValuePaise,
-      cgstPaise: 0,
-      sgstPaise: 0,
-      igstPaise: 0,
-      totalTaxPaise: 0,
-      rcmApplicable: false,
-      rcmStatus: "REVIEW_REQUIRED",
       tdsApplicable: false,
       tcsApplicable: false,
-      effectiveFrom: rule.effectiveFrom,
-      effectiveTo: rule.effectiveTo,
       statusCategory: "PROFESSIONAL REVIEW REQUIRED",
       calculatedAt,
     };
   }
 
-  // ── Step 3: Section 194Q TDS Evaluation on Purchases ──────────────────────
-  if (context.transactionType === "purchase" || context.transactionType === "supplier_purchase") {
+  // ── 3. GENUINE JOB WORK (SAC 9988) ─────────────────────────────────────────
+  if (classification === "JOB_WORK") {
+    const rule = getRule("gst_jobwork_labour");
+    if (rule.status === "OFF") {
+      return zeroTaxSnapshot(rule, "RULE_OFF: Job-work GST rule is configured OFF.");
+    }
+    const rate = rule.defaultRatePct;
+    const split = computeGstSplit(taxableValuePaise, rate);
+    return {
+      taxApplicable: rate > 0 && split.totalTaxPaise > 0,
+      taxRuleId: rule.ruleId,
+      taxRuleVersion: rule.ruleVersion,
+      taxStatus: rule.status,
+      taxRate: rate,
+      taxableValue: taxableValuePaise / 100,
+      taxableValuePaise,
+      ...split,
+      rcmApplicable: false,
+      taxReason: "QUALIFYING_JOB_WORK: 5% GST on Job-Work labour/making charges under SAC 9988.",
+      effectiveFrom: rule.effectiveFrom,
+      effectiveTo: rule.effectiveTo,
+      ruleId: rule.ruleId,
+      ruleVersion: rule.ruleVersion,
+      ruleStatus: rule.status,
+      taxType: "GST",
+      taxRatePct: rate,
+      tdsApplicable: false,
+      tcsApplicable: false,
+      statusCategory: rule.statusCategory,
+      calculatedAt,
+    };
+  }
+
+  // ── 4. BULLION SUPPLY (HSN 7108) & SECTION 194Q TDS ────────────────────────
+  if (classification === "BULLION") {
     const bullionRule = getRule("gst_bullion_b2b");
     const tdsRule = getRule("tds_section_194q_buyer_purchases");
 
-    // Check Bullion GST Rule Status
     const gstRate = bullionRule.status === "ON" ? bullionRule.defaultRatePct : 0;
     const gstSplit = computeGstSplit(taxableValuePaise, gstRate);
 
@@ -552,12 +683,11 @@ export function calculateTaxDecision(
 
     return {
       taxApplicable: gstRate > 0 && gstSplit.totalTaxPaise > 0,
-      taxReason: appliedReason,
-      ruleId: bullionRule.ruleId,
-      ruleVersion: bullionRule.ruleVersion,
-      ruleStatus: bullionRule.status,
-      taxType: "GST",
-      taxRatePct: gstRate,
+      taxRuleId: bullionRule.ruleId,
+      taxRuleVersion: bullionRule.ruleVersion,
+      taxStatus: bullionRule.status,
+      taxRate: gstRate,
+      taxableValue: taxableValuePaise / 100,
       taxableValuePaise,
       ...gstSplit,
       rcmApplicable: false,
@@ -565,50 +695,59 @@ export function calculateTaxDecision(
       tdsRatePct: tdsApplicable ? tdsRatePct : 0,
       tdsAmountPaise,
       tcsApplicable: false,
+      taxReason: appliedReason,
       effectiveFrom: bullionRule.effectiveFrom,
       effectiveTo: bullionRule.effectiveTo,
+      ruleId: bullionRule.ruleId,
+      ruleVersion: bullionRule.ruleVersion,
+      ruleStatus: bullionRule.status,
+      taxType: "GST",
+      taxRatePct: gstRate,
       statusCategory: bullionRule.statusCategory,
       calculatedAt,
     };
   }
 
-  // ── Step 4: Job Work (SAC 9988) ───────────────────────────────────────────
-  if (context.transactionType === "job_work" || context.transactionType === "manufacturing_bill") {
-    const rule = getRule("gst_jobwork_labour");
+  // ── 5. REPAIR & POLISHING SERVICES ─────────────────────────────────────────
+  if (classification === "REPAIR" || classification === "POLISHING") {
+    const rule = getRule("gst_repair_work");
     if (rule.status === "OFF") {
-      return zeroTaxSnapshot(rule, "RULE_OFF: Job-work GST rule is configured OFF.");
+      return zeroTaxSnapshot(rule, "RULE_OFF: Repair & Polishing GST rule is configured OFF.");
     }
     const rate = rule.defaultRatePct;
     const split = computeGstSplit(taxableValuePaise, rate);
     return {
       taxApplicable: rate > 0 && split.totalTaxPaise > 0,
-      taxReason: "QUALIFYING_JOB_WORK: 5% GST on Job-Work labour/making charges under SAC 9988.",
+      taxRuleId: rule.ruleId,
+      taxRuleVersion: rule.ruleVersion,
+      taxStatus: rule.status,
+      taxRate: rate,
+      taxableValue: taxableValuePaise / 100,
+      taxableValuePaise,
+      ...split,
+      rcmApplicable: false,
+      taxReason: `SERVICE_${classification}: ${rate}% GST on ${classification} service.`,
+      effectiveFrom: rule.effectiveFrom,
+      effectiveTo: rule.effectiveTo,
       ruleId: rule.ruleId,
       ruleVersion: rule.ruleVersion,
       ruleStatus: rule.status,
       taxType: "GST",
       taxRatePct: rate,
-      taxableValuePaise,
-      ...split,
-      rcmApplicable: false,
       tdsApplicable: false,
       tcsApplicable: false,
-      effectiveFrom: rule.effectiveFrom,
-      effectiveTo: rule.effectiveTo,
       statusCategory: rule.statusCategory,
       calculatedAt,
     };
   }
 
-  // ── Step 5: Retail Jewellery Sale & Section 206C(1H) ──────────────────────
+  // ── 6. RETAIL JEWELLERY & GOLD EXCHANGE (HSN 7113 COMPOSITE) ───────────────
   const jewelleryRule = getRule("gst_jewellery_retail_b2c");
 
-  // Check if Rule is OFF
   if (jewelleryRule.status === "OFF") {
     return zeroTaxSnapshot(jewelleryRule, "RULE_OFF: Retail Jewellery GST rule is configured OFF.");
   }
 
-  // Check Effective Date Range
   if (jewelleryRule.effectiveFrom > txDateStr) {
     return zeroTaxSnapshot(
       jewelleryRule,
@@ -625,33 +764,48 @@ export function calculateTaxDecision(
     ? "Historical 206C(1H) evaluated for prior periods."
     : "Section 206C(1H) TCS inactive for current FY (01-04-2025 onward).";
 
+  const reasonPrefix =
+    classification === "GOLD_EXCHANGE"
+      ? `GOLD_EXCHANGE: 3% composite GST on full new jewellery value (₹${(taxableValuePaise / 100).toLocaleString("en-IN")}). Old gold consideration is a settlement credit, not a tax discount.`
+      : "QUALIFYING_RETAIL_JEWELLERY: 3% composite GST on total value under HSN 7113. Making charges are integrated into composite supply value and not separately taxed under SAC 9988.";
+
   const snapshot: TaxDecisionSnapshot = {
     taxApplicable: rate > 0 && split.totalTaxPaise > 0,
-    taxReason: `QUALIFYING_RETAIL_JEWELLERY: 3% composite GST on total value under HSN 7113. ${tcsReason}`,
+    taxRuleId: jewelleryRule.ruleId,
+    taxRuleVersion: jewelleryRule.ruleVersion,
+    taxStatus: jewelleryRule.status,
+    taxRate: rate,
+    taxableValue: taxableValuePaise / 100,
+    taxableValuePaise,
+    ...split,
+    rcmApplicable: false,
+    taxReason: `${reasonPrefix} ${tcsReason}`,
+    effectiveFrom: jewelleryRule.effectiveFrom,
+    effectiveTo: jewelleryRule.effectiveTo,
     ruleId: jewelleryRule.ruleId,
     ruleVersion: jewelleryRule.ruleVersion,
     ruleStatus: jewelleryRule.status,
     taxType: "GST",
     taxRatePct: rate,
-    taxableValuePaise,
-    ...split,
-    rcmApplicable: false,
     tdsApplicable: false,
     tcsApplicable: false, // Inactive for current period
-    effectiveFrom: jewelleryRule.effectiveFrom,
-    effectiveTo: jewelleryRule.effectiveTo,
     statusCategory: jewelleryRule.statusCategory,
     calculatedAt,
   };
 
-  // ── Step 6: Handle Authorized Tax Override if present ─────────────────────
+  // ── 7. Handle Authorized Tax Override if present ───────────────────────────
   if (context.override) {
     const ov = context.override;
     if (ov.newStatus === "OFF" || ov.newRatePct === 0) {
       return {
         ...snapshot,
         taxApplicable: false,
+        taxRate: 0,
         taxRatePct: 0,
+        cgst: 0,
+        sgst: 0,
+        igst: 0,
+        totalTax: 0,
         cgstPaise: 0,
         sgstPaise: 0,
         igstPaise: 0,
@@ -664,6 +818,7 @@ export function calculateTaxDecision(
     return {
       ...snapshot,
       taxApplicable: ov.newRatePct > 0 && overrideSplit.totalTaxPaise > 0,
+      taxRate: ov.newRatePct,
       taxRatePct: ov.newRatePct,
       ...overrideSplit,
       taxReason: `OVERRIDE_APPLIED: Overridden to ${ov.newRatePct}% by ${ov.user} (${ov.reason})`,
@@ -704,7 +859,7 @@ export function validateTaxUniqueness(snapshots: TaxDecisionSnapshot[]): {
     (s) => s.ruleId === "gst_jobwork_labour" && s.taxApplicable,
   );
 
-  // Invariant 1: Retail Jewellery Composite Sale (HSN 7113) includes making charges;
+  // Invariant: Retail Jewellery Composite Sale (HSN 7113) includes making charges;
   // it must NEVER also apply separate Job-Work GST (SAC 9988) to the same invoice.
   if (hasRetailJewelleryGst && hasJobWorkLabourGst) {
     violations.push(
