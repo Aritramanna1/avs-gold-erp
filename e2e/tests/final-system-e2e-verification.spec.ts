@@ -354,4 +354,79 @@ test.describe("AVS ERP — Master System Configuration & Automated E2E Suite", (
       expect(rejectedWa.error?.code).toBe("UNAUTHORIZED");
     });
   });
+
+  // ── 14. AUTHORITATIVE WORKFLOW CUSTOMIZATION & UNIVERSAL AI PROVIDERS ─────
+  test.describe("14. Authoritative Workflow Customization & Universal AI Providers", () => {
+    test("workflow configuration retains mode selection and supports scopes without fake state", async () => {
+      const { useWorkflowEngine } = await import("../../src/lib/workflow-engine");
+      const engine = useWorkflowEngine.getState();
+
+      engine.patch({ mode: "manufacturing_only" });
+      expect(useWorkflowEngine.getState().config.mode).toBe("manufacturing_only");
+      expect(useWorkflowEngine.getState().config.workflowScope).toBe("manufacturing");
+
+      engine.patch({ mode: "retail_only" });
+      expect(useWorkflowEngine.getState().config.mode).toBe("retail_only");
+      expect(useWorkflowEngine.getState().config.workflowScope).toBe("retail");
+
+      engine.patch({ mode: "combined_commerce_manufacturing" });
+      expect(useWorkflowEngine.getState().config.mode).toBe("combined_commerce_manufacturing");
+      expect(useWorkflowEngine.getState().config.workflowScope).toBe("shared");
+    });
+
+    test("workflow process master supports adding custom processes and toggling active state", async () => {
+      const { useWorkflowEngine } = await import("../../src/lib/workflow-engine");
+      const engine = useWorkflowEngine.getState();
+
+      const proc = engine.addProcess({
+        name: "E2E Custom Micro-Plating",
+        processType: "custom_micro_plating",
+        workflowScope: "manufacturing",
+        applicableModule: "workshop",
+        requiredFields: ["grossMg", "purity"],
+        approvalRequired: true,
+        ledgerMapping: "workshop_process_gold_issued",
+        active: true,
+      });
+
+      expect(proc.id).toBeDefined();
+      expect(engine.isProcessEnabled("custom_micro_plating")).toBe(true);
+
+      engine.toggleProcess(proc.id, false);
+      expect(engine.isProcessEnabled("custom_micro_plating")).toBe(false);
+    });
+
+    test("workflow book master supports standard 995 bullion, 916 and 750 physical books", async () => {
+      const { useWorkflowEngine } = await import("../../src/lib/workflow-engine");
+      const engine = useWorkflowEngine.getState();
+      const books = engine.config.books;
+
+      const book916 = books.find((b) => b.purity === 916);
+      const book750 = books.find((b) => b.purity === 750);
+      const book995 = books.find((b) => b.purity === 995);
+
+      expect(book916).toBeDefined();
+      expect(book750).toBeDefined();
+      expect(book995).toBeDefined();
+      expect(book995?.bookName).toContain("99.50%");
+    });
+
+    test("universal AI provider abstraction supports multi-vendor registration and credential protection", async () => {
+      const { AI_PROVIDERS, maskApiKey, sanitizeError } = await import(
+        "../../src/lib/ai-readiness/ai-service-interface"
+      );
+
+      const registered = Object.keys(AI_PROVIDERS);
+      expect(registered).toContain("google_gemini");
+      expect(registered).toContain("openai");
+      expect(registered).toContain("anthropic");
+      expect(registered).toContain("azure_openai");
+      expect(registered).toContain("aws_bedrock");
+      expect(registered).toContain("self_hosted");
+      expect(registered).toContain("custom");
+
+      expect(maskApiKey("sk-secret-key-1234567890")).toBe("sk-s••••••••7890");
+      expect(sanitizeError("Bearer key=AIzaSySecret123456789")).not.toContain("AIzaSySecret123456789");
+    });
+  });
 });

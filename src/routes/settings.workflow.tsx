@@ -41,6 +41,7 @@ import { toast } from "sonner";
 import { useSettings } from "@/lib/settings-store";
 import { closeFinancialYear } from "@/lib/financial-lock-store";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { WorkflowManagerPanel } from "@/components/customization/WorkflowManagerPanel";
 
 export const Route = createFileRoute("/settings/workflow")({
   head: () => ({ meta: [{ title: "Workflow Engine - AVS Gold ERP" }] }),
@@ -151,7 +152,7 @@ function WorkflowSettings() {
   const mfgEnabled = config.mfgBillEnabled;
 
   return (
-    <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-8">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <PageHeader
           title="Workflow Engine"
@@ -169,6 +170,9 @@ function WorkflowSettings() {
           <RotateCcw className="h-3.5 w-3.5" /> Reset to AVS Default
         </Button>
       </div>
+
+      {/* Authoritative Workflow Master Panel */}
+      <WorkflowManagerPanel />
 
       {/* Presets */}
       <section className="rounded-md border border-border bg-card p-5 space-y-4">

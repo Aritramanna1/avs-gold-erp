@@ -153,6 +153,7 @@ function WorkshopProcessPage() {
   const isMeena = processType === "meena";
   const { transactions, refresh } = useWorkshopProcess();
   const cfg = useSettings((s) => s.workshopProcesses.find((p) => p.processType === processType));
+  const isEnabledInWorkflow = useWorkflowEngine((s) => s.isProcessEnabled(processType));
   const people = usePeople((s) => s.people);
   const workflowConfig = useWorkflowEngine((s) => s.config);
   const meenaProcessType = workflowConfig.meenaProcessType ?? "outside";
@@ -285,6 +286,10 @@ function WorkshopProcessPage() {
   }
 
   async function handleIssue() {
+    if (!isEnabledInWorkflow) {
+      toast.error(`Process "${processLabel(processType)}" is disabled under current Workflow Engine configuration.`);
+      return;
+    }
     if (!karigarId) {
       toast.error("Select a karigar.");
       return;
@@ -483,6 +488,14 @@ function WorkshopProcessPage() {
   return (
     <div className="p-4 md:p-8 space-y-6">
       <TransactionModuleNav />
+      {!isEnabledInWorkflow && (
+        <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-md text-sm font-medium flex items-center gap-2">
+          <span>⚠️</span>
+          <span>
+            This workshop process is currently <strong>disabled</strong> under the authoritative Workflow Engine configuration.
+          </span>
+        </div>
+      )}
       <PageHeader
         title={processLabel(processType)}
         subtitle={
@@ -500,7 +513,7 @@ function WorkshopProcessPage() {
           <Button
             onClick={() => setIssueDialogOpen(true)}
             className="gap-2"
-            disabled={!cfg?.active}
+            disabled={!cfg?.active || !isEnabledInWorkflow}
           >
             <Plus className="h-4 w-4" />
             {primaryActionLabel}

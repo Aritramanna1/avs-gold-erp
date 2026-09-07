@@ -59,6 +59,7 @@ import { PurityGradesPanel } from "@/components/masters/PurityGradesPanel";
 import { LegacyParityConfigurationPanel } from "./LegacyParityConfigurationPanel";
 import { GoldCalculationRulesPanel } from "./GoldCalculationRulesPanel";
 import { CatalogDesignSettingsPanel } from "@/components/settings/CatalogDesignSettingsPanel";
+import { WorkflowManagerPanel } from "./WorkflowManagerPanel";
 import {
   useCustomizationHubPreferences,
   ensureCustomizationHubPreferencesLoaded,
@@ -895,57 +896,10 @@ function GoldCustomizationContent() {
 /*  Workflows (Category 10)                                           */
 /* ------------------------------------------------------------------ */
 function WorkflowsContent() {
-  const navigate = useNavigate();
-
   return (
-    <Card className="p-5 space-y-4">
-      <div className="flex items-center justify-between border-b pb-3">
-        <div>
-          <h3 className="text-sm font-semibold">Approval Workflows & Threshold Matrix</h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            Configure multi-tier approval gates for Gold issues, invoice discounts, metal
-            write-offs, and Karigar payouts.
-          </p>
-        </div>
-        <Button
-          size="sm"
-          onClick={() => navigate({ to: "/settings/workflow" })}
-          className="text-xs h-8 gap-1.5"
-        >
-          <Cog className="h-3.5 w-3.5" /> Open Workflow Engine
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs pt-2">
-        <div className="rounded-lg border p-4 bg-muted/20 space-y-1.5">
-          <div className="font-semibold text-foreground">Gold Issue Gate</div>
-          <p className="text-muted-foreground">
-            Issues exceeding 50.00g require Super Owner OTP approval.
-          </p>
-          <Badge variant="outline" className="text-[10px]">
-            Active
-          </Badge>
-        </div>
-        <div className="rounded-lg border p-4 bg-muted/20 space-y-1.5">
-          <div className="font-semibold text-foreground">Discount Authorization</div>
-          <p className="text-muted-foreground">
-            Discounts above 5.00% require Manager override passcode.
-          </p>
-          <Badge variant="outline" className="text-[10px]">
-            Active
-          </Badge>
-        </div>
-        <div className="rounded-lg border p-4 bg-muted/20 space-y-1.5">
-          <div className="font-semibold text-foreground">Karigar Loss Limit</div>
-          <p className="text-muted-foreground">
-            Loss tolerance strictly enforced at 0.50% max per job.
-          </p>
-          <Badge variant="outline" className="text-[10px]">
-            Active
-          </Badge>
-        </div>
-      </div>
-    </Card>
+    <div className="space-y-4">
+      <WorkflowManagerPanel />
+    </div>
   );
 }
 
