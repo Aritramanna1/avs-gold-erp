@@ -1,4 +1,4 @@
-﻿const jewelleryBookReportTemplate = builtin({
+const jewelleryBookReportTemplate = builtin({
   id: "default_jewellery_book_report",
   docType: "fine_rojmel",
   name: "Jewellery Book Report (A4)",
@@ -61,3 +61,4 @@ export const DEFAULT_TEMPLATES: Record<PrintDocType, PrintTemplate[]> = {
   manufacturing_bill: [manufacturingBillTemplate],
   gold_settlement: [goldSettlementTemplate],
   settlement_draft: [goldSettlementTemplate],
+};

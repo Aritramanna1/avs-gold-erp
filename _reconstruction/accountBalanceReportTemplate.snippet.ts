@@ -1,4 +1,4 @@
-﻿const accountBalanceReportTemplate = builtin({
+const accountBalanceReportTemplate = builtin({
   id: "default_account_balance_report",
   docType: "account_balance_report",
   name: "Account Balance (Offline layout)",
@@ -81,3 +81,4 @@ const orderSlipTemplate = builtin({
 
 const estimateTemplate = builtin({
   id: "default_estimate_doc",
+});

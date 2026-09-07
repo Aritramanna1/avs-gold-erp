@@ -1,0 +1,21 @@
+name: "CodeQL Custom Configuration"
+
+paths:
+  - src
+  - electron-app
+  - qa
+  - scripts
+  - supabase
+  - public
+
+paths-ignore:
+  - '**/node_modules/**'
+  - '**/dist/**'
+  - '**/dist-*/**'
+  - '**/production-dist-*/**'
+  - '**/*.min.js'
+  - '**/*.bundle.js'
+  - '**/_reconstruction/**'
+  - '**/_quarantine/**'
+  - '**/baseline-documentation/**'
+  - '**/scratch/**'

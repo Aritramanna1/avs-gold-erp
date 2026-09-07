@@ -121,7 +121,7 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
       const people = usePeople.getState().people;
       const matches = people
         .filter((p) => {
-          const type = p.type || (p as any).category;
+          const type = String(p.type || (p as any).category || "");
           return type === "worker" || type === "karigar" || type === "outside_karigar" || type === "artisan";
         })
         .filter((p) => {
@@ -159,7 +159,7 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
       const people = usePeople.getState().people;
       const matches = people
         .filter((p) => {
-          const type = p.type || (p as any).category;
+          const type = String(p.type || (p as any).category || "");
           return type === "employee" || type === "staff";
         })
         .filter((p) => {
