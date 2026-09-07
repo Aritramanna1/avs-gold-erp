@@ -20,7 +20,7 @@ function sanitizeEnvValue(value: string | undefined | null): string {
   return normalized.trim();
 }
 
-function getResolvedConfig() {
+export function getResolvedConfig() {
   const isBrowser = typeof window !== "undefined";
 
   // 1. Runtime window / global injection

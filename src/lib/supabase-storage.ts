@@ -18,11 +18,19 @@ async function r2AuthHeader(): Promise<string> {
   return data.session ? `Bearer ${data.session.access_token}` : "";
 }
 
+export function normalizeR2Url(url: string): string {
+  if (!url) return "";
+  return url
+    .replace(/https?:\/\/mtj-storage-proxy\.arivahly\.workers\.dev/gi, R2_PROXY_URL)
+    .replace(/https?:\/\/mtj-storage-proxy\.aritramanna222\.workers\.dev/gi, R2_PROXY_URL);
+}
+
 /** True when URL points at our authenticated Cloudflare R2 proxy. */
 export function isR2ProxyUrl(url: string): boolean {
   if (!url) return false;
   try {
-    const parsed = new URL(url);
+    const normalized = normalizeR2Url(url);
+    const parsed = new URL(normalized);
     const host = parsed.hostname.toLowerCase();
     if (host === "r2.cloudflarestorage.com" || host.endsWith(".r2.cloudflarestorage.com")) return true;
     if (host.endsWith(".workers.dev") && host.includes("mtj-storage-proxy")) return true;
@@ -45,7 +53,7 @@ const BLOB_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes TTL
  * Fetch image/file bytes for PDF embedding and rendering directly from Cloudflare R2 (Cached & Deduped).
  */
 export async function fetchAuthorizedObjectBlob(url: string): Promise<Blob> {
-  const trimmed = url.trim();
+  const trimmed = normalizeR2Url(url.trim());
   if (!trimmed) throw new Error("Empty image URL");
 
   // Check in-memory cache
@@ -121,15 +129,16 @@ export function revokeR2DisplayUrl(bucket: string, path: string): void {
  */
 export function getDirectR2ObjectUrl(bucket: string, path: string): string {
   if (!path) return "";
+  const normalized = normalizeR2Url(path);
   if (
-    path.startsWith("data:") ||
-    path.startsWith("http://") ||
-    path.startsWith("https://") ||
-    path.startsWith("blob:")
+    normalized.startsWith("data:") ||
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://") ||
+    normalized.startsWith("blob:")
   ) {
-    return path;
+    return normalized;
   }
-  const cleanPath = path.replace(/^\/+/, "");
+  const cleanPath = normalized.replace(/^\/+/, "");
   return `${R2_PROXY_URL}/${bucket}/${cleanPath}`;
 }
 
@@ -338,15 +347,16 @@ export async function getAttachmentSignedUrl(
   forceRefresh = false,
 ): Promise<string> {
   if (!path) return "";
+  const normalized = normalizeR2Url(path);
   if (
-    path.startsWith("data:") ||
-    path.startsWith("http://") ||
-    path.startsWith("https://") ||
-    path.startsWith("blob:")
+    normalized.startsWith("data:") ||
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://") ||
+    normalized.startsWith("blob:")
   ) {
-    return path;
+    return normalized;
   }
-  const cleanPath = path.replace(/^\/+/, "");
+  const cleanPath = normalized.replace(/^\/+/, "");
   return `${R2_PROXY_URL}/${namespace}/${cleanPath}`;
 }
 

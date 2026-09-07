@@ -3,7 +3,7 @@
  * Also probes Supabase reachability so "no internet" is not a silent failure.
  */
 import { isNativeApp } from "@/lib/native/platform";
-import { isSupabaseConfigured } from "@/lib/providers/data-provider";
+import { isSupabaseConfigured, getResolvedConfig } from "@/integrations/supabase/client";
 
 export function isOnline(): boolean {
   if (typeof navigator === "undefined") return true;
@@ -49,7 +49,8 @@ export async function probeSupabaseReachable(timeoutMs = 8000): Promise<{
   if (!isSupabaseConfigured()) {
     return { ok: false, detail: "Supabase is not configured in this APK build." };
   }
-  const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, "");
+  const { url: configUrl } = getResolvedConfig();
+  const url = configUrl?.replace(/\/$/, "");
   if (!url) return { ok: false, detail: "Missing VITE_SUPABASE_URL." };
 
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
