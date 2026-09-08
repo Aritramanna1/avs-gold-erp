@@ -37,6 +37,7 @@
     "qa:autonomous": "node qa/scripts/master-autonomous-orchestrator.mjs",
     "qa:deep": "node qa/scripts/master-autonomous-orchestrator.mjs",
     "qa:smoke": "node qa/scripts/orchestrator.mjs smoke",
+    "qa:vibe": "node qa/scripts/run-vibe-testing.mjs",
     "qa:unit": "vitest run",
     "qa:unit:watch": "vitest",
     "qa:e2e": "playwright test --config=qa/e2e/playwright.qa.config.ts --project=chromium",
