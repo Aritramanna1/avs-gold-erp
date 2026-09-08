@@ -60,15 +60,36 @@ const strixArgs = [
   "--max-turns", "50",
 ];
 
+// Determine provider and model (OpenRouter vs Google Gemini vs Custom)
+const openrouterKey = process.env.OPENROUTER_API_KEY || (process.env.AVS_STRIX_API_KEY?.startsWith("sk-or-") ? process.env.AVS_STRIX_API_KEY : null);
+const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || (!process.env.AVS_STRIX_API_KEY?.startsWith("sk-or-") ? process.env.AVS_STRIX_API_KEY : null) || process.env.LLM_API_KEY;
+
+let selectedModel = process.env.STRIX_LLM;
+if (!selectedModel) {
+  if (openrouterKey) {
+    selectedModel = "openrouter/anthropic/claude-3.7-sonnet";
+  } else {
+    selectedModel = "gemini/gemini-3.6-flash";
+  }
+}
+
 const env = {
   ...process.env,
-  STRIX_LLM: "gemini/gemini-3.6-flash",
+  STRIX_LLM: selectedModel,
   LLM_DISABLE_STREAMING: "true",
   STRIX_PROMPT_CACHE: "false",
-  GEMINI_API_KEY: process.env.AVS_STRIX_API_KEY || process.env.LLM_API_KEY || "",
-  GOOGLE_API_KEY: process.env.AVS_STRIX_API_KEY || process.env.LLM_API_KEY || "",
-  LLM_API_KEY: process.env.AVS_STRIX_API_KEY || process.env.LLM_API_KEY || "",
 };
+
+if (openrouterKey) {
+  env.OPENROUTER_API_KEY = openrouterKey;
+  env.LLM_API_KEY = openrouterKey;
+  console.log(`[STRIX_ENGINE] Configured Provider: OpenRouter (Model: ${selectedModel})`);
+} else if (geminiKey) {
+  env.GEMINI_API_KEY = geminiKey;
+  env.GOOGLE_API_KEY = geminiKey;
+  env.LLM_API_KEY = geminiKey;
+  console.log(`[STRIX_ENGINE] Configured Provider: Google Gemini (Model: ${selectedModel})`);
+}
 
 console.log("[STRIX_ENGINE] Launching Strix multi-agent sandbox session in Docker...");
 const strixProc = spawnSync("strix", strixArgs, {
