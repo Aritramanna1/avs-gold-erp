@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "avs-erp": {
+      "serverUrl": "https://erp.arivahly.in/api/mcp",
+      "command": "node",
+      "args": [
+        "C:\\final erp 29.08\\new and final\\scripts\\mcp\\avs-mcp-server.mjs"
+      ],
+      "env": {
+        "AVS_REMOTE_MCP_URL": "https://erp.arivahly.in/api/mcp",
+        "AVS_TENANT_ID": "MTJ_FIRM",
+        "AVS_BRANCH_ID": "MAIN"
+      }
+    }
+  }
+}
