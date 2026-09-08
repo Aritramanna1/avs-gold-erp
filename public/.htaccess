@@ -43,7 +43,14 @@ Options +FollowSymLinks
     RewriteEngine On
     RewriteBase /
 
-    # Explicit MCP JSON-RPC 2.0 API routing
+    # Explicit MCP & OAuth 2.1 API routing
+    RewriteRule ^\.well-known/oauth-authorization-server/?$ api/oauth/well-known.php [QSA,L]
+    RewriteRule ^\.well-known/openid-configuration/?$ api/oauth/well-known.php [QSA,L]
+    RewriteRule ^oauth/authorize/?$ api/oauth/authorize.php [QSA,L]
+    RewriteRule ^oauth/token/?$ api/oauth/token.php [QSA,L]
+    RewriteRule ^oauth/jwks/?$ api/oauth/jwks.php [QSA,L]
+    RewriteRule ^oauth/revoke/?$ api/oauth/revoke.php [QSA,L]
+    RewriteRule ^oauth/userinfo/?$ api/oauth/userinfo.php [QSA,L]
     RewriteRule ^api/mcp/?$ api/mcp/index.php [QSA,L]
 
     # Allow direct access to API PHP endpoints
@@ -65,7 +72,7 @@ Options +FollowSymLinks
     </FilesMatch>
 </Directory>
 
-# Block access to hidden and sensitive files (.env, .git, etc.)
-<FilesMatch "^\.">
+# Block access to hidden and sensitive files (.env, .git, etc.) except .well-known
+<FilesMatch "^\.(?!well-known)">
     Require all denied
 </FilesMatch>

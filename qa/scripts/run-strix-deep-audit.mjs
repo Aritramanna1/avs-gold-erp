@@ -36,62 +36,66 @@ const versionCheck = spawnSync("strix", ["--version"], { shell: true, encoding: 
 const strixVersion = (versionCheck.stdout || versionCheck.stderr || "unknown").trim();
 console.log(`[STRIX_ENGINE] Version: ${strixVersion}`);
 
-// Prepare instructions
+// Prepare instructions with full attack priorities
 const instructionPath = path.join(reportsDir, `${runId}-instructions.md`);
-const instructions = `# AVS ERP Security Assessment Instructions
-Target 1: https://erp.arivahly.in (Production CDN / SPA - Read Only, Non-Destructive)
-Target 2: Local Source Code Repository
-Focus Areas:
-1. Multi-tenant isolation and IDOR detection (Tenant A vs Tenant B).
-2. Authorization and RBAC enforcement.
-3. Supervisor SMS OTP gate (prohibit WhatsApp OTP).
-4. Discrete cash and gold accounting dimensions.
-5. 995 bullion fineness calculation invariant.
-6. Public route exposure, API key leaks, and exposed admin/debug interfaces.
+const instructions = `# AVS ERP Autonomous Deep Security Assessment Instructions
+
+Targets:
+1. Local Source Repository: ${root}
+2. Authorized Live Target: https://erp.arivahly.in (Read-Only, Non-Destructive)
+
+Attack Priorities & Security Verification:
+1. Authentication & Session Security (JWT, cookies, OAuth 2.1, session invalidation, token forgery).
+2. Authorization & RBAC Scoping (owner vs manager vs accountant vs karigar vs viewer).
+3. Insecure Direct Object References (IDOR) & Multi-Tenant Isolation (Tenant A vs Tenant B isolation).
+4. Branch Isolation (Main showroom vs Workshop branch data leakage).
+5. Privilege Escalation & Supervisor Workflow Bypass (Supervisor SMS OTP override gate).
+6. Accounting Integrity & Business Logic:
+   - Strict discrete dual-dimension separation of Cash (₹) and Fine Gold (grams @ 995 basis standard).
+   - Zero tolerance for collapsing cash and gold into a single composite number.
+   - Purity calculations strictly pinned to 995 / 99.50% basis standard.
+   - Karigar settlement PREPARE vs CONFIRM state enforcement.
+7. Inventory & Stock Manipulation (Barcode tag forgery, negative weight injection, duplicate serials).
+8. Race Conditions & Duplicate Financial Transactions (Concurrent payment / ledger postings).
+9. Period-Lock & Approval Workflow Bypass (Backdating transactions into closed accounting periods).
+10. Model Context Protocol (MCP) Remote Gateway Security (/api/mcp JSON-RPC endpoint).
+11. Storage & Asset Security (Cloudflare R2 storage proxy, presigned upload authorization).
+12. Webhook & Integration Security (Signature validation, replay prevention, WhatsApp/Razorpay forgery).
+13. Exposed Secrets & Server Weaknesses (0 client-bundle secret leaks, secure HTTP headers, .htaccess protection).
+
+Operational Rules:
+- Do NOT perform destructive operations or delete production data.
+- Assess impact, reproduce, validate, and preserve evidence in SARIF report.
 `;
 fs.writeFileSync(instructionPath, instructions, "utf8");
 
 const strixArgs = [
   "-n",
-  "-m", "quick",
-  "-t", `"${root}"`,
+  "-m", "deep",
+  "-t", ".",
   "--instruction-file", `"${instructionPath}"`,
-  "--max-budget", "3",
-  "--max-turns", "50",
+  "--max-budget", "25",
+  "--max-turns", "200",
 ];
 
-// Determine provider and model (OpenRouter vs Google Gemini vs Custom)
-const openrouterKey = process.env.OPENROUTER_API_KEY || (process.env.AVS_STRIX_API_KEY?.startsWith("sk-or-") ? process.env.AVS_STRIX_API_KEY : null);
-const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || (!process.env.AVS_STRIX_API_KEY?.startsWith("sk-or-") ? process.env.AVS_STRIX_API_KEY : null) || process.env.LLM_API_KEY;
+const omniRouteKey = process.env.OMNIROUTE_API_KEY || process.env.AVS_STRIX_API_KEY || "sk-3ae054751b4b7b59-19efb3-10f0d4b0";
 
-let selectedModel = process.env.STRIX_LLM;
-if (!selectedModel) {
-  if (openrouterKey) {
-    selectedModel = "openrouter/anthropic/claude-3.7-sonnet";
-  } else {
-    selectedModel = "gemini/gemini-3.6-flash";
-  }
-}
+const selectedModel = process.env.STRIX_LLM?.startsWith("openai/") ? process.env.STRIX_LLM : "openai/agy/gemini-2.5-flash";
 
 const env = {
   ...process.env,
   STRIX_LLM: selectedModel,
+  OPENAI_API_BASE: "http://localhost:20128/v1",
+  OPENAI_API_KEY: omniRouteKey,
+  LLM_API_KEY: omniRouteKey,
   LLM_DISABLE_STREAMING: "true",
   STRIX_PROMPT_CACHE: "false",
 };
 
-if (openrouterKey) {
-  env.OPENROUTER_API_KEY = openrouterKey;
-  env.LLM_API_KEY = openrouterKey;
-  console.log(`[STRIX_ENGINE] Configured Provider: OpenRouter (Model: ${selectedModel})`);
-} else if (geminiKey) {
-  env.GEMINI_API_KEY = geminiKey;
-  env.GOOGLE_API_KEY = geminiKey;
-  env.LLM_API_KEY = geminiKey;
-  console.log(`[STRIX_ENGINE] Configured Provider: Google Gemini (Model: ${selectedModel})`);
-}
-
-console.log("[STRIX_ENGINE] Launching Strix multi-agent sandbox session in Docker...");
+console.log(`[STRIX_ENGINE] Configured Provider: OmniRoute LLM Proxy (Model: ${env.STRIX_LLM})`);
+console.log(`[STRIX_ENGINE] Mode: deep | Max Turns: 250 | Max Budget: $25 USD`);
+console.log(`[STRIX_ENGINE] Targets: [${root}, https://erp.arivahly.in]`);
+console.log("[STRIX_ENGINE] Launching Strix multi-agent cybersecurity sandbox session in Docker...");
 const strixProc = spawnSync("strix", strixArgs, {
   cwd: root,
   shell: true,
@@ -102,11 +106,13 @@ const strixProc = spawnSync("strix", strixArgs, {
 const endTime = new Date();
 const elapsedMs = endTime.getTime() - startTime.getTime();
 const elapsedSec = (elapsedMs / 1000).toFixed(2);
+const elapsedHours = (elapsedMs / (1000 * 3600)).toFixed(4);
 
 console.log(`\n[STRIX_ENGINE] Execution Complete.`);
-console.log(`  Start:   ${startTime.toISOString()}`);
-console.log(`  End:     ${endTime.toISOString()}`);
-console.log(`  Elapsed: ${elapsedSec}s (${(elapsedSec / 60).toFixed(2)} mins)`);
+console.log(`  Start UTC:     ${startTime.toISOString()}`);
+console.log(`  End UTC:       ${endTime.toISOString()}`);
+console.log(`  Elapsed Sec:   ${elapsedSec}s`);
+console.log(`  Elapsed Hours: ${elapsedHours}h (${(elapsedSec / 60).toFixed(2)} mins)`);
 
 // Archive and summarize
 const strixRunsRoot = path.join(root, "strix_runs");

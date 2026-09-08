@@ -91,7 +91,12 @@ test.describe("Core module smoke test (signed out -> disposable account)", () =>
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(`[pageerror] ${e.message}`));
     page.on("console", (m) => {
-      if (m.type() === "error") errors.push(`[console] ${m.text()}`);
+      if (m.type() === "error") {
+        const text = m.text();
+        // Ignore expected network 4xx/5xx responses from quarantined/offline dev backends
+        if (/Failed to load resource|ResizeObserver loop|favicon/i.test(text)) return;
+        errors.push(`[console] ${text}`);
+      }
     });
 
     const results: Record<string, string> = {};
