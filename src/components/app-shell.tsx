@@ -58,6 +58,7 @@ import { AssistantDrawer, openOrnexaAssistant } from "@/components/assistant/Ass
 import { PageHeader } from "@/components/design-system";
 import { BusinessSwitcher } from "@/components/identity/BusinessSwitcher";
 import { prefetchLikelyRoutes } from "@/lib/performance/route-prefetch";
+import { dispatchKeyboardAction, KEYBOARD_EVENTS } from "@/lib/keyboard/keyboard-events";
 import { recordRecentRoute, patchStartupPreferences } from "@/lib/startup-preferences";
 import {
   applyDeviceLayoutAttributes,
@@ -273,7 +274,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Logo variant="svg" className="h-8 w-8 object-contain shrink-0 group-hover:scale-105 transition-transform" />
             <span className="text-sm font-semibold text-foreground truncate">{shortName}</span>
           </Link>
-          {isPhoneChrome || isTabletChrome ? <MobileSearchButton /> : null}
+          <MobileSearchButton className="md:hidden" />
 
           <button
             type="button"
@@ -305,9 +306,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => {
-              window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
+              dispatchKeyboardAction(KEYBOARD_EVENTS.COMMAND_PALETTE);
             }}
             className="hidden md:flex items-center gap-3 rounded-full border border-border/80 bg-background/70 px-4 py-1.5 text-xs text-muted-foreground hover:border-gold/50 hover:bg-gold/5 hover:text-foreground transition-all cursor-pointer w-64 lg:w-80 shadow-sm"
+            data-testid="desktop-global-search"
+            id="desktop-global-search-btn"
             title="Global Search & Quick Actions (Ctrl+K)"
             aria-label="Global Search & Quick Actions"
           >

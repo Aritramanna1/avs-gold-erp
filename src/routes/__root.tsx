@@ -27,11 +27,6 @@ const SessionLockOverlay = lazy(() =>
     default: module.SessionLockOverlay,
   })),
 );
-const GlobalCommandPalette = lazy(() =>
-  import("@/components/GlobalCommandPalette").then((module) => ({
-    default: module.GlobalCommandPalette,
-  })),
-);
 
 function NotFoundComponent() {
   const erpHome = "/login";
@@ -398,7 +393,6 @@ function RootComponent() {
             {deferredChromeReady ? (
               <>
                 <SessionLockOverlay />
-                <GlobalCommandPalette />
                 <KeyboardCheatSheet />
               </>
             ) : null}

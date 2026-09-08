@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { KEYBOARD_EVENTS } from "@/lib/keyboard/keyboard-events";
 import {
   Search,
   ShoppingCart,
@@ -504,7 +505,7 @@ export const QuickCommandPalette: React.FC = () => {
     }
   };
 
-  // Listen for Ctrl+K or Cmd+K
+  // Listen for Ctrl+K, Cmd+K, and COMMAND_PALETTE bus events
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -516,8 +517,16 @@ export const QuickCommandPalette: React.FC = () => {
       }
     };
 
+    const handleCustomOpen = () => {
+      setIsOpen(true);
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener(KEYBOARD_EVENTS.COMMAND_PALETTE, handleCustomOpen);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener(KEYBOARD_EVENTS.COMMAND_PALETTE, handleCustomOpen);
+    };
   }, [isOpen]);
 
   // Combine static commands and live entity search
@@ -651,7 +660,11 @@ export const QuickCommandPalette: React.FC = () => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-16 md:pt-24 px-4 animate-in fade-in duration-150">
+    <div
+      data-testid="quick-command-palette-modal"
+      id="quick-command-palette-modal"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-16 md:pt-24 px-4 animate-in fade-in duration-150"
+    >
       <div
         className="w-full max-w-2xl bg-card border border-border shadow-2xl rounded-2xl overflow-hidden flex flex-col"
         onKeyDown={handleListKeyDown}
@@ -662,6 +675,8 @@ export const QuickCommandPalette: React.FC = () => {
           <input
             autoFocus
             type="text"
+            data-testid="quick-command-palette-input"
+            id="quick-command-palette-input"
             placeholder="Search anything: 'New sale', customer name, invoice #, barcode tag, karigar..."
             value={query}
             onChange={(e) => {
@@ -672,6 +687,8 @@ export const QuickCommandPalette: React.FC = () => {
           />
           <button
             type="button"
+            data-testid="quick-command-palette-close"
+            id="quick-command-palette-close"
             onClick={() => setIsOpen(false)}
             className="p-1.5 rounded-md text-muted-foreground hover:text-foreground cursor-pointer"
           >

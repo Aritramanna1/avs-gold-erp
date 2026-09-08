@@ -1,18 +1,19 @@
 import { Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { dispatchKeyboardAction, KEYBOARD_EVENTS } from "@/lib/keyboard/keyboard-events";
 import { hapticLight } from "@/lib/native/haptics";
 
-/** Opens GlobalCommandPalette via the same event bus as Ctrl+K. */
+/** Opens QuickCommandPalette via the same event bus as Ctrl+K. */
 export function MobileSearchButton({ className }: { className?: string }) {
   return (
     <button
       type="button"
       aria-label="Search"
       data-testid="mobile-global-search"
-      className={
-        className ??
-        "h-9 w-9 grid place-items-center rounded-full border border-border bg-background text-muted-foreground hover:border-gold/40 hover:text-gold transition-colors lg:hidden"
-      }
+      className={cn(
+        "h-9 w-9 grid place-items-center rounded-full border border-border bg-background text-muted-foreground hover:border-gold/40 hover:text-gold transition-colors md:hidden",
+        className,
+      )}
       onClick={() => {
         void hapticLight();
         dispatchKeyboardAction(KEYBOARD_EVENTS.COMMAND_PALETTE);
