@@ -24,14 +24,29 @@ interface LoginSearchParams {
 
 export const Route = createFileRoute("/login")({
   validateSearch: (s: Record<string, unknown>): LoginSearchParams => {
+    let redirect: string | undefined =
+      typeof s.redirect === "string" ? s.redirect : undefined;
+    if (redirect) {
+      try {
+        if (redirect.includes("%2F") || redirect.includes("%2f")) {
+          redirect = decodeURIComponent(redirect);
+        }
+      } catch {
+        /* keep */
+      }
+    }
+    const error =
+      typeof s.error === "string" && s.error.trim().length > 0
+        ? s.error
+        : undefined;
     return {
-      redirect: typeof s.redirect === "string" ? s.redirect : undefined,
-      error: typeof s.error === "string" ? s.error : undefined,
+      redirect,
+      error,
       audience: typeof s.audience === "string" ? s.audience : undefined,
     };
   },
   head: () => ({
-    meta: [{ title: "Sign In · AVS ERP — ORNEXA Jewellery Ecosystem" }],
+    meta: [{ title: "Sign In · AVS ERP" }],
   }),
   component: LoginPage,
 });
@@ -80,7 +95,7 @@ function LoginPage() {
           >
             <h2 className="text-xs font-semibold tracking-wide text-[#B89454]">Access by Invitation Only</h2>
             <p className="text-[11px] leading-relaxed text-white/70">
-              AVS ERP (ORNEXA) is an enterprise jewellery ecosystem. Accounts are provisioned via verified firm invitations.
+              AVS ERP is an enterprise jewellery ecosystem. Accounts are provisioned via verified firm invitations.
             </p>
 
             <button
@@ -200,7 +215,7 @@ function LoginPage() {
             rel="noopener noreferrer"
             className="hover:text-slate-800 dark:hover:text-foreground hover:underline transition-colors"
           >
-            AVS ERP · ORNEXA
+            AVS ERP
           </a>
         </div>
       </div>

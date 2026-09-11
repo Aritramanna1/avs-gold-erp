@@ -368,10 +368,28 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
       return <>{children}</>;
     }
     const targetPath = window.location.pathname + window.location.search;
-    const redirect = targetPath && targetPath !== "/" ? targetPath : undefined;
-    return (
-      <Navigate to="/login" search={{ redirect, error: bootError || undefined, audience: undefined }} replace />
-    );
+    // Pass a raw path to TanStack search (it encodes once). Decode any prior
+    // accidental encoding so we never land on redirect=%252F...
+    let redirect: string | undefined;
+    if (targetPath && targetPath !== "/") {
+      let value = targetPath;
+      try {
+        for (let i = 0; i < 2; i += 1) {
+          if (!/%[0-9A-Fa-f]{2}/.test(value)) break;
+          const decoded = decodeURIComponent(value);
+          if (decoded === value) break;
+          value = decoded;
+        }
+      } catch {
+        /* keep value */
+      }
+      if (!value.startsWith("/")) value = `/${value}`;
+      redirect = value === "/" ? undefined : value;
+    }
+    const loginSearch: { redirect?: string; error?: string; audience?: string } = {};
+    if (redirect) loginSearch.redirect = redirect;
+    if (bootError) loginSearch.error = bootError;
+    return <Navigate to="/login" search={loginSearch} replace />;
   }
 
   if (!authReady) {
