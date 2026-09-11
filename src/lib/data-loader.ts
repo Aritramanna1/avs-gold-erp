@@ -607,8 +607,7 @@ export async function pullAppSettings(): Promise<void> {
   }
 
   // Demo-only markers. Never list real production firms (e.g. Maa Tara Jewellers).
-  // Fake phones / Super Owner are cleared below when a blank/demo shop is replaced.
-  const CONTAMINATED_SHOP_NAMES = new Set([
+  // Fake phones / Super Owner are cleared below when a blank/demo shop is replaced.`n  const CONTAMINATED_SHOP_NAMES = new Set([
     "Demo Jewellers",
     "Sample Shop",
     "Test Firm",
@@ -616,7 +615,35 @@ export async function pullAppSettings(): Promise<void> {
 
   if (data?.data) {
     const payload = data.data as any;
-    let firm = { ...(payload.firm ?? useSettings.getState().firm) };
+    const baseFirm = useSettings.getState().firm;
+    const nested =
+      payload.firm && typeof payload.firm === "object" && !Array.isArray(payload.firm)
+        ? payload.firm
+        : {};
+    // SETTINGS-01: prefer nested firm.*, then legacy flat keys on the settings blob.
+    let firm = { ...baseFirm, ...nested };
+    const fillIfEmpty = (key: string, ...legacyKeys: string[]) => {
+      const cur = String((firm as Record<string, unknown>)[key] ?? "").trim();
+      if (cur) return;
+      for (const lk of legacyKeys) {
+        const v = (payload as Record<string, unknown>)[lk] ?? (nested as Record<string, unknown>)[lk];
+        if (v != null && String(v).trim()) {
+          (firm as Record<string, unknown>)[key] = String(v).trim();
+          return;
+        }
+      }
+    };
+    fillIfEmpty("shopName", "shop_name", "businessName", "trade_name", "name");
+    fillIfEmpty("phone", "businessPhone", "mobile", "contact_phone");
+    fillIfEmpty("email", "businessEmail", "contact_email");
+    fillIfEmpty("address", "businessAddress", "branchAddress", "address_line");
+    fillIfEmpty("ownerName", "owner_name", "proprietor");
+    fillIfEmpty("gstin", "GSTIN", "gst_in");
+    fillIfEmpty("cityState", "city", "city_state");
+    fillIfEmpty("pan", "PAN");
+    fillIfEmpty("whatsappNumber", "whatsapp", "wa_number");
+    fillIfEmpty("tagline", "tag_line");
+    fillIfEmpty("website", "web", "site");
     const shop = String(firm?.shopName ?? "").trim();
     const wasContaminated = !shop || CONTAMINATED_SHOP_NAMES.has(shop);
     if (organizationName && wasContaminated) {
