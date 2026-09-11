@@ -11,6 +11,7 @@ import { resolveFirmIdForQuery } from "@/lib/firm-scoped-query";
 import {
   ensureTransactionTypesLoaded,
   postUniversalTransaction,
+  useTransactionTypesStore,
 } from "@/lib/transaction-types-store";
 import {
   ensureChartOfAccountsLoaded,
@@ -530,10 +531,13 @@ export const useMoneyVoucherStore = create<MoneyVoucherState>()((set) => ({
     set({ loading: true, error: null });
     try {
       const firmId = await resolveFirmIdForQuery();
+      // Avoid PostgREST embed (can 4xx independently of RLS). Codes resolve from
+      // transaction_definition_id via already-loaded transaction types.
+      await ensureTransactionTypesLoaded().catch(() => undefined);
       let query = supabase
         .from("universal_ledger_entries" as never)
         .select(
-          "id,voucher_number,voucher_date,counterparty_id,counterparty_name,cash_debit_paise,cash_credit_paise,metadata,created_at,reversal_ref_id,created_by,universal_transaction_definitions(code,name)",
+          "id,voucher_number,voucher_date,counterparty_id,counterparty_name,cash_debit_paise,cash_credit_paise,metadata,created_at,reversal_ref_id,created_by,transaction_definition_id",
         )
         .order("voucher_date", { ascending: false })
         .order("created_at", { ascending: false })
@@ -542,9 +546,24 @@ export const useMoneyVoucherStore = create<MoneyVoucherState>()((set) => ({
         query = query.eq("firm_id", firmId) as typeof query;
       }
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        const code = (error as { code?: string }).code;
+        const hint = (error as { hint?: string }).hint;
+        const parts = [error.message || "Failed to load money vouchers"];
+        if (code) parts.push(`(${code})`);
+        if (hint) parts.push(hint);
+        throw new Error(parts.filter(Boolean).join(" "));
+      }
+      const types = useTransactionTypesStore.getState().transactionTypes;
+      const byId = new Map(types.map((t) => [t.id, t.code]));
       set({
-        entries: ((data ?? []) as unknown as UnivRow[]).map(mapRow),
+        entries: ((data ?? []) as unknown as UnivRow[]).map((row) => {
+          const mapped = mapRow(row);
+          if (!mapped.transactionCode && row.transaction_definition_id) {
+            mapped.transactionCode = byId.get(row.transaction_definition_id) ?? null;
+          }
+          return mapped;
+        }),
         loading: false,
       });
     } catch (err: unknown) {
