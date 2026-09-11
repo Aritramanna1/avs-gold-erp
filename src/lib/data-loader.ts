@@ -606,7 +606,13 @@ export async function pullAppSettings(): Promise<void> {
     /* optional overlay */
   }
 
-  const CONTAMINATED_SHOP_NAMES = new Set(["Maa Tara Jewellers", "Maa tara"]);
+  // Demo-only markers. Never list real production firms (e.g. Maa Tara Jewellers).
+  // Fake phones / Super Owner are cleared below when a blank/demo shop is replaced.
+  const CONTAMINATED_SHOP_NAMES = new Set([
+    "Demo Jewellers",
+    "Sample Shop",
+    "Test Firm",
+  ]);
 
   if (data?.data) {
     const payload = data.data as any;
