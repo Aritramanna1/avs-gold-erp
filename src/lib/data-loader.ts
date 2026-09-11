@@ -67,7 +67,7 @@ const STARTUP_LEDGER_CACHE_LIMIT = 150;
 const STARTUP_REFERENCE_CACHE_LIMIT = 400;
 const STARTUP_ATTACHMENT_CACHE_LIMIT = 150;
 
-/** Firm scope for startup pulls — uses cached resolve so parallel batches share one lookup. */
+/** Firm scope for startup pulls ÔÇö uses cached resolve so parallel batches share one lookup. */
 async function firmIdForPull(): Promise<string | null> {
   const { resolveCurrentFirmId } = await import("@/lib/firm-scoped-app-settings");
   return resolveCurrentFirmId();
@@ -489,7 +489,7 @@ export async function pullPrintLogs(): Promise<void> {
   // Merge instead of replace: recordPrint() writes the new/incremented event
   // to local state immediately and saves to the backend fire-and-forget. If
   // this pull's request was already in flight when that happened, a blind
-  // replace here would silently erase the just-created print/reprint event —
+  // replace here would silently erase the just-created print/reprint event ÔÇö
   // the exact printed-then-shows-as-never-printed race that made reprint
   // counts unreliable. Keep whichever side has the more recent activity.
   const merged = new Map(rows.map((r) => [r.id, r]));
@@ -541,7 +541,7 @@ export async function pullAppSettings(): Promise<void> {
   let firmId: string | null = null;
   try {
     const { resolveCurrentFirmId } = await import("@/lib/firm-scoped-app-settings");
-    // Do not clear the firm cache on every settings pull — parallel background
+    // Do not clear the firm cache on every settings pull ÔÇö parallel background
     // pulls share the cache and clearing here re-triggers RLS helper work.
     firmId = await resolveCurrentFirmId();
   } catch {
@@ -586,7 +586,7 @@ export async function pullAppSettings(): Promise<void> {
   // Drop a row that predates this tab's last settings write. Such a row is a
   // snapshot taken before the write (a pull already in flight, or a realtime echo
   // of the previous version); applying it would roll local state back and the next
-  // persist would then commit that rollback — the mechanism by which a just-saved
+  // persist would then commit that rollback ÔÇö the mechanism by which a just-saved
   // custom form silently disappeared on restart.
   if (isSettingsPullStale((data as any)?.updated_at)) {
     return;
@@ -667,13 +667,29 @@ export async function pullAppSettings(): Promise<void> {
       hardware: payload.hardware ?? useSettings.getState().hardware,
       catalog: payload.catalog ?? useSettings.getState().catalog,
       goldRatePerGramPaise:
-        payload.goldRatePerGramPaise ?? useSettings.getState().goldRatePerGramPaise,
+        payload.goldRatePerGramPaise ??
+        payload.firm?.goldRatePerGramPaise ??
+        payload.rates?.goldRatePerGramPaise ??
+        payload.rates?.gold22KPerGramPaise ??
+        useSettings.getState().goldRatePerGramPaise,
       goldRate24KPerGramPaise:
-        payload.goldRate24KPerGramPaise ?? useSettings.getState().goldRate24KPerGramPaise,
+        payload.goldRate24KPerGramPaise ??
+        payload.firm?.goldRate24KPerGramPaise ??
+        payload.rates?.goldRate24KPerGramPaise ??
+        payload.rates?.gold24KPerGramPaise ??
+        useSettings.getState().goldRate24KPerGramPaise,
       goldRate18KPerGramPaise:
-        payload.goldRate18KPerGramPaise ?? useSettings.getState().goldRate18KPerGramPaise,
+        payload.goldRate18KPerGramPaise ??
+        payload.firm?.goldRate18KPerGramPaise ??
+        payload.rates?.goldRate18KPerGramPaise ??
+        payload.rates?.gold18KPerGramPaise ??
+        useSettings.getState().goldRate18KPerGramPaise,
       silverRatePerGramPaise:
-        payload.silverRatePerGramPaise ?? useSettings.getState().silverRatePerGramPaise,
+        payload.silverRatePerGramPaise ??
+        payload.firm?.silverRatePerGramPaise ??
+        payload.rates?.silverRatePerGramPaise ??
+        payload.rates?.silverPerGramPaise ??
+        useSettings.getState().silverRatePerGramPaise,
       bullionRateProvider: payload.bullionRateProvider
         ? redactBullionRateProvider(payload.bullionRateProvider)
         : useSettings.getState().bullionRateProvider,
@@ -699,7 +715,7 @@ export async function pullAppSettings(): Promise<void> {
       emailTemplates: payload.emailTemplates ?? useSettings.getState().emailTemplates,
     });
 
-    // Authoritative role lives on user_profiles — never overwrite with a stale
+    // Authoritative role lives on user_profiles ÔÇö never overwrite with a stale
     // app_settings.users[] snapshot during deployment pulls.
     const { syncCurrentUserRoleFromProfile } = await import("@/lib/role-resolution");
     await syncCurrentUserRoleFromProfile();
@@ -712,7 +728,7 @@ export async function pullAppSettings(): Promise<void> {
       /* ignore storage quota / private browsing */
     }
   } else if (organizationName) {
-    // Trial created the organization but no firm settings row yet — surface the
+    // Trial created the organization but no firm settings row yet ÔÇö surface the
     // company name so Settings / prints are not blank or stuck on shared defaults.
     const current = useSettings.getState().firm;
     useSettings.setState({
@@ -787,12 +803,12 @@ export async function pullAttachments(): Promise<void> {
     console.warn("Attachments fetch skipped:", err);
   }
 
-  // Merge rather than replace — a blind overwrite here could clobber an
+  // Merge rather than replace ÔÇö a blind overwrite here could clobber an
   // attachment .save() that landed in memory a moment ago but hasn't yet
   // round-tripped through this exact pull (this pull can re-run later, e.g.
   // on branch switch or reconnect), which is exactly the "upload succeeds,
   // then later the attachment disappears / its status flips back" symptom.
-  // The freshly-pulled DB row still wins per key — it's only the KEYS this
+  // The freshly-pulled DB row still wins per key ÔÇö it's only the KEYS this
   // pull doesn't know about yet that are preserved from the in-memory state.
   //
   // `checksum` is legacy attachment metadata. New rows should use bucket and
@@ -855,7 +871,7 @@ export async function pullBranches(): Promise<void> {
         branches.find((b) => b.isDefault) ||
         branches.find((b) => String(b.code || "").toUpperCase() === "MAIN") ||
         branches[0];
-      // Only write when the value actually changes — avoids settings churn loops.
+      // Only write when the value actually changes ÔÇö avoids settings churn loops.
       if (def && def.id !== currentBid) {
         useSettings.setState({ selectedBranchId: def.id });
       }
@@ -907,7 +923,7 @@ export async function pullBranchSettings(): Promise<void> {
         smtpHost: (r.smtp_host as string | null) ?? undefined,
         smtpPort: (r.smtp_port as string | null) ?? undefined,
         smtpUser: (r.smtp_user as string | null) ?? undefined,
-        // SMTP secret presence is checked on Settings → Branch (not at boot — N branches = N RPCs).
+        // SMTP secret presence is checked on Settings ÔåÆ Branch (not at boot ÔÇö N branches = N RPCs).
         smtpPasswordConfigured: false,
         smtpFromName: (r.smtp_from_name as string | null) ?? undefined,
         smtpFromEmail: (r.smtp_from_email as string | null) ?? undefined,
@@ -938,6 +954,27 @@ export async function pullBranchSettings(): Promise<void> {
           undefined,
       });
     });
+
+    // RATE-01: if firm-wide rates are still 0 after app_settings pull, promote
+    // non-zero branch overrides so header / Daily Bhav / billing see them.
+    const settings = useSettings.getState();
+    const branch = settings.getBranchSettings(settings.selectedBranchId);
+    const backfill: Record<string, number> = {};
+    if (!(settings.goldRatePerGramPaise > 0) && (branch.goldRate22KOverridePaise ?? 0) > 0) {
+      backfill.goldRatePerGramPaise = branch.goldRate22KOverridePaise as number;
+    }
+    if (!(settings.goldRate24KPerGramPaise > 0) && (branch.goldRate24KOverridePaise ?? 0) > 0) {
+      backfill.goldRate24KPerGramPaise = branch.goldRate24KOverridePaise as number;
+    }
+    if (!(settings.goldRate18KPerGramPaise > 0) && (branch.goldRate18KOverridePaise ?? 0) > 0) {
+      backfill.goldRate18KPerGramPaise = branch.goldRate18KOverridePaise as number;
+    }
+    if (!(settings.silverRatePerGramPaise > 0) && (branch.silverRateOverridePaise ?? 0) > 0) {
+      backfill.silverRatePerGramPaise = branch.silverRateOverridePaise as number;
+    }
+    if (Object.keys(backfill).length > 0) {
+      useSettings.setState(backfill);
+    }
   }
 }
 
@@ -989,7 +1026,7 @@ async function runSafe(key: string, fn: () => Promise<void>, errors: string[]): 
   } catch (initialError) {
     const { isAbortLikeError } = await import("@/lib/network-abort");
     if (isAbortLikeError(initialError)) {
-      // Navigation/unmount abort — do not retry (was doubling egress on boot pulls).
+      // Navigation/unmount abort ÔÇö do not retry (was doubling egress on boot pulls).
       console.warn(`[data-loader] ${key} aborted`);
       return;
     }
@@ -1012,7 +1049,7 @@ async function runSafeBatches(
 async function executePullCritical(errors: string[]): Promise<void> {
   // Firm resolution + settings blob must complete before scoped pulls share firm cache.
   await runSafe("app_settings", pullAppSettings, errors);
-  // Independent catalog pulls — parallel after settings to cut wall-clock boot time.
+  // Independent catalog pulls ÔÇö parallel after settings to cut wall-clock boot time.
   await runSafeBatches(
     [
       ["branches", pullBranches],
@@ -1022,7 +1059,7 @@ async function executePullCritical(errors: string[]): Promise<void> {
     errors,
     3,
   );
-  // Module states need selectedBranchId (branches may remap legacy MAIN → real id).
+  // Module states need selectedBranchId (branches may remap legacy MAIN ÔåÆ real id).
   await runSafe(
     "module_states",
     async () => {
@@ -1045,7 +1082,7 @@ export async function pullCritical(): Promise<{ ok: boolean; errors: string[] }>
       return { ok: errors.length === 0, errors };
     } catch (e) {
       lastError = e;
-      // Wall-clock timeout already consumed the staged-load budget — do not rerun the chain.
+      // Wall-clock timeout already consumed the staged-load budget ÔÇö do not rerun the chain.
       if (e instanceof AsyncTimeoutError) break;
       if (attempt < 2) {
         await new Promise((r) => setTimeout(r, 800));
@@ -1063,7 +1100,7 @@ export async function pullCritical(): Promise<{ ok: boolean; errors: string[] }>
 export async function pullBackground(): Promise<{ ok: boolean; errors: string[] }> {
   const errors: string[] = [];
   await firmIdForPull().catch(() => null);
-  // Sequential background pulls — parallel batches were causing statement timeouts (57014)
+  // Sequential background pulls ÔÇö parallel batches were causing statement timeouts (57014)
   // when combined with auth/membership RPCs during login boot.
   await runSafeBatches(
     [
@@ -1098,7 +1135,7 @@ export async function pullBackground(): Promise<{ ok: boolean; errors: string[] 
 
 let deferredPullStarted = false;
 
-/** Low-priority hydrations — run once, delayed, when the tab is idle/visible. */
+/** Low-priority hydrations ÔÇö run once, delayed, when the tab is idle/visible. */
 export async function pullBackgroundDeferred(): Promise<void> {
   if (deferredPullStarted) return;
   deferredPullStarted = true;
@@ -1236,10 +1273,10 @@ async function resolveBootIdentity(): Promise<{ userId: string | null; firmId: s
 
 function bootDegradedMessage(restored: boolean, summary: string): string {
   if (!isOnline() && restored) {
-    return "Offline — showing last synced workshop data. New saves wait in Pending Sync until you reconnect.";
+    return "Offline ÔÇö showing last synced workshop data. New saves wait in Pending Sync until you reconnect.";
   }
   if (isOnline() && restored) {
-    return "Connection is slow — showing last synced data. Retrying live sync in the background…";
+    return "Connection is slow ÔÇö showing last synced data. Retrying live sync in the backgroundÔÇª";
   }
   return summary || "Workspace settings could not be loaded. Check your connection and retry.";
 }
@@ -1324,7 +1361,7 @@ export async function startCloudSync(force = false): Promise<void> {
         if (!import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEV_SUPABASE === "1") {
           startRealtimeSync();
         }
-        // Session cache speeds shell open only — always refresh live operational data.
+        // Session cache speeds shell open only ÔÇö always refresh live operational data.
         void pullBackground()
           .then(async (bg) => {
             markInitialLoadDone();
@@ -1364,7 +1401,7 @@ export async function startCloudSync(force = false): Promise<void> {
     const bootWatchdog = globalThis.setTimeout(() => {
       if (!isLoaded) {
         markCriticalLoadDegraded(
-          "Connection is slow — opening with last synced settings. Data will refresh in the background.",
+          "Connection is slow ÔÇö opening with last synced settings. Data will refresh in the background.",
         );
         useSettings.getState().setSettingsHydrated(true);
         isLoaded = true;
