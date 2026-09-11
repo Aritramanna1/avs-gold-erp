@@ -136,7 +136,7 @@ function SalesRegisterPage() {
             <h2 className="text-base font-bold text-black uppercase tracking-wider">Sales Register (Gold First)</h2>
             <p className="text-xs text-gray-600 font-medium">Period: {from} to {to}</p>
             <p className="text-[11px] font-bold text-black mt-1">
-              Total Fine Gold Sold: {fmtG(totals.fineMg)} g
+              Total Fine Gold Sold: {fmtG(totals.fineMg)}
             </p>
             <p className="text-[9px] text-gray-400">
               Printed on: {new Date().toLocaleString("en-IN")}
@@ -167,7 +167,7 @@ function SalesRegisterPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Total Sales (Gold First)</div>
-            <div className="text-2xl font-bold font-mono text-gold">{fmtG(totals.fineMg)} g Fine Gold</div>
+            <div className="text-2xl font-bold font-mono text-gold">{fmtG(totals.fineMg)} Fine Gold</div>
           </div>
           <div className="text-right text-xs text-muted-foreground font-mono space-y-0.5">
             <div>Taxable Value: <span className="font-semibold text-foreground">{fmtRs(totals.taxablePaise)}</span></div>
@@ -222,7 +222,7 @@ function SalesRegisterPage() {
                   <td className="py-1.5 px-2">{new Date(row.dateMs).toLocaleDateString("en-IN")}</td>
                   <td className="py-1.5 px-2">{row.customerName}</td>
                   <td className="py-1.5 px-2 font-mono">{row.hsn}</td>
-                  <td className="py-1.5 px-2 text-right font-mono font-bold text-gold">{fmtG(row.fineMg)} g</td>
+                  <td className="py-1.5 px-2 text-right font-mono font-bold text-gold">{fmtG(row.fineMg)}</td>
                   <td className="py-1.5 px-2 text-right font-mono">{fmtRs(row.taxablePaise)}</td>
                   <td className="py-1.5 px-2 text-right font-mono">
                     {fmtRs(row.cgstPaise + row.sgstPaise + row.igstPaise)}
@@ -234,7 +234,7 @@ function SalesRegisterPage() {
             )}
             <tr className="border-t font-bold bg-muted/40 print:bg-gray-100">
               <td colSpan={4} className="py-2 px-2">Total</td>
-              <td className="py-2 px-2 text-right font-mono text-gold">{fmtG(totals.fineMg)} g</td>
+              <td className="py-2 px-2 text-right font-mono text-gold">{fmtG(totals.fineMg)}</td>
               <td className="py-2 px-2 text-right font-mono">{fmtRs(totals.taxablePaise)}</td>
               <td className="py-2 px-2 text-right font-mono">{fmtRs(totals.gstPaise)}</td>
               <td className="py-2 px-2 text-right font-mono">{fmtRs(totals.tcsPaise)}</td>
