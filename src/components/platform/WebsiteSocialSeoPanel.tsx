@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { APP_NAME, APP_TAGLINE } from "@/lib/app-info";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,7 +89,7 @@ export function WebsiteSocialSeoPanel() {
           <div className="rounded border bg-white p-4 text-black max-w-lg">
             <p className="text-xs text-green-700">{previewUrl}</p>
             <p className="text-lg text-blue-800 leading-snug">
-              {seoTitle || "Ornexa — Jewellery Ecosystem ERP"}
+              {seoTitle || `${APP_NAME} — ${APP_TAGLINE}`}
             </p>
             <p className="text-sm text-gray-600 line-clamp-2">{seoDesc}</p>
           </div>

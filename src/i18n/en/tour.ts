@@ -6,7 +6,7 @@ const translations = {
   guidedTours: "Guided Tours",
   startTour: "Start tour",
   gettingStartedTitle: "Getting Started",
-  welcomeTitle: "Welcome to Ornexa",
+  welcomeTitle: "Welcome to AVS ERP",
   welcomeBody:
     "This sidebar is your main navigation — every module for orders, gold, manufacturing, and billing lives here.",
   dashboardTitle: "Your Dashboard",

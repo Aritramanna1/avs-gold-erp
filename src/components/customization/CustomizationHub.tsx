@@ -1203,7 +1203,7 @@ function AdvancedContent() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `ornexa_universal_customization_bundle_${Date.now()}.json`;
+    a.download = `avs_universal_customization_bundle_${Date.now()}.json`;
     a.click();
     toast.success("Universal configuration bundle exported.");
   };

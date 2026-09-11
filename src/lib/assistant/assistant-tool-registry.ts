@@ -206,7 +206,7 @@ export const AUTHORIZED_ERP_TOOLS: ToolRegistryItem[] = [
     domain: "knowledge",
     riskLevel: 0,
     description:
-      "Answers user questions about Ornexa workflows, settings, gold terminology, and FAQs.",
+      "Answers user questions about AVS ERP workflows, settings, gold terminology, and FAQs.",
     requiredPermissions: [],
     parameters: { query: { type: "string" } },
   },
@@ -1312,7 +1312,7 @@ export async function toolCreateSupportTicket(userMessage: string): Promise<ERPA
       actionId: `act_tkt_${Date.now()}`,
       actionType: "create_voucher",
       title: "Submit Support Ticket",
-      description: `Submit ticket "${query}" to Ornexa Platform Support.`,
+      description: `Submit ticket "${query}" to AVS Platform Support.`,
       requiresConfirmation: true,
       targetType: "platform_support_tickets",
       details: {
@@ -1352,7 +1352,7 @@ export async function toolQueryKnowledgeBase(userMessage: string): Promise<ERPAc
       type: "search_results",
       title: "Help & Knowledge Centre",
       summary:
-        "I don't have enough information to answer that confidently. Browse the Help Centre or ask a more specific jewellery/Ornexa question.",
+        "I don't have enough information to answer that confidently. Browse the Help Centre or ask a more specific jewellery/AVS ERP question.",
       actionRoute: "/help",
       data: { query: userMessage, isKnowledge: true },
     };
@@ -1360,7 +1360,7 @@ export async function toolQueryKnowledgeBase(userMessage: string): Promise<ERPAc
 
   const primary = scored[0].article;
   const tierLabel: Record<string, string> = {
-    product: "Ornexa Product",
+    product: "AVS ERP Product",
     industry: "Jewellery Industry",
     india: "India Knowledge",
     tenant: "Your Business",
@@ -1380,7 +1380,7 @@ export async function toolQueryKnowledgeBase(userMessage: string): Promise<ERPAc
     tableRows: scored.map((r) => ({
       topic: r.article.title,
       tier: tierLabel[r.article.knowledgeTier] ?? r.article.knowledgeTier,
-      source: r.article.sourceDoc ?? "Ornexa Knowledge Base",
+      source: r.article.sourceDoc ?? "AVS ERP Knowledge Base",
     })),
     data: {
       primaryContent: formatted.content,

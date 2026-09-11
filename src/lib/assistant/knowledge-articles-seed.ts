@@ -1,5 +1,5 @@
 /**
- * Ornexa Curated Knowledge Repository — System Articles Seed
+ * AVS ERP Curated Knowledge Repository — System Articles Seed
  * Loaded into memory + synced to assistant_knowledge_articles on hydrate.
  */
 import type { KnowledgeArticle } from "./knowledge-repository";
@@ -13,7 +13,7 @@ export const SYSTEM_KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
     language: "en-IN",
     summary:
       "Fine gold is the pure 24K (99.9% / 1000 touch) gold content inside an alloy, calculated deterministically from net weight and purity.",
-    content: `Fine Gold is the weight of pure gold contained in a piece of jewellery or bullion, expressed in milligrams (mg) in Ornexa.
+    content: `Fine Gold is the weight of pure gold contained in a piece of jewellery or bullion, expressed in milligrams (mg) in AVS ERP.
 
 **Formula (authoritative):**
 Fine Weight (mg) = Net Weight (mg) × (Purity Touch ÷ 1000)
@@ -21,7 +21,7 @@ Fine Weight (mg) = Net Weight (mg) × (Purity Touch ÷ 1000)
 **Example:** A 10g (10,000 mg) 22K ornament at 916 touch contains:
 10,000 × 916/1000 = 9,160 mg fine gold = 9.16g fine.
 
-Ornexa never uses floats for accounting. All gold is stored as integer milligrams. The Assistant and ERP core use the same calculation engine — never approximate fine gold mentally.`,
+AVS ERP never uses floats for accounting. All gold is stored as integer milligrams. The Assistant and ERP core use the same calculation engine — never approximate fine gold mentally.`,
     keywords: ["fine gold", "fine weight", "pure gold", "24k content", "fine mg", "999"],
     aliases: ["fine wt", "sone ki shuddh matra", "shuddh sona"],
     sourceDoc: "ITEM_AND_MATERIAL_MASTER.md",
@@ -38,7 +38,7 @@ Ornexa never uses floats for accounting. All gold is stored as integer milligram
     title: "What is Touch (Purity)?",
     language: "en-IN",
     summary:
-      "Touch (or fineness) is purity expressed per thousand — 916 means 91.6% pure gold (22K). Ornexa stores purity as integer per-mille.",
+      "Touch (or fineness) is purity expressed per thousand — 916 means 91.6% pure gold (22K). AVS ERP stores purity as integer per-mille.",
     content: `**Touch** (also called fineness or purity) measures how much pure gold is in an alloy, expressed per 1000 parts.
 
 | Karat | Touch (per-mille) | Common Use |
@@ -48,7 +48,7 @@ Ornexa never uses floats for accounting. All gold is stored as integer milligram
 | 18K   | 750               | Diamond jewellery, export |
 | 14K   | 585               | Lightweight fashion |
 
-In Ornexa, purity is always stored as an integer per-mille (e.g. 916, not 0.916). Touch is used to calculate fine gold weight and is snapshotted on every voucher so historical records remain accurate even if rates change.`,
+In AVS ERP, purity is always stored as an integer per-mille (e.g. 916, not 0.916). Touch is used to calculate fine gold weight and is snapshotted on every voucher so historical records remain accurate even if rates change.`,
     keywords: ["touch", "purity", "fineness", "916", "750", "999", "karat conversion"],
     aliases: ["purty", "purity touch", "touch percentage"],
     sourceDoc: "JEWELLERY_TERMINOLOGY_MASTER.md",
@@ -75,7 +75,7 @@ Net Weight (mg) = Gross Weight (mg) − Less Weight (mg)
 **Fine Weight:** Pure gold content within the net weight.
 Fine Weight (mg) = Net Weight (mg) × (Touch ÷ 1000)
 
-In billing and manufacturing, making charges may be calculated on Gross or Net depending on your configured rules. Ornexa snapshots which basis was used on each voucher.`,
+In billing and manufacturing, making charges may be calculated on Gross or Net depending on your configured rules. AVS ERP snapshots which basis was used on each voucher.`,
     keywords: [
       "gross weight",
       "net weight",
@@ -107,7 +107,7 @@ In billing and manufacturing, making charges may be calculated on Gross or Net d
 
 **24K (999 touch):** Pure bullion bars and investment gold. Too soft for direct wear jewellery.
 
-Ornexa stores all purities as integer per-mille. When you enter "22K", the system resolves to touch 916 automatically.`,
+AVS ERP stores all purities as integer per-mille. When you enter "22K", the system resolves to touch 916 automatically.`,
     keywords: ["22k", "18k", "14k", "24k", "916", "750", "585", "karat", "kt"],
     aliases: ["22 kt", "18 kt", "14 kt", "22 carat"],
     sourceDoc: "ITEM_AND_MATERIAL_MASTER.md",
@@ -132,7 +132,7 @@ Ornexa stores all purities as integer per-mille. When you enter "22K", the syste
 - **Utilization:** In manufacturing ERP, customer gold can be physically pooled/melted for production while the liability remains until Hisab/settlement.
 - **Settlement:** Customer gold is settled by returning metal, adjusting against a new order, or converting to a cash credit at agreed Bhav (rate).
 
-In Ornexa, customer gold deposits are tracked separately from company-owned vault stock. Use People → Party 360 or the Gold Book to view customer metal balances.`,
+In AVS ERP, customer gold deposits are tracked separately from company-owned vault stock. Use People → Party 360 or the Gold Book to view customer metal balances.`,
     keywords: [
       "customer gold",
       "customer deposit",
@@ -160,7 +160,7 @@ In Ornexa, customer gold deposits are tracked separately from company-owned vaul
 
 **Gold Payable:** Fine gold your firm owes to a party. Example: Customer gold deposit held in vault; supplier advance bullion not yet received.
 
-These are metal ledger positions, distinct from cash receivable/payable. Ornexa tracks both money (₹ paise) and metal (mg fine gold) in parallel ledgers.
+These are metal ledger positions, distinct from cash receivable/payable. AVS ERP tracks both money (₹ paise) and metal (mg fine gold) in parallel ledgers.
 
 View firm-wide gold exposure in Reports → Gold Summary. View party-specific balances in People → Party 360 or ask the Assistant for a specific party's gold balance.`,
     keywords: [
@@ -187,7 +187,7 @@ View firm-wide gold exposure in Reports → Gold Summary. View party-specific ba
       "Gold issued to a karigar (artisan) for manufacturing, held in their custody ledger until returned as finished goods or scrap.",
     content: `**Gold with Karigar** means physical gold that has been issued from your vault to an artisan's bench/workshop for manufacturing, and has not yet been returned.
 
-**In Ornexa:**
+**In AVS ERP:**
 1. **Issue:** Gold moves from Vault → Karigar Custody (WIP ledger).
 2. **Manufacturing:** Karigar works the gold against a Job Card.
 3. **Receive:** Finished ornament + filing scrap returned; wastage (Ghat) calculated per agreement.
@@ -225,7 +225,7 @@ Ask the Assistant "show [karigar name] gold balance" to see live custody from th
 - **Excess Wastage:** Loss beyond allowance — debited to karigar metal account or written off.
 - **Recovery:** Filing dust and scrap collected and re-melted (recovery % tracked).
 
-Ornexa calculates wastage at receive time by comparing issued fine gold vs returned fine gold + scrap. Configure allowed wastage rules in Customization → Calculations.`,
+AVS ERP calculates wastage at receive time by comparing issued fine gold vs returned fine gold + scrap. Configure allowed wastage rules in Customization → Calculations.`,
     keywords: ["wastage", "ghat", "loss", "manufacturing loss", "allowed wastage", "filing loss"],
     aliases: ["ghat", "metal loss", "wastage allowance"],
     sourceDoc: "CALCULATION_AND_RULE_ENGINE.md",
@@ -276,7 +276,7 @@ Track recovery in Workshop → Receive Metal and Melt/Conversion modules. Recove
 3. Refinery returns 999 bar; melting loss and assay charges deducted.
 4. Refined bar inward to vault; loss written off or charged.
 
-In Ornexa, record refinery transactions via Supplier Purchases, Melt Jobs, or Metal Conversion. Track refinery parties in People with type Refinery.`,
+In AVS ERP, record refinery transactions via Supplier Purchases, Melt Jobs, or Metal Conversion. Track refinery parties in People with type Refinery.`,
     keywords: ["refining", "refinery", "melting", "fire assay", "cupellation", "999 bar"],
     aliases: ["refinary", "saaf sona", "bullion conversion"],
     sourceDoc: "MANUFACTURING_LEDGER_MASTER.md",
@@ -298,7 +298,7 @@ In Ornexa, record refinery transactions via Supplier Purchases, Melt Jobs, or Me
 
 **HUID (Hallmark Unique ID):** Since 1 July 2021, every hallmarked piece carries a unique 6-character alphanumeric HUID laser-marked on the article. This enables traceability from assaying centre to retail sale.
 
-**In Ornexa:**
+**In AVS ERP:**
 - Record hallmark batches in Stock → Hallmark.
 - Link HUID codes to inventory tags for traceability.
 - Hallmark charges tracked as manufacturing/subcontract cost.
@@ -317,7 +317,7 @@ The Assistant will never invent or alter HUID codes — these are protected iden
     id: "faq_gold_issue_receive",
     knowledgeTier: "product",
     topic: "gold_issue_receive",
-    title: "How does Gold Issue and Receive work in Ornexa?",
+    title: "How does Gold Issue and Receive work in AVS ERP?",
     language: "en-IN",
     summary:
       "Issue transfers metal from vault to karigar custody. Receive records return of finished goods and scrap, calculating wastage.",
@@ -358,7 +358,7 @@ Both operations are atomic ledger postings. The Assistant can draft an Issue sli
     language: "en-IN",
     summary:
       "Converts bullion/scrap from one purity/form to another (e.g. 24K bar → 22K alloy) with alloy addition and melting loss tracking.",
-    content: `**Metal Conversion** in Ornexa converts physical metal between purities and forms:
+    content: `**Metal Conversion** in AVS ERP converts physical metal between purities and forms:
 
 1. Navigate to Conversion (/conversion) or Melt (/melt).
 2. Select source lot (e.g. 24K bullion bar, scrap lot).
@@ -416,7 +416,7 @@ Access via Workshop → Gold Book (/workshop/gold-book) or individual Worker Boo
     language: "en-IN",
     summary:
       "Per-karigar ledger showing metal issue/receive history, wastage, labour charges, and settlement status.",
-    content: `A **Karigar Book** is the individual artisan's manufacturing account in Ornexa:
+    content: `A **Karigar Book** is the individual artisan's manufacturing account in AVS ERP:
 
 - Metal issued and received (with fine gold calculations).
 - Allowed vs actual wastage per job.
@@ -448,7 +448,7 @@ Navigate to Workshop → Worker Books → select karigar. Each outside worker (M
 - **Metal ledger:** Gold issued, received, and settled in fine grams.
 - **Combined view:** Party 360 shows both ledgers, open orders, and documents.
 
-In Ornexa, open People → select party → Ledger tab. The Assistant can fetch live party balances but never invents figures — always from the authoritative database.`,
+In AVS ERP, open People → select party → Ledger tab. The Assistant can fetch live party balances but never invents figures — always from the authoritative database.`,
     keywords: ["party ledger", "khata", "account statement", "party balance", "ledger"],
     aliases: ["khata", "party khata", "hisab"],
     sourceDoc: "PARTY_360_MASTER.md",
@@ -468,7 +468,7 @@ In Ornexa, open People → select party → Ledger tab. The Assistant can fetch 
       "Starting cash and metal balances when onboarding or at financial year start. Set via Migration Wizard or Party opening entries.",
     content: `**Opening Balance** is the starting position of cash (₹) and metal (fine gold mg) for a party or account at the beginning of operations or a new financial year.
 
-**In Ornexa:**
+**In AVS ERP:**
 1. Use Control → Migration Wizard for bulk opening balance import.
 2. Or set per-party opening in People → Party → Opening Balance tab.
 3. Chart of Accounts opening balances set in Control → Accounts.
@@ -498,7 +498,7 @@ Opening balances post as special voucher types (opening_vault, opening_cash) and
 3. **Cash Conversion:** Metal valued at agreed Bhav (daily rate) and credited as cash balance.
 4. **Combined Settlement:** Part metal return + part cash adjustment.
 
-In Ornexa: Settlement module (/settlement) or Billing → Gold Settlement. The settlement voucher posts metal liability reduction and creates audit trail. Ask the Assistant about settlement workflow but verify actual balances from live data.`,
+In AVS ERP: Settlement module (/settlement) or Billing → Gold Settlement. The settlement voucher posts metal liability reduction and creates audit trail. Ask the Assistant about settlement workflow but verify actual balances from live data.`,
     keywords: [
       "customer gold settlement",
       "settle gold",
@@ -518,7 +518,7 @@ In Ornexa: Settlement module (/settlement) or Billing → Gold Settlement. The s
     id: "faq_create_customer",
     knowledgeTier: "product",
     topic: "create_customer",
-    title: "How do I create a Customer in Ornexa?",
+    title: "How do I create a Customer in AVS ERP?",
     language: "en-IN",
     summary:
       "Add customers, suppliers, karigars via People module with KYC, GSTIN, and opening balances.",
@@ -544,7 +544,7 @@ You can also ask the Assistant "create a customer" to start a guided draft flow.
     id: "faq_create_order",
     knowledgeTier: "product",
     topic: "create_order",
-    title: "How do I create an Order in Ornexa?",
+    title: "How do I create an Order in AVS ERP?",
     language: "en-IN",
     summary:
       "Manufacturing orders track custom jewellery from design approval through production to delivery.",
@@ -569,7 +569,7 @@ Ask the Assistant "create an order" for a guided draft, or say "show overdue ord
     id: "faq_create_job",
     knowledgeTier: "product",
     topic: "create_job",
-    title: "How do I create a Job Card in Ornexa?",
+    title: "How do I create a Job Card in AVS ERP?",
     language: "en-IN",
     summary:
       "Job Cards track manufacturing stages from casting through setting, polish, QC, and hallmark.",
@@ -593,7 +593,7 @@ The Assistant can search jobs by status, karigar, or due date using live ERP dat
     id: "faq_create_invoice",
     knowledgeTier: "product",
     topic: "create_invoice",
-    title: "How do I create an Invoice in Ornexa?",
+    title: "How do I create an Invoice in AVS ERP?",
     language: "en-IN",
     summary:
       "GST-compliant tax invoices with metal valuation, making charges, stone details, and payment split.",
@@ -631,7 +631,7 @@ Ask the Assistant "create invoice for [customer]" to start a draft, or "search i
 4. Fine gold calculated; valued at day's Bhav (rate).
 5. Amount adjusted against new purchase invoice or paid in cash.
 
-In Ornexa: Billing → Old Gold Purchase line, or dedicated Old Gold Purchase voucher. KYC required for purchases above regulatory threshold.`,
+In AVS ERP: Billing → Old Gold Purchase line, or dedicated Old Gold Purchase voucher. KYC required for purchases above regulatory threshold.`,
     keywords: ["old gold", "old gold exchange", "scrap purchase", "og purchase", "exchange"],
     aliases: ["purana sona", "old gold purchase", "scrap gold"],
     sourceDoc: "BUSINESS_RULES.md",
@@ -648,14 +648,14 @@ In Ornexa: Billing → Old Gold Purchase line, or dedicated Old Gold Purchase vo
     title: "GST on Jewellery — Quick Reference",
     language: "en-IN",
     summary:
-      "Gold jewellery GST: 3% on making charges (1.5% CGST + 1.5% SGST). Pure gold/bullion has different rates. Ornexa calculates GST deterministically.",
-    content: `**Indian GST on Gold Jewellery (as documented in Ornexa):**
+      "Gold jewellery GST: 3% on making charges (1.5% CGST + 1.5% SGST). Pure gold/bullion has different rates. AVS ERP calculates GST deterministically.",
+    content: `**Indian GST on Gold Jewellery (as documented in AVS ERP):**
 
 - **Making Charges:** 3% GST (1.5% CGST + 1.5% SGST) on making/labour value.
 - **Gold Value:** On supply of gold ornaments, GST applies per current CBIC notifications (configured in tenant tax settings).
 - **Old Gold Purchase:** Specific valuation and GST rules apply; configured per voucher type.
 
-Ornexa's billing engine calculates GST in integer paise with proper rounding. The Assistant explains GST concepts but actual tax amounts always come from posted invoices — never estimated by AI.`,
+AVS ERP's billing engine calculates GST in integer paise with proper rounding. The Assistant explains GST concepts but actual tax amounts always come from posted invoices — never estimated by AI.`,
     keywords: ["gst", "cgst", "sgst", "tax", "gst on jewellery", "making charges gst"],
     aliases: ["gst rate", "tax on gold", "3 percent gst"],
     sourceDoc: "BUSINESS_RULES.md",
@@ -669,11 +669,11 @@ Ornexa's billing engine calculates GST in integer paise with proper rounding. Th
     id: "faq_assistant_capabilities",
     knowledgeTier: "product",
     topic: "assistant_help",
-    title: "What can the Ornexa Assistant do?",
+    title: "What can the AVS ERP Assistant do?",
     language: "en-IN",
     summary:
       "Query live ERP data, explain jewellery concepts, guide workflows, draft vouchers — all permission-aware without inventing balances.",
-    content: `The Ornexa Assistant operates in two modes:
+    content: `The AVS ERP Assistant operates in two modes:
 
 **Standard (Zero Cost):** Answers terminology and workflow questions from the Knowledge Repository. Queries live ERP data through authorized tools. Drafts vouchers with your confirmation. Works offline.
 

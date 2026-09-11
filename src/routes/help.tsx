@@ -376,7 +376,7 @@ const COURSES: CourseModule[] = [
 const FAQS = [
   {
     q: "How does AVS ERP calculate Fine Gold from alloyed metal?",
-    a: "Ornexa uses the standard formula: Fine Weight (g) = Gross Weight (g) × (Purity / 1000). For example, 10.000g of 916 gold equals exactly 9.160g of Fine Gold. Both the physical gross weight and pure fine gold balances are maintained simultaneously in real-time.",
+    a: `${APP_NAME} uses the standard formula: Fine Weight (g) = Gross Weight (g) × (Purity / 1000). For example, 10.000g of 916 gold equals exactly 9.160g of Fine Gold. Both the physical gross weight and pure fine gold balances are maintained simultaneously in real-time.`,
   },
   {
     q: "Can a customer also be a supplier or karigar in the system?",

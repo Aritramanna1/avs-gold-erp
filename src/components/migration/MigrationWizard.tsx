@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { MIGRATION_STAGES, useMigrationStore, type MigrationStageId } from "@/lib/migration-store";
 import { Button } from "@/components/ui/button";
+import { APP_NAME } from "@/lib/app-info";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,7 +43,7 @@ export function MigrationWizard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `ornexa_stage_${stageId}_template.csv`);
+    link.setAttribute("download", `avs_stage_${stageId}_template.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -94,12 +95,11 @@ export function MigrationWizard() {
                 13
               </span>
               <h1 className="text-xl font-bold tracking-tight text-foreground">
-                Ornexa 13-Stage Opening Balance & Migration Wizard
+                {`${APP_NAME} 13-Stage Opening Balance & Migration Wizard`}
               </h1>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              Authoritative onboarding engine for ingesting historical data, dual-ledger opening
-              balances, stock tags, and active WIP.
+              Import historical data, opening balances, stock tags, and work in progress.
             </p>
           </div>
           <div className="flex items-center gap-3">

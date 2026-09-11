@@ -2,6 +2,7 @@
  * Platform Owner — Commercial Pricing (products, fees, plan versions)
  */
 import { useEffect, useState } from "react";
+import { APP_NAME } from "@/lib/app-info";
 import { Panel } from "@/components/design-system";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,7 +85,7 @@ export function CommercialPricingPanel() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ORNEXA">Ornexa</SelectItem>
+            <SelectItem value="ORNEXA">{APP_NAME}</SelectItem>
             <SelectItem value="RESTAURANT_POS">Restaurant POS</SelectItem>
             <SelectItem value="ACCOUNTING_ERP">Accounting ERP</SelectItem>
             <SelectItem value="INVENTORY_ERP">Inventory ERP</SelectItem>

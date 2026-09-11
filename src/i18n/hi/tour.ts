@@ -6,7 +6,7 @@ const translations = {
   guidedTours: "गाइडेड टूर",
   startTour: "टूर शुरू करें",
   gettingStartedTitle: "शुरुआत",
-  welcomeTitle: "Ornexa में आपका स्वागत है",
+  welcomeTitle: "AVS ERP में आपका स्वागत है",
   welcomeBody:
     "यह साइडबार आपका मुख्य नेविगेशन है — ऑर्डर, सोना, मैन्युफैक्चरिंग और बिलिंग के सभी मॉड्यूल यहाँ हैं।",
   dashboardTitle: "आपका डैशबोर्ड",

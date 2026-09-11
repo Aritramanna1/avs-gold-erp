@@ -459,7 +459,7 @@ export function DocumentTemplateDesigner() {
     a.download = `Template-${activeTemplate.docType}-${activeTemplate.family || "custom"}.ornexa-template.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Exported .ornexa-template package.");
+    toast.success("Exported template package.");
   };
 
   const handleImportPackage = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -470,7 +470,7 @@ export function DocumentTemplateDesigner() {
       try {
         const content = JSON.parse(ev.target?.result as string);
         if (content.format !== "ornexa-template" || !Array.isArray(content.template?.sections)) {
-          throw new Error("Invalid .ornexa-template format.");
+          throw new Error("Invalid template package format.");
         }
         setActiveTemplate({
           ...activeTemplate,
@@ -704,7 +704,7 @@ export function DocumentTemplateDesigner() {
                   onClick={handleExportPackage}
                   className="h-8 gap-1"
                 >
-                  <Download className="h-3 w-3" /> Export (.ornexa-template)
+                  <Download className="h-3 w-3" /> Export template
                 </Button>
                 <label className="cursor-pointer">
                   <span className="inline-flex items-center justify-center rounded-md border border-input bg-background h-8 px-3 text-xs font-medium hover:bg-accent gap-1">

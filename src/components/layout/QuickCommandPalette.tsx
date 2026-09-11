@@ -1,15 +1,4 @@
-/**
- * AVS ERP — Consumer-Grade Global Command & Search Palette (Ctrl+K)
- *
- * Fast, natural task and record search (YouTube / Gmail / WhatsApp model).
- * Allows instant search across:
- * 1. Business workflows and quick navigation destinations
- * 2. Real customer & party records (by name, phone, city)
- * 3. Invoices & bills (by invoice number, customer)
- * 4. Ready Stock items & barcodes (by tag/barcode, item name)
- * 5. Karigars / Artisans
- * 6. Recent searches & actions
- */
+/** Global command & search palette (Ctrl+K). */
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
