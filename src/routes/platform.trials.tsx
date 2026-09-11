@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
+import { APP_NAME } from "@/lib/app-info";
 import { useEffect, useState } from "react";
 import { DEFAULT_PLATFORM_SEARCH } from "@/lib/platform-search";
 import { guardRoute } from "@/lib/permissions";
@@ -199,7 +200,7 @@ function PlatformTrialsPage() {
               {visibleTrials.map((t) => (
                 <tr key={t.id} className="border-b border-border/50">
                   <td className="py-2">{t.organizations?.name ?? t.organization_id.slice(0, 8)}</td>
-                  <td className="py-2 font-mono">{t.product_id ?? "ORNEXA"}</td>
+                  <td className="py-2 font-mono">{!t.product_id || t.product_id === "ORNEXA" ? APP_NAME : t.product_id}</td>
                   <td className="py-2">
                     {t.trial_ends_at ? new Date(t.trial_ends_at).toLocaleDateString() : "—"}
                   </td>

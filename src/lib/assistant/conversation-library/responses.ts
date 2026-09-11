@@ -16,12 +16,12 @@ const ACKNOWLEDGEMENTS = ["Got it.", "Understood.", "Okay.", "Done.", "You're we
 const CASUAL_HOW_ARE_YOU = [
   "Doing well. Ready when you are. What do you want to check?",
   "All good here. What can I help you with?",
-  "I'm operating perfectly. How can I assist you with Ornexa today?",
+  "I'm operating perfectly. How can I assist you with AVS ERP today?",
 ];
 
 const CAPABILITY_EXPLANATION = [
-  "I'm the Ornexa Assistant. I can help you find information, understand your business data, navigate the ERP and carry out permitted tasks.",
-  "I'm here to help you operate Ornexa faster. I can answer questions about the system, pull up gold balances, check stock, or draft transactions for you.",
+  "I'm the AVS Assistant. I can help you find information, understand your business data, navigate the ERP and carry out permitted tasks.",
+  "I'm here to help you operate AVS ERP faster. I can answer questions about the system, pull up gold balances, check stock, or draft transactions for you.",
 ];
 
 function getCryptoRandomIndex(length: number): number {
@@ -57,9 +57,9 @@ export function getFallbackClarification(): string {
 }
 
 export function getExplainSimplyPrompt(): string {
-  return "Of course — tell me which topic you'd like explained simply. For example: fine gold, touch, wastage, hallmarking, gold issue/receive, or how to create an invoice in Ornexa.";
+  return "Of course — tell me which topic you'd like explained simply. For example: fine gold, touch, wastage, hallmarking, gold issue/receive, or how to create an invoice in AVS ERP.";
 }
 
 export function getInsufficientKnowledgeResponse(): string {
-  return "I don't have enough information to answer that confidently. I can search Ornexa Help, look up a specific party or record, or help you create a support ticket. What would you like to do?";
+  return "I don't have enough information to answer that confidently. I can search AVS Help, look up a specific party or record, or help you create a support ticket. What would you like to do?";
 }

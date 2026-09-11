@@ -6,6 +6,7 @@ import { MobileAccountSheet } from "./MobileAccountSheet";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { BusinessSwitcher } from "@/components/identity/BusinessSwitcher";
 import { useSettings } from "@/lib/settings-store";
+import { APP_NAME } from "@/lib/app-info";
 
 /**
  * Mobile ERP chrome — no desktop sidebar. Action-first bottom navigation.
@@ -23,7 +24,7 @@ export function MobileShell({ children, title }: { children: ReactNode; title?: 
       <header className="sticky top-0 z-30 h-14 border-b border-border bg-card flex items-center gap-2 px-3">
         <Logo variant="svg" className="h-7 w-7 shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold truncate">{title ?? firm?.shopName ?? "Ornexa"}</p>
+          <p className="text-sm font-semibold truncate">{title ?? firm?.shopName ?? APP_NAME}</p>
         </div>
         <div className="hidden xs:block">
           <BusinessSwitcher compact />

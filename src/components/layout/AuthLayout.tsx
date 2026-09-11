@@ -28,12 +28,6 @@ interface AuthLayoutProps {
   className?: string;
 }
 
-/**
- * Secures individual user authorization state inside the AVS ERP platform.
- * Returns { allowed: true } if active directory matches, or descriptive error string otherwise.
- */
-// Kept exported for the auth flow's legacy compatibility surface; moving it
-// would change the public import boundary used by downstream builds.
 // eslint-disable-next-line react-refresh/only-export-components
 export async function verifyUserRoleAndStatus(
   userEmail: string,

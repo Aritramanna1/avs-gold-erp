@@ -299,7 +299,7 @@ export function UniversalTransactionEngineDesigner() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `ornexa_universal_transactions_${Date.now()}.json`;
+    a.download = `avs_universal_transactions_${Date.now()}.json`;
     a.click();
     toast.success("Transaction definitions bundle exported.");
   };

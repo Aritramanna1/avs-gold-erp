@@ -6,6 +6,7 @@
  * Business transactions are NEVER rolled back if messaging fails.
  */
 import { commService } from "../service";
+import { APP_NAME } from "@/lib/app-info";
 import { centralEmailService } from "../email-service";
 import type { CommChannel, CommRequest } from "../types";
 import {
@@ -77,7 +78,7 @@ async function dispatchEmailChannel(
     recipientName: input.recipient.name,
     recipientEmail: input.recipient.email,
     firmName: String(input.payload?.tenant_name ?? input.payload?.firm_name ?? "AVS"),
-    productName: String(input.payload?.product_name ?? "Ornexa"),
+    productName: String(input.payload?.product_name ?? APP_NAME),
     actionUrl:
       input.documentUrl ?? String(input.payload?.document_url ?? input.payload?.action_url ?? ""),
     documentType: String(input.payload?.document_type ?? ""),
@@ -359,7 +360,7 @@ export async function notifyPortalInvitation(opts: {
       action_url: opts.actionUrl,
       document_url: opts.actionUrl,
       role: opts.portal,
-      product_name: opts.productName ?? "Ornexa",
+      product_name: opts.productName ?? APP_NAME,
     },
   });
 }
