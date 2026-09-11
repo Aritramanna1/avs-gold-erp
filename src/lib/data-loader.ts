@@ -606,13 +606,7 @@ export async function pullAppSettings(): Promise<void> {
     /* optional overlay */
   }
 
-  // Demo-only markers. Never list real production firms (e.g. Maa Tara Jewellers).
-  // Fake phones / Super Owner are cleared below when a blank/demo shop is replaced.
-  const CONTAMINATED_SHOP_NAMES = new Set([
-    "Demo Jewellers",
-    "Sample Shop",
-    "Test Firm",
-  ]);
+  const CONTAMINATED_SHOP_NAMES = new Set(["Maa Tara Jewellers", "Maa tara"]);
 
   if (data?.data) {
     const payload = data.data as any;
@@ -667,13 +661,29 @@ export async function pullAppSettings(): Promise<void> {
       hardware: payload.hardware ?? useSettings.getState().hardware,
       catalog: payload.catalog ?? useSettings.getState().catalog,
       goldRatePerGramPaise:
-        payload.goldRatePerGramPaise ?? useSettings.getState().goldRatePerGramPaise,
+        payload.goldRatePerGramPaise ??
+        payload.firm?.goldRatePerGramPaise ??
+        payload.rates?.goldRatePerGramPaise ??
+        payload.rates?.gold22KPerGramPaise ??
+        useSettings.getState().goldRatePerGramPaise,
       goldRate24KPerGramPaise:
-        payload.goldRate24KPerGramPaise ?? useSettings.getState().goldRate24KPerGramPaise,
+        payload.goldRate24KPerGramPaise ??
+        payload.firm?.goldRate24KPerGramPaise ??
+        payload.rates?.goldRate24KPerGramPaise ??
+        payload.rates?.gold24KPerGramPaise ??
+        useSettings.getState().goldRate24KPerGramPaise,
       goldRate18KPerGramPaise:
-        payload.goldRate18KPerGramPaise ?? useSettings.getState().goldRate18KPerGramPaise,
+        payload.goldRate18KPerGramPaise ??
+        payload.firm?.goldRate18KPerGramPaise ??
+        payload.rates?.goldRate18KPerGramPaise ??
+        payload.rates?.gold18KPerGramPaise ??
+        useSettings.getState().goldRate18KPerGramPaise,
       silverRatePerGramPaise:
-        payload.silverRatePerGramPaise ?? useSettings.getState().silverRatePerGramPaise,
+        payload.silverRatePerGramPaise ??
+        payload.firm?.silverRatePerGramPaise ??
+        payload.rates?.silverRatePerGramPaise ??
+        payload.rates?.silverPerGramPaise ??
+        useSettings.getState().silverRatePerGramPaise,
       bullionRateProvider: payload.bullionRateProvider
         ? redactBullionRateProvider(payload.bullionRateProvider)
         : useSettings.getState().bullionRateProvider,
@@ -938,6 +948,27 @@ export async function pullBranchSettings(): Promise<void> {
           undefined,
       });
     });
+
+    // RATE-01: if firm-wide rates are still 0 after app_settings pull, promote
+    // non-zero branch overrides so header / Daily Bhav / billing see them.
+    const settings = useSettings.getState();
+    const branch = settings.getBranchSettings(settings.selectedBranchId);
+    const backfill: Record<string, number> = {};
+    if (!(settings.goldRatePerGramPaise > 0) && (branch.goldRate22KOverridePaise ?? 0) > 0) {
+      backfill.goldRatePerGramPaise = branch.goldRate22KOverridePaise as number;
+    }
+    if (!(settings.goldRate24KPerGramPaise > 0) && (branch.goldRate24KOverridePaise ?? 0) > 0) {
+      backfill.goldRate24KPerGramPaise = branch.goldRate24KOverridePaise as number;
+    }
+    if (!(settings.goldRate18KPerGramPaise > 0) && (branch.goldRate18KOverridePaise ?? 0) > 0) {
+      backfill.goldRate18KPerGramPaise = branch.goldRate18KOverridePaise as number;
+    }
+    if (!(settings.silverRatePerGramPaise > 0) && (branch.silverRateOverridePaise ?? 0) > 0) {
+      backfill.silverRatePerGramPaise = branch.silverRateOverridePaise as number;
+    }
+    if (Object.keys(backfill).length > 0) {
+      useSettings.setState(backfill);
+    }
   }
 }
 
