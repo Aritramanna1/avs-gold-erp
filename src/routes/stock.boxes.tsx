@@ -24,9 +24,10 @@ import { STOCK_LOCATION_LABELS, STOCK_LOCATIONS, useStock } from "@/lib/stock-st
 import { useStockBoxTrays } from "@/lib/stock-box-tray-store";
 import { Package, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/stock/boxes")({
-  head: () => ({ meta: [{ title: "Box & Tray Masters · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `Box & Tray Masters · ${APP_NAME}` }] }),
   component: StockBoxesPage,
 });
 

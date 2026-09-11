@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSettings } from "@/lib/settings-store";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/settings/backup-recovery")({
   head: () => ({ meta: [{ title: "Backup & Disaster Recovery · AVS Gold ERP" }] }),
@@ -109,7 +110,7 @@ function BackupRecoveryPage() {
       const backupData = JSON.stringify(
         {
           header: {
-            app: "Ornexa Jewellery ERP",
+            app: APP_NAME,
             version: "v3.1.0",
             tenantId: firm?.shopName || "Maa Tara Jewellers",
             createdAt: new Date().toISOString(),
@@ -155,7 +156,7 @@ function BackupRecoveryPage() {
         schemaVersion: "v3.1.0",
         checksum: "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
       });
-      toast.info("Package inspected: Valid Ornexa backup file.");
+      toast.info("Package inspected: Valid AVS backup file.");
     }, 1500);
   }
 

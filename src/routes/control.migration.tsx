@@ -7,10 +7,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { guardRoute } from "@/lib/permissions";
 import { PageHeader } from "@/components/app-shell";
 import { MigrationWizard } from "@/components/migration/MigrationWizard";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/control/migration")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  head: () => ({ meta: [{ title: "13-Stage Migration Wizard · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `13-Stage Migration Wizard · ${APP_NAME}` }] }),
   component: ControlMigrationPage,
 });
 

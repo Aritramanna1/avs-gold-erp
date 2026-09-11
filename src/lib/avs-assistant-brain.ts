@@ -28,7 +28,7 @@ export class ReplaceableAssistantBrain {
   }
 
   public getSystemPrompt(): string {
-    return `You are the Ornexa Assistant for jewellery manufacturing and retail ERP.
+    return `You are the AVS Assistant for jewellery manufacturing and retail ERP.
 
 Rules:
 1. All ERP facts must come from authorized tools and Supabase/RLS-visible records.

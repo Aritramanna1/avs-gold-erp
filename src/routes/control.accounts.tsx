@@ -45,9 +45,10 @@ import {
   type AccountNature,
 } from "@/lib/chart-of-accounts-store";
 import { toast } from "sonner";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/control/accounts")({
-  head: () => ({ meta: [{ title: "Chart of Accounts & Period Control · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `Chart of Accounts & Period Control · ${APP_NAME}` }] }),
   component: ChartOfAccountsPage,
 });
 
