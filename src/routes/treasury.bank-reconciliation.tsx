@@ -1,5 +1,5 @@
 /**
- * Bank Reconciliation â€” match statement to cash/bank book vouchers.
+ * Bank Reconciliation — match statement to cash/bank book vouchers.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -27,12 +27,12 @@ import { useTableKeyboardNav } from "@/hooks/use-table-keyboard-nav";
 
 export const Route = createFileRoute("/treasury/bank-reconciliation")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  head: () => ({ meta: [{ title: "Bank Reconciliation Â· AVS ERP" }] }),
+  head: () => ({ meta: [{ title: "Bank Reconciliation · AVS ERP" }] }),
   component: BankReconciliationPage,
 });
 
 function rs(paise: number): string {
-  return `â‚¹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+  return `₹${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
 }
 
 function BankReconciliationPage() {
@@ -259,10 +259,10 @@ function BankReconciliationPage() {
                 value={bankCode}
                 onChange={(e) => setBankCode(e.target.value)}
               >
-                <option value="">Selectâ€¦</option>
+                <option value="">Select…</option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.code}>
-                    {a.code} â€” {a.name}
+                    {a.code} — {a.name}
                   </option>
                 ))}
               </select>
@@ -296,7 +296,7 @@ function BankReconciliationPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="statement-bal">Statement closing (â‚¹)</Label>
+              <Label htmlFor="statement-bal">Statement closing (₹)</Label>
               <Input
                 id="statement-bal"
                 inputMode="decimal"
@@ -308,7 +308,7 @@ function BankReconciliationPage() {
             <div className="space-y-1.5">
               <Label>Book closing (computed)</Label>
               <div className="h-9 flex items-center rounded-md border bg-muted/40 px-3 text-sm font-medium">
-                {bankCode ? rs(previewBook.bookPaise) : "â€”"}
+                {bankCode ? rs(previewBook.bookPaise) : "—"}
               </div>
             </div>
           </div>
@@ -321,7 +321,7 @@ function BankReconciliationPage() {
       <div className="space-y-3">
         <h3 className="text-sm font-semibold">Sessions</h3>
         {loading && sessions.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Loadingâ€¦</p>
+          <p className="text-xs text-muted-foreground">Loading…</p>
         ) : sessions.length === 0 && !error ? (
           <p className="text-xs text-muted-foreground">No reconciliation sessions yet.</p>
         ) : (
@@ -339,8 +339,8 @@ function BankReconciliationPage() {
                 <div>
                   <div className="font-semibold">{s.bankAccountCode}</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    {s.periodFrom} â†’ {s.periodTo} Â· Statement {rs(s.statementBalancePaise)} Â· Book{" "}
-                    {rs(s.bookBalancePaise)} Â· Variance {rs(v)}
+                    {s.periodFrom} → {s.periodTo} · Statement {rs(s.statementBalancePaise)} · Book{" "}
+                    {rs(s.bookBalancePaise)} · Variance {rs(v)}
                   </div>
                 </div>
                 <Badge variant="outline">{s.status}</Badge>
@@ -354,14 +354,14 @@ function BankReconciliationPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
-              Session Â· {activeSession.bankAccountCode}
+              Session · {activeSession.bankAccountCode}
             </CardTitle>
             <CardDescription>
-              Statement {rs(statementPaise)} Â· Book {rs(bookNow)} Â· Variance{" "}
+              Statement {rs(statementPaise)} · Book {rs(bookNow)} · Variance{" "}
               <span className={variance === 0 ? "text-green-700" : "text-amber-700"}>
                 {rs(variance)}
               </span>
-              {uncleared.length > 0 && ` Â· ${uncleared.length} uncleared`}
+              {uncleared.length > 0 && ` · ${uncleared.length} uncleared`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -375,7 +375,7 @@ function BankReconciliationPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/40 text-left">
-                    <th className="p-2 w-10">âœ“</th>
+                    <th className="p-2 w-10">✓</th>
                     <th className="p-2">Date</th>
                     <th className="p-2">Voucher</th>
                     <th className="p-2">Party / Narration</th>
@@ -419,7 +419,7 @@ function BankReconciliationPage() {
                             {line.counterpartyName ||
                               (typeof line.metadata.narration === "string"
                                 ? line.metadata.narration
-                                : "â€”")}
+                                : "—")}
                           </td>
                           <td className="p-2 text-right">
                             {line.cashDebitPaise ? rs(line.cashDebitPaise) : ""}
@@ -499,7 +499,7 @@ function BankReconciliationPage() {
                 </div>
                 <div className="grid sm:grid-cols-3 gap-3 items-end">
                   <div className="space-y-1.5">
-                    <Label>Bank charge (â‚¹)</Label>
+                    <Label>Bank charge (₹)</Label>
                     <Input
                       inputMode="decimal"
                       value={chargeRs}
@@ -524,7 +524,7 @@ function BankReconciliationPage() {
                     value={reconNotes}
                     onChange={(e) => setReconNotes(e.target.value)}
                     rows={2}
-                    placeholder="Explain remaining variance or uncleared itemsâ€¦"
+                    placeholder="Explain remaining variance or uncleared items…"
                   />
                 </div>
                 <Button className="gap-1" onClick={() => void handleReconcile()}>
