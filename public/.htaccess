@@ -50,8 +50,11 @@ Options +FollowSymLinks
     RewriteRule ^oauth/token/?$ api/oauth/token.php [QSA,L]
     RewriteRule ^oauth/jwks/?$ api/oauth/jwks.php [QSA,L]
     RewriteRule ^oauth/revoke/?$ api/oauth/revoke.php [QSA,L]
+    RewriteRule ^oauth/register/?$ api/oauth/register.php [QSA,L]
     RewriteRule ^oauth/userinfo/?$ api/oauth/userinfo.php [QSA,L]
     RewriteRule ^api/mcp/?$ api/mcp/index.php [QSA,L]
+    RewriteRule ^verify/doc/(.*)$ api/documents/verify.php?token=$1 [QSA,L]
+    RewriteRule ^api/verify/?$ api/documents/verify.php [QSA,L]
 
     # Allow direct access to API PHP endpoints
     RewriteRule ^api/ - [L]

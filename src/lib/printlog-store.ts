@@ -35,6 +35,8 @@ export type PrintDocType =
   | "manufacturing_bill"
   | "daily_close_report"
   | "customer_ledger_statement"
+  | "customer_unpaid_invoices"
+  | "customer_paid_invoices"
   | "karigar_custody_statement"
   | "worker_material_given"
   | "worker_material_return"
@@ -87,6 +89,8 @@ export const PRINT_DOC_LABELS: Record<PrintDocType, string> = {
   manufacturing_bill: "Manufacturing Bill",
   daily_close_report: "Daily Close Report",
   customer_ledger_statement: "Customer Ledger Statement",
+  customer_unpaid_invoices: "Customer Unpaid Invoices Statement",
+  customer_paid_invoices: "Customer Paid Invoices Statement",
   karigar_custody_statement: "Karigar Custody Statement",
   worker_material_given: "Worker Material Given",
   worker_material_return: "Worker Material Return",

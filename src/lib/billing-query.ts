@@ -86,6 +86,20 @@ export function rowToInvoice(row: InvoiceRow): Invoice | null {
     updatedAt: data.updatedAt ?? (Date.parse(row.updated_at ?? "") || Date.now()),
     status: (data.status ?? row.status ?? "draft") as InvoiceStatus,
     billingType: data.billingType,
+    transactionMode:
+      data.transactionMode ??
+      (data.billingType === "job_work" ||
+      data.billingType === "wholesale" ||
+      (Array.isArray(data.payments) &&
+        data.payments.length > 0 &&
+        data.payments.every(
+          (p: any) =>
+            p.mode === "gold_exchange" ||
+            p.mode === "customer_gold_credit" ||
+            ((p.goldFineMg ?? 0) > 0 && (p.amountPaise ?? 0) === 0),
+        ))
+        ? "gold"
+        : undefined),
     customerId: data.customerId ?? row.customer_id ?? "",
     customerName: data.customerName ?? "",
     customerPhone: data.customerPhone,

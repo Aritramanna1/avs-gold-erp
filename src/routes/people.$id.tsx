@@ -38,6 +38,7 @@ import {
   Clock,
   Coins,
   History,
+  Printer,
   MessageSquare,
   Download,
   FileSpreadsheet,
@@ -48,6 +49,7 @@ import { getPartyTimelineData, type PartyTimelineData } from "@/lib/central-foun
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { GoldWeightDisplay } from "@/components/ui/GoldWeightDisplay";
 import { PersonProfileAvatar } from "@/components/people/PersonProfileAvatar";
+import { JamaSlipDialog } from "@/components/billing/JamaSlipDialog";
 
 export const Route = createFileRoute("/people/$id")({
   head: () => ({ meta: [{ title: "Party 360 Workspace · Ornexa ERP" }] }),
@@ -58,6 +60,7 @@ function Party360WorkspacePage() {
   const { id } = useParams({ from: "/people/$id" });
   const navigate = useNavigate();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [jamaOpen, setJamaOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [timeline, setTimeline] = useState<PartyTimelineData | null>(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
@@ -227,6 +230,16 @@ function Party360WorkspacePage() {
                   <span className="font-mono bg-muted/60 px-2 py-0.5 rounded">PAN: {person.pan}</span>
                 )}
               </div>
+
+              <div className="mt-3 flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => setJamaOpen(true)}
+                  className="bg-gold hover:bg-gold/90 text-white font-bold gap-1.5 shadow-sm text-xs h-8"
+                >
+                  <Receipt className="h-3.5 w-3.5" /> Record Jama Receipt (पावती)
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -272,6 +285,17 @@ function Party360WorkspacePage() {
           phone: person.phone,
           type: person.type,
           email: person.email,
+        }}
+      />
+
+      <JamaSlipDialog
+        open={jamaOpen}
+        onClose={() => setJamaOpen(false)}
+        defaultPartyId={person.id}
+        onSaved={() => {
+          refreshInvoices();
+          refreshSettlements();
+          refreshPeople();
         }}
       />
 
@@ -576,9 +600,28 @@ function Party360WorkspacePage() {
                 <Link
                   to="/people/ledger-print/$id"
                   params={{ id: person.id }}
-                  className="text-xs inline-flex items-center gap-1 text-primary hover:underline"
+                  search={{ docType: "customer_unpaid_invoices" }}
+                  className="text-xs inline-flex items-center gap-1 text-rose-500 hover:underline font-medium"
                 >
-                  Print Official Statement
+                  <Printer className="h-3 w-3" /> Print Unpaid Invoices
+                </Link>
+                <span className="text-muted-foreground/40">·</span>
+                <Link
+                  to="/people/ledger-print/$id"
+                  params={{ id: person.id }}
+                  search={{ docType: "customer_paid_invoices" }}
+                  className="text-xs inline-flex items-center gap-1 text-emerald-500 hover:underline font-medium"
+                >
+                  <Printer className="h-3 w-3" /> Print Paid Invoices
+                </Link>
+                <span className="text-muted-foreground/40">·</span>
+                <Link
+                  to="/people/ledger-print/$id"
+                  params={{ id: person.id }}
+                  search={{ docType: "customer_ledger_statement" }}
+                  className="text-xs inline-flex items-center gap-1 text-gold hover:underline font-medium"
+                >
+                  <Printer className="h-3 w-3" /> Print Full Ledger
                 </Link>
               </div>
             </div>

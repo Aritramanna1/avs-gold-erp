@@ -53,3 +53,23 @@ Read the current authoritative documents before implementation, especially:
 - Context7: current React, TypeScript, Vite, and Supabase guidance.
 - Sequential Thinking: use for complex multi-module implementation planning.
 - Native Git CLI: manage git history and state responsibly.
+
+## AVS Product Non-Negotiables
+
+Competitive features must NEVER override our actual business workflow.
+
+AVS must preserve:
+1. Simple operator workflow.
+2. One authoritative calculation engine.
+3. One cumulative Karigar book.
+4. One authoritative Over-Loss transaction path.
+5. Gold and cash as separate dimensions.
+6. Automatic bill-wise settlement.
+7. No unexplained gold or money.
+8. Fully transparent invoice calculations.
+9. Complete printable customer ledger/statements.
+10. Complete audit trail.
+11. Indian jewellery manufacturing/Karigar workflow as a first-class domain.
+12. Modern cloud/mobile usability without sacrificing traditional jewellery-business logic.
+
+Competitor features may inspire improvements, but they must NOT introduce unnecessary screens, duplicate books, duplicate ledgers, manual reconciliation, or workflow complexity.

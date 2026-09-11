@@ -4,7 +4,7 @@
  * Does not weaken RLS; prevents localhost from billing against production.
  */
 
-export const PRODUCTION_SUPABASE_REF = "dqgrrafuoxaorvyrcuuh";
+export const PRODUCTION_SUPABASE_REF = "vqsrdemjiehzykexkcwo";
 
 const BILLABLE_PATH_RE =
   /\/(rest|auth|storage|functions|realtime)\/v1\//i;

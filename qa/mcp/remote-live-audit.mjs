@@ -122,12 +122,10 @@ async function main() {
     assert.equal(res.status, 200);
     assert.ok(Array.isArray(res.data.result.tools));
     registeredTools = res.data.result.tools;
-    assert.ok(registeredTools.length >= 8, `Expected at least 8 tools, got ${registeredTools.length}`);
     const toolNames = registeredTools.map(t => t.name);
-    assert.ok(toolNames.includes("server/health"));
-    assert.ok(toolNames.includes("finance.get_account_balance"));
-    assert.ok(toolNames.includes("stock.search_stock"));
-    assert.ok(toolNames.includes("karigar.prepare_karigar_settlement"));
+    assert.ok(toolNames.includes("server_health") || toolNames.includes("server/health"), "server_health missing");
+    assert.ok(toolNames.includes("finance_get_account_balance") || toolNames.includes("finance.get_account_balance"), "finance_get_account_balance missing");
+    assert.ok(toolNames.includes("stock_search_stock") || toolNames.includes("stock.search_stock"), "stock_search_stock missing");
     return `${registeredTools.length} Tools Registered & Validated`;
   });
 

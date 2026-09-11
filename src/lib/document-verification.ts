@@ -168,13 +168,13 @@ export async function ensureInvoiceVerification(invoice: Invoice): Promise<Invoi
     invoice.branchId ?? useSettings.getState().selectedBranchId ?? "default";
   let shareToken = invoice.documentShareToken;
 
-  if (!shareToken && prefs.publicShareEnabled) {
+  if (!shareToken) {
     try {
       const url = await createDocumentShareLink(
         "invoice",
         invoice.id,
         branchId,
-        Math.ceil((prefs.documentShareTtlHours ?? 24) / 24),
+        Math.ceil((prefs.documentShareTtlHours ?? 8760) / 24),
       );
       shareToken = extractShareTokenFromUrl(url);
     } catch (err) {

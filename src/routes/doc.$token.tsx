@@ -24,6 +24,7 @@ import { useEffect, useState } from "react";
 import { getDocumentShare, type DocumentShare } from "@/lib/document-shares";
 import { printDocument } from "@/lib/print-document";
 import { formatDateMedium as fmtDate } from "@/lib/format-date";
+import { paiseToRupees } from "@/lib/billing-store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -279,11 +280,53 @@ function UnifiedPublicDocumentPage() {
   const itemsCount = itemsList.length;
 
   // Gold-First Calculations
+  const isPureGold =
+    doc.transactionMode === "gold" ||
+    (doc.transactionMode !== "cash" &&
+      (doc.billingType === "job_work" ||
+        doc.billingType === "wholesale" ||
+        doc.billingType === "gold" ||
+        (doc.items || []).some(
+          (it: any) =>
+            it.chargeMode === "job_work" ||
+            (it.hallmarkChargesGoldMg ?? 0) > 0 ||
+            (it.makingChargesGoldMg ?? 0) > 0 ||
+            (it.otherChargesGoldMg ?? 0) > 0 ||
+            (it.stoneChargesGoldMg ?? 0) > 0,
+        ) ||
+        ((doc.payments || []).length > 0 &&
+          (doc.payments || []).every(
+            (p: any) =>
+              p.mode === "gold_exchange" ||
+              p.mode === "customer_gold_credit" ||
+              ((p.goldFineMg ?? 0) > 0 && (p.amountPaise ?? 0) === 0),
+          )) ||
+        ((doc.paidPaise === 0 || !doc.paidPaise) &&
+          (doc.payments || []).some((p: any) => (p.goldFineMg ?? 0) > 0))));
+
   const benchmarkRatePaise = doc.items?.[0]?.goldRatePerGramPaise || 750000;
   const totalFineMg =
     doc.items?.reduce((s: number, it: any) => s + (it.fineGoldMg || it.fineMg || it.netMg || 0), 0) ||
     Math.round(((doc.grandTotalPaise || 0) / benchmarkRatePaise) * 1000);
-  const paidGoldMg = Math.round(((doc.paidPaise || 0) / benchmarkRatePaise) * 1000);
+
+  const actualGoldPaidMg = (doc.payments || []).reduce((s: number, p: any) => {
+    if (p.mode === "gold_exchange" || p.mode === "customer_gold_credit" || (p.goldFineMg && p.goldFineMg > 0)) {
+      return s + (p.goldFineMg || p.goldGrossMg || 0);
+    }
+    const rateUsed = p.goldRatePerGramPaise || benchmarkRatePaise;
+    const equiv = rateUsed > 0 ? Math.round((p.amountPaise / rateUsed) * 1000) : 0;
+    return s + equiv;
+  }, 0);
+
+  const paidGoldMg =
+    actualGoldPaidMg > 0
+      ? actualGoldPaidMg
+      : doc && doc.grandTotalPaise > 0
+        ? Math.round((totalFineMg * (doc.paidPaise || 0)) / doc.grandTotalPaise)
+        : Math.round(((doc.paidPaise || 0) / benchmarkRatePaise) * 1000);
+
+  const excessGoldMg = Math.max(0, paidGoldMg - totalFineMg);
+  const settledGoldMg = Math.min(paidGoldMg, totalFineMg);
   const balanceGoldMg = Math.max(0, totalFineMg - paidGoldMg);
 
   // Actions
@@ -307,14 +350,25 @@ function UnifiedPublicDocumentPage() {
     }
   }
 
-  function handlePrint() {
-    void printDocument(`${docBadgeLabel} - ${docNo}`);
+  async function handlePrint() {
+    try {
+      const pdfDocType = docType === "job" ? "manufacturing_bill" : (docType as "invoice" | "order" | "repair");
+      const { generateDocumentPdf } = await import("@/lib/pdf/document-pdf-generator");
+      const { blob, fileName } = await generateDocumentPdf(pdfDocType, doc, firm as any);
+      const { printPdfNative } = await import("@/lib/native/print-mobile");
+      await printPdfNative(blob, { title: `${docBadgeLabel} - ${docNo}`, fileName });
+    } catch (err) {
+      console.error("[print] Error printing PDF:", err);
+      void printDocument(`${docBadgeLabel} - ${docNo}`);
+    }
   }
 
   function handleShareWhatsApp() {
     const url = typeof window !== "undefined" ? window.location.href : "";
     const msg = encodeURIComponent(
-      `Hello, here is my jewellery invoice (#${docNo}) from ${firm.shopName}:\n${url}`,
+      isPureGold
+        ? `Hello, here is my jewellery invoice (#${docNo}) for ${(totalFineMg / 1000).toFixed(3)}g Fine Gold from ${firm.shopName}:\n${url}`
+        : `Hello, here is my jewellery invoice (#${docNo}) from ${firm.shopName}:\n${url}`,
     );
     window.open(`https://api.whatsapp.com/send?text=${msg}`, "_blank");
   }
@@ -402,19 +456,25 @@ function UnifiedPublicDocumentPage() {
           <CardHeader className="p-4 pb-3 border-b border-border/60 flex flex-row items-center justify-between space-y-0">
             <div>
               <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-wider font-bold">
-                {docBadgeLabel}
+                {isPureGold
+                  ? snapshotText(doc, "gst") === "gst3"
+                    ? "TAX INVOICE (GOLD 995 BASIS)"
+                    : "RETAIL GOLD MEMO (995 BASIS)"
+                  : docBadgeLabel}
               </Badge>
               <div className="text-xs font-mono text-muted-foreground mt-1">
                 No: <strong className="text-foreground">{docNo}</strong> · {docDate}
               </div>
             </div>
 
-            <div className="text-right">
+            <div className="text-right flex flex-col items-end gap-1">
               {isPaid ? (
-                <Badge variant="outline" className="border-emerald-500/40 text-emerald-500 bg-emerald-500/10 font-mono text-[10px] flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" />
-                  <span>Fully Settled</span>
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <div className="px-2 py-0.5 rounded border border-emerald-500 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-extrabold font-mono text-[10px] tracking-wider uppercase flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span>PAID</span>
+                  </div>
+                </div>
               ) : (
                 <Badge variant="destructive" className="font-mono text-[10px]">
                   Payment Due
@@ -429,7 +489,9 @@ function UnifiedPublicDocumentPage() {
             <div className="rounded-lg border border-gold/30 bg-gold/5 p-3.5 space-y-1">
               <div className="text-[10px] uppercase font-bold text-gold font-mono tracking-wider flex items-center justify-between">
                 <span>Primary Gold Obligation</span>
-                <span className="text-[10px] text-muted-foreground font-normal">@ Rate {rs(benchmarkRatePaise)}/g</span>
+                <span className="text-[10px] text-muted-foreground font-normal">
+                  {isPureGold ? "995 Touch Basis" : `@ Rate ${rs(benchmarkRatePaise)}/g`}
+                </span>
               </div>
               <div className="flex items-baseline justify-between">
                 <div className="text-xl sm:text-2xl font-serif font-bold text-gold">
@@ -441,14 +503,22 @@ function UnifiedPublicDocumentPage() {
               </div>
             </div>
 
-            {/* Secondary Cash Breakdown */}
+            {/* Financial Breakdown (Gold Only vs Cash) */}
             <div className="space-y-2 text-xs font-mono pt-1">
               <div className="flex justify-between items-center text-sm font-semibold border-b border-border/60 pb-2">
-                <span className="text-foreground">Grand Total (Cash Equivalent)</span>
-                <MoneyDisplay paise={doc.grandTotalPaise} className="text-sm font-bold text-foreground" />
+                <span className="text-foreground">
+                  {isPureGold ? "Grand Total (Gold)" : "Grand Total (Cash Equivalent)"}
+                </span>
+                {isPureGold ? (
+                  <span className="text-sm font-bold text-gold font-mono">
+                    {(totalFineMg / 1000).toFixed(3)} g Fine Gold
+                  </span>
+                ) : (
+                  <MoneyDisplay paise={doc.grandTotalPaise} className="text-sm font-bold text-foreground" />
+                )}
               </div>
 
-              {doc.cgstPaise != null && doc.cgstPaise > 0 && (
+              {!isPureGold && doc.cgstPaise != null && doc.cgstPaise > 0 && (
                 <div className="flex justify-between text-[11px] text-muted-foreground">
                   <span>CGST (1.5%) + SGST (1.5%)</span>
                   <span>{rs((doc.cgstPaise || 0) + (doc.sgstPaise || 0))}</span>
@@ -456,22 +526,53 @@ function UnifiedPublicDocumentPage() {
               )}
 
               <div className="flex justify-between text-[11px] pt-1">
-                <span className="text-emerald-500 font-medium">Total Paid / Adjusted</span>
-                <div className="space-x-1.5">
-                  <MoneyDisplay paise={doc.paidPaise} className="text-emerald-500 font-semibold" />
-                  <span className="text-muted-foreground">({(paidGoldMg / 1000).toFixed(3)}g)</span>
-                </div>
+                <span className="text-emerald-500 font-medium">
+                  {isPureGold ? "Total Received" : "Total Received / Adjusted"}
+                </span>
+                {isPureGold ? (
+                  <span className="text-emerald-500 font-semibold font-mono">
+                    {(paidGoldMg / 1000).toFixed(3)} g Fine Gold
+                  </span>
+                ) : (
+                  <div className="space-x-1.5">
+                    <MoneyDisplay paise={doc.paidPaise} className="text-emerald-500 font-semibold" />
+                    <span className="text-muted-foreground">({(paidGoldMg / 1000).toFixed(3)}g)</span>
+                  </div>
+                )}
               </div>
 
-              {balanceGoldMg > 0 && (
-                <div className="flex justify-between text-[11px] text-destructive pt-0.5 font-bold">
-                  <span>Balance Payable</span>
-                  <div className="space-x-1.5">
-                    <MoneyDisplay paise={doc.balancePaise} className="text-destructive" />
-                    <span>({(balanceGoldMg / 1000).toFixed(3)}g)</span>
+              {excessGoldMg > 0 && (
+                <div className="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[11px] space-y-1 font-mono">
+                  <div className="flex justify-between text-emerald-500 font-semibold">
+                    <span>Excess Received (Overpayment)</span>
+                    <span>+{(excessGoldMg / 1000).toFixed(3)} g Fine</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground text-[10px]">
+                    <span>Transferred to Customer Ledger:</span>
+                    <span className="text-foreground font-bold">+{(excessGoldMg / 1000).toFixed(3)} g Advance Credit</span>
                   </div>
                 </div>
               )}
+
+              <div className="flex justify-between text-[11px] pt-0.5 font-bold border-t border-border/60">
+                <span>{balanceGoldMg > 0 ? "Balance Payable" : "Balance Due"}</span>
+                {balanceGoldMg > 0 ? (
+                  isPureGold ? (
+                    <span className="text-destructive font-bold font-mono">
+                      {(balanceGoldMg / 1000).toFixed(3)} g Fine Gold
+                    </span>
+                  ) : (
+                    <div className="space-x-1.5">
+                      <MoneyDisplay paise={doc.balancePaise} className="text-destructive" />
+                      <span>({(balanceGoldMg / 1000).toFixed(3)}g)</span>
+                    </div>
+                  )
+                ) : (
+                  <span className="text-emerald-500 font-bold font-mono">
+                    0.000 g (Fully Settled)
+                  </span>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -495,36 +596,100 @@ function UnifiedPublicDocumentPage() {
           </button>
 
           {showItemsDetail && itemsList.length > 0 && (
-            <div className="p-4 pt-0 space-y-3 divide-y divide-border/60">
-              {itemsList.map((it: any, idx: number) => (
-                <div key={idx} className="pt-3 first:pt-0 space-y-2 text-xs">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-semibold text-foreground">{it.itemName}</h4>
-                      <div className="flex gap-2 text-[10px] font-mono text-muted-foreground mt-0.5">
-                        {it.barcode && <span className="text-gold font-medium">Tag: {it.barcode}</span>}
-                        {it.huid && <span>HUID: {it.huid}</span>}
+            <div className="p-4 pt-0 space-y-4 divide-y divide-border/60">
+              {itemsList.map((it: any, idx: number) => {
+                const tanch = it.purity ? (it.purity / 10).toFixed(2) : "91.60";
+                const wstg = it.wastagePct != null ? Number(it.wastagePct).toFixed(2) : "0.00";
+                const hisob = it.hisobPct != null && Number(it.hisobPct) > 0 
+                  ? Number(it.hisobPct).toFixed(2) 
+                  : (Number(tanch) + Number(wstg)).toFixed(2);
+                const jn = it.jn === 2 ? "Nave (N)" : "Jama (J)";
+                const metal = it.metalKind === "silver" ? "Silver" : "Gold";
+                const diamondCt = it.diamondWeightMg ? (it.diamondWeightMg / 200).toFixed(2) : "0";
+                const grossG = (it.grossMg ? it.grossMg / 1000 : 0).toFixed(3);
+                const lessG = (it.lessMg ? it.lessMg / 1000 : 0).toFixed(3);
+                const addG = (it.addMg ? it.addMg / 1000 : 0).toFixed(3);
+                const netG = (it.netMg ? it.netMg / 1000 : 0).toFixed(3);
+                const fineG = (Math.round(it.fineGoldMg || it.fineMg || 0) / 1000).toFixed(3);
+
+                return (
+                  <div key={idx} className="pt-4 first:pt-0 space-y-2.5 text-xs">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">#{idx + 1}</span>
+                          <h4 className="font-semibold text-foreground text-sm">{it.itemName}</h4>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[10px] font-mono text-muted-foreground mt-0.5">
+                          {it.category && <span>Category: {it.category}</span>}
+                          <span>Metal: {metal}</span>
+                          <span>J/N: {jn}</span>
+                          <span>Pcs: {it.pcs ?? 1}</span>
+                          {it.hsnCode && <span>HSN: {it.hsnCode}</span>}
+                          {it.huid && <span className="text-blue-400">HUID: {it.huid}</span>}
+                          {it.barcode && <span className="text-amber-500">Tag: {it.barcode}</span>}
+                        </div>
+                      </div>
+                      {isPureGold ? (
+                        <span className="font-mono font-bold text-gold text-sm">
+                          {fineG} g Fine
+                        </span>
+                      ) : (
+                        <MoneyDisplay paise={it.lineTotalPaise} className="font-mono font-bold text-foreground text-sm" />
+                      )}
+                    </div>
+
+                    {/* Full Weights & Purity Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-muted/30 p-2.5 rounded-md text-[11px] font-mono border border-border/40">
+                      <div>
+                        <span className="text-muted-foreground block text-[9px] uppercase">Gross (g)</span>
+                        <span className="text-foreground font-semibold">{grossG} g</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[9px] uppercase">Less (g)</span>
+                        <span className="text-muted-foreground">{lessG} g</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[9px] uppercase">Add (g)</span>
+                        <span className="text-muted-foreground">{addG} g</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[9px] uppercase">Net (g)</span>
+                        <span className="text-foreground font-bold text-gold">{netG} g</span>
                       </div>
                     </div>
-                    <MoneyDisplay paise={it.lineTotalPaise} className="font-mono font-bold text-foreground" />
-                  </div>
 
-                  <div className="grid grid-cols-3 gap-2 bg-muted/40 p-2.5 rounded-md text-[11px] font-mono">
-                    <div>
-                      <span className="text-muted-foreground block text-[9px] uppercase">Purity</span>
-                      <span className="font-bold text-foreground">{it.purity || "916 (22K)"}</span>
+                    {/* Tanch, Wastage, Hisob, Fine */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-muted/20 p-2.5 rounded-md text-[11px] font-mono border border-border/30">
+                      <div>
+                        <span className="text-muted-foreground block text-[9px] uppercase">Tanch (Purity)</span>
+                        <span className="font-semibold text-foreground">{tanch}% ({it.purity || 916}‰)</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[9px] uppercase">Wastage %</span>
+                        <span className="text-foreground">{wstg}%</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[9px] uppercase">Hisob %</span>
+                        <span className="font-bold text-foreground">{hisob}%</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[9px] uppercase">Fine Gold</span>
+                        <span className="font-bold text-gold">{fineG} g</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground block text-[9px] uppercase">Gross Wt</span>
-                      <GoldWeightDisplay mg={it.grossMg} kind="gross" className="text-foreground" />
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block text-[9px] uppercase">Net Wt</span>
-                      <GoldWeightDisplay mg={it.netMg} kind="net" className="text-foreground" />
+
+
+                    {/* Charges & Stones Breakdown */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-mono pt-1 text-muted-foreground">
+                      <div>Making: <strong className="text-foreground">{isPureGold ? (it.makingChargesGoldMg ? `${(it.makingChargesGoldMg / 1000).toFixed(3)}g` : "0.000g") : `₹${paiseToRupees(it.makingChargesPaise || 0)}`}</strong></div>
+                      <div>Hallmark: <strong className="text-foreground">{isPureGold ? (it.hallmarkChargesGoldMg ? `${(it.hallmarkChargesGoldMg / 1000).toFixed(3)}g` : "0.000g") : `₹${paiseToRupees(it.hallmarkChargesPaise || 0)}`}</strong></div>
+                      <div>Stone: <strong className="text-foreground">{isPureGold ? (it.stoneChargesGoldMg ? `${(it.stoneChargesGoldMg / 1000).toFixed(3)}g` : "0.000g") : `₹${paiseToRupees(it.stoneChargesPaise || 0)}`}</strong> {it.stoneWeightMg ? `(${(it.stoneWeightMg / 1000).toFixed(3)}g)` : ""}</div>
+                      {it.diamondWeightMg ? <div>Diamond: <strong className="text-foreground">{diamondCt} ct</strong></div> : <div>Other: <strong className="text-foreground">{isPureGold ? (it.otherChargesGoldMg ? `${(it.otherChargesGoldMg / 1000).toFixed(3)}g` : "0.000g") : `₹${paiseToRupees(it.otherChargesPaise || 0)}`}</strong></div>}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>

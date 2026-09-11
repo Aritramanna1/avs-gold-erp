@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * MTJ / AVS ERP — Automated UI Rules Compliance Checker
- * Validates the codebase against UI_RULES.md standards:
- * 1. No forbidden UI libraries (MUI, Bootstrap, AntD, etc.)
+ * AVS ERP — Automated UI Design System Compliance Checker & Rule Guard
+ * Validates the codebase against docs/UI-DESIGN-SYSTEM.md:
+ * 1. No forbidden UI libraries (MUI, Bootstrap, AntD, Chakra, etc.)
  * 2. Icons strictly from lucide-react
- * 3. No unapproved inline style color overrides
- * 4. Verification of design tokens
+ * 3. No rogue fullscreen dark backgrounds (bg-zinc-950 min-h-screen, bg-slate-950 min-h-screen)
+ * 4. No unapproved font families (font-roboto, font-inter, font-poppins, etc.)
+ * 5. Adherence to canonical AVS ERP design tokens and primitives
  */
 
 import fs from "node:fs";
@@ -29,8 +30,17 @@ const FORBIDDEN_LIBRARIES = [
   "@fortawesome/react-fontawesome",
 ];
 
-const FORBIDDEN_INLINE_COLORS = [
-  /style=\{\{\s*color:\s*["']#(?!A88445|C9A227|806738|EEE5D2|E8C96A|18181B|020617|1E293B|0F172A|334155|E2E8F0|F1F5F9|10B981|F59E0B|EF4444|3B82F6|FFFFFF|000000)[0-9a-fA-F]{3,8}["']\s*\}\}/g,
+const FORBIDDEN_PATTERNS = [
+  {
+    regex: /className=["'][^"']*\b(bg-zinc-950|bg-slate-950)\b[^"']*min-h-screen/g,
+    type: "FORBIDDEN_ROGUE_BACKGROUND",
+    message: 'Forbidden rogue fullscreen dark background. Use canonical "bg-background min-h-screen" or layout shells.',
+  },
+  {
+    regex: /className=["'][^"']*\bfont-(inter|roboto|poppins|lato|montserrat)\b/g,
+    type: "FORBIDDEN_FONT_FAMILY",
+    message: "Forbidden custom font family. Only use canonical font-serif, font-mono, or font-sans.",
+  },
 ];
 
 let totalFilesChecked = 0;
@@ -62,12 +72,26 @@ function checkFile(filePath) {
   }
 
   // Check 2: Raw non-standard icons (e.g. from react-icons/fa, etc.)
-  if (content.includes("from \"react-icons/") || content.includes("from 'react-icons/")) {
+  if (content.includes('from "react-icons/') || content.includes("from 'react-icons/")) {
     violations.push({
       file: relPath,
       type: "UNAPPROVED_ICON_LIBRARY",
       message: "Unapproved icon import. Icons must be strictly imported from 'lucide-react'.",
     });
+  }
+
+  // Check 3: Forbidden patterns
+  for (const item of FORBIDDEN_PATTERNS) {
+    let match;
+    const regex = new RegExp(item.regex);
+    while ((match = regex.exec(content)) !== null) {
+      const line = content.substring(0, match.index).split("\n").length;
+      violations.push({
+        file: `${relPath}:${line}`,
+        type: item.type,
+        message: `${item.message} (Matched: "${match[0].trim()}")`,
+      });
+    }
   }
 }
 
@@ -92,7 +116,8 @@ function walkDir(dir) {
 }
 
 console.log("==================================================");
-console.log("MTJ / AVS ERP — UI RULES COMPLIANCE CHECKER");
+console.log("🛡️  AVS ERP — UI DESIGN SYSTEM COMPLIANCE CHECKER");
+console.log("Auditing codebase against docs/UI-DESIGN-SYSTEM.md");
 console.log("==================================================");
 
 walkDir(srcDir);
@@ -104,14 +129,15 @@ if (fs.existsSync(path.join(root, "electron-app"))) {
 console.log(`Files Analyzed: ${totalFilesChecked}`);
 
 if (violations.length === 0) {
-  console.log("✓ All files strictly comply with UI_RULES.md!");
+  console.log("✓ All files strictly comply with docs/UI-DESIGN-SYSTEM.md!");
   console.log("==================================================");
   process.exit(0);
 } else {
-  console.error(`\n❌ Found ${violations.length} UI Rules Violations:`);
+  console.error(`\n❌ Found ${violations.length} UI Design System Violations:`);
   for (const v of violations) {
     console.error(`- [${v.type}] ${v.file}: ${v.message}`);
   }
   console.log("==================================================");
   process.exit(1);
 }
+

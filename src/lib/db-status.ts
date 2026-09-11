@@ -24,7 +24,7 @@ export function validateEnvironment(): { env: string; projectId: string; isValid
   const env = (envMeta?.VITE_APP_ENV || procEnv?.VITE_APP_ENV || "development").toLowerCase();
   const projectId = envMeta?.VITE_SUPABASE_PROJECT_ID || procEnv?.VITE_SUPABASE_PROJECT_ID || "";
 
-  const DEV_PROJECT_ID = "dqgrrafuoxaorvyrcuuh";
+  const DEV_PROJECT_ID = "vqsrdemjiehzykexkcwo";
   const PROD_PROJECT_ID = "kjfjsfhftytezsjyegmb";
 
   if (env === "development" && projectId === PROD_PROJECT_ID) {

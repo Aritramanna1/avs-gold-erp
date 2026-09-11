@@ -47,6 +47,11 @@ import { useCatalog } from "@/lib/catalog-store";
 import { useStock } from "@/lib/stock-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { useGoldSettlement } from "@/lib/gold-settlement-store";
+import { useLedger } from "@/lib/ledger-store";
+import { useMoneyVoucherStore } from "@/lib/money-voucher";
+import { useJobCards } from "@/lib/jobcards-store";
+import { useMfgBills } from "@/lib/manufacturing-bill-store";
+import { useWorkers } from "@/lib/workers-store";
 
 interface Subscribable {
   subscribe: (listener: () => void) => () => void;
@@ -65,6 +70,11 @@ const DATA_SOURCE_STORES: Subscribable[] = [
   useStock,
   useWorkerGoldBook,
   useGoldSettlement,
+  useLedger,
+  useMoneyVoucherStore,
+  useJobCards,
+  useMfgBills,
+  useWorkers,
 ];
 
 export function usePrintDataSourcesTick(): number {

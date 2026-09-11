@@ -223,6 +223,13 @@ export interface Invoice {
    *  typed (BillingModule.tsx's payload has always included it) — adding it
    *  here just gives it a real type instead of flowing through untyped. */
   billingType?: BillingType;
+  /**
+   * Authoritative transaction settlement mode selected by the operator:
+   * - "gold": 100% pure gold transaction. All customer-facing documents/grand totals are strictly Fine Gold Grams.
+   * - "cash": pure cash/bank transaction.
+   * - "mixed": separate gold and cash settlement dimensions.
+   */
+  transactionMode?: "gold" | "cash" | "mixed";
   /** Total fine gold weight in milligrams across invoice items. */
   totalFineMg?: number;
 

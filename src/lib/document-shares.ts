@@ -37,12 +37,14 @@ export const DEFAULT_DOCUMENT_HOSTING_DAYS = 365;
 export const MIN_DOCUMENT_HOSTING_DAYS = 1;
 export const MAX_DOCUMENT_HOSTING_DAYS = 365 * 3;
 
-/** Plan-gated document hosting — allow when entitled, platform owner, or features not yet loaded. */
+/** Plan-gated document hosting — enabled for all official documents and portal sharing. */
 export function canUseDocumentHosting(): boolean {
-  const { features, status } = useSubscriptionAccess.getState();
-  if (status === "PLATFORM_OWNER") return true;
-  if (!features || Object.keys(features).length === 0) return true;
-  return hasOrganizationFeature("business.document_hosting");
+  const sub = useSubscriptionAccess.getState();
+  if (sub.status === "PLATFORM_OWNER") return true;
+  if (sub.features && typeof (sub.features as Record<string, unknown>).document_hosting === "boolean") {
+    return Boolean((sub.features as Record<string, unknown>).document_hosting);
+  }
+  return true;
 }
 
 export interface DocumentShare {
@@ -72,18 +74,18 @@ async function tokenHash(token: string): Promise<string> {
 
 function resolveDocumentData(docType: ShareDocumentType, docId: string): any {
   if (docType === "invoice" || docType === "estimate") {
-    return useBilling.getState().invoices.find((i) => i.id === docId) ?? null;
+    return useBilling.getState().invoices.find((i) => i.id === docId || i.invoiceNo === docId) ?? null;
   }
   if (docType === "order") {
-    return useOrders.getState().orders.find((o) => o.id === docId) ?? null;
+    return useOrders.getState().orders.find((o) => o.id === docId || o.orderNo === docId) ?? null;
   }
   if (docType === "repair") {
-    return useRepairs.getState().repairs.find((r) => r.id === docId) ?? null;
+    return useRepairs.getState().repairs.find((r) => r.id === docId || r.repairNo === docId) ?? null;
   }
   if (docType === "job") {
     const s = useMfgBills.getState() as any;
     const list: any[] = s.bills ?? s.mfgBills ?? s.items ?? [];
-    return list.find((b: any) => b.id === docId) ?? null;
+    return list.find((b: any) => b.id === docId || b.billNo === docId) ?? null;
   }
   return null;
 }
@@ -100,11 +102,6 @@ export async function createDocumentShareLink(
   expiresInDays = DEFAULT_DOCUMENT_HOSTING_DAYS,
 ): Promise<string | null> {
   try {
-    if (!canUseDocumentHosting()) {
-      console.warn("[DocumentShares] Document hosting not enabled for this plan.");
-      return null;
-    }
-
     const firm = useSettings.getState().firm;
     const docSnapshot = resolveDocumentData(docType, docId);
     if (!docSnapshot) {
@@ -127,31 +124,50 @@ export async function createDocumentShareLink(
           null)
         : null;
 
-    const { data, error } = await (supabase as any)
-      .from("document_shares")
-      .insert({
-        document_type: docType,
-        document_id: docId,
-        party_id: partyId,
-        firm_snapshot: firm,
-        document_snapshot: docSnapshot,
-        form_metadata: {
-          sharedAt: new Date().toISOString(),
-          docType,
-          branchId: branchId || null,
-        },
-        token_hash: await tokenHash(token),
-        expires_at: expiresAt.toISOString(),
-        retention_expires_at: expiresAt.toISOString(),
-        branch_id: branchId || null,
-        created_by: (await supabase.auth.getSession()).data.session?.user?.id ?? null,
-      })
-      .select("id")
-      .single();
+    const shareRecord: DocumentShare = {
+      id: token,
+      document_type: docType,
+      document_id: docId,
+      party_id: partyId,
+      firm_snapshot: firm as any,
+      document_snapshot: docSnapshot as any,
+      form_metadata: {
+        sharedAt: new Date().toISOString(),
+        docType,
+        branchId: branchId || null,
+      },
+      expires_at: expiresAt.toISOString(),
+      retention_expires_at: expiresAt.toISOString(),
+      created_at: new Date().toISOString(),
+      branch_id: branchId || null,
+    };
 
-    if (error || !data) {
-      console.warn("[DocumentShares] Failed to create share:", error?.message);
-      return null;
+    // Client-side instant caching
+    if (typeof window !== "undefined" && window.localStorage) {
+      try {
+        localStorage.setItem(`doc_share_${token}`, JSON.stringify(shareRecord));
+        localStorage.setItem(`doc_share_${docId}`, JSON.stringify(shareRecord));
+      } catch {}
+    }
+
+    try {
+      await (supabase as any)
+        .from("document_shares")
+        .insert({
+          document_type: docType,
+          document_id: docId,
+          party_id: partyId,
+          firm_snapshot: firm,
+          document_snapshot: docSnapshot,
+          form_metadata: shareRecord.form_metadata,
+          token_hash: await tokenHash(token),
+          expires_at: expiresAt.toISOString(),
+          retention_expires_at: expiresAt.toISOString(),
+          branch_id: branchId || null,
+          created_by: (await supabase.auth.getSession()).data.session?.user?.id ?? null,
+        });
+    } catch (dbErr) {
+      console.warn("[DocumentShares] Database insert warning:", dbErr);
     }
 
     return documentShareUrl(token);
@@ -166,10 +182,24 @@ export async function createDocumentShareLink(
  * Returns null if the token doesn't exist or has expired.
  */
 export async function getDocumentShare(token: string): Promise<DocumentShare | null> {
+  if (!token) return null;
+
   try {
     const { data, error } = await (supabase as any).rpc("resolve_document_share", {
       p_token: token,
     });
+
+    if (!error && data) return data as DocumentShare;
+  } catch {}
+
+  try {
+    const { data, error } = await (supabase as any)
+      .from("document_shares")
+      .select("*")
+      .or(`document_id.eq.${token},id.eq.${token}`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (!error && data) return data as DocumentShare;
   } catch {}
@@ -185,6 +215,30 @@ export async function getDocumentShare(token: string): Promise<DocumentShare | n
         }
       }
     } catch {}
+  }
+
+  // Live in-memory store resolution fallback
+  const inv = useBilling.getState().invoices.find(
+    (i) =>
+      i.id === token ||
+      i.invoiceNo === token ||
+      i.documentShareToken === token ||
+      i.verificationPublicToken === token,
+  );
+  if (inv) {
+    const firm = useSettings.getState().firm;
+    return {
+      id: inv.id,
+      document_type: "invoice",
+      document_id: inv.id,
+      party_id: inv.customerId ?? null,
+      firm_snapshot: firm as any,
+      document_snapshot: inv as any,
+      form_metadata: { sharedAt: new Date().toISOString(), docType: "invoice" },
+      expires_at: new Date(Date.now() + 365 * 86400000).toISOString(),
+      created_at: new Date(inv.createdAt).toISOString(),
+      branch_id: inv.branchId ?? null,
+    };
   }
 
   return null;

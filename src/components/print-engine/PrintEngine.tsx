@@ -20,6 +20,7 @@ import { PrintToolbar } from "@/components/print/PrintToolbar";
 import { usePrintRecord } from "@/components/print/usePrintRecord";
 import { useSettings } from "@/lib/settings-store";
 import { useBilling } from "@/lib/billing-store";
+import { usePeople } from "@/lib/people-store";
 import { usePrintTemplates } from "@/lib/print-engine/template-store";
 import { resolvePrintContext, hasPrintContextBuilder } from "@/lib/print-engine/data-mapper";
 import { usePrintDataSourcesTick } from "@/lib/print-engine/data-source-tick";
@@ -86,28 +87,51 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
   // background pullBackground() finishing) — see data-source-tick.ts for
   // why resolvePrintContext() alone can't do this on its own.
   const dataSourcesTick = usePrintDataSourcesTick();
-  const [invoiceReady, setInvoiceReady] = useState(() => {
-    if (docType !== "gst_invoice" && docType !== "retail_invoice") return true;
-    return useBilling.getState().invoices.some((row) => row.id === recordId);
+  const [docReady, setDocReady] = useState(() => {
+    if (docType === "gst_invoice" || docType === "retail_invoice") {
+      return useBilling.getState().invoices.some((row) => row.id === recordId);
+    }
+    if (
+      docType === "customer_ledger_statement" ||
+      docType === "customer_unpaid_invoices" ||
+      docType === "customer_paid_invoices" ||
+      docType === "karigar_custody_statement"
+    ) {
+      const personId = recordId.split("~")[0];
+      return usePeople.getState().people.some((p) => p.id === personId);
+    }
+    return true;
   });
 
   useEffect(() => {
-    if (docType !== "gst_invoice" && docType !== "retail_invoice") return;
     let active = true;
-    void import("@/lib/billing-print-prep").then(({ ensureBillingInvoiceForPrint }) =>
-      ensureBillingInvoiceForPrint(recordId).then((inv) => {
-        if (active) setInvoiceReady(!!inv);
-      }),
-    );
+    if (docType === "gst_invoice" || docType === "retail_invoice") {
+      void import("@/lib/billing-print-prep").then(({ ensureBillingInvoiceForPrint }) =>
+        ensureBillingInvoiceForPrint(recordId).then((inv) => {
+          if (active) setDocReady(!!inv);
+        }),
+      );
+    } else if (
+      docType === "customer_ledger_statement" ||
+      docType === "customer_unpaid_invoices" ||
+      docType === "customer_paid_invoices" ||
+      docType === "karigar_custody_statement"
+    ) {
+      void import("@/lib/billing-print-prep").then(({ ensureCustomerLedgerForPrint }) =>
+        ensureCustomerLedgerForPrint(recordId).then(() => {
+          if (active) setDocReady(true);
+        }),
+      );
+    }
     return () => {
       active = false;
     };
   }, [docType, recordId]);
 
   const rawData = useMemo(() => {
-    if (!invoiceReady) return null;
+    if (!docReady) return null;
     return resolvePrintContext(docType, recordId);
-  }, [docType, recordId, dataSourcesTick, invoiceReady]);
+  }, [docType, recordId, dataSourcesTick, docReady]);
   const firm = useSettings((s) => s.firm);
   const branding = useSettings((s) => s.branding);
   const brandedFirm = useMemo(
@@ -213,10 +237,10 @@ export function PrintEngine({ docType, recordId, backUrl }: PrintEngineProps) {
   if (!data) {
     return (
       <div className="p-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
-        {!invoiceReady ? (
+        {!docReady ? (
           <>
             <Loader2 className="h-6 w-6 animate-spin text-gold" />
-            Loading invoice for print…
+            Loading document for print…
           </>
         ) : (
           <>

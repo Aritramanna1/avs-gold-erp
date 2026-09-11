@@ -64,8 +64,8 @@ function DeliveryChallanDetail() {
         const purity = c!.items[0]?.purity ?? 916;
         await useLedger.getState().append({
           type: "customer_gold_received",
-          netFineMg: fineMg + fineMg,
-          deltas: { vault: fineMg, customer: fineMg },
+          netFineMg: fineMg,
+          deltas: { vault: fineMg },
           grossMg,
           purity: purity as any,
           fineMg,
@@ -112,8 +112,8 @@ function DeliveryChallanDetail() {
           const purity = c!.items[0]?.purity ?? 916;
           await useLedger.getState().append({
             type: "customer_gold_received",
-            netFineMg: fineMg + fineMg,
-            deltas: { vault: fineMg, customer: fineMg },
+            netFineMg: fineMg,
+            deltas: { vault: fineMg },
             grossMg,
             purity: purity as any,
             fineMg,

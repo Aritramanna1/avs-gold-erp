@@ -54,7 +54,13 @@ export async function hydrateCustomerLedgerContext(
         .eq("party_id", customerId)
         .limit(CUSTOMER_CONTEXT_ROW_LIMIT),
     ),
-    scope(db.from("job_cards").select("data").eq("customer_id", customerId).limit(CUSTOMER_CONTEXT_ROW_LIMIT)),
+    scope(
+      db
+        .from("job_cards")
+        .select("data")
+        .filter("data->>customerId", "eq", customerId)
+        .limit(CUSTOMER_CONTEXT_ROW_LIMIT),
+    ),
     scope(
       db
         .from("delivery_challans")

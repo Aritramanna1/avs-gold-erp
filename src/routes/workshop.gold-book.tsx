@@ -553,9 +553,6 @@ function WorkerGoldBookPage() {
       return;
     }
 
-    const overLossG = Number(formOverLossG) || 0;
-    const notesWithOverloss = `${formNotes.trim()}${overLossG > 0 ? ` [Over-loss: ${overLossG.toFixed(3)}g]` : ""}`.trim();
-
     const payload = {
       workerId: formWorkerId,
       workerName: workerObj.fullName,
@@ -576,7 +573,7 @@ function WorkerGoldBookPage() {
         : undefined,
       fineMg: 0,
       quantity: qtyVal,
-      notes: notesWithOverloss,
+      notes: formNotes.trim(),
       givenBy: formGivenBy.trim() || "Authorized Staff",
       receivedBy: formReceivedBy.trim() || "Authorized Staff",
       type: entryType,
@@ -1982,16 +1979,6 @@ function WorkerGoldBookPage() {
                             value={formLabourCash}
                             onChange={(e) => setFormLabourCash(e.target.value)}
                             placeholder="0"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-red-400 uppercase tracking-wider mb-1.5">
-                            Over-loss (g) / Excess Ghata
-                          </label>
-                          <DecimalInput
-                            placeholder="0.000"
-                            value={formOverLossG}
-                            onChange={setFormOverLossG}
                           />
                         </div>
                         <div>

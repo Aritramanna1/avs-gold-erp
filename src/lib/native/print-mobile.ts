@@ -149,31 +149,49 @@ export async function printPdfNative(
 ): Promise<void> {
   if (!isNativeApp()) {
     const url = URL.createObjectURL(blob);
-    const w = window.open(url, "_blank", "noopener,noreferrer");
-    if (w) {
-      const tryPrint = () => {
-        try {
-          w.focus();
-          w.print();
-        } catch {
-          /* popup blockers / cross-origin PDF viewers may block; user can print from the tab */
+    // Create hidden iframe for direct PDF printing
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.src = url;
+    document.body.appendChild(iframe);
+
+    let triggered = false;
+    const executePrint = () => {
+      if (triggered) return;
+      triggered = true;
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (err) {
+        console.warn("[print] Iframe print blocked/failed, opening print window:", err);
+        const w = window.open(url, "_blank", "noopener,noreferrer");
+        if (w) {
+          const tryPrintWindow = () => {
+            try {
+              w.focus();
+              w.print();
+            } catch {
+              /* user can print directly from PDF viewer controls */
+            }
+          };
+          w.addEventListener?.("load", tryPrintWindow);
+          setTimeout(tryPrintWindow, 400);
         }
-      };
-      // PDF viewers fire load inconsistently across browsers — retry briefly.
-      w.addEventListener?.("load", tryPrint);
-      setTimeout(tryPrint, 400);
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } else {
-      // Popup blocked: still expose the PDF so the user can open/print manually.
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = opts?.fileName ?? "document.pdf";
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 250);
-    }
+      } finally {
+        setTimeout(() => {
+          iframe.remove();
+          URL.revokeObjectURL(url);
+        }, 60_000);
+      }
+    };
+
+    iframe.addEventListener("load", executePrint);
+    setTimeout(executePrint, 500);
     return;
   }
   const fileName = opts?.fileName ?? "ornexa-document.pdf";

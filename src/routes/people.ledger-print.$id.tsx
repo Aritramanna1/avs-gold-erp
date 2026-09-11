@@ -15,6 +15,9 @@ const SearchSchema = z.object({
   from: z.coerce.number().optional(),
   to: z.coerce.number().optional(),
   plabel: z.string().optional(),
+  docType: z
+    .enum(["customer_ledger_statement", "customer_unpaid_invoices", "customer_paid_invoices"])
+    .optional(),
 });
 
 export const Route = createFileRoute("/people/ledger-print/$id")({
@@ -22,7 +25,7 @@ export const Route = createFileRoute("/people/ledger-print/$id")({
   head: () => {
     const shopName = useSettings.getState().firm?.shopName || "";
     return {
-      meta: [{ title: `Ledger Statement · ${shopName} ERP` }],
+      meta: [{ title: `Customer Document Print · ${shopName} ERP` }],
     };
   },
   component: LedgerPrintPage,
@@ -30,24 +33,31 @@ export const Route = createFileRoute("/people/ledger-print/$id")({
 
 function LedgerPrintPage() {
   const { id } = useParams({ from: "/people/ledger-print/$id" });
-  const { from, to, plabel } = useSearch({ from: "/people/ledger-print/$id" });
+  const { from, to, plabel, docType = "customer_ledger_statement" } = useSearch({
+    from: "/people/ledger-print/$id",
+  });
   const person = usePeople((s) => s.people.find((p) => p.id === id));
-  const refreshPeople = usePeople((s) => s.refresh);
-  const [loading, setLoading] = useState(!person);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!person) {
-      setLoading(true);
-      void refreshPeople().finally(() => setLoading(false));
-    }
-  }, [id, person, refreshPeople]);
+    let active = true;
+    setLoading(true);
+    void import("@/lib/billing-print-prep").then(({ ensureCustomerLedgerForPrint }) =>
+      ensureCustomerLedgerForPrint(id).finally(() => {
+        if (active) setLoading(false);
+      }),
+    );
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
   if (loading && !person) {
     return (
       <div className="min-h-screen grid place-items-center bg-background text-foreground p-6">
         <div className="text-center space-y-3">
           <div className="h-6 w-6 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground">Loading ledger statement...</p>
+          <p className="text-sm text-muted-foreground">Loading print document...</p>
         </div>
       </div>
     );
@@ -74,5 +84,5 @@ function LedgerPrintPage() {
       ? [person.id, from, to, plabel ?? "All Time"].join("~")
       : person.id;
 
-  return <PrintEngine docType="customer_ledger_statement" recordId={recordId} backUrl="/people" />;
+  return <PrintEngine docType={docType} recordId={recordId} backUrl="/people" />;
 }

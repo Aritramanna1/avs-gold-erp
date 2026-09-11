@@ -1,0 +1,153 @@
+{
+  "schema": 1,
+  "createdAt": "2026-09-08T11:43:38.338Z",
+  "engine": "monkeytest-core@0.3",
+  "id": "2026-09-08T11-43-38Z",
+  "planRef": {
+    "path": "C:\\final erp 29.08\\new and final\\.monkeytest\\plan.json",
+    "createdAt": "2026-09-08T11:43:38.317Z"
+  },
+  "run": {
+    "startUrl": "http://localhost:3000/login",
+    "startedAt": "2026-09-08T11:32:24.612Z",
+    "finishedAt": "2026-09-08T11:43:38.061Z",
+    "flows": [
+      {
+        "flowId": "otp-signin-navigation",
+        "name": "Navigate to OTP-based sign-in",
+        "description": "Verifies a visitor can switch from standard email/password sign-in to the OTP authentication flow, which is the primary passwordless entry path.",
+        "kind": "happy_path",
+        "startUrl": "http://localhost:3000/login",
+        "status": "passed",
+        "steps": [
+          {
+            "index": 1,
+            "action": "Navigate to http://localhost:3000/login",
+            "status": "skipped",
+            "observation": "Already on the target URL http://localhost:3000/login; no navigation needed.",
+            "tool": "noop",
+            "target": "http://localhost:3000/login",
+            "durationMs": 15126,
+            "screenshotPath": "C:\\final erp 29.08\\new and final\\.monkeytest\\shots\\flow-otp-signin-navigation-step-01-skipped.png"
+          },
+          {
+            "index": 2,
+            "action": "Click the link labeled \"Sign In with OTP\"",
+            "status": "passed",
+            "observation": "Clicked text:Sign In with OTP.",
+            "tool": "click",
+            "target": "Sign In with OTP",
+            "durationMs": 5562,
+            "screenshotPath": "C:\\final erp 29.08\\new and final\\.monkeytest\\shots\\flow-otp-signin-navigation-step-02-passed.png"
+          },
+          {
+            "index": 3,
+            "action": "Expect the page to display an OTP request form or phone-number input",
+            "status": "passed",
+            "observation": "Observed \"SMS OTP\" on the page.",
+            "tool": "assert_text",
+            "target": "SMS OTP",
+            "durationMs": 6662,
+            "screenshotPath": "C:\\final erp 29.08\\new and final\\.monkeytest\\shots\\flow-otp-signin-navigation-step-03-passed.png"
+          }
+        ],
+        "durationMs": 33162,
+        "bugIds": [],
+        "videoPath": "C:\\final erp 29.08\\new and final\\.monkeytest\\shots\\flow-otp-signin-navigation.webm"
+      },
+      {
+        "flowId": "forgot-password-flow",
+        "name": "Initiate forgot-password recovery",
+        "description": "Verifies the forgot-password recovery entry point is reachable and presents a recovery form, ensuring locked-out users are not stranded.",
+        "kind": "happy_path",
+        "startUrl": "http://localhost:3000/login",
+        "status": "passed",
+        "steps": [
+          {
+            "index": 1,
+            "action": "Navigate to http://localhost:3000/login",
+            "status": "passed",
+            "observation": "Navigated to http://localhost:3000/login.",
+            "tool": "goto",
+            "target": "http://localhost:3000/login",
+            "durationMs": 29280,
+            "screenshotPath": "C:\\final erp 29.08\\new and final\\.monkeytest\\shots\\flow-forgot-password-flow-step-01-passed.png"
+          },
+          {
+            "index": 2,
+            "action": "Click the link labeled \"Forgot Password\"",
+            "status": "passed",
+            "observation": "Clicked text:Forgot Password.",
+            "tool": "click",
+            "target": "Forgot Password",
+            "durationMs": 20702,
+            "screenshotPath": "C:\\final erp 29.08\\new and final\\.monkeytest\\shots\\flow-forgot-password-flow-step-02-passed.png"
+          },
+          {
+            "index": 3,
+            "action": "Expect the page to display a password-recovery form requesting a corporation email or similar identifier",
+            "status": "passed",
+            "observation": "Observed \"Account Recovery\" on the page.",
+            "tool": "assert_text",
+            "target": "Account Recovery",
+            "durationMs": 22369,
+            "screenshotPath": "C:\\final erp 29.08\\new and final\\.monkeytest\\shots\\flow-forgot-password-flow-step-03-passed.png"
+          }
+        ],
+        "durationMs": 81790,
+        "bugIds": [],
+        "videoPath": "C:\\final erp 29.08\\new and final\\.monkeytest\\shots\\flow-forgot-password-flow.webm"
+      },
+      {
+        "flowId": "invitation-code-acceptance",
+        "name": "Accept an invitation code to onboard",
+        "description": "Verifies the invitation-code onboarding path accepts input and responds, which is the only way a new user without an account can begin setup.",
+        "kind": "happy_path",
+        "startUrl": "http://localhost:3000/login",
+        "status": "error",
+        "failureReason": "flow \"Accept an invitation code to onboard\" exceeded 180000ms",
+        "steps": [
+          {
+            "index": 1,
+            "action": "Navigate to http://localhost:3000/login",
+            "status": "blocked",
+            "observation": "Flow aborted before this step."
+          },
+          {
+            "index": 2,
+            "action": "Type \"TESTCODE123\" into the input labeled \"Accept Invitation Code\"",
+            "status": "blocked",
+            "observation": "Flow aborted before this step."
+          },
+          {
+            "index": 3,
+            "action": "Click the button labeled \"Accept Invitation\"",
+            "status": "blocked",
+            "observation": "Flow aborted before this step."
+          },
+          {
+            "index": 4,
+            "action": "Expect the page to respond with either a validation error (invalid code) or a redirect to an onboarding/registration form",
+            "status": "blocked",
+            "observation": "Flow aborted before this step."
+          }
+        ],
+        "durationMs": 180035,
+        "bugIds": []
+      }
+    ],
+    "bugs": [],
+    "stats": {
+      "flowsTotal": 3,
+      "flowsPassed": 2,
+      "flowsFailed": 1,
+      "flowsBlocked": 0,
+      "stepsTotal": 10,
+      "stepsPassed": 5,
+      "stepsFailed": 0,
+      "bugsCritical": 0,
+      "bugsMajor": 0,
+      "bugsMinor": 0
+    }
+  }
+}

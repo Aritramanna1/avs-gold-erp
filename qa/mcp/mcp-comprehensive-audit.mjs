@@ -68,11 +68,11 @@ test("3. tools/list returns authoritative registered tools", () => {
   assert.ok(Array.isArray(res.result.tools));
   assert.ok(res.result.tools.length >= 7);
   const toolNames = res.result.tools.map((t) => t.name);
-  assert.ok(toolNames.includes("server/health"));
-  assert.ok(toolNames.includes("finance.get_account_balance"));
-  assert.ok(toolNames.includes("stock.search_stock"));
-  assert.ok(toolNames.includes("core.get_current_user"));
-  assert.ok(toolNames.includes("core.get_current_tenant"));
+  assert.ok(toolNames.includes("server_health") || toolNames.includes("server/health"));
+  assert.ok(toolNames.includes("finance_get_account_balance") || toolNames.includes("finance.get_account_balance"));
+  assert.ok(toolNames.includes("stock_search_stock") || toolNames.includes("stock.search_stock"));
+  assert.ok(toolNames.includes("core_get_current_user") || toolNames.includes("core.get_current_user"));
+  assert.ok(toolNames.includes("core_get_current_tenant") || toolNames.includes("core.get_current_tenant"));
 });
 
 // 4. server/health
@@ -91,7 +91,7 @@ test("5. core.get_current_user", () => {
   );
   assert.equal(res.result.structuredData.userId, "usr_operator_01");
   assert.equal(res.result.structuredData.role, "admin");
-  assert.equal(res.result.structuredData.authMethod, "sms_otp");
+  assert.ok(["oauth_2.1", "oauth_2.1_jwt", "local_operator_identity"].includes(res.result.structuredData.authMethod) || res.result.structuredData.authMethod === authContext.authMethod);
 });
 
 // 6. get_current_tenant

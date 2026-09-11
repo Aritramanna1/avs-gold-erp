@@ -32,7 +32,7 @@
     },
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=dqgrrafuoxaorvyrcuuh&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
+      "url": "https://mcp.supabase.com/mcp?project_ref=vqsrdemjiehzykexkcwo&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
     },
     "claude-flow": {
       "command": "cmd",
@@ -64,6 +64,14 @@
     "cloudflare-docs": { "url": "https://docs.mcp.cloudflare.com/mcp" },
     "cloudflare-bindings": { "url": "https://bindings.mcp.cloudflare.com/mcp" },
     "cloudflare-builds": { "url": "https://builds.mcp.cloudflare.com/mcp" },
-    "cloudflare-observability": { "url": "https://observability.mcp.cloudflare.com/mcp" }
+    "cloudflare-observability": { "url": "https://observability.mcp.cloudflare.com/mcp" },
+    "avs-erp": {
+      "command": "node",
+      "args": ["scripts/mcp/avs-mcp-server.mjs"],
+      "env": {
+        "AVS_TENANT_ID": "MTJ_FIRM",
+        "AVS_BRANCH_ID": "MAIN"
+      }
+    }
   }
 }

@@ -224,6 +224,13 @@
   background: var(--card);
   border-radius: var(--radius-sm);
 }
+.erp-container {
+  width: 100%;
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+  min-width: 0;
+}
 .erp-section-title {
   font-family: var(--font-sans);
   font-size: 0.6875rem;
@@ -249,6 +256,15 @@
 }
 .erp-table tbody tr:hover {
   background: color-mix(in oklch, var(--accent) 55%, transparent);
+}
+
+/* Ensure data tables do not blow out containers horizontally */
+.erp-table-container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Mobile operations: a compact, persistent task rail beats a shrunken desktop sidebar. */

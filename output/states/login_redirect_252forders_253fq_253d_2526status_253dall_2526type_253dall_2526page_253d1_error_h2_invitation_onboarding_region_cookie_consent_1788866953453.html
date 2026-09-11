@@ -1,0 +1,290 @@
+<html lang="en" class="light" dir="ltr" data-device="desktop" data-layout="desktop" style="--primary: #0F172A; --primary-hover: color-mix(in srgb, #0F172A 82%, black); --gold: #C8A24B; --gold-soft: color-mix(in srgb, #C8A24B 18%, transparent); --gold-deep: color-mix(in srgb, #C8A24B 72%, black);"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: capacitor: https://localhost; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: capacitor:; font-src 'self' data:; connect-src 'self' https: wss: capacitor: https://localhost https://*.supabase.co wss://*.supabase.co; media-src 'self' data: blob: capacitor:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'">
+    <title>AVS ERP — Jewellery Ecosystem ERP</title>
+    <meta name="description" content="Professional Jewellery Manufacturing ERP">
+    <meta name="keywords" content="jewellery ERP, jewellery manufacturing software, gold ERP India, karigar management, AVS ERP, jewellery factory software">
+    <meta property="og:title" content="AVS ERP — Jewellery Ecosystem ERP">
+    <meta property="og:description" content="Manufacturing-first jewellery ERP with gold traceability and karigar custody.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/png" href="/assets/ornexa-mark.png?v=20260819" sizes="96x96">
+    <link rel="icon" type="image/png" href="/assets/ornexa-mark.png?v=20260819">
+    <link rel="shortcut icon" href="/assets/ornexa-mark.png?v=20260819">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/ornexa-mark.png?v=20260819">
+    <meta name="apple-mobile-web-app-title" content="AVS ERP">
+    <link rel="manifest" href="/site.webmanifest?v=20260705">
+    <!-- Instant boot skeleton: paints before any JS/CSS bundle so the user
+         never sees a blank white screen — and never a spinning circle. It is
+         shaped like the app shell (sidebar rail + header + module body) so it
+         reads as "the app is arriving", matching the React <AppBootSkeleton>
+         that takes over. React's createRoot replaces #root's children on
+         mount, so this clears itself with zero extra JS. -->
+    <!-- Set the theme class on <html> BEFORE any paint, from the same
+         localStorage key ThemeProvider uses (default light). This makes the
+         splash below AND the React skeleton match the user's theme from the
+         first frame — no black screen in Light Mode, no flash. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("mtj-app-theme") || "light";
+          var dark =
+            t === "dark" ||
+            (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.add(dark ? "dark" : "light");
+        } catch (e) {
+          document.documentElement.classList.add("light");
+        }
+      })();
+    </script>
+    <style>
+      /* Theme-aware splash: light by default, dark only when <html> carries the
+         .dark class the script above (and later ThemeProvider) sets. */
+      #boot-splash {
+        --bs-bg: #faf9f5;
+        --bs-border: #e7e5e0;
+        --bs-bar-a: #e7e5e0;
+        --bs-bar-b: #f2f0ec;
+        position: fixed;
+        inset: 0;
+        display: flex;
+        background: var(--bs-bg);
+        z-index: 2147483647;
+      }
+      html.dark #boot-splash {
+        --bs-bg: #141318;
+        --bs-border: #26262f;
+        --bs-bar-a: #14141b;
+        --bs-bar-b: #1e1e28;
+      }
+      #boot-splash .bs-rail {
+        width: 256px;
+        flex-shrink: 0;
+        border-right: 1px solid var(--bs-border);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      #boot-splash .bs-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      #boot-splash .bs-header {
+        height: 64px;
+        border-bottom: 1px solid var(--bs-border);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 32px;
+      }
+      #boot-splash .bs-body {
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      #boot-splash .bs-cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+      #boot-splash .bs-bar {
+        border-radius: 8px;
+        background: linear-gradient(
+          90deg,
+          var(--bs-bar-a) 25%,
+          var(--bs-bar-b) 37%,
+          var(--bs-bar-a) 63%
+        );
+        background-size: 400% 100%;
+        animation: bs-shimmer 1.4s ease infinite;
+      }
+      @keyframes bs-shimmer {
+        0% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0 50%;
+        }
+      }
+    </style>
+    <script type="module" crossorigin="" src="/assets/index-CYKa1NVf.js"></script>
+    <link rel="modulepreload" crossorigin="" href="/assets/rolldown-runtime-aKtaBQYM.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/vendor-charts-Bv77YuA6.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/vendor-react-BbySHAOQ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/useRouter-B9k4xCGr.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/matchContext-BlZdT3zq.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/useStore-BgDmhNqo.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/ClientOnly-DfSBraD0.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/not-found-i5RsCZif.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/redirect-D3L17tzd.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/utils-CC4AhQPs.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/Match-wlSxhK07.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/link-6fVuz00-.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/useMatch-ChgqzlXh.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/useParams-1dy6tnhi.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/useSearch-DQGrLgJL.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/useNavigate-CJ5OSqdF.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/lazyRouteComponent-DYL2XmCl.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/useRouterState-BUSYVWZd.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/createLucideIcon-CHJvbPx4.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/chart-column-CI4AUEtA.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/layers-Cc0y1R_y.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/calculator-CUsLWv0n.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/arrow-left-right-Be2GMyYe.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/book-open-CoZE-141.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/bot-DuCpGESg.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/briefcase-zB9Qxqq7.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/building-2-QQxvsAc3.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/file-spreadsheet-C8FVJYYV.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/file-text-C_EY97yl.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/gem-sYFcyYUT.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/hammer-D9ZF8mg8.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/landmark-Ce9CDxQA.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/message-square-CmrHS_Bd.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/package-DMKmAFT-.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/receipt-DNViDsxX.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/scale-BcQdsQFu.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/scan-line-OviVYlar.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/settings-CNj4zvSA.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/shield-check-DUGIONhz.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/shopping-bag-FwcFkX4b.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/trending-down-Bq1sb0B6.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/truck-CmThsaUs.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/users-Db3FDA9k.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/wallet-CqXoJrEZ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/wrench-B4HTOvJi.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/react-yId0ar3t.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/vendor-jspdf-Ch4EXTjj.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/vendor-supabase-DUUASn1h.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/supabase-egress-monitor-DguaorWF.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/client-lK9fmw4t.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/data-provider-B-ppTOZZ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/supabase-storage-CCQLQi_F.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/settings-store-CudXxVnB.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-DsyeVslx.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/base-repository-BuOFrccX.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/device-registry-B9BH7eX1.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/audit-log-BabRb4cr.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/business-rules-store-BHMIqqQJ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/firm-scoped-app-settings-C75ygqP4.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/customization-hub-preferences-store-ZH6vHKIa.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/navigation-groups-CDZ-8cMs.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/circle-alert-CCWv1fbW.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/circle-check-Dn3p_grq.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/loader-circle-BHbTnCGy.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/sparkles-B8-eWyQD.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/check-FN7jQh3Y.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/chevron-down-CKL6ZQQV.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/chevron-right-B9nq5ii1.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/chevron-up-D712vUkN.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/external-link-BRHq8cLv.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/layout-grid-St5Piz_l.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/search-DYrBIuT4.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/x-Bczo787_.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-Sx8oDgAi.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-De9dyxWJ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-C6ddSntr.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-DlxIdEiv.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/es2015-D4iH13Ep.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-b90mnwwx.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-BHHx4wAD.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/utils-DNJowX4i.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-CpanW9W2.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/button-akJ1x5Rs.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/input-CXAiBfFe.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/bullion-rate-service-B0BwYpzV.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/role-resolution-1N93rJ9K.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/rbac-aUz8wmhU.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/attachments-store--1W8l_pn.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/document-numbering-yX3tN7iJ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/firm-scoped-query-B3XNdq-3.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/orders-store-DYNoqx_b.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/purity-grades-store-B02A1JSP.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/gold-BBz8SHFq.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/branch-scope-DmhKSNro.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/financial-lock-store-d_LmEBtZ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/workflow-engine-BbcH6i4f.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/ledger-pagination-D3ObFnJv.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/ledger-store-c5dwOMTV.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/gold-lineage-emitter-C691kAlN.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/module-store-D2WtzZYL.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/billing-store-JtRlNLvZ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/middleware-Pd0e8Igk.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/gold-calculation-rules-store-DtVxD6hU.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/worker-gold-book-store-DDG16v5n.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/jobcards-store-Ct8Vapz_.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/repair-store-nnWekkrs.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/gold-settlement-store-TWjmZtjL.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/people-store-CbcudJ-U.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/transaction-types-store-BVKud4bA.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/universal-transaction-bridge-upV-7Zsg.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/stock-store-CCxsJ4ug.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/Logo-BZoKm6nj.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/crm-gUsXoi77.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/ledger-DSwkepID.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/manufacturing-C84KC8l0.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/melt-DDrjbyI0.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/repair-BsMEmuJY.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/terminology-engine-store-Df2vp4fc.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/LanguageContext-BlKMEtMd.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/communication-events-B1xI272D.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/comm-settings-store-BIEbG7QU.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/billing-documents-store-cEywTIcT.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/comm-log-store-B2IpXbDl.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/hostinger-client-_WZtJ-TP.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/link-hosts-Ck-EJ10W.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/custody-flow-query-U24I3QlO.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/worker-return-store-SLF4jtiq.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/outside-work-query-BojjUix5.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/outside-work-store-CdFO7-2K.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/outside-work-labour-store-CCmEYjQ0.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/polishing-store-DoYY2AhV.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/material-vault-store-B6-dSA8Q.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/manufacturing-bill-store-CgOQdAxi.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/workers-store-NtKtVjYQ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/party-opening-balances-ByYPrhUZ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/ledger-voucher-routes-DYQFp6HG.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/money-voucher-C3UDplqo.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/customer-account-ledger-p03TBxYK.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/settlement-store-CdLVwMQF.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/portal-scope-store-BnkltFhD.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/platform-Dwo01wuA.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/portal-offline-cache-BM9PiTvl.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/authorization-context-store-DozYKQpI.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/permissions-DqjYzC50.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-nUQ_Yg7_.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-Cv74YzXr.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-C3HkYXk-.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/app-info-EOtUq1qa.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/startup-preferences-D8x6m2TR.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/startup-metrics-BQSPTmeE.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/branch-store-j0YFVmuJ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/tenant-context-store-D6Jz9N3-.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/sheet-D_Ornkey.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/network-BymNq11-.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/storage-B2Ajo5yx.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/expenses-store-CLhEARIq.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/supplier-purchases-store-_zv8YNth.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/melt-store-BjR0bAqL.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/offline-DqsMpd3N.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/app-loading-store-if0w_XJc.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/communication-jobs-store-CRQyZA_9.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/comm-queue-CkUKHlkh.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/license-store-CLU_njTV.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/knowledge-repository-BXrKpxwY.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/assistant-tool-registry-CQcdQKWz.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/public-site-url-o6weySJZ.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/print-engine-DYmFiKAU.js">
+    <link rel="modulepreload" crossorigin="" href="/assets/dist-CSPRp9Do2.js">
+    <link rel="stylesheet" crossorigin="" href="/assets/index-U1fHpO6a.css">
+  <style type="text/css">[data-sonner-toaster][dir=ltr],html[dir=ltr]{--toast-icon-margin-start:-3px;--toast-icon-margin-end:4px;--toast-svg-margin-start:-1px;--toast-svg-margin-end:0px;--toast-button-margin-start:auto;--toast-button-margin-end:0;--toast-close-button-start:0;--toast-close-button-end:unset;--toast-close-button-transform:translate(-35%, -35%)}[data-sonner-toaster][dir=rtl],html[dir=rtl]{--toast-icon-margin-start:4px;--toast-icon-margin-end:-3px;--toast-svg-margin-start:0px;--toast-svg-margin-end:-1px;--toast-button-margin-start:0;--toast-button-margin-end:auto;--toast-close-button-start:unset;--toast-close-button-end:0;--toast-close-button-transform:translate(35%, -35%)}[data-sonner-toaster]{position:fixed;width:var(--width);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Arial,Noto Sans,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;--gray1:hsl(0, 0%, 99%);--gray2:hsl(0, 0%, 97.3%);--gray3:hsl(0, 0%, 95.1%);--gray4:hsl(0, 0%, 93%);--gray5:hsl(0, 0%, 90.9%);--gray6:hsl(0, 0%, 88.7%);--gray7:hsl(0, 0%, 85.8%);--gray8:hsl(0, 0%, 78%);--gray9:hsl(0, 0%, 56.1%);--gray10:hsl(0, 0%, 52.3%);--gray11:hsl(0, 0%, 43.5%);--gray12:hsl(0, 0%, 9%);--border-radius:8px;box-sizing:border-box;padding:0;margin:0;list-style:none;outline:0;z-index:999999999;transition:transform .4s ease}@media (hover:none) and (pointer:coarse){[data-sonner-toaster][data-lifted=true]{transform:none}}[data-sonner-toaster][data-x-position=right]{right:var(--offset-right)}[data-sonner-toaster][data-x-position=left]{left:var(--offset-left)}[data-sonner-toaster][data-x-position=center]{left:50%;transform:translateX(-50%)}[data-sonner-toaster][data-y-position=top]{top:var(--offset-top)}[data-sonner-toaster][data-y-position=bottom]{bottom:var(--offset-bottom)}[data-sonner-toast]{--y:translateY(100%);--lift-amount:calc(var(--lift) * var(--gap));z-index:var(--z-index);position:absolute;opacity:0;transform:var(--y);touch-action:none;transition:transform .4s,opacity .4s,height .4s,box-shadow .2s;box-sizing:border-box;outline:0;overflow-wrap:anywhere}[data-sonner-toast][data-styled=true]{padding:16px;background:var(--normal-bg);border:1px solid var(--normal-border);color:var(--normal-text);border-radius:var(--border-radius);box-shadow:0 4px 12px rgba(0,0,0,.1);width:var(--width);font-size:13px;display:flex;align-items:center;gap:6px}[data-sonner-toast]:focus-visible{box-shadow:0 4px 12px rgba(0,0,0,.1),0 0 0 2px rgba(0,0,0,.2)}[data-sonner-toast][data-y-position=top]{top:0;--y:translateY(-100%);--lift:1;--lift-amount:calc(1 * var(--gap))}[data-sonner-toast][data-y-position=bottom]{bottom:0;--y:translateY(100%);--lift:-1;--lift-amount:calc(var(--lift) * var(--gap))}[data-sonner-toast][data-styled=true] [data-description]{font-weight:400;line-height:1.4;color:#3f3f3f}[data-rich-colors=true][data-sonner-toast][data-styled=true] [data-description]{color:inherit}[data-sonner-toaster][data-sonner-theme=dark] [data-description]{color:#e8e8e8}[data-sonner-toast][data-styled=true] [data-title]{font-weight:500;line-height:1.5;color:inherit}[data-sonner-toast][data-styled=true] [data-icon]{display:flex;height:16px;width:16px;position:relative;justify-content:flex-start;align-items:center;flex-shrink:0;margin-left:var(--toast-icon-margin-start);margin-right:var(--toast-icon-margin-end)}[data-sonner-toast][data-promise=true] [data-icon]>svg{opacity:0;transform:scale(.8);transform-origin:center;animation:sonner-fade-in .3s ease forwards}[data-sonner-toast][data-styled=true] [data-icon]>*{flex-shrink:0}[data-sonner-toast][data-styled=true] [data-icon] svg{margin-left:var(--toast-svg-margin-start);margin-right:var(--toast-svg-margin-end)}[data-sonner-toast][data-styled=true] [data-content]{display:flex;flex-direction:column;gap:2px}[data-sonner-toast][data-styled=true] [data-button]{border-radius:4px;padding-left:8px;padding-right:8px;height:24px;font-size:12px;color:var(--normal-bg);background:var(--normal-text);margin-left:var(--toast-button-margin-start);margin-right:var(--toast-button-margin-end);border:none;font-weight:500;cursor:pointer;outline:0;display:flex;align-items:center;flex-shrink:0;transition:opacity .4s,box-shadow .2s}[data-sonner-toast][data-styled=true] [data-button]:focus-visible{box-shadow:0 0 0 2px rgba(0,0,0,.4)}[data-sonner-toast][data-styled=true] [data-button]:first-of-type{margin-left:var(--toast-button-margin-start);margin-right:var(--toast-button-margin-end)}[data-sonner-toast][data-styled=true] [data-cancel]{color:var(--normal-text);background:rgba(0,0,0,.08)}[data-sonner-toaster][data-sonner-theme=dark] [data-sonner-toast][data-styled=true] [data-cancel]{background:rgba(255,255,255,.3)}[data-sonner-toast][data-styled=true] [data-close-button]{position:absolute;left:var(--toast-close-button-start);right:var(--toast-close-button-end);top:0;height:20px;width:20px;display:flex;justify-content:center;align-items:center;padding:0;color:var(--gray12);background:var(--normal-bg);border:1px solid var(--gray4);transform:var(--toast-close-button-transform);border-radius:50%;cursor:pointer;z-index:1;transition:opacity .1s,background .2s,border-color .2s}[data-sonner-toast][data-styled=true] [data-close-button]:focus-visible{box-shadow:0 4px 12px rgba(0,0,0,.1),0 0 0 2px rgba(0,0,0,.2)}[data-sonner-toast][data-styled=true] [data-disabled=true]{cursor:not-allowed}[data-sonner-toast][data-styled=true]:hover [data-close-button]:hover{background:var(--gray2);border-color:var(--gray5)}[data-sonner-toast][data-swiping=true]::before{content:'';position:absolute;left:-100%;right:-100%;height:100%;z-index:-1}[data-sonner-toast][data-y-position=top][data-swiping=true]::before{bottom:50%;transform:scaleY(3) translateY(50%)}[data-sonner-toast][data-y-position=bottom][data-swiping=true]::before{top:50%;transform:scaleY(3) translateY(-50%)}[data-sonner-toast][data-swiping=false][data-removed=true]::before{content:'';position:absolute;inset:0;transform:scaleY(2)}[data-sonner-toast][data-expanded=true]::after{content:'';position:absolute;left:0;height:calc(var(--gap) + 1px);bottom:100%;width:100%}[data-sonner-toast][data-mounted=true]{--y:translateY(0);opacity:1}[data-sonner-toast][data-expanded=false][data-front=false]{--scale:var(--toasts-before) * 0.05 + 1;--y:translateY(calc(var(--lift-amount) * var(--toasts-before))) scale(calc(-1 * var(--scale)));height:var(--front-toast-height)}[data-sonner-toast]>*{transition:opacity .4s}[data-sonner-toast][data-x-position=right]{right:0}[data-sonner-toast][data-x-position=left]{left:0}[data-sonner-toast][data-expanded=false][data-front=false][data-styled=true]>*{opacity:0}[data-sonner-toast][data-visible=false]{opacity:0;pointer-events:none}[data-sonner-toast][data-mounted=true][data-expanded=true]{--y:translateY(calc(var(--lift) * var(--offset)));height:var(--initial-height)}[data-sonner-toast][data-removed=true][data-front=true][data-swipe-out=false]{--y:translateY(calc(var(--lift) * -100%));opacity:0}[data-sonner-toast][data-removed=true][data-front=false][data-swipe-out=false][data-expanded=true]{--y:translateY(calc(var(--lift) * var(--offset) + var(--lift) * -100%));opacity:0}[data-sonner-toast][data-removed=true][data-front=false][data-swipe-out=false][data-expanded=false]{--y:translateY(40%);opacity:0;transition:transform .5s,opacity .2s}[data-sonner-toast][data-removed=true][data-front=false]::before{height:calc(var(--initial-height) + 20%)}[data-sonner-toast][data-swiping=true]{transform:var(--y) translateY(var(--swipe-amount-y,0)) translateX(var(--swipe-amount-x,0));transition:none}[data-sonner-toast][data-swiped=true]{user-select:none}[data-sonner-toast][data-swipe-out=true][data-y-position=bottom],[data-sonner-toast][data-swipe-out=true][data-y-position=top]{animation-duration:.2s;animation-timing-function:ease-out;animation-fill-mode:forwards}[data-sonner-toast][data-swipe-out=true][data-swipe-direction=left]{animation-name:swipe-out-left}[data-sonner-toast][data-swipe-out=true][data-swipe-direction=right]{animation-name:swipe-out-right}[data-sonner-toast][data-swipe-out=true][data-swipe-direction=up]{animation-name:swipe-out-up}[data-sonner-toast][data-swipe-out=true][data-swipe-direction=down]{animation-name:swipe-out-down}@keyframes swipe-out-left{from{transform:var(--y) translateX(var(--swipe-amount-x));opacity:1}to{transform:var(--y) translateX(calc(var(--swipe-amount-x) - 100%));opacity:0}}@keyframes swipe-out-right{from{transform:var(--y) translateX(var(--swipe-amount-x));opacity:1}to{transform:var(--y) translateX(calc(var(--swipe-amount-x) + 100%));opacity:0}}@keyframes swipe-out-up{from{transform:var(--y) translateY(var(--swipe-amount-y));opacity:1}to{transform:var(--y) translateY(calc(var(--swipe-amount-y) - 100%));opacity:0}}@keyframes swipe-out-down{from{transform:var(--y) translateY(var(--swipe-amount-y));opacity:1}to{transform:var(--y) translateY(calc(var(--swipe-amount-y) + 100%));opacity:0}}@media (max-width:600px){[data-sonner-toaster]{position:fixed;right:var(--mobile-offset-right);left:var(--mobile-offset-left);width:100%}[data-sonner-toaster][dir=rtl]{left:calc(var(--mobile-offset-left) * -1)}[data-sonner-toaster] [data-sonner-toast]{left:0;right:0;width:calc(100% - var(--mobile-offset-left) * 2)}[data-sonner-toaster][data-x-position=left]{left:var(--mobile-offset-left)}[data-sonner-toaster][data-y-position=bottom]{bottom:var(--mobile-offset-bottom)}[data-sonner-toaster][data-y-position=top]{top:var(--mobile-offset-top)}[data-sonner-toaster][data-x-position=center]{left:var(--mobile-offset-left);right:var(--mobile-offset-right);transform:none}}[data-sonner-toaster][data-sonner-theme=light]{--normal-bg:#fff;--normal-border:var(--gray4);--normal-text:var(--gray12);--success-bg:hsl(143, 85%, 96%);--success-border:hsl(145, 92%, 87%);--success-text:hsl(140, 100%, 27%);--info-bg:hsl(208, 100%, 97%);--info-border:hsl(221, 91%, 93%);--info-text:hsl(210, 92%, 45%);--warning-bg:hsl(49, 100%, 97%);--warning-border:hsl(49, 91%, 84%);--warning-text:hsl(31, 92%, 45%);--error-bg:hsl(359, 100%, 97%);--error-border:hsl(359, 100%, 94%);--error-text:hsl(360, 100%, 45%)}[data-sonner-toaster][data-sonner-theme=light] [data-sonner-toast][data-invert=true]{--normal-bg:#000;--normal-border:hsl(0, 0%, 20%);--normal-text:var(--gray1)}[data-sonner-toaster][data-sonner-theme=dark] [data-sonner-toast][data-invert=true]{--normal-bg:#fff;--normal-border:var(--gray3);--normal-text:var(--gray12)}[data-sonner-toaster][data-sonner-theme=dark]{--normal-bg:#000;--normal-bg-hover:hsl(0, 0%, 12%);--normal-border:hsl(0, 0%, 20%);--normal-border-hover:hsl(0, 0%, 25%);--normal-text:var(--gray1);--success-bg:hsl(150, 100%, 6%);--success-border:hsl(147, 100%, 12%);--success-text:hsl(150, 86%, 65%);--info-bg:hsl(215, 100%, 6%);--info-border:hsl(223, 43%, 17%);--info-text:hsl(216, 87%, 65%);--warning-bg:hsl(64, 100%, 6%);--warning-border:hsl(60, 100%, 9%);--warning-text:hsl(46, 87%, 65%);--error-bg:hsl(358, 76%, 10%);--error-border:hsl(357, 89%, 16%);--error-text:hsl(358, 100%, 81%)}[data-sonner-toaster][data-sonner-theme=dark] [data-sonner-toast] [data-close-button]{background:var(--normal-bg);border-color:var(--normal-border);color:var(--normal-text)}[data-sonner-toaster][data-sonner-theme=dark] [data-sonner-toast] [data-close-button]:hover{background:var(--normal-bg-hover);border-color:var(--normal-border-hover)}[data-rich-colors=true][data-sonner-toast][data-type=success]{background:var(--success-bg);border-color:var(--success-border);color:var(--success-text)}[data-rich-colors=true][data-sonner-toast][data-type=success] [data-close-button]{background:var(--success-bg);border-color:var(--success-border);color:var(--success-text)}[data-rich-colors=true][data-sonner-toast][data-type=info]{background:var(--info-bg);border-color:var(--info-border);color:var(--info-text)}[data-rich-colors=true][data-sonner-toast][data-type=info] [data-close-button]{background:var(--info-bg);border-color:var(--info-border);color:var(--info-text)}[data-rich-colors=true][data-sonner-toast][data-type=warning]{background:var(--warning-bg);border-color:var(--warning-border);color:var(--warning-text)}[data-rich-colors=true][data-sonner-toast][data-type=warning] [data-close-button]{background:var(--warning-bg);border-color:var(--warning-border);color:var(--warning-text)}[data-rich-colors=true][data-sonner-toast][data-type=error]{background:var(--error-bg);border-color:var(--error-border);color:var(--error-text)}[data-rich-colors=true][data-sonner-toast][data-type=error] [data-close-button]{background:var(--error-bg);border-color:var(--error-border);color:var(--error-text)}.sonner-loading-wrapper{--size:16px;height:var(--size);width:var(--size);position:absolute;inset:0;z-index:10}.sonner-loading-wrapper[data-visible=false]{transform-origin:center;animation:sonner-fade-out .2s ease forwards}.sonner-spinner{position:relative;top:50%;left:50%;height:var(--size);width:var(--size)}.sonner-loading-bar{animation:sonner-spin 1.2s linear infinite;background:var(--gray11);border-radius:6px;height:8%;left:-10%;position:absolute;top:-3.9%;width:24%}.sonner-loading-bar:first-child{animation-delay:-1.2s;transform:rotate(.0001deg) translate(146%)}.sonner-loading-bar:nth-child(2){animation-delay:-1.1s;transform:rotate(30deg) translate(146%)}.sonner-loading-bar:nth-child(3){animation-delay:-1s;transform:rotate(60deg) translate(146%)}.sonner-loading-bar:nth-child(4){animation-delay:-.9s;transform:rotate(90deg) translate(146%)}.sonner-loading-bar:nth-child(5){animation-delay:-.8s;transform:rotate(120deg) translate(146%)}.sonner-loading-bar:nth-child(6){animation-delay:-.7s;transform:rotate(150deg) translate(146%)}.sonner-loading-bar:nth-child(7){animation-delay:-.6s;transform:rotate(180deg) translate(146%)}.sonner-loading-bar:nth-child(8){animation-delay:-.5s;transform:rotate(210deg) translate(146%)}.sonner-loading-bar:nth-child(9){animation-delay:-.4s;transform:rotate(240deg) translate(146%)}.sonner-loading-bar:nth-child(10){animation-delay:-.3s;transform:rotate(270deg) translate(146%)}.sonner-loading-bar:nth-child(11){animation-delay:-.2s;transform:rotate(300deg) translate(146%)}.sonner-loading-bar:nth-child(12){animation-delay:-.1s;transform:rotate(330deg) translate(146%)}@keyframes sonner-fade-in{0%{opacity:0;transform:scale(.8)}100%{opacity:1;transform:scale(1)}}@keyframes sonner-fade-out{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.8)}}@keyframes sonner-spin{0%{opacity:1}100%{opacity:.15}}@media (prefers-reduced-motion){.sonner-loading-bar,[data-sonner-toast],[data-sonner-toast]>*{transition:none!important;animation:none!important}}.sonner-loader{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);transform-origin:center;transition:opacity .2s,transform .2s}.sonner-loader[data-visible=false]{opacity:0;transform:scale(.8) translate(-50%,-50%)}</style><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/orders-C7ZkTHe3.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/orders.index-B4yvZp1S.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/calendar-CtyQXfct.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/PageHeader-CYFPCH1M.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/arrow-left-Qi-okZR9.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/reminder-dialog-DFQGUmvt.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/message-circle-B3DvJnIS.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/send-whatsapp-text-C3gezyX-.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/wa-automation-store-CrjGbwxJ.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/order-messages-BFRAv8g6.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/wa-placeholders-DyMczdFp.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/orders-query-B5nhjXBl.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/test-seed-C5S8MDgL.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/printlog-store-BXqp5B9M.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/ratecut-store-DrR8sOTd.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/whatsapp-store-D0OYfaBU.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/session-lock-DRr9RF_u.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/automation-settings-store-D-9jxiCc.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/gold-reconciliation-DiKyL5ZX.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/hardware-service-DuY04_Sf.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/print-queue-CyY9j1rN.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/SessionLockOverlay-BInv8WDh.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/login-BzTCi3MW.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/mail-B7UWs-Ic.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/user-check-xlNIYt4x.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/google-oauth-C5TBaru8.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/GoogleSignInButton-zuSbftXw.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/AuthNativeShell-BZPts4Kr.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/data-loader-DST72sbG.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/index-CYKa1NVf.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/people-query-DZ9HiHkv.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/storage-BGpZ6Uw5.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/invite-DPm6yW5E.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/invite.accept-BuXebFpm.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/circle-x-CEzImMxs.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/phone-DdvavM2g.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/feedback-sounds-CIPg1kon.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/checkbox-BcjRg-FR.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/edge-function-error-ClCFvwO6.js"><link rel="modulepreload" as="script" crossorigin="" href="http://localhost:3000/assets/invite-oauth-state-BiIJ_NxL.js"></head>
+  <body>
+    <div id="root"><div class="min-h-screen bg-background"><div class="min-h-screen w-full flex flex-col items-center justify-center bg-[#FAF9F6] dark:bg-background px-4 py-10 relative overflow-hidden font-sans"><div class="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-[#B89454]/10 blur-[140px] pointer-events-none"></div><div class="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-[#B89454]/10 blur-[140px] pointer-events-none"></div><div class="w-full max-w-md mx-auto space-y-5 relative z-10"><div class="w-full flex items-center justify-center relative"><div class="ornexa-panel w-full max-w-md p-7 space-y-5 border border-slate-200 dark:border-border shadow-lg bg-white dark:bg-card text-slate-900 dark:text-foreground rounded-2xl relative z-10 transition-all"><div class="text-center space-y-2 pb-1"><img alt="AVS ERP — Jewellery Ecosystem" class="w-auto object-contain object-left mx-auto h-28 max-w-[190px]" src="/assets/ornexa-logo-full.png"><div class="border-b border-slate-100 dark:border-border pb-2 pt-1"><span class="text-[#8C6D32] dark:text-[#B89454] uppercase tracking-widest text-[11px] font-bold">Standard Sign In</span></div></div><form class="space-y-4" data-testid="auth-form" id="auth-login-form"><div class="grid gap-1.5"><label class="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-xs font-semibold tracking-wide text-slate-800 dark:text-slate-200" for="auth-email-input">Corporation Email</label><div class="relative"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail absolute left-3.5 top-3 h-4 w-4 text-slate-400 dark:text-muted-foreground" aria-hidden="true"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"></path><rect x="2" y="4" width="20" height="16" rx="2"></rect></svg><input class="flex w-full border px-3 py-1 shadow-sm transition-[color,background-color,border-color,box-shadow] duration-150 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-offset-1 focus-visible:ring-offset-background aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20 disabled:cursor-not-allowed disabled:bg-muted/40 disabled:opacity-60 motion-reduce:transition-none md:text-sm pl-10 h-11 text-sm rounded-lg focus-visible:ring-2 focus-visible:ring-[#B89454]/40 focus-visible:border-[#B89454] border-slate-300 dark:border-input bg-slate-50/50 dark:bg-background text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground/60" id="auth-email-input" data-testid="auth-email" autocomplete="email" placeholder="employee@maatarajewellers.com" required="" type="email" value="user@example.com" data-explorbot-value="user@example.com"></div></div><div class="grid gap-1.5"><div class="flex justify-between items-center"><label class="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-xs font-semibold tracking-wide text-slate-800 dark:text-slate-200" for="auth-password-input">Password</label><a href="/forgot-password" class="text-[11px] text-[#8C6D32] dark:text-[#B89454] hover:underline focus:outline-none font-semibold transition-colors">Forgot?</a></div><div class="relative"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-key-round absolute left-3.5 top-3 h-4 w-4 text-slate-400 dark:text-muted-foreground" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"></circle></svg><input class="flex w-full border px-3 py-1 shadow-sm transition-[color,background-color,border-color,box-shadow] duration-150 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-offset-1 focus-visible:ring-offset-background aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20 disabled:cursor-not-allowed disabled:bg-muted/40 disabled:opacity-60 motion-reduce:transition-none md:text-sm pl-10 pr-10 h-11 text-sm rounded-lg focus-visible:ring-2 focus-visible:ring-[#B89454]/40 focus-visible:border-[#B89454] border-slate-300 dark:border-input bg-slate-50/50 dark:bg-background text-slate-900 dark:text-foreground placeholder:text-slate-400 dark:placeholder:text-muted-foreground/60" id="auth-password-input" data-testid="auth-password" autocomplete="current-password" placeholder="••••••••" required="" minlength="6" type="password" value="your_password" data-codeceptjs-rte-target="1" data-explorbot-value="your_password"><button type="button" aria-label="Show password" class="absolute right-3.5 top-3 focus:outline-none transition-colors text-slate-400 dark:text-muted-foreground hover:text-slate-700 dark:hover:text-foreground" id="btn-toggle-password"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye h-4 w-4" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg></button></div></div><label class="flex items-center gap-2 text-xs cursor-pointer select-none text-slate-600 dark:text-muted-foreground font-medium"><input class="rounded border-slate-300 dark:border-border text-[#B89454] focus:ring-[#B89454]" type="checkbox" checked="" data-explorbot-value="on" data-explorbot-checked="true">Keep me signed in on this device</label><div class="text-xs font-medium leading-relaxed rounded-lg p-3 flex flex-col gap-1.5 border text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900" data-testid="auth-error" id="auth-error-banner"><div class="flex items-start gap-2.5"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-alert h-4 w-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg><span>Invalid email or password.</span></div><div class="pl-6.5 text-[11px] flex items-center gap-3"><a href="/invite/accept" class="font-semibold underline hover:opacity-80 transition-opacity text-red-900 dark:text-red-200">Accept Invitation</a><span>·</span><a href="https://arivahly.in/products/onyxa-erp" target="_blank" rel="noopener noreferrer" class="font-semibold underline hover:opacity-80 transition-opacity text-red-900 dark:text-red-200">Request Demo ↗</a></div></div><button class="inline-flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 min-h-[var(--touch-target)] sm:min-h-0 px-4 py-2 w-full h-11 bg-[#B89454] hover:bg-[#A38245] text-slate-950 font-bold text-sm rounded-lg shadow-sm relative overflow-hidden transition-all active:scale-[0.99]" data-testid="auth-submit" type="submit" id="btn-auth-submit">Secure Sign In</button><div class="flex flex-col gap-2 pt-2 border-t border-slate-100 dark:border-border mt-2 text-center text-xs"><div class="flex items-center justify-center gap-4 text-xs"><a href="/otp-login" class="text-[#8C6D32] dark:text-[#B89454] font-semibold hover:underline focus:outline-none transition-colors">Sign In with OTP</a><span class="text-slate-300 dark:text-border">·</span><a href="/forgot-password" class="text-[#8C6D32] dark:text-[#B89454] font-semibold hover:underline focus:outline-none transition-colors">Forgot Password</a></div><a href="/invite/accept" class="text-[#8C6D32] dark:text-[#B89454] font-semibold hover:underline focus:outline-none flex justify-center items-center gap-1.5 transition-colors pt-1"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-check h-3.5 w-3.5" aria-hidden="true"><path d="m16 11 2 2 4-4"></path><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg> Accept Invitation Code</a></div></form><p class="text-[10px] text-slate-400 dark:text-muted-foreground text-center leading-relaxed">AVS ERP is invitation-only. Request access from AVS, or accept a secure invitation from your jeweller.</p></div></div><div class="rounded-xl border border-slate-200/80 dark:border-border bg-white dark:bg-card p-5 shadow-xs space-y-3 transition-all"><div class="flex items-center justify-between border-b border-slate-100 dark:border-border/60 pb-2"><h2 class="text-xs font-bold uppercase tracking-wider text-[#9E7B3B] dark:text-[#B89454]">Invitation &amp; Onboarding</h2><span class="text-[10px] text-slate-500 dark:text-muted-foreground font-medium">Enterprise Access</span></div><p class="text-xs text-slate-600 dark:text-muted-foreground leading-relaxed">Accounts are provisioned by invitation from your firm administrator. If you have received an invite code, activate your account below.</p><div class="grid grid-cols-2 gap-2.5 pt-1"><button type="button" data-testid="login-accept-invite" class="w-full rounded-lg border border-[#B89454] bg-[#B89454]/10 hover:bg-[#B89454]/20 px-3 py-2 text-xs font-semibold text-[#8C6D32] dark:text-[#B89454] shadow-xs transition-colors text-center">Accept Invitation</button><a href="https://arivahly.in/products/onyxa-erp" target="_blank" rel="noopener noreferrer" data-testid="login-request-demo" class="w-full rounded-lg bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white px-3 py-2 text-xs font-semibold shadow-xs transition-colors text-center flex items-center justify-center">Request Demo ↗</a></div></div><div class="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-slate-500 dark:text-muted-foreground pt-1"><a data-testid="login-link-terms" href="/terms" class="hover:text-slate-800 dark:hover:text-foreground hover:underline transition-colors">Terms of Service</a><span>·</span><a data-testid="login-link-privacy" href="/privacy" class="hover:text-slate-800 dark:hover:text-foreground hover:underline transition-colors">Privacy Policy</a><span>·</span><a href="https://arivahly.in/products/onyxa-erp" target="_blank" rel="noopener noreferrer" class="hover:text-slate-800 dark:hover:text-foreground hover:underline transition-colors">Onyxa by AVS</a></div></div></div></div><div role="dialog" aria-label="Cookie consent" class="fixed bottom-0 inset-x-0 z-[200] border-t border-border bg-card/95 backdrop-blur-md p-4 md:p-5 shadow-lg lg:bottom-4 lg:left-4 lg:right-auto lg:max-w-md lg:rounded-md lg:border"><p class="text-sm font-medium text-foreground">Cookies &amp; privacy</p><p class="mt-1 text-xs text-muted-foreground leading-relaxed">We use essential cookies for sign-in and security. Optional cookies help improve the product. See our <a href="/privacy" class="text-gold underline">Privacy Policy</a> and <a href="/terms" class="text-gold underline">Terms</a>.</p><div class="mt-3 flex flex-wrap gap-2"><button class="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium cursor-pointer transition-[color,background-color,border-color,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 min-h-[var(--touch-target)] sm:min-h-0 bg-primary text-primary-foreground hover:bg-primary-hover rounded-md px-3 text-xs h-8">Accept all</button><button class="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium cursor-pointer transition-[color,background-color,border-color,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 min-h-[var(--touch-target)] sm:min-h-0 border border-input bg-background hover:bg-muted hover:text-foreground rounded-md px-3 text-xs h-8">Essential only</button><button class="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium cursor-pointer transition-[color,background-color,border-color,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 min-h-[var(--touch-target)] sm:min-h-0 hover:bg-muted hover:text-foreground rounded-md px-3 h-8 text-xs">Manage</button></div></div><section aria-label="Notifications alt+T" tabindex="-1" aria-live="polite" aria-relevant="additions text" aria-atomic="false"></section></div>
+  
+
+</body></html>

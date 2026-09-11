@@ -11,7 +11,7 @@
  */
 import { usePeople, PERSON_TYPE_LABELS } from "@/lib/people-store";
 import { mgToGrams } from "@/lib/gold";
-import { paiseToRupees } from "@/lib/billing-store";
+import { paiseToRupees, useBilling } from "@/lib/billing-store";
 import { compileCustomerLedger, groupLedgerByMonth } from "@/lib/customer-account-ledger";
 import { getCaratLabel } from "@/lib/gold";
 import { compileWorkerBook, type WorkerBookRow } from "@/lib/workshop-worker-books";
@@ -415,7 +415,37 @@ export function buildCustomerLedgerStatementData(recordId: string): PrintDocumen
       closingCashText: `INR ${paiseToRupees(closeMoneyPaise)} (${cashBalWord(closeMoneyPaise)})`,
       closingOutstandingText: `${goldOutstanding} · ${cashOutstanding}`,
     },
-    tables: { entries: rows },
+    tables: {
+      entries: rows,
+      billWiseReconciliation: useBilling
+        .getState()
+        .invoices.filter((i) => i.customerId === personId && i.status !== "cancelled")
+        .sort((a, b) => a.createdAt - b.createdAt)
+        .map((inv) => {
+          const isGold = inv.transactionMode === "gold" || inv.billingType === "job_work" || inv.billingType === "wholesale";
+          const invRatePaise = inv.items[0]?.goldRatePerGramPaise || 750000;
+          const totalFineMg = (inv.items || []).reduce((s, it) => s + (it.fineMg || 0), 0) || Math.round((inv.grandTotalPaise / invRatePaise) * 1000);
+          const paidFineMg = (inv.payments || []).reduce((s, p) => {
+            if (p.mode === "gold_exchange" || p.mode === "customer_gold_credit" || (p.goldFineMg && p.goldFineMg > 0)) {
+              return s + (p.goldFineMg || p.goldGrossMg || 0);
+            }
+            const rate = p.goldRatePerGramPaise || invRatePaise;
+            return s + (rate > 0 ? Math.round((p.amountPaise * 1000) / rate) : 0);
+          }, 0) || (inv.grandTotalPaise > 0 ? Math.round((totalFineMg * (inv.paidPaise || 0)) / inv.grandTotalPaise) : 0);
+          const remFineMg = Math.max(0, totalFineMg - paidFineMg);
+
+          const status = remFineMg === 0 && (inv.balancePaise || 0) === 0 ? "PAID" : paidFineMg > 0 || (inv.paidPaise || 0) > 0 ? "PARTIAL" : "UNPAID";
+
+          return {
+            invoiceNo: inv.invoiceNo,
+            date: new Date(inv.createdAt).toLocaleDateString("en-IN"),
+            originalDue: isGold ? `${mgToGrams(totalFineMg)} g Fine` : `₹ ${paiseToRupees(inv.grandTotalPaise)}`,
+            paymentsAllocated: isGold ? `${mgToGrams(paidFineMg)} g Fine` : `₹ ${paiseToRupees(inv.paidPaise || 0)}`,
+            amountRemaining: isGold ? `${mgToGrams(remFineMg)} g Fine` : `₹ ${paiseToRupees(inv.balancePaise || 0)}`,
+            status,
+          };
+        }),
+    },
     flags: {
       hasEmail: !!person.email,
       hasAddress: addressParts.length > 0,
@@ -426,6 +456,293 @@ export function buildCustomerLedgerStatementData(recordId: string): PrintDocumen
       goldBalanceNegative: closeGoldMg < 0,
       moneyBalancePositive: closeMoneyPaise > 0,
       moneyBalanceNegative: closeMoneyPaise < 0,
+    },
+    images: {},
+    balances: {},
+  };
+}
+
+/**
+ * Customer Pack — All Unpaid / Partially Paid Invoices for the selected customer only.
+ */
+export function buildCustomerUnpaidInvoicesData(recordId: string): PrintDocumentData | null {
+  const [personId, fromRaw, toRaw, ...labelParts] = recordId.split("~");
+  const person = usePeople.getState().people.find((p) => p.id === personId);
+  if (!person) return null;
+
+  const allCustomerInvoices = useBilling
+    .getState()
+    .invoices.filter((i) => i.customerId === personId && i.status !== "cancelled");
+
+  const unpaidInvoices = allCustomerInvoices.filter((inv) => {
+    const invRate = inv.items[0]?.goldRatePerGramPaise || 750000;
+    const totalFineMg = (inv.items || []).reduce((s, it) => s + (it.fineMg || 0), 0) || Math.round((inv.grandTotalPaise / invRate) * 1000);
+    const paidFineMg = (inv.payments || []).reduce((s, p) => {
+      if (p.mode === "gold_exchange" || p.mode === "customer_gold_credit" || (p.goldFineMg && p.goldFineMg > 0)) {
+        return s + (p.goldFineMg || p.goldGrossMg || 0);
+      }
+      const rate = p.goldRatePerGramPaise || invRate;
+      return s + (rate > 0 ? Math.round((p.amountPaise * 1000) / rate) : 0);
+    }, 0) || (inv.grandTotalPaise > 0 ? Math.round((totalFineMg * (inv.paidPaise || 0)) / inv.grandTotalPaise) : 0);
+
+    const remFineMg = Math.max(0, totalFineMg - paidFineMg);
+    return remFineMg > 0 || (inv.balancePaise || 0) > 0 || inv.status !== "paid";
+  }).sort((a, b) => a.createdAt - b.createdAt);
+
+  type InvoiceItemRow = Record<string, unknown>;
+  const itemsRows: InvoiceItemRow[] = [];
+
+  let totalOutstandingGoldMg = 0;
+  let totalOutstandingCashPaise = 0;
+  let totalOriginalGoldMg = 0;
+  let totalPaidGoldMg = 0;
+
+  for (const inv of unpaidInvoices) {
+    const isGold = inv.transactionMode === "gold" || inv.billingType === "job_work" || inv.billingType === "wholesale";
+    const invRate = inv.items[0]?.goldRatePerGramPaise || 750000;
+    const invTotalFineMg = (inv.items || []).reduce((s, it) => s + (it.fineMg || 0), 0) || Math.round((inv.grandTotalPaise / invRate) * 1000);
+    const invPaidFineMg = (inv.payments || []).reduce((s, p) => {
+      if (p.mode === "gold_exchange" || p.mode === "customer_gold_credit" || (p.goldFineMg && p.goldFineMg > 0)) {
+        return s + (p.goldFineMg || p.goldGrossMg || 0);
+      }
+      const rate = p.goldRatePerGramPaise || invRate;
+      return s + (rate > 0 ? Math.round((p.amountPaise * 1000) / rate) : 0);
+    }, 0) || (inv.grandTotalPaise > 0 ? Math.round((invTotalFineMg * (inv.paidPaise || 0)) / inv.grandTotalPaise) : 0);
+    const invRemFineMg = Math.max(0, invTotalFineMg - invPaidFineMg);
+
+    totalOriginalGoldMg += invTotalFineMg;
+    totalPaidGoldMg += invPaidFineMg;
+    totalOutstandingGoldMg += invRemFineMg;
+    totalOutstandingCashPaise += inv.balancePaise || 0;
+
+    for (let idx = 0; idx < (inv.items || []).length; idx++) {
+      const it = inv.items[idx];
+      const tanch = it.purity ? (it.purity / 10).toFixed(2) : "91.60";
+      const wstg = it.wastagePct != null ? Number(it.wastagePct).toFixed(2) : "0.00";
+      const hisob = it.hisobPct != null && Number(it.hisobPct) > 0 
+        ? Number(it.hisobPct).toFixed(2) 
+        : (Number(tanch) + Number(wstg)).toFixed(2);
+      const jn = it.jn === 2 ? "N" : "J";
+      const metal = it.metalKind === "silver" ? "Silver" : "Gold";
+      const diamondCt = it.diamondWeightMg ? (it.diamondWeightMg / 200).toFixed(2) : "0";
+
+      const metaParts = [`${metal} (${jn}) · ${it.pcs || 1} Pc`];
+      if (it.huid) metaParts.push(`HUID: ${it.huid}`);
+      if (it.barcode) metaParts.push(`Tag: ${it.barcode}`);
+      const descFull = [it.itemName || "Jewellery Item", metaParts.join(" | ")].join("\n");
+
+      itemsRows.push({
+        invoiceNo: inv.invoiceNo,
+        invoiceDate: new Date(inv.createdAt).toLocaleDateString("en-IN"),
+        description: descFull,
+        metal,
+        jn,
+        pcs: String(it.pcs || 1),
+        grossWt: `${mgToGrams(it.grossMg)}`,
+        lessWt: `${mgToGrams(it.lessMg || 0)}`,
+        addWt: `${mgToGrams(it.addMg || 0)}`,
+        netWt: `${mgToGrams(it.netMg)}`,
+        tanch,
+        wstg: `${wstg}%`,
+        tanchWstg: `${tanch}% + ${wstg}%`,
+        hisob: `${hisob}%`,
+        fineWt: `${mgToGrams(it.fineMg)}`,
+        basis: "995 Basis",
+        goldWt: `${mgToGrams(it.fineMg)} g`,
+        makingLabel: isGold ? (it.makingChargesGoldMg ? `${mgToGrams(it.makingChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.makingChargesPaise || 0)}`,
+        hmLabel: isGold ? (it.hallmarkChargesGoldMg ? `${mgToGrams(it.hallmarkChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.hallmarkChargesPaise || 0)}`,
+        stoneLabel: isGold ? (it.stoneChargesGoldMg ? `${mgToGrams(it.stoneChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.stoneChargesPaise || 0)}`,
+        stoneWt: `${mgToGrams(it.stoneWeightMg || 0)}`,
+        diaCt: diamondCt,
+        otherLabel: isGold ? (it.otherChargesGoldMg ? `${mgToGrams(it.otherChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.otherChargesPaise || 0)}`,
+        discLabel: isGold ? (it.discountGoldMg ? `-${mgToGrams(it.discountGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.discountPaise || 0)}`,
+        totalLabel: isGold ? `${mgToGrams(it.fineMg)} g` : `₹${paiseToRupees(it.lineTotalPaise || 0)}`,
+        amountDue: isGold ? `${mgToGrams(invTotalFineMg)} g` : `₹${paiseToRupees(inv.grandTotalPaise)}`,
+        amountPaid: isGold ? `${mgToGrams(invPaidFineMg)} g` : `₹${paiseToRupees(inv.paidPaise || 0)}`,
+        amountRemaining: isGold ? `${mgToGrams(invRemFineMg)} g` : `₹${paiseToRupees(inv.balancePaise || 0)}`,
+        status: invRemFineMg === 0 ? "PAID" : invPaidFineMg > 0 ? "PARTIAL" : "UNPAID",
+        additionalBreakdown: [
+          { label: "Gold", value: `${mgToGrams(it.fineMg)} g` },
+          { label: "Making", value: isGold ? (it.makingChargesGoldMg ? `${mgToGrams(it.makingChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.makingChargesPaise || 0)}` },
+          { label: "HM", value: isGold ? (it.hallmarkChargesGoldMg ? `${mgToGrams(it.hallmarkChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.hallmarkChargesPaise || 0)}` },
+          { label: "Stone", value: isGold ? (it.stoneChargesGoldMg ? `${mgToGrams(it.stoneChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.stoneChargesPaise || 0)}`, extra: it.stoneWeightMg ? `${mgToGrams(it.stoneWeightMg)}g Wt` : undefined },
+          { label: "Dia", value: `${diamondCt} ct`, show: (it.diamondWeightMg ?? 0) > 0 },
+          { label: "Other", value: isGold ? (it.otherChargesGoldMg ? `${mgToGrams(it.otherChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.otherChargesPaise || 0)}` },
+          { label: "Disc", value: isGold ? (it.discountGoldMg ? `-${mgToGrams(it.discountGoldMg)} g` : "0.000 g") : (it.discountPaise ? `-₹${paiseToRupees(it.discountPaise)}` : "0.000 g") },
+          { label: "Item Total", value: isGold ? `${mgToGrams(it.fineMg)} g` : `₹${paiseToRupees(it.lineTotalPaise || 0)}`, emphasis: true },
+        ],
+      });
+    }
+  }
+
+  const addressParts = [person.currentAddress, person.villageCity, person.state].filter(Boolean);
+
+  return {
+    docType: "customer_unpaid_invoices",
+    docNumber: `UNPAID-${personId.toUpperCase().slice(-6)}`,
+    recordId: person.id,
+    createdAt: Date.now(),
+    title: "Customer Unpaid Invoices Statement",
+    fields: {
+      customerName: person.fullName,
+      customerPhone: person.phone || "",
+      customerEmail: person.email || "",
+      customerAddress: addressParts.join(", "),
+      customerGstin: person.gstin || "",
+      customerPan: person.pan || "",
+      statementDate: new Date().toLocaleDateString("en-IN"),
+      unpaidCountText: `${unpaidInvoices.length} Unpaid / Partial Invoices`,
+      totalOriginalGoldText: `${mgToGrams(totalOriginalGoldMg)} g Fine Gold`,
+      totalPaidGoldText: `${mgToGrams(totalPaidGoldMg)} g Fine Gold`,
+      totalOutstandingGoldText: `${mgToGrams(totalOutstandingGoldMg)} g Fine Gold`,
+      totalOutstandingCashText: `₹ ${paiseToRupees(totalOutstandingCashPaise)}`,
+      summaryStatement: `Total Outstanding Gold Obligation: ${mgToGrams(totalOutstandingGoldMg)} g Fine Gold across ${unpaidInvoices.length} pending bills.`,
+    },
+    tables: { items: itemsRows },
+    flags: {
+      hasEmail: !!person.email,
+      hasAddress: addressParts.length > 0,
+      hasGstin: !!person.gstin,
+      hasPan: !!person.pan,
+      hasItems: itemsRows.length > 0,
+    },
+    images: {},
+    balances: {},
+  };
+}
+
+/**
+ * Customer Pack — All Paid Invoices for the selected customer only.
+ */
+export function buildCustomerPaidInvoicesData(recordId: string): PrintDocumentData | null {
+  const [personId, fromRaw, toRaw, ...labelParts] = recordId.split("~");
+  const person = usePeople.getState().people.find((p) => p.id === personId);
+  if (!person) return null;
+
+  const allCustomerInvoices = useBilling
+    .getState()
+    .invoices.filter((i) => i.customerId === personId && i.status !== "cancelled");
+
+  const paidInvoices = allCustomerInvoices.filter((inv) => {
+    const invRate = inv.items[0]?.goldRatePerGramPaise || 750000;
+    const totalFineMg = (inv.items || []).reduce((s, it) => s + (it.fineMg || 0), 0) || Math.round((inv.grandTotalPaise / invRate) * 1000);
+    const paidFineMg = (inv.payments || []).reduce((s, p) => {
+      if (p.mode === "gold_exchange" || p.mode === "customer_gold_credit" || (p.goldFineMg && p.goldFineMg > 0)) {
+        return s + (p.goldFineMg || p.goldGrossMg || 0);
+      }
+      const rate = p.goldRatePerGramPaise || invRate;
+      return s + (rate > 0 ? Math.round((p.amountPaise * 1000) / rate) : 0);
+    }, 0) || (inv.grandTotalPaise > 0 ? Math.round((totalFineMg * (inv.paidPaise || 0)) / inv.grandTotalPaise) : 0);
+
+    const remFineMg = Math.max(0, totalFineMg - paidFineMg);
+    const isGold = inv.transactionMode === "gold" || inv.billingType === "job_work" || inv.billingType === "wholesale";
+    return isGold ? remFineMg === 0 : (inv.balancePaise || 0) === 0 || inv.status === "paid";
+  }).sort((a, b) => a.createdAt - b.createdAt);
+
+  type InvoiceItemRow = Record<string, unknown>;
+  const itemsRows: InvoiceItemRow[] = [];
+
+  let totalPaidGoldMg = 0;
+  let totalPaidCashPaise = 0;
+
+  for (const inv of paidInvoices) {
+    const isGold = inv.transactionMode === "gold" || inv.billingType === "job_work" || inv.billingType === "wholesale";
+    const invRate = inv.items[0]?.goldRatePerGramPaise || 750000;
+    const invTotalFineMg = (inv.items || []).reduce((s, it) => s + (it.fineMg || 0), 0) || Math.round((inv.grandTotalPaise / invRate) * 1000);
+
+    totalPaidGoldMg += invTotalFineMg;
+    totalPaidCashPaise += inv.paidPaise || inv.grandTotalPaise || 0;
+
+    const paidDates = (inv.payments || []).map((p) => new Date(p.ts).toLocaleDateString("en-IN")).join(", ") || new Date(inv.createdAt).toLocaleDateString("en-IN");
+
+    for (let idx = 0; idx < (inv.items || []).length; idx++) {
+      const it = inv.items[idx];
+      const tanch = it.purity ? (it.purity / 10).toFixed(2) : "91.60";
+      const wstg = it.wastagePct != null ? Number(it.wastagePct).toFixed(2) : "0.00";
+      const hisob = it.hisobPct != null && Number(it.hisobPct) > 0 
+        ? Number(it.hisobPct).toFixed(2) 
+        : (Number(tanch) + Number(wstg)).toFixed(2);
+      const jn = it.jn === 2 ? "N" : "J";
+      const metal = it.metalKind === "silver" ? "Silver" : "Gold";
+      const diamondCt = it.diamondWeightMg ? (it.diamondWeightMg / 200).toFixed(2) : "0";
+
+      const metaParts = [`${metal} (${jn}) · ${it.pcs || 1} Pc`];
+      if (it.huid) metaParts.push(`HUID: ${it.huid}`);
+      if (it.barcode) metaParts.push(`Tag: ${it.barcode}`);
+      const descFull = [it.itemName || "Jewellery Item", metaParts.join(" | ")].join("\n");
+
+      itemsRows.push({
+        invoiceNo: inv.invoiceNo,
+        invoiceDate: new Date(inv.createdAt).toLocaleDateString("en-IN"),
+        paidDate: paidDates,
+        description: descFull,
+        metal,
+        jn,
+        pcs: String(it.pcs || 1),
+        grossWt: `${mgToGrams(it.grossMg)}`,
+        lessWt: `${mgToGrams(it.lessMg || 0)}`,
+        addWt: `${mgToGrams(it.addMg || 0)}`,
+        netWt: `${mgToGrams(it.netMg)}`,
+        tanch,
+        wstg: `${wstg}%`,
+        tanchWstg: `${tanch}% + ${wstg}%`,
+        hisob: `${hisob}%`,
+        fineWt: `${mgToGrams(it.fineMg)}`,
+        basis: "995 Basis",
+        goldWt: `${mgToGrams(it.fineMg)} g`,
+        makingLabel: isGold ? (it.makingChargesGoldMg ? `${mgToGrams(it.makingChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.makingChargesPaise || 0)}`,
+        hmLabel: isGold ? (it.hallmarkChargesGoldMg ? `${mgToGrams(it.hallmarkChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.hallmarkChargesPaise || 0)}`,
+        stoneLabel: isGold ? (it.stoneChargesGoldMg ? `${mgToGrams(it.stoneChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.stoneChargesPaise || 0)}`,
+        stoneWt: `${mgToGrams(it.stoneWeightMg || 0)}`,
+        diaCt: diamondCt,
+        otherLabel: isGold ? (it.otherChargesGoldMg ? `${mgToGrams(it.otherChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.otherChargesPaise || 0)}`,
+        discLabel: isGold ? (it.discountGoldMg ? `-${mgToGrams(it.discountGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.discountPaise || 0)}`,
+        totalLabel: isGold ? `${mgToGrams(it.fineMg)} g` : `₹${paiseToRupees(it.lineTotalPaise || 0)}`,
+        amountDue: isGold ? `${mgToGrams(invTotalFineMg)} g` : `₹${paiseToRupees(inv.grandTotalPaise)}`,
+        amountPaid: isGold ? `${mgToGrams(invTotalFineMg)} g` : `₹${paiseToRupees(inv.paidPaise || inv.grandTotalPaise)}`,
+        status: "SETTLED / PAID",
+        additionalBreakdown: [
+          { label: "Gold", value: `${mgToGrams(it.fineMg)} g` },
+          { label: "Making", value: isGold ? (it.makingChargesGoldMg ? `${mgToGrams(it.makingChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.makingChargesPaise || 0)}` },
+          { label: "HM", value: isGold ? (it.hallmarkChargesGoldMg ? `${mgToGrams(it.hallmarkChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.hallmarkChargesPaise || 0)}` },
+          { label: "Stone", value: isGold ? (it.stoneChargesGoldMg ? `${mgToGrams(it.stoneChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.stoneChargesPaise || 0)}`, extra: it.stoneWeightMg ? `${mgToGrams(it.stoneWeightMg)}g Wt` : undefined },
+          { label: "Dia", value: `${diamondCt} ct`, show: (it.diamondWeightMg ?? 0) > 0 },
+          { label: "Other", value: isGold ? (it.otherChargesGoldMg ? `${mgToGrams(it.otherChargesGoldMg)} g` : "0.000 g") : `₹${paiseToRupees(it.otherChargesPaise || 0)}` },
+          { label: "Disc", value: isGold ? (it.discountGoldMg ? `-${mgToGrams(it.discountGoldMg)} g` : "0.000 g") : (it.discountPaise ? `-₹${paiseToRupees(it.discountPaise)}` : "0.000 g") },
+          { label: "Item Total", value: isGold ? `${mgToGrams(it.fineMg)} g` : `₹${paiseToRupees(it.lineTotalPaise || 0)}`, emphasis: true },
+        ],
+      });
+    }
+  }
+
+  const addressParts = [person.currentAddress, person.villageCity, person.state].filter(Boolean);
+
+  return {
+    docType: "customer_paid_invoices",
+    docNumber: `PAID-${personId.toUpperCase().slice(-6)}`,
+    recordId: person.id,
+    createdAt: Date.now(),
+    title: "Customer Paid Invoices Statement",
+    fields: {
+      customerName: person.fullName,
+      customerPhone: person.phone || "",
+      customerEmail: person.email || "",
+      customerAddress: addressParts.join(", "),
+      customerGstin: person.gstin || "",
+      customerPan: person.pan || "",
+      statementDate: new Date().toLocaleDateString("en-IN"),
+      paidCountText: `${paidInvoices.length} Settled Invoices`,
+      totalPaidGoldText: `${mgToGrams(totalPaidGoldMg)} g Fine Gold`,
+      totalPaidCashText: `₹ ${paiseToRupees(totalPaidCashPaise)}`,
+      summaryStatement: `Total Fully Settled Gold: ${mgToGrams(totalPaidGoldMg)} g Fine Gold across ${paidInvoices.length} paid bills.`,
+    },
+    tables: { items: itemsRows },
+    flags: {
+      hasEmail: !!person.email,
+      hasAddress: addressParts.length > 0,
+      hasGstin: !!person.gstin,
+      hasPan: !!person.pan,
+      hasItems: itemsRows.length > 0,
     },
     images: {},
     balances: {},

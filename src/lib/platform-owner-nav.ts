@@ -14,11 +14,13 @@ import {
   Headphones,
   LayoutDashboard,
   LifeBuoy,
+  Mail,
   Package,
   Receipt,
   Settings2,
   ShieldCheck,
   UserCircle,
+  UserPlus,
   Users,
 } from "lucide-react";
 
@@ -37,7 +39,7 @@ export type PlatformNavGroup = {
   items: PlatformNavItem[];
 };
 
-/** Canonical Owner Panel navigation (V1 stabilization). */
+/** Canonical Owner Panel navigation. */
 export const platformOwnerNav: PlatformNavGroup[] = [
   {
     id: "dashboard",
@@ -56,6 +58,13 @@ export const platformOwnerNav: PlatformNavGroup[] = [
     id: "tenant-management",
     title: "Tenant Management",
     items: [
+      {
+        id: "tenants-create",
+        label: "Create Tenant",
+        pathname: "/platform",
+        search: { view: "create-tenant" },
+        icon: UserPlus,
+      },
       {
         id: "tenants-all",
         label: "All Tenants",
@@ -87,43 +96,9 @@ export const platformOwnerNav: PlatformNavGroup[] = [
     ],
   },
   {
-    id: "onboarding-trials",
-    title: "Onboarding & Trials",
-    items: [
-      {
-        id: "onboarding",
-        label: "Onboarding",
-        pathname: "/platform/trials",
-        search: { tab: "onboarding" },
-        icon: GraduationCap,
-      },
-      {
-        id: "trials-active",
-        label: "Active Trials",
-        pathname: "/platform/trials",
-        search: { filter: "active" },
-        icon: GraduationCap,
-      },
-      {
-        id: "trials-expiring",
-        label: "Expiring Trials",
-        pathname: "/platform/trials",
-        search: { filter: "expiring" },
-        icon: AlertTriangle,
-      },
-    ],
-  },
-  {
     id: "products-plans",
     title: "Products & Plans",
     items: [
-      {
-        id: "products",
-        label: "Products",
-        pathname: "/platform/plans",
-        search: { tab: "products" },
-        icon: Package,
-      },
       {
         id: "plans",
         label: "Plans",
@@ -145,33 +120,19 @@ export const platformOwnerNav: PlatformNavGroup[] = [
         search: { tab: "verification" },
         icon: FileText,
       },
+      {
+        id: "products",
+        label: "Product Catalog",
+        pathname: "/platform/plans",
+        search: { tab: "products" },
+        icon: Package,
+      },
     ],
   },
   {
     id: "billing-payments",
-    title: "Billing & Payments",
+    title: "Billing & Subscriptions",
     items: [
-      {
-        id: "billing-quotations",
-        label: "Quotations",
-        pathname: "/platform",
-        search: { view: "billing", billingTab: "quotations" },
-        icon: FileText,
-      },
-      {
-        id: "billing-invoices",
-        label: "Invoices",
-        pathname: "/platform",
-        search: { view: "billing", billingTab: "invoices" },
-        icon: Receipt,
-      },
-      {
-        id: "billing-payments",
-        label: "Payments",
-        pathname: "/platform",
-        search: { view: "billing", billingTab: "payments" },
-        icon: CreditCard,
-      },
       {
         id: "billing-subscriptions",
         label: "Subscriptions",
@@ -180,24 +141,38 @@ export const platformOwnerNav: PlatformNavGroup[] = [
         icon: CreditCard,
       },
       {
-        id: "billing-licenses",
-        label: "Licenses",
+        id: "billing-invoices",
+        label: "Platform Invoices",
         pathname: "/platform",
-        search: { view: "licenses" },
-        icon: ShieldCheck,
+        search: { view: "billing", billingTab: "invoices" },
+        icon: Receipt,
+      },
+      {
+        id: "billing-quotations",
+        label: "Platform Quotations",
+        pathname: "/platform",
+        search: { view: "billing", billingTab: "quotations" },
+        icon: FileText,
+      },
+      {
+        id: "billing-payments",
+        label: "Payments",
+        pathname: "/platform",
+        search: { view: "billing", billingTab: "payments" },
+        icon: CreditCard,
       },
     ],
   },
   {
     id: "platform-config",
-    title: "Platform Configuration",
+    title: "Communications & Configuration",
     items: [
       {
-        id: "config-branding",
-        label: "Branding",
+        id: "config-email",
+        label: "Platform Email Service",
         pathname: "/platform",
-        search: { view: "settings", settingsTab: "branding" },
-        icon: Settings2,
+        search: { view: "email" },
+        icon: Mail,
       },
       {
         id: "config-documents",
@@ -205,6 +180,13 @@ export const platformOwnerNav: PlatformNavGroup[] = [
         pathname: "/platform",
         search: { view: "settings", settingsTab: "documents" },
         icon: FileText,
+      },
+      {
+        id: "config-branding",
+        label: "Branding",
+        pathname: "/platform",
+        search: { view: "settings", settingsTab: "branding" },
+        icon: Settings2,
       },
       {
         id: "config-platform",
@@ -215,7 +197,7 @@ export const platformOwnerNav: PlatformNavGroup[] = [
       },
       {
         id: "config-razorpay",
-        label: "Razorpay",
+        label: "Razorpay Gateway",
         pathname: "/platform",
         search: { view: "settings", settingsTab: "razorpay" },
         icon: CreditCard,
@@ -223,32 +205,12 @@ export const platformOwnerNav: PlatformNavGroup[] = [
     ],
   },
   {
-    id: "support",
-    title: "Support",
-    items: [
-      {
-        id: "support-help",
-        label: "Help / Knowledge Base",
-        pathname: "/platform",
-        search: { view: "help" },
-        icon: LifeBuoy,
-      },
-      {
-        id: "support-tickets",
-        label: "Support Requests",
-        pathname: "/platform",
-        search: { view: "tickets" },
-        icon: Headphones,
-      },
-    ],
-  },
-  {
     id: "system",
-    title: "System",
+    title: "System & Governance",
     items: [
       {
         id: "system-users",
-        label: "Users / Admin Accounts",
+        label: "Platform Admins",
         pathname: "/platform",
         search: { view: "users" },
         icon: Users,

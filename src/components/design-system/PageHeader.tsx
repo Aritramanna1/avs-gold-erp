@@ -58,8 +58,8 @@ export function PageHeader({
             {backLabel || "Back"}
           </Button>
         ))}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
+      <div className="flex flex-col gap-3.5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-[240px] flex-1">
           <h1
             className={cn(
               "font-semibold tracking-tight text-foreground leading-tight",
@@ -69,11 +69,11 @@ export function PageHeader({
             {title}
           </h1>
           {resolvedSubtitle ? (
-            <p className="text-sm text-muted-foreground mt-0.5 max-w-3xl">{resolvedSubtitle}</p>
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{resolvedSubtitle}</p>
           ) : null}
         </div>
         {actions ? (
-          <div className="flex flex-wrap gap-2 justify-start sm:justify-end shrink-0">
+          <div className="flex flex-wrap gap-2 justify-start lg:justify-end items-center">
             {actions}
           </div>
         ) : null}

@@ -1,0 +1,85 @@
+{
+  "timestamp": "2026-09-08T11:36:31.094Z",
+  "results": [
+    {
+      "route": "/login",
+      "url": "http://localhost:3000/login",
+      "status": 0,
+      "passed": true,
+      "durationMs": 9645,
+      "output": "⛵ Explorbot v0.4.4 Autonomous Testing Agent\nConfiguration loaded from: C:\\final erp 29.08\\new and final\\explorbot.config.js\nchromium starting in headless mode\n   > Enabling debug protocol for Chromium at http://localhost:9222\nBrowser started, ready to explore\n\n   I.amOnPage(\"http://localhost:3000/login\")\nPAGE (Auto-attached)\n/login\nAVS ERP — Jewellery Ecosystem ERP\n\nHEADINGS (Auto-attached)\nH2: Invitation & Onboarding\n\nRESEARCH (Auto-attached)\n(Not available)\n\nARIA (Auto-attached)\n\n* img \"AVS ERP — Jewellery Ecosystem\"\n* text: Standard Sign In Corporation Email\n* textbox \"Corporation Email\":\n* /placeholder: employee@maatarajewellers.com (mailto:employee@maatarajewellers.com)\n* text: Password\n* link \"Forgot?\":\n* /url: /forgot-password\n* textbox \"Password\":\n* /placeholder: ••••••••\n* button \"Show password\"\n* checkbox \"Keep me signed in on this device\" [checked]\n* text: Keep me signed in on this device\n* button \"Secure Sign In\"\n* link \"Sign In with OTP\":\n* /url: /otp-login\n* text: ·\n* link \"Forgot Password\":\n* /url: /forgot-password\n* link \"Accept Invitation Code\":\n* /url: /invite/accept\n* paragraph: AVS ERP is invitation-only. Request access from AVS, or accept a secure invitation from your jeweller.\n* heading \"Invitation & Onboarding\" [level=2]\n* text: Enterprise Access\n* paragraph: Accounts are provisioned by invitation from your firm administrator. If you have received an invite code, activate your account below.\n* button \"Accept Invitation\"\n* link \"Request Demo ↗\":\n* /url: https://arivahly.in/products/onyxa-erp\n* link \"Terms of Service\":\n* /url: /terms\n* text: ·\n* link \"Privacy Policy\":\n* /url: /privacy\n* text: ·\n* link \"Onyxa by AVS\":\n* /url: https://arivahly.in/products/onyxa-erp\n* dialog \"Cookie consent\":\n* paragraph: Cookies & privacy\n* paragraph:\n        * text: We use essential cookies for sign-in and security. Optional cookies help improve the product. See our\n        * link \"Privacy Policy\":\n            * /url: /privacy\n        * text: and\n        * link \"Terms\":\n            * /url: /terms\n        * text: .\n* button \"Accept all\"\n* button \"Essential only\"\n* button \"Manage\"\n* region \"Notifications alt+T\"\n\n\n\n"
+    },
+    {
+      "route": "/",
+      "url": "http://localhost:3000/",
+      "status": null,
+      "passed": false,
+      "durationMs": 60010,
+      "output": "⛵ Explorbot v0.4.4 Autonomous Testing Agent\nConfiguration loaded from: C:\\final erp 29.08\\new and final\\explorbot.config.js\nchromium starting in headless mode\n   > Enabling debug protocol for Chromium at http://localhost:9222\nBrowser started, ready to explore\n\n   I.amOnPage(\"http://localhost:3000/\")\nAI Navigator resolving state at /login?redirect=&error=\n   I.click({\"role\":\"button\",\"text\":\"Accept all\"}, {\"role\":\"dialog\",\"text\":\"Cookie consent\"})\nURL verification failed: expected http://localhost:3000/, got /login?redirect=&error=\n   I.click(\"Accept all\", \"[aria-label='Cookie consent']\")\n   I.click(\"//div[@role='dialog'][@aria-label='Cookie consent']//button[contains(text(), 'Accept all')]\")\n"
+    },
+    {
+      "route": "/orders",
+      "url": "http://localhost:3000/orders",
+      "status": null,
+      "passed": false,
+      "durationMs": 60018,
+      "output": "⛵ Explorbot v0.4.4 Autonomous Testing Agent\nConfiguration loaded from: C:\\final erp 29.08\\new and final\\explorbot.config.js\nchromium starting in headless mode\n   > Enabling debug protocol for Chromium at http://localhost:9222\nBrowser started, ready to explore\n\n   I.amOnPage(\"http://localhost:3000/orders\")\nAI Navigator resolving state at /login?redirect=%252Forders%253Fq%253D%2526status%253Dall%2526type%253Dall%2526page%253D1&error=\n   I.fillField({\"role\":\"textbox\",\"text\":\"Corporation Email\"}, \"user@example.com\")\nURL verification failed: expected http://localhost:3000/orders, got /login?redirect=%252Forders%253Fq%253D%2526status%253Dall%2526type%253Dall%2526page%253D1&error=\n   I.fillField(\"#auth-email-input\", \"user@example.com\")\nURL verification failed: expected http://localhost:3000/orders, got /login?redirect=%252Forders%253Fq%253D%2526status%253Dall%2526type%253Dall%2526page%253D1&error=\n   I.fillField(\"//form[@id=\"auth-login-form\"]//input[@type=\"email\"]\", \"user@example.com\")\nURL verification failed: expected http://localhost:3000/orders, got /login?redirect=%252Forders%253Fq%253D%2526status%253Dall%2526type%253Dall%2526page%253D1&error=\n   I.fillField({\"role\":\"textbox\",\"text\":\"Corporation Email\"}, \"user@example.com\", \"#auth-login-form\")\nURL verification failed: expected http://localhost:3000/orders, got /login?redirect=%252Forders%253Fq%253D%2526status%253Dall%2526type%253Dall%2526page%253D1&error=\n   I.fillField(\"input[id=\"auth-email-input\"]\", \"user@example.com\")\nURL verification failed: expected http://localhost:3000/orders, got /login?redirect=%252Forders%253Fq%253D%2526status%253Dall%2526type%253Dall%2526page%253D1&error=\n"
+    },
+    {
+      "route": "/workshop",
+      "url": "http://localhost:3000/workshop",
+      "status": null,
+      "passed": false,
+      "durationMs": 60017,
+      "output": "⛵ Explorbot v0.4.4 Autonomous Testing Agent\nConfiguration loaded from: C:\\final erp 29.08\\new and final\\explorbot.config.js\nchromium starting in headless mode\n   > Enabling debug protocol for Chromium at http://localhost:9222\n"
+    },
+    {
+      "route": "/people",
+      "url": "http://localhost:3000/people",
+      "status": null,
+      "passed": false,
+      "durationMs": 60082,
+      "output": "⛵ Explorbot v0.4.4 Autonomous Testing Agent\nConfiguration loaded from: C:\\final erp 29.08\\new and final\\explorbot.config.js\nchromium starting in headless mode\n   > Enabling debug protocol for Chromium at http://localhost:9222\n"
+    },
+    {
+      "route": "/stock",
+      "url": "http://localhost:3000/stock",
+      "status": null,
+      "passed": false,
+      "durationMs": 60050,
+      "output": "⛵ Explorbot v0.4.4 Autonomous Testing Agent\nConfiguration loaded from: C:\\final erp 29.08\\new and final\\explorbot.config.js\nchromium starting in headless mode\n   > Enabling debug protocol for Chromium at http://localhost:9222\n"
+    },
+    {
+      "route": "/billing",
+      "url": "http://localhost:3000/billing",
+      "status": null,
+      "passed": false,
+      "durationMs": 60051,
+      "output": "⛵ Explorbot v0.4.4 Autonomous Testing Agent\nConfiguration loaded from: C:\\final erp 29.08\\new and final\\explorbot.config.js\nchromium starting in headless mode\n   > Enabling debug protocol for Chromium at http://localhost:9222\n"
+    },
+    {
+      "route": "/reports",
+      "url": "http://localhost:3000/reports",
+      "status": null,
+      "passed": false,
+      "durationMs": 60055,
+      "output": "⛵ Explorbot v0.4.4 Autonomous Testing Agent\nConfiguration loaded from: C:\\final erp 29.08\\new and final\\explorbot.config.js\nchromium starting in headless mode\n   > Enabling debug protocol for Chromium at http://localhost:9222\n"
+    },
+    {
+      "route": "/settings",
+      "url": "http://localhost:3000/settings",
+      "status": null,
+      "passed": false,
+      "durationMs": 60192,
+      "output": "⛵ Explorbot v0.4.4 Autonomous Testing Agent\nConfiguration loaded from: C:\\final erp 29.08\\new and final\\explorbot.config.js\nchromium starting in headless mode\n   > Enabling debug protocol for Chromium at http://localhost:9222\n"
+    },
+    {
+      "route": "/invite/accept",
+      "url": "http://localhost:3000/invite/accept",
+      "status": null,
+      "passed": false,
+      "durationMs": 60192,
+      "output": ""
+    }
+  ]
+}

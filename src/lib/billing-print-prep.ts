@@ -13,8 +13,19 @@ const INVOICE_PRINT_DOC_TYPES = new Set<PrintDocType>([
   "invoice_quote_preview",
 ]);
 
+export const CUSTOMER_LEDGER_DOC_TYPES = new Set<PrintDocType>([
+  "customer_ledger_statement",
+  "customer_unpaid_invoices",
+  "customer_paid_invoices",
+  "karigar_custody_statement",
+]);
+
 export function isInvoicePrintDocType(docType: PrintDocType): boolean {
   return INVOICE_PRINT_DOC_TYPES.has(docType);
+}
+
+export function isCustomerLedgerDocType(docType: PrintDocType): boolean {
+  return CUSTOMER_LEDGER_DOC_TYPES.has(docType);
 }
 
 export async function ensureBillingInvoiceForPrint(recordId: string): Promise<Invoice | null> {
@@ -53,4 +64,33 @@ export async function ensureBillingInvoiceForPrint(recordId: string): Promise<In
   }
 
   return inv;
+}
+
+export async function ensureCustomerLedgerForPrint(recordId: string): Promise<void> {
+  const personId = recordId.split("~")[0];
+  const { usePeople } = await import("@/lib/people-store");
+  const { useBilling } = await import("@/lib/billing-store");
+  const { useOrders } = await import("@/lib/orders-store");
+  const { useGoldSettlement } = await import("@/lib/gold-settlement-store");
+  const { useMfgBills } = await import("@/lib/manufacturing-bill-store");
+  const { useJobCards } = await import("@/lib/jobcards-store");
+  const { useWorkerGoldBook } = await import("@/lib/worker-gold-book-store");
+  const { useWorkers } = await import("@/lib/workers-store");
+  const { useMoneyVoucherStore } = await import("@/lib/money-voucher");
+  const { useLedger } = await import("@/lib/ledger-store");
+  const { useDeliveryChallans } = await import("@/lib/billing-documents-store");
+
+  await Promise.allSettled([
+    usePeople.getState().refresh(),
+    useBilling.getState().refresh(),
+    useOrders.getState().refresh(),
+    useGoldSettlement.getState().refresh(),
+    useMfgBills.getState().refresh(),
+    useJobCards.getState().refresh(),
+    useWorkerGoldBook.getState().refresh?.(),
+    useWorkers.getState().refresh?.(),
+    useMoneyVoucherStore.getState().hydrate(),
+    useLedger.getState().refresh(),
+    useDeliveryChallans.getState().refresh?.(),
+  ]);
 }

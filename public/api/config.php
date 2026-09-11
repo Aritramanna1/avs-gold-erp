@@ -7,7 +7,7 @@
  */
 
 // Prevent direct execution outside API scripts
-if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'] ?? '')) {
+if (realpath(__FILE__) && realpath($_SERVER['SCRIPT_FILENAME'] ?? '') && realpath(__FILE__) === realpath($_SERVER['SCRIPT_FILENAME'] ?? '')) {
     http_response_code(403);
     echo json_encode(['error' => 'Direct access forbidden']);
     exit;

@@ -1,0 +1,2790 @@
+{
+  "generatedAt": "2026-09-10T17:27:02.157Z",
+  "totalMigrationFiles": 208,
+  "files": [
+    {
+      "order": 1,
+      "filename": "20260619223432_72c8476e-c3c5-4ed8-9475-058ce15df276.sql",
+      "sizeBytes": 20548,
+      "tablesCreated": [
+        "public.people",
+        "public.kyc_documents",
+        "public.gold_ledger",
+        "public.attendance",
+        "public.salary_rules",
+        "public.worker_transactions",
+        "public.worker_settlements",
+        "public.orders",
+        "public.job_cards",
+        "public.job_process_steps",
+        "public.catalog_designs",
+        "public.inventory",
+        "public.stock_movements",
+        "public.invoices",
+        "public.payments",
+        "public.customer_ledger",
+        "public.rate_cut_records",
+        "public.repairs",
+        "public.daily_close",
+        "public.print_logs",
+        "public.whatsapp_inbox",
+        "public.app_settings",
+        "public.dropdown_masters"
+      ],
+      "functionsCreated": [
+        "public.set_updated_at"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 2,
+      "filename": "20260619225425_ef6ac730-f04e-4e71-8858-a913522d62c2.sql",
+      "sizeBytes": 2084,
+      "tablesCreated": [
+        "public.user_roles"
+      ],
+      "functionsCreated": [
+        "public.has_role",
+        "public.handle_new_user_role"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 3,
+      "filename": "20260619232538_3a600b79-6867-47ad-8e79-dce73de2b09a.sql",
+      "sizeBytes": 2246,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 4,
+      "filename": "20260620171200_create_attachments_table.sql",
+      "sizeBytes": 1561,
+      "tablesCreated": [
+        "public.attachments"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 5,
+      "filename": "20260621110000_create_storage_policies_and_gold_settlements.sql",
+      "sizeBytes": 4637,
+      "tablesCreated": [
+        "public.gold_settlements"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 6,
+      "filename": "20260621120000_create_file_attachments_table.sql",
+      "sizeBytes": 2453,
+      "tablesCreated": [
+        "public.file_attachments"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 7,
+      "filename": "20260622121550_create_document_sequences_and_rpc.sql",
+      "sizeBytes": 2005,
+      "tablesCreated": [
+        "public.document_sequences"
+      ],
+      "functionsCreated": [
+        "public.generate_sequential_number"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 8,
+      "filename": "20260624130000_create_login_attempts_table.sql",
+      "sizeBytes": 778,
+      "tablesCreated": [
+        "public.login_attempts"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 9,
+      "filename": "20260625120000_setup_all_storage_buckets_and_policies.sql",
+      "sizeBytes": 2925,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"app_files_select\" ON storage.objects",
+        "\"app_files_insert\" ON storage.objects",
+        "\"app_files_update\" ON storage.objects",
+        "\"app_files_delete\" ON storage.objects"
+      ]
+    },
+    {
+      "order": 10,
+      "filename": "20260625130000_setup_atomic_sequence_numbering.sql",
+      "sizeBytes": 8042,
+      "tablesCreated": [
+        "public.document_sequences"
+      ],
+      "functionsCreated": [
+        "public.generate_sequential_number",
+        "public.trg_generate_order_no",
+        "public.trg_generate_job_no",
+        "public.trg_generate_invoice_no",
+        "public.trg_generate_repair_no",
+        "public.trg_generate_gold_settlement_id"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 11,
+      "filename": "20260627120000_multi_branch_and_comm_providers.sql",
+      "sizeBytes": 9527,
+      "tablesCreated": [
+        "public.branches",
+        "public.user_branch_permissions",
+        "public.comm_provider_settings",
+        "public.comm_events"
+      ],
+      "functionsCreated": [
+        "public.get_user_branch_ids",
+        "public.is_global_user",
+        "public.can_access_branch",
+        "public.set_updated_at"
+      ],
+      "policiesCreated": [
+        "\"branches_select\" ON public.branches",
+        "\"comm_prov_select\" ON public.comm_provider_settings",
+        "\"comm_prov_manage\" ON public.comm_provider_settings",
+        "\"ubp_select_own\" ON public.user_branch_permissions",
+        "\"branch_isolation\" ON public.",
+        "\"comm_events_branch\" ON public.comm_events"
+      ]
+    },
+    {
+      "order": 12,
+      "filename": "20260628000000_manufacturing_bills.sql",
+      "sizeBytes": 7051,
+      "tablesCreated": [
+        "public.manufacturing_bills"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"mfg_bills_branch_isolation\" ON public.manufacturing_bills"
+      ]
+    },
+    {
+      "order": 13,
+      "filename": "20260628100000_supplier_bucket_rls.sql",
+      "sizeBytes": 1710,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.check_storage_access"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 14,
+      "filename": "20260628110000_melt_jobs.sql",
+      "sizeBytes": 1781,
+      "tablesCreated": [
+        "public.melt_jobs"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 15,
+      "filename": "20260628120000_crm_core.sql",
+      "sizeBytes": 5099,
+      "tablesCreated": [
+        "public.crm_leads_opportunities",
+        "public.crm_tasks_meetings",
+        "public.crm_interactions"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"crm_leads_branch_isolation\" ON public.crm_leads_opportunities",
+        "\"crm_tasks_branch_isolation\" ON public.crm_tasks_meetings",
+        "\"crm_interactions_branch_isolation\" ON public.crm_interactions"
+      ]
+    },
+    {
+      "order": 16,
+      "filename": "20260628130000_feature_toggles.sql",
+      "sizeBytes": 1103,
+      "tablesCreated": [
+        "public.module_states"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"module_states_branch_isolation\" ON public.module_states"
+      ]
+    },
+    {
+      "order": 17,
+      "filename": "20260630_phase2_stabilization.sql",
+      "sizeBytes": 8536,
+      "tablesCreated": [
+        "public.manufacturing_bills"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "mfg_bills_all ON public.manufacturing_bills"
+      ]
+    },
+    {
+      "order": 18,
+      "filename": "20260701000000_document_shares.sql",
+      "sizeBytes": 1397,
+      "tablesCreated": [
+        "document_shares"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"public_read_non_expired\" ON document_shares",
+        "\"authenticated_insert\" ON document_shares",
+        "\"owner_delete\" ON document_shares"
+      ]
+    },
+    {
+      "order": 19,
+      "filename": "20260703000000_financial_lock_and_stock_verification.sql",
+      "sizeBytes": 2540,
+      "tablesCreated": [
+        "public.financial_lock_periods",
+        "public.physical_stock_counts"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"financial_lock_periods_branch_isolation\" ON public.financial_lock_periods",
+        "\"physical_stock_counts_branch_isolation\" ON public.physical_stock_counts"
+      ]
+    },
+    {
+      "order": 20,
+      "filename": "20260703010000_lot_batch_management.sql",
+      "sizeBytes": 1230,
+      "tablesCreated": [
+        "public.stock_lots"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"stock_lots_branch_isolation\" ON public.stock_lots"
+      ]
+    },
+    {
+      "order": 21,
+      "filename": "20260703020000_stone_diamond_tracking.sql",
+      "sizeBytes": 1369,
+      "tablesCreated": [
+        "public.stock_stones"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"stock_stones_branch_isolation\" ON public.stock_stones"
+      ]
+    },
+    {
+      "order": 22,
+      "filename": "20260703030000_hallmark_lifecycle.sql",
+      "sizeBytes": 1267,
+      "tablesCreated": [
+        "public.hallmark_batches"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"hallmark_batches_branch_isolation\" ON public.hallmark_batches"
+      ]
+    },
+    {
+      "order": 23,
+      "filename": "20260703040000_billing_documents.sql",
+      "sizeBytes": 4325,
+      "tablesCreated": [
+        "public.credit_notes",
+        "public.debit_notes",
+        "public.estimates",
+        "public.delivery_challans"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"credit_notes_branch_isolation\" ON public.credit_notes",
+        "\"debit_notes_branch_isolation\" ON public.debit_notes",
+        "\"estimates_branch_isolation\" ON public.estimates",
+        "\"delivery_challans_branch_isolation\" ON public.delivery_challans"
+      ]
+    },
+    {
+      "order": 24,
+      "filename": "20260704000000_order_issues_and_worker_returns.sql",
+      "sizeBytes": 1813,
+      "tablesCreated": [
+        "public.worker_returns"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"worker_returns_authenticated_rw\" ON public.worker_returns"
+      ]
+    },
+    {
+      "order": 25,
+      "filename": "20260705000000_outside_work_transactions.sql",
+      "sizeBytes": 1722,
+      "tablesCreated": [
+        "public.outside_work_transactions"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"outside_work_transactions_authenticated_rw\" ON public.outside_work_transactions"
+      ]
+    },
+    {
+      "order": 26,
+      "filename": "20260705010000_outside_work_labour_and_payments.sql",
+      "sizeBytes": 2612,
+      "tablesCreated": [
+        "public.outside_work_labour_charges",
+        "public.outside_work_payments"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"outside_work_labour_charges_authenticated_rw\" ON public.outside_work_labour_charges",
+        "\"outside_work_payments_authenticated_rw\" ON public.outside_work_payments"
+      ]
+    },
+    {
+      "order": 27,
+      "filename": "20260706000000_manufacturing_bills_add_extra_data.sql",
+      "sizeBytes": 966,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 28,
+      "filename": "20260707000000_customer_settlements.sql",
+      "sizeBytes": 1367,
+      "tablesCreated": [
+        "public.customer_settlements"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"customer_settlements_authenticated_rw\" ON public.customer_settlements"
+      ]
+    },
+    {
+      "order": 29,
+      "filename": "20260708000000_fix_document_sequences_public_policy.sql",
+      "sizeBytes": 1320,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 30,
+      "filename": "20260710000000_crm_leads_source_and_buyer_type.sql",
+      "sizeBytes": 1040,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 31,
+      "filename": "20260722000000_create_licenses_table.sql",
+      "sizeBytes": 740,
+      "tablesCreated": [
+        "public.licenses"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 32,
+      "filename": "20260722000001_validate_license_rpc.sql",
+      "sizeBytes": 1182,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.validate_license"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 33,
+      "filename": "20260724160000_fix_validate_license_rpc_json_entitlement.sql",
+      "sizeBytes": 1608,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.validate_license"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 34,
+      "filename": "20260730100000_fix_generate_sequential_number_column_drift.sql",
+      "sizeBytes": 4141,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.generate_sequential_number"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 35,
+      "filename": "20260730110000_manufacturing_v1_1_phase2to5_tables.sql",
+      "sizeBytes": 3621,
+      "tablesCreated": [
+        "public.metal_conversions",
+        "public.workshop_process_transactions",
+        "public.customer_gold_deposits"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 36,
+      "filename": "20260730150000_saas_admin_control_plane.sql",
+      "sizeBytes": 11626,
+      "tablesCreated": [
+        "public.platform_plans",
+        "public.organization_subscriptions",
+        "public.organization_features",
+        "public.platform_audit_events",
+        "public.support_sessions",
+        "public.subscription_history",
+        "public.platform_settings",
+        "public.organization_usage_snapshots"
+      ],
+      "functionsCreated": [
+        "public.is_saas_admin",
+        "public.organization_feature_enabled",
+        "public.record_platform_audit"
+      ],
+      "policiesCreated": [
+        "organizations_platform_admin_manage ON public.organizations",
+        "branches_platform_admin_manage ON public.branches",
+        "user_profiles_platform_admin_manage ON public.user_profiles",
+        "user_roles_platform_admin_manage ON public.user_roles",
+        "platform_plans_platform_admin ON public.platform_plans",
+        "organization_subscriptions_platform_admin ON public.organization_subscriptions",
+        "organization_subscriptions_company_read ON public.organization_subscriptions",
+        "organization_features_platform_admin ON public.organization_features",
+        "organization_features_company_read ON public.organization_features",
+        "platform_audit_events_platform_admin ON public.platform_audit_events",
+        "platform_audit_events_insert_actor ON public.platform_audit_events",
+        "support_sessions_platform_admin ON public.support_sessions",
+        "subscription_history_platform_read ON public.subscription_history",
+        "subscription_history_platform_insert ON public.subscription_history",
+        "platform_settings_platform_admin ON public.platform_settings",
+        "organization_usage_platform_admin ON public.organization_usage_snapshots",
+        "organization_usage_company_read ON public.organization_usage_snapshots"
+      ]
+    },
+    {
+      "order": 37,
+      "filename": "20260730160000_firm_scope_rls_framework.sql",
+      "sizeBytes": 5765,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 38,
+      "filename": "20260730170000_atomic_tenant_onboarding.sql",
+      "sizeBytes": 4423,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.onboard_tenant"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 39,
+      "filename": "20260730180000_firm_scope_rls_wave2.sql",
+      "sizeBytes": 7731,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "branches_select ON public.branches",
+        "branches_admin_insert ON public.branches",
+        "branches_admin_update ON public.branches",
+        "branches_admin_delete ON public.branches",
+        "workshops_select ON public.workshops",
+        "workshops_admin_insert ON public.workshops",
+        "workshops_admin_update ON public.workshops",
+        "workshops_admin_delete ON public.workshops"
+      ]
+    },
+    {
+      "order": 40,
+      "filename": "20260730190000_storage_objects_firm_scope.sql",
+      "sizeBytes": 5167,
+      "tablesCreated": [
+        "public.storage_file_metadata"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "storage_file_metadata_select ON public.storage_file_metadata",
+        "storage_file_metadata_insert ON public.storage_file_metadata",
+        "storage_file_metadata_update ON public.storage_file_metadata",
+        "storage_objects_select ON storage.objects",
+        "storage_objects_insert ON storage.objects",
+        "storage_objects_update ON storage.objects",
+        "storage_objects_delete ON storage.objects"
+      ]
+    },
+    {
+      "order": 41,
+      "filename": "20260730190500_target_tenant_foundation.sql",
+      "sizeBytes": 2657,
+      "tablesCreated": [
+        "public.organizations",
+        "public.user_profiles",
+        "public.user_roles"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 42,
+      "filename": "20260730190600_target_identity_helpers.sql",
+      "sizeBytes": 1984,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.has_role",
+        "public.is_saas_admin",
+        "public.my_firm_id",
+        "public.my_role",
+        "public.is_admin"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 43,
+      "filename": "20260730190700_target_invitations.sql",
+      "sizeBytes": 1741,
+      "tablesCreated": [
+        "public.invitations"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 44,
+      "filename": "20260730190800_secure_document_shares_target.sql",
+      "sizeBytes": 2372,
+      "tablesCreated": [
+        "public.document_shares"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "document_shares_owner_select ON public.document_shares",
+        "document_shares_owner_insert ON public.document_shares",
+        "document_shares_owner_update ON public.document_shares",
+        "document_shares_owner_delete ON public.document_shares"
+      ]
+    },
+    {
+      "order": 45,
+      "filename": "20260730190900_target_license_validation.sql",
+      "sizeBytes": 1967,
+      "tablesCreated": [
+        "public.licenses"
+      ],
+      "functionsCreated": [
+        "public.validate_license"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 46,
+      "filename": "20260730191000_fix_onboard_tenant_target_branch_shape.sql",
+      "sizeBytes": 3219,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.onboard_tenant"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 47,
+      "filename": "20260730191100_document_share_token_resolution.sql",
+      "sizeBytes": 1552,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.resolve_document_share"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 48,
+      "filename": "20260730191200_target_storage_buckets.sql",
+      "sizeBytes": 1329,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 49,
+      "filename": "20260730192011_attachments_compatibility_secure_v2.sql",
+      "sizeBytes": 2854,
+      "tablesCreated": [
+        "public.attachments"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "attachments_tenant_select ON public.attachments",
+        "attachments_tenant_insert ON public.attachments",
+        "attachments_tenant_update ON public.attachments",
+        "attachments_tenant_delete ON public.attachments"
+      ]
+    },
+    {
+      "order": 50,
+      "filename": "20260730202235_target_license_validation.sql",
+      "sizeBytes": 2111,
+      "tablesCreated": [
+        "public.licenses"
+      ],
+      "functionsCreated": [
+        "public.validate_license"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 51,
+      "filename": "20260730210000_platform_operations_foundation.sql",
+      "sizeBytes": 9360,
+      "tablesCreated": [
+        "public.platform_service_requests",
+        "public.platform_support_tickets",
+        "public.platform_conversations",
+        "public.platform_conversation_messages",
+        "public.platform_billing_documents",
+        "public.platform_alerts",
+        "public.platform_deployments",
+        "public.platform_backup_runs"
+      ],
+      "functionsCreated": [
+        "public.platform_touch_updated_at"
+      ],
+      "policiesCreated": [
+        "platform_service_requests_admin ON public.platform_service_requests",
+        "platform_service_requests_firm_read ON public.platform_service_requests",
+        "platform_service_requests_firm_create ON public.platform_service_requests",
+        "platform_support_tickets_admin ON public.platform_support_tickets",
+        "platform_support_tickets_firm_read ON public.platform_support_tickets",
+        "platform_support_tickets_firm_create ON public.platform_support_tickets",
+        "platform_conversations_admin ON public.platform_conversations",
+        "platform_conversation_messages_admin ON public.platform_conversation_messages",
+        "platform_billing_documents_admin ON public.platform_billing_documents",
+        "platform_alerts_admin ON public.platform_alerts",
+        "platform_deployments_admin ON public.platform_deployments",
+        "platform_backup_runs_admin ON public.platform_backup_runs"
+      ]
+    },
+    {
+      "order": 52,
+      "filename": "20260730213043_target_document_numbering_compatibility.sql",
+      "sizeBytes": 1533,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.next_document_number"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 53,
+      "filename": "20260731042716_qa_tenant_license_resolution.sql",
+      "sizeBytes": 808,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_my_tenant_license_key"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 54,
+      "filename": "20260731044145_login_destination_and_customer_identity.sql",
+      "sizeBytes": 1604,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_login_destination"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 55,
+      "filename": "20260731053936_supplier_purchases.sql",
+      "sizeBytes": 2096,
+      "tablesCreated": [
+        "public.supplier_purchases"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "supplier_purchases_select ON public.supplier_purchases",
+        "supplier_purchases_insert ON public.supplier_purchases",
+        "supplier_purchases_update ON public.supplier_purchases",
+        "supplier_purchases_delete ON public.supplier_purchases"
+      ]
+    },
+    {
+      "order": 56,
+      "filename": "20260731090000_platform_module_licensing_rpc.sql",
+      "sizeBytes": 1535,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.set_organization_feature"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 57,
+      "filename": "20260731100000_platform_settings_rpc.sql",
+      "sizeBytes": 1382,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.set_platform_setting"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 58,
+      "filename": "20260731120000_platform_completeness_foundation.sql",
+      "sizeBytes": 4942,
+      "tablesCreated": [
+        "public.platform_conversation_participants",
+        "public.platform_message_attachments",
+        "public.platform_notifications",
+        "public.platform_billing_payments"
+      ],
+      "functionsCreated": [
+        "public.record_platform_notification"
+      ],
+      "policiesCreated": [
+        "platform_conversation_participants_admin ON public.platform_conversation_participants",
+        "platform_message_attachments_admin ON public.platform_message_attachments",
+        "platform_notifications_recipient ON public.platform_notifications",
+        "platform_notifications_recipient_update ON public.platform_notifications",
+        "platform_notifications_admin ON public.platform_notifications",
+        "platform_billing_payments_admin ON public.platform_billing_payments"
+      ]
+    },
+    {
+      "order": 59,
+      "filename": "20260731143000_attachments_compatibility_secure.sql",
+      "sizeBytes": 2912,
+      "tablesCreated": [
+        "public.attachments"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "attachments_tenant_select ON public.attachments",
+        "attachments_tenant_insert ON public.attachments",
+        "attachments_tenant_update ON public.attachments",
+        "attachments_tenant_delete ON public.attachments"
+      ]
+    },
+    {
+      "order": 60,
+      "filename": "20260731150000_identity_self_read_rls.sql",
+      "sizeBytes": 597,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "user_profiles_self_select ON public.user_profiles",
+        "user_roles_self_select ON public.user_roles"
+      ]
+    },
+    {
+      "order": 61,
+      "filename": "20260731170000_support_conversation_tenant_rls.sql",
+      "sizeBytes": 2751,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "platform_conversations_member_read ON public.platform_conversations",
+        "platform_conversations_member_create ON public.platform_conversations",
+        "platform_conversations_member_update ON public.platform_conversations",
+        "platform_conversation_participants_member_read ON public.platform_conversation_participants",
+        "platform_conversation_participants_member_join ON public.platform_conversation_participants",
+        "platform_conversation_messages_member_read ON public.platform_conversation_messages",
+        "platform_conversation_messages_member_create ON public.platform_conversation_messages",
+        "platform_conversation_messages_member_read_update ON public.platform_conversation_messages"
+      ]
+    },
+    {
+      "order": 62,
+      "filename": "20260731180000_comm_provider_secret_vault.sql",
+      "sizeBytes": 1189,
+      "tablesCreated": [
+        "public.comm_provider_secrets"
+      ],
+      "functionsCreated": [
+        "public.touch_comm_provider_secret"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 63,
+      "filename": "20260731190000_harden_document_share_rls.sql",
+      "sizeBytes": 584,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"authenticated_insert_own\" ON public.document_shares"
+      ]
+    },
+    {
+      "order": 64,
+      "filename": "20260731193000_precious_metals_and_composition_master.sql",
+      "sizeBytes": 3111,
+      "tablesCreated": [
+        "public.precious_metals",
+        "public.precious_metal_purities",
+        "public.metal_composition_formulas"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 65,
+      "filename": "20260731200000_customer_portal_identity_and_rpc.sql",
+      "sizeBytes": 5972,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_customer_portal",
+        "public.create_customer_support_ticket"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 66,
+      "filename": "20260731210000_customer_support_conversations.sql",
+      "sizeBytes": 5164,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.ensure_support_ticket_conversation",
+        "public.get_customer_support_thread",
+        "public.reply_customer_support_ticket"
+      ],
+      "policiesCreated": [
+        "platform_conversations_customer_read ON public.platform_conversations",
+        "platform_messages_customer_read ON public.platform_conversation_messages",
+        "platform_messages_customer_insert ON public.platform_conversation_messages"
+      ]
+    },
+    {
+      "order": 67,
+      "filename": "20260731220000_platform_ticket_transition_rpc.sql",
+      "sizeBytes": 2642,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.transition_platform_support_ticket"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 68,
+      "filename": "20260731230000_fix_document_share_digest.sql",
+      "sizeBytes": 1436,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.resolve_document_share"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 69,
+      "filename": "20260801104538_get_login_destination_rpc.sql",
+      "sizeBytes": 922,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_login_destination"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 70,
+      "filename": "20260801104559_platform_billing_gst_and_issue.sql",
+      "sizeBytes": 4629,
+      "tablesCreated": [
+        "public.platform_billing_series"
+      ],
+      "functionsCreated": [
+        "public.next_platform_document_no",
+        "public.issue_platform_billing_document"
+      ],
+      "policiesCreated": [
+        "platform_billing_documents_firm_read ON public.platform_billing_documents",
+        "platform_billing_series_admin ON public.platform_billing_series"
+      ]
+    },
+    {
+      "order": 71,
+      "filename": "20260801104612_platform_crm_contacts_v1.sql",
+      "sizeBytes": 1471,
+      "tablesCreated": [
+        "public.platform_crm_contacts"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "platform_crm_contacts_admin ON public.platform_crm_contacts"
+      ]
+    },
+    {
+      "order": 72,
+      "filename": "20260801104620_platform_credentials_vault_v1.sql",
+      "sizeBytes": 4262,
+      "tablesCreated": [
+        "public.platform_credentials"
+      ],
+      "functionsCreated": [
+        "public.upsert_platform_credential",
+        "public.revoke_platform_credential"
+      ],
+      "policiesCreated": [
+        "platform_credentials_admin_meta ON public.platform_credentials"
+      ]
+    },
+    {
+      "order": 73,
+      "filename": "20260801104630_platform_license_and_feature_guards_v1.sql",
+      "sizeBytes": 6049,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.require_organization_feature",
+        "public.issue_platform_license",
+        "public.renew_platform_license",
+        "public.suspend_platform_license",
+        "public.evaluate_trial_expiry"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 74,
+      "filename": "20260801105118_module_license_rls_enforcement_v1.sql",
+      "sizeBytes": 1564,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.organization_feature_enabled",
+        "public.tenant_module_write_allowed"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 75,
+      "filename": "20260801105236_module_license_rls_policies_v1.sql",
+      "sizeBytes": 1518,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "invoices_read_authed ON public.invoices",
+        "invoices_insert_staff ON public.invoices",
+        "invoices_update_staff ON public.invoices",
+        "invoices_delete_staff ON public.invoices"
+      ]
+    },
+    {
+      "order": 76,
+      "filename": "20260801105242_module_license_metal_gold_rls_v1.sql",
+      "sizeBytes": 2512,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "metal_conversions_read ON public.metal_conversions",
+        "metal_conversions_write ON public.metal_conversions",
+        "gold_ledger_read ON public.gold_ledger",
+        "gold_ledger_insert ON public.gold_ledger",
+        "gold_ledger_update ON public.gold_ledger",
+        "gold_ledger_delete ON public.gold_ledger"
+      ]
+    },
+    {
+      "order": 77,
+      "filename": "20260801113627_fix_login_destination_saas_admin_priority.sql",
+      "sizeBytes": 1364,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_login_destination"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 78,
+      "filename": "20260801114340_platform_billing_payment_rpc.sql",
+      "sizeBytes": 528,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 79,
+      "filename": "20260801114347_platform_billing_payment_rpc_body.sql",
+      "sizeBytes": 2320,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.record_platform_billing_payment"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 80,
+      "filename": "20260801115348_platform_broadcast_and_firm_support.sql",
+      "sizeBytes": 7768,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.broadcast_platform_notifications",
+        "public.create_firm_support_ticket",
+        "public.list_firm_support_tickets",
+        "public.get_platform_support_thread",
+        "public.reply_platform_support_ticket"
+      ],
+      "policiesCreated": [
+        "platform_notifications_admin_read ON public.platform_notifications"
+      ]
+    },
+    {
+      "order": 81,
+      "filename": "20260801120043_provision_platform_firm.sql",
+      "sizeBytes": 556,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 82,
+      "filename": "20260801120109_provision_platform_firm_functions.sql",
+      "sizeBytes": 8593,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.provision_platform_firm",
+        "public.complete_firm_setup"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 83,
+      "filename": "20260801121200_platform_license_and_support_fixes.sql",
+      "sizeBytes": 8053,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_my_tenant_license_key",
+        "public.validate_license",
+        "public.issue_platform_license",
+        "public.create_firm_support_ticket"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 84,
+      "filename": "20260801122858_consolidate_issue_platform_license_overload.sql",
+      "sizeBytes": 850,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 85,
+      "filename": "20260801125702_fix_branch_tenant_isolation.sql",
+      "sizeBytes": 1174,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "branches_select ON public.branches",
+        "workshops_select ON public.workshops"
+      ]
+    },
+    {
+      "order": 86,
+      "filename": "20260801130253_customer_role_data_isolation.sql",
+      "sizeBytes": 4987,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.is_customer_role",
+        "public.my_customer_person_id"
+      ],
+      "policiesCreated": [
+        "payments_customer_read_restrict ON public.payments"
+      ]
+    },
+    {
+      "order": 87,
+      "filename": "20260801130843_fix_branch_rls_complete.sql",
+      "sizeBytes": 1138,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "branches_select ON public.branches",
+        "workshops_select ON public.workshops"
+      ]
+    },
+    {
+      "order": 88,
+      "filename": "20260801131436_remove_hybrid_runtime_open_rls_v2.sql",
+      "sizeBytes": 3320,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "communication_logs_staff_read ON public.communication_logs",
+        "communication_logs_staff_write ON public.communication_logs"
+      ]
+    },
+    {
+      "order": 89,
+      "filename": "20260801132712_signin_error_storm_fixes.sql",
+      "sizeBytes": 3917,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_my_tenant_license_key",
+        "public.get_my_tenant_subscription_entitlement"
+      ],
+      "policiesCreated": [
+        "organizations_tenant_read ON public.organizations"
+      ]
+    },
+    {
+      "order": 90,
+      "filename": "20260801133255_fix_signin_license_tenant_lookup.sql",
+      "sizeBytes": 4089,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_my_tenant_license_key",
+        "public.get_my_tenant_subscription_entitlement"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 91,
+      "filename": "20260801133257_fix_app_settings_multi_tenant.sql",
+      "sizeBytes": 1843,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 92,
+      "filename": "20260801134237_firm_customer_support_tickets.sql",
+      "sizeBytes": 7267,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.is_firm_ticket_staff",
+        "public.list_customer_portal_support_tickets",
+        "public.get_firm_customer_support_thread",
+        "public.reply_firm_customer_support_ticket",
+        "public.transition_firm_customer_support_ticket"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 93,
+      "filename": "20260801151602_support_ticket_notifications.sql",
+      "sizeBytes": 4324,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.notify_support_ticket_created",
+        "public.create_customer_support_ticket"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 94,
+      "filename": "20260801162047_billing_branch_isolation_hardening.sql",
+      "sizeBytes": 2258,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.is_customer_role",
+        "public.my_customer_person_id"
+      ],
+      "policiesCreated": [
+        "invoices_firm_read ON public.invoices",
+        "branches_select ON public.branches"
+      ]
+    },
+    {
+      "order": 95,
+      "filename": "20260801191441_specialist_payment_clearance.sql",
+      "sizeBytes": 2832,
+      "tablesCreated": [
+        "public.specialist_work_variances",
+        "public.specialist_payment_clearances"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 96,
+      "filename": "20260802101041_atomic_gold_ledger_rpc.sql",
+      "sizeBytes": 2901,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.post_gold_ledger_entries"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 97,
+      "filename": "20260802101054_firm_id_backfill_single_tenant_v2.sql",
+      "sizeBytes": 1357,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 98,
+      "filename": "20260802103953_fix_supplier_purchases_supplier_id_text.sql",
+      "sizeBytes": 835,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 99,
+      "filename": "20260802114216_chatwoot_and_platform_release.sql",
+      "sizeBytes": 11937,
+      "tablesCreated": [
+        "public.chatwoot_firm_mappings",
+        "public.chatwoot_conversation_links"
+      ],
+      "functionsCreated": [
+        "public.platform_health_ping",
+        "public.set_platform_firm_active",
+        "public.update_platform_subscription",
+        "public.extend_platform_trial",
+        "public.create_firm_support_ticket",
+        "public.get_chatwoot_ticket_link"
+      ],
+      "policiesCreated": [
+        "chatwoot_firm_mappings_admin ON public.chatwoot_firm_mappings",
+        "chatwoot_conversation_links_admin ON public.chatwoot_conversation_links"
+      ]
+    },
+    {
+      "order": 100,
+      "filename": "20260802122600_fix_validate_license_entitlement_timestamps.sql",
+      "sizeBytes": 2516,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.validate_license"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 101,
+      "filename": "20260802140312_post_supplier_purchase_atomic.sql",
+      "sizeBytes": 5098,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.post_supplier_purchase"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 102,
+      "filename": "20260802140400_dedupe_branches_v2.sql",
+      "sizeBytes": 1959,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.consolidate_duplicate_branches"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 103,
+      "filename": "20260802142501_reverse_supplier_purchase_and_qa_vendor.sql",
+      "sizeBytes": 3512,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.reverse_supplier_purchase"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 104,
+      "filename": "20260802142506_post_metal_conversion_atomic.sql",
+      "sizeBytes": 190,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 105,
+      "filename": "20260802142516_post_metal_conversion_atomic_v2.sql",
+      "sizeBytes": 5472,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.post_metal_conversion"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 106,
+      "filename": "20260802142524_supplier_purchase_entitlement_rpc.sql",
+      "sizeBytes": 5210,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.post_supplier_purchase"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 107,
+      "filename": "20260802153144_rls_multitenant_hardening.sql",
+      "sizeBytes": 2925,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "attachments_tenant_select ON public.attachments",
+        "attachments_tenant_insert ON public.attachments",
+        "attachments_tenant_update ON public.attachments",
+        "attachments_tenant_delete ON public.attachments",
+        "storage_file_metadata_select ON public.storage_file_metadata"
+      ]
+    },
+    {
+      "order": 108,
+      "filename": "20260802203245_commercial_editions_licensing.sql",
+      "sizeBytes": 331,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 109,
+      "filename": "20260802203712_commercial_editions_licensing.sql",
+      "sizeBytes": 13300,
+      "tablesCreated": [
+        "public.plan_features"
+      ],
+      "functionsCreated": [
+        "public.is_valid_feature_key",
+        "public.organization_feature_enabled",
+        "public.tenant_module_write_allowed",
+        "public.get_organization_plan_limits",
+        "public.check_organization_limit",
+        "public.assert_organization_limit",
+        "public.trg_enforce_branch_limit",
+        "public.trg_enforce_user_limit",
+        "public.trg_enforce_workshop_limit",
+        "public.apply_plan_entitlements"
+      ],
+      "policiesCreated": [
+        "plan_features_platform_admin ON public.plan_features"
+      ]
+    },
+    {
+      "order": 110,
+      "filename": "20260802203855_commercial_editions_licensing_part2.sql",
+      "sizeBytes": 3776,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_my_tenant_entitlements",
+        "public.get_my_tenant_subscription_entitlement"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 111,
+      "filename": "20260802204003_get_my_tenant_entitlements_rpc.sql",
+      "sizeBytes": 1669,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_my_tenant_entitlements"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 112,
+      "filename": "20260802204200_commercial_editions_licensing_seed.sql",
+      "sizeBytes": 8448,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 113,
+      "filename": "20260803033848_commercial_entitlements_completion.sql",
+      "sizeBytes": 299,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 114,
+      "filename": "20260803034116_apply_plan_entitlements_service_role.sql",
+      "sizeBytes": 4572,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.apply_plan_entitlements"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 115,
+      "filename": "20260803034428_commercial_entitlements_storage_limits.sql",
+      "sizeBytes": 2605,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_organization_storage_bytes",
+        "public.check_storage_limit",
+        "public.assert_storage_limit",
+        "public.trg_enforce_storage_limit"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 116,
+      "filename": "20260803034452_commercial_entitlements_reapply_sync.sql",
+      "sizeBytes": 1597,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.reapply_all_organization_plan_entitlements"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 117,
+      "filename": "20260803034508_commercial_entitlements_onboard_export.sql",
+      "sizeBytes": 3404,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.onboard_tenant",
+        "public.export_entitlement_enabled"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 118,
+      "filename": "20260811060000_create_audit_log_table.sql",
+      "sizeBytes": 1710,
+      "tablesCreated": [
+        "public.audit_log"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 119,
+      "filename": "20260811070000_staff_support_tickets.sql",
+      "sizeBytes": 3466,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.create_staff_support_ticket",
+        "public.list_my_support_tickets"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 120,
+      "filename": "20260811080000_platform_error_events_and_secrets.sql",
+      "sizeBytes": 1817,
+      "tablesCreated": [
+        "public.platform_error_events"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "platform_error_events_insert ON public.platform_error_events",
+        "platform_error_events_admin ON public.platform_error_events"
+      ]
+    },
+    {
+      "order": 121,
+      "filename": "20260811090000_platform_setting_secrets.sql",
+      "sizeBytes": 2776,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.set_platform_setting"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 122,
+      "filename": "20260812100000_universal_transaction_engine.sql",
+      "sizeBytes": 5826,
+      "tablesCreated": [
+        "public.universal_transaction_definitions",
+        "public.universal_ledger_entries"
+      ],
+      "functionsCreated": [
+        "public.rpc_post_universal_transaction"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 123,
+      "filename": "20260812110000_assistant_brain_and_persistence.sql",
+      "sizeBytes": 2760,
+      "tablesCreated": [
+        "public.assistant_conversations",
+        "public.assistant_messages",
+        "public.ai_provider_configs"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 124,
+      "filename": "20260812120000_karigar_portal_rpc.sql",
+      "sizeBytes": 4687,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_karigar_portal"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 125,
+      "filename": "20260812134630_metal_ledger_missing_indexes.sql",
+      "sizeBytes": 967,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 126,
+      "filename": "20260812134933_metal_ledger_fk_indexes.sql",
+      "sizeBytes": 1690,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 127,
+      "filename": "20260813000100_support_infrastructure_hardening.sql",
+      "sizeBytes": 4338,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.create_staff_support_ticket"
+      ],
+      "policiesCreated": [
+        "platform_conversations_customer_read ON public.platform_conversations",
+        "platform_messages_customer_read ON public.platform_conversation_messages",
+        "platform_messages_customer_insert ON public.platform_conversation_messages"
+      ]
+    },
+    {
+      "order": 128,
+      "filename": "20260813000200_firm_scoped_universal_assistant_karigar.sql",
+      "sizeBytes": 16367,
+      "tablesCreated": [
+        "public.universal_transaction_definitions",
+        "public.universal_ledger_entries",
+        "public.assistant_conversations",
+        "public.assistant_messages",
+        "public.ai_provider_configs"
+      ],
+      "functionsCreated": [
+        "public.rpc_post_universal_transaction",
+        "public.get_karigar_portal"
+      ],
+      "policiesCreated": [
+        "universal_transaction_definitions_read ON public.universal_transaction_definitions",
+        "universal_transaction_definitions_manage ON public.universal_transaction_definitions",
+        "universal_ledger_entries_read ON public.universal_ledger_entries",
+        "universal_ledger_entries_insert ON public.universal_ledger_entries",
+        "assistant_conversations_owner ON public.assistant_conversations",
+        "assistant_messages_owner ON public.assistant_messages",
+        "ai_provider_configs_admin_read ON public.ai_provider_configs",
+        "ai_provider_configs_saas_manage ON public.ai_provider_configs"
+      ]
+    },
+    {
+      "order": 129,
+      "filename": "20260813000300_universal_ledger_privilege_hardening.sql",
+      "sizeBytes": 343,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 130,
+      "filename": "20260813001000_ornexa_central_foundation_party_timeline_comms_ai.sql",
+      "sizeBytes": 19495,
+      "tablesCreated": [
+        "public.central_parties",
+        "public.central_party_roles",
+        "public.central_party_contacts",
+        "public.central_activity_events",
+        "public.central_message_threads",
+        "public.central_messages",
+        "public.central_message_attachments",
+        "public.central_message_read_receipts",
+        "public.platform_api_key_registry",
+        "public.platform_maintenance_windows",
+        "public.assistant_action_audit"
+      ],
+      "functionsCreated": [
+        "public.central_track_activity"
+      ],
+      "policiesCreated": [
+        "platform_api_key_registry_read ON public.platform_api_key_registry",
+        "platform_api_key_registry_insert ON public.platform_api_key_registry",
+        "platform_api_key_registry_update ON public.platform_api_key_registry",
+        "platform_maintenance_read ON public.platform_maintenance_windows",
+        "platform_maintenance_write ON public.platform_maintenance_windows"
+      ]
+    },
+    {
+      "order": 131,
+      "filename": "20260813024500_central_foundation_rls_performance_tuning.sql",
+      "sizeBytes": 2305,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "platform_maintenance_insert ON public.platform_maintenance_windows",
+        "platform_maintenance_update ON public.platform_maintenance_windows",
+        "platform_maintenance_delete ON public.platform_maintenance_windows"
+      ]
+    },
+    {
+      "order": 132,
+      "filename": "20260813031000_online_operational_state_tables.sql",
+      "sizeBytes": 3655,
+      "tablesCreated": [
+        "public.print_jobs",
+        "public.scheduled_jobs",
+        "public.escalation_state"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "print_jobs_firm_read ON public.print_jobs",
+        "print_jobs_firm_write ON public.print_jobs",
+        "scheduled_jobs_firm_read ON public.scheduled_jobs",
+        "scheduled_jobs_firm_write ON public.scheduled_jobs",
+        "escalation_state_firm_read ON public.escalation_state",
+        "escalation_state_firm_write ON public.escalation_state"
+      ]
+    },
+    {
+      "order": 133,
+      "filename": "20260813032500_online_device_and_reconciliation_state.sql",
+      "sizeBytes": 2573,
+      "tablesCreated": [
+        "public.device_registry",
+        "public.gold_reconciliation_reports"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "device_registry_firm_read ON public.device_registry",
+        "device_registry_firm_write ON public.device_registry",
+        "gold_reconciliation_reports_firm_read ON public.gold_reconciliation_reports",
+        "gold_reconciliation_reports_firm_write ON public.gold_reconciliation_reports"
+      ]
+    },
+    {
+      "order": 134,
+      "filename": "20260813034000_security_operations_online.sql",
+      "sizeBytes": 2219,
+      "tablesCreated": [
+        "public.security_operations"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "security_operations_select_authenticated ON public.security_operations",
+        "security_operations_insert_authenticated ON public.security_operations",
+        "security_operations_update_authenticated ON public.security_operations"
+      ]
+    },
+    {
+      "order": 135,
+      "filename": "20260813041000_reference_notes_online.sql",
+      "sizeBytes": 1693,
+      "tablesCreated": [
+        "public.reference_notes"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "reference_notes_firm_read ON public.reference_notes",
+        "reference_notes_firm_insert ON public.reference_notes",
+        "reference_notes_firm_delete ON public.reference_notes"
+      ]
+    },
+    {
+      "order": 136,
+      "filename": "20260813043000_rpc_and_rls_hardening.sql",
+      "sizeBytes": 1549,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "comm_provider_secrets_platform_admin ON public.comm_provider_secrets",
+        "erp_setup_guard_platform_admin ON public.erp_setup_guard",
+        "licenses_platform_admin ON public.licenses",
+        "licenses_organization_read ON public.licenses"
+      ]
+    },
+    {
+      "order": 137,
+      "filename": "20260813043500_function_search_path_hardening.sql",
+      "sizeBytes": 166,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 138,
+      "filename": "20260813044000_internal_rpc_execution_hardening.sql",
+      "sizeBytes": 883,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 139,
+      "filename": "20260813044500_unused_rpc_surface_hardening.sql",
+      "sizeBytes": 3193,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 140,
+      "filename": "20260813045000_service_rpc_surface_hardening.sql",
+      "sizeBytes": 725,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 141,
+      "filename": "20260813045500_public_policy_role_tightening.sql",
+      "sizeBytes": 1932,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "supplier_purchases_select ON public.supplier_purchases",
+        "supplier_purchases_insert ON public.supplier_purchases",
+        "supplier_purchases_update ON public.supplier_purchases",
+        "supplier_purchases_delete ON public.supplier_purchases"
+      ]
+    },
+    {
+      "order": 142,
+      "filename": "20260813050000_internal_helper_rpc_tightening.sql",
+      "sizeBytes": 697,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 143,
+      "filename": "20260813051000_missing_foreign_key_indexes.sql",
+      "sizeBytes": 2093,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 144,
+      "filename": "20260813052000_merge_overlapping_select_policies.sql",
+      "sizeBytes": 1133,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "organization_usage_read ON public.organization_usage_snapshots",
+        "platform_notifications_read ON public.platform_notifications"
+      ]
+    },
+    {
+      "order": 145,
+      "filename": "20260813053000_platform_firm_stats_rpc.sql",
+      "sizeBytes": 2307,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_platform_firm_stats"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 146,
+      "filename": "20260813054000_billing_outstanding_rpc.sql",
+      "sizeBytes": 1818,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_billing_outstanding_summary"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 147,
+      "filename": "20260813055000_ceo_branch_kpis_rpc.sql",
+      "sizeBytes": 3186,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_ceo_branch_kpis"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 148,
+      "filename": "20260813055500_ceo_dashboard_gold_trend_rpc.sql",
+      "sizeBytes": 1498,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_ceo_gold_trend"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 149,
+      "filename": "20260813060000_home_dashboard_summary_rpc.sql",
+      "sizeBytes": 3588,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_home_dashboard_summary"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 150,
+      "filename": "20260813061000_auto_populate_firm_id_on_insert.sql",
+      "sizeBytes": 2131,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.set_firm_id_default"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 151,
+      "filename": "20260813062000_null_invalid_branch_id_on_insert.sql",
+      "sizeBytes": 2721,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.null_invalid_branch_id",
+        "public.null_invalid_default_branch_id"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 152,
+      "filename": "20260813063000_branch_rates_overrides.sql",
+      "sizeBytes": 434,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 153,
+      "filename": "20260813070000_compliance_regulatory_engine.sql",
+      "sizeBytes": 16056,
+      "tablesCreated": [
+        "public.compliance_rules",
+        "public.compliance_rule_versions",
+        "public.hsn_sac_codes",
+        "public.gst_party_profiles",
+        "public.gst_invoice_snapshots",
+        "public.gst_return_outbox",
+        "public.eway_bill_records",
+        "public.einvoice_records",
+        "public.bis_hallmark_registry",
+        "public.compliance_exceptions"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"compliance_rules_firm_isolation\" ON public.compliance_rules",
+        "\"compliance_rule_versions_firm_isolation\" ON public.compliance_rule_versions",
+        "\"hsn_sac_codes_firm_isolation\" ON public.hsn_sac_codes",
+        "\"gst_party_profiles_firm_isolation\" ON public.gst_party_profiles",
+        "\"gst_invoice_snapshots_firm_isolation\" ON public.gst_invoice_snapshots",
+        "\"gst_return_outbox_firm_isolation\" ON public.gst_return_outbox",
+        "\"eway_bill_records_firm_isolation\" ON public.eway_bill_records",
+        "\"einvoice_records_firm_isolation\" ON public.einvoice_records",
+        "\"bis_hallmark_registry_firm_isolation\" ON public.bis_hallmark_registry",
+        "\"compliance_exceptions_firm_isolation\" ON public.compliance_exceptions"
+      ]
+    },
+    {
+      "order": 154,
+      "filename": "20260813071000_formula_engine_custom_fields_workflow.sql",
+      "sizeBytes": 9792,
+      "tablesCreated": [
+        "public.formula_definitions",
+        "public.formula_rule_sets",
+        "public.custom_field_definitions",
+        "public.custom_field_values",
+        "public.workflow_step_definitions",
+        "public.workflow_step_instances"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "\"formula_definitions_firm_isolation\" ON public.formula_definitions",
+        "\"formula_rule_sets_firm_isolation\" ON public.formula_rule_sets",
+        "\"custom_field_definitions_firm_isolation\" ON public.custom_field_definitions",
+        "\"custom_field_values_firm_isolation\" ON public.custom_field_values",
+        "\"workflow_step_definitions_firm_isolation\" ON public.workflow_step_definitions",
+        "\"workflow_step_instances_firm_isolation\" ON public.workflow_step_instances"
+      ]
+    },
+    {
+      "order": 155,
+      "filename": "20260813080000_allow_customer_catalog_read.sql",
+      "sizeBytes": 308,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "catalog_designs_customer_read_restrict ON public.catalog_designs"
+      ]
+    },
+    {
+      "order": 156,
+      "filename": "20260813090000_extend_customer_portal_rpc.sql",
+      "sizeBytes": 4716,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_customer_portal"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 157,
+      "filename": "20260813100000_supplier_portal_rpc.sql",
+      "sizeBytes": 2537,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_supplier_portal"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 158,
+      "filename": "20260813143755_trigger_helper_execute_hardening.sql",
+      "sizeBytes": 1130,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 159,
+      "filename": "20260814231000_rls_security_hardening.sql",
+      "sizeBytes": 13281,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "platform_service_requests_tenant_access ON public.platform_service_requests",
+        "platform_support_tickets_tenant_access ON public.platform_support_tickets",
+        "platform_conversations_tenant_access ON public.platform_conversations",
+        "platform_conversation_messages_tenant_access ON public.platform_conversation_messages",
+        "platform_billing_documents_tenant_select ON public.platform_billing_documents",
+        "platform_billing_documents_admin_all ON public.platform_billing_documents",
+        "platform_alerts_tenant_select ON public.platform_alerts",
+        "platform_alerts_admin_all ON public.platform_alerts",
+        "platform_deployments_admin_all ON public.platform_deployments",
+        "platform_backup_runs_admin_all ON public.platform_backup_runs",
+        "erp_setup_guard_admin_all ON public.erp_setup_guard",
+        "comm_provider_secrets_admin_all ON public.comm_provider_secrets",
+        "platform_credentials_admin_all ON public.platform_credentials"
+      ]
+    },
+    {
+      "order": 160,
+      "filename": "20260814232000_canonical_schema_alignments.sql",
+      "sizeBytes": 14888,
+      "tablesCreated": [
+        "public.party_role_profiles",
+        "public.party_bank_accounts",
+        "public.party_opening_balances",
+        "public.migration_batches",
+        "public.rate_book_history",
+        "public.item_masters",
+        "public.tenant_backups",
+        "public.tenant_restore_audit"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "party_role_profiles_tenant_select ON public.party_role_profiles",
+        "party_role_profiles_tenant_write ON public.party_role_profiles",
+        "party_bank_accounts_tenant_select ON public.party_bank_accounts",
+        "party_bank_accounts_tenant_write ON public.party_bank_accounts",
+        "party_opening_balances_tenant_select ON public.party_opening_balances",
+        "party_opening_balances_tenant_write ON public.party_opening_balances",
+        "migration_batches_tenant_select ON public.migration_batches",
+        "migration_batches_tenant_write ON public.migration_batches",
+        "rate_book_history_tenant_select ON public.rate_book_history",
+        "rate_book_history_tenant_write ON public.rate_book_history",
+        "item_masters_tenant_select ON public.item_masters",
+        "item_masters_tenant_write ON public.item_masters",
+        "tenant_backups_tenant_select ON public.tenant_backups",
+        "tenant_backups_tenant_write ON public.tenant_backups",
+        "tenant_restore_audit_tenant_select ON public.tenant_restore_audit",
+        "tenant_restore_audit_tenant_write ON public.tenant_restore_audit"
+      ]
+    },
+    {
+      "order": 161,
+      "filename": "20260814233000_server_side_device_entitlement_gating.sql",
+      "sizeBytes": 10412,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.validate_license"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 162,
+      "filename": "20260815120000_tenant_credit_wallets_and_ledger.sql",
+      "sizeBytes": 12829,
+      "tablesCreated": [
+        "public.tenant_credit_wallets",
+        "public.credit_rate_cards",
+        "public.credit_ledger"
+      ],
+      "functionsCreated": [
+        "public.get_tenant_credit_wallet",
+        "public.deduct_tenant_credits",
+        "public.grant_tenant_credits"
+      ],
+      "policiesCreated": [
+        "tenant_credit_wallets_tenant_isolation ON public.tenant_credit_wallets",
+        "credit_rate_cards_read_all ON public.credit_rate_cards",
+        "credit_ledger_tenant_isolation ON public.credit_ledger"
+      ]
+    },
+    {
+      "order": 163,
+      "filename": "20260815130000_universal_customization_and_gold_ownership.sql",
+      "sizeBytes": 11679,
+      "tablesCreated": [
+        "public.custom_entity_definitions",
+        "public.custom_entity_records",
+        "public.custom_book_definitions",
+        "public.gold_ownership_positions",
+        "public.metal_inventory_lots",
+        "public.customization_version_history",
+        "public.account_groups",
+        "public.ledger_accounts",
+        "public.day_close_records"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 164,
+      "filename": "20260815140000_report_snapshots.sql",
+      "sizeBytes": 1488,
+      "tablesCreated": [
+        "public.report_snapshots"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "report_snapshots_tenant_read ON public.report_snapshots",
+        "report_snapshots_tenant_insert ON public.report_snapshots"
+      ]
+    },
+    {
+      "order": 165,
+      "filename": "20260815150000_platform_owner_razorpay_billing.sql",
+      "sizeBytes": 32413,
+      "tablesCreated": [
+        "public.payment_configuration",
+        "public.platform_invoices",
+        "public.platform_invoice_items",
+        "public.razorpay_orders",
+        "public.payment_links",
+        "public.subscriptions",
+        "public.settlements",
+        "public.settlement_transactions",
+        "public.platform_payments",
+        "public.payment_attempts",
+        "public.refunds",
+        "public.cash_collections",
+        "public.webhook_events"
+      ],
+      "functionsCreated": [
+        "public.audit_log_append",
+        "public.audit_billing_row",
+        "public.is_valid_platform_item_type",
+        "public.platform_invoice_items_rollup"
+      ],
+      "policiesCreated": [
+        "payment_configuration_read_all ON public.payment_configuration",
+        "payment_configuration_admin_write ON public.payment_configuration",
+        "platform_invoices_tenant_select ON public.platform_invoices",
+        "platform_invoices_admin_write ON public.platform_invoices",
+        "platform_invoice_items_tenant_select ON public.platform_invoice_items",
+        "platform_invoice_items_admin_write ON public.platform_invoice_items",
+        "razorpay_orders_tenant_select ON public.razorpay_orders",
+        "razorpay_orders_admin_write ON public.razorpay_orders",
+        "payment_links_tenant_select ON public.payment_links",
+        "payment_links_admin_write ON public.payment_links",
+        "subscriptions_tenant_select ON public.subscriptions",
+        "subscriptions_admin_write ON public.subscriptions",
+        "settlements_admin_only ON public.settlements",
+        "settlement_transactions_admin_only ON public.settlement_transactions",
+        "platform_payments_tenant_select ON public.platform_payments",
+        "platform_payments_admin_write ON public.platform_payments",
+        "payment_attempts_tenant_select ON public.payment_attempts",
+        "payment_attempts_admin_write ON public.payment_attempts",
+        "refunds_tenant_select ON public.refunds",
+        "refunds_admin_write ON public.refunds",
+        "cash_collections_tenant_select ON public.cash_collections",
+        "cash_collections_tenant_insert ON public.cash_collections",
+        "cash_collections_admin_update ON public.cash_collections",
+        "webhook_events_admin_only ON public.webhook_events"
+      ]
+    },
+    {
+      "order": 166,
+      "filename": "20260815170000_assistant_knowledge_layer.sql",
+      "sizeBytes": 5146,
+      "tablesCreated": [
+        "public.assistant_knowledge_articles",
+        "public.assistant_language_aliases",
+        "public.assistant_intent_audit"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "assistant_knowledge_read ON public.assistant_knowledge_articles",
+        "assistant_knowledge_tenant_write ON public.assistant_knowledge_articles",
+        "assistant_aliases_firm ON public.assistant_language_aliases",
+        "assistant_intent_audit_firm ON public.assistant_intent_audit",
+        "assistant_intent_audit_read ON public.assistant_intent_audit"
+      ]
+    },
+    {
+      "order": 167,
+      "filename": "20260815180000_avs_communication_platform.sql",
+      "sizeBytes": 17220,
+      "tablesCreated": [
+        "public.avs_products",
+        "public.communication_event_catalog",
+        "public.communication_jobs",
+        "public.communication_channel_results",
+        "public.tenant_email_accounts",
+        "public.email_template_library",
+        "public.whatsapp_connections",
+        "public.whatsapp_message_templates",
+        "public.notification_preferences",
+        "public.scheduled_report_deliveries",
+        "public.communication_webhook_events"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "avs_products_read ON public.avs_products",
+        "comm_event_catalog_read ON public.communication_event_catalog",
+        "communication_jobs_firm ON public.communication_jobs",
+        "communication_channel_results_firm ON public.communication_channel_results",
+        "tenant_email_accounts_firm ON public.tenant_email_accounts",
+        "email_template_library_read ON public.email_template_library",
+        "email_template_library_tenant_write ON public.email_template_library",
+        "whatsapp_connections_firm ON public.whatsapp_connections",
+        "whatsapp_templates_firm ON public.whatsapp_message_templates",
+        "notification_preferences_firm ON public.notification_preferences",
+        "scheduled_reports_firm ON public.scheduled_report_deliveries",
+        "comm_webhooks_firm ON public.communication_webhook_events",
+        "comm_webhooks_insert ON public.communication_webhook_events"
+      ]
+    },
+    {
+      "order": 168,
+      "filename": "20260815190000_communication_platform_saas_admin_rls.sql",
+      "sizeBytes": 4189,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "communication_jobs_firm ON public.communication_jobs",
+        "communication_channel_results_firm ON public.communication_channel_results",
+        "tenant_email_accounts_firm ON public.tenant_email_accounts",
+        "whatsapp_connections_firm ON public.whatsapp_connections",
+        "whatsapp_templates_firm ON public.whatsapp_message_templates",
+        "notification_preferences_firm ON public.notification_preferences",
+        "scheduled_reports_firm ON public.scheduled_report_deliveries",
+        "comm_webhooks_firm ON public.communication_webhook_events"
+      ]
+    },
+    {
+      "order": 169,
+      "filename": "20260815200000_communication_p0_completion.sql",
+      "sizeBytes": 3141,
+      "tablesCreated": [
+        "public.email_outbox",
+        "public.email_template_versions"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "email_outbox_firm ON public.email_outbox",
+        "email_template_versions_read ON public.email_template_versions",
+        "email_template_versions_write ON public.email_template_versions"
+      ]
+    },
+    {
+      "order": 170,
+      "filename": "20260815210000_gold_lineage_and_inventory_conversion_rpc.sql",
+      "sizeBytes": 6466,
+      "tablesCreated": [
+        "public.gold_lineage_events"
+      ],
+      "functionsCreated": [
+        "public.rpc_execute_inventory_metal_conversion"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 171,
+      "filename": "20260815210000_portal_isolation_whatsapp_billing.sql",
+      "sizeBytes": 34736,
+      "tablesCreated": [
+        "public.portal_identities",
+        "public.portal_party_links",
+        "public.communication_rate_cards",
+        "public.whatsapp_billing_ledger"
+      ],
+      "functionsCreated": [
+        "public.get_my_portal_context",
+        "public.assert_portal_party_in_scope",
+        "public.my_portal_primary_party_id",
+        "public.my_customer_person_id",
+        "public.assert_communication_scope",
+        "public.resolve_communication_rate_card",
+        "public.record_whatsapp_billing_from_webhook",
+        "public.get_customer_portal",
+        "public.get_supplier_portal",
+        "public.get_karigar_portal"
+      ],
+      "policiesCreated": [
+        "portal_identities_self_read ON public.portal_identities",
+        "portal_identities_admin_write ON public.portal_identities",
+        "portal_party_links_scope ON public.portal_party_links",
+        "communication_rate_cards_read ON public.communication_rate_cards",
+        "communication_rate_cards_admin_write ON public.communication_rate_cards",
+        "whatsapp_billing_ledger_tenant ON public.whatsapp_billing_ledger"
+      ]
+    },
+    {
+      "order": 172,
+      "filename": "20260815220000_portal_invitations_and_hardware.sql",
+      "sizeBytes": 3357,
+      "tablesCreated": [
+        "public.portal_invitations",
+        "public.hardware_devices"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "portal_invitations_firm ON public.portal_invitations",
+        "portal_invitations_anon_validate ON public.portal_invitations",
+        "hardware_devices_firm ON public.hardware_devices"
+      ]
+    },
+    {
+      "order": 173,
+      "filename": "20260815230000_declarative_rules_and_scheduler_cron.sql",
+      "sizeBytes": 3572,
+      "tablesCreated": [
+        "public.declarative_business_rules"
+      ],
+      "functionsCreated": [
+        "public.invoke_communication_scheduler"
+      ],
+      "policiesCreated": [
+        "declarative_business_rules_firm ON public.declarative_business_rules"
+      ]
+    },
+    {
+      "order": 174,
+      "filename": "20260815240000_whatsapp_crm_campaigns_commercial.sql",
+      "sizeBytes": 17462,
+      "tablesCreated": [
+        "public.whatsapp_conversations",
+        "public.whatsapp_messages",
+        "public.conversation_assignments",
+        "public.whatsapp_opt_ins",
+        "public.campaign_audiences",
+        "public.whatsapp_campaigns",
+        "public.campaign_recipients",
+        "public.campaign_events",
+        "public.commercial_product_fees",
+        "public.commercial_plan_versions"
+      ],
+      "functionsCreated": [
+        "public.resolve_whatsapp_conversation"
+      ],
+      "policiesCreated": [
+        "commercial_product_fees_admin ON public.commercial_product_fees",
+        "commercial_product_fees_read ON public.commercial_product_fees",
+        "commercial_plan_versions_admin ON public.commercial_plan_versions",
+        "commercial_plan_versions_read ON public.commercial_plan_versions"
+      ]
+    },
+    {
+      "order": 175,
+      "filename": "20260815260000_public_trial_training_razorpay.sql",
+      "sizeBytes": 13653,
+      "tablesCreated": [
+        "public.platform_commercial_leads",
+        "public.user_tutorial_progress"
+      ],
+      "functionsCreated": [
+        "public.get_platform_trial_days",
+        "public.provision_public_trial",
+        "public.process_razorpay_payment_captured"
+      ],
+      "policiesCreated": [
+        "platform_commercial_leads_admin ON public.platform_commercial_leads",
+        "user_tutorial_progress_self ON public.user_tutorial_progress"
+      ]
+    },
+    {
+      "order": 176,
+      "filename": "20260815270000_trial_conversion_payment.sql",
+      "sizeBytes": 6059,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.convert_trial_to_paid",
+        "public.process_razorpay_payment_captured",
+        "public.sweep_trial_lifecycle"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 177,
+      "filename": "20260815280000_multi_tenant_identity_subscription_access.sql",
+      "sizeBytes": 23096,
+      "tablesCreated": [
+        "public.tenant_memberships",
+        "public.identity_active_context",
+        "public.user_preferences",
+        "public.platform_sms_config",
+        "public.platform_otp_policy"
+      ],
+      "functionsCreated": [
+        "public.my_active_firm_id",
+        "public.my_firm_id",
+        "public.get_my_memberships",
+        "public.set_active_tenant_context",
+        "public.get_my_portal_context",
+        "public.resolve_subscription_access",
+        "public.get_my_tenant_subscription_entitlement",
+        "public.add_tenant_membership_for_invite"
+      ],
+      "policiesCreated": [
+        "tenant_memberships_self_read ON public.tenant_memberships",
+        "identity_active_context_self ON public.identity_active_context",
+        "user_preferences_self ON public.user_preferences"
+      ]
+    },
+    {
+      "order": 178,
+      "filename": "20260816010000_platform_payment_engine_v1.sql",
+      "sizeBytes": 21793,
+      "tablesCreated": [
+        "public.platform_invoice_fulfillments",
+        "public.platform_receipts"
+      ],
+      "functionsCreated": [
+        "public.convert_trial_to_paid",
+        "public.is_cash_collection_location_allowed",
+        "public.create_platform_commercial_invoice",
+        "public.allocate_platform_invoice_payment",
+        "public.propose_cash_collection",
+        "public.confirm_cash_collection",
+        "public.process_razorpay_payment_captured",
+        "public.create_credit_topup_invoice"
+      ],
+      "policiesCreated": [
+        "platform_invoice_fulfillments_tenant ON public.platform_invoice_fulfillments",
+        "platform_receipts_tenant ON public.platform_receipts"
+      ]
+    },
+    {
+      "order": 179,
+      "filename": "20260816020000_platform_completion_v1.sql",
+      "sizeBytes": 6036,
+      "tablesCreated": [
+        "public.platform_lead_tasks"
+      ],
+      "functionsCreated": [
+        "public.record_platform_refund",
+        "public.sweep_amc_renewals"
+      ],
+      "policiesCreated": [
+        "platform_lead_tasks_admin ON public.platform_lead_tasks"
+      ]
+    },
+    {
+      "order": 180,
+      "filename": "20260816030000_purity_grades_master.sql",
+      "sizeBytes": 3722,
+      "tablesCreated": [
+        "public.purity_grades"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 181,
+      "filename": "20260816040000_report_snapshots_and_purchase_return.sql",
+      "sizeBytes": 2617,
+      "tablesCreated": [
+        "public.report_snapshots",
+        "public.report_verifications"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "firm_report_snapshots ON public.report_snapshots",
+        "firm_report_verifications ON public.report_verifications"
+      ]
+    },
+    {
+      "order": 182,
+      "filename": "20260816050000_jewellery_erp_modules.sql",
+      "sizeBytes": 4464,
+      "tablesCreated": [
+        "public.stock_box_trays",
+        "public.stock_transfer_vouchers",
+        "public.bank_reconciliation_sessions"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "firm_stock_box_trays ON public.stock_box_trays",
+        "firm_stock_transfer_vouchers ON public.stock_transfer_vouchers",
+        "firm_bank_reconciliation_sessions ON public.bank_reconciliation_sessions"
+      ]
+    },
+    {
+      "order": 183,
+      "filename": "20260816060000_platform_owner_rpc_restore.sql",
+      "sizeBytes": 1035,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 184,
+      "filename": "20260816070000_inventory_canonical_authority.sql",
+      "sizeBytes": 404,
+      "tablesCreated": [],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 185,
+      "filename": "20260816080000_client_secret_surface_hardening.sql",
+      "sizeBytes": 3181,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.provider_secret_is_configured"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 186,
+      "filename": "20260816110000_unified_authorization_context.sql",
+      "sizeBytes": 9751,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.workspace_route_for_membership",
+        "public.workspace_type_for_membership",
+        "public.resolve_default_workspace_route",
+        "public.get_authorization_context",
+        "public.get_login_destination",
+        "public.set_platform_workspace"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 187,
+      "filename": "20260816120000_public_website_cms.sql",
+      "sizeBytes": 18107,
+      "tablesCreated": [
+        "public.public_website_pages",
+        "public.public_blog_posts",
+        "public.public_website_tutorials",
+        "public.public_release_notes",
+        "public.public_legal_pages",
+        "public.public_website_media"
+      ],
+      "functionsCreated": [
+        "public.get_public_website_bundle",
+        "public.get_public_pricing_plans",
+        "public.submit_website_lead"
+      ],
+      "policiesCreated": [
+        "public_website_pages_admin ON public.public_website_pages",
+        "public_website_pages_anon_read ON public.public_website_pages",
+        "public_blog_posts_admin ON public.public_blog_posts",
+        "public_blog_posts_anon_read ON public.public_blog_posts",
+        "public_website_tutorials_admin ON public.public_website_tutorials",
+        "public_website_tutorials_anon_read ON public.public_website_tutorials",
+        "public_release_notes_admin ON public.public_release_notes",
+        "public_release_notes_anon_read ON public.public_release_notes",
+        "public_legal_pages_admin ON public.public_legal_pages",
+        "public_legal_pages_anon_read ON public.public_legal_pages",
+        "public_website_media_admin ON public.public_website_media",
+        "public_website_media_anon_read ON public.public_website_media"
+      ]
+    },
+    {
+      "order": 188,
+      "filename": "20260816130000_website_bundle_downloads.sql",
+      "sizeBytes": 1508,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_public_website_bundle"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 189,
+      "filename": "20260822180000_ledger_pagination_rpcs.sql",
+      "sizeBytes": 6311,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_company_cash_ledger_page",
+        "public.get_gold_ledger_page",
+        "public.get_party_ledger_summary"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 190,
+      "filename": "20260830120000_gold_ledger_page_perf.sql",
+      "sizeBytes": 2514,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_gold_ledger_page"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 191,
+      "filename": "20260830140000_rls_initplan_cpu_fix.sql",
+      "sizeBytes": 12073,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.organization_feature_enabled",
+        "public.tenant_module_write_allowed",
+        "public.get_home_dashboard_summary"
+      ],
+      "policiesCreated": [
+        "gold_ledger_read ON public.gold_ledger",
+        "gold_ledger_insert ON public.gold_ledger",
+        "gold_ledger_update ON public.gold_ledger",
+        "gold_ledger_delete ON public.gold_ledger",
+        "invoices_read_authed ON public.invoices",
+        "invoices_insert_staff ON public.invoices",
+        "invoices_update_staff ON public.invoices",
+        "invoices_delete_staff ON public.invoices"
+      ]
+    },
+    {
+      "order": 192,
+      "filename": "20260830160000_document_hosting_retention_and_rate_limits.sql",
+      "sizeBytes": 4989,
+      "tablesCreated": [
+        "public.api_rate_limits"
+      ],
+      "functionsCreated": [
+        "public.check_api_rate_limit",
+        "public.resolve_document_share"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 193,
+      "filename": "20260830160000_egress_rate_limit_hot_rpcs.sql",
+      "sizeBytes": 8288,
+      "tablesCreated": [
+        "public.egress_rate_limit_buckets"
+      ],
+      "functionsCreated": [
+        "public.enforce_egress_rate_limit",
+        "public.get_gold_ledger_page",
+        "public.get_authorization_context"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 194,
+      "filename": "20260830170000_platform_database_health_observability.sql",
+      "sizeBytes": 7629,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_platform_database_health",
+        "public.get_platform_egress_observability"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 195,
+      "filename": "20260830180000_boot_operational_query_perf.sql",
+      "sizeBytes": 5064,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_home_dashboard_summary"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 196,
+      "filename": "20260830190000_gold_ledger_balances_page_order.sql",
+      "sizeBytes": 7651,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_gold_ledger_page",
+        "public.get_firm_ledger_balances",
+        "public.mark_my_portal_kyc_doc"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 197,
+      "filename": "20260830200000_bank_recon_statement_and_verify_rpcs.sql",
+      "sizeBytes": 13159,
+      "tablesCreated": [
+        "public.public_document_verifications",
+        "public.public_verify_rate_limits"
+      ],
+      "functionsCreated": [
+        "public.check_public_verify_rate_limit",
+        "public.mint_invoice_verification",
+        "public.verify_public_document",
+        "public.register_document_verification",
+        "public.revoke_document_verification_by_record",
+        "public.attach_verification_document_share"
+      ],
+      "policiesCreated": [
+        "firm_public_document_verifications ON public.public_document_verifications"
+      ]
+    },
+    {
+      "order": 198,
+      "filename": "20260830210000_expand_api_rate_limits.sql",
+      "sizeBytes": 8128,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_billing_outstanding_summary",
+        "public.get_company_cash_ledger_page",
+        "public.get_ceo_branch_kpis"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 199,
+      "filename": "20260830220000_disable_public_trial_signup.sql",
+      "sizeBytes": 2487,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.provision_public_trial",
+        "public.get_platform_trial_days",
+        "public.check_invite_accept_rate_limit"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 200,
+      "filename": "20260830230000_fix_provision_public_trial_overload.sql",
+      "sizeBytes": 1290,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.provision_public_trial"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 201,
+      "filename": "20260830240000_fix_auth_context_readonly_login.sql",
+      "sizeBytes": 4673,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_authorization_context"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 202,
+      "filename": "20260830250000_platform_workspace_role_parity.sql",
+      "sizeBytes": 1977,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.is_platform_operator",
+        "public.set_platform_workspace"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 203,
+      "filename": "20260830260000_fix_auth_context_infer_active_workspace.sql",
+      "sizeBytes": 6221,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.get_authorization_context"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 204,
+      "filename": "20260830270000_fix_stable_rpc_rate_limit_readonly.sql",
+      "sizeBytes": 15042,
+      "tablesCreated": [],
+      "functionsCreated": [
+        "public.enforce_egress_rate_limit",
+        "public.get_gold_ledger_page",
+        "public.get_firm_ledger_balances",
+        "public.get_billing_outstanding_summary",
+        "public.get_company_cash_ledger_page",
+        "public.get_ceo_branch_kpis"
+      ],
+      "policiesCreated": []
+    },
+    {
+      "order": 205,
+      "filename": "20260830280000_item_groups_and_inventory_master_link.sql",
+      "sizeBytes": 2409,
+      "tablesCreated": [
+        "public.item_groups"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": [
+        "item_groups_tenant_select ON public.item_groups",
+        "item_groups_tenant_write ON public.item_groups"
+      ]
+    },
+    {
+      "order": 206,
+      "filename": "20260905_admin_subscription_webhook_schema.sql",
+      "sizeBytes": 9294,
+      "tablesCreated": [
+        "public.company_subscriptions",
+        "public.subscription_events",
+        "public.integrations_registry",
+        "public.inbound_webhooks",
+        "public.admin_audit_logs"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    },
+    {
+      "order": 207,
+      "filename": "20260905_authoritative_subscription_and_s2s_api.sql",
+      "sizeBytes": 20939,
+      "tablesCreated": [
+        "public.platform_service_keys"
+      ],
+      "functionsCreated": [
+        "public.get_authoritative_tenant_entitlements",
+        "public.s2s_get_public_plans",
+        "public.s2s_create_checkout_order",
+        "public.s2s_verify_and_fulfill_payment"
+      ],
+      "policiesCreated": [
+        "platform_service_keys_saas_admin ON public.platform_service_keys"
+      ]
+    },
+    {
+      "order": 208,
+      "filename": "20260905_final_online_architecture_extension.sql",
+      "sizeBytes": 8146,
+      "tablesCreated": [
+        "public.storage_objects_registry",
+        "public.automated_reports_schedules",
+        "public.service_requests",
+        "public.service_alerts",
+        "public.notification_logs"
+      ],
+      "functionsCreated": [],
+      "policiesCreated": []
+    }
+  ]
+}

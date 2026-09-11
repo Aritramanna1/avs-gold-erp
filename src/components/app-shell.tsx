@@ -493,7 +493,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
           ) : null}
-          <div className="min-h-full relative">
+          <div className="min-h-full relative erp-container px-3 sm:px-4 md:px-6">
             {criticalLoadFailed && !criticalLoadDone ? (
               <div className="p-4 md:p-8 max-w-xl">
                 <StagedLoadPanel

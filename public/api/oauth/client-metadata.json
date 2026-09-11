@@ -1,0 +1,31 @@
+{
+  "client_id": "https://erp.arivahly.in/api/oauth/client-metadata.json",
+  "client_name": "AVS Jewellery ERP MCP Client",
+  "client_uri": "https://erp.arivahly.in",
+  "logo_uri": "https://erp.arivahly.in/favicon.ico",
+  "redirect_uris": [
+    "https://chatgpt.com/aip/oauth/callback",
+    "https://chat.openai.com/aip/oauth/callback",
+    "https://claude.ai/oauth/callback",
+    "https://cursor.com/oauth/callback",
+    "https://smithery.ai/oauth/callback",
+    "https://glama.ai/oauth/callback",
+    "http://localhost:3000/oauth/callback",
+    "http://127.0.0.1:3000/oauth/callback",
+    "http://localhost:8080/oauth/callback",
+    "http://127.0.0.1:8080/oauth/callback"
+  ],
+  "grant_types": [
+    "authorization_code",
+    "refresh_token"
+  ],
+  "response_types": [
+    "code"
+  ],
+  "token_endpoint_auth_method": "none",
+  "scope": "openid profile email offline_access erp:read erp:write erp:admin mcp:read mcp:execute finance:read finance:write stock:read stock:write sales:read sales:write",
+  "contacts": [
+    "security@arivahly.in",
+    "admin@arivahly.in"
+  ]
+}

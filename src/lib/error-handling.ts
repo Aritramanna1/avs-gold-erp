@@ -153,9 +153,16 @@ function classifyError(
     text.includes("api unavailable") ||
     text.includes("failed to fetch")
   ) {
+    const rawMsg = error.message || "";
+    const cleanMsg =
+      rawMsg.toLowerCase() === "failed to fetch" ||
+      rawMsg.toLowerCase().includes("fetch failed") ||
+      rawMsg.toLowerCase().includes("failed to fetch")
+        ? "Network connection unavailable or request timed out. Please check your internet connection and try again."
+        : rawMsg || "The app could not reach an online service.";
     return {
       title: "Connection problem",
-      message: error.message || "The app could not reach an online service.",
+      message: cleanMsg,
       guidance:
         "Wait for the online connection to recover, then retry. If it repeats, create a support ticket with the Error Reference ID.",
       category: "network",

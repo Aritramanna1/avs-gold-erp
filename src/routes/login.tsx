@@ -160,7 +160,7 @@ function LoginPage() {
             <button
               type="button"
               data-testid="login-accept-invite"
-              className="w-full rounded-lg border border-[#B89454] bg-[#B89454]/10 hover:bg-[#B89454]/20 px-3 py-2 text-xs font-semibold text-[#8C6D32] dark:text-[#B89454] shadow-xs transition-colors text-center"
+              className="w-full rounded-lg border border-gold/40 bg-gold/10 hover:bg-gold/20 px-3 py-2 text-xs font-semibold text-gold shadow-xs transition-colors text-center"
               onClick={() => void navigate({ to: "/invite/accept" })}
             >
               Accept Invitation
@@ -170,7 +170,7 @@ function LoginPage() {
               target="_blank"
               rel="noopener noreferrer"
               data-testid="login-request-demo"
-              className="w-full rounded-lg bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white px-3 py-2 text-xs font-semibold shadow-xs transition-colors text-center flex items-center justify-center"
+              className="w-full rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-2 text-xs font-semibold shadow-xs transition-colors text-center flex items-center justify-center"
             >
               Request Demo ↗
             </a>

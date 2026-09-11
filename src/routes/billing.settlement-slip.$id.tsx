@@ -1,6 +1,8 @@
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { PrintEngine } from "@/components/print-engine/PrintEngine";
 import { useBillingInvoiceById } from "@/lib/use-billing-invoice";
+import { useBilling } from "@/lib/billing-store";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/lib/settings-store";
 import { Loader2, RotateCcw } from "lucide-react";
@@ -16,6 +18,15 @@ export const Route = createFileRoute("/billing/settlement-slip/$id")({
 function SettlementSlipPrint() {
   const { id } = useParams({ from: "/billing/settlement-slip/$id" });
   const { invoice: inv, loading, error, retry } = useBillingInvoiceById(id);
+
+  useEffect(() => {
+    if (inv) {
+      const state = useBilling.getState();
+      if (!state.invoices.some((i) => i.id === inv.id)) {
+        useBilling.setState({ invoices: [inv, ...state.invoices] });
+      }
+    }
+  }, [inv]);
 
   if (loading && !inv) {
     return (

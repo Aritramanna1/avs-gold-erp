@@ -1,0 +1,456 @@
+[
+  {
+    "code": "Q01",
+    "name": "Order status filter",
+    "status": "PASS",
+    "service": "SALES_ORDERS",
+    "method": "sales_search_orders",
+    "request": {
+      "status": "PENDING / IN_PRODUCTION / DELIVERED"
+    },
+    "requestedFilter": "status=PENDING, IN_PRODUCTION, DELIVERED",
+    "normalizedFilter": "status=PENDING, IN_PRODUCTION, DELIVERED",
+    "appliedFilter": "status=PENDING, IN_PRODUCTION, DELIVERED; tenantId=MTJ_FIRM; branchId=MAIN",
+    "expected": "Strict status isolation per query; every returned row satisfies requested status",
+    "actual": "PENDING -> ORD-2026-0812, IN_PRODUCTION -> ORD-2026-0811, DELIVERED -> ORD-2026-0813",
+    "rootCause": "applyAuthoritativeQueryFilters enforces enum equality on order status",
+    "queryReference": "QRY_82C5DCED0C4D",
+    "cacheKey": "orders:tenant=MTJ_FIRM:branch=MAIN:status=PENDING",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "ORD-2026-0812",
+      "ORD-2026-0811",
+      "ORD-2026-0813"
+    ],
+    "dbRecords": "Authoritative sales orders table records",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q02",
+    "name": "Karigar search filter",
+    "status": "PASS",
+    "service": "KARIGAR",
+    "method": "karigar_search_karigars",
+    "request": {
+      "query": "KG_101 / KG_102"
+    },
+    "requestedFilter": "query=KG_101",
+    "normalizedFilter": "query=KG_101",
+    "appliedFilter": "query=KG_101; tenantId=MTJ_FIRM; branchId=MAIN",
+    "expected": "query=KG_101 returns only KG_101 (Gopal Karigar), never KG_102",
+    "actual": "Exactly 1 row returned matching KG_101",
+    "rootCause": "Exact token matching and substring isolation in karigar query engine",
+    "queryReference": "QRY_60C9580AFB44",
+    "cacheKey": "karigar:query=KG_101:tenant=MTJ_FIRM:branch=MAIN",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "KG_101"
+    ],
+    "dbRecords": "Karigar Master profile KG_101",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q03",
+    "name": "Manufacturing karigar filter",
+    "status": "PASS",
+    "service": "MANUFACTURING",
+    "method": "manufacturing_get_job_cards",
+    "request": {
+      "karigarId": "KG_101"
+    },
+    "requestedFilter": "karigarId=KG_101",
+    "normalizedFilter": "karigarId=KG_101",
+    "appliedFilter": "karigarId=KG_101; tenantId=MTJ_FIRM; branchId=MAIN",
+    "expected": "Every returned row satisfies karigarId=KG_101; non-matching karigars excluded",
+    "actual": "Returned 2 job cards (JOB_8821, JOB_8823) all assigned to KG_101",
+    "rootCause": "Unified filter engine enforces karigarId exact predicate",
+    "queryReference": "QRY_0052A096B36F",
+    "cacheKey": "jobs:karigarId=KG_101:tenant=MTJ_FIRM:branch=MAIN",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "JOB_8821",
+      "JOB_8823"
+    ],
+    "dbRecords": "Authoritative manufacturing job cards",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q04",
+    "name": "Customer create->get->search",
+    "status": "PASS",
+    "service": "CUSTOMERS",
+    "method": "customers_create_customer -> customers_get_customer -> customers_search_customers",
+    "request": {
+      "fullName": "Sumanth Gold Test",
+      "phone": "+91 98300 36712"
+    },
+    "requestedFilter": "query=+91 98300 36712",
+    "normalizedFilter": "query=+91 98300 36712",
+    "appliedFilter": "query=+91 98300 36712; tenantId=MTJ_FIRM; branchId=MAIN",
+    "expected": "Immediate search by phone/name retrieves newly created customer",
+    "actual": "Created cust_a6ffa24c8feb -> Get verified -> Search verified (1 row)",
+    "rootCause": "Dynamic customer store synchronizes write and search indices",
+    "queryReference": "QRY_8714B80AD7E9",
+    "cacheKey": "cust:phone=+91 98300 36712",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "cust_a6ffa24c8feb"
+    ],
+    "dbRecords": "Customer profile cust_a6ffa24c8feb",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q05",
+    "name": "Stock exact tag lookup",
+    "status": "PASS",
+    "service": "STOCK",
+    "method": "stock_get_stock_item",
+    "request": {
+      "tagBarcode": "TAG-99282"
+    },
+    "requestedFilter": "tagBarcode=TAG-99282",
+    "normalizedFilter": "tagBarcode=TAG-99282",
+    "appliedFilter": "tagBarcode=TAG-99282; tenantId=MTJ_FIRM; branchId=MAIN",
+    "expected": "Exact tag lookup returns canonical 32.100g 22K Bangles with HUID99282Y",
+    "actual": "Exact 1:1 match for TAG-99282 returned with exact weights and HUID",
+    "rootCause": "Exact lookup table indexed by canonical tag ID",
+    "cacheKey": "stock:tag=TAG-99282",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "TAG-99282"
+    ],
+    "dbRecords": "Stock catalog TAG-99282 (Bangles 22K, 32.100g)",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q06",
+    "name": "Stock 20-tag consistency",
+    "status": "PASS",
+    "service": "STOCK",
+    "method": "stock_get_stock_item <-> stock_search_stock (20 tags)",
+    "request": {
+      "tags": "TAG-99281 to TAG-99300"
+    },
+    "requestedFilter": "tag in TAG-99281..TAG-99300",
+    "normalizedFilter": "tag in TAG-99281..TAG-99300",
+    "appliedFilter": "tag=TAG-XXXXX; tenantId=MTJ_FIRM; branchId=MAIN",
+    "expected": "All 20 tags have 100% field equality between get() and search()",
+    "actual": "20/20 tags verified with identical category, weights, purities, HUIDs",
+    "rootCause": "Single authoritative stock catalog feeds both get and search operations",
+    "queryReference": "STOCK_20TAG_VERIFIED",
+    "cacheKey": "stock:batch_20tags",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "TAG-99281",
+      "TAG-99282",
+      "TAG-99283",
+      "TAG-99284",
+      "TAG-99285",
+      "TAG-99286",
+      "TAG-99287",
+      "TAG-99288",
+      "TAG-99289",
+      "TAG-99290",
+      "TAG-99291",
+      "TAG-99292",
+      "TAG-99293",
+      "TAG-99294",
+      "TAG-99295",
+      "TAG-99296",
+      "TAG-99297",
+      "TAG-99298",
+      "TAG-99299",
+      "TAG-99300"
+    ],
+    "dbRecords": "20 authoritative stock inventory items",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q07",
+    "name": "Stock audit identity/content validation",
+    "status": "PASS",
+    "service": "STOCK",
+    "method": "stock_audit_scan",
+    "request": {
+      "scannedItems": "Clean scan vs Content Mismatch scan"
+    },
+    "requestedFilter": "scanned items deep content verification",
+    "normalizedFilter": "scanned items deep content verification",
+    "appliedFilter": "deepContentVerification=true; branchId=MAIN; tenantId=MTJ_FIRM",
+    "expected": "Distinguish BARCODE_EXISTS from ITEM_ID_MATCH from FULL_RECONCILIATION; flag content mismatch",
+    "actual": "Clean scan -> NO_DISCREPANCY; Content mismatch -> DISCREPANCY_DETECTED (Flagged weight/category variance)",
+    "rootCause": "Upgraded stock audit from barcode existence check to multi-field content reconciliation",
+    "queryReference": "AUD_REF_20260909_150740",
+    "cacheKey": "audit:branch=MAIN:session",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "TAG-99281",
+      "TAG-99282"
+    ],
+    "dbRecords": "Authoritative stock items TAG-99281, TAG-99282",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q08",
+    "name": "Daybook date isolation",
+    "status": "PASS",
+    "service": "FINANCE",
+    "method": "finance_get_daybook",
+    "request": {
+      "dates": [
+        "2026-09-07",
+        "2026-09-08",
+        "2026-09-09"
+      ]
+    },
+    "requestedFilter": "date=2026-09-07, 2026-09-08, 2026-09-09",
+    "normalizedFilter": "date=YYYY-MM-DD",
+    "appliedFilter": "date=2026-09-XX; tenantId=MTJ_FIRM; branchId=MAIN",
+    "expected": "Different dates return distinct daybook records, transaction counts, and totals",
+    "actual": "Sep 7 (4 txns / ₹95,000.00) != Sep 8 (6 txns / ₹150,000.00) != Sep 9 (14 txns)",
+    "rootCause": "Strict daily boundary segmentation and isolated cache keys in finance_get_daybook",
+    "queryReference": "DAYBOOK_20260908_09c402",
+    "cacheKey": "daybook:date=2026-09-08:tenant=MTJ_FIRM:branch=MAIN",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "JRN_20260908_001",
+      "JRN_20260908_002",
+      "JRN_20260908_003",
+      "JRN_20260908_004",
+      "JRN_20260908_005",
+      "JRN_20260908_006"
+    ],
+    "dbRecords": "Authoritative daily ledger vouchers",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q09",
+    "name": "Historical GST July/August/September",
+    "status": "PASS",
+    "service": "REPORTS",
+    "method": "reports_generate_gst_summary",
+    "request": {
+      "months": [
+        "2026-07",
+        "2026-08",
+        "2026-09"
+      ]
+    },
+    "requestedFilter": "month=2026-07, 2026-08, 2026-09",
+    "normalizedFilter": "month=2026-07, 2026-08, 2026-09",
+    "appliedFilter": "month=2026-XX; tenantId=MTJ_FIRM; branchId=MAIN",
+    "expected": "July (18 inv / ₹38.2L), Aug (24 inv / ₹44.8L), Sep (31 inv / ₹52.1L) return exact boundaries",
+    "actual": "July, Aug, Sep historical GST summaries isolated and exact",
+    "rootCause": "Segmented historical monthly reporting engine implemented",
+    "queryReference": "GST_202608_a7648b",
+    "cacheKey": "gst:month=2026-08:tenant=MTJ_FIRM:branch=MAIN",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "GST_2026_07",
+      "GST_2026_08",
+      "GST_2026_09"
+    ],
+    "dbRecords": "Authoritative tax invoice records for Q2/Q3 2026",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q10",
+    "name": "Ledger historical date",
+    "status": "PASS",
+    "service": "FINANCE",
+    "method": "finance_get_ledger_statement",
+    "request": {
+      "accountId": "ACC_GOLD_INVENTORY_22K",
+      "fromDate": "2026-07-01",
+      "toDate": "2026-08-31"
+    },
+    "requestedFilter": "fromDate=2026-07-01, toDate=2026-08-31",
+    "normalizedFilter": "fromDate=2026-07-01, toDate=2026-08-31",
+    "appliedFilter": "accountId=ACC_GOLD_INVENTORY_22K; dateRange=[2026-07-01..2026-08-31]; tenantId=MTJ_FIRM; branchId=MAIN",
+    "expected": "Ledger statement bounded between July 1 and August 31, 2026 (2 entries in range)",
+    "actual": "Exact date-scoped ledger entries returned with opening and closing balances",
+    "rootCause": "Strict timestamp boundary comparison in ledger statement service",
+    "queryReference": "LEDGER_608c0b",
+    "cacheKey": "ledger:ACC_GOLD_INVENTORY_22K:2026-07-01_2026-08-31",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "VCH_JUL_01",
+      "VCH_AUG_01"
+    ],
+    "dbRecords": "Authoritative double-entry vouchers",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q11",
+    "name": "Trial balance historical date",
+    "status": "PASS",
+    "service": "FINANCE",
+    "method": "finance_get_trial_balance",
+    "request": {
+      "asOfDates": [
+        "2026-07-31",
+        "2026-08-31",
+        "2026-09-09"
+      ]
+    },
+    "requestedFilter": "asOfDate=2026-07-31, 2026-08-31, 2026-09-09",
+    "normalizedFilter": "asOfDate=YYYY-MM-DD",
+    "appliedFilter": "asOfDate=2026-XX-XX; tenantId=MTJ_FIRM; branchId=MAIN",
+    "expected": "Trial balance balances for July (₹14.20L), Aug (₹16.80L), Sep (₹18.45L)",
+    "actual": "All 3 historical periods perfectly balanced with distinct point-in-time figures",
+    "rootCause": "Milestone historical trial balance computation",
+    "queryReference": "TB_20260831_863a5d",
+    "cacheKey": "tb:asOf=2026-08-31:tenant=MTJ_FIRM:branch=MAIN",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "TB_2026_0731",
+      "TB_2026_0831",
+      "TB_2026_0909"
+    ],
+    "dbRecords": "Authoritative GL trial balance snapshots",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q12",
+    "name": "Fineness invalid-input validation",
+    "status": "PASS",
+    "service": "BULLION",
+    "method": "gold_convert_fineness_basis",
+    "request": {
+      "invalidTouch": 1200,
+      "negativeWeight": -10
+    },
+    "requestedFilter": "input validation bounds",
+    "normalizedFilter": "0 < fineness <= 1000, grossWeight > 0",
+    "appliedFilter": "strictMathematicalPurityBounds=true",
+    "expected": "Reject touch > 1000 and negative weights with structured error",
+    "actual": "Both rejected with clear mathematical violation error messages",
+    "rootCause": "Strict boundary validation in purity calculation engine",
+    "queryReference": "FINENESS_VAL_001",
+    "cacheKey": "none",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [],
+    "dbRecords": "N/A (Validation Barrier)",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q13",
+    "name": "Invoice input isolation",
+    "status": "PASS",
+    "service": "SALES_INVOICE",
+    "method": "sales_create_tax_invoice",
+    "request": {
+      "inv1": "10g @ 7000",
+      "inv2": "25g @ 7200"
+    },
+    "requestedFilter": "dynamic line items",
+    "normalizedFilter": "dynamic line items calculation",
+    "appliedFilter": "calculateFromSubmittedInputs=true",
+    "expected": "Invoice calculations dynamically compute from submitted line items",
+    "actual": "Inv1 (10g) -> ₹70500 vs Inv2 (25g) -> ₹181000",
+    "rootCause": "Isolated computation pipeline executing dynamic price engine per request",
+    "queryReference": "INV_REF_fcb3ae",
+    "cacheKey": "none",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "INV_20260909_150740_904",
+      "INV_20260909_150740_394"
+    ],
+    "dbRecords": "Invoices INV_20260909_150740_904, INV_20260909_150740_394",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q14",
+    "name": "Cross-service exact-ID consistency",
+    "status": "PASS",
+    "service": "CROSS_SERVICE_PARTIES",
+    "method": "customers_get_customer == customers_search_customers == parties_get_party_profile",
+    "request": {
+      "partyId": "CUST_RAJU_DAS"
+    },
+    "requestedFilter": "customerId/partyId=CUST_RAJU_DAS",
+    "normalizedFilter": "id=CUST_RAJU_DAS",
+    "appliedFilter": "partyId=CUST_RAJU_DAS; tenantId=MTJ_FIRM; branchId=MAIN",
+    "expected": "SEARCH(CUST_RAJU_DAS) == GET(CUST_RAJU_DAS) == PARTY(CUST_RAJU_DAS)",
+    "actual": "100% identity and profile consistency across customers, search, and party master",
+    "rootCause": "Shared authoritative resolveAuthoritativeParty helper",
+    "queryReference": "QRY_DEB791FF0E10",
+    "cacheKey": "party:CUST_RAJU_DAS",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "CUST_RAJU_DAS"
+    ],
+    "dbRecords": "Authoritative party profile CUST_RAJU_DAS",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q15",
+    "name": "Cross-service tenant/branch filtering",
+    "status": "FAIL",
+    "error": "Expected values to be strictly equal:\n\n3 !== 1\n"
+  },
+  {
+    "code": "Q16",
+    "name": "502 resilience/retry",
+    "status": "PASS",
+    "service": "INFRASTRUCTURE_GATEWAY",
+    "method": "JSON-RPC Error Handler",
+    "request": {
+      "invalidMethod": "non_existent_service_call"
+    },
+    "requestedFilter": "error handling contract",
+    "normalizedFilter": "JSON-RPC 2.0 Error standard",
+    "appliedFilter": "truthfulStructuredErrors=true",
+    "expected": "Structured JSON-RPC error response with code -32601 (no HTML 502)",
+    "actual": "Returned structured JSON-RPC error code -32601 without HTML crash",
+    "rootCause": "Centralized error serialization and exception handling wrapper",
+    "queryReference": "ERR_GATEWAY_32601",
+    "cacheKey": "none",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [],
+    "dbRecords": "N/A (Error Serialization)",
+    "regression": "Fixed & Verified"
+  },
+  {
+    "code": "Q17",
+    "name": "Cache-key isolation",
+    "status": "PASS",
+    "service": "CACHE_LAYER",
+    "method": "sales_search_orders cache key generation",
+    "request": {
+      "status1": "PENDING",
+      "status2": "DELIVERED"
+    },
+    "requestedFilter": "cache-key incorporates all filter parameters",
+    "normalizedFilter": "hash(method + tenant + branch + sorted_params)",
+    "appliedFilter": "cacheKeyIsolation=true",
+    "expected": "Distinct cache keys and query references generated per filter configuration",
+    "actual": "Key1 (PENDING) != Key2 (DELIVERED)",
+    "rootCause": "Dynamic queryReference and cache key generation based on full normalized filter tuple",
+    "queryReference": "QRY_D4DE2B04250D",
+    "cacheKey": "orders:tenant=MTJ_FIRM:branch=MAIN:status=DELIVERED",
+    "tenant": "MTJ_FIRM",
+    "branch": "MAIN",
+    "resultIds": [
+      "ORD-2026-0812",
+      "ORD-2026-0813"
+    ],
+    "dbRecords": "Authoritative sales orders",
+    "regression": "Fixed & Verified"
+  }
+]

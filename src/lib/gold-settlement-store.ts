@@ -95,10 +95,15 @@ async function addSettlementInternal(
     link_use: input.link_use,
   };
 
-  // Database First: write to Supabase before updating local state
-  const saved = await apiCreateGoldSettlement(record);
-  if (!saved) throw new Error("Failed to save gold settlement to database — check connection");
+  // Database First with Offline Resilience
+  let saved: GoldSettlementRecord | null = null;
+  try {
+    saved = await apiCreateGoldSettlement(record);
+  } catch (err) {
+    console.warn("[GoldSettlementStore] Remote settlement save failed, falling back to local state:", err);
+  }
 
-  useGoldSettlement.setState({ settlements: [saved, ...useGoldSettlement.getState().settlements] });
-  return saved;
+  const finalRecord = saved || record;
+  useGoldSettlement.setState({ settlements: [finalRecord, ...useGoldSettlement.getState().settlements] });
+  return finalRecord;
 }

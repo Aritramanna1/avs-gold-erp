@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "createdAt": "2026-09-08T11:43:38.272Z",
+  "engine": "monkeytest-core@0.3",
+  "plan": {
+    "startUrl": "http://localhost:3000/login",
+    "siteType": "internal tool",
+    "flows": [
+      {
+        "id": "otp-signin-navigation",
+        "name": "Navigate to OTP-based sign-in",
+        "description": "Verifies a visitor can switch from standard email/password sign-in to the OTP authentication flow, which is the primary passwordless entry path.",
+        "kind": "happy_path",
+        "startUrl": "http://localhost:3000/login",
+        "steps": [
+          {
+            "action": "Navigate to http://localhost:3000/login"
+          },
+          {
+            "action": "Click the link labeled \"Sign In with OTP\""
+          },
+          {
+            "action": "Expect the page to display an OTP request form or phone-number input"
+          }
+        ],
+        "expectation": "The OTP sign-in flow is accessible and presents fields for requesting a one-time password.",
+        "severityIfFails": "critical"
+      },
+      {
+        "id": "forgot-password-flow",
+        "name": "Initiate forgot-password recovery",
+        "description": "Verifies the forgot-password recovery entry point is reachable and presents a recovery form, ensuring locked-out users are not stranded.",
+        "kind": "happy_path",
+        "startUrl": "http://localhost:3000/login",
+        "steps": [
+          {
+            "action": "Navigate to http://localhost:3000/login"
+          },
+          {
+            "action": "Click the link labeled \"Forgot Password\""
+          },
+          {
+            "action": "Expect the page to display a password-recovery form requesting a corporation email or similar identifier"
+          }
+        ],
+        "expectation": "The forgot-password page loads and presents a form for the user to submit their recovery request.",
+        "severityIfFails": "major"
+      },
+      {
+        "id": "invitation-code-acceptance",
+        "name": "Accept an invitation code to onboard",
+        "description": "Verifies the invitation-code onboarding path accepts input and responds, which is the only way a new user without an account can begin setup.",
+        "kind": "happy_path",
+        "startUrl": "http://localhost:3000/login",
+        "steps": [
+          {
+            "action": "Navigate to http://localhost:3000/login"
+          },
+          {
+            "action": "Type \"TESTCODE123\" into the input labeled \"Accept Invitation Code\""
+          },
+          {
+            "action": "Click the button labeled \"Accept Invitation\""
+          },
+          {
+            "action": "Expect the page to respond with either a validation error (invalid code) or a redirect to an onboarding/registration form"
+          }
+        ],
+        "expectation": "The invitation code input and submit button are functional; the system validates the code and provides clear feedback.",
+        "severityIfFails": "critical"
+      }
+    ],
+    "notes": "This is a single-page auth surface — all three flows start from /login and diverge via distinct controls. I skipped: (1) a standard email/password sign-in flow since no credentials exist and the runner cannot execute it — this would be the only auth_required candidate but adds no value as a skipped flow; (2) cookie-consent banner interaction (minor, non-functional impact); (3) 'Request Demo' link whose destination and gating are unknown from the crawl. The invitation-code flow uses a synthetic test code; the success criterion is that the system responds to the interaction, not that the code is valid."
+  }
+}

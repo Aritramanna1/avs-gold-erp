@@ -24,11 +24,14 @@ import {
   Plus,
   Printer,
   X,
+  Save,
 } from "lucide-react";
 import { dataProvider } from "@/lib/providers/data-provider";
 const supabase = dataProvider as any;
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { guardRoute } from "@/lib/permissions";
 import { fetchPlatformFirmStats, type PlatformFirmStats } from "@/lib/platform-stats-query";
 import { PlatformCreditsSection } from "@/components/platform/PlatformCreditsSection";
@@ -45,6 +48,10 @@ import {
   getCachedPlatformBillingDefaults,
 } from "@/lib/platform-settings-runtime";
 import { usePrintEngine } from "@/lib/print-engine";
+import { PlatformCreateTenantWizard } from "@/components/platform/PlatformCreateTenantWizard";
+import { PlatformEmailConfigPanel } from "@/components/platform/PlatformEmailConfigPanel";
+import { PlatformAddonsManager } from "@/components/platform/PlatformAddonsManager";
+import { PlatformPlanVerification } from "@/components/platform/PlatformPlanVerification";
 
 type PlatformSearch = {
   view: string;
@@ -207,12 +214,15 @@ type UserRow = {
 type View =
   | "overview"
   | "firms"
+  | "create-tenant"
+  | "email"
+  | "addons"
+  | "verification"
   | "users"
   | "subscriptions"
   | "requests"
   | "tickets"
   | "billing"
-  | "licenses"
   | "activity"
   | "health"
   | "backups"
@@ -224,13 +234,16 @@ type View =
 const VALID_VIEWS: View[] = [
   "overview",
   "firms",
+  "create-tenant",
+  "email",
+  "addons",
+  "verification",
   "users",
   "subscriptions",
   "credits",
   "requests",
   "tickets",
   "billing",
-  "licenses",
   "activity",
   "health",
   "backups",
@@ -552,9 +565,27 @@ function PlatformOwnerConsole() {
           subscriptions={subscriptions}
           plans={plans}
           firmStats={firmStats}
+          features={features}
           refresh={refresh}
         />
       )}
+
+      {view === "create-tenant" && (
+        <PlatformCreateTenantWizard
+          onCancel={() => {
+            window.location.href = "/platform?view=firms";
+          }}
+          onTenantCreated={() => {
+            void refresh();
+          }}
+        />
+      )}
+
+      {view === "email" && <PlatformEmailConfigPanel />}
+
+      {view === "addons" && <PlatformAddonsManager />}
+
+      {view === "verification" && <PlatformPlanVerification />}
 
       {view === "users" && <UsersSection users={userRows} firms={firms} refresh={refresh} />}
 
@@ -580,10 +611,6 @@ function PlatformOwnerConsole() {
           refresh={refresh}
           billingTab={billingTab}
         />
-      )}
-
-      {view === "licenses" && (
-        <LicensingSection firms={firms} features={features} licenses={licenses} refresh={refresh} />
       )}
 
       {view === "activity" && <ActivitySection events={events} />}
@@ -612,15 +639,18 @@ function pageTitle(view: View, filter: string): string {
   }
   const titles: Record<View, string> = {
     overview: "Dashboard",
+    "create-tenant": "Create Tenant / Customer Account",
+    email: "Platform Email Service & Mandatory Branding",
+    addons: "Platform Add-ons Catalog",
+    verification: "Plan Verification & Cost Calculator",
     users: "Users / Admin Accounts",
     subscriptions: "Subscriptions",
     requests: "Service Requests",
     tickets: "Support Requests",
-    billing: "Billing & Payments",
+    billing: "Billing & Subscriptions",
     activity: "Audit Logs",
     health: "Security & Health",
     backups: "Backups & DR",
-    licenses: "Licences & Entitlements",
     credits: "Credits & Wallets",
     settings: "Platform Configuration",
     help: "Help / Knowledge Base",
@@ -878,6 +908,7 @@ function FirmsSection({
   subscriptions,
   plans,
   firmStats,
+  features,
   refresh,
 }: {
   filteredFirms: Firm[];
@@ -888,6 +919,7 @@ function FirmsSection({
   subscriptions: Subscription[];
   plans: Plan[];
   firmStats: PlatformFirmStats[];
+  features: Feature[];
   refresh: () => Promise<void>;
 }) {
   const [updating, setUpdating] = useState<string | null>(null);
@@ -941,9 +973,16 @@ function FirmsSection({
             className="pl-9 bg-background border-border focus:ring-gold text-xs"
           />
         </div>
-        <p className="text-xs text-muted-foreground font-mono">
-          Showing {filteredFirms.length} {filterLabel}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-xs text-muted-foreground font-mono hidden sm:block">
+            Showing {filteredFirms.length} {filterLabel}
+          </p>
+          <Link to="/platform" search={{ view: "create-tenant", filter: "all", billingTab: "quotations", settingsTab: "branding" }}>
+            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold h-8 text-xs gap-1.5 shadow-sm">
+              <Plus className="h-3.5 w-3.5" /> Create Tenant
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="erp-surface rounded-md border border-border bg-card overflow-hidden shadow-xs">
@@ -1006,15 +1045,25 @@ function FirmsSection({
                       )}
                     </td>
                     <td className="p-3 text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={updating === f.id}
-                        onClick={() => void toggleActive(f)}
-                        className="h-7 text-xs border-border bg-background hover:bg-muted/50 text-foreground cursor-pointer"
-                      >
-                        {f.is_active ? "Suspend" : "Activate"}
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedFirmId(isSelected ? null : f.id)}
+                          className="h-7 text-xs border-border bg-background hover:bg-muted/50 text-foreground cursor-pointer"
+                        >
+                          {isSelected ? "Close" : "Open 360"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={updating === f.id}
+                          onClick={() => void toggleActive(f)}
+                          className="h-7 text-xs border-border bg-background hover:bg-muted/50 text-foreground cursor-pointer"
+                        >
+                          {f.is_active ? "Suspend" : "Activate"}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -1038,7 +1087,10 @@ function FirmsSection({
             (p) =>
               p.id === subscriptions.find((s) => s.organization_id === selectedFirmId)?.plan_id,
           )}
+          plans={plans}
+          features={features}
           stats={firmStats.find((s) => s.firm_id === selectedFirmId)}
+          refresh={refresh}
         />
       )}
     </div>
@@ -1049,57 +1101,304 @@ function FirmDetailPanel({
   firm,
   subscription,
   plan,
+  plans,
+  features,
   stats,
+  refresh,
 }: {
   firm: Firm | undefined;
   subscription: Subscription | undefined;
   plan: Plan | undefined;
+  plans: Plan[];
+  features: Feature[];
   stats: PlatformFirmStats | undefined;
+  refresh: () => Promise<void>;
 }) {
+  const [selectedPlanId, setSelectedPlanId] = useState(subscription?.plan_id || "");
+  const [subStatus, setSubStatus] = useState(subscription?.status || "active");
+  const [trialEndDate, setTrialEndDate] = useState(
+    subscription?.trial_ends_at ? subscription.trial_ends_at.slice(0, 10) : "",
+  );
+  const [renewDate, setRenewDate] = useState(
+    subscription?.renews_at ? subscription.renews_at.slice(0, 10) : "",
+  );
+  const [savingConfig, setSavingConfig] = useState(false);
+
+  useEffect(() => {
+    if (subscription) {
+      setSelectedPlanId(subscription.plan_id || "");
+      setSubStatus(subscription.status || "active");
+      setTrialEndDate(subscription.trial_ends_at ? subscription.trial_ends_at.slice(0, 10) : "");
+      setRenewDate(subscription.renews_at ? subscription.renews_at.slice(0, 10) : "");
+    }
+  }, [subscription]);
+
   if (!firm) return null;
+  const currentFirm = firm;
+
+  async function handleUpdatePlatformConfig() {
+    setSavingConfig(true);
+    try {
+      if (subscription?.id) {
+        await supabase
+          .from("organization_subscriptions")
+          .update({
+            plan_id: selectedPlanId || null,
+            status: subStatus,
+            trial_ends_at: trialEndDate ? new Date(`${trialEndDate}T23:59:59Z`).toISOString() : null,
+            renews_at: renewDate ? new Date(`${renewDate}T23:59:59Z`).toISOString() : null,
+          })
+          .eq("id", subscription.id);
+      } else if (selectedPlanId) {
+        await supabase.from("organization_subscriptions").insert({
+          organization_id: currentFirm.id,
+          plan_id: selectedPlanId,
+          status: subStatus,
+          trial_ends_at: trialEndDate ? new Date(`${trialEndDate}T23:59:59Z`).toISOString() : null,
+          renews_at: renewDate ? new Date(`${renewDate}T23:59:59Z`).toISOString() : null,
+        });
+      }
+
+      await supabase.from("platform_audit_events").insert({
+        action: "TENANT_CONFIG_UPDATED",
+        target_type: "organization",
+        reason: `Updated plan/status for tenant ${currentFirm.slug}`,
+      });
+
+      toast.success(`Platform configuration saved for ${currentFirm.name}`);
+      await refresh();
+    } catch (err: any) {
+      toast.error("Failed to update tenant configuration: " + err.message);
+    } finally {
+      setSavingConfig(false);
+    }
+  }
+
+  function addDaysToDate(type: "trial" | "renew", days: number) {
+    const base = new Date();
+    base.setDate(base.getDate() + days);
+    const val = base.toISOString().slice(0, 10);
+    if (type === "trial") setTrialEndDate(val);
+    else setRenewDate(val);
+  }
+
+  const tenantFeatures = features.filter((f) => f.organization_id === currentFirm.id);
+
+  async function handleToggleTenantFeature(featKey: string, currentEnabled: boolean) {
+    const existing = tenantFeatures.find((f) => f.feature_key === featKey);
+    if (existing) {
+      await supabase
+        .from("organization_features")
+        .update({ enabled: !currentEnabled })
+        .eq("organization_id", currentFirm.id)
+        .eq("feature_key", featKey);
+    } else {
+      await supabase.from("organization_features").insert({
+        organization_id: currentFirm.id,
+        feature_key: featKey,
+        enabled: true,
+        source: "platform_override",
+      });
+    }
+    await refresh();
+  }
+
   return (
-    <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs space-y-4">
+    <div className="erp-surface rounded-md border border-border bg-card p-5 shadow-xs space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
         <div>
-          <h3 className="font-serif text-lg font-bold text-gold">{firm.name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-serif text-lg font-bold text-gold">{currentFirm.name}</h3>
+            <Badge
+              variant={currentFirm.is_active ? "default" : "destructive"}
+              className={`text-[10px] uppercase font-mono ${
+                currentFirm.is_active
+                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                  : "bg-red-500/10 text-red-400 border border-red-500/30"
+              }`}
+            >
+              {currentFirm.is_active ? "Tenant Active" : "Tenant Suspended"}
+            </Badge>
+          </div>
           <p className="text-xs text-muted-foreground font-mono mt-0.5">
-            Slug: {firm.slug} · GSTIN: {firm.gstin ?? "Not recorded"}
+            Slug: {currentFirm.slug} · GSTIN: {currentFirm.gstin ?? "Not recorded"} · Registered:{" "}
+            {new Date(currentFirm.created_at).toLocaleDateString("en-IN")}
           </p>
         </div>
         <span className="rounded-md border border-gold/30 bg-gold/10 px-2.5 py-1 text-[11px] font-semibold uppercase text-gold font-mono">
           {plan?.name ?? "No plan"} · {subscription?.status ?? "none"}
         </span>
       </div>
+
+      {/* Aggregated Platform Telemetry (Zero Operational Cross-Tenant Data Leaks) */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-        <StatMini label="Invoices" value={stats?.invoices ?? 0} />
-        <StatMini label="Invoice Value" value={rupees(stats?.invoiceValueMinor ?? 0)} />
-        <StatMini label="Orders" value={stats?.orders ?? 0} />
+        <StatMini label="Invoices Issued" value={stats?.invoices ?? 0} />
+        <StatMini label="Invoice Volume" value={rupees(stats?.invoiceValueMinor ?? 0)} />
+        <StatMini label="Orders Count" value={stats?.orders ?? 0} />
         <StatMini label="Open Orders" value={stats?.openOrders ?? 0} />
-        <StatMini label="Job Cards" value={stats?.jobCards ?? 0} />
-        <StatMini label="Users" value={stats?.users ?? 0} />
+        <StatMini label="Workshop Jobs" value={stats?.jobCards ?? 0} />
+        <StatMini label="Active Users" value={stats?.users ?? 0} />
       </div>
-      <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-3 pt-2 border-t border-border font-mono">
-        <div>
-          <p className="font-semibold text-foreground uppercase text-[10px]">Renewal / Lifecycle</p>
-          <p className="mt-0.5">
-            {subscription?.trial_ends_at
-              ? `Trial ends ${new Date(subscription.trial_ends_at).toLocaleDateString("en-IN")}`
-              : subscription?.renews_at
-                ? `Renews ${new Date(subscription.renews_at).toLocaleDateString("en-IN")}`
-                : "No renewal date set"}
-          </p>
+
+      {/* Platform-Level Configuration Workspace */}
+      <div className="rounded-md border border-border bg-muted/20 p-4 space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-2">
+          <h4 className="font-bold text-xs uppercase tracking-wider text-gold font-mono">
+            Platform Configuration & Subscription Assignment
+          </h4>
+          <Button
+            size="sm"
+            onClick={() => void handleUpdatePlatformConfig()}
+            disabled={savingConfig}
+            className="h-7 text-xs bg-gold text-black font-bold hover:bg-gold-dark gap-1"
+          >
+            <Save className="h-3 w-3" />
+            {savingConfig ? "Saving…" : "Apply Platform Settings"}
+          </Button>
         </div>
-        <div>
-          <p className="font-semibold text-foreground uppercase text-[10px]">Plan Capacity</p>
-          <p className="mt-0.5">
-            Branches: {plan?.branch_limit ?? "Unlimited"} · Users: {plan?.user_limit ?? "Unlimited"}
-          </p>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+          {/* Plan Selector */}
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+              Assigned Subscription Plan
+            </label>
+            <select
+              value={selectedPlanId}
+              onChange={(e) => setSelectedPlanId(e.target.value)}
+              className="w-full border border-border bg-background p-1.5 rounded-md text-foreground text-xs focus:ring-gold"
+            >
+              <option value="">No Plan Assigned</option>
+              {plans.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} (₹{(p.price_minor / 100).toFixed(0)}/{p.billing_cycle})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Subscription Status */}
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+              Subscription Status
+            </label>
+            <select
+              value={subStatus}
+              onChange={(e) => setSubStatus(e.target.value)}
+              className="w-full border border-border bg-background p-1.5 rounded-md text-foreground text-xs focus:ring-gold"
+            >
+              <option value="trial">Trial</option>
+              <option value="active">Active (Paid)</option>
+              <option value="past_due">Past Due</option>
+              <option value="grace_period">Grace Period</option>
+              <option value="suspended">Suspended</option>
+              <option value="expired">Expired</option>
+            </select>
+          </div>
+
+          {/* Trial End Date */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                Trial End Date
+              </label>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => addDaysToDate("trial", 14)}
+                  className="text-[9px] text-gold font-mono hover:underline"
+                >
+                  +14d
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addDaysToDate("trial", 30)}
+                  className="text-[9px] text-gold font-mono hover:underline"
+                >
+                  +30d
+                </button>
+              </div>
+            </div>
+            <Input
+              type="date"
+              value={trialEndDate}
+              onChange={(e) => setTrialEndDate(e.target.value)}
+              className="h-8 text-xs bg-background border-border font-mono"
+            />
+          </div>
+
+          {/* Renewal Date */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground font-mono">
+                Renewal Date
+              </label>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => addDaysToDate("renew", 30)}
+                  className="text-[9px] text-gold font-mono hover:underline"
+                >
+                  +30d
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addDaysToDate("renew", 365)}
+                  className="text-[9px] text-gold font-mono hover:underline"
+                >
+                  +1yr
+                </button>
+              </div>
+            </div>
+            <Input
+              type="date"
+              value={renewDate}
+              onChange={(e) => setRenewDate(e.target.value)}
+              className="h-8 text-xs bg-background border-border font-mono"
+            />
+          </div>
         </div>
-        <div>
-          <p className="font-semibold text-foreground uppercase text-[10px]">Platform Documents</p>
-          <p className="mt-0.5">{stats?.platformBills ?? 0} invoices issued</p>
+
+        {/* Feature Overrides for Tenant */}
+        <div className="space-y-2 pt-2 border-t border-border">
+          <label className="text-[10px] uppercase font-bold text-muted-foreground font-mono block">
+            Tenant Feature Overrides & Modular Access
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              ["catalog", "Catalog & Showcase"],
+              ["workshop", "Workshop Operations"],
+              ["billing", "Billing & GST Invoicing"],
+              ["inventory", "Inventory & Barcodes"],
+              ["crm", "CRM & Customer Portal"],
+              ["reports", "Reports & Analytics"],
+              ["multi_branch", "Multi-Branch Sync"],
+              ["whatsapp", "Automated WhatsApp"],
+            ].map(([key, label]) => {
+              const feat = tenantFeatures.find((f) => f.feature_key === key);
+              const isEnabled = feat ? feat.enabled : true;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => void handleToggleTenantFeature(key, isEnabled)}
+                  className={`flex items-center justify-between p-2 rounded text-left border text-xs transition ${
+                    isEnabled
+                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-semibold"
+                      : "bg-muted/30 border-border text-muted-foreground"
+                  }`}
+                >
+                  <span>{label}</span>
+                  <span className="text-[10px] uppercase font-mono">
+                    {isEnabled ? "ON" : "OFF"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
+
       <TenantCommunicationsPanel firmId={firm.id} title="Tenant 360 · Communications" />
     </div>
   );

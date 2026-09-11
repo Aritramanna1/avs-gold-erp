@@ -13,7 +13,13 @@ import { persist } from "zustand/middleware";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { toast } from "sonner";
 
-export type PlanTier = "free_trial" | "avs_10k" | "avs_30k" | "avs_50k" | "enterprise_custom";
+export type PlanTier =
+  | "free_trial"
+  | "avs_10k"
+  | "avs_30k"
+  | "avs_50k"
+  | "enterprise_custom"
+  | (string & {});
 
 export type PlanStatus = "trial" | "active" | "past_due" | "suspended" | "cancelled" | "expired";
 
@@ -342,31 +348,76 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             plans.forEach((p: any) => {
               const tier = p.code as PlanTier;
               if (tier) {
+                const featLimits = (typeof p.feature_limits === "object" && p.feature_limits !== null)
+                  ? p.feature_limits
+                  : {};
+                const commConfig = (typeof p.commercial_config === "object" && p.commercial_config !== null)
+                  ? p.commercial_config
+                  : {};
+
+                const storageGb = featLimits.storage_gb
+                  ? Number(featLimits.storage_gb)
+                  : p.storage_limit_bytes
+                    ? Math.round(p.storage_limit_bytes / (1024 * 1024 * 1024))
+                    : 5;
+
+                const featuresList: string[] = Array.isArray(featLimits.features)
+                  ? featLimits.features
+                  : DEFAULT_PLAN_DEFINITIONS[tier]?.features || [
+                      "business.core",
+                      "business.orders",
+                      "business.workshop",
+                      "business.ledger",
+                      "business.billing_full",
+                      "business.inventory",
+                    ];
+
+                const monthlyPrice = p.billing_cycle === "annual"
+                  ? Math.round((Number(p.price_minor || 0) / 100) / 12)
+                  : Math.round(Number(p.price_minor || 0) / 100);
+
+                const annualPrice = p.billing_cycle === "annual"
+                  ? Math.round(Number(p.price_minor || 0) / 100)
+                  : Math.round((Number(p.price_minor || 0) / 100) * 12);
+
                 currentDefs[tier] = {
                   id: tier,
                   name: p.name,
                   code: p.code,
                   tagline: p.description || "",
-                  pricingMonthlyINR: Number(p.monthly_price_paise || 0) / 100,
-                  pricingAnnualINR: Number(p.annual_price_paise || p.price_minor || 0) / 100,
-                  customPriceSupported: Boolean(p.custom_price_supported),
+                  pricingMonthlyINR: monthlyPrice,
+                  pricingAnnualINR: annualPrice,
+                  customPriceSupported: Boolean(commConfig.custom_price_supported),
                   trialDays: p.trial_days || 14,
                   graceDays: p.grace_days || 7,
                   version: p.version || 1,
                   limits: {
-                    maxBranches: p.max_branches || 1,
-                    maxUsers: p.max_users || 3,
-                    storageGb: Number(p.max_storage_gb || 5),
-                    customerCapacity: p.customer_capacity || 5000,
-                    inventoryCapacity: p.inventory_capacity || 10000,
-                    portalsEnabled: Boolean(p.portal_access ?? true),
-                    advancedReports: Boolean(p.reports_access ?? true),
-                    apiAccess: Boolean(p.api_access ?? false),
-                    whatsappIntegration: Boolean(p.whatsapp_access ?? false),
-                    paymentGateway: Boolean(p.payment_gateway_access ?? false),
-                    automatedBackups: Boolean(p.backup_access ?? true),
+                    maxBranches: p.branch_limit || featLimits.max_branches || 1,
+                    maxUsers: p.user_limit || featLimits.max_users || 3,
+                    storageGb,
+                    customerCapacity: featLimits.customer_capacity || 5000,
+                    inventoryCapacity: featLimits.inventory_capacity || 10000,
+                    portalsEnabled: Boolean(
+                      featuresList.includes("business.customer_portal") ||
+                      featuresList.includes("business.karigar_portal") ||
+                      (featLimits.portal_access ?? true)
+                    ),
+                    advancedReports: Boolean(
+                      featuresList.includes("business.analytics") ||
+                      (featLimits.reports_access ?? true)
+                    ),
+                    apiAccess: Boolean(
+                      featuresList.includes("business.api_webhooks") ||
+                      (featLimits.api_access ?? false)
+                    ),
+                    whatsappIntegration: Boolean(
+                      featuresList.includes("business.whatsapp") ||
+                      (featLimits.whatsapp_access ?? false)
+                    ),
+                    paymentGateway: Boolean(featLimits.payment_gateway_access ?? false),
+                    automatedBackups: Boolean(featLimits.backup_access ?? true),
                   },
-                  features: DEFAULT_PLAN_DEFINITIONS[tier]?.features || ["business.core"],
+                  features: featuresList,
                 };
               }
             });

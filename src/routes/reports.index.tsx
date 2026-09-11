@@ -161,6 +161,14 @@ const REPORT_CATEGORIES: ReportCategoryGroup[] = [
         statutoryRef: "Regional MIS",
       },
       {
+        label: "Discount Report",
+        description: "Audit register of discounts allowed on billing invoices, gold equivalents, and tax impacts.",
+        to: "/reports/discount-report",
+        icon: Percent,
+        status: "READY",
+        statutoryRef: "Discount Transparency Register",
+      },
+      {
         label: "Deleted / Cancelled Bills Register",
         description: "Cancelled sales invoices preserved for statutory audit integrity.",
         to: "/reports/deleted-bills",
@@ -256,6 +264,14 @@ const REPORT_CATEGORIES: ReportCategoryGroup[] = [
     title: "5. Customer / Receivable Reports",
     description: "Customer sub-ledgers, outstanding balances, ageing analysis, and party statements.",
     items: [
+      {
+        label: "Customer Annual Statement & Reconciliation",
+        description: "Year-end CA reconciliation: chronological ledger, invoice-wise debits, payment credits, and automatic allocations.",
+        to: "/reports/customer-statement",
+        icon: FileSpreadsheet,
+        status: "READY",
+        statutoryRef: "Customer Annual Audit",
+      },
       {
         label: "Party Ledgers (Customer Books)",
         description: "Authoritative customer sub-ledgers with dual dimensions (₹ consideration + fine gold g).",

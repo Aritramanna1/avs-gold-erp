@@ -1,0 +1,49 @@
+- img "AVS ERP — Jewellery Ecosystem"
+- text: Standard Sign In Corporation Email
+- textbox "Corporation Email":
+  - /placeholder: employee@maatarajewellers.com
+- text: Password
+- link "Forgot?":
+  - /url: /forgot-password
+- textbox "Password":
+  - /placeholder: ••••••••
+- button "Show password"
+- checkbox "Keep me signed in on this device" [checked]
+- text: Keep me signed in on this device
+- button "Secure Sign In"
+- link "Sign In with OTP":
+  - /url: /otp-login
+- text: ·
+- link "Forgot Password":
+  - /url: /forgot-password
+- link "Accept Invitation Code":
+  - /url: /invite/accept
+- paragraph: AVS ERP is invitation-only. Request access from AVS, or accept a secure invitation from your jeweller.
+- heading "Invitation & Onboarding" [level=2]
+- text: Enterprise Access
+- paragraph: Accounts are provisioned by invitation from your firm administrator. If you have received an invite code, activate your account below.
+- button "Accept Invitation"
+- link "Request Demo ↗":
+  - /url: https://arivahly.in/products/onyxa-erp
+- link "Terms of Service":
+  - /url: /terms
+- text: ·
+- link "Privacy Policy":
+  - /url: /privacy
+- text: ·
+- link "Onyxa by AVS":
+  - /url: https://arivahly.in/products/onyxa-erp
+- dialog "Cookie consent":
+  - paragraph: Cookies & privacy
+  - paragraph:
+    - text: We use essential cookies for sign-in and security. Optional cookies help improve the product. See our
+    - link "Privacy Policy":
+      - /url: /privacy
+    - text: and
+    - link "Terms":
+      - /url: /terms
+    - text: .
+  - button "Accept all"
+  - button "Essential only"
+  - button "Manage"
+- region "Notifications alt+T"

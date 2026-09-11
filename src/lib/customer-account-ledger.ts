@@ -569,7 +569,7 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
       sourceEntityId: i.id,
       goldInMg: 0,
       goldOutMg:
-        i.billingType === "job_work"
+        i.transactionMode === "gold" || i.billingType === "job_work" || i.billingType === "wholesale"
           ? (i.totalFineMg ?? i.items?.reduce((acc, it) => acc + (it.fineMg || 0), 0) ?? 0)
           : 0,
       moneyDebitPaise: totalTaxablePaise,
@@ -637,7 +637,10 @@ export function compileCustomerLedger(customerId: string): CustomerLedgerSummary
         goldIn = p.goldFineMg;
         desc = `Old gold exchanged at counter: ${mgToGrams(p.goldGrossMg || 0)} g @ ${p.goldPurity ?? "Standard"} (fine ${mgToGrams(p.goldFineMg)} g)`;
       } else if (p.mode === "customer_gold_credit" && p.goldFineMg) {
-        goldOut = p.goldFineMg;
+        // If invoice already debits gold or payment explicitly skips gold ledger, do not double-debit
+        goldOut = (p.skipGoldLedger || i.transactionMode === "gold" || i.billingType === "job_work" || i.billingType === "wholesale")
+          ? 0
+          : p.goldFineMg;
         desc = `Payment adjusted from customer gold balance: ${mgToGrams(p.goldFineMg)} g fine`;
       } else if (cashGoldEquivMg && cashGoldEquivMg > 0) {
         desc = `${p.notes ? `${p.notes} · ` : ""}Settled in Cash @ ₹${paiseToRupees(ratePerGramPaise)}/g (Equiv: ${mgToGrams(cashGoldEquivMg)}g Fine Gold)`;

@@ -55,7 +55,6 @@ import { PersonFormDialog } from "@/routes/people.index";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { GoldWeightDisplay } from "@/components/ui/GoldWeightDisplay";
 import { CashGoldPaymentSummary } from "@/components/billing/CashGoldPaymentSummary";
-import { JamaSlipDialog } from "@/components/billing/JamaSlipDialog";
 import { soundEffects } from "@/lib/sound-effects";
 import { useLedger } from "@/lib/ledger-store";
 import { useSettings } from "@/lib/settings-store";
@@ -617,7 +616,6 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     "mtj-billing-payment-received-now-v1",
     true,
   );
-  const [jamaSlipOpen, setJamaSlipOpen] = useState(false);
   const [rawPayments, setPayments, clearPayments] = useDraft<DraftPayment[]>(
     "mtj-billing-payments-v1",
     [
@@ -1765,6 +1763,7 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
     try {
       inv = await billing.add({
         billingType,
+        transactionMode: settlementKind,
         invoiceNo: allocatedInvoiceNo,
         status: finalBalancePaise <= 0 ? "paid" : finalPaidPaise > 0 ? "partial" : "issued",
         customerId,
@@ -2186,13 +2185,6 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
         }
         actions={
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setJamaSlipOpen(true)}
-              className="gap-2 border-gold/40 text-gold hover:bg-gold/10 font-semibold text-xs"
-            >
-              <Receipt className="h-4 w-4" /> Jama Slip / पावती
-            </Button>
             <Link to="/billing">
               <Button variant="ghost" className="gap-2 border border-border/60 hover:bg-muted/10">
                 <ArrowLeft className="h-4 w-4" /> All Invoices
@@ -2200,12 +2192,6 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
             </Link>
           </div>
         }
-      />
-
-      <JamaSlipDialog
-        open={jamaSlipOpen}
-        onClose={() => setJamaSlipOpen(false)}
-        defaultPartyId={customerId || undefined}
       />
 
       <PersonFormDialog
@@ -2479,16 +2465,14 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                           </div>
                         )}
                       </div>
-                      {chargeModeForBillingType(billingType) === "full_value" && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="border-gold/30 hover:bg-gold/5 text-gold h-10"
-                          onClick={selectOrCreateWalkIn}
-                        >
-                          Walk-In Customer
-                        </Button>
-                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-gold/30 hover:bg-gold/5 text-gold h-10"
+                        onClick={selectOrCreateWalkIn}
+                      >
+                        Walk-In Customer
+                      </Button>
                       <Button
                         type="button"
                         className="bg-gold hover:bg-gold/90 text-white h-10 gap-1"
@@ -3749,65 +3733,67 @@ export function BillingModule({ orderId, stockId, jobId }: BillingModuleProps) {
                             </div>
                           </div>
 
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                            <p className="text-[11px] text-muted-foreground">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-border/40">
+                            <p className="text-[11px] text-muted-foreground flex-1">
                               {autoSettlementGoldMg >= invoiceFineGoldRequirementMg
-                                ? "Customer's gold advance fully settles this invoice. No cash or credit note required."
+                                ? "Customer's gold advance fully settles this invoice requirement."
                                 : `Applies ${mgToGrams(autoSettlementGoldMg)} g from balance. Remaining ${mgToGrams(
                                     invoiceFineGoldRequirementMg - autoSettlementGoldMg,
-                                  )} g payable via cash or gold.`}
+                                  )} g payable via gold or other mode.`}
                             </p>
-                            <Button
-                              size="sm"
-                              data-testid="apply-gold-advance-btn"
-                              className="h-8 gap-1.5 bg-amber-500 hover:bg-amber-600 text-black font-semibold text-xs shrink-0"
-                              onClick={() => {
-                                if (autoSettlementGoldMg <= 0) return;
-                                const ratePaise =
-                                  currentGoldRatePaise > 0
-                                    ? currentGoldRatePaise
-                                    : (items[0]?.goldRatePerGramPaise || 700000);
-                                const rateStr = (ratePaise / 100).toString();
-                                const gramsStr = mgToGrams(autoSettlementGoldMg).toString();
+                            <div className="flex items-center gap-2 flex-wrap shrink-0">
+                              <Button
+                                size="sm"
+                                data-testid="apply-gold-advance-btn"
+                                className="h-8 gap-1.5 bg-amber-500 hover:bg-amber-600 text-black font-semibold text-xs shrink-0"
+                                onClick={() => {
+                                  if (autoSettlementGoldMg <= 0) return;
+                                  const ratePaise =
+                                    currentGoldRatePaise > 0
+                                      ? currentGoldRatePaise
+                                      : (items[0]?.goldRatePerGramPaise || 700000);
+                                  const rateStr = (ratePaise / 100).toString();
+                                  const gramsStr = mgToGrams(autoSettlementGoldMg).toString();
 
-                                const existingIndex = payments.findIndex(
-                                  (p) => p.mode === "customer_gold_credit",
-                                );
-                                if (existingIndex >= 0) {
-                                  patchPayment(existingIndex, {
-                                    goldGramsStr: gramsStr,
-                                    goldPurityStr: "100",
-                                    goldRateStr: rateStr,
-                                  });
-                                  autoFillFromGold(existingIndex, {
-                                    goldGramsStr: gramsStr,
-                                    goldPurityStr: "100",
-                                    goldRateStr: rateStr,
-                                  });
-                                } else {
-                                  setPayments([
-                                    ...payments,
-                                    {
-                                      id: newItemId(),
-                                      mode: "customer_gold_credit",
-                                      amountStr: "0",
-                                      reference: "Applied from Customer Gold Balance",
-                                      notes: "Settled against existing gold advance",
+                                  const existingIndex = payments.findIndex(
+                                    (p) => p.mode === "customer_gold_credit",
+                                  );
+                                  if (existingIndex >= 0) {
+                                    patchPayment(existingIndex, {
                                       goldGramsStr: gramsStr,
                                       goldPurityStr: "100",
                                       goldRateStr: rateStr,
-                                      goldMeltLossWtDeductionStr: "",
-                                      goldMeltLossPctDeductionStr: "",
-                                    },
-                                  ]);
-                                }
-                                toast.success(
-                                  `Applied ${mgToGrams(autoSettlementGoldMg)}g from customer gold balance`,
-                                );
-                              }}
-                            >
-                              <Coins className="h-3.5 w-3.5" /> Apply Gold Advance
-                            </Button>
+                                    });
+                                    autoFillFromGold(existingIndex, {
+                                      goldGramsStr: gramsStr,
+                                      goldPurityStr: "100",
+                                      goldRateStr: rateStr,
+                                    });
+                                  } else {
+                                    setPayments([
+                                      ...payments,
+                                      {
+                                        id: newItemId(),
+                                        mode: "customer_gold_credit",
+                                        amountStr: "0",
+                                        reference: "Applied from Customer Gold Balance",
+                                        notes: "Settled against existing gold advance",
+                                        goldGramsStr: gramsStr,
+                                        goldPurityStr: "100",
+                                        goldRateStr: rateStr,
+                                        goldMeltLossWtDeductionStr: "",
+                                        goldMeltLossPctDeductionStr: "",
+                                      },
+                                    ]);
+                                  }
+                                  toast.success(
+                                    `Applied Full ${mgToGrams(autoSettlementGoldMg)}g from customer gold balance`,
+                                  );
+                                }}
+                              >
+                                <Coins className="h-3.5 w-3.5" /> Apply Full Balance ({mgToGrams(autoSettlementGoldMg)} g)
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       );

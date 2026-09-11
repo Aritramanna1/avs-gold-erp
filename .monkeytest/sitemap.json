@@ -1,0 +1,79 @@
+{
+  "startUrl": "http://localhost:3000/login",
+  "siteType": "internal tool",
+  "summary": "AVS ERP is an enterprise resource planning ecosystem tailored for the jewellery industry. Anonymous visitors are directed to the authentication portal, representing prospective clients or invited team members. Without an account, visitors can submit a demo request, activate an invitation code, initiate password recovery, and configure cookie preferences.",
+  "productName": "AVS ERP",
+  "publicJourneys": [
+    "Submit a product inquiry via Request Demo",
+    "Activate an account by submitting an invitation code via Accept Invitation",
+    "Initiate password recovery via Forgot Password",
+    "Switch between Standard Sign In and Sign In with OTP options",
+    "Configure cookie consent settings using Accept all, Essential only, or Manage options"
+  ],
+  "authSurfaces": [
+    "Standard Sign In form at /login",
+    "Sign In with OTP at /login",
+    "Accept Invitation flow at /login",
+    "Forgot Password flow at /login"
+  ],
+  "pages": [
+    {
+      "url": "http://localhost:3000/login",
+      "title": "AVS ERP — Jewellery Ecosystem ERP",
+      "summary": "AVS ERP sign-in and onboarding portal allowing users to log in with corporate credentials, use OTP, or activate invitation codes.",
+      "interactive": [
+        {
+          "kind": "form",
+          "label": "Standard Sign In Form",
+          "selector": "form[action='http://localhost:3000/login']"
+        },
+        {
+          "kind": "button",
+          "label": "Secure Sign In"
+        },
+        {
+          "kind": "button",
+          "label": "Accept Invitation"
+        },
+        {
+          "kind": "link",
+          "label": "Sign In with OTP"
+        },
+        {
+          "kind": "link",
+          "label": "Forgot Password"
+        },
+        {
+          "kind": "link",
+          "label": "Request Demo"
+        },
+        {
+          "kind": "button",
+          "label": "Accept all"
+        },
+        {
+          "kind": "button",
+          "label": "Essential only"
+        },
+        {
+          "kind": "button",
+          "label": "Manage"
+        }
+      ],
+      "outboundLinks": [
+        "http://localhost:3000/forgot-password",
+        "http://localhost:3000/otp-login",
+        "http://localhost:3000/forgot-password",
+        "http://localhost:3000/invite/accept",
+        "http://localhost:3000/terms",
+        "http://localhost:3000/privacy",
+        "http://localhost:3000/privacy",
+        "http://localhost:3000/terms"
+      ],
+      "authGated": true,
+      "screenshotPath": "C:\\final erp 29.08\\new and final\\.monkeytest\\shots\\page-1-localhost-login.png"
+    }
+  ],
+  "pendingUrls": [],
+  "failedUrls": []
+}

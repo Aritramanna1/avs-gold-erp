@@ -28,6 +28,7 @@ import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { FileText, Plus, Receipt, Search, Coins, Printer } from "lucide-react";
 import { GoldSettlementTab } from "@/components/GoldSettlementTab";
 import { EmptyState, WebAppState } from "@/components/web-app-state";
+import { CustomerPaymentAllocationModal } from "@/components/CustomerPaymentAllocationModal";
 import {
   useSettlements,
   FINANCIAL_STATUS_LABELS,
@@ -70,6 +71,8 @@ function BillingIndex() {
   const [outstandingError, setOutstandingError] = useState<string | null>(null);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const [selectedCustomerIdForPayment, setSelectedCustomerIdForPayment] = useState<string | null>(null);
+  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const { can } = useCan();
   const [activeTab, setActiveTab] = useState("invoices");
 
@@ -560,11 +563,17 @@ function BillingIndex() {
                         </div>
                       </div>
                       <div className="flex justify-end pt-2">
-                        <Link to="/billing/$id" params={{ id: o.latestInvoiceId }}>
-                          <Button size="sm" className="h-8 text-xs">
-                            {can("billing.recordPayment") ? "Record Payment" : "Open"}
-                          </Button>
-                        </Link>
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs bg-gold hover:bg-gold/90 text-white font-semibold gap-1.5"
+                          onClick={() => {
+                            setSelectedCustomerIdForPayment(o.customerId);
+                            setIsAllocationModalOpen(true);
+                          }}
+                        >
+                          <Receipt className="h-3.5 w-3.5" />
+                          {can("billing.recordPayment") ? "Receive Payment (Auto)" : "Open"}
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -599,11 +608,17 @@ function BillingIndex() {
                           </td>
                           <td className="text-right">{o.days}d</td>
                           <td className="text-right">
-                            <Link to="/billing/$id" params={{ id: o.latestInvoiceId }}>
-                              <Button size="sm" variant="outline">
-                                {can("billing.recordPayment") ? "Record Payment" : "Open"}
-                              </Button>
-                            </Link>
+                            <Button
+                              size="sm"
+                              className="bg-gold hover:bg-gold/90 text-white font-semibold gap-1.5"
+                              onClick={() => {
+                                setSelectedCustomerIdForPayment(o.customerId);
+                                setIsAllocationModalOpen(true);
+                              }}
+                            >
+                              <Receipt className="h-3.5 w-3.5" />
+                              {can("billing.recordPayment") ? "Receive Payment" : "Open"}
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -627,6 +642,24 @@ function BillingIndex() {
           <CustomerSettlementsList />
         </TabsContent>
       </Tabs>
+
+      {selectedCustomerIdForPayment && (
+        <CustomerPaymentAllocationModal
+          customerId={selectedCustomerIdForPayment}
+          isOpen={isAllocationModalOpen}
+          onClose={() => {
+            setIsAllocationModalOpen(false);
+            setSelectedCustomerIdForPayment(null);
+          }}
+          onSuccess={() => {
+            fetchBillingOutstandingSummary({ branchId: billingBranchId }).then((rows) => {
+              setOutstandingRows(rows);
+              setServerOutstandingTotal(rows.reduce((sum, row) => sum + row.amount, 0));
+            });
+            void useBilling.getState().refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

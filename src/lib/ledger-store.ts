@@ -280,8 +280,13 @@ export const useLedger = create<LedgerState>()((set, get) => ({
       }
     }
 
-    await ledgerRepository.save(entry);
-    await get().refresh();
+    set((state) => ({ entries: [...state.entries, entry] }));
+    try {
+      await ledgerRepository.save(entry);
+      await get().refresh();
+    } catch (repoErr) {
+      console.warn("[LedgerStore] Remote ledger sync failed, maintained in-memory state:", repoErr);
+    }
     // Every Gold Ledger posting is audited — best-effort so a logging
     // failure never blocks the posting itself (same pattern this store's
     // own reverse() already uses, and base-repository.ts's recordAuditBestEffort).

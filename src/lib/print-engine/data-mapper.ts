@@ -27,6 +27,8 @@ import { buildInvoicePrintData } from "./invoice-data";
 import {
   buildKarigarCustodyStatementData,
   buildCustomerLedgerStatementData,
+  buildCustomerUnpaidInvoicesData,
+  buildCustomerPaidInvoicesData,
 } from "./ledger-statements-data";
 import { buildAccountBalanceReportData } from "./account-balance-report-data";
 import {
@@ -152,8 +154,9 @@ const jobGoldReceiveSlipBuilder: PrintContextBuilder = (recordId) => {
       slipNumber: r.slipNo,
       dateLabel: new Date(r.ts).toLocaleString("en-IN"),
       workerName: karigar?.fullName ?? job.karigarName ?? "—",
+      workerPhone: karigar?.phone || "",
       transactionCount: "1",
-      totalIssued: g(0),
+      totalIssued: g(job.targetFineMg || 0),
       totalReturned: g(r.finishedFineMg + r.scrapFineMg + r.filingsFineMg + r.dustFineMg),
       jobNo: job.jobNo,
       orderNo: job.orderNo,
@@ -161,17 +164,18 @@ const jobGoldReceiveSlipBuilder: PrintContextBuilder = (recordId) => {
       expectedLoss: g(r.expectedLossMg),
       actualLoss: g(r.actualLossMg),
       overloss: g(r.overlossMg),
+      notes: r.notes || "",
     },
     tables: {
       issues: [],
       returns: [
-        row("Finished", r.finishedGrossMg, r.finishedPurity, r.finishedFineMg),
+        row("Finished Ornament", r.finishedGrossMg, r.finishedPurity, r.finishedFineMg),
         row("Scrap returned", r.scrapGrossMg, r.scrapPurity, r.scrapFineMg),
         row("Filings returned", r.filingsGrossMg, r.filingsPurity, r.filingsFineMg),
         ...(r.dustFineMg > 0 ? [row("Dust returned", 0, 0, r.dustFineMg)] : []),
       ],
     },
-    flags: { hasNotes: !!r.notes },
+    flags: { hasNotes: !!r.notes, hasWorkerPhone: !!karigar?.phone },
     images: {},
     balances: {},
   };
@@ -256,7 +260,13 @@ const customerSettlementSlipBuilder: PrintContextBuilder = (recordId) => {
               },
             ],
       },
-      flags: { hasCustomerPhone: !!worker?.phone },
+      flags: {
+        hasCustomerPhone: !!worker?.phone,
+        hasBalance: false,
+        hasNotes: !!workerSettlement.notes,
+        isPureGold: false,
+        hasCash: true,
+      },
       images: {},
       balances: {},
     };
@@ -265,34 +275,51 @@ const customerSettlementSlipBuilder: PrintContextBuilder = (recordId) => {
   const inv = useBilling.getState().invoices.find((i) => i.id === recordId);
   if (!inv) return null;
   const slip = buildCustomerSettlementSlipData(inv);
+  const isPureGold =
+    inv.transactionMode === "gold" ||
+    (inv.transactionMode !== "cash" &&
+      (inv.billingType === "job_work" ||
+        inv.billingType === "wholesale" ||
+        slip.cashReceivedPaise === 0));
+
   return {
     docType: "home_settlement_slip",
     docNumber: slip.settlementNo,
     recordId: inv.id,
     createdAt: slip.date,
-    title: "Customer Settlement Slip",
+    title: isPureGold ? "Gold Settlement Statement" : "Customer Settlement Statement",
     fields: {
       settlementNo: slip.settlementNo,
       date: new Date(slip.date).toLocaleDateString("en-IN"),
       customerName: slip.customerName,
       customerPhone: inv.customerPhone || "",
-      goldSettledLabel: `${mgToGrams(slip.goldUsedFineMg)} g`,
-      cashSettledLabel: `₹ ${paiseToRupees(slip.cashReceivedPaise)}`,
-      goldRateLabel: `₹ ${paiseToRupees(slip.goldRatePerGramPaise)}/g`,
-      notes: `Closing settlement ₹ ${paiseToRupees(slip.closingSettlementPaise)}`,
-      previousGoldBalance: `${mgToGrams(slip.previousGoldBalanceMg)} g`,
-      closingGoldBalance: `${mgToGrams(slip.closingGoldBalanceMg)} g`,
+      goldSettledLabel: `${mgToGrams(slip.goldUsedFineMg)} g Fine Gold`,
+      goldReceivedLabel: `${mgToGrams(slip.goldReceivedFineMg)} g Fine Gold`,
+      cashSettledLabel: isPureGold ? "" : `₹ ${paiseToRupees(slip.cashReceivedPaise)}`,
+      goldRateLabel: isPureGold ? "995 Touch Basis" : slip.goldRatePerGramPaise > 0 ? `₹ ${paiseToRupees(slip.goldRatePerGramPaise)}/g` : "Market Live Rate",
+      notes: inv.notes || "Customer mutual reconciliation and settlement completed.",
+      previousGoldBalance: `${mgToGrams(slip.previousGoldBalanceMg)} g Fine Gold`,
+      closingGoldBalance: `${mgToGrams(slip.closingGoldBalanceMg)} g Fine Gold`,
+      closingSettlementLabel: isPureGold ? "" : `₹ ${paiseToRupees(slip.closingSettlementPaise)}`,
+      settlementStatus: inv.balancePaise === 0 ? "Fully Settled" : "Partial Due",
     },
     tables: {
       items: slip.items.map((it) => ({
         description: it.description,
+        purity: purityLabel(it.purity),
         grossWt: `${mgToGrams(it.grossMg)} g`,
         netWt: `${mgToGrams(it.netMg)} g`,
-        purity: purityLabel(it.purity),
-        amountLabel: `${it.pcs} pc`,
+        fineWt: `${mgToGrams(Math.round((it.netMg * it.purity) / 995))} g`,
+        pcs: `${it.pcs || 1}`,
       })),
     },
-    flags: { hasCustomerPhone: !!inv.customerPhone },
+    flags: {
+      isPureGold,
+      hasCash: !isPureGold && slip.cashReceivedPaise > 0,
+      hasCustomerPhone: !!inv.customerPhone,
+      hasBalance: isPureGold ? Math.max(0, slip.goldUsedFineMg - slip.goldReceivedFineMg) > 0 : inv.balancePaise > 0,
+      hasNotes: !!inv.notes,
+    },
     images: {},
     balances: {},
   };
@@ -337,30 +364,53 @@ const builders: Record<PrintDocType, PrintContextBuilder> = {
   karigar_custody_statement: buildKarigarCustodyStatementData,
   worker_passbook: buildKarigarCustodyStatementData,
   customer_ledger_statement: buildCustomerLedgerStatementData,
+  customer_unpaid_invoices: buildCustomerUnpaidInvoicesData,
+  customer_paid_invoices: buildCustomerPaidInvoicesData,
 
   credit_note: (recordId) => {
     const note = useCreditNotes.getState().notes.find((n) => n.id === recordId);
     if (!note) return null;
+    const isPureGold = (note.goldFineMg ?? 0) > 0 && (note.amountPaise ?? 0) === 0;
     return {
       docType: "credit_note",
       docNumber: note.creditNoteNo,
       recordId: note.id,
       createdAt: note.createdAt,
-      title: "Credit Note",
+      title: isPureGold ? "Gold Return / Credit Note" : "Credit Note (Sales Return)",
       fields: {
         customerName: note.customerName || "Walk-in Customer",
-        invoiceNo: note.invoiceNo,
-        amountLabel: `₹ ${paiseToRupees(note.amountPaise)}`,
-        reasonText: note.reason || "—",
+        invoiceNo: note.invoiceNo || "—",
+        amountLabel: isPureGold
+          ? `${mgToGrams(note.goldFineMg)} g Fine Gold`
+          : note.goldFineMg > 0
+            ? `${mgToGrams(note.goldFineMg)} g Fine Gold (₹ ${paiseToRupees(note.amountPaise)})`
+            : `₹ ${paiseToRupees(note.amountPaise)}`,
+        goldFineLabel: `${mgToGrams(note.goldFineMg || 0)} g Fine Gold`,
+        reasonText: note.reason || "Return / Adjustment",
         statusText: note.status === "issued" ? "Issued" : "Cancelled",
       },
       tables: {},
       flags: {
         isIssued: note.status === "issued",
         isCancelled: note.status === "cancelled",
+        isPureGold,
+        hasCash: !isPureGold,
       },
       images: {},
-      balances: {},
+      balances: {
+        gold: {
+          previous: 0,
+          in: note.goldFineMg || 0,
+          out: 0,
+          closing: note.goldFineMg || 0,
+        },
+        cash: {
+          previous: 0,
+          in: note.amountPaise || 0,
+          out: 0,
+          closing: note.amountPaise || 0,
+        },
+      },
     };
   },
 
@@ -429,19 +479,26 @@ const builders: Record<PrintDocType, PrintContextBuilder> = {
 
     const inv = useBilling.getState().invoices.find((i) => i.id === recordId);
     if (inv) {
+      const isPureGold =
+        inv.transactionMode === "gold" ||
+        (inv.transactionMode !== "cash" &&
+          (inv.billingType === "job_work" ||
+            inv.billingType === "wholesale"));
+      const totalFine = inv.items.reduce((s, it) => s + (it.fineMg || 0), 0);
+
       return {
         docType: "estimate_doc",
         docNumber: inv.invoiceNo,
         recordId: inv.id,
         createdAt: inv.createdAt,
-        title: "Estimate / Quotation",
+        title: isPureGold ? "Gold Estimate / Quotation (995 Basis)" : "Estimate / Quotation",
         fields: {
           customerName: inv.customerName || "Walk-in Customer",
           customerPhone: inv.customerPhone || "",
           statusText: "Draft",
-          subtotalLabel: `₹ ${paiseToRupees(inv.subtotalPaise)}`,
-          gstLabel: `₹ ${paiseToRupees(inv.gstPaise)}`,
-          grandTotalLabel: `₹ ${paiseToRupees(inv.grandTotalPaise)}`,
+          subtotalLabel: isPureGold ? `${mgToGrams(totalFine)} g Fine Gold` : `₹ ${paiseToRupees(inv.subtotalPaise)}`,
+          gstLabel: isPureGold ? "Included in 995 Basis" : `₹ ${paiseToRupees(inv.gstPaise)}`,
+          grandTotalLabel: isPureGold ? `${mgToGrams(totalFine)} g Fine Gold` : `₹ ${paiseToRupees(inv.grandTotalPaise)}`,
           notesText: inv.notes || "",
           validityText:
             "Valid for 15 days from the date of issue. Prices subject to gold rate at time of order confirmation.",
@@ -450,7 +507,7 @@ const builders: Record<PrintDocType, PrintContextBuilder> = {
           items: inv.items.map((it) => ({
             itemName: it.itemName,
             fineWt: `${mgToGrams(it.fineMg)}g`,
-            amountLabel: `₹ ${paiseToRupees(it.lineTotalPaise)}`,
+            amountLabel: isPureGold ? `${mgToGrams(it.fineMg)} g Fine Gold` : `₹ ${paiseToRupees(it.lineTotalPaise)}`,
           })),
         },
         flags: {
@@ -480,6 +537,7 @@ const builders: Record<PrintDocType, PrintContextBuilder> = {
   delivery_challan: (recordId) => {
     const c = useDeliveryChallans.getState().challans.find((x) => x.id === recordId);
     if (!c) return null;
+    const customer = usePeople.getState().people.find((p) => p.id === c.customerId);
     return {
       docType: "delivery_challan",
       docNumber: c.challanNo,
@@ -487,22 +545,28 @@ const builders: Record<PrintDocType, PrintContextBuilder> = {
       createdAt: c.createdAt,
       title: "Delivery Challan",
       fields: {
+        challanNo: c.challanNo,
+        challanDate: new Date(c.createdAt).toLocaleDateString("en-IN"),
         customerName: c.customerName || "Walk-in Customer",
+        customerPhone: customer?.phone || "",
+        customerAddress: c.deliveryAddress || customer?.addressLine1 || customer?.currentAddress || "",
         statusText: CHALLAN_STATUS_LABELS[c.status] ?? c.status,
         notesText: c.notes || "",
-        purposeText: `Goods sent for ${c.purpose.replace(/_/g, " ")} — not a tax invoice.`,
+        purposeText: `Goods dispatched for ${c.purpose.replace(/_/g, " ")} · Not a Tax Invoice`,
       },
       tables: {
         items: c.items.map((it) => ({
           itemName: it.itemName,
           qty: it.qty,
-          grossWt: `${mgToGrams(it.grossMg)}g`,
-          netWt: `${mgToGrams(it.netMg)}g`,
+          grossWt: `${mgToGrams(it.grossMg)} g`,
+          netWt: `${mgToGrams(it.netMg)} g`,
           purity: String(it.purity),
-          fineWt: `${mgToGrams(it.fineMg)}g`,
+          fineWt: `${mgToGrams(it.fineMg)} g`,
         })),
       },
       flags: {
+        hasCustomerPhone: !!customer?.phone,
+        hasCustomerAddress: !!(c.deliveryAddress || customer?.addressLine1 || customer?.currentAddress),
         hasNotes: !!c.notes,
       },
       images: {},
@@ -690,48 +754,87 @@ const builders: Record<PrintDocType, PrintContextBuilder> = {
   payment_receipt: (recordId) => {
     const inv = useBilling.getState().invoices.find((i) => i.id === recordId);
     if (inv) {
-      const totalPaid = inv.payments.reduce((s, p) => s + p.amountPaise, 0);
+      const isPureGold =
+        inv.transactionMode === "gold" ||
+        (inv.transactionMode !== "cash" &&
+          (inv.billingType === "job_work" ||
+            inv.billingType === "wholesale" ||
+            (inv.paidPaise === 0 && inv.payments.every((p) => (p.goldFineMg ?? 0) > 0))));
+
+      const totalPaidPaise = inv.payments.reduce((s, p) => s + (p.amountPaise || 0), 0);
+      const totalPaidGoldMg = inv.payments.reduce((s, p) => s + (p.goldFineMg || 0), 0);
+      const totalFineObligationMg = inv.items.reduce((s, it) => s + (it.fineMg || 0), 0);
+      const balanceGoldMg = Math.max(0, totalFineObligationMg - totalPaidGoldMg);
+
       return {
         docType: "payment_receipt",
         docNumber: `RCP-${inv.invoiceNo}`,
         recordId: inv.id,
         createdAt: inv.createdAt,
-        title: "Payment Receipt",
+        title: isPureGold ? "Gold Payment Receipt" : "Payment Receipt",
         fields: {
           receiptNo: `RCP-${inv.invoiceNo}`,
           invoiceNo: inv.invoiceNo,
           customerName: inv.customerName || "Walk-in Customer",
           customerPhone: inv.customerPhone || "",
-          totalReceived: `₹ ${paiseToRupees(totalPaid)}`,
-          amountLabel: `₹ ${paiseToRupees(totalPaid || inv.grandTotalPaise)}`,
-          invoiceBalance: `₹ ${paiseToRupees(inv.balancePaise)}`,
-          amountInWordsText: `Rupees ${paiseToRupees(totalPaid || inv.grandTotalPaise)} Only`,
+          totalReceived: isPureGold
+            ? `${mgToGrams(totalPaidGoldMg)} g Fine Gold`
+            : totalPaidGoldMg > 0
+              ? `${mgToGrams(totalPaidGoldMg)} g Gold + ₹ ${paiseToRupees(totalPaidPaise)}`
+              : `₹ ${paiseToRupees(totalPaidPaise)}`,
+          amountLabel: isPureGold
+            ? `${mgToGrams(totalPaidGoldMg)} g Fine Gold`
+            : `₹ ${paiseToRupees(totalPaidPaise || inv.grandTotalPaise)}`,
+          invoiceBalance: isPureGold
+            ? `${mgToGrams(balanceGoldMg)} g Fine Gold`
+            : `₹ ${paiseToRupees(inv.balancePaise)}`,
+          amountInWordsText: isPureGold
+            ? `${mgToGrams(totalPaidGoldMg)} Grams Fine Gold Only`
+            : `Rupees ${paiseToRupees(totalPaidPaise || inv.grandTotalPaise)} Only`,
           dateLabel: new Date(inv.createdAt).toLocaleString("en-IN"),
         },
         tables: {
-          payments: inv.payments.map((p) => ({
-            date: new Date(p.ts).toLocaleDateString("en-IN"),
-            mode: p.mode ? p.mode.toUpperCase() : "CASH",
-            reference: p.reference || "—",
-            amount: `₹ ${paiseToRupees(p.amountPaise)}`,
-          })),
-          entries: inv.payments.map((p) => ({
-            particulars: `Payment received against ${inv.invoiceNo} (${p.mode ? p.mode.toUpperCase() : "CASH"})`,
-            date: new Date(p.ts).toLocaleDateString("en-IN"),
-            amount: `₹ ${paiseToRupees(p.amountPaise)}`,
-          })),
+          payments: inv.payments.map((p) => {
+            const isGold = p.mode === "gold_exchange" || p.mode === "customer_gold_credit" || (p.goldFineMg ?? 0) > 0;
+            return {
+              date: new Date(p.ts).toLocaleDateString("en-IN"),
+              mode: p.mode ? p.mode.toUpperCase() : "CASH",
+              reference: p.reference || "—",
+              amount: isGold
+                ? `${mgToGrams(p.goldFineMg || 0)} g fine (${p.goldGrossMg ? `${mgToGrams(p.goldGrossMg)}g gross` : "fine"})`
+                : `₹ ${paiseToRupees(p.amountPaise)}`,
+            };
+          }),
+          entries: inv.payments.map((p) => {
+            const isGold = p.mode === "gold_exchange" || p.mode === "customer_gold_credit" || (p.goldFineMg ?? 0) > 0;
+            return {
+              particulars: `Payment received against ${inv.invoiceNo} (${p.mode ? p.mode.toUpperCase() : "CASH"})`,
+              date: new Date(p.ts).toLocaleDateString("en-IN"),
+              amount: isGold
+                ? `${mgToGrams(p.goldFineMg || 0)} g Fine Gold`
+                : `₹ ${paiseToRupees(p.amountPaise)}`,
+            };
+          }),
         },
         flags: {
           hasCustomerPhone: !!inv.customerPhone,
-          isPaid: inv.balancePaise <= 0,
+          isPaid: isPureGold ? balanceGoldMg <= 0 : inv.balancePaise <= 0,
+          isPureGold,
+          hasCash: !isPureGold,
         },
         images: {},
         balances: {
           cash: {
             previous: 0,
-            in: totalPaid,
+            in: isPureGold ? 0 : totalPaidPaise,
             out: 0,
-            closing: inv.balancePaise,
+            closing: isPureGold ? 0 : inv.balancePaise,
+          },
+          gold: {
+            previous: 0,
+            in: totalPaidGoldMg,
+            out: 0,
+            closing: balanceGoldMg,
           },
         },
       };

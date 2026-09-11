@@ -121,12 +121,16 @@ export function ensureFinancialLocksLoaded(): Promise<void> {
 }
 
 export async function ensureFinancialLockLoaded(branchId: string, period: string): Promise<void> {
-  const locks = await fetchFinancialLocks({ branchId, period, limit: 1 });
-  const state = useFinancialLocks.getState();
-  const existing = state.locks.filter(
-    (lock) => !(lock.branchId === branchId && lock.period === period),
-  );
-  state.setAll([...locks, ...existing]);
+  try {
+    const locks = await fetchFinancialLocks({ branchId, period, limit: 1 });
+    const state = useFinancialLocks.getState();
+    const existing = state.locks.filter(
+      (lock) => !(lock.branchId === branchId && lock.period === period),
+    );
+    state.setAll([...locks, ...existing]);
+  } catch {
+    // Fall back to in-memory locks if network or database fetch is unavailable
+  }
 }
 
 /** Error thrown by assertPeriodOpen() — callers can catch this specifically to show a locked-period message. */

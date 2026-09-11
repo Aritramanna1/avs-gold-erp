@@ -39,47 +39,54 @@ function addPageHeader(
   date: string,
 ) {
   const y0 = MARGIN;
+  const leftColWidth = 100;
 
   // Shop name (bold, large)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  doc.text(firm.shopName || "Jewellers ERP", MARGIN, y0 + 6);
+  doc.setFontSize(14);
+  const shopNameLines = doc.splitTextToSize(firm.shopName || "Jewellers ERP", leftColWidth);
+  doc.text(shopNameLines, MARGIN, y0 + 5);
+  let addrY = y0 + 5 + (shopNameLines.length * 5);
 
   // Tagline
   if (firm.tagline) {
     doc.setFont("helvetica", "italic");
     doc.setFontSize(8);
-    doc.text(firm.tagline, MARGIN, y0 + 11);
+    const tagLines = doc.splitTextToSize(firm.tagline, leftColWidth);
+    doc.text(tagLines, MARGIN, addrY);
+    addrY += tagLines.length * 3.5;
   }
 
   // Address / contact
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  let addrY = y0 + 16;
+  doc.setFontSize(7.5);
   if (firm.address) {
-    doc.text(firm.address, MARGIN, addrY);
-    addrY += 4;
+    const addrLines = doc.splitTextToSize(firm.address, leftColWidth);
+    doc.text(addrLines, MARGIN, addrY);
+    addrY += addrLines.length * 3.5;
   }
   const contact = [firm.phone, firm.email].filter(Boolean).join("  |  ");
   if (contact) {
-    doc.text(contact, MARGIN, addrY);
-    addrY += 4;
+    const contactLines = doc.splitTextToSize(contact, leftColWidth);
+    doc.text(contactLines, MARGIN, addrY);
+    addrY += contactLines.length * 3.5;
   }
   if (firm.gstin) {
     doc.text(`GSTIN: ${firm.gstin}`, MARGIN, addrY);
+    addrY += 4;
   }
 
   // Document title / number (right-aligned)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text(docTitle.toUpperCase(), COL_R, y0 + 6, { align: "right" });
+  doc.setFontSize(13);
+  doc.text(docTitle.toUpperCase(), COL_R, y0 + 5, { align: "right" });
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text(`No: ${docNo}`, COL_R, y0 + 12, { align: "right" });
-  doc.text(`Date: ${date}`, COL_R, y0 + 17, { align: "right" });
+  doc.setFontSize(8.5);
+  doc.text(`No: ${docNo}`, COL_R, y0 + 11, { align: "right" });
+  doc.text(`Date: ${date}`, COL_R, y0 + 16, { align: "right" });
 
-  // Horizontal rule
-  const ruleY = y0 + 28;
+  // Horizontal rule dynamically placed below the tallest section
+  const ruleY = Math.max(addrY + 2, y0 + 22);
   doc.setDrawColor(120, 113, 108);
   doc.setLineWidth(0.5);
   doc.line(MARGIN, ruleY, COL_R, ruleY);
@@ -213,7 +220,20 @@ function addTotalsBlock(
 
 function addPageFooter(doc: jsPDF, firm: FirmProfile) {
   const pageH = doc.internal.pageSize.getHeight();
-  const footerY = pageH - 15;
+  const sigY = pageH - 26;
+
+  // Signatures on far left and far right
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setDrawColor(160, 150, 140);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, sigY, MARGIN + 55, sigY);
+  doc.text("Customer / Receiver Signature", MARGIN + 1, sigY + 4);
+
+  doc.line(COL_R - 55, sigY, COL_R, sigY);
+  doc.text("Authorised Signatory", COL_R - 54, sigY + 4);
+
+  const footerY = pageH - 14;
 
   doc.setDrawColor(180, 170, 160);
   doc.setLineWidth(0.3);
@@ -226,10 +246,10 @@ function addPageFooter(doc: jsPDF, firm: FirmProfile) {
   doc.setTextColor(100, 100, 100);
   const footer =
     firm.footerLine || "Official transaction record. Handcrafted quality and guaranteed purity.";
-  doc.text(footer, PAGE_W / 2, footerY + 5, { align: "center" });
+  doc.text(footer, PAGE_W / 2, footerY + 4.5, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.text("SYSTEM VERIFIED ORIGINAL COPY", PAGE_W / 2, footerY + 9, { align: "center" });
+  doc.setFontSize(6.5);
+  doc.text("SYSTEM VERIFIED ORIGINAL COPY", PAGE_W / 2, footerY + 8.5, { align: "center" });
   doc.setTextColor(0, 0, 0);
 }
 
@@ -239,7 +259,74 @@ export function generateInvoicePdf(inv: any, firm: FirmProfile): Blob {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const dateStr = new Date(inv.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" });
 
-  let y = addPageHeader(doc, firm, "Tax Invoice", inv.invoiceNo, dateStr);
+  const isPureGold =
+    inv.transactionMode === "gold" ||
+    (inv.transactionMode !== "cash" &&
+      ((inv.billingType as string) === "job_work" ||
+        (inv.billingType as string) === "wholesale" ||
+        (inv.billingType as string) === "gold" ||
+        (inv.items || []).some(
+          (it: any) =>
+            it.chargeMode === "job_work" ||
+            (it.hallmarkChargesGoldMg ?? 0) > 0 ||
+            (it.makingChargesGoldMg ?? 0) > 0 ||
+            (it.otherChargesGoldMg ?? 0) > 0 ||
+            (it.stoneChargesGoldMg ?? 0) > 0,
+        ) ||
+        ((inv.payments || []).length > 0 &&
+          (inv.payments || []).every(
+            (p: any) =>
+              p.mode === "gold_exchange" ||
+              p.mode === "customer_gold_credit" ||
+              ((p.goldFineMg ?? 0) > 0 && (p.amountPaise ?? 0) === 0),
+          )) ||
+        ((inv.paidPaise === 0 || !inv.paidPaise) && (inv.payments || []).some((p: any) => (p.goldFineMg ?? 0) > 0))));
+
+  const totalFineMg = (inv.items || []).reduce((s: number, it: any) => s + (it.fineMg || 0), 0);
+
+  const actualGoldPaidMg = (inv.payments || []).reduce((s: number, p: any) => {
+    if (p.mode === "gold_exchange" || p.mode === "customer_gold_credit" || (p.goldFineMg && p.goldFineMg > 0)) {
+      return s + (p.goldFineMg || p.goldGrossMg || 0);
+    }
+    const rateUsed = p.goldRatePerGramPaise || 750000;
+    const equiv = rateUsed > 0 ? Math.round((p.amountPaise * 1000) / rateUsed) : 0;
+    return s + equiv;
+  }, 0);
+
+  const goldReceivedFineMg =
+    actualGoldPaidMg > 0
+      ? actualGoldPaidMg
+      : inv.grandTotalPaise > 0
+        ? Math.round((totalFineMg * (inv.paidPaise || 0)) / inv.grandTotalPaise)
+        : (inv.payments || []).reduce((s: number, p: any) => s + (p.goldFineMg || 0), 0);
+
+  const excessGoldFineMg = Math.max(0, goldReceivedFineMg - totalFineMg);
+  const remainingGoldDueMg = Math.max(0, totalFineMg - goldReceivedFineMg);
+
+  let y = addPageHeader(
+    doc,
+    firm,
+    isPureGold ? "Tax Invoice (Gold 995 Basis)" : "Tax Invoice",
+    inv.invoiceNo,
+    dateStr,
+  );
+
+  // Prominent PAID Stamp Badge
+  const isInvoiceFullyPaid =
+    inv.status === "paid" ||
+    (isPureGold ? remainingGoldDueMg === 0 && goldReceivedFineMg > 0 : (inv.balancePaise === 0 && (inv.paidPaise || 0) > 0));
+
+  if (isInvoiceFullyPaid) {
+    doc.setDrawColor(22, 101, 52);
+    doc.setFillColor(240, 253, 244);
+    doc.roundedRect(COL_R - 32, MARGIN + 18, 32, 6.5, 1.2, 1.2, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(22, 101, 52);
+    doc.text("PAID", COL_R - 16, MARGIN + 22.5, { align: "center" });
+    doc.setTextColor(0, 0, 0);
+  }
+
   y += 2;
 
   // Customer section
@@ -265,98 +352,124 @@ export function generateInvoicePdf(inv: any, firm: FirmProfile): Blob {
   y += 2;
   y = addHRule(doc, y, true);
 
+  // Calculation & Rate Basis Explanatory Subtitle
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(7.5);
+  doc.setTextColor(90, 80, 70);
+  const ratePerG = inv.items[0]?.goldRatePerGramPaise || (inv.payments || []).find((p: any) => (p.goldRatePerGramPaise ?? 0) > 0)?.goldRatePerGramPaise || 0;
+  const rateText = ratePerG > 0 ? ` | Rate Basis: ₹${paiseToRs(ratePerG)}/g` : "";
+  doc.text(`Conversion Basis: Gross - Less + Add = Net Wt | Fine = Net Wt × (Tanch% + Wstg%) [995 Basis]${rateText}`, MARGIN, y + 3);
+  doc.setTextColor(0, 0, 0);
+  y += 6;
+
   // Items table
-  y = addSectionTitle(doc, "Items", y);
-  const itemRows = (inv.items || []).map((it: any, idx: number) => ({
-    no: String(idx + 1),
-    name: it.itemName || "-",
-    purity: purity1000ToLabel(it.purity || 0),
-    grossWt: mgToG(it.grossMg || 0) + " g",
-    making: `₹${paiseToRs(it.makingChargesPaise || 0)}`,
-    stone: `₹${paiseToRs(it.stoneChargesPaise || 0)}`,
-    total: `₹${paiseToRs(it.lineTotalPaise || 0)}`,
-  }));
+  y = addSectionTitle(doc, "Items & Gold Conversion Schedule", y);
+  const itemRows = (inv.items || []).map((it: any, idx: number) => {
+    const tanch = it.purity ? (it.purity / 10).toFixed(2) : "91.60";
+    const wstg = it.wastagePct != null ? Number(it.wastagePct).toFixed(2) : "0.00";
+    const hisob = it.hisobPct != null && Number(it.hisobPct) > 0 
+      ? Number(it.hisobPct).toFixed(2) 
+      : (Number(tanch) + Number(wstg)).toFixed(2);
+
+    return {
+      no: String(idx + 1),
+      name: it.itemName || "-",
+      grossWt: mgToG(it.grossMg || 0) + "g",
+      netWt: mgToG(it.netMg || it.grossMg || 0) + "g",
+      hisobStr: `${tanch}%+${wstg}%=${hisob}%`,
+      making: isPureGold
+        ? (it.makingChargesGoldMg ? `${mgToG(it.makingChargesGoldMg)}g` : "0.000g")
+        : `₹${paiseToRs(it.makingChargesPaise || 0)}`,
+      total: isPureGold ? `${mgToG(it.fineMg || 0)} g Fine` : `₹${paiseToRs(it.lineTotalPaise || 0)}`,
+    };
+  });
 
   const itemCols: TableColumn[] = [
     { header: "#", key: "no", width: 8 },
-    { header: "Item / Description", key: "name", width: 62 },
-    { header: "Purity", key: "purity", width: 22 },
-    { header: "Gross Wt", key: "grossWt", width: 22, align: "right" },
-    { header: "Making", key: "making", width: 22, align: "right" },
-    { header: "Total", key: "total", width: 24, align: "right" },
+    { header: "Item / Description", key: "name", width: 46 },
+    { header: "Gross (g)", key: "grossWt", width: 18, align: "right" },
+    { header: "Net (g)", key: "netWt", width: 18, align: "right" },
+    { header: "Tanch+Wstg=Hisob", key: "hisobStr", width: 34, align: "center" },
+    { header: "Making", key: "making", width: 18, align: "right" },
+    { header: isPureGold ? "Fine Gold (g)" : "Total (₹)", key: "total", width: 28, align: "right" },
   ];
 
   y = addTable(doc, itemCols, itemRows, y);
   y += 2;
 
-  // Totals — use cgstPaise/sgstPaise (billing store fields). IGST-mode
-  // invoices store the full tax in sgstPaise with cgstPaise = 0 (see
-  // computeInvoiceTotals in billing-store.ts) — a plain `if (cgst > 0)`
-  // gate silently dropped this line from the printed invoice entirely for
-  // every IGST bill, even though the grand total below still included it.
-  // That produced a document where the visible line items didn't add up
-  // to the grand total shown — exactly the "missing values" defect this
-  // audit was looking for. The rate label was also hardcoded to "(1.5%)"
-  // regardless of the actually configured GST rate; dropped rather than
-  // print a number that may not match what was actually charged.
-  const cgst = inv.cgstPaise || 0;
-  const sgst = inv.sgstPaise || 0;
-  const totalGst = cgst + sgst;
-  const totalLines: { label: string; value: string; bold?: boolean }[] = [];
-  totalLines.push({ label: "Subtotal", value: `₹${paiseToRs(inv.subtotalPaise || 0)}` });
-  if (cgst > 0 && sgst > 0) {
-    totalLines.push({ label: "CGST", value: `₹${paiseToRs(cgst)}` });
-    totalLines.push({ label: "SGST", value: `₹${paiseToRs(sgst)}` });
-  } else if (totalGst > 0) {
-    totalLines.push({ label: "IGST", value: `₹${paiseToRs(totalGst)}` });
-  }
-  // TCS (Tax Collected at Source) — printed as its own line only when
-  // actually charged (computeInvoiceTotals only sets this above the
-  // configured threshold), so a non-TCS invoice's layout is unchanged.
-  if ((inv.tcsPaise || 0) > 0) {
-    totalLines.push({ label: "TCS", value: `₹${paiseToRs(inv.tcsPaise)}` });
-  }
-  if ((inv.adjustmentPaise || 0) > 0) {
+  if (isPureGold) {
+    const totalLines: { label: string; value: string; bold?: boolean }[] = [];
+    totalLines.push({ label: "Subtotal (Fine Gold 995)", value: `${mgToG(totalFineMg)} g Fine Gold` });
     totalLines.push({
-      label: "Adjustment (Advance/Gold)",
-      value: `- ₹${paiseToRs(inv.adjustmentPaise || 0)}`,
+      label: "Grand Total (Gold)",
+      value: `${mgToG(totalFineMg)} g Fine Gold`,
+      bold: true,
     });
+    totalLines.push({ label: "Total Received (Gold)", value: `${mgToG(goldReceivedFineMg)} g Fine Gold` });
+    if (excessGoldFineMg > 0) {
+      totalLines.push({
+        label: "Excess credited to Customer Ledger",
+        value: `+${mgToG(excessGoldFineMg)} g Fine Gold`,
+        bold: true,
+      });
+    }
+    totalLines.push({
+      label: "Balance Due (Gold)",
+      value: remainingGoldDueMg === 0 ? "0.000 g (PAID)" : `${mgToG(remainingGoldDueMg)} g Fine Gold`,
+      bold: true,
+    });
+
+    y = addTotalsBlock(doc, totalLines, y);
+    y += 4;
+  } else {
+    const cgst = inv.cgstPaise || 0;
+    const sgst = inv.sgstPaise || 0;
+    const totalGst = cgst + sgst;
+    const totalLines: { label: string; value: string; bold?: boolean }[] = [];
+    totalLines.push({ label: "Subtotal", value: `₹${paiseToRs(inv.subtotalPaise || 0)}` });
+    if (cgst > 0 && sgst > 0) {
+      totalLines.push({ label: "CGST", value: `₹${paiseToRs(cgst)}` });
+      totalLines.push({ label: "SGST", value: `₹${paiseToRs(sgst)}` });
+    } else if (totalGst > 0) {
+      totalLines.push({ label: "IGST", value: `₹${paiseToRs(totalGst)}` });
+    }
+    if ((inv.tcsPaise || 0) > 0) {
+      totalLines.push({ label: "TCS", value: `₹${paiseToRs(inv.tcsPaise)}` });
+    }
+    if ((inv.adjustmentPaise || 0) > 0) {
+      totalLines.push({
+        label: "Adjustment (Advance/Gold)",
+        value: `- ₹${paiseToRs(inv.adjustmentPaise || 0)}`,
+      });
+    }
+    totalLines.push({
+      label: "Grand Total",
+      value: `₹${paiseToRs(inv.grandTotalPaise || 0)}`,
+      bold: true,
+    });
+    totalLines.push({ label: "Amount Paid", value: `₹${paiseToRs(inv.paidPaise || 0)}` });
+    totalLines.push({
+      label: "Balance Due",
+      value: `₹${paiseToRs(inv.balancePaise || 0)}`,
+      bold: true,
+    });
+
+    y = addTotalsBlock(doc, totalLines, y);
+    y += 4;
+
+    if ((inv.gstGoldEquivalentMg || 0) > 0) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8);
+      doc.text(
+        `GST amount payable in gold equivalent: ${mgToG(inv.gstGoldEquivalentMg)} g fine`,
+        MARGIN,
+        y,
+      );
+      y += 5;
+    }
   }
-  totalLines.push({
-    label: "Grand Total",
-    value: `₹${paiseToRs(inv.grandTotalPaise || 0)}`,
-    bold: true,
-  });
-  totalLines.push({ label: "Amount Paid", value: `₹${paiseToRs(inv.paidPaise || 0)}` });
-  totalLines.push({
-    label: "Balance Due",
-    value: `₹${paiseToRs(inv.balancePaise || 0)}`,
-    bold: true,
-  });
 
-  y = addTotalsBlock(doc, totalLines, y);
-  y += 4;
-
-  // GST Gold Equivalent — informational only; shown when Settings → Tax
-  // Configuration has "Allow GST Payment in Gold" on. Never implies GST was
-  // actually paid in gold — only that it *could* be, at this equivalent.
-  if ((inv.gstGoldEquivalentMg || 0) > 0) {
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(8);
-    doc.text(
-      `GST amount payable in gold equivalent: ${mgToG(inv.gstGoldEquivalentMg)} g fine`,
-      MARGIN,
-      y,
-    );
-    y += 5;
-  }
-
-  // Gold / Cash Payment Breakdown — split from the flat Payments table
-  // below so a reader can see the asset mix at a glance without adding up
-  // individual payment rows.
-  const goldReceivedFineMg = (inv.payments || [])
-    .filter((p: any) => p.mode === "gold_exchange")
-    .reduce((s: number, p: any) => s + (p.goldFineMg || 0), 0);
+  // Gold / Cash Payment Breakdown for mixed payments
   const cashReceivedPaise = (inv.payments || [])
     .filter(
       (p: any) =>
@@ -366,7 +479,7 @@ export function generateInvoicePdf(inv: any, firm: FirmProfile): Blob {
         p.mode !== "advance",
     )
     .reduce((s: number, p: any) => s + (p.amountPaise || 0), 0);
-  if (goldReceivedFineMg > 0 || cashReceivedPaise > 0) {
+  if (!isPureGold && (goldReceivedFineMg > 0 || cashReceivedPaise > 0)) {
     const breakdownLines: { label: string; value: string; bold?: boolean }[] = [];
     if (goldReceivedFineMg > 0) {
       breakdownLines.push({ label: "Gold Received", value: `${mgToG(goldReceivedFineMg)} g fine` });

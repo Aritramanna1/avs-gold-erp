@@ -8,6 +8,7 @@
  * drawn exactly once (by PrintLayout, already correct, already in
  * production) rather than duplicated by a second renderer.
  */
+import { Fragment } from "react";
 import { useSettings } from "@/lib/settings-store";
 import { PrintQR } from "@/components/print-qr";
 import { Logo } from "@/components/ui/Logo";
@@ -256,6 +257,22 @@ function TableCell({
       </span>
     );
   }
+  if (column.key === "description") {
+    const raw = String(formatFieldValue(value));
+    const lines = raw.split("\n").filter(Boolean);
+    if (lines.length > 1) {
+      return (
+        <div className="space-y-0.5 text-left">
+          <div className="font-semibold text-stone-900 text-xs">{lines[0]}</div>
+          {lines.slice(1).map((l, idx) => (
+            <div key={idx} className="text-[10px] text-stone-600 font-mono leading-tight">
+              {l}
+            </div>
+          ))}
+        </div>
+      );
+    }
+  }
   // Multi-line cells: the data mapper joins sub-fields (barcode, HUID, stone
   // weight, etc.) with "\n" — pre-line preserves those as stacked lines
   // instead of collapsing to a single line, matching the legacy invoice's
@@ -299,7 +316,7 @@ function TableSection({ config, data }: { config: TableSectionConfig; data: Prin
             <tr>
               <th
                 colSpan={columns.length}
-                className="border border-stone-400 px-1.5 py-0.5 bg-stone-50 text-left font-normal"
+                className="border border-stone-400 px-2 py-1 bg-stone-50 text-left font-normal"
               >
                 <span className="font-serif font-bold text-stone-900">
                   {branding.printHeader || firm.shopName || branding.applicationName}
@@ -318,7 +335,7 @@ function TableSection({ config, data }: { config: TableSectionConfig; data: Prin
             {columns.map((c) => (
               <th
                 key={c.key}
-                className="border border-stone-400 px-1.5 py-0.5 bg-stone-100 font-semibold break-words"
+                className="border border-stone-400 px-2 py-1 bg-stone-100 font-semibold break-words text-[11px] text-stone-800 uppercase tracking-wide"
                 style={{ textAlign: c.align ?? "left" }}
               >
                 {TL(c.header)}
@@ -328,23 +345,58 @@ function TableSection({ config, data }: { config: TableSectionConfig; data: Prin
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className="print:break-inside-avoid">
-              {columns.map((c) => (
-                <td
-                  key={c.key}
-                  className="border border-stone-300 px-1.5 py-0.5 break-words align-top"
-                  style={{ textAlign: c.align ?? "left" }}
-                >
-                  <TableCell column={c} row={row} value={row[c.key]} />
-                </td>
-              ))}
-            </tr>
+            <Fragment key={i}>
+              <tr className="print:break-inside-avoid">
+                {columns.map((c) => (
+                  <td
+                    key={c.key}
+                    className="border border-stone-300 px-2 py-1.5 break-words align-top leading-normal"
+                    style={{ textAlign: c.align ?? "left" }}
+                  >
+                    <TableCell column={c} row={row} value={row[c.key]} />
+                  </td>
+                ))}
+              </tr>
+              {Array.isArray(row.additionalBreakdown) && row.additionalBreakdown.length > 0 && (
+                <tr className="print:break-inside-avoid bg-stone-50/90">
+                  <td
+                    colSpan={columns.length}
+                    className="border-x border-b border-stone-300 px-3 py-1.5 text-[10px] font-mono text-stone-700"
+                  >
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="text-stone-500 uppercase font-semibold text-[9px] tracking-wider">
+                        Additional Charges &amp; Valuation:
+                      </span>
+                      {row.additionalBreakdown.map((item: any, idx: number) => {
+                        if (item.show === false) return null;
+                        return (
+                          <span
+                            key={idx}
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${
+                              item.emphasis
+                                ? "bg-amber-100 font-bold text-amber-950 border border-amber-300"
+                                : "bg-white border border-stone-200"
+                            }`}
+                          >
+                            <span className="text-stone-500">{item.label}:</span>
+                            <strong className="text-stone-900">{item.value}</strong>
+                            {item.extra && (
+                              <span className="text-stone-400 text-[9px]">({item.extra})</span>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </Fragment>
           ))}
           {rows.length === 0 && (
             <tr>
               <td
                 colSpan={columns.length}
-                className="border border-stone-300 px-1.5 py-2 text-center text-stone-400"
+                className="border border-stone-300 px-2 py-3 text-center text-stone-400"
               >
                 No rows
               </td>

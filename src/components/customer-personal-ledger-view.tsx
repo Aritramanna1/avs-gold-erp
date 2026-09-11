@@ -171,8 +171,8 @@ export function CustomerPersonalLedgerView({
       if (txType === "gold_received") {
         await useLedger.getState().append({
           type: "customer_gold_received",
-          netFineMg: fineMg + fineMg,
-          deltas: { vault: fineMg, customer: fineMg },
+          netFineMg: fineMg,
+          deltas: { vault: fineMg },
           grossMg: grossMg,
           purity: purityVal,
           fineMg,
@@ -191,8 +191,8 @@ export function CustomerPersonalLedgerView({
         });
         await useLedger.getState().append({
           type: "customer_gold_credit_applied",
-          netFineMg: -(fineMg + fineMg),
-          deltas: { vault: -fineMg, customer: -fineMg },
+          netFineMg: -fineMg,
+          deltas: { vault: -fineMg },
           grossMg: grossMg,
           purity: purityVal,
           fineMg,
@@ -290,19 +290,45 @@ export function CustomerPersonalLedgerView({
             <p className="text-xs text-muted-foreground">Running Gold Passbook & Monetary Ledger</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() =>
               triggerPrint(
-                `/people/ledger-print/${person.id}`,
+                `/people/ledger-print/${person.id}?docType=customer_unpaid_invoices`,
+                `Unpaid Invoices · ${person.fullName}`,
+              )
+            }
+            className="gap-1.5 h-9 text-rose-500 border-rose-500/30 hover:bg-rose-500/10 font-medium"
+          >
+            <Printer className="h-4 w-4" /> Print Unpaid Invoices
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              triggerPrint(
+                `/people/ledger-print/${person.id}?docType=customer_paid_invoices`,
+                `Paid Invoices · ${person.fullName}`,
+              )
+            }
+            className="gap-1.5 h-9 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 font-medium"
+          >
+            <Printer className="h-4 w-4" /> Print Paid Invoices
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              triggerPrint(
+                `/people/ledger-print/${person.id}?docType=customer_ledger_statement`,
                 `Ledger Statement · ${person.fullName}`,
               )
             }
-            className="gap-1.5 h-9 text-gold border-gold/30 hover:bg-gold/10"
+            className="gap-1.5 h-9 text-gold border-gold/30 hover:bg-gold/10 font-medium"
           >
-            <Printer className="h-4 w-4" /> Print Statement
+            <Printer className="h-4 w-4" /> Print Full Ledger
           </Button>
           <ShareDocumentButton
             title={`Ledger Statement · ${person.fullName}`}

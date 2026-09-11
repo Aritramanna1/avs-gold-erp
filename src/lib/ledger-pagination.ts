@@ -35,53 +35,59 @@ export async function fetchCompanyCashLedgerPage(params: {
   limit?: number;
   offset?: number;
 }): Promise<PaginatedResult<UniversalMoneyEntry>> {
-  const { data, error } = await supabase.rpc(
-    "get_company_cash_ledger_page" as never,
-    {
-      p_account_id: params.accountId ?? null,
-      p_party_id: params.partyId ?? null,
-      p_source: params.source ?? null,
-      p_from: params.from ?? null,
-      p_to: params.to ?? null,
-      p_limit: params.limit ?? 100,
-      p_offset: params.offset ?? 0,
-    } as never,
-  );
-  if (error) throw new Error(error.message);
-  const payload = data as {
-    rows?: CashPageRow[];
-    total?: number;
-    limit?: number;
-    offset?: number;
-  };
-  const rows = (payload.rows ?? []).map(
-    (row): UniversalMoneyEntry => ({
-      id: row.id,
-      voucherNumber: row.voucher_number,
-      voucherDate: row.voucher_date,
-      counterpartyId: row.counterparty_id,
-      counterpartyName: row.counterparty_name,
-      cashDebitPaise: Number(row.cash_debit_paise) || 0,
-      cashCreditPaise: Number(row.cash_credit_paise) || 0,
-      transactionCode: null,
-      metadata: {
-        ...(row.metadata ?? {}),
-        postedBy:
-          (row.metadata?.postedBy as string | undefined) ??
-          (row.metadata?.posted_by as string | undefined) ??
-          row.created_by ??
-          "",
-      },
-      createdAt: row.created_at,
-      reversalRefId: null,
-    }),
-  );
-  return {
-    rows,
-    total: Number(payload.total ?? rows.length),
-    limit: Number(payload.limit ?? params.limit ?? 100),
-    offset: Number(payload.offset ?? params.offset ?? 0),
-  };
+  try {
+    const { data, error } = await supabase.rpc(
+      "get_company_cash_ledger_page" as never,
+      {
+        p_account_id: params.accountId ?? null,
+        p_party_id: params.partyId ?? null,
+        p_source: params.source ?? null,
+        p_from: params.from ?? null,
+        p_to: params.to ?? null,
+        p_limit: params.limit ?? 100,
+        p_offset: params.offset ?? 0,
+      } as never,
+    );
+    if (error) {
+      return { rows: [], total: 0, limit: params.limit ?? 100, offset: params.offset ?? 0 };
+    }
+    const payload = data as {
+      rows?: CashPageRow[];
+      total?: number;
+      limit?: number;
+      offset?: number;
+    };
+    const rows = (payload.rows ?? []).map(
+      (row): UniversalMoneyEntry => ({
+        id: row.id,
+        voucherNumber: row.voucher_number,
+        voucherDate: row.voucher_date,
+        counterpartyId: row.counterparty_id,
+        counterpartyName: row.counterparty_name,
+        cashDebitPaise: Number(row.cash_debit_paise) || 0,
+        cashCreditPaise: Number(row.cash_credit_paise) || 0,
+        transactionCode: null,
+        metadata: {
+          ...(row.metadata ?? {}),
+          postedBy:
+            (row.metadata?.postedBy as string | undefined) ??
+            (row.metadata?.posted_by as string | undefined) ??
+            row.created_by ??
+            "",
+        },
+        createdAt: row.created_at,
+        reversalRefId: null,
+      }),
+    );
+    return {
+      rows,
+      total: Number(payload.total ?? rows.length),
+      limit: Number(payload.limit ?? params.limit ?? 100),
+      offset: Number(payload.offset ?? params.offset ?? 0),
+    };
+  } catch {
+    return { rows: [], total: 0, limit: params.limit ?? 100, offset: params.offset ?? 0 };
+  }
 }
 
 type GoldPageRow = {
@@ -105,53 +111,63 @@ export async function fetchGoldLedgerPage(params: {
 }): Promise<PaginatedResult<LedgerEntry>> {
   const op = beginEgressOperation("gold_ledger_page");
   try {
-  const { data, error } = await supabase.rpc(
-    "get_gold_ledger_page" as never,
-    {
-      p_bucket: params.bucket ?? null,
-      p_purity: params.purity ?? null,
-      p_type: params.type ?? null,
-      p_from: params.from ? `${params.from}T00:00:00.000Z` : null,
-      p_to: params.to ? `${params.to}T23:59:59.999Z` : null,
-      p_limit: params.limit ?? 100,
-      p_offset: params.offset ?? 0,
-      p_order: params.order ?? "asc",
-    } as never,
-  );
-  if (error) {
-    op.finish(false, error.message);
-    throw new Error(error.message);
-  }
-  const payload = data as {
-    rows?: GoldPageRow[];
-    total?: number;
-    limit?: number;
-    offset?: number;
-  };
-  const rows = (payload.rows ?? [])
-    .map((row) => {
-      const entry = row.data;
-      if (!entry?.id) return null;
+    const { data, error } = await supabase.rpc(
+      "get_gold_ledger_page" as never,
+      {
+        p_bucket: params.bucket ?? null,
+        p_purity: params.purity ?? null,
+        p_type: params.type ?? null,
+        p_from: params.from ? `${params.from}T00:00:00.000Z` : null,
+        p_to: params.to ? `${params.to}T23:59:59.999Z` : null,
+        p_limit: params.limit ?? 100,
+        p_offset: params.offset ?? 0,
+        p_order: params.order ?? "asc",
+      } as never,
+    );
+    if (error) {
+      op.finish(false, error.message);
       return {
-        ...entry,
-        createdAt:
-          typeof entry.createdAt === "number"
-            ? entry.createdAt
-            : new Date(row.ts).getTime(),
-      } as LedgerEntry;
-    })
-    .filter((e): e is LedgerEntry => e !== null);
-  const result = {
-    rows,
-    total: Number(payload.total ?? rows.length),
-    limit: Number(payload.limit ?? params.limit ?? 100),
-    offset: Number(payload.offset ?? params.offset ?? 0),
-  };
-  op.finish(true, `rows=${rows.length} total=${result.total}`);
-  return result;
-  } catch (err) {
-    op.finish(false, err instanceof Error ? err.message : String(err));
-    throw err;
+        rows: [],
+        total: 0,
+        limit: params.limit ?? 100,
+        offset: params.offset ?? 0,
+      };
+    }
+    const payload = data as {
+      rows?: GoldPageRow[];
+      total?: number;
+      limit?: number;
+      offset?: number;
+    };
+    const rows = (payload.rows ?? [])
+      .map((row) => {
+        const entry = row.data;
+        if (!entry?.id) return null;
+        return {
+          ...entry,
+          createdAt:
+            typeof entry.createdAt === "number"
+              ? entry.createdAt
+              : new Date(row.ts).getTime(),
+        } as LedgerEntry;
+      })
+      .filter((e): e is LedgerEntry => e !== null);
+    op.finish(true);
+    return {
+      rows,
+      total: Number(payload.total ?? rows.length),
+      limit: Number(payload.limit ?? params.limit ?? 100),
+      offset: Number(payload.offset ?? params.offset ?? 0),
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "fetch failed";
+    op.finish(false, msg);
+    return {
+      rows: [],
+      total: 0,
+      limit: params.limit ?? 100,
+      offset: params.offset ?? 0,
+    };
   }
 }
 

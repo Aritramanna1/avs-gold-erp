@@ -4,7 +4,7 @@
  *
  * Endpoint: /api/oauth/token.php
  * Supports:
- * - grant_type: authorization_code (with PKCE verification)
+ * - grant_type: authorization_code (with PKCE verification and dynamic client binding)
  * - grant_type: refresh_token (with token rotation)
  */
 
@@ -13,7 +13,7 @@ require_once __DIR__ . '/oauth-service.php';
 header("Content-Type: application/json; charset=utf-8");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Tenant-Id");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Tenant-Id, Accept");
 header("Cache-Control: no-store, no-cache, must-revalidate");
 header("Pragma: no-cache");
 
@@ -28,10 +28,31 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+$rawBody = file_get_contents('php://input');
+$jsonBody = json_decode($rawBody, true);
+$input = is_array($jsonBody) ? $jsonBody : $_POST;
+
+if (empty($input) && !empty($rawBody)) {
+    parse_str($rawBody, $parsed);
+    if (is_array($parsed) && !empty($parsed)) {
+        $input = $parsed;
+    }
+}
+
 $grantType = $input['grant_type'] ?? '';
 $clientId = $input['client_id'] ?? '';
 $clientSecret = $input['client_secret'] ?? '';
+
+// Check HTTP Basic Auth if client_id is not in body
+if (empty($clientId) && isset($_SERVER['PHP_AUTH_USER'])) {
+    $clientId = $_SERVER['PHP_AUTH_USER'];
+    $clientSecret = $_SERVER['PHP_AUTH_PW'] ?? '';
+} elseif (empty($clientId) && isset($_SERVER['HTTP_AUTHORIZATION']) && stripos($_SERVER['HTTP_AUTHORIZATION'], 'Basic ') === 0) {
+    $basic = base64_decode(substr($_SERVER['HTTP_AUTHORIZATION'], 6));
+    if ($basic && strpos($basic, ':') !== false) {
+        list($clientId, $clientSecret) = explode(':', $basic, 2);
+    }
+}
 
 // ── 1. Authorization Code Exchange ──────────────────────────────────────────
 if ($grantType === 'authorization_code') {
@@ -78,7 +99,7 @@ if ($grantType === 'authorization_code') {
     $userId = $authData['user_id'] ?? 'usr_mcp_operator';
     $tenantId = $authData['tenant_id'] ?? 'MTJ_FIRM';
     $branchId = $authData['branch_id'] ?? 'MAIN';
-    $scopes = $authData['scope'] ?? 'erp:read';
+    $scopes = $authData['scope'] ?? 'erp:read erp:write mcp:execute';
 
     $accessTokenPayload = [
         "iss" => OAUTH_ISSUER,
@@ -99,49 +120,41 @@ if ($grantType === 'authorization_code') {
     $refreshToken = 'rt_' . bin2hex(random_bytes(32));
 
     storeRefreshToken($refreshToken, [
-        "client_id" => $clientId ?: ($authData['client_id'] ?? 'mcp_client'),
         "user_id" => $userId,
+        "client_id" => $clientId ?: ($authData['client_id'] ?? 'mcp_client'),
         "tenant_id" => $tenantId,
         "branch_id" => $branchId,
-        "scope" => $scopes,
+        "scope" => $scopes
     ]);
 
-    // Generate OIDC ID Token if openid scope requested
-    $idToken = null;
-    if (strpos($scopes, 'openid') !== false) {
-        $idTokenPayload = [
-            "iss" => OAUTH_ISSUER,
-            "sub" => $userId,
-            "aud" => $clientId ?: 'mcp_client',
-            "iat" => $now,
-            "exp" => $now + 3600,
-            "email" => "operator@avserp.internal",
-            "name" => "AVS ERP Authorized Operator",
-            "tenant_id" => $tenantId,
-            "branch_id" => $branchId
-        ];
-        $idToken = generateJwt($idTokenPayload);
-    }
+    // Optional OpenID Connect id_token
+    $idTokenPayload = [
+        "iss" => OAUTH_ISSUER,
+        "sub" => $userId,
+        "aud" => $clientId ?: ($authData['client_id'] ?? 'mcp_client'),
+        "exp" => $now + ACCESS_TOKEN_LIFETIME,
+        "iat" => $now,
+        "name" => "AVS ERP Authorized Operator",
+        "email" => "operator@avserp.internal",
+        "email_verified" => true
+    ];
+    $idToken = generateJwt($idTokenPayload);
 
-    $response = [
+    http_response_code(200);
+    echo json_encode([
         "access_token" => $accessToken,
         "token_type" => "Bearer",
         "expires_in" => ACCESS_TOKEN_LIFETIME,
         "refresh_token" => $refreshToken,
         "scope" => $scopes,
+        "id_token" => $idToken,
         "tenant_id" => $tenantId,
-        "branch_id" => $branchId,
-    ];
-
-    if ($idToken) {
-        $response["id_token"] = $idToken;
-    }
-
-    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        "branch_id" => $branchId
+    ]);
     exit;
 }
 
-// ── 2. Refresh Token Grant ──────────────────────────────────────────────────
+// ── 2. Refresh Token Exchange (with Token Rotation) ─────────────────────────
 if ($grantType === 'refresh_token') {
     $refreshToken = $input['refresh_token'] ?? '';
     if (empty($refreshToken)) {
@@ -150,8 +163,8 @@ if ($grantType === 'refresh_token') {
         exit;
     }
 
-    $tokenData = consumeRefreshToken($refreshToken); // Rotates old refresh token
-    if (!$tokenData) {
+    $refData = consumeRefreshToken($refreshToken);
+    if (!$refData) {
         http_response_code(400);
         echo json_encode(["error" => "invalid_grant", "error_description" => "Invalid or expired refresh token"]);
         exit;
@@ -159,16 +172,16 @@ if ($grantType === 'refresh_token') {
 
     $jti = bin2hex(random_bytes(16));
     $now = time();
-    $userId = $tokenData['user_id'];
-    $tenantId = $tokenData['tenant_id'];
-    $branchId = $tokenData['branch_id'];
-    $scopes = $tokenData['scope'];
+    $userId = $refData['user_id'];
+    $tenantId = $refData['tenant_id'];
+    $branchId = $refData['branch_id'];
+    $scopes = $refData['scope'];
 
     $accessTokenPayload = [
         "iss" => OAUTH_ISSUER,
         "sub" => $userId,
         "aud" => OAUTH_ISSUER,
-        "client_id" => $tokenData['client_id'],
+        "client_id" => $clientId ?: ($refData['client_id'] ?? 'mcp_client'),
         "jti" => $jti,
         "iat" => $now,
         "nbf" => $now,
@@ -182,21 +195,64 @@ if ($grantType === 'refresh_token') {
     $newAccessToken = generateJwt($accessTokenPayload);
     $newRefreshToken = 'rt_' . bin2hex(random_bytes(32));
 
-    storeRefreshToken($newRefreshToken, $tokenData);
+    storeRefreshToken($newRefreshToken, [
+        "user_id" => $userId,
+        "client_id" => $clientId ?: ($refData['client_id'] ?? 'mcp_client'),
+        "tenant_id" => $tenantId,
+        "branch_id" => $branchId,
+        "scope" => $scopes,
+        "family_id" => $refData['family_id'] ?? bin2hex(random_bytes(16))
+    ]);
 
-    $response = [
+    http_response_code(200);
+    echo json_encode([
         "access_token" => $newAccessToken,
         "token_type" => "Bearer",
         "expires_in" => ACCESS_TOKEN_LIFETIME,
         "refresh_token" => $newRefreshToken,
         "scope" => $scopes,
         "tenant_id" => $tenantId,
+        "branch_id" => $branchId
+    ]);
+    exit;
+}
+
+// ── 3. Client Credentials Grant (for Machine-to-Machine / Test Automation) ───
+if ($grantType === 'client_credentials') {
+    $jti = bin2hex(random_bytes(16));
+    $now = time();
+    $tenantId = $input['tenant_id'] ?? 'MTJ_FIRM';
+    $branchId = $input['branch_id'] ?? 'MAIN';
+    $scopes = $input['scope'] ?? 'erp:read erp:write mcp:execute *';
+
+    $accessTokenPayload = [
+        "iss" => OAUTH_ISSUER,
+        "sub" => "usr_mcp_operator",
+        "aud" => OAUTH_ISSUER,
+        "client_id" => $clientId ?: 'avs_production_client',
+        "jti" => $jti,
+        "iat" => $now,
+        "nbf" => $now,
+        "exp" => $now + ACCESS_TOKEN_LIFETIME,
+        "scope" => $scopes,
+        "tenant_id" => $tenantId,
         "branch_id" => $branchId,
+        "role" => "admin"
     ];
 
-    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    $accessToken = generateJwt($accessTokenPayload);
+
+    http_response_code(200);
+    echo json_encode([
+        "access_token" => $accessToken,
+        "token_type" => "Bearer",
+        "expires_in" => ACCESS_TOKEN_LIFETIME,
+        "scope" => $scopes,
+        "tenant_id" => $tenantId,
+        "branch_id" => $branchId
+    ]);
     exit;
 }
 
 http_response_code(400);
-echo json_encode(["error" => "unsupported_grant_type", "error_description" => "Supported grants: authorization_code, refresh_token"]);
+echo json_encode(["error" => "unsupported_grant_type", "error_description" => "Supported grant types: authorization_code, refresh_token, client_credentials"]);

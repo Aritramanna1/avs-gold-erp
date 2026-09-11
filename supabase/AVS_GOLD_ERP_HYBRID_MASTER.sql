@@ -495,9 +495,9 @@ GRANT ALL ON public.app_settings TO service_role;
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "set authed all" ON public.app_settings;
 CREATE POLICY "set authed all" ON public.app_settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
-DROP TRIGGER IF EXISTS trg_set_uat ON public.app_settings;
-CREATE TRIGGER trg_set_uat BEFORE UPDATE ON public.app_settings FOR EACH ROW EXECUTE FUNCTION public.set_update…9551 tokens truncated…_billing_documents.sql
--- Description: Credit Notes, Debit Notes, Estimates, and Delivery Challans â€”
+CREATE TRIGGER trg_set_uat BEFORE UPDATE ON public.app_settings FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- Description: Credit Notes, Debit Notes, Estimates, and Delivery Challans —
 -- the four billing document types billing-documents-store.ts implements but
 -- that had no backing Supabase tables, so every issue()/create() call would
 -- fail with "relation does not exist".

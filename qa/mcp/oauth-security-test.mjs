@@ -394,6 +394,81 @@ async function runOAuthSecurityTests() {
     assert.equal(res.status, 401, `Expected 401, got ${res.status}`);
     return "401 AUTHENTICATION_REQUIRED on revoked token";
   });
+  await testStep("18. Dynamic Client Registration (RFC 7591)", async () => {
+    const res = await fetch(`${BASE_URL}/api/oauth/register.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_name: "Test Dynamic Client",
+        redirect_uris: ["https://chatgpt.com/api/callback", "https://oauth.pstmn.io/v1/callback"],
+        grant_types: ["authorization_code", "refresh_token"],
+        scope: "erp:read stock:read finance:read",
+      }),
+    });
+    assert.equal(res.status, 201, `Expected 201 Created, got ${res.status}`);
+    const dcr = await res.json();
+    assert.ok(dcr.client_id && dcr.client_id.startsWith("client_dcr_"), "Invalid client_id");
+    return `Registered: ${dcr.client_id}`;
+  });
+
+  // 19. Local STDIO MCP Server Authentication & Handshake Test
+  await testStep("19. Local STDIO MCP Server Auth & Resolution Test", async () => {
+    const { handleJsonRpc, resolveLocalAuthContext, REGISTERED_TOOLS } = await import("../../scripts/mcp/avs-mcp-server.mjs");
+    const localAuth = await resolveLocalAuthContext();
+    assert.ok(localAuth.authenticated, "Local auth must be active");
+    assert.ok(localAuth.userId, "Missing user identity");
+    assert.ok(localAuth.tenantId, "Missing tenant");
+    assert.ok(localAuth.branchId, "Missing branch");
+
+    // Initialize
+    const initRes = handleJsonRpc({ jsonrpc: "2.0", id: "local_01", method: "initialize", params: {} }, localAuth);
+    assert.equal(initRes.result.serverInfo.name, "avs-erp-mcp-server");
+    assert.equal(initRes.result.finenessBasis, 995);
+
+    // Tools List
+    const listRes = handleJsonRpc({ jsonrpc: "2.0", id: "local_02", method: "tools/list", params: {} }, localAuth);
+    assert.ok(listRes.result.tools.length >= 15);
+
+    // Authorized Tool Call
+    const callRes = handleJsonRpc(
+      {
+        jsonrpc: "2.0",
+        id: "local_03",
+        method: "tools/call",
+        params: { name: "finance.get_account_balance", arguments: { partyId: "CUST_SANJAY_MEHTA" } },
+      },
+      localAuth
+    );
+    assert.ok(callRes.result.structuredData.cash);
+    assert.equal(callRes.result.structuredData.gold.basisStandard, 995);
+
+    // Negative: Cross-Tenant Call
+    const crossTenantRes = handleJsonRpc(
+      {
+        jsonrpc: "2.0",
+        id: "local_04",
+        method: "tools/call",
+        params: { name: "finance.get_account_balance", arguments: { targetTenantId: "ROGUE_TENANT" } },
+      },
+      localAuth
+    );
+    assert.ok(crossTenantRes.error.code === -32003 || crossTenantRes.error.code === 403);
+
+    // Negative: Scope Mismatch
+    const limitedAuth = { ...localAuth, scopes: ["stock:read"] };
+    const scopeDeniedRes = handleJsonRpc(
+      {
+        jsonrpc: "2.0",
+        id: "local_05",
+        method: "tools/call",
+        params: { name: "karigar.prepare_karigar_settlement", arguments: { karigarId: "KG_101" } },
+      },
+      limitedAuth
+    );
+    assert.ok(scopeDeniedRes.error.code === -32003 || scopeDeniedRes.error.code === 403);
+
+    return `Local MCP: ${REGISTERED_TOOLS.length} tools verified with identity ${localAuth.userId}`;
+  });
 
   console.log("\n================================================================================");
   console.log(`OAUTH 2.1 & MCP SECURITY TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
@@ -408,3 +483,4 @@ runOAuthSecurityTests().catch((e) => {
   console.error("Test execution failed:", e);
   process.exit(1);
 });
+

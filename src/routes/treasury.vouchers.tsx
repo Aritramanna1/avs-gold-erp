@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Landmark, ArrowDownLeft, ArrowUpRight, BookOpen, Repeat } from "lucide-react";
+import { Landmark, ArrowDownLeft, ArrowUpRight, BookOpen, Repeat, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { guardRoute } from "@/lib/permissions";
 import {
@@ -53,6 +53,7 @@ import {
   compileCompanyCashLedger,
   companyCashLedgerOpeningPaise,
 } from "@/lib/company-cash-ledger";
+import { JamaSlipDialog } from "@/components/billing/JamaSlipDialog";
 import { ProgressiveDisclosure } from "@/components/ui/progressive-disclosure";
 import { SourceOfTruthBadge } from "@/components/ledger/SourceOfTruthBadge";
 
@@ -105,6 +106,7 @@ function TreasuryVouchersPage() {
   const [fromAccountId, setFromAccountId] = useState("");
   const [toAccountId, setToAccountId] = useState("");
   const [posting, setPosting] = useState(false);
+  const [jamaDialogOpen, setJamaDialogOpen] = useState(false);
 
   const moneyEntries = useMoneyVoucherStore((s) => s.entries);
   const moneyLoading = useMoneyVoucherStore((s) => s.loading);
@@ -595,6 +597,13 @@ function TreasuryVouchersPage() {
         subtitle="Receive or pay money against any party. Posts to cash/bank and party ledgers together."
         actions={
           <div className="flex flex-wrap gap-2 justify-end">
+            <Button
+              size="sm"
+              className="bg-gold hover:bg-gold/90 text-white font-bold gap-1.5 shadow-sm"
+              onClick={() => setJamaDialogOpen(true)}
+            >
+              <Receipt className="h-3.5 w-3.5" /> Gold / Mixed Jama (पावती)
+            </Button>
             <Button size="sm" variant="ghost" asChild>
               <Link to="/treasury/bank-reconciliation">Bank reconciliation</Link>
             </Button>
@@ -663,6 +672,12 @@ function TreasuryVouchersPage() {
           <div className="mt-4">{voucherForm}</div>
         </SheetContent>
       </Sheet>
+
+      <JamaSlipDialog
+        open={jamaDialogOpen}
+        onClose={() => setJamaDialogOpen(false)}
+        onSaved={() => void hydrateMoney()}
+      />
     </div>
   );
 }
