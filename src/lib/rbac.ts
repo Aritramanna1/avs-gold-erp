@@ -276,6 +276,15 @@ export function useCan(): {
       }
     }
 
+    // SETTINGS-02: profile/user_roles may already resolve to owner even when
+    // settings.users[] email match misses (stale cache / empty stub).
+    if (
+      (roles.includes("owner") || roles.includes("super_owner")) &&
+      (action === "userManagement.view" || action === "userManagement.edit" || action === "settings.view" || action === "settings.edit")
+    ) {
+      return true;
+    }
+
     return can(roles, action);
   };
 

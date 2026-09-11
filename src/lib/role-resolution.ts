@@ -27,6 +27,8 @@ export function displayRoleToAppRoles(displayRole: string): AppRole[] {
     key.includes("super_owner") ||
     key === "superowner" ||
     key === "owner" ||
+    key === "owner_ceo" ||
+    key.includes("owner") ||
     key.includes("firm_owner")
   ) {
     ["owner", "manager", "vault", "workshop", "accountant", "billing"].forEach((r) =>
@@ -70,6 +72,14 @@ export function displayRoleToAppRoles(displayRole: string): AppRole[] {
     return [...roles];
   }
 
+  // SETTINGS-02: owner_ceo / *owner* must not fall through to ceo→viewer.
+  if (key === "owner_ceo" || (key.includes("owner") && !key.includes("view_only"))) {
+    ["owner", "manager", "vault", "workshop", "accountant", "billing"].forEach((r) =>
+      roles.add(r as AppRole),
+    );
+    return [...roles];
+  }
+
   if (key.includes("ceo") || key.includes("view_only")) {
     roles.add("viewer");
     return [...roles];
@@ -99,6 +109,8 @@ export function isAdminLikeRole(role: string | null | undefined): boolean {
     key === "saas_admin" ||
     key.includes("super_owner") ||
     key === "owner" ||
+    key === "owner_ceo" ||
+    key.includes("owner") ||
     key.includes("administrator") ||
     key.includes("branch_manager") ||
     (key.includes("admin") && !key.includes("saas"))
