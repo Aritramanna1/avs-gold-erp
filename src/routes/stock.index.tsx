@@ -19,8 +19,11 @@ import { resolveOperationalBranchId } from "@/lib/branch-scope";
 import { fetchStockPage } from "@/lib/stock-query";
 import { STOCK_STATUS_LABELS, type StockItem, type StockStatus } from "@/lib/stock-store";
 import { StockListThumbnail } from "@/components/stock/StockListThumbnail";
+import { StockHubTabs } from "@/components/stock/StockHubTabs";
+import { StockGoldPanel } from "@/components/stock/StockGoldPanel";
 
 type StockSearch = {
+  tab?: "gold" | "ready" | "items";
   q?: string;
   status?: StockStatus | "all";
   page?: number;
@@ -29,6 +32,10 @@ type StockSearch = {
 
 export const Route = createFileRoute("/stock/")({
   validateSearch: (search: Record<string, unknown>): StockSearch => ({
+    tab:
+      search.tab === "ready" || search.tab === "items" || search.tab === "gold"
+        ? search.tab
+        : "gold",
     q: typeof search.q === "string" ? search.q : "",
     status: isStockStatus(search.status) ? search.status : "all",
     page:
@@ -39,7 +46,7 @@ export const Route = createFileRoute("/stock/")({
           : 1,
     selected: typeof search.selected === "string" ? search.selected : undefined,
   }),
-  component: StockWorkspace,
+  component: StockRoute,
 });
 
 function isStockStatus(value: unknown): value is StockStatus | "all" {
@@ -53,7 +60,7 @@ function isStockStatus(value: unknown): value is StockStatus | "all" {
   );
 }
 
-function StockWorkspace() {
+function ReadyStockWorkspace() {
   const navigate = useNavigate({ from: "/stock" });
   const search = useSearch({ from: "/stock/" });
   const currentUserRole = useSettings((s) => s.currentUserRole);
@@ -115,7 +122,7 @@ function StockWorkspace() {
   const updateSearch = (patch: Partial<StockSearch>) => {
     void navigate({
       search: (prev) => {
-        const next = { ...prev, ...patch };
+        const next = { ...prev, ...patch, tab: patch.tab ?? prev.tab ?? "ready" };
         // Only change page when asked — forcing page:1 on every patch
         // re-navigates forever with list effects (React #185).
         if (patch.page !== undefined) next.page = patch.page;
@@ -126,6 +133,10 @@ function StockWorkspace() {
   };
 
   return (
+    <>
+    <div className="px-4 md:px-6 pt-4">
+      <StockHubTabs active={search.tab === "items" ? "items" : "ready"} />
+    </div>
     <ModuleWorkspace
       eyebrow="Inventory desk"
       title="Ready stock"
@@ -353,5 +364,21 @@ function StockWorkspace() {
         )}
       </section>
     </ModuleWorkspace>
+    </>
   );
 }
+
+function StockRoute() {
+  const search = useSearch({ from: "/stock/" });
+  const tab = search.tab ?? "gold";
+  if (tab === "gold") {
+    return (
+      <div className="px-4 md:px-6 pt-4">
+        <StockHubTabs active="gold" />
+        <StockGoldPanel />
+      </div>
+    );
+  }
+  return <ReadyStockWorkspace />;
+}
+
