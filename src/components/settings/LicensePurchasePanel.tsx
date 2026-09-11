@@ -26,6 +26,8 @@ export function LicensePurchasePanel() {
     orderId: string;
     amountPaise: number;
     keyId: string;
+    returnUrl?: string;
+    internalPaymentId?: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -50,6 +52,8 @@ export function LicensePurchasePanel() {
       orderId: result.orderId,
       amountPaise: result.amountPaise ?? 0,
       keyId: result.keyId,
+      returnUrl: result.returnUrl,
+      internalPaymentId: result.invoiceId,
     });
     toast.success("Invoice created — complete payment below");
     void load();
@@ -67,6 +71,8 @@ export function LicensePurchasePanel() {
       orderId: result.orderId,
       amountPaise: result.amountPaise ?? 0,
       keyId: result.keyId,
+      returnUrl: result.returnUrl,
+      internalPaymentId: result.invoiceId,
     });
   }
 
@@ -151,6 +157,8 @@ export function LicensePurchasePanel() {
             orderId={checkout.orderId}
             amountPaise={checkout.amountPaise}
             keyId={checkout.keyId}
+            returnUrl={checkout.returnUrl}
+            internalPaymentId={checkout.internalPaymentId}
             onSuccess={() => void onPaymentSuccess()}
           />
         </Card>
