@@ -641,7 +641,11 @@ export async function pullAppSettings(): Promise<void> {
       firm.logoUrl = normalizeR2Url(firm.logoUrl);
     }
 
-    const updatedUsers = payload.users ?? useSettings.getState().users;
+    // SETTINGS-02: never let an empty/missing users[] wipe a good in-memory Owner directory.
+  const updatedUsers =
+    Array.isArray(payload.users) && payload.users.length > 0
+      ? payload.users
+      : useSettings.getState().users;
     const incomingBranding = payload.branding ?? {};
     if (incomingBranding.logoUrl) {
       incomingBranding.logoUrl = normalizeR2Url(incomingBranding.logoUrl);
