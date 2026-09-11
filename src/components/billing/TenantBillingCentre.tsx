@@ -356,6 +356,7 @@ export function TenantBillingCentre() {
           orderId={checkout.orderId}
           keyId={checkout.keyId}
           invoiceNo={checkout.invoiceNo}
+          internalPaymentId={checkout.invoiceId}
           testMode={payConfig?.environment === "test"}
           onSuccess={() => void onCheckoutSuccess()}
           onFailure={onCheckoutFailure}

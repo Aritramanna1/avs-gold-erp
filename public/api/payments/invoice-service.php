@@ -65,6 +65,38 @@ function calculateInvoiceTax($amountPaise, $buyerStateCode = '27', $gstRatePerce
 /**
  * Automatically generate and store a platform invoice upon verified payment.
  */
+
+/**
+ * Resolve buyer name/email from organizations for invoice email + PDF.
+ */
+function resolveTenantBillingContext($tenantId, $fallbackEmail = 'admin@arivahly.in') {
+    $ctx = [
+        'id' => $tenantId ?: 'tenant_default',
+        'name' => 'AVS Gold Jeweller',
+        'registered_email' => $fallbackEmail,
+        'state_code' => '27',
+    ];
+    if (empty($tenantId) || $tenantId === 'tenant_default') {
+        return $ctx;
+    }
+    $res = supabaseRequest(
+        "rest/v1/organizations?id=eq.{$tenantId}&select=id,name,email&limit=1",
+        'GET',
+        null,
+        true
+    );
+    if ($res['ok'] && !empty($res['data'][0])) {
+        $row = $res['data'][0];
+        if (!empty($row['name'])) {
+            $ctx['name'] = $row['name'];
+        }
+        if (!empty($row['email']) && filter_var($row['email'], FILTER_VALIDATE_EMAIL)) {
+            $ctx['registered_email'] = $row['email'];
+        }
+    }
+    return $ctx;
+}
+
 function generateAndStorePlatformInvoice($paymentRecord, $tenantContext = []) {
     $paymentId = $paymentRecord['id'] ?? '';
     $tenantId = $paymentRecord['tenant_id'] ?? ($tenantContext['id'] ?? 'tenant_default');
@@ -231,6 +263,73 @@ HTML;
 /**
  * Dispatch invoice email to registered account with fallback and delivery status tracking.
  */
+
+/**
+ * Minimal single-page PDF (no external libs) for SaaS invoice receipt attachment.
+ * Runs on verified payment callback/webhook — LIVE keys remain gated in SaaS config.
+ */
+function buildInvoicePdfBase64($invoice) {
+    $invoiceNo = (string)($invoice['invoice_no'] ?? 'INV');
+    $tenant = (string)($invoice['tenant_name'] ?? ($invoice['firm_name'] ?? 'Tenant'));
+    $email = (string)($invoice['tenant_email'] ?? '');
+    $total = number_format(intval($invoice['total_paise'] ?? 0) / 100, 2);
+    $taxable = number_format(intval($invoice['taxable_paise'] ?? 0) / 100, 2);
+    $tax = number_format(intval($invoice['total_tax_paise'] ?? 0) / 100, 2);
+    $status = (string)($invoice['status'] ?? 'paid');
+    $paidAt = (string)($invoice['paid_at'] ?? ($invoice['created_at'] ?? date('c')));
+    $plan = (string)($invoice['plan_code'] ?? ($invoice['item_type'] ?? 'subscription'));
+
+    $lines = [
+        'AVS Gold ERP - Tax Invoice / Receipt',
+        'Seller: ' . PLATFORM_SELLER_NAME,
+        'GSTIN: ' . PLATFORM_SELLER_GSTIN,
+        'Invoice: ' . $invoiceNo,
+        'Status: ' . $status,
+        'Plan / item: ' . $plan,
+        'Buyer: ' . $tenant,
+        'Email: ' . $email,
+        'Taxable (INR): ' . $taxable,
+        'Tax (INR): ' . $tax,
+        'Total (INR): ' . $total,
+        'Paid at: ' . $paidAt,
+        'Support: ' . PLATFORM_SUPPORT_EMAIL,
+    ];
+
+    $content = "BT /F1 11 Tf 50 780 Td 14 TL\n";
+    foreach ($lines as $i => $line) {
+        $safe = str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $line);
+        if ($i === 0) {
+            $content .= "($safe) Tj T*\n";
+        } else {
+            $content .= "($safe) '\n";
+        }
+    }
+    $content .= "ET";
+
+    $objects = [];
+    $objects[] = "1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n";
+    $objects[] = "2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n";
+    $objects[] = "3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources<< /Font<< /F1 5 0 R >> >> >>endobj\n";
+    $objects[] = "4 0 obj<< /Length " . strlen($content) . " >>stream\n" . $content . "\nendstream endobj\n";
+    $objects[] = "5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n";
+
+    $pdf = "%PDF-1.4\n";
+    $offsets = [0];
+    foreach ($objects as $obj) {
+        $offsets[] = strlen($pdf);
+        $pdf .= $obj;
+    }
+    $xref = strlen($pdf);
+    $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+    $pdf .= "0000000000 65535 f \n";
+    for ($i = 1; $i <= count($objects); $i++) {
+        $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
+    }
+    $pdf .= "trailer<< /Size " . (count($objects) + 1) . " /Root 1 0 R >>\n";
+    $pdf .= "startxref\n" . $xref . "\n%%EOF";
+    return base64_encode($pdf);
+}
+
 function dispatchInvoiceEmail($invoice) {
     $invoiceId = $invoice['id'] ?? '';
     $recipient = trim($invoice['tenant_email'] ?? '');
@@ -244,10 +343,22 @@ function dispatchInvoiceEmail($invoice) {
     $subject = "[Invoice {$invoiceNo}] Payment Successful — AVS Gold ERP Subscription";
     $htmlContent = buildInvoiceHtmlEmail($invoice);
 
+    $pdfBase64 = buildInvoicePdfBase64($invoice);
+    $safeFile = preg_replace('/[^A-Za-z0-9._-]/', '_', $invoiceNo) . '.pdf';
+
     $postPayload = [
         'to' => $recipient,
         'subject' => $subject,
         'htmlBody' => $htmlContent,
+        'attachments' => [
+            [
+                'filename' => $safeFile,
+                'contentType' => 'application/pdf',
+                'contentBase64' => $pdfBase64,
+            ],
+        ],
+        'idempotencyKey' => 'invoice_pdf_' . ($invoiceId ?: md5($invoiceNo . $recipient)),
+        'tenantId' => $invoice['firm_id'] ?? ($invoice['tenant_id'] ?? 'platform'),
     ];
 
     // Dispatch via Hostinger local email engine

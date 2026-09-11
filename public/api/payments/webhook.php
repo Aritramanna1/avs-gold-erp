@@ -119,11 +119,10 @@ switch ($event) {
             ], true);
 
             // Automatically generate & email invoice
-            $invoiceGenerated = generateAndStorePlatformInvoice($pmtRecord, [
-                'id' => $tenantId,
-                'name' => 'AVS Gold Jeweller',
-                'registered_email' => 'admin@arivahly.in',
-            ]);
+            $invoiceGenerated = generateAndStorePlatformInvoice(
+                $pmtRecord,
+                resolveTenantBillingContext($tenantId)
+            );
 
             $dispatch = dispatchInvoiceEmail($invoiceGenerated);
             $emailStatus = $dispatch['email_status'];

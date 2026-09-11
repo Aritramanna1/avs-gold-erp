@@ -57,6 +57,8 @@ export function ChargeTokenBadge() {
         amountPaise: result.amountPaise ?? Math.round(amt * 100),
         keyId: result.keyId,
         description: `Buy credits: ${amt}`,
+        internalPaymentId: result.invoiceId,
+        redirectOnSuccess: false,
         onSuccess: async () => {
           reset();
           await waitForConfirmation({ kind: "credits" });
