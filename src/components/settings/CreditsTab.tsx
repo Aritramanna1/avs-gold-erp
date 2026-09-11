@@ -38,6 +38,7 @@ export function CreditsTab() {
     amountPaise: number;
     keyId: string;
     credits: number;
+    internalPaymentId?: string;
   } | null>(null);
   const {
     state: payState,
@@ -65,6 +66,7 @@ export function CreditsTab() {
       amountPaise: result.amountPaise ?? Math.round(amt * 100),
       keyId: result.keyId,
       credits: amt,
+      internalPaymentId: result.invoiceId,
     };
     setCheckout(orderData);
     toast.success("Opening payment gateway...");
@@ -76,6 +78,8 @@ export function CreditsTab() {
         amountPaise: orderData.amountPaise,
         keyId: orderData.keyId,
         description: `Buy credits: ${amt}`,
+        internalPaymentId: orderData.internalPaymentId,
+        redirectOnSuccess: false,
         onSuccess: () => void onPaymentSuccess(),
         onFailure: (reason) => markFailed(reason),
         onDismiss: () => {},
@@ -189,6 +193,7 @@ export function CreditsTab() {
           amountPaise={checkout.amountPaise}
           orderId={checkout.orderId}
           keyId={checkout.keyId}
+          internalPaymentId={checkout.internalPaymentId}
           onSuccess={() => void onPaymentSuccess()}
           onFailure={(reason) => markFailed(reason)}
           onDismiss={() => setCheckout(null)}
