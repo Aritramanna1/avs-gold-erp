@@ -179,3 +179,26 @@ export async function maybeDeductWhatsAppCredits(opts: {
   }
   return { success: true };
 }
+
+
+export class CommunicationPolicyStore {
+  /** Persist SaaS toggles to existing platform_settings keys only. */
+  static async save(
+    partial: Partial<CommunicationPolicy>,
+  ): Promise<{ ok: boolean; error?: string }> {
+    const current = await loadCommunicationPolicy(true);
+    const next: CommunicationPolicy = { ...current, ...partial };
+    const rows = [
+      { key: COMMUNICATION_POLICY_KEYS.whatsappApi, value: next.whatsapp_api_enabled },
+      { key: COMMUNICATION_POLICY_KEYS.legacyPhp, value: next.legacy_whatsapp_php_enabled },
+      { key: COMMUNICATION_POLICY_KEYS.whatsappCredits, value: next.whatsapp_credits_enabled },
+      { key: COMMUNICATION_POLICY_KEYS.aiCredits, value: next.ai_credits_enabled },
+    ];
+    const { error } = await supabase.from("platform_settings").upsert(rows as never);
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+    cache = next;
+    return { ok: true };
+  }
+}

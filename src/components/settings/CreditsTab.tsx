@@ -75,7 +75,7 @@ export function CreditsTab() {
         orderId: orderData.orderId,
         amountPaise: orderData.amountPaise,
         keyId: orderData.keyId,
-        description: `Top-up ${amt} AI & WhatsApp Credits`,
+        description: `Buy credits: ${amt}`,
         onSuccess: () => void onPaymentSuccess(),
         onFailure: (reason) => markFailed(reason),
         onDismiss: () => {},
@@ -106,10 +106,10 @@ export function CreditsTab() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
         <div>
           <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-            <Coins className="h-5 w-5 text-amber-500" /> Tenant Credit Centre & Usage Wallet
+            <Coins className="h-5 w-5 text-amber-500" /> Credits
           </h3>
           <p className="text-xs text-muted-foreground">
-            Prepaid balance for AI assistant, WhatsApp messaging, and metered automations.
+            Credits left for WhatsApp and AI.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -120,14 +120,14 @@ export function CreditsTab() {
             disabled={loading}
             className="h-8 text-xs gap-1"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh Balance
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
           </Button>
           <Button
             size="sm"
             onClick={() => setIsTopUpOpen(!isTopUpOpen)}
-            className="h-8 text-xs gap-1 bg-amber-500 hover:bg-amber-600 text-white"
+            className="min-h-12 h-12 text-xs gap-1 bg-amber-500 hover:bg-amber-600 text-white"
           >
-            <PlusCircle className="h-3.5 w-3.5" /> Top-Up Credits
+            <PlusCircle className="h-3.5 w-3.5" /> Buy credits
           </Button>
         </div>
       </div>
@@ -137,7 +137,7 @@ export function CreditsTab() {
         <Card className="p-4 border-amber-500/30 bg-amber-500/5 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              <PlusCircle className="h-4 w-4 text-amber-500" /> Instant Credit Purchase
+              <PlusCircle className="h-4 w-4 text-amber-500" /> Buy credits
             </h4>
             <span className="text-[11px] text-muted-foreground">
               1 Credit = ₹1.00 Value Equivalent
@@ -145,7 +145,7 @@ export function CreditsTab() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="w-48">
-              <Label className="text-[11px] text-muted-foreground">Credits Amount</Label>
+              <Label className="text-[11px] text-muted-foreground">Credits</Label>
               <Input
                 type="number"
                 min="100"
@@ -176,7 +176,7 @@ export function CreditsTab() {
               disabled={processing}
               className="h-8 text-xs self-end bg-amber-500 hover:bg-amber-600 text-white"
             >
-              {processing ? "Processing..." : "Confirm Top-Up"}
+              {processing ? "Processing..." : "Pay now"}
             </Button>
           </div>
         </Card>
@@ -185,7 +185,7 @@ export function CreditsTab() {
       {checkout ? (
         <PaymentCheckoutCard
           title={`${checkout.credits.toLocaleString("en-IN")} credits`}
-          subtitle="Instant top-up for AI and WhatsApp usage"
+          subtitle="WhatsApp and AI credits"
           amountPaise={checkout.amountPaise}
           orderId={checkout.orderId}
           keyId={checkout.keyId}
@@ -202,7 +202,7 @@ export function CreditsTab() {
         <Card className="p-4 border-border/80 bg-card space-y-1 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Available Credits
+              Credits left
             </span>
             <Coins className="h-4 w-4 text-amber-500" />
           </div>
@@ -214,14 +214,14 @@ export function CreditsTab() {
           <div className="flex items-center gap-1.5 pt-1">
             {wallet?.is_low_balance ? (
               <Badge variant="destructive" className="text-[10px] gap-1">
-                <AlertTriangle className="h-2.5 w-2.5" /> Low Balance Alert
+                <AlertTriangle className="h-2.5 w-2.5" /> Low credits — buy more
               </Badge>
             ) : (
               <Badge
                 variant="outline"
                 className="text-[10px] text-emerald-600 border-emerald-500/30 bg-emerald-500/5"
               >
-                <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Active & Healthy
+                <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Active
               </Badge>
             )}
           </div>

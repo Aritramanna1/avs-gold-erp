@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,13 @@ import {
   History,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import {
+  CommunicationPolicyStore,
+  loadCommunicationPolicy,
+  type CommunicationPolicy,
+  DEFAULT_COMMUNICATION_POLICY,
+} from "@/lib/comm/communication-policy";
 
 interface TenantWalletRow {
   firm_id: string;
@@ -62,6 +69,12 @@ export function PlatformCreditsSection({ firms, refresh }: { firms: any[]; refre
   const [grantReason, setGrantReason] = useState("");
   const [isGrantOpen, setIsGrantOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [policy, setPolicy] = useState<CommunicationPolicy>({ ...DEFAULT_COMMUNICATION_POLICY });
+  const [policySaving, setPolicySaving] = useState(false);
+  const [whatsappPrice, setWhatsappPrice] = useState("");
+  const [aiPrice, setAiPrice] = useState("");
+  const [lowCreditWarning, setLowCreditWarning] = useState("100");
+  const [warnFirmId, setWarnFirmId] = useState("");
 
   const fetchCreditsData = async () => {
     setLoading(true);
@@ -102,6 +115,29 @@ export function PlatformCreditsSection({ firms, refresh }: { firms: any[]; refre
           firm_name: firmMap.get(l.firm_id) || "Unknown Firm",
         })),
       );
+
+      const pol = await loadCommunicationPolicy(true);
+      setPolicy(pol);
+
+      const rates = rateData || [];
+      const wa = rates.find(
+        (r: any) =>
+          String(r.service_category || "").toLowerCase().includes("whatsapp") ||
+          String(r.service_code || "").toLowerCase().startsWith("wa_"),
+      );
+      const ai = rates.find(
+        (r: any) =>
+          String(r.service_category || "").toLowerCase().includes("ai") ||
+          String(r.service_code || "").toLowerCase().includes("cloud_ai") ||
+          String(r.service_code || "").toLowerCase().startsWith("ai_"),
+      );
+      if (wa) setWhatsappPrice(String(wa.credit_cost));
+      if (ai) setAiPrice(String(ai.credit_cost));
+      const firstWallet = (walletData || [])[0];
+      if (firstWallet) {
+        setWarnFirmId(firstWallet.firm_id);
+        setLowCreditWarning(String(firstWallet.low_balance_threshold ?? 100));
+      }
     } catch (err: any) {
       console.error("[PlatformCredits] Error loading credits data:", err);
       toast.error("Failed to load platform credit wallets");
@@ -155,6 +191,89 @@ export function PlatformCreditsSection({ firms, refresh }: { firms: any[]; refre
       w.firm_id.toLowerCase().includes(search.toLowerCase()),
   );
 
+
+  const findRate = (kind: "whatsapp" | "ai") => {
+    if (kind === "whatsapp") {
+      return rateCards.find(
+        (r) =>
+          r.service_category.toLowerCase().includes("whatsapp") ||
+          r.service_code.toLowerCase().startsWith("wa_"),
+      );
+    }
+    return rateCards.find(
+      (r) =>
+        r.service_category.toLowerCase().includes("ai") ||
+        r.service_code.toLowerCase().includes("cloud_ai") ||
+        r.service_code.toLowerCase().startsWith("ai_"),
+    );
+  };
+
+  const handleSaveCreditUx = async () => {
+    setPolicySaving(true);
+    try {
+      const polRes = await CommunicationPolicyStore.save(policy);
+      if (!polRes.ok) {
+        toast.error(polRes.error ?? "Could not save communication toggles");
+        return;
+      }
+
+      const wa = findRate("whatsapp");
+      const ai = findRate("ai");
+      if (wa && whatsappPrice !== "") {
+        const cost = Number(whatsappPrice);
+        if (!Number.isFinite(cost) || cost < 0) {
+          toast.error("Set WhatsApp price must be a non-negative number");
+          return;
+        }
+        const { error } = await (supabase as any)
+          .from("credit_rate_cards")
+          .update({ credit_cost: cost })
+          .eq("service_code", wa.service_code);
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+      }
+      if (ai && aiPrice !== "") {
+        const cost = Number(aiPrice);
+        if (!Number.isFinite(cost) || cost < 0) {
+          toast.error("Set AI price must be a non-negative number");
+          return;
+        }
+        const { error } = await (supabase as any)
+          .from("credit_rate_cards")
+          .update({ credit_cost: cost })
+          .eq("service_code", ai.service_code);
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+      }
+
+      if (warnFirmId && lowCreditWarning !== "") {
+        const thr = Number(lowCreditWarning);
+        if (!Number.isFinite(thr) || thr < 0) {
+          toast.error("Set low-credit warning must be a non-negative number");
+          return;
+        }
+        const { error } = await (supabase as any)
+          .from("tenant_credit_wallets")
+          .update({ low_balance_threshold: thr })
+          .eq("firm_id", warnFirmId);
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+      }
+
+      toast.success("Saved WhatsApp / AI credit settings");
+      await fetchCreditsData();
+    } finally {
+      setPolicySaving(false);
+    }
+  };
+
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -187,6 +306,121 @@ export function PlatformCreditsSection({ firms, refresh }: { firms: any[]; refre
           </Button>
         </div>
       </div>
+
+
+      {/* SaaS WhatsApp / AI credit UX stubs â€” existing keys/tables only */}
+      <Card className="p-4 border-border bg-card space-y-4 rounded-md shadow-xs">
+        <h4 className="text-xs font-bold text-foreground uppercase tracking-wider font-mono">
+          WhatsApp & AI credits (SaaS)
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 min-h-12">
+            <span className="text-xs font-medium">WhatsApp API</span>
+            <Switch
+              checked={policy.whatsapp_api_enabled}
+              onCheckedChange={(v) => setPolicy((p) => ({ ...p, whatsapp_api_enabled: v }))}
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 min-h-12">
+            <span className="text-xs font-medium">WhatsApp credits</span>
+            <Switch
+              checked={policy.whatsapp_credits_enabled}
+              onCheckedChange={(v) => setPolicy((p) => ({ ...p, whatsapp_credits_enabled: v }))}
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 min-h-12">
+            <span className="text-xs font-medium">AI credits</span>
+            <Switch
+              checked={policy.ai_credits_enabled}
+              onCheckedChange={(v) => setPolicy((p) => ({ ...p, ai_credits_enabled: v }))}
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 min-h-12">
+            <span className="text-xs font-medium">Legacy PHP WhatsApp</span>
+            <Switch
+              checked={policy.legacy_whatsapp_php_enabled}
+              onCheckedChange={(v) =>
+                setPolicy((p) => ({ ...p, legacy_whatsapp_php_enabled: v }))
+              }
+            />
+          </label>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <Label className="text-[11px] text-muted-foreground uppercase font-mono font-bold">
+              Set WhatsApp price
+            </Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.1"
+              value={whatsappPrice}
+              onChange={(e) => setWhatsappPrice(e.target.value)}
+              className="h-12 min-h-12 text-xs font-mono mt-1"
+              placeholder="credits per message"
+            />
+          </div>
+          <div>
+            <Label className="text-[11px] text-muted-foreground uppercase font-mono font-bold">
+              Set AI price
+            </Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.1"
+              value={aiPrice}
+              onChange={(e) => setAiPrice(e.target.value)}
+              className="h-12 min-h-12 text-xs font-mono mt-1"
+              placeholder="credits per AI unit"
+            />
+          </div>
+          <div>
+            <Label className="text-[11px] text-muted-foreground uppercase font-mono font-bold">
+              Set low-credit warning
+            </Label>
+            <div className="flex gap-2 mt-1">
+              <select
+                value={warnFirmId}
+                onChange={(e) => {
+                  setWarnFirmId(e.target.value);
+                  const w = wallets.find((x) => x.firm_id === e.target.value);
+                  if (w) setLowCreditWarning(String(w.low_balance_threshold ?? 100));
+                }}
+                className="w-1/2 rounded-md border border-border bg-background px-2 h-12 text-xs"
+              >
+                <option value="">Firmâ€¦</option>
+                {wallets.map((w) => (
+                  <option key={w.firm_id} value={w.firm_id}>
+                    {w.firm_name}
+                  </option>
+                ))}
+              </select>
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={lowCreditWarning}
+                onChange={(e) => setLowCreditWarning(e.target.value)}
+                className="h-12 min-h-12 text-xs font-mono w-1/2"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            onClick={() => void handleSaveCreditUx()}
+            disabled={policySaving}
+            className="min-h-12 h-12 text-xs bg-gold hover:bg-gold-dark text-black font-semibold"
+          >
+            {policySaving ? "Savingâ€¦" : "Save"}
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Stubs only: toggles â†’ platform_settings; prices â†’ credit_rate_cards; warning â†’
+          tenant_credit_wallets.low_balance_threshold. No new billing math. Razorpay LIVE held.
+        </p>
+      </Card>
 
       {/* Grant Modal / Box */}
       {isGrantOpen && (
