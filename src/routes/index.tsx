@@ -11,7 +11,7 @@ export const Route = createFileRoute("/")({
     } catch (e) {
       if (e && typeof e === "object" && "isRedirect" in e) throw e;
     }
-    throw redirect({ to: "/login", search: { redirect: "", error: "", audience: undefined } });
+    throw redirect({ to: "/login", search: { redirect: undefined, error: undefined, audience: undefined } });
   },
   component: () => null,
 });

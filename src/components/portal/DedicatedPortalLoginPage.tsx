@@ -334,7 +334,7 @@ export function DedicatedPortalLoginPage({
                 Staff member?{" "}
                 <Link
                   to="/login"
-                  search={{ redirect: "", error: "", audience: "staff" }}
+                  search={{ redirect: undefined, error: undefined, audience: "staff" }}
                   className="text-gold font-medium hover:underline"
                 >
                   ERP Staff Sign In

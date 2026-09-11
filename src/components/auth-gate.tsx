@@ -367,9 +367,10 @@ function OnlineAuthGate({ children }: { children: ReactNode }) {
     if (onAuthSurface) {
       return <>{children}</>;
     }
-    const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+    const targetPath = window.location.pathname + window.location.search;
+    const redirect = targetPath && targetPath !== "/" ? targetPath : undefined;
     return (
-      <Navigate to="/login" search={{ redirect, error: bootError ?? "", audience: undefined }} replace />
+      <Navigate to="/login" search={{ redirect, error: bootError || undefined, audience: undefined }} replace />
     );
   }
 

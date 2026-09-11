@@ -87,7 +87,7 @@ export async function verifyUserRoleAndStatus(
   if (!matched) {
     return {
       allowed: false,
-      error: "Your account exists, but Onyxa ERP profile is not linked. Please contact your firm admin or AVS support.",
+      error: "Your account exists, but AVS ERP profile is not linked. Please contact your firm admin or AVS support.",
     };
   }
 
@@ -101,7 +101,7 @@ export async function verifyUserRoleAndStatus(
   if (!matched.role) {
     return {
       allowed: false,
-      error: "Your account exists, but no role is assigned under Onyxa ERP. Contact your admin.",
+      error: "Your account exists, but no role is assigned under AVS ERP. Contact your admin.",
     };
   }
 

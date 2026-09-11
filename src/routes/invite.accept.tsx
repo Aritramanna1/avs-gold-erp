@@ -181,7 +181,7 @@ function AcceptInvitationPage() {
   const navigate = useNavigate();
   const { firm, branches } = useSettings();
   const native = isNativeApp();
-  const goLogin = () => void navigate({ to: "/login", search: { redirect: "", error: "", audience: undefined } });
+  const goLogin = () => void navigate({ to: "/login", search: { redirect: undefined, error: undefined, audience: undefined } });
 
   // From URL
   const [inviteCode, setInviteCode] = useState("");

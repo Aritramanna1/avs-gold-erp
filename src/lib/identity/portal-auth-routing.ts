@@ -7,8 +7,8 @@ export type PortalAudience = "customer" | "karigar" | "supplier";
 
 export function portalLoginSearch(audience?: PortalAudience) {
   return {
-    redirect: "",
-    error: "",
+    redirect: undefined,
+    error: undefined,
     audience: audience as PortalAudience | undefined,
   };
 }

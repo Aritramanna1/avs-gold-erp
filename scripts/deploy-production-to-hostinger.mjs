@@ -13,7 +13,7 @@ const token = secret.token;
 const username = secret.username || 'u190341181';
 const distDir = path.join(root, 'dist');
 
-const TARGET_DOMAINS = ['erp.arivahly.in', 'arivahly.in'];
+const TARGET_DOMAINS = ['erp.arivahly.in', 'arivahly.in', 'maatarajewellers.shop'];
 
 async function getFiles(dir, baseDir = dir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });

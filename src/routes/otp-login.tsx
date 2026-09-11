@@ -287,7 +287,7 @@ function OtpLoginPage() {
               {loginMethod === "sms" ? "Send SMS OTP" : "Send Email OTP"}
             </Button>
 
-            <Link to="/login" search={{ redirect: "", error: "", audience: undefined }}>
+            <Link to="/login" search={{ redirect: undefined, error: undefined, audience: undefined }}>
               <Button
                 variant="ghost"
                 type="button"

@@ -5,7 +5,7 @@ export const Route = createFileRoute("/onboarding")({
     // SECURITY LOCK: Onboarding setup is only accessible through the local Electron host installer.
     throw redirect({
       to: "/login",
-      search: { redirect: "", error: "", audience: undefined },
+      search: { redirect: undefined, error: undefined, audience: undefined },
       replace: true,
     });
   },

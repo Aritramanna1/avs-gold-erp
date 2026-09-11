@@ -6,7 +6,7 @@ export const Route = createFileRoute("/setup")({
     // Public web access and external Internet access to /setup are completely blocked.
     throw redirect({
       to: "/login",
-      search: { redirect: "", error: "", audience: undefined },
+      search: { redirect: undefined, error: undefined, audience: undefined },
       replace: true,
     });
   },

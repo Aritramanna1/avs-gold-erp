@@ -31,7 +31,7 @@ export const Route = createFileRoute("/login")({
     };
   },
   head: () => ({
-    meta: [{ title: "Sign In · Onyxa Jewellery ERP" }],
+    meta: [{ title: "Sign In · AVS ERP — ORNEXA Jewellery Ecosystem" }],
   }),
   component: LoginPage,
 });
@@ -68,10 +68,9 @@ function LoginPage() {
     return (
       <AuthNativeShell>
         <div className="mx-auto w-full max-w-md">
-          <AuthNativeBrandHeader />
           <AuthLayout
-            onSuccess={() => void handleSuccess()}
             prefilledError={error}
+            onSuccess={handleSuccess}
             nativeMinimal
           />
 
@@ -81,7 +80,7 @@ function LoginPage() {
           >
             <h2 className="text-xs font-semibold tracking-wide text-[#B89454]">Access by Invitation Only</h2>
             <p className="text-[11px] leading-relaxed text-white/70">
-              Onyxa ERP is an enterprise jewellery ecosystem. Accounts are provisioned via verified firm invitations.
+              AVS ERP (ORNEXA) is an enterprise jewellery ecosystem. Accounts are provisioned via verified firm invitations.
             </p>
 
             <button
@@ -94,12 +93,12 @@ function LoginPage() {
             </button>
 
             <a
-              href="https://arivahly.in/products/onyxa-erp"
+              href="https://arivahly.in/"
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full text-center text-xs text-white/70 hover:text-white underline underline-offset-2 py-1"
             >
-              Don't have an account? Request Demo on Onyxa
+              Don't have an account? Request Demo on AVS ERP
             </a>
           </section>
 
@@ -196,12 +195,12 @@ function LoginPage() {
           </Link>
           <span>·</span>
           <a
-            href="https://arivahly.in/products/onyxa-erp"
+            href="https://arivahly.in/"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-slate-800 dark:hover:text-foreground hover:underline transition-colors"
           >
-            Onyxa by AVS
+            AVS ERP · ORNEXA
           </a>
         </div>
       </div>
