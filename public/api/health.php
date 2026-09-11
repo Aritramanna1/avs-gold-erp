@@ -30,10 +30,10 @@ if (!empty($SUPABASE_URL)) {
     $supabaseLatencyMs = round(($subEnd - $subStart) * 1000, 2);
 }
 
-$totalTimeMs = round((microtime(true) - $startTime) * 1000, 2);
+$isHealthy = empty($missingExtensions) && $supabaseStatus;
 
 $response = [
-    'status' => empty($missingExtensions) ? 'healthy' : 'degraded',
+    'status' => $isHealthy ? 'healthy' : 'degraded',
     'timestamp' => date('c'),
     'environment' => [
         'php_version' => PHP_VERSION,
