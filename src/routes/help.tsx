@@ -47,9 +47,10 @@ import { useTrainingProgressStore } from "@/lib/training-progress-store";
 import { startGuidedTour, useAvailableTours } from "@/components/training/InteractiveGuidedTour";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ConsumerSupportDesk } from "@/components/support/ConsumerSupportDesk";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/help")({
-  head: () => ({ meta: [{ title: "Training Centre & Learning Hub · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `Training Centre & Learning Hub · ${APP_NAME}` }] }),
   component: HelpPage,
 });
 
@@ -374,20 +375,20 @@ const COURSES: CourseModule[] = [
 
 const FAQS = [
   {
-    q: "How does Ornexa calculate Fine Gold from alloyed metal?",
+    q: "How does AVS ERP calculate Fine Gold from alloyed metal?",
     a: "Ornexa uses the standard formula: Fine Weight (g) = Gross Weight (g) × (Purity / 1000). For example, 10.000g of 916 gold equals exactly 9.160g of Fine Gold. Both the physical gross weight and pure fine gold balances are maintained simultaneously in real-time.",
   },
   {
     q: "Can a customer also be a supplier or karigar in the system?",
-    a: "Yes! Ornexa's Party 360 engine allows a single entity to hold multiple business roles. A jeweller can be a customer for custom job orders while simultaneously supplying bullion or ready jewellery items, all tracked within a unified ledger.",
+    a: "Yes! AVS ERP's Party 360 engine allows a single entity to hold multiple business roles. A jeweller can be a customer for custom job orders while simultaneously supplying bullion or ready jewellery items, all tracked within a unified ledger.",
   },
   {
     q: "What happens if our shop internet goes down temporarily?",
-    a: "Ornexa is built on high-availability Supabase Cloud infrastructure with client-side caching. When connection drops, active forms preserve your draft state. Reconnection syncs immediately once internet resumes.",
+    a: "AVS ERP is built on high-availability Supabase Cloud infrastructure with client-side caching. When connection drops, active forms preserve your draft state. Reconnection syncs immediately once internet resumes.",
   },
   {
     q: "How do we send invoices and receipts to customers on WhatsApp?",
-    a: "Under Settings → WhatsApp, enable WhatsApp automation. You can choose Mode B (Managed Zero-Setup Ornexa Partner) or Mode C (Client-Owned Meta Business Account). Tax invoices, payment receipts, and order ready updates dispatch automatically.",
+    a: "Under Settings → WhatsApp, enable WhatsApp automation. You can choose Mode B (Managed Zero-Setup AVS Partner) or Mode C (Client-Owned Meta Business Account). Tax invoices, payment receipts, and order ready updates dispatch automatically.",
   },
   {
     q: "How do we export data to Tally Prime?",
@@ -455,7 +456,7 @@ function HelpPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <PageHeader
-          title="Ornexa Training Centre & Learning Hub"
+          title="AVS Training Centre & Learning Hub"
           subtitle="Interactive curriculum, standard operating procedures (SOPs), and jewellery manufacturing knowledge base."
         />
         <div className="flex items-center gap-3">
@@ -477,7 +478,7 @@ function HelpPage() {
           <BookOpen className="h-6 w-6 text-gold mt-1 shrink-0" />
           <div className="flex-1">
             <h2 className="text-base font-semibold text-foreground">
-              Welcome to the Ornexa Learning Hub
+              Welcome to the AVS Learning Hub
             </h2>
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
               Designed for jewellery showroom owners, workshop supervisors, accountants, and bench

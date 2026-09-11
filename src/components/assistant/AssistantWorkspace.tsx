@@ -100,7 +100,7 @@ export function AssistantWorkspace() {
           id: "msg_welcome",
           role: "assistant",
           content:
-            "Welcome to the Ornexa Assistant Operating Workspace. You can query live gold balances, search inventory, draft expenses from invoices, check karigar custody, create support tickets, or ask for workflow guidance.",
+            "Welcome to the AVS Assistant Operating Workspace. You can query live gold balances, search inventory, draft expenses from invoices, check karigar custody, create support tickets, or ask for workflow guidance.",
           createdAt: new Date().toISOString(),
         },
       ],
@@ -354,7 +354,7 @@ export function AssistantWorkspace() {
             </div>
             <div className="min-w-0">
               <h3 className="font-serif font-semibold text-sm truncate text-foreground">
-                {activeSession?.title || "Ornexa Assistant Workspace"}
+                {activeSession?.title || "AVS Assistant Workspace"}
               </h3>
               <p className="text-[10px] text-muted-foreground truncate">
                 Deterministic ERP Core &bull; Layer 1 Context Intelligence Active
@@ -443,7 +443,7 @@ export function AssistantWorkspace() {
                           key={src.id}
                           href={src.relatedRoute ?? "/help"}
                           className="inline-flex items-center gap-1 text-[10px] text-amber-600/90 hover:text-amber-600 border border-amber-500/20 bg-amber-500/5 rounded-sm px-1.5 py-0.5 transition-colors"
-                          title={`Source: ${src.sourceDoc ?? "Ornexa Knowledge Base"}`}
+                          title={`Source: ${src.sourceDoc ?? "AVS Knowledge Base"}`}
                         >
                           <Info className="h-2.5 w-2.5" />
                           {src.title.length > 32 ? src.title.slice(0, 30) + "…" : src.title}
@@ -603,7 +603,7 @@ export function AssistantWorkspace() {
               placeholder={
                 selectedFile
                   ? `Add instruction for "${selectedFile.name}" (e.g. 'Create expense', 'Add to catalogue')...`
-                  : "Ask Ornexa Assistant or attach documents..."
+                  : "Ask AVS Assistant or attach documents..."
               }
               className="flex-1 h-10 rounded-sm border border-border bg-background px-4 text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold text-foreground placeholder:text-muted-foreground"
             />

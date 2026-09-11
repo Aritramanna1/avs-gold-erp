@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { StandardPage } from "@/components/design-system/StandardPage";
 import { Loader2 } from "lucide-react";
+import { APP_NAME } from "@/lib/app-info";
 
 /** OAuth redirect landing page for Meta Embedded Signup (popup closes automatically). */
 export const Route = createFileRoute("/settings/communications/meta-callback")({
-  head: () => ({ meta: [{ title: "Meta WhatsApp Signup · Ornexa" }] }),
+  head: () => ({ meta: [{ title: `Meta WhatsApp Signup · ${APP_NAME}` }] }),
   component: MetaCallbackPage,
 });
 

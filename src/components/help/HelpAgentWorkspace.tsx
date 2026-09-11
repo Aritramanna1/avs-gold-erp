@@ -34,7 +34,7 @@ export function HelpAgentWorkspace() {
     {
       role: "agent",
       content:
-        "I'm the Help Agent. I can guide you through Ornexa, troubleshoot issues, and prepare a support ticket. What do you need help with?",
+        "I'm the Help Agent. I can guide you through AVS ERP, troubleshoot issues, and prepare a support ticket. What do you need help with?",
     },
   ]);
   const [input, setInput] = useState("");

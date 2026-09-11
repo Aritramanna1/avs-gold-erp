@@ -7,10 +7,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { guardRoute } from "@/lib/permissions";
 import { StandardPage } from "@/components/design-system";
 import { TerminologyManager } from "@/components/settings/TerminologyManager";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/control/terminology")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  head: () => ({ meta: [{ title: "Terminology Engine · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `Terminology Engine · ${APP_NAME}` }] }),
   component: ControlTerminologyPage,
 });
 

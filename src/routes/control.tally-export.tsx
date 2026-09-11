@@ -18,6 +18,7 @@ import { useSettings } from "@/lib/settings-store";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useExpensesStore } from "@/lib/expenses-store";
 import { generateTallyXML, type TallyVoucher } from "@/lib/tally-export-engine";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/control/tally-export")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
@@ -84,7 +85,7 @@ function ControlTallyExportPage() {
           partyName: inv.customerName || "Cash Customer",
           amountPaise: inv.grandTotalPaise,
           fineGoldMg: inv.items.reduce((sum, item) => sum + (item.fineMg || 0), 0),
-          narration: `Ornexa Sales Invoice ${inv.invoiceNo}`,
+          narration: `AVS Sales Invoice ${inv.invoiceNo}`,
         });
 
         for (const p of inv.payments) {
@@ -138,7 +139,7 @@ function ControlTallyExportPage() {
       toast.error("No vouchers found in selected date range.");
       return;
     }
-    const xml = generateTallyXML(vouchers, firm?.shopName || "Ornexa Jewellery");
+    const xml = generateTallyXML(vouchers, firm?.shopName || APP_NAME);
     const blob = new Blob([xml], { type: "application/xml;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

@@ -34,9 +34,10 @@ import {
 } from "lucide-react";
 import { useShortcutsStore, type ShortcutDefinition } from "@/lib/shortcuts-store";
 import { toast } from "sonner";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/control/shortcuts")({
-  head: () => ({ meta: [{ title: "Keyboard Shortcuts & Input · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `Keyboard Shortcuts & Input · ${APP_NAME}` }] }),
   component: ShortcutsControlPage,
 });
 
@@ -134,7 +135,7 @@ function ShortcutsControlPage() {
               onChange={(e) => setPresetProfile(e.target.value as any)}
               className="h-7 text-xs rounded border border-input bg-background px-2 font-medium"
             >
-              <option value="standard">Standard Ornexa</option>
+              <option value="standard">Standard AVS</option>
               <option value="tally_like">Tally Prime Ergonomics</option>
               <option value="jwelly_like">Jwelly Industry Layout</option>
               <option value="custom">Custom Customized</option>

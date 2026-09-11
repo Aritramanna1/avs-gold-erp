@@ -25,10 +25,11 @@ import {
   History,
 } from "lucide-react";
 import { toast } from "sonner";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/control/rates")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  head: () => ({ meta: [{ title: "Daily Bhav Rate Book · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `Daily Bhav Rate Book · ${APP_NAME}` }] }),
   component: DailyBhavRateBookPage,
 });
 

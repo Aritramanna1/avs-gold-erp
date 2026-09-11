@@ -11,9 +11,10 @@ import { useMeltStore } from "@/lib/melt-store";
 import { usePeople } from "@/lib/people-store";
 import { mgToGrams } from "@/lib/gold";
 import { FlameKindling, ExternalLink } from "lucide-react";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/refinery/")({
-  head: () => ({ meta: [{ title: "Refinery Operations · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `Refinery Operations · ${APP_NAME}` }] }),
   component: RefineryPage,
 });
 

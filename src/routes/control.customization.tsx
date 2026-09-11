@@ -11,6 +11,7 @@ import { lazy, Suspense } from "react";
 import { z } from "zod";
 import { StandardPage } from "@/components/design-system";
 import { ModuleSkeleton } from "@/components/module-skeleton";
+import { APP_NAME } from "@/lib/app-info";
 
 const CustomizationHub = lazy(() =>
   import("@/components/customization/CustomizationHub").then((m) => ({
@@ -25,7 +26,7 @@ const SearchSchema = z.object({
 export const Route = createFileRoute("/control/customization")({
   validateSearch: (s) => SearchSchema.parse(s),
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  head: () => ({ meta: [{ title: "Customization Workspace · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `Customization Workspace · ${APP_NAME}` }] }),
   component: ControlCustomizationPage,
 });
 
