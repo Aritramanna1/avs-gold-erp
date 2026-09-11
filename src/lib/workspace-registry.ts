@@ -1,9 +1,9 @@
 /**
- * AVS ERP — Authoritative 60+ Module Workspace Registry
+ * AVS ERP â€” Authoritative 60+ Module Workspace Registry
  *
  * Establishes a scalable, 4-tier Information Architecture:
  * Layer 1: Global Shell (Calm Header Only: Logo/Home, Omnisearch, +New, User/Branch)
- * Layer 2: 7 Coherent Business Workspaces (Sell, Workshop, Stock, Accounts, People, Reports, Admin)
+ * Layer 2: MVP primary chrome (Sell, Customers, Stock, Make, Money, Reports, More) - AVS-4 / AVS-32
  * Layer 3: Contextual Workspace Navigation (Consistent sub-routes strictly within the workspace)
  * Layer 4: Function (Contextual tabs/filters/actions inside the specific screen)
  */
@@ -13,6 +13,7 @@ export interface WorkspaceSubItem {
   title: string;
   to: string;
   search?: Record<string, unknown>;
+  params?: Record<string, string>;
   badge?: string;
   description?: string;
 }
@@ -31,9 +32,9 @@ export interface WorkspaceDefinition {
 export const WORKSPACES: Record<string, WorkspaceDefinition> = {
   retail: {
     id: "retail",
-    title: "Sell & Customers",
+    title: "Sell",
     subtitle: "Showroom & POS",
-    description: "POS billing, customer orders, design catalogue, delivery challans, and customer KYC.",
+    description: "New sale, quotes, orders, and delivery - customers live under Customers.",
     iconName: "ShoppingCart",
     accentColor: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
     baseRoute: "/billing",
@@ -42,7 +43,7 @@ export const WORKSPACES: Record<string, WorkspaceDefinition> = {
       { id: "new_sale", title: "POS Billing", to: "/billing/new", badge: "F2", description: "Fast retail checkout and invoice generator" },
       { id: "estimates", title: "Quotations & Estimates", to: "/billing/estimates", description: "Proforma quotes and price approvals" },
       { id: "orders", title: "Customer Orders", to: "/orders", description: "Custom jewellery bookings and status" },
-      { id: "customers", title: "Customers & KYC", to: "/people", search: { tab: "customers" }, description: "Customer phone, PAN, Aadhaar and ledger" },
+      
       { id: "catalog", title: "Design Catalogue", to: "/catalog", description: "Jewellery design collections and showcase" },
       { id: "challans", title: "Delivery Challans", to: "/billing/delivery-challans", description: "Consignment and delivery slips" },
       { id: "credit_notes", title: "Credit & Debit Notes", to: "/billing/credit-notes", description: "Sales returns and price adjustments" },
@@ -50,8 +51,8 @@ export const WORKSPACES: Record<string, WorkspaceDefinition> = {
   },
   workshop: {
     id: "workshop",
-    title: "Workshop & Manufacturing",
-    subtitle: "Production & Karigars",
+    title: "Make",
+    subtitle: "Jobs & karigars",
     description: "Karigar gold book, active job cards, outside work, polishing, Meena, and refining.",
     iconName: "Hammer",
     accentColor: "text-amber-500 bg-amber-500/10 border-amber-500/20",
@@ -62,7 +63,7 @@ export const WORKSPACES: Record<string, WorkspaceDefinition> = {
       { id: "job_cards", title: "Production Job Cards", to: "/orders", description: "Manufacturing specs and artisan allocation" },
       { id: "outside_work", title: "Outside Work", to: "/workshop/outside-work", description: "Outsourced hallmarking, casting, plating" },
       { id: "polishing", title: "Polishing & Processes", to: "/workshop/polishing", description: "Vibrator, tumbling and ultrasonic cleaning" },
-      { id: "meena", title: "Meena", to: "/workshop/process/meena", description: "Meena / enameling process book (issue and return)" },
+      { id: "meena", title: "Meena", to: "/workshop/process/$type", params: { type: "meena" }, description: "Meena / enameling process book (issue and return)" },
       { id: "dhadi", title: "Dhadi Groups", to: "/workshop/dhadi-groups", description: "Artisan wage groups and piece rates" },
       { id: "melts", title: "Melt & Assay", to: "/melt", description: "Melting batches, refining and purity tests" },
       { id: "settlements", title: "Artisan Settlements", to: "/settlement/new", description: "Final gold and cash account reconciliation" },
@@ -70,8 +71,8 @@ export const WORKSPACES: Record<string, WorkspaceDefinition> = {
   },
   stock: {
     id: "stock",
-    title: "Inventory & Stock",
-    subtitle: "Ready Stock & Barcodes",
+    title: "Stock",
+    subtitle: "Gold first",
     description: "Ready stock, barcode search, metal lots, stock transfers, and physical audit.",
     iconName: "Package",
     accentColor: "text-blue-500 bg-blue-500/10 border-blue-500/20",
@@ -90,43 +91,41 @@ export const WORKSPACES: Record<string, WorkspaceDefinition> = {
   },
   accounts: {
     id: "accounts",
-    title: "Accounts & Treasury",
-    subtitle: "Vault, Cash & Ledgers",
-    description: "Fine gold bullion vault, cash book, bank reconciliation, vouchers, and financials.",
+    title: "Money",
+    subtitle: "Cash | Gold @995",
+    description: "Cash and gold money books - Who owes, receipts, vault @995.",
     iconName: "Scale",
     accentColor: "text-gold bg-gold/10 border-gold/20",
     baseRoute: "/ledger",
     items: [
-      { id: "vault_ledger", title: "Vault Bullion Ledger", to: "/ledger", description: "Authoritative 995 bullion balance and history" },
+      { id: "vault_ledger", title: "Gold vault", to: "/ledger", description: "Authoritative 995 bullion balance and history" },
       { id: "cash_book", title: "Cash Book", to: "/treasury/cash-book", description: "Daily cash receipts (Jama) and payments (Nave)" },
       { id: "bank_reconcile", title: "Bank Reconciliation", to: "/treasury/bank-reconciliation", description: "Statement matching and bank feeds" },
       { id: "vouchers", title: "Payment & Receipt Vouchers", to: "/treasury/vouchers", description: "Cash and bullion transaction slips" },
       { id: "expenses", title: "Shop Expenses", to: "/expenses", description: "Petty cash, operating expenses and drawings" },
-      { id: "sub_accounts", title: "Chart of Accounts", to: "/control/accounts", description: "Ledger heads, groups and sub-accounts" },
+      { id: "sub_accounts", title: "Account heads", to: "/control/accounts", description: "Ledger heads, groups and sub-accounts" },
       { id: "financials", title: "Financial Statements", to: "/reports/financial-statements", description: "Trial Balance, P&L, Balance Sheet" },
       { id: "conversions", title: "Metal Conversions", to: "/conversion/index", description: "Old gold and scrap conversions" },
     ],
   },
   people: {
     id: "people",
-    title: "People & HR",
-    subtitle: "Staff & Attendance",
-    description: "Employee registry, daily attendance, salary rules, advances, and payroll.",
+    title: "Customers",
+    subtitle: "Grahak",
+    description: "Find customers - gold balance and cash balance stay separate.",
     iconName: "Users",
     accentColor: "text-teal-500 bg-teal-500/10 border-teal-500/20",
-    baseRoute: "/attendance",
+    baseRoute: "/people",
     items: [
-      { id: "attendance", title: "Daily Attendance", to: "/attendance", description: "Biometric and daily staff attendance" },
-      { id: "staff_directory", title: "Staff Directory", to: "/people", search: { tab: "workers" }, description: "Employee profiles, KYC and contact info" },
-      { id: "salary_rules", title: "Salary & Wage Rules", to: "/attendance", search: { tab: "rules" }, description: "Monthly wages, overtime and incentives" },
-      { id: "advances", title: "Salary Advances", to: "/attendance", search: { tab: "advances" }, description: "Staff loans and advance adjustments" },
-      { id: "payroll", title: "Monthly Payroll", to: "/attendance", search: { tab: "payroll" }, description: "Salary slips and payout summaries" },
+      { id: "customers", title: "Customers", to: "/people", search: { tab: "customers" }, description: "Grahak search and profiles" },
+      { id: "suppliers", title: "Suppliers", to: "/people", search: { tab: "suppliers" }, description: "Supplier directory" },
+      { id: "who_owes", title: "Who owes", to: "/ledger", description: "Gold and cash outstanding" },
     ],
   },
   reports: {
     id: "reports",
-    title: "Reports & Analytics",
-    subtitle: "Business Intelligence",
+    title: "Reports",
+    subtitle: "Day done & registers",
     description: "Daily Day Book, GST sales register, metal position, karigar wastage, and CA pack.",
     iconName: "FileSpreadsheet",
     accentColor: "text-purple-500 bg-purple-500/10 border-purple-500/20",
@@ -145,8 +144,8 @@ export const WORKSPACES: Record<string, WorkspaceDefinition> = {
   },
   settings: {
     id: "settings",
-    title: "Administration & Tools",
-    subtitle: "System Setup",
+    title: "More",
+    subtitle: "Company & tools",
     description: "Firm profile, automation rules, hardware devices, bullion rates, and customization.",
     iconName: "Settings",
     accentColor: "text-zinc-400 bg-zinc-500/10 border-zinc-500/20",
@@ -160,6 +159,8 @@ export const WORKSPACES: Record<string, WorkspaceDefinition> = {
       { id: "communications", title: "WhatsApp & Email", to: "/settings/whatsapp", description: "Automated billing messages and templates" },
       { id: "security", title: "Security & Audit", to: "/settings/security-center", description: "Login logs, staff permissions and backups" },
       { id: "support", title: "System Diagnostics", to: "/settings/support", description: "Database status, licence and cloud diagnostics" },
+      { id: "team_attendance", title: "Attendance", to: "/attendance", description: "Daily staff attendance" },
+      { id: "team_payroll", title: "Payroll", to: "/attendance", search: { tab: "payroll" }, description: "Salary slips and payouts" },
     ],
   },
 };
@@ -214,21 +215,17 @@ export function getActiveWorkspace(pathname: string): WorkspaceDefinition | null
     return WORKSPACES.accounts;
   }
 
-  // 5. People & HR
-  if (pathname.startsWith("/attendance")) {
+  // 5. Customers (grahak)
+  if (pathname.startsWith("/people")) {
     return WORKSPACES.people;
   }
-  if (pathname.startsWith("/people")) {
-    // If people route, check query or default to retail if customers, else people
-    return WORKSPACES.retail;
-  }
 
-  // 6. Reports & Analytics
+  // 6. Reports
   if (pathname.startsWith("/reports") || pathname.startsWith("/dashboard")) {
     return WORKSPACES.reports;
   }
 
-  // 7. Administration & Tools
+  // 7. More (company, tools, team)
   if (
     pathname.startsWith("/settings") ||
     pathname.startsWith("/control") ||
@@ -237,7 +234,8 @@ export function getActiveWorkspace(pathname: string): WorkspaceDefinition | null
     pathname.startsWith("/whatsapp") ||
     pathname.startsWith("/branches") ||
     pathname.startsWith("/ai-center") ||
-    pathname.startsWith("/notifications")
+    pathname.startsWith("/notifications") ||
+    pathname.startsWith("/attendance")
   ) {
     return WORKSPACES.settings;
   }

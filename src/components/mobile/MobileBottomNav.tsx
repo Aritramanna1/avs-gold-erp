@@ -1,55 +1,80 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, ShoppingBag, Hammer, Landmark, MoreHorizontal } from "lucide-react";
+﻿import { Link, useRouterState } from "@tanstack/react-router";
+import {
+  BarChart3,
+  Home,
+  Hammer,
+  MoreHorizontal,
+  Package,
+  ShoppingCart,
+  UserRound,
+  Wallet,
+} from "lucide-react";
 import { hapticLight } from "@/lib/native/haptics";
-import { useLanguage } from "@/contexts/LanguageContext";
 
-/** Clean separation: Home · Retail · Manufacturing · Accounts · More */
+/** MVP-NAV phone chrome — same words as desktop primary. */
 const TABS = [
   {
     to: "/app",
-    i18nKey: "mobile_home",
+    word: "Home",
     icon: Home,
     match: (p: string) => p === "/app" || p === "/dashboard" || p === "/",
   },
   {
     to: "/billing",
-    i18nKey: "group_retail",
-    icon: ShoppingBag,
+    word: "Sell",
+    icon: ShoppingCart,
     match: (p: string) =>
       p.startsWith("/billing") ||
       p.startsWith("/crm") ||
       p.startsWith("/catalog") ||
-      (p.startsWith("/people") && !p.includes("employees")),
+      p.startsWith("/orders") ||
+      p.startsWith("/scheme") ||
+      p.startsWith("/repair"),
+  },
+  {
+    to: "/people",
+    search: { tab: "customers" as const },
+    word: "Customers",
+    icon: UserRound,
+    match: (p: string) => p.startsWith("/people"),
+  },
+  {
+    to: "/stock",
+    word: "Stock",
+    icon: Package,
+    match: (p: string) => p.startsWith("/stock") || p.startsWith("/barcode"),
   },
   {
     to: "/workshop",
-    i18nKey: "group_manufacturing",
+    word: "Make",
     icon: Hammer,
     match: (p: string) =>
       p.startsWith("/workshop") ||
-      p.startsWith("/orders") ||
       p.startsWith("/melt") ||
       p.startsWith("/refinery") ||
-      p.startsWith("/conversion") ||
-      p.startsWith("/barcode") ||
       p.startsWith("/manufacturing") ||
-      p.startsWith("/repair") ||
-      p.startsWith("/stock"),
+      p.startsWith("/settlement"),
   },
   {
     to: "/ledger",
-    i18nKey: "group_accounts",
-    icon: Landmark,
+    word: "Money",
+    icon: Wallet,
     match: (p: string) =>
       p.startsWith("/ledger") ||
-      p.startsWith("/control/accounts") ||
       p.startsWith("/treasury") ||
-      p.startsWith("/settlement") ||
-      p.startsWith("/reports"),
+      p.startsWith("/expenses") ||
+      p.startsWith("/conversion") ||
+      p.startsWith("/control/accounts"),
+  },
+  {
+    to: "/reports",
+    word: "Reports",
+    icon: BarChart3,
+    match: (p: string) => p.startsWith("/reports"),
   },
   {
     to: "/mobile/more",
-    i18nKey: "mobile_more",
+    word: "More",
     icon: MoreHorizontal,
     match: (p: string) =>
       p === "/mobile/more" ||
@@ -63,17 +88,12 @@ const TABS = [
       p.startsWith("/branches") ||
       p.startsWith("/attendance") ||
       p.startsWith("/hardware") ||
-      p.startsWith("/notifications") ||
-      p.startsWith("/customer-portal") ||
-      p.startsWith("/karigar-portal") ||
-      p.startsWith("/supplier-portal") ||
-      p.startsWith("/verify"),
+      p.startsWith("/notifications"),
   },
 ] as const;
 
 export function MobileBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { t } = useLanguage();
 
   return (
     <nav className="mobile-bottom-nav" data-device-chrome="phone" aria-label="Primary navigation">
@@ -82,15 +102,16 @@ export function MobileBottomNav() {
         const Icon = tab.icon;
         return (
           <Link
-            key={tab.to}
-            to={tab.to}
+            key={tab.word}
+            to={tab.to as never}
+            search={"search" in tab ? (tab.search as never) : (undefined as never)}
             onClick={() => void hapticLight()}
             className={`mobile-bottom-nav__item ${active ? "is-active" : ""}`}
             aria-current={active ? "page" : undefined}
           >
             <Icon aria-hidden="true" />
             <span className="max-w-full px-0.5 text-center leading-tight break-words whitespace-normal">
-              {t(`navigation.${tab.i18nKey}`)}
+              {tab.word}
             </span>
           </Link>
         );
