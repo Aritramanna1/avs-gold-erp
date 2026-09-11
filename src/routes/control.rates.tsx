@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/lib/settings-store";
-import { useBullionRate } from "@/lib/bullion-rate-service";
+import { useBullionRate, useCurrentBullionRates } from "@/lib/bullion-rate-service";
 import { useRoles } from "@/lib/rbac";
 import {
   Coins,
@@ -34,16 +34,20 @@ export const Route = createFileRoute("/control/rates")({
 
 function DailyBhavRateBookPage() {
   const {
-    goldRatePerGramPaise,
-    goldRate24KPerGramPaise,
-    goldRate18KPerGramPaise,
-    silverRatePerGramPaise,
     setGoldRate,
     setGoldRate24K,
     setGoldRate18K,
     setSilverRate,
     addSecurityLog,
   } = useSettings();
+
+  // Prefer branch overrides when set; fall back to firm-wide hydrated rates.
+  const {
+    gold22KPerGramPaise: goldRatePerGramPaise,
+    gold24KPerGramPaise,
+    gold18KPerGramPaise,
+    silverPerGramPaise: silverRatePerGramPaise,
+  } = useCurrentBullionRates();
 
   const { roles, email, ready } = useRoles();
   const isAuthorized =
