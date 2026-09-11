@@ -12,7 +12,7 @@ export const APP_PARENT_ATTRIBUTION = "A product by AVS — Arivahly Venture Sph
 export const COMPANY_NAME = "Arivahly Venture Sphere";
 export const APP_VERSION = pkg.version;
 export const COPYRIGHT = `© ${new Date().getFullYear()} ${COMPANY_NAME}`;
-export const SUPPORT_EMAIL = "";
+export const SUPPORT_EMAIL = "privacy@arivahly.in";
 export const WEBSITE = "https://arivahly.in/";
 
 /** Browser / document title: `Dashboard · AVS ERP` */

@@ -1,5 +1,6 @@
 /** Approved AVS ERP lockups from brand artwork — do not redraw in CSS. */
 import { cn } from "@/lib/utils";
+import { APP_NAME, APP_PARENT_ATTRIBUTION, APP_TAGLINE } from "@/lib/app-info";
 
 type Variant = "horizontal" | "stacked" | "icon" | "wordmark";
 
@@ -9,7 +10,7 @@ const FULL = "/assets/ornexa-logo-full.png";
 export function OrnexaBrandLogo({
   variant = "horizontal",
   className,
-  alt = "AVS ERP — Jewellery Ecosystem",
+  alt = `${APP_NAME} — ${APP_TAGLINE}`,
 }: {
   variant?: Variant;
   className?: string;
@@ -46,7 +47,7 @@ export function OrnexaBrandLogo({
 export function OrnexaParentAttribution({ className }: { className?: string }) {
   return (
     <p className={cn("text-[10px] uppercase tracking-[0.2em] text-muted-foreground", className)}>
-      A product by AVS — Arivahly Venture Sphere
+      {APP_PARENT_ATTRIBUTION}
     </p>
   );
 }
