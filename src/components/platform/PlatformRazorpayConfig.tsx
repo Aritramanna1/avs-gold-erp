@@ -69,6 +69,9 @@ interface DiagnosticResult {
   api_connectivity: string;
 }
 
+/** Phase C hold — LIVE switch blocked until owner greenlight after verification. */
+const LIVE_FINAL_INTEGRATION_HELD = true;
+
 export function PlatformRazorpayConfig() {
   const [settings, setSettings] = useState<GatewaySettingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -215,6 +218,12 @@ export function PlatformRazorpayConfig() {
   }
 
   async function handleSwitchMode(targetMode: "TEST" | "LIVE") {
+    if (LIVE_FINAL_INTEGRATION_HELD && targetMode === "LIVE") {
+      toast.error(
+        "LIVE mode is held until final integration greenlight. Save TEST keys and return URLs only.",
+      );
+      return;
+    }
     setSwitchingMode(true);
     try {
       const res = await fetch("/api/payments/admin-settings.php", {
@@ -254,6 +263,15 @@ export function PlatformRazorpayConfig() {
 
   return (
     <div className="space-y-6">
+      {LIVE_FINAL_INTEGRATION_HELD ? (
+        <Card className="p-3 border-amber-500/40 bg-amber-500/10">
+          <p className="text-xs text-amber-900 dark:text-amber-100">
+            <strong>LIVE hold:</strong> configure TEST credentials, return URL, and webhook URL now.
+            Final LIVE integration stays blocked until owner greenlight (verification complete).
+            Never paste secrets into chat.
+          </p>
+        </Card>
+      ) : null}
       {/* Top Banner: Mode & Status */}
       <Card className="p-4 border-gold/30 bg-gradient-to-r from-background via-card to-background shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
