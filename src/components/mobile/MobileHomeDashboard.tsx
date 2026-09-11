@@ -11,6 +11,7 @@ import {
 } from "@/lib/home-dashboard-query";
 import { mgToGrams } from "@/lib/gold";
 import { withTimeout } from "@/lib/performance/resilient-async";
+import { APP_NAME } from "@/lib/app-info";
 
 export function MobileHomeDashboard() {
   const firm = useSettings((s) => s.firm);
@@ -49,7 +50,7 @@ export function MobileHomeDashboard() {
     <div className="p-4 pb-24 space-y-5 max-w-lg mx-auto">
       <header>
         <p className="text-sm text-muted-foreground">Good day</p>
-        <h1 className="font-serif text-xl">{firm?.shopName ?? "Ornexa"}</h1>
+        <h1 className="font-serif text-xl">{firm?.shopName ?? APP_NAME}</h1>
         <p className="text-xs text-muted-foreground mt-0.5">Operating date {today}</p>
       </header>
 

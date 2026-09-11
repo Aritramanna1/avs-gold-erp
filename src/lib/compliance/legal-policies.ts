@@ -11,7 +11,7 @@
  */
 
 import { publicSiteUrl } from "@/lib/website/public-site-url";
-import { APP_NAME, APP_PARENT_ATTRIBUTION, COMPANY_NAME } from "@/lib/app-info";
+import { APP_NAME, APP_PARENT_ATTRIBUTION, COMPANY_NAME, SUPPORT_EMAIL } from "@/lib/app-info";
 
 export type LegalDocumentType = "terms" | "privacy";
 
@@ -107,13 +107,13 @@ Contract performance (providing the ERP), legitimate interests (security, produc
 Essential cookies and local storage are required for authentication and session security. Functional preferences (theme, language) may be stored locally. Analytics cookies load only after you opt in via the cookie banner.
 
 5. Data retention & deletion
-Operational data is retained per your subscription and applicable tax law (e.g. GST records). You may request export or deletion subject to legal holds — contact your firm administrator or privacy@ornexa.com.
+Operational data is retained per your subscription and applicable tax law (e.g. GST records). You may request export or deletion subject to legal holds — contact your firm administrator or ${SUPPORT_EMAIL}.
 
 6. International transfers
 Data may be processed on Supabase and approved sub-processors. Standard contractual safeguards apply where required.
 
 7. Your rights
-Access, rectification, erasure, restriction, portability, and objection — contact privacy@ornexa.com.
+Access, rectification, erasure, restriction, portability, and objection — contact ${SUPPORT_EMAIL}.
 
 8. Children
 The service is for businesses. Users must be 18+ or have guardian consent for workforce accounts.
