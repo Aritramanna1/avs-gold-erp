@@ -328,7 +328,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           newTier: "avs_30k",
           previousStatus: "trial",
           newStatus: "active",
-          actorEmail: "admin@maatarajewellers.shop",
+          actorEmail: "admin@arivahly.in",
           source: "admin_panel",
           notes: "Initial annual plan activation",
           createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
@@ -486,7 +486,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
                 newTier: e.new_tier,
                 previousStatus: e.previous_status,
                 newStatus: e.new_status,
-                actorEmail: e.actor_email || "admin@maatarajewellers.shop",
+                actorEmail: e.actor_email || "admin@arivahly.in",
                 source: e.source,
                 notes: e.notes,
                 createdAt: e.created_at,
@@ -500,7 +500,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         }
       },
 
-      changePlan: async (newTier, cycle, customPrice, actorEmail = "admin@maatarajewellers.shop") => {
+      changePlan: async (newTier, cycle, customPrice, actorEmail = "admin@arivahly.in") => {
         const state = get();
         const prev = state.subscription;
         const planDef = state.planDefinitions[newTier] || DEFAULT_PLAN_DEFINITIONS[newTier];
@@ -576,7 +576,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         }
       },
 
-      updateStatus: async (newStatus, reason, actorEmail = "admin@maatarajewellers.shop") => {
+      updateStatus: async (newStatus, reason, actorEmail = "admin@arivahly.in") => {
         const state = get();
         const prev = state.subscription;
         const updated: SubscriptionRecord = {

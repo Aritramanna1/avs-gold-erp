@@ -106,8 +106,8 @@ export const useEmailConfigStore = create<EmailConfigState>()((set, get) => {
 
   return {
     senderMode: cached?.senderMode ?? "avs_company_email",
-    avsSenderEmail: "notifications@maatarajewellers.shop",
-    avsSenderName: "Maa Tara Jewellers (AVS Cloud Mail)",
+    avsSenderEmail: "notifications@arivahly.in",
+    avsSenderName: "AVS ERP (Cloud Mail)",
     tenantSenderEmail: cached?.tenantSenderEmail ?? "",
     tenantSenderName: cached?.tenantSenderName ?? "",
     autoEmailEnabled: cached?.autoEmailEnabled ?? true,

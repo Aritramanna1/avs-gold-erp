@@ -134,7 +134,7 @@ export class R2StorageService {
     file: File,
     category: "designs" | "products" | "documents" | "invoices" | "inventory" = "documents",
     tenantId: string = this.defaultTenantId,
-    uploadedBy = "admin@maatarajewellers.shop",
+    uploadedBy = "admin@arivahly.in",
   ): Promise<UploadResult> {
     const optimizedFile = await this.compressImage(file);
     const validation = this.validateFile(optimizedFile);

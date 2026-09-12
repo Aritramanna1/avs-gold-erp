@@ -118,7 +118,7 @@ function brandedShell(opts: {
   const logoSrc =
     opts.logoUrl && opts.logoUrl.trim()
       ? opts.logoUrl.trim()
-      : "https://maatarajewellers.shop/assets/ornexa-logo-full.png";
+      : "https://erp.arivahly.in/assets/ornexa-logo-full.png";
   return `
 <div style="max-width:600px;margin:0 auto;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;border:1px solid ${HAIRLINE};background:#ffffff;border-radius:12px;overflow:hidden;">
   <div style="padding:24px 28px;border-bottom:4px solid #C8A24B;background:#0F172A;text-align:center;">
@@ -243,14 +243,14 @@ export function renderEmailTemplate(
     case "trial_expiring":
       return simpleTemplate(
         "Your AVS ERP trial ends soon",
-        `<p>Hello {{recipient_name}},</p><p>the AVS ERP trial for <strong>{{tenant_name}}</strong> ends soon${vars.trialEndsAt ? ` on <strong>${escapeHtml(vars.trialEndsAt)}</strong>` : ""}. Your gold, parties, and documents stay in the firm. Contact sales to continue on a manufacturing edition.</p>${ctaButton("Contact sales", vars.actionUrl || "https://maatarajewellers.shop/contact?intent=sales")}`,
+        `<p>Hello {{recipient_name}},</p><p>the AVS ERP trial for <strong>{{tenant_name}}</strong> ends soon${vars.trialEndsAt ? ` on <strong>${escapeHtml(vars.trialEndsAt)}</strong>` : ""}. Your gold, parties, and documents stay in the firm. Contact sales to continue on a manufacturing edition.</p>${ctaButton("Contact sales", vars.actionUrl || "mailto:sales@arivahly.in")}`,
         "AVS ERP trial for {{tenant_name}} is ending. Contact sales: {{action_url}}",
         vars,
       );
     case "trial_expired":
       return simpleTemplate(
         "Your AVS ERP trial has ended",
-        `<p>Hello {{recipient_name}},</p><p>The 14-day AVS ERP trial for <strong>{{tenant_name}}</strong> has ended${vars.trialEndsAt ? ` (${escapeHtml(vars.trialEndsAt)})` : ""}. Records are retained. Write to sales@arivahly.in to renew or upgrade.</p>${ctaButton("Talk to sales", vars.actionUrl || "https://maatarajewellers.shop/contact?intent=sales")}`,
+        `<p>Hello {{recipient_name}},</p><p>The 14-day AVS ERP trial for <strong>{{tenant_name}}</strong> has ended${vars.trialEndsAt ? ` (${escapeHtml(vars.trialEndsAt)})` : ""}. Records are retained. Write to sales@arivahly.in to renew or upgrade.</p>${ctaButton("Talk to sales", vars.actionUrl || "mailto:sales@arivahly.in")}`,
         "AVS ERP trial ended for {{tenant_name}}. Contact sales@arivahly.in",
         vars,
       );

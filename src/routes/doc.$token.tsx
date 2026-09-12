@@ -119,7 +119,7 @@ function portalFirm(raw: Record<string, unknown>): PortalFirm {
     tagline: opt("tagline") ?? "Purity, Craftsmanship & Trust Since 1994",
     address: String(raw.address ?? "74/1 Bowbazar Street, Bowbazar, Kolkata - 700012"),
     phone: String(raw.phone ?? "+91 98300 00000"),
-    email: opt("email") ?? "sales@maatarajewellers.shop",
+    email: opt("email") ?? "sales@arivahly.in",
     gstin: opt("gstin") ?? "19AABCM1234B1Z2",
     logoUrl: opt("logoUrl"),
     logoStoragePath: opt("logoStoragePath") ?? opt("logo_storage_path"),

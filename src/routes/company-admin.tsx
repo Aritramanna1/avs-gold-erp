@@ -160,7 +160,7 @@ function CompanyAdminPage() {
   const [reportTitle, setReportTitle] = useState("Daily Gold & Vault Digest");
   const [reportType, setReportType] = useState<any>("daily_gold_balance");
   const [reportFreq, setReportFreq] = useState<any>("daily");
-  const [reportRecipients, setReportRecipients] = useState("owner@maatarajewellers.shop");
+  const [reportRecipients, setReportRecipients] = useState("owner@arivahly.in");
   const [reportFormat, setReportFormat] = useState<any>("pdf");
 
   // Broadcast Alert modal state
@@ -803,7 +803,7 @@ function CompanyAdminPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => dispatchNotification("subscription.expiring", "owner@maatarajewellers.shop", "Subscription Ending Soon", "Your annual plan renews in 14 days.")}
+                  onClick={() => dispatchNotification("subscription.expiring", "owner@arivahly.in", "Subscription Ending Soon", "Your annual plan renews in 14 days.")}
                   className="text-xs gap-1"
                 >
                   <Zap className="h-3 w-3" />

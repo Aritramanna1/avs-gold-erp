@@ -269,7 +269,7 @@ export const useIntegrationsStore = create<IntegrationsState>()(
 
           await (supabase as any).from("admin_audit_logs").insert({
             actor_id: "admin",
-            actor_email: "admin@maatarajewellers.shop",
+            actor_email: "admin@arivahly.in",
             action: "api_credential_changed",
             entity_type: "integration",
             entity_id: id,
@@ -296,7 +296,7 @@ export const useIntegrationsStore = create<IntegrationsState>()(
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                to: "admin@maatarajewellers.shop",
+                to: "admin@arivahly.in",
                 subject: "AVS ERP Integration Verification",
                 htmlBody: "<p>Live connection check from Admin Control Center.</p>",
               }),

@@ -165,7 +165,7 @@ export const useWebhookManagementStore = create<WebhookManagementState>((set, ge
     }
   },
 
-  retryWebhook: async (id: string, actorEmail = "admin@maatarajewellers.shop") => {
+  retryWebhook: async (id: string, actorEmail = "admin@arivahly.in") => {
     set({ retryingId: id });
     try {
       const resp = await fetch("/api/webhooks/dispatcher.php?action=retry", {
