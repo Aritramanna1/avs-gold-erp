@@ -6,6 +6,7 @@
 
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { fineGoldMg, mgToGrams } from "@/lib/gold";
+import { compileCustomerLedger } from "@/lib/customer-account-ledger";
 import { resolveFirmIdForQuery, withFirmScope } from "@/lib/firm-scoped-query";
 import { searchRemote, type SearchResult } from "@/lib/global-search";
 import {
@@ -272,7 +273,7 @@ function todayYmd() {
 export function extractSearchQuery(userMessage: string): string {
   return userMessage
     .replace(
-      /\b(balance|gold position|gold book|where is my gold|gold|book|followups?|overdue|customer|karigar|worker|for|of|show|tell|what|is|the|today|daily|issue|draft|prepare|search|find|open|record|records|document|documents|invoice|tag|barcode|branch|party|timeline|stock|ready|catalogue|outstanding|ageing|expense|ticket|help|how to)\b/gi,
+      /\b(balance|gold position|gold book|where is my gold|gold|book|followups?|overdue|customer|karigar|worker|for|of|show|tell|what|is|the|today|daily|issue|draft|prepare|search|find|open|record|records|document|documents|invoice|tag|barcode|branch|party|timeline|stock|ready|catalogue|outstanding|ageing|expense|ticket|help|how to|360|dossier|overview|profile|khata|ledger)\b/gi,
       " ",
     )
     .replace(/\s+/g, " ")
@@ -801,9 +802,278 @@ export async function toolSearchParty(userMessage: string): Promise<ERPActionCar
   return card;
 }
 
-// 6. GetParty360
+// 6. GetParty360 — real READ dossier (ledger + orders + outstanding)
+// Reuses compileCustomerLedger (same helper as MCP customers.get_customer_ledger).
+// Missing data sources are omitted — never invent balances.
 export async function toolGetParty360(userMessage: string): Promise<ERPActionCard | null> {
-  return toolGetCustomerGoldBalance(userMessage);
+  const query = extractSearchQuery(userMessage);
+  // Any party type (customer / dealer / supplier / firm), not gold-balance-only customers
+  const person = await findPerson(query);
+  if (!person) return null;
+
+  const sections: string[] = [];
+  const kpis: Array<{
+    label: string;
+    value: string | number;
+    subtitle?: string;
+    variant?: "default" | "success" | "warning" | "destructive" | "gold";
+  }> = [];
+  const data: Record<string, any> = {
+    personId: person.id,
+    name: person.full_name,
+    phone: person.phone,
+    type: person.type,
+    sections: [] as string[],
+  };
+
+  // --- Ledger (authoritative party money + gold) ---
+  let ledgerOk = false;
+  try {
+    const ledger = compileCustomerLedger(person.id);
+    ledgerOk = true;
+    sections.push("ledger");
+    data.ledger = {
+      closingMoneyPaise: ledger.closingMoneyPaise,
+      closingGoldMg: ledger.closingGoldMg,
+      moneyDuePaise: ledger.moneyDuePaise,
+      moneyAdvancePaise: ledger.moneyAdvancePaise,
+      goldAdvanceMg: ledger.goldAdvanceMg,
+      goldCreditOwedMg: ledger.goldCreditOwedMg,
+      entriesCount: ledger.rows.length,
+    };
+
+    if (ledger.moneyDuePaise > 0) {
+      kpis.push({
+        label: "Cash Due",
+        value: `Rs. ${(ledger.moneyDuePaise / 100).toLocaleString("en-IN")}`,
+        variant: "destructive",
+        subtitle: "From party ledger",
+      });
+    } else if (ledger.moneyAdvancePaise > 0) {
+      kpis.push({
+        label: "Cash Advance",
+        value: `Rs. ${(ledger.moneyAdvancePaise / 100).toLocaleString("en-IN")}`,
+        variant: "success",
+        subtitle: "From party ledger",
+      });
+    } else {
+      kpis.push({
+        label: "Cash Balance",
+        value: `Rs. ${(ledger.closingMoneyPaise / 100).toLocaleString("en-IN")}`,
+        variant: "default",
+        subtitle: "From party ledger",
+      });
+    }
+
+    if (ledger.goldAdvanceMg > 0) {
+      kpis.push({
+        label: "Gold Advance",
+        value: `${mgToGrams(ledger.goldAdvanceMg)} g`,
+        variant: "gold",
+        subtitle: "Fine with shop",
+      });
+    } else if (ledger.goldCreditOwedMg > 0) {
+      kpis.push({
+        label: "Gold Owed",
+        value: `${mgToGrams(ledger.goldCreditOwedMg)} g`,
+        variant: "warning",
+        subtitle: "Fine credit owed",
+      });
+    } else {
+      kpis.push({
+        label: "Gold Balance",
+        value: `${mgToGrams(ledger.closingGoldMg)} g`,
+        variant: "gold",
+        subtitle: "Fine from ledger",
+      });
+    }
+
+    // Recent ledger lines as primary table when present
+    if (ledger.rows.length > 0) {
+      data.recentLedgerRows = ledger.rows.slice(-8).reverse().map((row) => ({
+        date: row.date,
+        voucherNo: row.voucherNo,
+        type: row.type,
+        money: `Rs. ${((row.moneyDebitPaise - row.moneyCreditPaise) / 100).toLocaleString("en-IN")}`,
+        goldG: mgToGrams(row.goldInMg - row.goldOutMg),
+        route: row.sourceRoute || `/people?selected=${person.id}`,
+      }));
+    }
+  } catch (err) {
+    console.warn("GetParty360: compileCustomerLedger unavailable — omitting ledger section", err);
+  }
+
+  // --- Orders (tip table; omit on failure) ---
+  let openOrders: any[] = [];
+  try {
+    const { from: ordersFrom } = await requireFirmScopedTable("orders");
+    const ordersRes = await ordersFrom("id,data,created_at")
+      .filter("data->>customerId", "eq", person.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (ordersRes.error) throw ordersRes.error;
+    const orders = ((ordersRes.data ?? []) as any[]).map((r) => ({
+      id: r.id,
+      ...(r.data ?? {}),
+      status: r.data?.status,
+      created_at: r.created_at,
+    }));
+    openOrders = orders.filter(
+      (o) => !["delivered", "cancelled", "closed", "completed"].includes(String(o.status ?? "").toLowerCase()),
+    );
+    sections.push("orders");
+    data.openOrdersCount = openOrders.length;
+    data.openOrders = openOrders.slice(0, 10).map((o) => ({
+      id: o.id,
+      orderNo: o.orderNo || o.orderNumber || o.id?.slice?.(0, 8) || "-",
+      status: o.status || "open",
+      dueDate: o.expectedDelivery || o.dueDate || "-",
+      route: `/orders?selected=${o.id}`,
+    }));
+    kpis.push({
+      label: "Active Orders",
+      value: openOrders.length,
+      subtitle: "Open / in production",
+    });
+  } catch (err) {
+    console.warn("GetParty360: orders source unavailable — omitting orders section", err);
+  }
+
+  // --- Outstanding invoices (document list; omit on failure) ---
+  // When ledger is present, cash KPIs already come from compileCustomerLedger —
+  // invoice rows here are the bill register, not a second invented balance.
+  let outstandingInvoices: any[] = [];
+  try {
+    const { from: invoicesFrom } = await requireFirmScopedTable("invoices");
+    const invoicesRes = await invoicesFrom(
+      "id,grand_total_paise,paid_paise,data,invoice_number,created_at",
+    )
+      .filter("data->>customerId", "eq", person.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (invoicesRes.error) throw invoicesRes.error;
+    const invoices = (invoicesRes.data ?? []) as any[];
+    outstandingInvoices = invoices
+      .map((inv) => {
+        const totalPaise = Number(inv.grand_total_paise ?? 0);
+        const paidPaise = Number(inv.paid_paise ?? inv.data?.paidPaise ?? 0);
+        const duePaise = Math.max(0, totalPaise - paidPaise);
+        return {
+          id: inv.id,
+          invoiceNo: inv.invoice_number || inv.data?.invoiceNumber || inv.id.slice(0, 8),
+          totalPaise,
+          paidPaise,
+          duePaise,
+          status: duePaise <= 0 ? "Paid" : paidPaise > 0 ? "Partial" : "Pending",
+          date: inv.created_at ? new Date(inv.created_at).toLocaleDateString("en-IN") : "-",
+          route: `/billing/invoices/${inv.id}`,
+        };
+      })
+      .filter((inv) => inv.duePaise > 0);
+
+    sections.push("outstanding");
+    data.outstandingInvoiceCount = outstandingInvoices.length;
+    data.outstandingInvoices = outstandingInvoices.slice(0, 10).map((inv) => ({
+      invoiceNo: inv.invoiceNo,
+      dueAmount: `Rs. ${(inv.duePaise / 100).toLocaleString("en-IN")}`,
+      status: inv.status,
+      date: inv.date,
+      route: inv.route,
+    }));
+
+    // Only surface invoice-due KPI when ledger was NOT available (avoid double / invented totals)
+    if (!ledgerOk) {
+      const dueSum = outstandingInvoices.reduce((s, i) => s + i.duePaise, 0);
+      kpis.push({
+        label: "Open Invoices Due",
+        value: `Rs. ${(dueSum / 100).toLocaleString("en-IN")}`,
+        variant: dueSum > 0 ? "destructive" : "success",
+        subtitle: `${outstandingInvoices.length} unpaid bills`,
+      });
+      data.outstandingFromInvoicesPaise = dueSum;
+    } else {
+      kpis.push({
+        label: "Open Invoices",
+        value: outstandingInvoices.length,
+        subtitle: "Unpaid / partial bills",
+      });
+    }
+  } catch (err) {
+    console.warn("GetParty360: invoices source unavailable — omitting outstanding section", err);
+  }
+
+  data.sections = sections;
+
+  const summaryParts: string[] = [];
+  if (sections.includes("ledger") && data.ledger) {
+    summaryParts.push(
+      `ledger cash Rs. ${(data.ledger.closingMoneyPaise / 100).toLocaleString("en-IN")}, gold ${mgToGrams(data.ledger.closingGoldMg)} g`,
+    );
+  }
+  if (sections.includes("orders")) {
+    summaryParts.push(`${data.openOrdersCount ?? 0} active orders`);
+  }
+  if (sections.includes("outstanding")) {
+    summaryParts.push(`${data.outstandingInvoiceCount ?? 0} open invoices`);
+  }
+  if (summaryParts.length === 0) {
+    summaryParts.push("party profile only — ledger/orders/bills unavailable in this session");
+  }
+
+  // Prefer ledger recent rows; else outstanding bills; else open orders
+  let tableColumns: any[] | undefined;
+  let tableRows: any[] | undefined;
+  if (data.recentLedgerRows?.length) {
+    tableColumns = [
+      { key: "date", header: "Date", align: "left" },
+      { key: "voucherNo", header: "Voucher", align: "left" },
+      { key: "type", header: "Type", align: "left" },
+      { key: "money", header: "Money", align: "right" },
+      { key: "goldG", header: "Gold g", align: "right" },
+    ];
+    tableRows = data.recentLedgerRows;
+  } else if (data.outstandingInvoices?.length) {
+    tableColumns = [
+      { key: "invoiceNo", header: "Invoice", align: "left" },
+      { key: "dueAmount", header: "Due", align: "right" },
+      { key: "status", header: "Status", align: "center", format: "badge" },
+      { key: "date", header: "Date", align: "right" },
+    ];
+    tableRows = data.outstandingInvoices;
+  } else if (data.openOrders?.length) {
+    tableColumns = [
+      { key: "orderNo", header: "Order", align: "left" },
+      { key: "status", header: "Status", align: "center", format: "badge" },
+      { key: "dueDate", header: "Due", align: "right" },
+    ];
+    tableRows = data.openOrders;
+  }
+
+  const card: ERPActionCard = {
+    type: "party_360",
+    title: `Party 360: ${person.full_name ?? "Party"}`,
+    summary: summaryParts.join(" · "),
+    actionRoute: `/people?selected=${person.id}`,
+    kpis,
+    tableColumns,
+    tableRows,
+    data,
+  };
+
+  await auditAssistantAction({
+    actionKey: "GetParty360",
+    actionType: "read",
+    targetType: "people",
+    targetId: person.id,
+    resultPayload: {
+      sections,
+      openOrdersCount: data.openOrdersCount ?? null,
+      outstandingInvoiceCount: data.outstandingInvoiceCount ?? null,
+      ledgerEntries: data.ledger?.entriesCount ?? null,
+    },
+  });
+
+  return card;
 }
 
 // 7. SearchJobs
