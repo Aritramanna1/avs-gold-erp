@@ -20,6 +20,7 @@ export const Route = createFileRoute("/reports/worker")({
  * Worker Gold Book or Settlement screens themselves.
  */
 import { useSettings } from "@/lib/settings-store";
+import { APP_NAME } from "@/lib/app-info";
 
 function WorkerReportPage() {
   const [rows, setRows] = useState<WorkerReportRow[]>([]);
@@ -29,7 +30,7 @@ function WorkerReportPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const branding = useSettings((s) => s.branding);
   const firm = useSettings((s) => s.firm);
-  const companyName = firm?.shopName || branding.companyName || "Ma Tara Jewellers";
+  const companyName = firm?.shopName || branding.companyName || APP_NAME;
 
   useEffect(() => {
     let cancelled = false;

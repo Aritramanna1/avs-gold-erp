@@ -20,13 +20,14 @@ export const Route = createFileRoute("/reports/outside-work")({
  * jeweller's own position view.
  */
 import { useSettings } from "@/lib/settings-store";
+import { APP_NAME } from "@/lib/app-info";
 
 function OutsideWorkReportPage() {
   const transactions = useOutsideWork((s) => s.transactions);
   const refresh = useOutsideWork((s) => s.refresh);
   const branding = useSettings((s) => s.branding);
   const firm = useSettings((s) => s.firm);
-  const companyName = firm?.shopName || branding.companyName || "Ma Tara Jewellers";
+  const companyName = firm?.shopName || branding.companyName || APP_NAME;
 
   useEffect(() => {
     refresh();

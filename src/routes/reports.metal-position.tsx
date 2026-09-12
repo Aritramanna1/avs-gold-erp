@@ -21,6 +21,7 @@ function pendingOrderFineMg(
 }
 
 import { useSettings } from "@/lib/settings-store";
+import { APP_NAME } from "@/lib/app-info";
 
 function MetalPositionPage() {
   const entries = useLedger((s) => s.entries);
@@ -29,7 +30,7 @@ function MetalPositionPage() {
   const refreshOrders = useOrders((s) => s.refresh);
   const branding = useSettings((s) => s.branding);
   const firm = useSettings((s) => s.firm);
-  const companyName = firm?.shopName || branding.companyName || "Ma Tara Jewellers";
+  const companyName = firm?.shopName || branding.companyName || APP_NAME;
 
   useEffect(() => {
     void refreshLedger();

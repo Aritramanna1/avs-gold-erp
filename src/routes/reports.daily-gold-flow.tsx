@@ -29,13 +29,14 @@ function dayKey(ts: number): string {
 }
 
 import { useSettings } from "@/lib/settings-store";
+import { APP_NAME } from "@/lib/app-info";
 
 function DailyGoldFlowPage() {
   const entries = useLedger((s) => s.entries);
   const [days, setDays] = useState(14);
   const branding = useSettings((s) => s.branding);
   const firm = useSettings((s) => s.firm);
-  const companyName = firm?.shopName || branding.companyName || "Ma Tara Jewellers";
+  const companyName = firm?.shopName || branding.companyName || APP_NAME;
 
   const rows = useMemo(() => {
     const since = Date.now() - days * 24 * 60 * 60 * 1000;

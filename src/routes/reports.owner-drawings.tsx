@@ -16,6 +16,8 @@ export const Route = createFileRoute("/reports/owner-drawings")({
   component: OwnerDrawingsReportPage,
 });
 
+import { APP_NAME } from "@/lib/app-info";
+
 function OwnerDrawingsReportPage() {
   const month = thisMonthRange();
   const [from, setFrom] = useState(month.from);
@@ -26,7 +28,7 @@ function OwnerDrawingsReportPage() {
   const expenses = useExpensesStore((s) => s.expenses);
   const branding = useSettings((s) => s.branding);
   const firm = useSettings((s) => s.firm);
-  const companyName = firm?.shopName || branding.companyName || "Ma Tara Jewellers";
+  const companyName = firm?.shopName || branding.companyName || APP_NAME;
 
   const rows = useMemo(() => {
     // Combine explicit withdrawals and personal-type expenses

@@ -15,6 +15,7 @@ export const Route = createFileRoute("/reports/sales-register")({
 });
 
 import { useSettings } from "@/lib/settings-store";
+import { APP_NAME } from "@/lib/app-info";
 
 function SalesRegisterPage() {
   const month = thisMonthRange();
@@ -27,7 +28,7 @@ function SalesRegisterPage() {
   const [total, setTotal] = useState(0);
   const branding = useSettings((s) => s.branding);
   const firm = useSettings((s) => s.firm);
-  const companyName = firm?.shopName || branding.companyName || "Ma Tara Jewellers";
+  const companyName = firm?.shopName || branding.companyName || APP_NAME;
 
   useEffect(() => {
     let cancelled = false;

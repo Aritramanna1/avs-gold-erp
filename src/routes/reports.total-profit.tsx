@@ -17,6 +17,8 @@ export const Route = createFileRoute("/reports/total-profit")({
   component: TotalProfitPage,
 });
 
+import { APP_NAME } from "@/lib/app-info";
+
 function TotalProfitPage() {
   const month = thisMonthRange();
   const [from, setFrom] = useState(month.from);
@@ -26,7 +28,7 @@ function TotalProfitPage() {
   const withdrawals = useExpensesStore((s) => s.withdrawals);
   const branding = useSettings((s) => s.branding);
   const firm = useSettings((s) => s.firm);
-  const companyName = firm?.shopName || branding.companyName || "Ma Tara Jewellers";
+  const companyName = firm?.shopName || branding.companyName || APP_NAME;
 
   const fromMs = useMemo(() => new Date(from).setHours(0, 0, 0, 0), [from]);
   const toMs = useMemo(() => new Date(to).setHours(23, 59, 59, 999), [to]);
