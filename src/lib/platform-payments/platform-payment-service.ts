@@ -15,6 +15,7 @@ export interface PaymentCheckoutSession {
   invoiceId?: string;
   shortUrl?: string;
   credits?: number;
+  returnUrl?: string;
   error?: string;
 }
 
@@ -147,7 +148,15 @@ export async function createInternalPaymentOrder(
     const res = await fetch("/api/payments/create-order.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan_code: planCode, billing_period: billingPeriod, tenant_id: firmId }),
+      body: JSON.stringify({
+        plan_code: planCode,
+        billing_period: billingPeriod,
+        tenant_id: firmId,
+        return_url:
+          typeof window !== "undefined"
+            ? `${window.location.origin}/settings/license?payment=callback`
+            : undefined,
+      }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -158,6 +167,7 @@ export async function createInternalPaymentOrder(
           amountPaise: data.amount_paise,
           keyId: data.key_id,
           invoiceId: data.internal_payment_id,
+          returnUrl: typeof data.return_url === "string" ? data.return_url : undefined,
         };
       }
     }

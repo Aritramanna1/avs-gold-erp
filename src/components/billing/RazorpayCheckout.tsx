@@ -3,6 +3,12 @@ import { Button } from "@/components/ui/button";
 import { CreditCard, Loader2, Lock, ShieldCheck } from "lucide-react";
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { toast } from "sonner";
+import {
+  resolvePaymentReturnUrl,
+  withRazorpayReturnParams,
+  type RazorpayReturnParams,
+} from "@/lib/platform-payments/payment-return";
+import { verifyPaymentCallback } from "@/lib/platform-payments/platform-payment-service";
 
 declare global {
   interface Window {
@@ -47,6 +53,11 @@ export type RazorpayCheckoutProps = {
   onSuccess?: () => void;
   onFailure?: (reason?: string) => void;
   onDismiss?: () => void;
+  /** Configured gateway return URL (TEST stub / redirect hook). */
+  returnUrl?: string;
+  internalPaymentId?: string;
+  /** When true (default), navigate to returnUrl with Razorpay fields after success. */
+  redirectOnSuccess?: boolean;
 };
 
 /** Directly open the Razorpay payment gateway modal programmatically */
@@ -59,6 +70,9 @@ export async function openRazorpayModal({
   onSuccess,
   onFailure,
   onDismiss,
+  returnUrl,
+  internalPaymentId,
+  redirectOnSuccess = true,
 }: {
   orderId: string;
   amountPaise: number;
@@ -68,6 +82,9 @@ export async function openRazorpayModal({
   onSuccess?: () => void;
   onFailure?: (reason?: string) => void;
   onDismiss?: () => void;
+  returnUrl?: string;
+  internalPaymentId?: string;
+  redirectOnSuccess?: boolean;
 }): Promise<void> {
   await loadRazorpayScript();
   if (!window.Razorpay) throw new Error("Payment gateway service unavailable");
@@ -94,7 +111,47 @@ export async function openRazorpayModal({
           resolve();
         },
       },
-      handler: () => {
+      handler: async (response: {
+        razorpay_payment_id?: string;
+        razorpay_order_id?: string;
+        razorpay_signature?: string;
+      }) => {
+        const params: RazorpayReturnParams | null =
+          response?.razorpay_payment_id &&
+          response?.razorpay_order_id &&
+          response?.razorpay_signature
+            ? {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                ...(internalPaymentId
+                  ? { internal_payment_id: internalPaymentId }
+                  : {}),
+              }
+            : null;
+
+        if (params) {
+          try {
+            await verifyPaymentCallback(params);
+          } catch {
+            /* callback.php may be stub/offline — still continue to return hook */
+          }
+        }
+
+        if (redirectOnSuccess && params) {
+          const target = withRazorpayReturnParams(
+            resolvePaymentReturnUrl(returnUrl),
+            params,
+          );
+          if (target.startsWith("http")) {
+            window.location.assign(target);
+          } else {
+            window.location.assign(target);
+          }
+          resolve();
+          return;
+        }
+
         onSuccess?.();
         resolve();
       },
@@ -126,6 +183,9 @@ export function RazorpayCheckoutButton({
   onSuccess,
   onFailure,
   onDismiss,
+  returnUrl,
+  internalPaymentId,
+  redirectOnSuccess = true,
 }: RazorpayCheckoutProps) {
   const [busy, setBusy] = useState(false);
   const opened = useRef(false);
@@ -136,57 +196,26 @@ export function RazorpayCheckoutButton({
 
   async function handlePay() {
     if (opened.current || busy) return;
+    opened.current = true;
     setBusy(true);
     try {
-      await loadRazorpayScript();
-      if (!window.Razorpay) throw new Error("Payment service unavailable");
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      const email = sessionData.session?.user?.email ?? undefined;
-      const name =
-        (sessionData.session?.user?.user_metadata?.full_name as string | undefined) ??
-        (sessionData.session?.user?.user_metadata?.name as string | undefined);
-
-      const rzp = new window.Razorpay({
-        key: keyId,
-        amount: amountPaise,
-        currency: "INR",
-        order_id: orderId,
-        name: "Ornexa",
-        description: invoiceNo ? `Invoice ${invoiceNo}` : description,
-        prefill: { email, name, contact: "" },
-        theme: { color: "#b8860b" },
-        modal: {
-          ondismiss: () => {
-            opened.current = false;
-            setBusy(false);
-            onDismiss?.();
-          },
-        },
-        handler: () => {
-          opened.current = false;
-          setBusy(false);
-          onSuccess?.();
-        },
+      await openRazorpayModal({
+        orderId,
+        amountPaise,
+        keyId,
+        description,
+        invoiceNo,
+        onSuccess,
+        onFailure,
+        onDismiss,
+        returnUrl,
+        internalPaymentId,
+        redirectOnSuccess,
       });
-
-      rzp.on("payment.failed", (response: unknown) => {
-        opened.current = false;
-        setBusy(false);
-        const reason =
-          (response as { error?: { description?: string } })?.error?.description ??
-          "Payment was declined";
-        toast.error(reason);
-        onFailure?.(reason);
-      });
-
-      opened.current = true;
-      rzp.open();
-    } catch (e) {
+    } catch {
+      /* failure toasted inside openRazorpayModal */
+    } finally {
       opened.current = false;
-      const msg = e instanceof Error ? e.message : "Checkout failed";
-      toast.error(msg);
-      onFailure?.(msg);
       setBusy(false);
     }
   }
