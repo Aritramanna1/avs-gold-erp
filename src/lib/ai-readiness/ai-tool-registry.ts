@@ -16,6 +16,8 @@ import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { mgToGrams } from "@/lib/gold";
 import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { resolveOpenRoute } from "@/lib/assistant/nl-navigate-routes";
+import { prepareCreateTaskDraft } from "@/lib/assistant/tool-create-task";
+import { computeReorderSuggestions } from "@/lib/assistant/tool-recommend-reorder";
 
 export interface AIToolDefinition {
   name: string;
@@ -670,24 +672,57 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
     },
   },
 
-  // 21. CREATE FOLLOW-UP TASK
+  // 21. CREATE FOLLOW-UP TASK (AVS-68 PREPARE — draft only, human confirm required)
   create_task: {
     name: 'create_task',
-    description: 'Create a staff follow-up or review task in the ERP.',
+    description:
+      'AVS-68 PREPARE: draft a staff follow-up/review task card for human confirm. Does not write until confirm. Uses tip universal-task-store.',
     permissionLevel: 2,
     parameters: [
       { name: 'title', type: 'string', description: 'Task title', required: true },
-      { name: 'dueDate', type: 'string', description: 'ISO due date string', required: true },
-      { name: 'priority', type: 'string', description: 'CRITICAL, HIGH, MEDIUM, LOW', required: true },
+      { name: 'dueDate', type: 'string', description: 'ISO due date string', required: false },
+      { name: 'priority', type: 'string', description: 'CRITICAL, HIGH, MEDIUM, LOW', required: false },
+      { name: 'assignedStaff', type: 'string', description: 'Assignee display name', required: false },
+      { name: 'description', type: 'string', description: 'Task details', required: false },
+      { name: 'phrase', type: 'string', description: 'Natural-language create-task phrase', required: false },
     ],
     handler: async (params) => {
+      const prepared = prepareCreateTaskDraft({
+        phrase: params.phrase != null ? String(params.phrase) : null,
+        title: params.title != null ? String(params.title) : null,
+        dueDate: params.dueDate != null ? String(params.dueDate) : null,
+        priority: params.priority != null ? String(params.priority) : null,
+        assignedStaff: params.assignedStaff != null ? String(params.assignedStaff) : null,
+        description: params.description != null ? String(params.description) : null,
+      });
+      if (!prepared.ok) {
+        return { status: 'incomplete', prepareOnly: true, message: prepared.message };
+      }
       return {
-        status: 'success',
-        createdTaskId: `TASK-${Date.now().toString().slice(-4)}`,
-        title: params.title,
-        dueDate: params.dueDate,
-        priority: params.priority,
+        status: 'draft',
+        prepareOnly: true,
+        requiresConfirmation: true,
+        draftStatus: 'DRAFT_REQUIRES_HUMAN_CONFIRM',
+        draft: prepared.draft,
+        actionRoute: '/communications/',
       };
+    },
+  },
+
+  // 22. RECOMMEND REORDER (AVS-69 SUGGEST ONLY — never auto-write stock/ledger)
+  recommend_reorder: {
+    name: 'recommend_reorder',
+    description:
+      'AVS-69 RECOMMEND: suggest-only reorder ideas from tip stock data. Empty/partial OK. Never invents quantities; never writes stock/ledger.',
+    permissionLevel: 0,
+    parameters: [
+      { name: 'category', type: 'string', description: 'Optional category filter', required: false },
+    ],
+    handler: async (params) => {
+      const result = computeReorderSuggestions({
+        category: params.category != null ? String(params.category) : null,
+      });
+      return { status: 'success', ...result };
     },
   },
 
