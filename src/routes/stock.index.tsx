@@ -121,8 +121,8 @@ function ReadyStockWorkspace() {
 
   const updateSearch = (patch: Partial<StockSearch>) => {
     void navigate({
-      search: (prev) => {
-        const next = { ...prev, ...patch, tab: patch.tab ?? prev.tab ?? "ready" };
+      search: (prev: StockSearch) => {
+        const next: StockSearch = { ...prev, ...patch, tab: patch.tab ?? prev.tab ?? "ready" };
         // Only change page when asked — forcing page:1 on every patch
         // re-navigates forever with list effects (React #185).
         if (patch.page !== undefined) next.page = patch.page;

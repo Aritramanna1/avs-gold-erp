@@ -34,10 +34,12 @@ interface ReportShellProps {
   children: React.ReactNode;
 }
 
+import { APP_NAME } from "@/lib/app-info";
+
 export function ReportShell(props: ReportShellProps) {
   const branding = useSettings((s) => s.branding);
   const firm = useSettings((s) => s.firm);
-  const companyName = firm?.shopName || branding.companyName || "Ma Tara Jewellers";
+  const companyName = firm?.shopName || branding.companyName || APP_NAME;
   const branchName =
     props.branches.find((b) => b.id === props.selectedBranch)?.name || "All Branches";
 
