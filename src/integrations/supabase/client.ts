@@ -49,16 +49,16 @@ export function getResolvedConfig() {
   );
   const envProjectId = sanitizeEnvValue(metaEnv.VITE_SUPABASE_PROJECT_ID as string | undefined);
 
-  const DEFAULT_SUPABASE_URL = "https://dqgrrafuoxaorvyrcuuh.supabase.co";
-  const DEFAULT_SUPABASE_KEY = "sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN";
-  const DEFAULT_SUPABASE_PROJECT_ID = "dqgrrafuoxaorvyrcuuh";
+  const DEFAULT_SUPABASE_URL = "https://yqiaitjxfbkmqlnckxid.supabase.co";
+  const DEFAULT_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxaWFpdGp4ZmJrbXFsbmNreGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMjQ3MjMsImV4cCI6MjEwNDcwMDcyM30.OMOemJjwGkPF9TP36pkrrQsuziYPlyJotduJTOobZk8";
+  const DEFAULT_SUPABASE_PROJECT_ID = "yqiaitjxfbkmqlnckxid";
 
   let resolvedUrl = sanitizeEnvValue(windowEnv.VITE_SUPABASE_URL) || storedUrl || envUrl || DEFAULT_SUPABASE_URL;
   let resolvedKey = sanitizeEnvValue(windowEnv.VITE_SUPABASE_PUBLISHABLE_KEY || windowEnv.VITE_SUPABASE_ANON_KEY) || storedKey || envKey || DEFAULT_SUPABASE_KEY;
   let resolvedProjectId = sanitizeEnvValue(windowEnv.VITE_SUPABASE_PROJECT_ID) || storedProjectId || envProjectId || DEFAULT_SUPABASE_PROJECT_ID;
 
   // Discard dead legacy URLs
-  if (resolvedUrl.includes("xrvsvzfqjptzbxjscnvf")) {
+  if (resolvedUrl.includes("xrvsvzfqjptzbxjscnvf") || resolvedUrl.includes("vqsrdemjiehzykexkcwo") || resolvedUrl.includes("dqgrrafuoxaorvyrcuuh")) {
     resolvedUrl = DEFAULT_SUPABASE_URL;
     resolvedKey = DEFAULT_SUPABASE_KEY;
     resolvedProjectId = DEFAULT_SUPABASE_PROJECT_ID;
@@ -79,8 +79,10 @@ export function isSupabaseConfigured(): boolean {
 function createSupabaseClient() {
   const { url: configUrl, key: configKey } = getResolvedConfig();
 
-  const supabaseUrl = configUrl || "https://dqgrrafuoxaorvyrcuuh.supabase.co";
-  const supabasePublishableKey = configKey || "sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN";
+  const supabaseUrl = configUrl || "https://yqiaitjxfbkmqlnckxid.supabase.co";
+  const supabasePublishableKey =
+    configKey ||
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxaWFpdGp4ZmJrbXFsbmNreGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMjQ3MjMsImV4cCI6MjEwNDcwMDcyM30.OMOemJjwGkPF9TP36pkrrQsuziYPlyJotduJTOobZk8";
 
   return createClient<Database>(supabaseUrl, supabasePublishableKey, {
     auth: {

@@ -44,8 +44,23 @@ loadEnvFile(__DIR__ . '/../../.env.local');
 loadEnvFile(__DIR__ . '/../../.env.production');
 
 // ── Master Configuration Values ─────────────────────────────────────────────
-$SUPABASE_URL = 'https://dqgrrafuoxaorvyrcuuh.supabase.co';
-$SUPABASE_ANON_KEY = 'sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN';
+$rawUrl = getenv('SUPABASE_URL') ?: getenv('VITE_SUPABASE_URL') ?: '';
+$deadProjects = ['xrvsvzfqjptzbxjscnvf', 'dqgrrafuoxaorvyrcuuh', 'vqsrdemjiehzykexkcwo'];
+$isDead = false;
+foreach ($deadProjects as $dead) {
+    if (!empty($rawUrl) && strpos($rawUrl, $dead) !== false) {
+        $isDead = true;
+        break;
+    }
+}
+
+if (empty($rawUrl) || $isDead) {
+    $SUPABASE_URL = 'https://yqiaitjxfbkmqlnckxid.supabase.co';
+    $SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxaWFpdGp4ZmJrbXFsbmNreGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMjQ3MjMsImV4cCI6MjEwNDcwMDcyM30.OMOemJjwGkPF9TP36pkrrQsuziYPlyJotduJTOobZk8';
+} else {
+    $SUPABASE_URL = $rawUrl;
+    $SUPABASE_ANON_KEY = getenv('SUPABASE_ANON_KEY') ?: getenv('VITE_SUPABASE_ANON_KEY') ?: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxaWFpdGp4ZmJrbXFsbmNreGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMjQ3MjMsImV4cCI6MjEwNDcwMDcyM30.OMOemJjwGkPF9TP36pkrrQsuziYPlyJotduJTOobZk8';
+}
 $SUPABASE_SERVICE_ROLE_KEY = getenv('SUPABASE_SERVICE_ROLE_KEY') ?: '';
 
 $RAZORPAY_KEY_ID = getenv('RAZORPAY_KEY_ID') ?: '';
