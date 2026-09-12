@@ -110,10 +110,10 @@ export function CreditsTab() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
         <div>
           <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-            <Coins className="h-5 w-5 text-amber-500" /> Credits
+            <Coins className="h-5 w-5 text-amber-500" /> Credits left
           </h3>
           <p className="text-xs text-muted-foreground">
-            Credits left for WhatsApp and AI.
+            Pays for WhatsApp messages and AI help.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -189,7 +189,7 @@ export function CreditsTab() {
       {checkout ? (
         <PaymentCheckoutCard
           title={`${checkout.credits.toLocaleString("en-IN")} credits`}
-          subtitle="WhatsApp and AI credits"
+          subtitle="Pays for WhatsApp messages and AI help"
           amountPaise={checkout.amountPaise}
           orderId={checkout.orderId}
           keyId={checkout.keyId}

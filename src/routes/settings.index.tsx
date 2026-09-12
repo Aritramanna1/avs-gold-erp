@@ -607,9 +607,12 @@ function FirmTab() {
       toast.error("Phone number is a mandatory organizational profile field.");
       return;
     }
-    if (!email.trim()) {
-      toast.error("Email address is a mandatory organizational profile field.");
-      return;
+    if (email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        toast.error("Please enter a valid email address.");
+        return;
+      }
     }
 
     // formatted GSTIN validation (optional but validated if provided)
@@ -634,11 +637,7 @@ function FirmTab() {
       }
     }
 
-    // billing terms & conditions presence
-    if (!terms.trim()) {
-      toast.error("Billing Terms & Conditions are required for compliant invoice generation.");
-      return;
-    }
+    const finalTerms = terms.trim() || "1. Goods once sold will not be taken back.\n2. Gold rate is subject to market fluctuation.";
 
     setSaving(true);
     try {
@@ -655,7 +654,7 @@ function FirmTab() {
         tagline,
         address,
         footerLine,
-        terms,
+        terms: finalTerms,
         signatureLabelLeft,
         signatureLabelRight,
         logoUrl,
