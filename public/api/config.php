@@ -44,8 +44,8 @@ loadEnvFile(__DIR__ . '/../../.env.local');
 loadEnvFile(__DIR__ . '/../../.env.production');
 
 // ── Master Configuration Values ─────────────────────────────────────────────
-$SUPABASE_URL = 'https://dqgrrafuoxaorvyrcuuh.supabase.co';
-$SUPABASE_ANON_KEY = 'sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN';
+$SUPABASE_URL = getenv('SUPABASE_URL') ?: (getenv('VITE_SUPABASE_URL') ?: 'https://dqgrrafuoxaorvyrcuuh.supabase.co');
+$SUPABASE_ANON_KEY = getenv('SUPABASE_ANON_KEY') ?: (getenv('VITE_SUPABASE_PUBLISHABLE_KEY') ?: 'sb_publishable_nJNeQ0ZIit5jFjK-J2qCMA_wvs8llEN');
 $SUPABASE_SERVICE_ROLE_KEY = getenv('SUPABASE_SERVICE_ROLE_KEY') ?: '';
 
 $RAZORPAY_KEY_ID = getenv('RAZORPAY_KEY_ID') ?: '';
