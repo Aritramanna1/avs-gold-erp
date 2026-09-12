@@ -1,7 +1,7 @@
 const translations = {
   signIn: "Sign In",
   emailLabel: "Corporation Email",
-  emailPlaceholder: "employee@maatarajewellers.com",
+  emailPlaceholder: "user@arivahly.in",
   passwordLabel: "Password",
   passwordPlaceholder: "••••••••",
   forgotBtn: "Forgot?",

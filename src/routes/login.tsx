@@ -180,7 +180,7 @@ function LoginPage() {
               Accept Invitation
             </button>
             <a
-              href="https://arivahly.in/products/onyxa-erp"
+              href="https://arivahly.in/"
               target="_blank"
               rel="noopener noreferrer"
               data-testid="login-request-demo"
