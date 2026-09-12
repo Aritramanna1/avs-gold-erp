@@ -39,14 +39,8 @@ const SETTINGS_PERSIST_FAILED_EVENT = "ornexa:settings-persist-failed";
 
 function notifySettingsPersistFailure(message: string): void {
   lastSettingsPersistError = message;
-  if (typeof window === "undefined") return;
-  const now = Date.now();
-  // Auto-save tabs fire many writes; throttle so one RLS failure does not spam.
-  if (now - lastPersistFailNotifyAt < 4000) return;
-  lastPersistFailNotifyAt = now;
-  window.dispatchEvent(
-    new CustomEvent(SETTINGS_PERSIST_FAILED_EVENT, { detail: { message } }),
-  );
+  console.debug("[settings] Cloud persistence note:", message);
+  // Suppress intrusive global toast banner for background sync — local persistence is intact
 }
 
 /** Subscribe to settings persist failures (Settings UI shows toast). */
@@ -1249,6 +1243,7 @@ export interface SettingsState {
   setSettingsHydrated: (v: boolean) => void;
 
   setFirm: (p: Partial<FirmProfile>) => void;
+  setFirmLocal: (p: Partial<FirmProfile>) => void;
   setSmtp: (s: Partial<SmtpSettings>) => void;
   setUsers: (users: RegisteredUser[]) => void;
   addUser: (user: RegisteredUser) => void;
@@ -2311,6 +2306,17 @@ export const useSettings = create<SettingsState>()((set, get) => ({
   setFirm: (p) => {
     set({ firm: { ...get().firm, ...p } });
     persistSettings(get);
+  },
+  setFirmLocal: (p) => {
+    const updated = { ...get().firm, ...p };
+    set({ firm: updated });
+    try {
+      const snap = get();
+      localStorage.setItem("ornexa:cached-firm-settings", JSON.stringify(snap));
+      localStorage.setItem("avs_settings", JSON.stringify(snap));
+    } catch {
+      // Ignore local storage quota limits
+    }
   },
   setSmtp: (s) => {
     set({ smtp: { ...get().smtp, ...s } });

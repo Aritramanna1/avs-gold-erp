@@ -114,6 +114,9 @@ function RootComponent() {
   const isPublic =
     [
       "/login",
+      "/signup",
+      "/trial/start",
+      "/request-access",
       "/forgot-password",
       "/reset-password",
       "/auth/callback",

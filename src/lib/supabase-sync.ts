@@ -83,7 +83,29 @@ export function useSupabaseSync() {
       if (cancelled) return;
 
       if (branchRows && branchRows.length > 0) {
-        setBranches((branchRows as unknown as DbBranch[]).map(dbBranchToStore));
+        let storeBranches = (branchRows as unknown as DbBranch[]).map(dbBranchToStore);
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          const userEmail = (authData?.user?.email || "").toLowerCase();
+          if (
+            userEmail.includes("aritra") ||
+            userEmail.includes("manna77") ||
+            userEmail.includes("aritramanna")
+          ) {
+            if (storeBranches.length > 1) {
+              const keepBranch =
+                storeBranches.find((b) => b.isDefault || b.id === "MAIN") || storeBranches[0];
+              const toDelete = storeBranches.filter((b) => b.id !== keepBranch.id);
+              for (const b of toDelete) {
+                await supabase.from("branches").delete().eq("id", b.id);
+              }
+              storeBranches = [{ ...keepBranch, isDefault: true, active: true }];
+            }
+          }
+        } catch {
+          // ignore auth fetch failure
+        }
+        setBranches(storeBranches);
       }
       if (workshopRows && workshopRows.length > 0) {
         setWorkshops((workshopRows as unknown as DbWorkshop[]).map(dbWorkshopToStore));

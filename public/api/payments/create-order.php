@@ -43,8 +43,8 @@ if ($itemType === 'credits' || $credits > 0 || strpos($planCode, 'credits_') ===
         echo json_encode(['error' => 'Minimum credit purchase is 100 credits (₹100)']);
         exit;
     }
-    // 1 Credit = ₹1.00 = 100 paise
-    $amountPaise = $credits * 100;
+    // Check if direct pack amount is provided, otherwise default to 1 Credit = ₹1.00 = 100 paise
+    $amountPaise = ($directAmountPaise > 0) ? $directAmountPaise : ($credits * 100);
     $planCode = 'credits_' . $credits;
     $plan = [
         'id' => $planCode,
@@ -52,6 +52,25 @@ if ($itemType === 'credits' || $credits > 0 || strpos($planCode, 'credits_') ===
         'price_minor' => $amountPaise,
         'currency' => 'INR',
     ];
+} elseif ($itemType === 'extension' || strpos($planCode, 'ext_') === 0) {
+    $extCatalog = [
+        'ext_gst' => ['id' => 'ext_gst', 'name' => 'Direct GST Portal & E-Way Bill Auto-Filing Engine', 'price_minor' => 99900, 'currency' => 'INR'],
+        'ext_barcode' => ['id' => 'ext_barcode', 'name' => 'Thermal Barcode & RFID Smart Tagging', 'price_minor' => 149900, 'currency' => 'INR'],
+        'ext_payroll' => ['id' => 'ext_payroll', 'name' => 'Biometric Attendance & Karigar Wage Cloud', 'price_minor' => 79900, 'currency' => 'INR'],
+        'ext_multibranch' => ['id' => 'ext_multibranch', 'name' => 'Multi-Branch Real-Time Vault Bridge', 'price_minor' => 199900, 'currency' => 'INR'],
+        'ext_tally' => ['id' => 'ext_tally', 'name' => 'Tally Prime & Busy Financial Accounting Bridge', 'price_minor' => 69900, 'currency' => 'INR'],
+        'ext_scheme' => ['id' => 'ext_scheme', 'name' => 'Customer Jewellery Scheme & Dhanteras Kitty App', 'price_minor' => 119900, 'currency' => 'INR'],
+    ];
+    $plan = $extCatalog[$planCode] ?? null;
+    $amountPaise = $directAmountPaise > 0 ? $directAmountPaise : ($plan ? $plan['price_minor'] : 99900);
+    if (!$plan) {
+        $plan = [
+            'id' => $planCode ?: 'ext_custom',
+            'name' => 'AVS ERP Extension Add-on',
+            'price_minor' => $amountPaise,
+            'currency' => 'INR',
+        ];
+    }
 } elseif ($itemType === 'invoice' || !empty($platformInvoiceId)) {
     if ($directAmountPaise <= 0) {
         http_response_code(400);

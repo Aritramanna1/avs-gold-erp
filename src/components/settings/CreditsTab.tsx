@@ -16,15 +16,18 @@ import {
   RefreshCw,
   PlusCircle,
   CheckCircle2,
+  ShoppingBag,
 } from "lucide-react";
 import { startCreditTopUp } from "@/lib/platform-payments/platform-payment-service";
 import { PaymentCheckoutCard, openRazorpayModal } from "@/components/billing/RazorpayCheckout";
 import { PaymentResultBanner } from "@/components/billing/PaymentResultBanner";
 import { usePaymentConfirmation } from "@/hooks/use-payment-confirmation";
+import { ExtensionsStore } from "./ExtensionsStore";
 import { toast } from "sonner";
 
 export function CreditsTab() {
   const { wallet, loading, fetchWallet } = useCreditStore();
+  const [subView, setSubView] = useState<"credits" | "extensions">("credits");
   const [topUpAmount, setTopUpAmount] = useState("500");
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -40,6 +43,7 @@ export function CreditsTab() {
     credits: number;
     internalPaymentId?: string;
   } | null>(null);
+
   const {
     state: payState,
     message: payMessage,
@@ -50,8 +54,8 @@ export function CreditsTab() {
 
   const handleTopUp = async () => {
     const amt = parseFloat(topUpAmount);
-    if (isNaN(amt) || amt <= 0) {
-      toast.error("Please enter a valid positive credit amount.");
+    if (isNaN(amt) || amt < 100) {
+      toast.error("Please enter a valid credit amount (minimum 100 credits).");
       return;
     }
     setProcessing(true);
@@ -91,10 +95,11 @@ export function CreditsTab() {
 
   async function onPaymentSuccess() {
     reset();
-    await waitForConfirmation({ kind: "credits" });
+    toast.success("Payment verified! Credits added.");
     setCheckout(null);
     setIsTopUpOpen(false);
     await fetchWallet();
+    void waitForConfirmation({ kind: "credits" });
   }
 
   return (
@@ -106,35 +111,75 @@ export function CreditsTab() {
         onRetry={() => checkout && void onPaymentSuccess()}
       />
 
-      {/* Header Banner */}
+      {/* Sub-view switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-            <Coins className="h-5 w-5 text-amber-500" /> Credits left
+          <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+            {subView === "credits" ? (
+              <>
+                <Coins className="h-5 w-5 text-amber-500" /> Credits & Balances
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="h-5 w-5 text-gold" /> Extensions & Add-ons Store
+              </>
+            )}
           </h3>
-          <p className="text-xs text-muted-foreground">
-            Pays for WhatsApp messages and AI help.
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {subView === "credits"
+              ? "Credit wallet for WhatsApp messaging broadcasts and AI intelligence."
+              : "Browse and install powerful business extensions and credit packs."}
           </p>
         </div>
+
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => fetchWallet()}
-            disabled={loading}
-            className="h-8 text-xs gap-1"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setIsTopUpOpen(!isTopUpOpen)}
-            className="min-h-12 h-12 text-xs gap-1 bg-amber-500 hover:bg-amber-600 text-white"
-          >
-            <PlusCircle className="h-3.5 w-3.5" /> Buy credits
-          </Button>
+          <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-lg border border-border/60 mr-2">
+            <Button
+              size="sm"
+              variant={subView === "credits" ? "default" : "ghost"}
+              onClick={() => setSubView("credits")}
+              className="h-7 text-xs gap-1.5"
+            >
+              <Coins className="h-3.5 w-3.5" /> Wallet & Usage
+            </Button>
+            <Button
+              size="sm"
+              variant={subView === "extensions" ? "default" : "ghost"}
+              onClick={() => setSubView("extensions")}
+              className="h-7 text-xs gap-1.5"
+            >
+              <ShoppingBag className="h-3.5 w-3.5 text-gold" /> Extensions Store
+            </Button>
+          </div>
+
+          {subView === "credits" && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => fetchWallet()}
+                disabled={loading}
+                className="h-8 text-xs gap-1"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setIsTopUpOpen(!isTopUpOpen)}
+                className="h-8 text-xs gap-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold"
+              >
+                <PlusCircle className="h-3.5 w-3.5" /> Buy credits
+              </Button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Render Extensions Store if selected */}
+      {subView === "extensions" ? (
+        <ExtensionsStore />
+      ) : (
+        <>
 
       {/* Top-up Drawer / Form */}
       {isTopUpOpen && (
@@ -403,6 +448,8 @@ export function CreditsTab() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

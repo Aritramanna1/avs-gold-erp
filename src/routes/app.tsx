@@ -172,17 +172,50 @@ function Home() {
     });
   }
 
-  const { currentUserRole, setFirm } = useSettings();
+  const { currentUserRole, setFirm, setFirmLocal } = useSettings();
   const isOwnerOrManager = isAdminLikeRole(currentUserRole);
   const isWorkshop = isWorkshopLikeRole(currentUserRole);
   const isBilling = isBillingLikeRole(currentUserRole);
 
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return (
+      localStorage.getItem("ornexa_migration_banner_dismissed") === "true" ||
+      sessionStorage.getItem("ornexa_migration_banner_dismissed") === "true"
+    );
+  });
+
   const migrationStatus = firm.tenant_migration_status ?? "NOT_STARTED";
   const showMigrationBanner =
     isOwnerOrManager &&
+    !bannerDismissed &&
     migrationStatus !== "COMPLETED" &&
     migrationStatus !== "SKIPPED" &&
-    (migrationStatus === "NOT_STARTED" || migrationStatus === "DEFERRED");
+    migrationStatus !== "DEFERRED";
+
+  const handleDoItLater = () => {
+    setBannerDismissed(true);
+    try {
+      localStorage.setItem("ornexa_migration_banner_dismissed", "true");
+      sessionStorage.setItem("ornexa_migration_banner_dismissed", "true");
+    } catch {
+      // Ignore
+    }
+    setFirmLocal({ tenant_migration_status: "DEFERRED" });
+    toast.info("Setup banner deferred. You can revisit anytime in Settings.");
+  };
+
+  const handleStartFresh = () => {
+    setBannerDismissed(true);
+    try {
+      localStorage.setItem("ornexa_migration_banner_dismissed", "true");
+      sessionStorage.setItem("ornexa_migration_banner_dismissed", "true");
+    } catch {
+      // Ignore
+    }
+    setFirmLocal({ tenant_migration_status: "SKIPPED" });
+    toast.success("Starting fresh with clean database.");
+  };
 
   if (isMobileLayout) {
     return <MobileHomeDashboard />;
@@ -211,7 +244,7 @@ function Home() {
                     variant="outline"
                     className="text-[10px] border-amber-500/40 text-amber-500 font-mono"
                   >
-                    {migrationStatus === "DEFERRED" ? "Deferred" : "Action Required"}
+                    Action Required
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -234,7 +267,7 @@ function Home() {
                 variant="ghost"
                 size="sm"
                 className="text-xs h-8 text-muted-foreground hover:text-foreground"
-                onClick={() => setFirm({ tenant_migration_status: "DEFERRED" })}
+                onClick={handleDoItLater}
               >
                 Do It Later
               </Button>
@@ -242,7 +275,7 @@ function Home() {
                 variant="ghost"
                 size="sm"
                 className="text-xs h-8 text-muted-foreground hover:text-foreground"
-                onClick={() => setFirm({ tenant_migration_status: "SKIPPED" })}
+                onClick={handleStartFresh}
               >
                 Start Fresh
               </Button>

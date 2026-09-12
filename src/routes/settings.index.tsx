@@ -143,7 +143,7 @@ function mapLegacyTab(t?: string): string {
   if (["security", "logs", "backup", "recovery"].includes(t)) return "security";
   if (["notifications", "email", "automation"].includes(t)) return "notifications";
   if (["integrations", "whatsapp", "hardware", "printers"].includes(t)) return "integrations";
-  if (["billing", "credits", "license", "subscription"].includes(t)) return "billing";
+  if (["billing", "credits", "license", "subscription", "extensions", "store", "addons"].includes(t)) return "billing";
   if (["customization", "branding", "catalog", "print", "templates", "purity", "workshop", "rate", "making", "dropdowns"].includes(t)) return "customization";
   if (["developer", "mcp", "modules", "forms", "migration", "db", "advanced"].includes(t)) return "developer";
   return "general";
@@ -173,7 +173,7 @@ function SettingsPage() {
     { id: "security", label: "Security", icon: Lock, description: "Audit trail, encrypted backups, and safety controls" },
     { id: "notifications", label: "Notifications", icon: Bell, description: "Email SMTP and automated alert triggers" },
     { id: "integrations", label: "Integrations", icon: MessageSquare, description: "WhatsApp API and hardware device scales" },
-    { id: "billing", label: "Billing & Usage", icon: KeyRound, description: "AVS Charge Tokens, credits top-up, and invoices" },
+    { id: "billing", label: "Billing & Store", icon: KeyRound, description: "AVS Charge Tokens, credits top-up, extensions store, and invoices" },
     { id: "customization", label: "Customization", icon: Sparkles, description: "Print branding, templates, and catalogue theme" },
     { id: "developer", label: "Advanced / Developer", icon: ShieldCheck, description: "MCP Server, JSON-RPC tools, and diagnostics" },
   ];

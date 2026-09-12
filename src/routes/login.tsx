@@ -170,24 +170,34 @@ function LoginPage() {
             Accounts are provisioned by invitation from your firm administrator. If you have received an invite code, activate your account below.
           </p>
 
-          <div className="grid grid-cols-2 gap-2.5 pt-1">
+          <div className="pt-1 space-y-2">
             <button
               type="button"
-              data-testid="login-accept-invite"
-              className="w-full rounded-lg border border-gold/40 bg-gold/10 hover:bg-gold/20 px-3 py-2 text-xs font-semibold text-gold shadow-xs transition-colors text-center"
-              onClick={() => void navigate({ to: "/invite/accept" })}
+              data-testid="login-start-trial"
+              className="w-full rounded-lg bg-gold hover:bg-gold-600 text-black px-3 py-2.5 text-xs font-bold shadow-xs transition-colors text-center flex items-center justify-center gap-1.5"
+              onClick={() => void navigate({ to: "/signup" })}
             >
-              Accept Invitation
+              Start 3-Day Free Trial (No Credit Card Required) →
             </button>
-            <a
-              href="https://arivahly.in/"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="login-request-demo"
-              className="w-full rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-2 text-xs font-semibold shadow-xs transition-colors text-center flex items-center justify-center"
-            >
-              Request Demo ↗
-            </a>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                data-testid="login-accept-invite"
+                className="w-full rounded-lg border border-gold/40 bg-gold/10 hover:bg-gold/20 px-3 py-2 text-xs font-semibold text-gold shadow-xs transition-colors text-center"
+                onClick={() => void navigate({ to: "/invite/accept" })}
+              >
+                Accept Invitation
+              </button>
+              <a
+                href="https://arivahly.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="login-request-demo"
+                className="w-full rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-2 text-xs font-semibold shadow-xs transition-colors text-center flex items-center justify-center"
+              >
+                Request Demo ↗
+              </a>
+            </div>
           </div>
         </div>
 

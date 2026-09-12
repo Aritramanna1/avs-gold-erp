@@ -97,6 +97,28 @@ function BranchesPage() {
   const [editManagerName, setEditManagerName] = useState("");
   const [editActive, setEditActive] = useState(true);
 
+  const handleKeepOnlyOne = () => {
+    if (branches.length <= 1) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete all secondary branches and keep ONLY ONE primary branch? All extra branch entries will be permanently removed.",
+      )
+    ) {
+      return;
+    }
+    const primary =
+      branches.find((b) => b.isDefault) ||
+      branches.find((b) => String(b.code || "").toUpperCase() === "MAIN") ||
+      branches[0];
+    const toRemove = branches.filter((b) => b.id !== primary.id);
+    for (const b of toRemove) {
+      removeBranch(b.id);
+    }
+    setDefaultBranch(primary.id);
+    setSelectedBranchId(primary.id);
+    toast.success(`Removed ${toRemove.length} duplicate branch(es). Retained single primary branch "${primary.name}".`);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !code.trim()) return;
@@ -198,9 +220,20 @@ function BranchesPage() {
           "Setup and govern firm shop locations or production workshop units."
         }
         actions={
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2" id="btn-add-branch">
+          <div className="flex items-center gap-2">
+            {branches.length > 1 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleKeepOnlyOne}
+                className="text-xs border-amber-500/40 text-amber-500 hover:bg-amber-500/10 h-9 font-semibold"
+              >
+                Keep Only Single Branch
+              </Button>
+            )}
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2" id="btn-add-branch">
                 <Plus className="h-4 w-4" /> Add New Branch
               </Button>
             </DialogTrigger>
@@ -297,6 +330,7 @@ function BranchesPage() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         }
       />
 
@@ -401,6 +435,21 @@ function BranchesPage() {
                 <Button variant="ghost" size="sm" onClick={() => openEdit(b)}>
                   Edit Details
                 </Button>
+                {!b.isDefault && branches.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-xs"
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to delete branch "${b.name}"?`)) {
+                        removeBranch(b.id);
+                        toast.success(`Branch "${b.name}" deleted.`);
+                      }
+                    }}
+                  >
+                    Delete Branch
+                  </Button>
+                )}
               </div>
             </Card>
           );

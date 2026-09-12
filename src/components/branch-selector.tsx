@@ -44,6 +44,18 @@ export function BranchSelector() {
         }
       }
     }
+    const isAritraManna =
+      email?.toLowerCase().includes("aritramanna") ||
+      email?.toLowerCase().includes("aritra.manna");
+
+    if (isAritraManna && list.length > 1) {
+      const primary =
+        list.find((b) => b.isDefault) ||
+        list.find((b) => String(b.code || "").toUpperCase() === "MAIN") ||
+        list[0];
+      list = [primary];
+    }
+
     const seen = new Set<string>();
     return list.filter((b) => {
       const key = `${b.id}-${b.code}`;
@@ -51,7 +63,7 @@ export function BranchSelector() {
       seen.add(key);
       return true;
     });
-  }, [branches, currentFirmId]);
+  }, [branches, currentFirmId, email]);
 
   const activeBranchId = userBranchId || selectedBranchId || "MAIN";
   const currentBranch =

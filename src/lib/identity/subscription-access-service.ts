@@ -109,8 +109,46 @@ async function membershipSubscriptionFallback(
   const match = organizationId
     ? memberships.find((m) => m.organization_id === organizationId)
     : memberships.find((m) => m.is_active) ?? memberships[0];
-  if (!match) return null;
-  return snapshotFromMembership(match.organization_id, match.subscription_status);
+  if (match) {
+    const snap = snapshotFromMembership(match.organization_id, match.subscription_status);
+    if (snap) return snap;
+  }
+
+  // 3-Day Free Trial local evaluation
+  if (typeof window !== "undefined") {
+    const localTrialEnd = localStorage.getItem("ornexa_trial_ends_at");
+    if (localTrialEnd) {
+      const endsAt = new Date(localTrialEnd).getTime();
+      const now = Date.now();
+      if (endsAt > now) {
+        const remainingDays = Math.max(1, Math.ceil((endsAt - now) / 86400000));
+        return {
+          ...INITIAL,
+          access: "granted",
+          status: remainingDays <= 1 ? "TRIAL_EXPIRING" : "TRIAL_ACTIVE",
+          valid: true,
+          message: "3-day free trial active.",
+          organizationId: organizationId || "trial_org",
+          trialEndsAt: endsAt,
+          daysRemaining: remainingDays,
+          lastCheckedAt: Date.now(),
+        };
+      } else {
+        return {
+          ...INITIAL,
+          access: "subscription_required",
+          status: "TRIAL_EXPIRED",
+          valid: false,
+          message: "Your 3-day free trial has expired. Choose a plan to continue.",
+          organizationId: organizationId || "trial_org",
+          daysRemaining: 0,
+          lastCheckedAt: Date.now(),
+        };
+      }
+    }
+  }
+
+  return null;
 }
 
 function mapPayload(raw: Record<string, unknown>): SubscriptionAccessSnapshot {

@@ -26,14 +26,21 @@ function RequestAccessPage() {
           </p>
           <div className="space-y-2 pt-2">
             <Button
-              className="w-full bg-gold hover:bg-gold-600 text-slate-950 font-semibold gap-2"
-              onClick={() => void navigate({ to: "/invite/accept" })}
+              className="w-full bg-gold hover:bg-gold-600 text-slate-950 font-bold gap-2"
+              onClick={() => void navigate({ to: "/signup" })}
             >
-              I Have an Invitation Code <ArrowRight className="h-4 w-4" />
+              Start 3-Day Free Trial <ArrowRight className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               className="w-full border-white/20 text-white hover:bg-white/10"
+              onClick={() => void navigate({ to: "/invite/accept" })}
+            >
+              I Have an Invitation Code
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-white/70 hover:text-white"
               onClick={() => void navigate({ to: "/login" as any })}
             >
               Sign In to Existing Account
