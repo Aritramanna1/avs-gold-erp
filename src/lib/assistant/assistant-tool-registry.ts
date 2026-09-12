@@ -1503,6 +1503,18 @@ export async function executeConfirmedAction(
     const details = payload.details || {};
 
     // 1. Gold Issue
+    // AVS-64: Help / support tickets never burn credits
+    if (
+      payload.targetType === "platform_support_tickets" ||
+      String(payload.details?.ticketNo ?? "").startsWith("TKT-") ||
+      String(payload.details?.ticketNo ?? "").startsWith("STF-")
+    ) {
+      return {
+        success: false,
+        message: "Support tickets must use the Help desk path and never deduct tenant credits.",
+      };
+    }
+
     if (payload.actionType === "gold_issue") {
       const result = await executeAssistantGoldIssue(payload);
       if (!result.success) return result;
