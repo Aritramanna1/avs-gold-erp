@@ -24,6 +24,9 @@ import { useStagedLoad } from "@/hooks/use-staged-load";
 import { WidgetErrorBoundary } from "@/components/widget-error-boundary";
 import { HomeDashboardSkeleton } from "@/components/dashboard/HomeDashboardSkeleton";
 import { OperationalHomeLinks } from "@/components/dashboard/OperationalHomeLinks";
+import { HomeGoldCashToday } from "@/components/dashboard/HomeGoldCashToday";
+import { HomeMvpShortcuts } from "@/components/dashboard/HomeMvpShortcuts";
+import { HomeNeedsAttention } from "@/components/dashboard/HomeNeedsAttention";
 import { ProgressiveDisclosure } from "@/components/ui/progressive-disclosure";
 import { recordStartupMetric, markStartup } from "@/lib/performance/startup-metrics";
 import { mgToGrams } from "@/lib/gold";
@@ -191,6 +194,10 @@ function Home() {
   return (
     <div data-tour="home-dashboard" className="p-4 md:p-7 max-w-7xl mx-auto page-enter">
       <PageHeader title={t("dashboard.goodDay")} subtitle={t("dashboard.overview")} />
+
+      <HomeGoldCashToday summary={summary} />
+      <HomeMvpShortcuts />
+      <HomeNeedsAttention />
 
       <OperationalHomeLinks />
 
@@ -459,23 +466,23 @@ function Home() {
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-sm">Gold Rate Not Set</h3>
+              <h3 className="font-semibold text-sm">Gold rate not set today</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                The live gold rate is currently missing. Money values, karigar salary calculations,
-                and invoices will display as blank or zero until set.
+                Sell, invoices, and gold value stay blocked until today's bhav is saved. One tap opens
+                the same Set rate sheet as the header chip.
               </p>
             </div>
           </div>
           <Button
             size="sm"
-            className="bg-red-600 hover:bg-red-700 text-white shrink-0 font-medium"
+            className="bg-gold hover:bg-gold/90 text-black shrink-0 font-medium min-h-[48px]"
             onClick={() => {
               if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("open-gold-rate-editor"));
               }
             }}
           >
-            Set Gold Rate Now
+            Set today's gold rate
           </Button>
         </div>
       )}

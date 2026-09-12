@@ -196,11 +196,11 @@ export const navigationGroups: NavGroupDef[] = [
   },
   {
     id: "retail",
-    label: "Retail",
+    label: "Sell",
     i18nKey: "group_retail",
     icon: ShoppingBag,
     items: [
-      { to: "/app", label: "Retail Dashboard", i18nKey: "item_dashboard", icon: Home },
+      { to: "/app", label: "Sell home", i18nKey: "item_dashboard", icon: Home },
       {
         id: "retail-customers",
         label: "Customers",
@@ -260,11 +260,11 @@ export const navigationGroups: NavGroupDef[] = [
   },
   {
     id: "manufacturing",
-    label: "Manufacturing",
+    label: "Make",
     i18nKey: "group_manufacturing",
     icon: Hammer,
     items: [
-      { to: "/workshop", label: "Manufacturing Dashboard", i18nKey: "item_dashboard", icon: Wrench },
+      { to: "/workshop", label: "Make home", i18nKey: "item_dashboard", icon: Wrench },
       {
         id: "mfg-stock",
         label: "Stock & Inventory",
@@ -352,11 +352,11 @@ export const navigationGroups: NavGroupDef[] = [
   },
   {
     id: "accounts",
-    label: "Accounts",
+    label: "Money",
     i18nKey: "group_accounts",
     icon: Landmark,
     items: [
-      { to: "/control/accounts", label: "Accounts Overview", i18nKey: "item_dashboard", icon: Landmark },
+      { to: "/control/accounts", label: "Money overview", i18nKey: "item_dashboard", icon: Landmark },
       {
         id: "acc-masters",
         label: "Chart of Accounts",

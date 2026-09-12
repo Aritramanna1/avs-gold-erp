@@ -202,10 +202,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const formattedGoldRate =
     goldRatePerGramPaise > 0
-      ? `Rs. ${(goldRatePerGramPaise / 100).toLocaleString("en-IN")}/g`
-      : "Rs. NOT SET";
+      ? `₹${(goldRatePerGramPaise / 100).toLocaleString("en-IN")}/g`
+      : "NOT SET — Set rate";
 
-  const goldRateStatus = goldRatePerGramPaise > 0 ? "22K | Active" : "22K | awaiting setup";
+  const goldRateStatus = goldRatePerGramPaise > 0 ? "22K | Active" : "Tap to set today's rate";
 
   const shortName =
     branding.shortName ||
@@ -279,7 +279,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => setGoldRateOpen(true)}
-            className={`flex items-center gap-1.5 rounded-md border px-2 py-1 lg:gap-2 lg:px-3 lg:py-1.5 transition-colors cursor-pointer text-current focus:outline-none ${
+            aria-label={
+              goldRatePerGramPaise > 0
+                ? "Gold rate — open Set today's gold rate"
+                : "Gold rate not set — Set today's gold rate"
+            }
+            title={
+              goldRatePerGramPaise > 0
+                ? "Set today's gold rate"
+                : "Gold rate not set — Set today's gold rate"
+            }
+            className={`flex items-center gap-1.5 rounded-md border px-2 py-1 lg:gap-2 lg:px-3 lg:py-1.5 transition-colors cursor-pointer text-current focus:outline-none min-h-[var(--touch-target,2.75rem)] ${
               goldRatePerGramPaise > 0
                 ? "border-border bg-background/60 hover:border-gold/40 hover:bg-gold/5"
                 : "border-red-500 bg-red-500/10 text-red-600 dark:text-red-400 font-bold hover:bg-red-500/20 shadow-sm animate-pulse"

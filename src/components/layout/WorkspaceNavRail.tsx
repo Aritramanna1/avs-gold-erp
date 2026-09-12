@@ -75,19 +75,19 @@ export function WorkspaceNavRail({ className = "" }: WorkspaceNavRailProps) {
     },
     {
       id: "operations",
-      label: "Operations",
+      label: "Sell",
       to: "/billing",
       icon: Zap,
     },
     {
       id: "accounts",
-      label: "Accounts",
+      label: "Money",
       to: "/ledger",
       icon: BookOpen,
     },
     {
       id: "settings",
-      label: "Settings",
+      label: "More",
       to: "/settings",
       icon: Settings,
     },
