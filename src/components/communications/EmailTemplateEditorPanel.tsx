@@ -27,6 +27,7 @@ import { useSettings } from "@/lib/settings-store";
 import { Eye, Send, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import DOMPurify from "dompurify";
+import { APP_NAME } from "@/lib/app-info";
 
 export function EmailTemplateEditorPanel({ branchId }: { branchId: string }) {
   const { firm } = useSettings();
@@ -65,7 +66,7 @@ export function EmailTemplateEditorPanel({ branchId }: { branchId: string }) {
     recipientName: "Sample Customer",
     recipientEmail: testEmail || "customer@example.com",
     firmName: firm.shopName || "AVS",
-    productName: "Ornexa",
+    productName: APP_NAME,
     actionUrl: "https://example.com/doc",
     documentNumber: "INV-001",
     amountFormatted: "₹ 12,500",

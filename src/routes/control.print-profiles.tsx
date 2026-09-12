@@ -9,10 +9,11 @@ import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { PrintProfileDesigner } from "@/components/customization/PrintProfileDesigner";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/control/print-profiles")({
   beforeLoad: ({ location }) => guardRoute(location.pathname),
-  head: () => ({ meta: [{ title: "Print Profiles & Templates · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `Print Profiles & Templates · ${APP_NAME}` }] }),
   component: ControlPrintProfilesPage,
 });
 

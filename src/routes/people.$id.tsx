@@ -48,9 +48,10 @@ import { getPartyTimelineData, type PartyTimelineData } from "@/lib/central-foun
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { GoldWeightDisplay } from "@/components/ui/GoldWeightDisplay";
 import { PersonProfileAvatar } from "@/components/people/PersonProfileAvatar";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/people/$id")({
-  head: () => ({ meta: [{ title: "Party 360 Workspace · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `Party 360 Workspace · ${APP_NAME}` }] }),
   component: Party360WorkspacePage,
 });
 

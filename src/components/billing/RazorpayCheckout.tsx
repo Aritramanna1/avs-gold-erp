@@ -9,6 +9,7 @@ import {
   type RazorpayReturnParams,
 } from "@/lib/platform-payments/payment-return";
 import { verifyPaymentCallback } from "@/lib/platform-payments/platform-payment-service";
+import { APP_NAME } from "@/lib/app-info";
 
 declare global {
   interface Window {
@@ -101,7 +102,7 @@ export async function openRazorpayModal({
       amount: amountPaise,
       currency: "INR",
       order_id: orderId,
-      name: "AVS Gold ERP",
+      name: APP_NAME,
       description: invoiceNo ? `Invoice ${invoiceNo}` : description,
       prefill: { email, name, contact: "" },
       theme: { color: "#b8860b" },

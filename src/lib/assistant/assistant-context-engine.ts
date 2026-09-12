@@ -1,5 +1,6 @@
 import { getActiveDraft } from "./conversational-action-engine";
 import type { ResolvedEntity } from "./entity-resolver";
+import { APP_NAME, SUPPORT_EMAIL } from "@/lib/app-info";
 
 export interface ContextPackage {
   runtime: {
@@ -101,7 +102,7 @@ export function getContextBudget(userProfile?: {
       role: userProfile?.role || "Owner",
     },
     tenant: {
-      brandName: userProfile?.firmName || "Ornexa",
+      brandName: userProfile?.firmName || APP_NAME,
       businessMode: "Retail",
     },
     route: {
@@ -112,7 +113,7 @@ export function getContextBudget(userProfile?: {
       isEnabled: true,
       ticketRoute: "/settings/support",
       supportHours: "Mon-Sat 10:00 AM to 7:00 PM IST",
-      channels: ["support@ornexa.com", "WhatsApp: +91 98200 12345"],
+      channels: [SUPPORT_EMAIL || "privacy@arivahly.in", "WhatsApp: +91 98200 12345"],
     },
   };
 }

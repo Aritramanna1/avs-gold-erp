@@ -65,7 +65,7 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
     defaultKeys: "Ctrl+J",
     customKeys: null,
     action: "assistant",
-    description: "Toggle Ornexa assistant drawer from anywhere",
+    description: "Toggle AVS assistant drawer from anywhere",
   },
   {
     id: "nav_assistant",
@@ -74,7 +74,7 @@ const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
     defaultKeys: "Ctrl+Shift+A",
     customKeys: null,
     action: "assistant",
-    description: "Open Ornexa AI assistant drawer",
+    description: "Open AVS AI assistant drawer",
   },
   {
     id: "nav_help",

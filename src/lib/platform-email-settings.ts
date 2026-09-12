@@ -2,6 +2,7 @@
  * Platform email settings — persisted in platform_settings and consumed by send-email.
  */
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
+import { APP_NAME } from "@/lib/app-info";
 
 export interface PlatformEmailSettings {
   fromEmail: string;
@@ -26,7 +27,7 @@ export async function loadPlatformEmailSettings(): Promise<PlatformEmailSettings
   return {
     fromEmail: String(map.get(KEYS.from) ?? "noreply@ornexa.in"),
     replyTo: String(map.get(KEYS.replyTo) ?? ""),
-    displayName: String(map.get(KEYS.displayName) ?? "Ornexa Platform"),
+    displayName: String(map.get(KEYS.displayName) ?? `${APP_NAME} Platform`),
     provider: String(map.get(KEYS.provider) ?? "email_smtp"),
   };
 }

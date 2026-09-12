@@ -264,7 +264,7 @@ export function useCan(): {
     // Super Owner â€” unrestricted platform access
     if (matchedUser?.isSuperOwner) return true;
     if (matchedUser?.role === "Super Owner") return true;
-    // Owner â€” unrestricted within their company
+    // Owner — unrestricted within their company
     if (matchedUser?.role === "Owner") return true;
     if (matchedUser) {
       if (!matchedUser.active) return false;
@@ -274,6 +274,18 @@ export function useCan(): {
       if (matchedUser.permissions && matchedUser.permissions[key] !== undefined) {
         return matchedUser.permissions[key];
       }
+    }
+
+    // SETTINGS-02: profile/user_roles may already resolve to owner even when
+    // settings.users[] email match misses (stale cache / empty stub).
+    if (
+      (roles.includes("owner") || roles.includes("super_owner")) &&
+      (action === "userManagement.view" ||
+        action === "userManagement.edit" ||
+        action === "settings.view" ||
+        action === "settings.edit")
+    ) {
+      return true;
     }
 
     return can(roles, action);

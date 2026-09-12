@@ -279,7 +279,7 @@ export function TenantBillingCentre() {
             </div>
             <div>
               <h2 className="text-xl font-serif font-semibold text-foreground">
-                {planName ?? edition ?? "Your Ornexa plan"}
+                {planName ?? edition ?? "Your AVS plan"}
               </h2>
               <p className="text-sm text-muted-foreground mt-1 max-w-xl">
                 {message ??

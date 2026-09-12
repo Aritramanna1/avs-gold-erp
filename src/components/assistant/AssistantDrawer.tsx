@@ -29,6 +29,7 @@ import { useSettings } from "@/lib/settings-store";
 import { KEYBOARD_EVENTS } from "@/lib/keyboard/keyboard-events";
 import { useShortcutBindings } from "@/lib/keyboard/use-shortcut-binding";
 import { getShortcutDisplayLabel } from "@/lib/keyboard/shortcut-keys";
+import { APP_NAME } from "@/lib/app-info";
 
 const CONVERSATION_STORAGE_KEY = "ornexa_assistant_chat_history";
 
@@ -82,7 +83,7 @@ export function AssistantDrawer() {
               id: "msg_welcome",
               role: "assistant",
               content:
-                "Hello! I am your permission-aware Ornexa ERP Assistant. Ask me about gold positions, worker custody, customer balances, job stages, ready stock, or receivables ageing.",
+                "Hello! I am your permission-aware AVS ERP Assistant. Ask me about gold positions, worker custody, customer balances, job stages, ready stock, or receivables ageing.",
               createdAt: new Date().toISOString(),
             },
           ]);
@@ -247,7 +248,7 @@ export function AssistantDrawer() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-serif font-semibold text-sm text-foreground">
-                  {branding.applicationName || "Ornexa"} Assistant
+                  {branding.applicationName || APP_NAME} Assistant
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   Deterministic Core

@@ -32,7 +32,7 @@ export interface TallyVoucher {
  */
 export function generateTallyXML(
   vouchers: TallyVoucher[],
-  companyName = "Ornexa Jewellery ERP",
+  companyName = "AVS ERP",
 ): string {
   const xmlVouchers = vouchers
     .map((v) => {

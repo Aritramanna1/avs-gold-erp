@@ -20,9 +20,10 @@ import { postUniversalTransaction } from "@/lib/transaction-types-store";
 import { gramsToMg, mgToGrams } from "@/lib/gold";
 import { paiseToRupees } from "@/lib/billing-store";
 import { toast } from "sonner";
+import { APP_NAME } from "@/lib/app-info";
 
 export const Route = createFileRoute("/billing/purchases/return")({
-  head: () => ({ meta: [{ title: "Purchase Return · Ornexa ERP" }] }),
+  head: () => ({ meta: [{ title: `Purchase Return · ${APP_NAME}` }] }),
   component: PurchaseReturnPage,
 });
 
