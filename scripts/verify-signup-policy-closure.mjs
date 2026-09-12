@@ -19,9 +19,9 @@ function loadEnv(file) {
 
 const env = { ...loadEnv(".env.local"), ...loadEnv(".env.e2e") };
 const url = env.VITE_SUPABASE_URL?.replace(/\/$/, "");
-const anonKey = env.VITE_SUPABASE_PUBLISHABLE_KEY ?? env.VITE_SUPABASE_ANON_KEY;
+const anonKey = [REDACTED] ?? env.VITE_SUPABASE_ANON_KEY;
 const e2eEmail = env.E2E_EMAIL;
-const e2ePassword = env.E2E_PASSWORD;
+const e2ePassword = [REDACTED]
 
 const checks = [];
 
@@ -40,7 +40,7 @@ async function main() {
     const res = await fetch(`${url}/functions/v1/public-trial-provision`, {
       method: "POST",
       headers: {
-        apikey: anonKey,
+        apikey: [REDACTED]
         Authorization: `Bearer ${anonKey}`,
         "Content-Type": "application/json",
       },
@@ -58,7 +58,7 @@ async function main() {
     const res = await fetch(`${url}/functions/v1/invite-accept`, {
       method: "POST",
       headers: {
-        apikey: anonKey,
+        apikey: [REDACTED]
         Authorization: `Bearer ${anonKey}`,
         "Content-Type": "application/json",
       },
@@ -91,7 +91,7 @@ async function main() {
     const res = await fetch(`${url}/rest/v1/rpc/provision_public_trial`, {
       method: "POST",
       headers: {
-        apikey: anonKey,
+        apikey: [REDACTED]
         Authorization: `Bearer ${anonKey}`,
         "Content-Type": "application/json",
       },
@@ -112,8 +112,8 @@ async function main() {
   if (e2eEmail && e2ePassword) {
     const signInRes = await fetch(`${url}/auth/v1/token?grant_type=password`, {
       method: "POST",
-      headers: { apikey: anonKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ email: e2eEmail, password: e2ePassword }),
+      headers: { apikey: [REDACTED] "Content-Type": "application/json" },
+      body: JSON.stringify({ email: e2eEmail, password: [REDACTED] }),
     });
     const signInBody = await signInRes.json().catch(() => ({}));
     const token = signInBody.access_token;
@@ -128,7 +128,7 @@ async function main() {
       const provRes = await fetch(`${url}/rest/v1/rpc/provision_public_trial`, {
         method: "POST",
         headers: {
-          apikey: anonKey,
+          apikey: [REDACTED]
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
@@ -151,7 +151,7 @@ async function main() {
       const ctxRes = await fetch(`${url}/rest/v1/rpc/get_authorization_context`, {
         method: "POST",
         headers: {
-          apikey: anonKey,
+          apikey: [REDACTED]
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
           Accept: "application/json",
@@ -175,7 +175,7 @@ async function main() {
         const memRes = await fetch(`${url}/rest/v1/rpc/get_my_memberships`, {
           method: "POST",
           headers: {
-            apikey: anonKey,
+            apikey: [REDACTED]
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
@@ -201,7 +201,7 @@ async function main() {
       const edgeAuthed = await fetch(`${url}/functions/v1/public-trial-provision`, {
         method: "POST",
         headers: {
-          apikey: anonKey,
+          apikey: [REDACTED]
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
@@ -237,10 +237,10 @@ async function main() {
   {
     const signupRes = await fetch(`${url}/auth/v1/signup`, {
       method: "POST",
-      headers: { apikey: anonKey, "Content-Type": "application/json" },
+      headers: { apikey: [REDACTED] "Content-Type": "application/json" },
       body: JSON.stringify({
         email: `probe-signup-${Date.now()}@example.invalid`,
-        password: "ProbeSignupPolicy1!",
+        password: [REDACTED],
       }),
     });
     const signupText = await signupRes.text();

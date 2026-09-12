@@ -13,9 +13,9 @@ The `.env` file has been written with the new credentials:
 
 ```
 VITE_SUPABASE_URL="https://kjfjsfhftytezsjyegmb.supabase.co"
-VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_fThRlMsK8N5t_wU9_fzd7g_XBvvr-zW"
+VITE_SUPABASE_PUBLISHABLE_KEY="[REDACTED_SB_PUBLISHABLE]_wU9_fzd7g_XBvvr-zW"
 VITE_SUPABASE_PROJECT_ID="kjfjsfhftytezsjyegmb"
-SUPABASE_SECRET_KEY="sb_secret_2DQR8W7PT_WBuBSnhxnJxA_WxoKB98z"
+SUPABASE_SECRET_KEY=[REDACTED]
 SUPABASE_JWKS_URL="https://kjfjsfhftytezsjyegmb.supabase.co/auth/v1/.well-known/jwks.json"
 ```
 

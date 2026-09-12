@@ -3,7 +3,7 @@ import fs from "fs";
 
 const SUPABASE_URL = "http://127.0.0.1:8000";
 const SERVICE_ROLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3ODg1MjMxMTMsImV4cCI6MTk0NjIwMzExM30.Q5HWSD5Oc6MMxvStgG7-Z0rIob9La1bsKsBw0r8GtuQ";
+  [REDACTED];
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const firmId = "00000000-0000-0000-0000-000000000001";

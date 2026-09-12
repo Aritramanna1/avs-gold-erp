@@ -134,7 +134,7 @@ A Python AST-grade key extractor was run across `src/i18n/{en,hi,mr,bn}/*.ts`. R
 
 ### 4.1 Direct REST introspection (service-role key)
 
-46 tables found in Supabase via PostgREST `/rest/v1/?apikey=…` OpenAPI definitions. Key tables and column counts:
+46 tables found in Supabase via PostgREST `/rest/v1/?apikey=[REDACTED] OpenAPI definitions. Key tables and column counts:
 
 ```
 melt_jobs                ( 2): id, data                                ← MISSING 7 columns

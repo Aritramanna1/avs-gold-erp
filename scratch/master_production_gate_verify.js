@@ -4,8 +4,8 @@ import path from 'path';
 import { execSync } from 'child_process';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'http://127.0.0.1:8000';
-const PUBLISHABLE_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_0wEt7qew0XI5Ml8fqfVKyw_l5jjDiMh';
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3ODg1MjMxMTMsImV4cCI6MTk0NjIwMzExM30.Q5HWSD5Oc6MMxvStgG7-Z0rIob9La1bsKsBw0r8GtuQ';
+const PUBLISHABLE_KEY = process.env.SUPABASE_ANON_KEY || '[REDACTED_SB_PUBLISHABLE]_l5jjDiMh';
+const SERVICE_ROLE_KEY = [REDACTED] || '[REDACTED_JWT]';
 
 console.log('===============================================================');
 console.log('MTJ / AVS ERP — FINAL MASTER PRODUCTION HARDENING GATE');
@@ -83,7 +83,7 @@ async function runGate() {
 
     // Ping Supabase port 8000 storage status
     const pingRes = await fetch(`${SUPABASE_URL}/storage/v1/status`, {
-      headers: { apikey: SERVICE_ROLE_KEY }
+      headers: { apikey: [REDACTED] }
     });
     if (pingRes.status !== 200) throw new Error(`Supabase storage status endpoint returned ${pingRes.status}`);
 
