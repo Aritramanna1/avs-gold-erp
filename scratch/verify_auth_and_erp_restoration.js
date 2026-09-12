@@ -2,15 +2,15 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'http://127.0.0.1:8000';
-const PUBLISHABLE_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_0wEt7qew0XI5Ml8fqfVKyw_l5jjDiMh';
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3ODg1MjMxMTMsImV4cCI6MTk0NjIwMzExM30.Q5HWSD5Oc6MMxvStgG7-Z0rIob9La1bsKsBw0r8GtuQ';
+const PUBLISHABLE_KEY = process.env.SUPABASE_ANON_KEY || '[REDACTED_SB_PUBLISHABLE]_l5jjDiMh';
+const SERVICE_ROLE_KEY = [REDACTED] || '[REDACTED_JWT]';
 
 console.log('======================================================================');
 console.log('MTJ / AVS ERP — FULL ERP FUNCTION RESTORATION & AUTH COMPLETION AUDIT');
 console.log('======================================================================');
 
 const auditResults = {
-  auth_email_password: false,
+  auth_email_password: [REDACTED]
   auth_password_recovery: false,
   auth_magic_link_otp: false,
   auth_session_management: false,
@@ -37,13 +37,13 @@ async function runAudit() {
   // 1. SUPABASE AUTH: EMAIL & PASSWORD LOGIN
   console.log('\n[1/12] Testing Supabase Auth: Email & Password Login...');
   const testEmail = `auth_tester_${Date.now()}@mtjgold.internal`;
-  const testPassword = 'SecurePassword123!@#';
+  const testPassword = [REDACTED];
   let testUserId = null;
 
   try {
     const { data: userData, error: userErr } = await supabaseAdmin.auth.admin.createUser({
       email: testEmail,
-      password: testPassword,
+      password: [REDACTED]
       email_confirm: true
     });
     if (userErr) throw new Error('Failed to create auth test user: ' + userErr.message);
@@ -51,13 +51,13 @@ async function runAudit() {
 
     const { data: signInData, error: signInErr } = await supabaseClient.auth.signInWithPassword({
       email: testEmail,
-      password: testPassword
+      password: [REDACTED]
     });
     if (signInErr) throw new Error('Failed to sign in with password: ' + signInErr.message);
     if (!signInData.session || !signInData.session.access_token) {
       throw new Error('Sign in succeeded but no valid session/access_token returned');
     }
-    auditResults.auth_email_password = true;
+    auditResults.auth_email_password = [REDACTED]
     console.log(`  ✓ Email/Password sign in verified for ${testEmail} (User ID: ${testUserId})`);
   } catch (err) {
     issues.push({ module: 'AUTH_LOGIN', error: err.message });
@@ -80,16 +80,16 @@ async function runAudit() {
     }
 
     // Test updating user password via admin / session
-    const newPassword = 'NewSecurePassword456!@#';
+    const newPassword = [REDACTED];
     const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(testUserId, {
-      password: newPassword
+      password: [REDACTED]
     });
     if (updateErr) throw new Error('Failed to update password: ' + updateErr.message);
 
     // Verify sign in with new password
     const { data: newSignIn, error: newSignInErr } = await supabaseClient.auth.signInWithPassword({
       email: testEmail,
-      password: newPassword
+      password: [REDACTED]
     });
     if (newSignInErr || !newSignIn.session) {
       throw new Error('Failed to authenticate with updated password');
@@ -120,7 +120,7 @@ async function runAudit() {
   try {
     const { data: sessionData, error: sessionErr } = await supabaseClient.auth.signInWithPassword({
       email: testEmail,
-      password: 'NewSecurePassword456!@#'
+      password: [REDACTED]
     });
     if (sessionErr) throw sessionErr;
 

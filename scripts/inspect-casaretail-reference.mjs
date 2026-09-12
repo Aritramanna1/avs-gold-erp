@@ -5,7 +5,7 @@ import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
 
-const URL = "https://dashboard.casaretail.in/invoice?billToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJnZW5lcmF0ZWRCaWxsSWQiOiJDTV8wMDA2ODRfMjZfMTc4Nzk2MTYwMDAwMF8xMDdfQ0JNTF8wODUiLCJjdXN0b21lck1vYmlsZU5vIjoiODQ4NDgwMzU4MCIsImludm9pY2VUeXBlIjoiSU4iLCJ0ZW5hbnQiOiJtdWZ0aSIsImJ1c2luZXNzVW5pdElkIjoxMDcsIm9yaWdpbmFsSW52b2ljZVR5cGUiOiJJTiIsImlhdCI6MTc4ODI0MDYxNH0.xTX1iYIiSKoNwxtaclfwYhEiqO92tZwZjiTHV7Eo10Q&utm_source=CASA&utm_medium=whatsapp&utm_content=DR+-+Zone+wise+-+NORTH%7CWEST+-+Jun+5%2C+2026+-+JB&utm_campaignid=7b72326d-1265-440b-a575-e6f8a9b632b4";
+const URL = "https://dashboard.casaretail.in/invoice?billToken=[REDACTED_JWT]&utm_source=CASA&utm_medium=whatsapp&utm_content=DR+-+Zone+wise+-+NORTH%7CWEST+-+Jun+5%2C+2026+-+JB&utm_campaignid=7b72326d-1265-440b-a575-e6f8a9b632b4";
 
 async function inspectReference() {
   const browser = await chromium.launch({ headless: true });

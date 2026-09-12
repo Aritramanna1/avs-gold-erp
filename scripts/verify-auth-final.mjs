@@ -21,7 +21,7 @@ function loadEnv(p) {
 
 const env = { ...loadEnv(".env.local"), ...loadEnv(".env.e2e") };
 const url = (env.VITE_SUPABASE_URL || env.QA_SUPABASE_URL || "").replace(/\/$/, "");
-const anonKey = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY;
+const anonKey = [REDACTED] || env.VITE_SUPABASE_ANON_KEY;
 const qaPass = env.E2E_PASSWORD || "Mtj-Qa-2026!Reset9x";
 const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
@@ -78,7 +78,7 @@ async function adminFetch(path, opts = {}) {
   return fetch(`${url}${path}`, {
     ...opts,
     headers: {
-      apikey: serviceRole,
+      apikey: [REDACTED]
       Authorization: `Bearer ${serviceRole}`,
       "Content-Type": "application/json",
       ...(opts.headers || {}),
@@ -110,15 +110,15 @@ async function ensureQaPassword(email) {
   if (!userId) return { ok: false, detail: "user not found in auth" };
   const upd = await adminFetch(`/auth/v1/admin/users/${userId}`, {
     method: "PUT",
-    body: JSON.stringify({ password: qaPass, email_confirm: true, email }),
+    body: JSON.stringify({ password: [REDACTED] email_confirm: true, email }),
   });
   return { ok: upd.ok, detail: upd.ok ? `password aligned for ${email}` : await upd.text() };
 }
 
-async function passwordLogin(email, password = qaPass) {
+async function passwordLogin(email, password = [REDACTED] {
   const res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
     method: "POST",
-    headers: { apikey: anonKey, "Content-Type": "application/json" },
+    headers: { apikey: [REDACTED] "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
   const body = await res.json().catch(() => ({}));
@@ -129,7 +129,7 @@ async function rpc(token, name, payload = {}) {
   const res = await fetch(`${url}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: {
-      apikey: anonKey,
+      apikey: [REDACTED]
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -268,7 +268,7 @@ async function verifyPersona(p) {
       `status=${sub.status} access=${sub.data?.access} valid=${sub.data?.valid}`,
     );
     const org = await fetch(`${url}/rest/v1/organizations?select=id&limit=1`, {
-      headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
+      headers: { apikey: [REDACTED] Authorization: `Bearer ${token}` },
     });
     record(flow, "rls_firm_data", org.status === 200, `status=${org.status}`);
   }
@@ -277,7 +277,7 @@ async function verifyPersona(p) {
   if (refresh) {
     const refRes = await fetch(`${url}/auth/v1/token?grant_type=refresh_token`, {
       method: "POST",
-      headers: { apikey: anonKey, "Content-Type": "application/json" },
+      headers: { apikey: [REDACTED] "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refresh }),
     });
     const refBody = await refRes.json().catch(() => ({}));
@@ -297,7 +297,7 @@ async function verifyPersona(p) {
   // Logout + login again
   await fetch(`${url}/auth/v1/logout`, {
     method: "POST",
-    headers: { apikey: anonKey, Authorization: `Bearer ${token}` },
+    headers: { apikey: [REDACTED] Authorization: `Bearer ${token}` },
   });
   const auth2 = await passwordLogin(p.email);
   record(flow, "relogin_after_logout", auth2.status === 200, `status=${auth2.status}`);
@@ -325,10 +325,10 @@ async function verifyFailureCases() {
 
   const signup = await fetch(`${url}/auth/v1/signup`, {
     method: "POST",
-    headers: { apikey: anonKey, "Content-Type": "application/json" },
+    headers: { apikey: [REDACTED] "Content-Type": "application/json" },
     body: JSON.stringify({
       email: `blocked-signup-${Date.now()}@example.invalid`,
-      password: "BlockedSignup1!",
+      password: [REDACTED],
     }),
   });
   const signupText = await signup.text();
@@ -341,7 +341,7 @@ async function verifyFailureCases() {
 
   const inviteBad = await fetch(`${url}/functions/v1/invite-accept`, {
     method: "POST",
-    headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
+    headers: { apikey: [REDACTED] Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ mode: "validate", email: "nobody@example.invalid", code: "INV-BAD-CODE" }),
   });
   const inviteBody = await inviteBad.json().catch(() => ({}));

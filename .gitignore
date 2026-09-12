@@ -37,8 +37,17 @@ e2e/report/
 e2e/test-results/
 coverage/
 
-# Environment files and archives
-.env.local
-.env.*.local
 *.zip
 
+# --- SEC AVS-73: never track secrets (keep *.example) ---
+.env
+.env.e2e
+.env.production
+.env.*
+!.env.example
+!.env.*.example
+!.env.e2e.example
+memory/test_credentials.md
+**/test_credentials.md
+_reconstruction/browser-session-inject.json
+_reconstruction/inject.js
