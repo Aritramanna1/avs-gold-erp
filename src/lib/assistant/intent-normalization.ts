@@ -191,6 +191,23 @@ export function classifyIntent(normalizedText: string, rawText: string): IntentM
     return { toolName: "GetGoldPosition", confidence: 0.95 };
   }
 
+  // Party 360 dossier (full ledger + orders + outstanding)
+  if (
+    q.includes("party 360") ||
+    q.includes("party360") ||
+    q.includes("360") ||
+    q.includes("dossier") ||
+    q.includes("party overview") ||
+    q.includes("party profile") ||
+    (q.includes("khata") && (q.includes("party") || q.includes("customer") || q.includes("full")))
+  ) {
+    return {
+      toolName: "GetParty360",
+      confidence: 0.96,
+      entities: { query: normalizedText },
+    };
+  }
+
   // Party-specific gold (with entity name)
   if (
     (q.includes("gold") || q.includes("balance") || q.includes("ledger")) &&

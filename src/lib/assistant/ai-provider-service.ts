@@ -369,6 +369,23 @@ export function matchLocalIntent(userQuery: string): IntentMatchResult {
     };
   }
 
+  // 13a. Party 360 dossier
+  if (
+    q.includes("party 360") ||
+    q.includes("party360") ||
+    q.includes("360") ||
+    q.includes("dossier") ||
+    q.includes("party overview") ||
+    q.includes("party profile") ||
+    (q.includes("khata") && (q.includes("full") || q.includes("party") || q.includes("customer")))
+  ) {
+    return {
+      toolName: "GetParty360",
+      confidence: 0.96,
+      entities: { query: extractSearchQuery(userQuery) },
+    };
+  }
+
   // 13. Customer Balance / Dossier
   if (
     q.includes("customer") ||
