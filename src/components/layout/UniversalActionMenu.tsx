@@ -95,6 +95,7 @@ export function UniversalActionMenu() {
         <DropdownMenuItem asChild>
           <Link
             to="/stock"
+            search={{ tab: "ready" }}
             className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-gold/10 hover:text-gold transition-colors"
           >
             <PackagePlus className="h-4 w-4 text-emerald-500 shrink-0" />

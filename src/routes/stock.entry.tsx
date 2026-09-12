@@ -165,7 +165,7 @@ function ReadyStockEntry() {
       if (queued.mode === "queued") {
         await uploadPhotosForItem("", queued.operation.localId);
         toast.message("Stock saved offline — Pending Sync. Vault is not posted until sync succeeds.");
-        void navigate({ to: "/stock" });
+        void navigate({ to: "/stock", search: { tab: "ready" } });
         return;
       }
 
@@ -321,7 +321,7 @@ function ReadyStockEntry() {
           title="Ready Stock"
           subtitle="Stepped entry — same vault posting as desktop."
           actions={
-            <Button variant="ghost" onClick={() => void navigate({ to: "/stock" })} className="gap-2">
+            <Button variant="ghost" onClick={() => void navigate({ to: "/stock", search: { tab: "ready" } })} className="gap-2">
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
           }
@@ -452,7 +452,7 @@ function ReadyStockEntry() {
         title="Ready Stock Entry"
         subtitle="Finished piece with name, weights, purity, and at least one product photo (more allowed)."
         actions={
-          <Button variant="ghost" onClick={() => void navigate({ to: "/stock" })} className="gap-2">
+          <Button variant="ghost" onClick={() => void navigate({ to: "/stock", search: { tab: "ready" } })} className="gap-2">
             <ArrowLeft className="h-4 w-4" /> Back
           </Button>
         }

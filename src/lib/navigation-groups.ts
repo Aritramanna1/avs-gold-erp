@@ -225,7 +225,8 @@ export const navigationGroups: NavGroupDef[] = [
         icon: Gem,
         children: [
           { to: "/catalog", label: "Products / Catalogue", i18nKey: "item_catalog", icon: Gem },
-          { to: "/stock", label: "Ready Stock", i18nKey: "item_ready_stock", icon: Package },
+          { to: "/stock", label: "Stock", i18nKey: "item_ready_stock", icon: Package },
+          { to: "/stock", label: "Ready Stock", i18nKey: "item_ready_stock", icon: Package, search: { tab: "ready" } },
         ],
       },
       {
@@ -273,7 +274,8 @@ export const navigationGroups: NavGroupDef[] = [
           { to: "/stock/entry", label: "Opening Stock", i18nKey: "item_stock_entry", icon: Package },
           { to: "/utilities/item-transaction", label: "Item Transactions", i18nKey: "item_item_txn_entry", icon: ArrowLeftRight },
           { to: "/reports/item-jama-nave", label: "Manufacturing Stock", i18nKey: "item_item_jama_nave", icon: Package },
-          { to: "/stock", label: "Ready Stock", i18nKey: "item_ready_stock", icon: Package },
+          { to: "/stock", label: "Stock", i18nKey: "item_ready_stock", icon: Package },
+          { to: "/stock", label: "Ready Stock", i18nKey: "item_ready_stock", icon: Package, search: { tab: "ready" } },
         ],
       },
       {

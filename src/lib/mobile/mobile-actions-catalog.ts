@@ -56,7 +56,7 @@ export const MOBILE_WORK_ACTIONS: MobileAction[] = [
   },
   { id: "outside", label: "Outside / Jangad", icon: Truck, to: "/workshop/outside-work" },
   { id: "barcode", label: "Barcode & Tagging", icon: ScanLine, to: "/barcode" },
-  { id: "ready-stock", label: "Ready Stock", icon: Package, to: "/stock" },
+  { id: "ready-stock", label: "Stock", icon: Package, to: "/stock" },
   { id: "conversion", label: "Metal Conversion", icon: Scale, to: "/conversion" },
   { id: "melt", label: "Melt & Refinery", icon: Flame, to: "/melt" },
 ];

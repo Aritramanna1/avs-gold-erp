@@ -27,7 +27,7 @@ const LINKS = [
   {
     to: "/stock" as const,
     labelKey: "item_ready_stock",
-    fallback: "Stock (Inventory)",
+    fallback: "Stock",
     icon: Package,
     search: undefined,
   },
