@@ -864,14 +864,54 @@ export async function pullAttachments(): Promise<void> {
   void resolveAllSignedUrls(legacyDictOnly, { limit: 20 });
 }
 
-const BRANCH_COLUMNS = "id,name,short_name,address,phone,gstin,active,data";
+const BRANCH_COLUMNS = "id,name,short_name,address,phone,gstin,active,data,firm_id";
 const BRANCH_SETTINGS_COLUMNS =
   "branch_id,data,address,phone,email,gstin,invoice_series,receipt_series,barcode_series,smtp_host,smtp_port,smtp_user,smtp_from_name,smtp_from_email,wa_phone_number,thermal_printer_ip,thermal_printer_port,default_karat,gold_rate_source,invoice_template_id,receipt_template_id,logo_url,logo_storage_path";
 const WORKSHOP_COLUMNS = "id,name,branch_id,data";
 
 export async function pullBranches(): Promise<void> {
-  const { data, error } = await supabase.from("branches").select(BRANCH_COLUMNS);
-  if (error) throw new Error(`branches pull: ${error.message}`);
+  let firmId: string | null = null;
+  try {
+    const { useTenantContext } = await import("@/lib/identity/tenant-context-store");
+    firmId = useTenantContext.getState().activeOrganizationId;
+  } catch {
+    /* fallback to resolveCurrentFirmId */
+  }
+  if (!firmId) {
+    try {
+      const { resolveCurrentFirmId } = await import("@/lib/firm-scoped-app-settings");
+      firmId = await resolveCurrentFirmId().catch(() => null);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  let data: any[] | null = null;
+  let error: any = null;
+
+  if (firmId) {
+    const scopedRes = await (supabase.from("branches") as any)
+      .select(BRANCH_COLUMNS)
+      .eq("firm_id", firmId);
+    if (!scopedRes.error && scopedRes.data && scopedRes.data.length > 0) {
+      data = scopedRes.data;
+    } else {
+      error = scopedRes.error;
+    }
+  }
+
+  // If no firm-specific branches found, fetch unassigned (legacy) branches
+  if (!data || data.length === 0) {
+    const fallbackRes = await (supabase.from("branches") as any)
+      .select(BRANCH_COLUMNS)
+      .is("firm_id", null);
+    if (!fallbackRes.error && fallbackRes.data && fallbackRes.data.length > 0) {
+      data = fallbackRes.data;
+      error = null;
+    }
+  }
+
+  if (error && (!data || data.length === 0)) throw new Error(`branches pull: ${error.message}`);
   if (data && data.length > 0) {
     const branches = data.map((r: any) => {
       const rowData =
@@ -890,6 +930,8 @@ export async function pullBranches(): Promise<void> {
         gstin: r.gstin ?? undefined,
         active: r.active,
         isDefault: Boolean(r.is_default ?? rowData.is_default ?? rowData.isDefault ?? false),
+        firmId: r.firm_id ?? undefined,
+        firm_id: r.firm_id ?? undefined,
       };
     });
     useSettings.setState({ branches });

@@ -724,6 +724,8 @@ export interface Branch {
   printerProfiles?: string[];
   invoiceSeries?: string;
   receiptSeries?: string;
+  firmId?: string;
+  firm_id?: string;
 }
 
 export interface PrinterProfile {

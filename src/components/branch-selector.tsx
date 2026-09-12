@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { useSettings } from "@/lib/settings-store";
 import { useRoles } from "@/lib/rbac";
+import { useTenantContext } from "@/lib/identity/tenant-context-store";
 import { MapPin, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
@@ -9,17 +11,46 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function BranchSelector() {
-  const { branches, selectedBranchId, setSelectedBranchId, users } = useSettings();
+  const { branches, selectedBranchId, setSelectedBranchId, users, firm } = useSettings();
   const { roles, email, ready } = useRoles();
+  const { activeOrganizationId } = useTenantContext();
+
+  const currentFirmId = activeOrganizationId || firm?.id;
 
   const currentUser = email
     ? users.find((u) => u.email.toLowerCase() === email.toLowerCase())
     : null;
   const userBranchId = currentUser?.branchId;
 
+  // Filter branches strictly for the active business/tenant and deduplicate
+  const activeBranches = useMemo(() => {
+    let list = branches.filter((b) => b.active);
+    if (currentFirmId) {
+      const firmScoped = list.filter((b) => (b.firmId || (b as any).firm_id) === currentFirmId);
+      if (firmScoped.length > 0) {
+        list = firmScoped;
+      } else {
+        const unassigned = list.filter((b) => !b.firmId && !(b as any).firm_id);
+        if (unassigned.length > 0) {
+          list = unassigned;
+        }
+      }
+    }
+    const seen = new Set<string>();
+    return list.filter((b) => {
+      const key = `${b.id}-${b.code}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [branches, currentFirmId]);
+
   const activeBranchId = userBranchId || selectedBranchId || "MAIN";
-  const currentBranch = branches.find((b) => b.id === activeBranchId) || branches[0];
-  const activeBranches = branches.filter((b) => b.active);
+  const currentBranch =
+    activeBranches.find((b) => b.id === activeBranchId) ||
+    activeBranches[0] ||
+    branches.find((b) => b.id === activeBranchId) ||
+    branches[0];
 
   // Checks if user is owner/manager to allow switching
   const canSwitch =
