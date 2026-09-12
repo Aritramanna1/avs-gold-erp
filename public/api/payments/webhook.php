@@ -53,11 +53,13 @@ $payload = $eventData['payload'] ?? [];
 $payment = $payload['payment']['entity'] ?? [];
 $order = $payload['order']['entity'] ?? [];
 $refund = $payload['refund']['entity'] ?? [];
+$subscription = $payload['subscription']['entity'] ?? [];
+$settlement = $payload['settlement']['entity'] ?? [];
 
-$paymentId = $payment['id'] ?? ($order['id'] ?? 'unknown');
+$paymentId = $payment['id'] ?? ($order['id'] ?? ($subscription['id'] ?? ($settlement['id'] ?? 'unknown')));
 $orderId = $payment['order_id'] ?? ($order['id'] ?? '');
-$amountPaise = intval($payment['amount'] ?? ($order['amount'] ?? 0));
-$currency = $payment['currency'] ?? 'INR';
+$amountPaise = intval($payment['amount'] ?? ($order['amount'] ?? ($settlement['amount'] ?? 0)));
+$currency = $payment['currency'] ?? ($order['currency'] ?? 'INR');
 
 // ── 2. Idempotency & Replay Protection Check ────────────────────────────────
 $idempotencyKey = $eventId . ':' . $paymentId;
@@ -165,6 +167,70 @@ switch ($event) {
                 'updated_at' => date('c'),
             ], true);
         }
+        break;
+
+    case 'payment.authorized':
+        $handledStatus = 'AUTHORIZED';
+        if (!empty($orderId)) {
+            supabaseRequest("rest/v1/internal_payments?razorpay_order_id=eq.{$orderId}", 'PATCH', [
+                'status' => PAYMENT_STATUS_AUTHORIZED,
+                'razorpay_payment_id' => $paymentId,
+                'updated_at' => date('c'),
+            ], true);
+        }
+        break;
+
+    case 'subscription.activated':
+    case 'subscription.resumed':
+        $handledStatus = 'ACTIVE';
+        $subNotes = $subscription['notes'] ?? [];
+        $tenantId = $subNotes['tenant_id'] ?? 'tenant_default';
+        $planCode = $subNotes['plan_code'] ?? 'avs_manufacturing_30k';
+        supabaseRequest('rest/v1/tenant_subscriptions', 'POST', [
+            'tenant_id' => $tenantId,
+            'plan_code' => $planCode,
+            'status' => SUB_STATUS_ACTIVE,
+            'updated_at' => date('c'),
+        ], true);
+        break;
+
+    case 'subscription.charged':
+        $handledStatus = 'CHARGED';
+        $subNotes = $subscription['notes'] ?? [];
+        $tenantId = $subNotes['tenant_id'] ?? 'tenant_default';
+        $planCode = $subNotes['plan_code'] ?? 'avs_manufacturing_30k';
+        supabaseRequest('rest/v1/tenant_subscriptions', 'POST', [
+            'tenant_id' => $tenantId,
+            'plan_code' => $planCode,
+            'status' => SUB_STATUS_ACTIVE,
+            'current_period_end' => date('c', time() + (30 * 86400)),
+            'updated_at' => date('c'),
+        ], true);
+        break;
+
+    case 'subscription.cancelled':
+        $handledStatus = 'CANCELLED';
+        $subNotes = $subscription['notes'] ?? [];
+        $tenantId = $subNotes['tenant_id'] ?? 'tenant_default';
+        supabaseRequest("rest/v1/tenant_subscriptions?tenant_id=eq.{$tenantId}", 'PATCH', [
+            'status' => SUB_STATUS_CANCELLED,
+            'updated_at' => date('c'),
+        ], true);
+        break;
+
+    case 'subscription.halted':
+    case 'subscription.paused':
+        $handledStatus = 'PAST_DUE';
+        $subNotes = $subscription['notes'] ?? [];
+        $tenantId = $subNotes['tenant_id'] ?? 'tenant_default';
+        supabaseRequest("rest/v1/tenant_subscriptions?tenant_id=eq.{$tenantId}", 'PATCH', [
+            'status' => SUB_STATUS_PAST_DUE,
+            'updated_at' => date('c'),
+        ], true);
+        break;
+
+    case 'settlement.processed':
+        $handledStatus = 'SETTLED';
         break;
 
     default:
