@@ -44,8 +44,8 @@ function DailyBhavRateBookPage() {
   // Prefer branch overrides when set; fall back to firm-wide hydrated rates.
   const {
     gold22KPerGramPaise: goldRatePerGramPaise,
-    gold24KPerGramPaise,
-    gold18KPerGramPaise,
+    gold24KPerGramPaise: goldRate24KPerGramPaise,
+    gold18KPerGramPaise: goldRate18KPerGramPaise,
     silverPerGramPaise: silverRatePerGramPaise,
   } = useCurrentBullionRates();
 
