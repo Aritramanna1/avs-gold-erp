@@ -11,9 +11,13 @@ import {
   type HomeDashboardSummary,
 } from "@/lib/home-dashboard-query";
 import { withTimeout } from "@/lib/performance/resilient-async";
+<<<<<<< HEAD
 import { triggerGoldRateEditor } from "@/components/app-shell";
 import { listAttentionItems } from "@/lib/attention/list-attention-items";
 import { Button } from "@/components/ui/button";
+=======
+import { APP_NAME } from "@/lib/app-info";
+>>>>>>> 4ea03cf (fix(branding): BUG-014 Ornexa contact/chrome to AVS (legal + auth chrome))
 
 export function MobileHomeDashboard() {
   const firm = useSettings((s) => s.firm);
@@ -51,7 +55,7 @@ export function MobileHomeDashboard() {
     <div className="p-4 pb-24 space-y-5 max-w-lg mx-auto" data-tour="mobile-home-mvp">
       <header>
         <p className="text-sm text-muted-foreground">Good day</p>
-        <h1 className="font-serif text-xl">{firm?.shopName ?? "Home"}</h1>
+        <h1 className="font-serif text-xl">{firm?.shopName ?? APP_NAME}</h1>
         <p className="text-xs text-muted-foreground mt-0.5">Operating date {today}</p>
       </header>
 
