@@ -117,11 +117,14 @@ import { DeveloperMCPPanel } from "@/components/settings/DeveloperMCPPanel";
 
 const SearchSchema = z.object({
   tab: z.string().optional(),
-  waSection: z.enum(["business", "wasender", "templates"]).optional(),
+  waSection: z.enum(["business", "wasender", "templates"]).catch(undefined).optional(),
 });
 
 export const Route = createFileRoute("/settings/")({
-  validateSearch: (s) => SearchSchema.parse(s),
+  validateSearch: (s: Record<string, unknown>) => {
+    const result = SearchSchema.safeParse(s);
+    return result.success ? result.data : {};
+  },
   beforeLoad: ({ location }) => guardRoute(location.pathname),
   head: () => ({ meta: [{ title: "Settings · AVS Gold ERP" }] }),
   component: SettingsPage,

@@ -57,9 +57,15 @@ import { JamaSlipDialog } from "@/components/billing/JamaSlipDialog";
 import { ProgressiveDisclosure } from "@/components/ui/progressive-disclosure";
 import { SourceOfTruthBadge } from "@/components/ledger/SourceOfTruthBadge";
 
+const VoucherSearchSchema = z.object({
+  tab: z.enum(["receipt", "payment", "journal", "contra"]).catch(undefined).optional(),
+});
+
 export const Route = createFileRoute("/treasury/vouchers")({
-  validateSearch: (s) =>
-    z.object({ tab: z.enum(["receipt", "payment", "journal", "contra"]).optional() }).parse(s),
+  validateSearch: (s: Record<string, unknown>) => {
+    const result = VoucherSearchSchema.safeParse(s);
+    return result.success ? result.data : {};
+  },
   beforeLoad: ({ location }) => guardRoute(location.pathname),
   head: () => ({ meta: [{ title: "Receipts & Payments · AVS ERP" }] }),
   component: TreasuryVouchersPage,

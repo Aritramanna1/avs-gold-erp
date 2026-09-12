@@ -170,6 +170,11 @@ export function loadInitialCachedSettings(defaults: typeof DEFAULTS): typeof DEF
   }
 }
 
+const isValidUuid = (val?: string | null): boolean => {
+  if (!val) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+};
+
 async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<void> {
   // Stamped before the await: a pull that raced this write must lose regardless
   // of when the round trip happens to complete.
@@ -245,48 +250,48 @@ async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<v
       if (!rpcWriteError && rpcResult && (rpcResult as { ok?: boolean }).ok !== false) {
         savedToDb = true;
       } else if (rpcWriteError) {
-        console.warn(
-          "[settings] RPC upsert_my_firm_app_settings failed, falling back to direct table upsert:",
-          rpcWriteError.message,
-        );
+        const isNotFound =
+          rpcWriteError.code === "PGRST202" ||
+          rpcWriteError.message?.includes("Could not find");
+        if (isNotFound) {
+          console.debug("[settings] RPC upsert_my_firm_app_settings not available, using direct upsert");
+        } else {
+          console.warn(
+            "[settings] RPC upsert_my_firm_app_settings note:",
+            rpcWriteError.message,
+          );
+        }
       }
     } catch (rpcEx) {
-      console.warn("[settings] RPC invocation exception, falling back to direct table upsert:", rpcEx);
+      console.debug("[settings] RPC invocation exception, falling back to direct table upsert:", rpcEx);
     }
 
     // Direct table upsert fallback (if RPC failed, was missing, or unconfirmed)
     if (!savedToDb) {
-      const targetId = firmId || userId || "main_settings";
+      const isFirmUuid = isValidUuid(firmId);
+      const isUserUuid = isValidUuid(userId);
+      const targetId = isFirmUuid ? firmId! : (isUserUuid ? userId! : "main_settings");
+      const upsertPayload: Record<string, any> = {
+        id: targetId,
+        scope: "firm",
+        data: snapshot as any,
+        updated_at: new Date().toISOString(),
+      };
+      if (isFirmUuid) {
+        upsertPayload.firm_id = firmId;
+      }
       try {
         const { error: directErr } = await (supabase.from("app_settings") as any).upsert(
-          {
-            id: targetId,
-            scope: "firm",
-            data: snapshot as any,
-            updated_at: new Date().toISOString(),
-          },
+          upsertPayload,
           { onConflict: "id" },
         );
         if (!directErr) {
           savedToDb = true;
         } else {
-          console.warn("[settings] Direct app_settings upsert fallback error:", directErr.message);
-          // If we had no firmId, try again with "main_settings"
-          if (firmId && firmId !== "main_settings") {
-            const { error: fallbackErr } = await (supabase.from("app_settings") as any).upsert(
-              {
-                id: "main_settings",
-                scope: "firm",
-                data: snapshot as any,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: "id" },
-            );
-            if (!fallbackErr) savedToDb = true;
-          }
+          console.debug("[settings] Direct app_settings upsert status:", directErr.message);
         }
       } catch (directEx) {
-        console.warn("[settings] Direct app_settings upsert exception:", directEx);
+        console.debug("[settings] Direct app_settings upsert exception:", directEx);
       }
     }
 
@@ -294,11 +299,11 @@ async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<v
       notifySettingsPersistFailure("Could not persist settings to cloud database. Settings are preserved locally.");
     }
 
-    // Also sync normalized dropdown masters
-    if (snapshot.dropdowns) {
+    // Also sync normalized dropdown masters (only if firmId is a valid UUID)
+    if (snapshot.dropdowns && isValidUuid(firmId)) {
       try {
         const ddRows: any[] = [];
-        const masterFirmId = firmId || "default_firm";
+        const masterFirmId = firmId!;
         for (const [key, items] of Object.entries(snapshot.dropdowns as Record<string, string[]>)) {
           (items || []).forEach((val, idx) => {
             ddRows.push({
@@ -316,15 +321,15 @@ async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<v
           await (supabase.from("dropdown_masters") as any).upsert(ddRows, { onConflict: "id" });
         }
       } catch (ddErr) {
-        console.warn("[settings] Dropdown masters relational sync:", ddErr);
+        console.debug("[settings] Dropdown masters relational sync:", ddErr);
       }
     }
 
-    // Also sync normalized custom field definitions
-    if (Array.isArray(snapshot.formsMetadata)) {
+    // Also sync normalized custom field definitions (only if firmId is a valid UUID)
+    if (Array.isArray(snapshot.formsMetadata) && isValidUuid(firmId)) {
       try {
         const fieldRows: any[] = [];
-        const customFirmId = firmId || "default_firm";
+        const customFirmId = firmId!;
         for (const form of snapshot.formsMetadata as FormMetadata[]) {
           (form.fields || []).forEach((f, idx) => {
             fieldRows.push({
@@ -349,7 +354,7 @@ async function saveAppSettingsToDb(snapshot: Record<string, unknown>): Promise<v
           });
         }
       } catch (cfErr) {
-        console.warn("[settings] Custom fields relational sync:", cfErr);
+        console.debug("[settings] Custom fields relational sync:", cfErr);
       }
     }
   } catch (err) {

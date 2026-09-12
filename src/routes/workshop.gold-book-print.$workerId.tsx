@@ -12,7 +12,7 @@ import { PrintEngine } from "@/components/print-engine/PrintEngine";
  * search params it falls back to the whole worker book (legacy links).
  */
 const SearchSchema = z.object({
-  kind: z.enum(["worker", "outside", "polishing"]).optional(),
+  kind: z.enum(["worker", "outside", "polishing"]).catch(undefined).optional(),
   purity: z.coerce.number().optional(),
   from: z.coerce.number().optional(),
   to: z.coerce.number().optional(),
@@ -20,7 +20,10 @@ const SearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/workshop/gold-book-print/$workerId")({
-  validateSearch: (s) => SearchSchema.parse(s),
+  validateSearch: (s: Record<string, unknown>) => {
+    const result = SearchSchema.safeParse(s);
+    return result.success ? result.data : {};
+  },
   head: () => {
     const shopName = useSettings.getState().firm?.shopName || "";
     return {
