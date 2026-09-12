@@ -20,6 +20,36 @@ export function registerJob(job: ScheduledJob): void {
   registry.set(job.key, job);
 }
 
+const LOCAL_STORAGE_KEY = "avs_scheduled_jobs_cache";
+
+interface LocalJobRecord {
+  job_key: string;
+  cadence: JobCadence;
+  last_run_at: string | null;
+  last_status: string | null;
+  last_error: string | null;
+}
+
+function getLocalJobRecords(): Record<string, LocalJobRecord> {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalJobRecord(record: LocalJobRecord): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const records = getLocalJobRecords();
+    records[record.job_key] = record;
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(records));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 function periodKey(date: Date, cadence: JobCadence): string {
   const y = date.getUTCFullYear();
   const m = date.getUTCMonth();
@@ -38,13 +68,26 @@ function isDue(lastRunAt: string | null, cadence: JobCadence, now: Date): boolea
 }
 
 async function getJobRow(key: string): Promise<Record<string, unknown> | null> {
+  // 1. Fast local synchronous cache check
+  const local = getLocalJobRecords()[key];
+  if (local?.last_run_at) {
+    return local as unknown as Record<string, unknown>;
+  }
+
+  // 2. Query remote scheduled_jobs if firm context exists
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session?.user) return null;
+
     const { data, error } = await (supabase as any)
       .from("scheduled_jobs")
       .select("job_key,cadence,last_run_at,last_status,last_error")
       .eq("job_key", key)
       .maybeSingle();
-    if (error) return null;
+
+    if (error || !data) return null;
+
+    saveLocalJobRecord(data as LocalJobRecord);
     return (data as Record<string, unknown> | null) ?? null;
   } catch {
     return null;
@@ -57,36 +100,43 @@ async function saveJobRow(
   now: Date,
   errorMessage: string | null,
 ): Promise<void> {
+  const nowIso = now.toISOString();
+
+  // Always update local cache immediately so subsequent ticks know it ran
+  saveLocalJobRecord({
+    job_key: job.key,
+    cadence: job.cadence,
+    last_run_at: nowIso,
+    last_status: status,
+    last_error: errorMessage,
+  });
+
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session?.user) return;
+
+    // Check if user has an active firm ID
+    const { data: firmId, error: firmErr } = await (supabase as any).rpc("my_firm_id");
+    if (firmErr || !firmId) {
+      // User is SaaS admin or unassigned to a firm; retain in local storage only
+      return;
+    }
+
     const payload = {
+      firm_id: firmId,
       job_key: job.key,
       cadence: job.cadence,
-      last_run_at: now.toISOString(),
+      last_run_at: nowIso,
       last_status: status,
       last_error: errorMessage,
-      updated_at: now.toISOString(),
+      updated_at: nowIso,
     };
 
-    const existing = await getJobRow(job.key);
-    if (existing) {
-      await (supabase as any)
-        .from("scheduled_jobs")
-        .update(payload)
-        .eq("job_key", job.key);
-    } else {
-      const { error: insertErr } = await (supabase as any)
-        .from("scheduled_jobs")
-        .insert(payload);
-      if (insertErr) {
-        // Fallback update if insert conflicted
-        await (supabase as any)
-          .from("scheduled_jobs")
-          .update(payload)
-          .eq("job_key", job.key);
-      }
-    }
+    await (supabase as any)
+      .from("scheduled_jobs")
+      .upsert(payload, { onConflict: "firm_id,job_key" });
   } catch {
-    // Non-critical background telemetry persistence — keep ERP running
+    // Non-critical background telemetry persistence — local cache already holds state
   }
 }
 
@@ -100,8 +150,7 @@ export async function checkDueJobs(
     let row: Record<string, unknown> | null = null;
     try {
       row = await getJobRow(job.key);
-    } catch (error) {
-      console.error(`[Scheduler] Could not load state for "${job.key}":`, error);
+    } catch {
       failed.push(job.key);
       continue;
     }
@@ -116,10 +165,8 @@ export async function checkDueJobs(
     } catch (err) {
       failed.push(job.key);
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`[Scheduler] Job "${job.key}" failed:`, err);
-      await saveJobRow(job, "failed", now, message).catch((saveError) =>
-        console.error(`[Scheduler] Could not save failure for "${job.key}":`, saveError),
-      );
+      console.warn(`[Scheduler] Job "${job.key}" failed:`, err);
+      await saveJobRow(job, "failed", now, message);
     }
   }
 

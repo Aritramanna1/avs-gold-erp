@@ -107,20 +107,46 @@ export function writePasswordGateDismissed(userId: string): void {
 
 /** Authoritative server read — survives JWT refresh races. */
 export async function fetchEmailPasswordConfigured(): Promise<boolean> {
-  const { data, error } = await (supabase as any).rpc("my_email_password_configured");
-  if (error) {
-    console.warn("[identity-providers] my_email_password_configured failed:", error.message);
-    return false;
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user?.user_metadata?.[EMAIL_PASSWORD_CONFIGURED_META] === true) {
+      return true;
+    }
+  } catch {
+    /* auth session check fallback */
   }
-  return data === true;
+
+  try {
+    const { data, error } = await (supabase as any).rpc("my_email_password_configured");
+    if (!error && data === true) {
+      return true;
+    }
+  } catch {
+    /* RPC optional */
+  }
+
+  return false;
 }
 
 /** Persist gate completion in auth.users metadata (server-side). */
 export async function markEmailPasswordConfiguredServer(): Promise<boolean> {
-  const { error } = await (supabase as any).rpc("mark_my_email_password_configured");
-  if (error) {
-    console.warn("[identity-providers] mark_my_email_password_configured failed:", error.message);
-    return false;
+  // 1. Direct Supabase Auth user metadata update (client-authoritative, standard Auth API)
+  try {
+    const { error } = await supabase.auth.updateUser({
+      data: { [EMAIL_PASSWORD_CONFIGURED_META]: true },
+    });
+    if (!error) return true;
+  } catch {
+    /* try fallback */
   }
-  return true;
+
+  // 2. Optional RPC if deployed
+  try {
+    const { error } = await (supabase as any).rpc("mark_my_email_password_configured");
+    if (!error) return true;
+  } catch {
+    /* non-critical */
+  }
+
+  return false;
 }
