@@ -21,6 +21,7 @@ import { calculateFineGold, calculateKarigarWastage, calculateLabourCharge } fro
 import { MASTER_CHART_OF_ACCOUNTS, generateJournalForTransaction } from "@/lib/dual-ledger-engine";
 import { calculateTaxDecision } from "@/lib/statutory-tax-engine";
 import { searchKnowledgeRepository } from "@/lib/assistant/knowledge-repository";
+import { resolveOpenRoute } from "@/lib/assistant/nl-navigate-routes";
 
 export const MCP_TOOL_REGISTRY: Record<string, MCPToolDefinition<any, any>> = {
   // ── 1. CORE NAMESPACE ───────────────────────────────────────────────────────
@@ -146,6 +147,56 @@ export const MCP_TOOL_REGISTRY: Record<string, MCPToolDefinition<any, any>> = {
       tenantId: context.tenantId,
     }),
   },
+
+
+  // AVS-67 — NL navigate / openRoute (AVS-4 hubs only; READ / PREPARE-safe)
+  "core.open_route": {
+    name: "core.open_route",
+    version: "v1",
+    description:
+      "Maps natural-language intents or route keys to existing AVS-4 hubs only: Sell (/billing), Stock (/stock), Make (/workshop), Money (/control/accounts). Returns openRoute { href, title }. Clear miss when unmapped. No writes or payments.",
+    namespace: "core",
+    inputSchema: {
+      type: "object",
+      properties: {
+        phrase: {
+          type: "string",
+          description: "Natural-language navigate phrase, e.g. open sell, go to stock",
+        },
+        routeKey: {
+          type: "string",
+          description: "Optional explicit key: sell | stock | make | money (or aliases)",
+        },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        ok: { type: "boolean" },
+        action: { type: "string" },
+        href: { type: "string" },
+        title: { type: "string" },
+        miss: { type: "boolean" },
+        message: { type: "string" },
+      },
+    },
+    allowedRoles: ["owner", "admin", "supervisor", "retail_sales", "karigar", "worker", "accountant", "saas_admin"],
+    requiredPermissions: [],
+    tenantScoped: true,
+    branchScoped: false,
+    readWriteLevel: "READ",
+    approvalRequired: false,
+    auditRequired: true,
+    rateLimit: { maxPerMinute: 60 },
+    enabled: true,
+    handler: async (params, _context) => {
+      return resolveOpenRoute({
+        routeKey: typeof params.routeKey === "string" ? params.routeKey : null,
+        phrase: typeof params.phrase === "string" ? params.phrase : null,
+      });
+    },
+  },
+
 
   // ── 2. CUSTOMERS NAMESPACE ──────────────────────────────────────────────────
   "customers.search_customers": {

@@ -231,6 +231,19 @@ export const AUTHORIZED_ERP_TOOLS: ToolRegistryItem[] = [
     requiredPermissions: ["billing.view"],
     parameters: { query: { type: "string" } },
   },
+  // AVS-67 — NL navigate / openRoute (AVS-4 hubs only; READ)
+  {
+    name: "openRoute",
+    domain: "knowledge",
+    riskLevel: 0,
+    description:
+      "Maps natural-language intents to existing AVS-4 hubs only: Sell (/billing), Stock (/stock), Make (/workshop), Money (/control/accounts). Returns navigate/openRoute { href, title }. Clear miss when unmapped. No writes.",
+    requiredPermissions: [],
+    parameters: {
+      phrase: { type: "string" },
+      routeKey: { type: "string" },
+    },
+  },
 ];
 
 export async function auditAssistantAction(args: {

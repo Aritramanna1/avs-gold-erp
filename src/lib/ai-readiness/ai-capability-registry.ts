@@ -248,6 +248,24 @@ export const AI_CAPABILITY_REGISTRY: Record<string, AICapabilityDefinition> = {
   },
 
   // ── PREPARE CAPABILITIES (DRAFT-FIRST) ──────────────────────────────────────
+
+  AI_OPEN_ROUTE: {
+    id: "AI_OPEN_ROUTE",
+    name: "Open AVS-4 Nav Route",
+    description:
+      "Map NL intents to existing Sell/Stock/Make/Money hubs and return navigate/openRoute { href, title }. No writes.",
+    module: "core",
+    allowedRoles: ["owner", "admin", "supervisor", "retail_sales", "karigar", "worker", "accountant", "saas_admin"],
+    requiredPermissions: [],
+    allowedOperations: ["READ"],
+    classification: "READ",
+    approvalRequired: false,
+    tenantScoped: true,
+    branchScoped: false,
+    auditRequired: true,
+    enabled: true,
+  },
+
   AI_PREPARE_SALE: {
     id: "AI_PREPARE_SALE",
     name: "Prepare Retail Sale Draft",
