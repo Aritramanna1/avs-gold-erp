@@ -326,6 +326,21 @@ export const AI_CAPABILITY_REGISTRY: Record<string, AICapabilityDefinition> = {
     auditRequired: true,
     enabled: true,
   },
+  AI_PREPARE_PAYMENT: {
+    id: "AI_PREPARE_PAYMENT",
+    name: "Prepare Payment Voucher Draft",
+    description: "Draft inward/outward payment voucher for human review. Never auto-posts.",
+    module: "finance",
+    allowedRoles: ["owner", "admin", "accountant", "saas_admin"],
+    requiredPermissions: ["payments.execute"],
+    allowedOperations: ["PREPARE"],
+    classification: "PREPARE",
+    approvalRequired: true,
+    tenantScoped: true,
+    branchScoped: true,
+    auditRequired: true,
+    enabled: true,
+  },
 
   // ── RECOMMEND CAPABILITIES ──────────────────────────────────────────────────
   AI_RECOMMEND_REORDER: {

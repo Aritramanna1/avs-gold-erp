@@ -33,7 +33,7 @@ export function AssistantCardRenderer({ card, onActionConfirmed }: AssistantCard
   const handleConfirmAction = async (payload: ActionPayload) => {
     setIsExecuting(true);
     try {
-      const result = await executeConfirmedAction(payload);
+      const result = await executeConfirmedAction({ ...payload, isConfirmed: true });
       setIsExecuting(false);
       if (result.success) {
         setActionDone(true);
@@ -291,7 +291,12 @@ export function AssistantCardRenderer({ card, onActionConfirmed }: AssistantCard
         <div className="rounded-sm border-2 border-amber-500/30 bg-amber-500/5 p-3.5 space-y-2.5">
           <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-semibold text-xs">
             <ShieldCheck className="h-4 w-4" />
-            <span>Safe Action Preview (User Approval Required)</span>
+            <span>
+              {card.actionPayload.actionType === "execute_payment" ||
+              card.actionPayload.actionType === "execute_settlement"
+                ? "HIGH-RISK — human confirm required (never auto)"
+                : "Safe Action Preview (User Approval Required)"}
+            </span>
           </div>
 
           <p className="text-xs text-foreground/90 leading-relaxed">

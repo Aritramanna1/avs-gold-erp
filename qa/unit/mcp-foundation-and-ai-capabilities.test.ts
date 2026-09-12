@@ -61,6 +61,7 @@ describe("AVS ERP — AI Capabilities & MCP Foundation Enterprise Test Suite", (
       expect(caps).toContain("AI_PREPARE_SETTLEMENT");
       expect(caps).toContain("AI_PREPARE_STOCK_TRANSFER");
       expect(caps).toContain("AI_PREPARE_SALARY_SETTLEMENT");
+      expect(caps).toContain("AI_PREPARE_PAYMENT");
 
       expect(caps).toContain("AI_RECOMMEND_REORDER");
       expect(caps).toContain("AI_RECOMMEND_FOLLOWUP");
@@ -85,6 +86,7 @@ describe("AVS ERP — AI Capabilities & MCP Foundation Enterprise Test Suite", (
 
     it("marks high-risk execution capabilities as approval-required", () => {
       expect(AI_CAPABILITY_REGISTRY["AI_PREPARE_SETTLEMENT"].approvalRequired).toBe(true);
+      expect(AI_CAPABILITY_REGISTRY["AI_PREPARE_PAYMENT"].approvalRequired).toBe(true);
       expect(AI_CAPABILITY_REGISTRY["AI_EXECUTE_PAYMENT"].approvalRequired).toBe(true);
       expect(AI_CAPABILITY_REGISTRY["AI_EXECUTE_SETTLEMENT"].approvalRequired).toBe(true);
       expect(AI_CAPABILITY_REGISTRY["AI_READ_CUSTOMER"].approvalRequired).toBe(false);

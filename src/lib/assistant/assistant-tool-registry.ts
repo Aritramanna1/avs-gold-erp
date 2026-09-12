@@ -34,6 +34,11 @@ import {
   executeAssistantCreateStock,
   executeAssistantCreateExpense,
 } from "./assistant-action-executor";
+import {
+  gateHighRiskExecute,
+  PAYMENT_EXECUTE_REQUIRED,
+  SETTLEMENT_EXECUTE_REQUIRED,
+} from "@/lib/ai-execute/high-risk-execute-gate";
 
 const supabaseAny = supabase as any;
 
@@ -225,6 +230,22 @@ export const AUTHORIZED_ERP_TOOLS: ToolRegistryItem[] = [
     },
   },
   {
+    name: "prepare_payment_draft",
+    domain: "accounts",
+    riskLevel: 4,
+    description: "Prepares a payment voucher draft. EXECUTE requires human confirm (isConfirmed). Never auto-posts.",
+    requiredPermissions: ["payments.execute"],
+    parameters: { query: { type: "string" } },
+  },
+  {
+    name: "prepare_settlement_draft",
+    domain: "accounts",
+    riskLevel: 4,
+    description: "Prepares a karigar settlement draft. EXECUTE requires human confirm (isConfirmed). Never auto-posts.",
+    requiredPermissions: ["settlement.execute"],
+    parameters: { query: { type: "string" } },
+  },
+  {
     name: "prepare_whatsapp_invoice_action",
     domain: "communication",
     riskLevel: 2,
@@ -286,7 +307,7 @@ function todayYmd() {
 export function extractSearchQuery(userMessage: string): string {
   return userMessage
     .replace(
-      /\b(balance|gold position|gold book|where is my gold|gold|book|followups?|overdue|customer|karigar|worker|for|of|show|tell|what|is|the|today|daily|issue|draft|prepare|search|find|open|record|records|document|documents|invoice|tag|barcode|branch|party|timeline|stock|ready|catalogue|outstanding|ageing|expense|ticket|help|how to|360|dossier|overview|profile|khata|ledger)\b/gi,
+      /\b(balance|gold position|gold book|where is my gold|gold|book|followups?|overdue|customer|karigar|worker|for|of|show|tell|what|is|the|today|daily|issue|draft|prepare|search|find|open|record|records|document|documents|invoice|tag|barcode|branch|party|timeline|stock|ready|catalogue|outstanding|ageing|expense|ticket|help|how to|360|dossier|overview|profile|khata|ledger|payment|settlement|hisab|rupees|rupee|inr)\b/gi,
       " ",
     )
     .replace(/\s+/g, " ")
@@ -307,6 +328,44 @@ export function extractIssueArgs(message: string) {
         ? Math.round((purityValue / 24) * 1000)
         : purityValue;
   return { grossWeightGrams, purityPerMille };
+}
+
+
+export function extractPaymentArgs(message: string) {
+  const amountMatch =
+    message.match(/(?:₹|rs\.?|inr)\s*([\d,]+(?:\.\d+)?)/i) ||
+    message.match(/([\d,]+(?:\.\d+)?)\s*(?:rs\.?|rupees|inr)\b/i);
+  const rupees = amountMatch ? Number(String(amountMatch[1]).replace(/,/g, "")) : null;
+  const amountPaise =
+    rupees != null && Number.isFinite(rupees) && rupees > 0 ? Math.round(rupees * 100) : null;
+  const q = message.toLowerCase();
+  const paymentType = /\b(receive|inward|incoming|collection|from)\b/.test(q)
+    ? "inward"
+    : /\b(pay|outward|outgoing|send|to)\b/.test(q)
+      ? "outward"
+      : null;
+  const paymentMode = /\bupi\b/.test(q)
+    ? "upi"
+    : /\bbank|neft|rtgs|imps\b/.test(q)
+      ? "bank"
+      : /\bcard\b/.test(q)
+        ? "card"
+        : /\bcash\b/.test(q)
+          ? "cash"
+          : null;
+  return { amountPaise, paymentType: paymentType as "inward" | "outward" | null, paymentMode };
+}
+
+export function extractSettlementArgs(message: string) {
+  const gramsMatch = message.match(/(\d+(?:\.\d+)?)\s*(?:g|gm|gram|grams)\b/i);
+  const cashMatch =
+    message.match(/(?:₹|rs\.?|inr)\s*([\d,]+(?:\.\d+)?)/i) ||
+    message.match(/([\d,]+(?:\.\d+)?)\s*(?:rs\.?|rupees|inr)\b/i);
+  const settlementGoldMg = gramsMatch ? Math.round(Number(gramsMatch[1]) * 1000) : null;
+  const rupees = cashMatch ? Number(String(cashMatch[1]).replace(/,/g, "")) : null;
+  const settlementCashPaise =
+    rupees != null && Number.isFinite(rupees) && rupees > 0 ? Math.round(rupees * 100) : null;
+  return { settlementGoldMg, settlementCashPaise };
 }
 
 async function findPerson(query: string, types?: string[]): Promise<any | null> {
@@ -1778,6 +1837,169 @@ export async function toolPrepareWhatsAppInvoiceAction(
   };
 }
 
+
+// 18. prepare_payment_draft (HIGH-RISK PREPARE — never auto-executes)
+export async function toolPreparePaymentDraft(
+  userMessage: string,
+): Promise<ERPActionCard> {
+  const extracted = extractPaymentArgs(userMessage);
+  const query = extractSearchQuery(userMessage);
+  const party = query
+    ? await findPerson(query, ["customer", "supplier", "dealer", "karigar", "worker", "employee"])
+    : null;
+  const partyId = party?.id ?? "";
+  const partyName = party?.full_name ?? (query || "Unknown party");
+  const amountPaise = extracted.amountPaise;
+  const paymentType = extracted.paymentType;
+  const rupees =
+    amountPaise != null ? (amountPaise / 100).toLocaleString("en-IN") : "—";
+  const missing: string[] = [];
+  if (!partyId) missing.push("partyId");
+  if (amountPaise == null) missing.push("amountPaise");
+  if (!paymentType) missing.push("paymentType");
+
+  const card: ERPActionCard = {
+    type: "voucher_draft",
+    title: "PREPARE payment draft (not posted)",
+    summary: missing.length
+      ? `Payment draft incomplete — missing ${missing.join(", ")}. Confirm is disabled until fields are present. Never auto-posts.`
+      : `Review payment of ₹${rupees} (${paymentType}) for ${partyName}. Confirm is required. Never auto-posts.`,
+    actionRoute: "/control/accounts",
+    actionPayload: {
+      actionId: `act_pay_${Date.now()}`,
+      actionType: "execute_payment",
+      title: "Confirm payment EXECUTE",
+      description:
+        "HIGH-RISK: Confirm posts nothing automatically. EXECUTE stub refuses unless isConfirmed and required fields are present.",
+      requiresConfirmation: true,
+      isConfirmed: false,
+      targetType: "payments",
+      targetId: partyId || undefined,
+      recipientName: partyName,
+      details: {
+        capabilityId: "AI_EXECUTE_PAYMENT",
+        partyId,
+        partyName,
+        amountPaise,
+        paymentType,
+        paymentMode: extracted.paymentMode,
+        draftVoucherId: `vch_draft_${Date.now()}`,
+      },
+    },
+    kpis: [
+      { label: "Party", value: partyName },
+      { label: "Amount", value: amountPaise != null ? `₹${rupees}` : "missing", variant: amountPaise != null ? "gold" : "warning" },
+      { label: "Type", value: paymentType ?? "missing" },
+      { label: "Mode", value: extracted.paymentMode ?? "—" },
+    ],
+    data: {
+      capabilityId: "AI_PREPARE_PAYMENT",
+      approvalRequired: true,
+      missingFields: missing,
+      partyId,
+      amountPaise,
+      paymentType,
+    },
+  };
+
+  await auditAssistantAction({
+    actionKey: "prepare_payment_draft",
+    actionType: "suggest",
+    targetType: "payments",
+    targetId: partyId || undefined,
+    status: "requested",
+    requiresConfirmation: true,
+    requestPayload: { query: userMessage },
+    resultPayload: card.data,
+  });
+
+  return card;
+}
+
+// 19. prepare_settlement_draft (HIGH-RISK PREPARE — never auto-executes)
+export async function toolPrepareSettlementDraft(
+  userMessage: string,
+): Promise<ERPActionCard> {
+  const extracted = extractSettlementArgs(userMessage);
+  const query = extractSearchQuery(userMessage);
+  const worker = query
+    ? await findPerson(query, ["karigar", "worker", "outside_worker", "employee"])
+    : null;
+  const karigarId = worker?.id ?? "";
+  const karigarName = worker?.full_name ?? (query || "Unknown karigar");
+  const missing: string[] = [];
+  if (!karigarId) missing.push("karigarId");
+  if (
+    !(
+      (extracted.settlementGoldMg != null && extracted.settlementGoldMg > 0) ||
+      (extracted.settlementCashPaise != null && extracted.settlementCashPaise > 0)
+    )
+  ) {
+    missing.push("settlementGoldMg|settlementCashPaise");
+  }
+  const goldG =
+    extracted.settlementGoldMg != null ? (extracted.settlementGoldMg / 1000).toFixed(3) : "—";
+  const cash =
+    extracted.settlementCashPaise != null
+      ? `₹${(extracted.settlementCashPaise / 100).toLocaleString("en-IN")}`
+      : "—";
+
+  const card: ERPActionCard = {
+    type: "voucher_draft",
+    title: "PREPARE settlement draft (not posted)",
+    summary: missing.length
+      ? `Settlement draft incomplete — missing ${missing.join(", ")}. Confirm required. Never auto-posts.`
+      : `Review settlement for ${karigarName}: ${goldG} g / ${cash}. Confirm is required. Never auto-posts.`,
+    actionRoute: "/settlement/new",
+    actionPayload: {
+      actionId: `act_settle_${Date.now()}`,
+      actionType: "execute_settlement",
+      title: "Confirm settlement EXECUTE",
+      description:
+        "HIGH-RISK: Confirm posts nothing automatically. EXECUTE stub refuses unless isConfirmed and required fields are present.",
+      requiresConfirmation: true,
+      isConfirmed: false,
+      targetType: "settlement",
+      targetId: karigarId || undefined,
+      recipientName: karigarName,
+      details: {
+        capabilityId: "AI_EXECUTE_SETTLEMENT",
+        karigarId,
+        karigarName,
+        settlementGoldMg: extracted.settlementGoldMg,
+        settlementCashPaise: extracted.settlementCashPaise,
+        draftSettlementId: `settle_draft_${Date.now()}`,
+      },
+    },
+    kpis: [
+      { label: "Karigar", value: karigarName },
+      { label: "Gold", value: extracted.settlementGoldMg != null ? `${goldG} g` : "missing", variant: "gold" },
+      { label: "Cash", value: cash },
+    ],
+    data: {
+      capabilityId: "AI_PREPARE_SETTLEMENT",
+      approvalRequired: true,
+      missingFields: missing,
+      karigarId,
+      settlementGoldMg: extracted.settlementGoldMg,
+      settlementCashPaise: extracted.settlementCashPaise,
+    },
+  };
+
+  await auditAssistantAction({
+    actionKey: "prepare_settlement_draft",
+    actionType: "suggest",
+    targetType: "settlement",
+    targetId: karigarId || undefined,
+    status: "requested",
+    requiresConfirmation: true,
+    requestPayload: { query: userMessage },
+    resultPayload: card.data,
+  });
+
+  return card;
+}
+
 // Execute confirmed action with audit log and real database mutations
 export async function executeConfirmedAction(
   payload: ActionPayload,
@@ -1946,6 +2168,93 @@ export async function executeConfirmedAction(
         success: true,
         message: `WhatsApp message queued for ${payload.recipientName || "customer"} (${phone}).`,
       };
+    }
+
+
+    // 6. HIGH-RISK payment EXECUTE stub — never auto, never invents ledger
+    if (payload.actionType === "execute_payment") {
+      if (!payload.isConfirmed) {
+        await auditAssistantAction({
+          actionKey: "execute_payment_refused",
+          actionType: "mutate",
+          targetType: "payments",
+          targetId: payload.targetId,
+          status: "rejected",
+          requiresConfirmation: true,
+          requestPayload: details,
+          errorMessage: "isConfirmed required",
+        });
+        return {
+          success: false,
+          message:
+            "AI_EXECUTE_PAYMENT refused: click Confirm & Execute (isConfirmed). Never auto-posts.",
+        };
+      }
+      const gate = gateHighRiskExecute({
+        kind: "payment",
+        isConfirmed: payload.isConfirmed,
+        fields: {
+          partyId: details.partyId,
+          amountPaise: details.amountPaise,
+          paymentType: details.paymentType,
+        },
+        requiredKeys: [...PAYMENT_EXECUTE_REQUIRED],
+      });
+      await auditAssistantAction({
+        actionKey: gate.ok ? "execute_payment_confirm_accepted" : "execute_payment_refused",
+        actionType: "mutate",
+        targetType: "payments",
+        targetId: payload.targetId,
+        status: gate.ok ? "confirmed" : "rejected",
+        requiresConfirmation: true,
+        requestPayload: details,
+        resultPayload: gate,
+        errorMessage: gate.ok ? undefined : gate.message,
+      });
+      return { success: gate.ok, message: gate.message };
+    }
+
+    // 7. HIGH-RISK settlement EXECUTE stub — never auto, never invents ledger
+    if (payload.actionType === "execute_settlement") {
+      if (!payload.isConfirmed) {
+        await auditAssistantAction({
+          actionKey: "execute_settlement_refused",
+          actionType: "mutate",
+          targetType: "settlement",
+          targetId: payload.targetId,
+          status: "rejected",
+          requiresConfirmation: true,
+          requestPayload: details,
+          errorMessage: "isConfirmed required",
+        });
+        return {
+          success: false,
+          message:
+            "AI_EXECUTE_SETTLEMENT refused: click Confirm & Execute (isConfirmed). Never auto-posts.",
+        };
+      }
+      const gate = gateHighRiskExecute({
+        kind: "settlement",
+        isConfirmed: payload.isConfirmed,
+        fields: {
+          karigarId: details.karigarId,
+          settlementGoldMg: details.settlementGoldMg,
+          settlementCashPaise: details.settlementCashPaise,
+        },
+        requiredKeys: [...SETTLEMENT_EXECUTE_REQUIRED],
+      });
+      await auditAssistantAction({
+        actionKey: gate.ok ? "execute_settlement_confirm_accepted" : "execute_settlement_refused",
+        actionType: "mutate",
+        targetType: "settlement",
+        targetId: payload.targetId,
+        status: gate.ok ? "confirmed" : "rejected",
+        requiresConfirmation: true,
+        requestPayload: details,
+        resultPayload: gate,
+        errorMessage: gate.ok ? undefined : gate.message,
+      });
+      return { success: gate.ok, message: gate.message };
     }
 
     // Unwired action types must not report fake success.

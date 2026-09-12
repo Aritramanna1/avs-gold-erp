@@ -154,6 +154,24 @@ export function classifyIntent(normalizedText: string, rawText: string): IntentM
     return { toolName: "action_create_expense", confidence: 0.95 };
   }
 
+
+  // HIGH-RISK payment / settlement PREPARE (never auto EXECUTE)
+  if (
+    /\b(prepare|draft|make)\b.*\bpayment\b/.test(q) ||
+    /\b(pay|receive)\b.*\b(rs|rupees|inr|₹)\b/.test(q) ||
+    /\brecord\s+payment\b/.test(q) ||
+    /\bprepare\s+payment\b/.test(q)
+  ) {
+    return { toolName: "prepare_payment_draft", confidence: 0.94, entities: { query: normalizedText } };
+  }
+  if (
+    /\b(prepare|draft|make|finalize)\b.*\bsettlement\b/.test(q) ||
+    /\bkarigar\s+(hisab|settlement)\b/.test(q) ||
+    /\bprepare\s+settlement\b/.test(q)
+  ) {
+    return { toolName: "prepare_settlement_draft", confidence: 0.94, entities: { query: normalizedText } };
+  }
+
   // Gold issue/receive (typo-tolerant after normalization)
   if (/\b(issue|give|transfer)\b.*\b(gold|metal)\b/.test(q) || q.includes("issue gold")) {
     return {
