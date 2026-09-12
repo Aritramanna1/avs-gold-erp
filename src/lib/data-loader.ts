@@ -1012,7 +1012,12 @@ export async function pullBranchSettings(): Promise<void> {
 
 export async function pullWorkshops(): Promise<void> {
   const { data, error } = await supabase.from("workshops").select(WORKSHOP_COLUMNS).order("name");
-  if (error) throw new Error(`workshops pull: ${error.message}`);
+  if (error) {
+    if (error.code === "PGRST205" || error.message?.includes("schema cache") || (error as any).code === "42P01") {
+      return;
+    }
+    throw new Error(`workshops pull: ${error.message}`);
+  }
   if (data && data.length > 0) {
     const workshops = data.map((r: any) => {
       const rowData =

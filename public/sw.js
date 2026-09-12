@@ -2,7 +2,7 @@
  * Ornexa app-shell service worker — static assets only.
  * Does NOT cache Supabase API responses or business data.
  */
-const CACHE = "ornexa-shell-v1";
+const CACHE = "ornexa-shell-v2";
 const SHELL_ASSETS = ["/", "/index.html", "/site.webmanifest", "/favicon.ico"];
 
 self.addEventListener("install", (event) => {

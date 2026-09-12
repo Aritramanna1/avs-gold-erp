@@ -124,7 +124,7 @@ export async function fetchCommunicationCentre(opts: {
   let query = supabase
     .from("communication_jobs" as never)
     .select(
-      "id,product_id,event_key,status,channels_requested,recipient,reference_type,reference_id,created_at,communication_channel_results(channel,status,provider,error_message)",
+      "id,product_id,event_key,status,channels_requested,recipient,reference_type,reference_id,created_at",
     )
     .order("created_at", { ascending: false })
     .limit(limit);

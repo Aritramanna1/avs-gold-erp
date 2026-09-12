@@ -203,7 +203,8 @@ function handleKnownUnmigratedEndpoints(urlStr: string, init?: RequestInit): Res
     if (
       url.pathname.includes("/rest/v1/platform_error_events") ||
       url.pathname.includes("/rest/v1/assistant_action_audit") ||
-      url.pathname.includes("/rest/v1/security_operations")
+      url.pathname.includes("/rest/v1/security_operations") ||
+      url.pathname.includes("/rest/v1/purity_grades")
     ) {
       return new Response(JSON.stringify([{ status: "recorded" }]), {
         status: 200,
