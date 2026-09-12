@@ -284,6 +284,14 @@ export async function saveDirect(table: string, id: string, rawPayload: any): Pr
       data: rawPayload,
     };
   } else if (table === "app_settings") {
+    const uuidRe =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRe.test(id)) {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(`avs_satellite_settings:${id}`, JSON.stringify(rawPayload));
+      }
+      return;
+    }
     dbRow = {
       id: id,
       scope: "firm",

@@ -136,6 +136,21 @@ export function createRepository<T extends { id: string }>(table: string): Repos
     },
 
     async read(id) {
+      if (table === "app_settings") {
+        const uuidRe =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRe.test(id)) {
+          if (typeof window !== "undefined" && window.localStorage) {
+            const raw = window.localStorage.getItem(`avs_satellite_settings:${id}`);
+            if (raw) {
+              try {
+                return JSON.parse(raw) as T;
+              } catch {}
+            }
+          }
+          return null;
+        }
+      }
       const client = getRawSupabaseClient();
       const { data, error } = await client
         .from(table as any)

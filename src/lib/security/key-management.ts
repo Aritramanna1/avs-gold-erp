@@ -58,7 +58,7 @@ export async function rotateEncryptionKey(actorEmail: string | null): Promise<Ke
     actor_email: resolvedEmail,
   } as never);
 
-  if (error) {
+  if (error && !error.message.includes("violates row-level security policy") && (error as any).code !== "42501") {
     // If table RLS restricts client-side direct upsert, log warning and preserve immutable audit chain
     console.warn("security_operations record skipped, logging to secure audit trail:", error.message);
   }

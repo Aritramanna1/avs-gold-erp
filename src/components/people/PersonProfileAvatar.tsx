@@ -114,7 +114,7 @@ export function PersonProfileAvatar({
 
   if (showPhoto && finalPhotoUrl) {
     return (
-      <div className={cn("overflow-hidden bg-accent shrink-0 select-none relative", className)}>
+      <div className={cn("overflow-hidden bg-accent shrink-0 select-none relative aspect-square", className)}>
         <img
           src={finalPhotoUrl}
           alt={name || person?.fullName || "Avatar"}
@@ -127,7 +127,7 @@ export function PersonProfileAvatar({
               setAttempt("broken");
             }
           }}
-          className={cn("h-full w-full object-cover", imgClassName)}
+          className={cn("h-full w-full object-cover object-center", imgClassName)}
           data-testid={testId}
         />
         {isLoading && (
@@ -143,7 +143,7 @@ export function PersonProfileAvatar({
   return (
     <div
       className={cn(
-        "bg-primary text-primary-foreground grid place-items-center font-bold text-sm shrink-0 select-none relative",
+        "bg-primary text-primary-foreground grid place-items-center font-bold text-sm shrink-0 select-none relative aspect-square",
         className,
       )}
       aria-label={name}

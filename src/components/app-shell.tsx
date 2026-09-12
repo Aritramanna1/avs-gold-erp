@@ -240,105 +240,113 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex-1 flex flex-col min-w-0 min-h-0" id="main-content-wrapper">
         <header
-          className="h-14 min-h-[var(--touch-target)] shrink-0 border-b border-border bg-card flex items-center gap-2 md:gap-3 px-3 md:px-6 overflow-x-auto overflow-y-hidden scrollbar-none"
+          className="h-14 min-h-[var(--touch-target)] shrink-0 border-b border-border bg-card flex items-center justify-between gap-1.5 sm:gap-2 md:gap-3 px-2 sm:px-4 md:px-6 relative z-30"
           id="main-header"
         >
-          {/* Phone: Offline menu tree in drawer. md+ uses OfflineMenuBar strip. */}
-          <div className="flex md:hidden items-center" id="mobile-sidebar-trigger">
-            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-              <SheetTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Open Offline ERP menu"
-                  className="p-2 rounded-sm border border-border hover:border-gold/50 cursor-pointer bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 transition-colors active:scale-95"
+          {/* Left section: navigation, brand, rates & search */}
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 min-w-0 shrink">
+            {/* Phone: Offline menu tree in drawer. md+ uses OfflineMenuBar strip. */}
+            <div className="flex md:hidden items-center shrink-0" id="mobile-sidebar-trigger">
+              <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Open Offline ERP menu"
+                    className="p-1.5 sm:p-2 rounded-sm border border-border hover:border-gold/50 cursor-pointer bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 transition-colors active:scale-95"
+                  >
+                    <Menu className="h-5 w-5 text-gold" />
+                  </button>
+                </SheetTrigger>
+                <SheetContent
+                  side="left"
+                  className="p-0 bg-sidebar border-r border-sidebar-border w-[min(20rem,92vw)] h-full"
                 >
-                  <Menu className="h-5 w-5 text-gold" />
-                </button>
-              </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="p-0 bg-sidebar border-r border-sidebar-border w-[min(20rem,92vw)] h-full"
+                  <Sidebar
+                    onOpenGoldRateEditor={() => {
+                      setSidebarOpen(false);
+                      setGoldRateOpen(true);
+                    }}
+                    className="w-full h-full border-r-0"
+                    compact
+                  />
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            <Link to="/app" className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0 hover:opacity-90 transition-opacity cursor-pointer group" title="Return to Home Working Surface" id="mobile-branding">
+              <Logo variant="svg" className="h-7 w-7 sm:h-8 sm:w-8 object-contain shrink-0 group-hover:scale-105 transition-transform" />
+              <span className="text-xs sm:text-sm font-semibold text-foreground truncate max-w-[80px] sm:max-w-[120px] md:max-w-none">{shortName}</span>
+            </Link>
+            <MobileSearchButton className="md:hidden shrink-0" />
+
+            <button
+              type="button"
+              onClick={() => setGoldRateOpen(true)}
+              className={`flex items-center gap-1 sm:gap-1.5 rounded-md border px-1.5 py-0.5 sm:px-2 sm:py-1 lg:gap-2 lg:px-3 lg:py-1.5 transition-colors cursor-pointer text-current focus:outline-none shrink-0 ${
+                goldRatePerGramPaise > 0
+                  ? "border-border bg-background/60 hover:border-gold/40 hover:bg-gold/5"
+                  : "border-red-500 bg-red-500/10 text-red-600 dark:text-red-400 font-bold hover:bg-red-500/20 shadow-sm animate-pulse"
+              }`}
+              id="header-gold-rate-trigger"
+            >
+              <span
+                className={`h-2 w-2 rounded-full shrink-0 ${
+                  goldRatePerGramPaise > 0 ? "bg-success animate-pulse" : "bg-red-500 animate-ping"
+                }`}
+              />
+              <span className="hidden xl:inline text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Gold Rate
+              </span>
+              <span
+                className={`font-serif text-[11px] sm:text-xs md:text-sm leading-none shrink-0 ${goldRatePerGramPaise > 0 ? "text-gold" : "text-red-600 dark:text-red-400 font-semibold underline"}`}
               >
-                <Sidebar
-                  onOpenGoldRateEditor={() => {
-                    setSidebarOpen(false);
-                    setGoldRateOpen(true);
-                  }}
-                  className="w-full h-full border-r-0"
-                  compact
-                />
-              </SheetContent>
-            </Sheet>
+                {formattedGoldRate}
+              </span>
+              <span className="hidden 2xl:inline text-[10px] text-muted-foreground">{goldRateStatus}</span>
+            </button>
+
+            {/* Global Omnisearch Bar (YouTube / Gmail / WhatsApp Search Pattern) */}
+            <button
+              type="button"
+              onClick={() => {
+                dispatchKeyboardAction(KEYBOARD_EVENTS.COMMAND_PALETTE);
+              }}
+              className="hidden xl:flex items-center gap-2 rounded-full border border-border/80 bg-background/70 px-3 py-1.5 text-xs text-muted-foreground hover:border-gold/50 hover:bg-gold/5 hover:text-foreground transition-all cursor-pointer w-44 2xl:w-72 shadow-sm shrink"
+              data-testid="desktop-global-search"
+              id="desktop-global-search-btn"
+              title="Global Search & Quick Actions (Ctrl+K)"
+              aria-label="Global Search & Quick Actions"
+            >
+              <Search className="h-3.5 w-3.5 text-gold shrink-0" />
+              <span className="text-xs truncate flex-1 text-left">Search (Ctrl+K)...</span>
+              <kbd className="hidden 2xl:inline rounded border bg-muted/80 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground shrink-0">
+                Ctrl K
+              </kbd>
+            </button>
+
+            <div className="hidden lg:flex shrink-0">
+              <UniversalActionMenu />
+            </div>
+            <div className="hidden 2xl:flex shrink-0">
+              <ChargeTokenBadge />
+            </div>
           </div>
 
-          <Link to="/app" className="flex items-center gap-2 min-w-0 hover:opacity-90 transition-opacity cursor-pointer group" title="Return to Home Working Surface" id="mobile-branding">
-            <Logo variant="svg" className="h-8 w-8 object-contain shrink-0 group-hover:scale-105 transition-transform" />
-            <span className="text-sm font-semibold text-foreground truncate">{shortName}</span>
-          </Link>
-          <MobileSearchButton className="md:hidden" />
-
-          <button
-            type="button"
-            onClick={() => setGoldRateOpen(true)}
-            className={`flex items-center gap-1.5 rounded-md border px-2 py-1 lg:gap-2 lg:px-3 lg:py-1.5 transition-colors cursor-pointer text-current focus:outline-none ${
-              goldRatePerGramPaise > 0
-                ? "border-border bg-background/60 hover:border-gold/40 hover:bg-gold/5"
-                : "border-red-500 bg-red-500/10 text-red-600 dark:text-red-400 font-bold hover:bg-red-500/20 shadow-sm animate-pulse"
-            }`}
-            id="header-gold-rate-trigger"
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                goldRatePerGramPaise > 0 ? "bg-success animate-pulse" : "bg-red-500 animate-ping"
-              }`}
-            />
-            <span className="hidden md:inline text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-              Gold Rate
-            </span>
-            <span
-              className={`font-serif text-xs md:text-sm leading-none ${goldRatePerGramPaise > 0 ? "text-gold" : "text-red-600 dark:text-red-400 font-semibold underline"}`}
-            >
-              {formattedGoldRate}
-            </span>
-            <span className="hidden sm:inline text-[10px] text-muted-foreground">{goldRateStatus}</span>
-          </button>
-
-          {/* Global Omnisearch Bar (YouTube / Gmail / WhatsApp Search Pattern) */}
-          <button
-            type="button"
-            onClick={() => {
-              dispatchKeyboardAction(KEYBOARD_EVENTS.COMMAND_PALETTE);
-            }}
-            className="hidden md:flex items-center gap-3 rounded-full border border-border/80 bg-background/70 px-4 py-1.5 text-xs text-muted-foreground hover:border-gold/50 hover:bg-gold/5 hover:text-foreground transition-all cursor-pointer w-64 lg:w-80 shadow-sm"
-            data-testid="desktop-global-search"
-            id="desktop-global-search-btn"
-            title="Global Search & Quick Actions (Ctrl+K)"
-            aria-label="Global Search & Quick Actions"
-          >
-            <Search className="h-3.5 w-3.5 text-gold shrink-0" />
-            <span className="text-xs truncate flex-1 text-left">Search customer, bill, barcode (Ctrl+K)...</span>
-            <kbd className="rounded border bg-muted/80 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground shrink-0">
-              Ctrl K
-            </kbd>
-          </button>
-
-          <UniversalActionMenu />
-          <ChargeTokenBadge />
-
-          <div className="ml-auto flex items-center gap-3 shrink-0">
-            <div className="hidden md:flex items-center gap-2" data-desktop-chrome>
+          {/* Right section: switcher, branch, tools, avatar & profile */}
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-3 shrink-0 pr-0.5 sm:pr-1">
+            <div className="hidden lg:flex items-center gap-2 shrink-0" data-desktop-chrome>
               <BusinessSwitcher />
             </div>
-            <div className="md:hidden">
+            <div className="md:hidden shrink-0">
               <MobileAccountSheet />
             </div>
-            <div className="hidden sm:block" data-desktop-chrome>
+            <div className="hidden 2xl:block shrink-0" data-desktop-chrome>
               <BranchSelector />
             </div>
 
-            {/* Language — visible from tablet (md) up; was lg-only and missing on iPad */}
+            {/* Language selector — 2xl screens */}
             <div
-              className="relative hidden md:flex items-center gap-1 rounded-md border border-border px-2 py-1 text-sm bg-background/60 hover:border-gold/40 transition-colors no-print"
+              className="relative hidden 2xl:flex items-center gap-1 rounded-md border border-border px-2 py-1 text-sm bg-background/60 hover:border-gold/40 transition-colors no-print shrink-0"
               id="header-lang-selector"
             >
               <Languages className="h-3.5 w-3.5 text-gold shrink-0" />
@@ -370,7 +378,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => openOrnexaAssistant()}
-                className="relative h-9 w-9 grid place-items-center rounded-full border border-border hover:border-gold/50 hover:bg-gold/10 transition-colors focus:outline-none cursor-pointer bg-transparent no-print"
+                className="relative h-8 w-8 sm:h-9 sm:w-9 grid place-items-center rounded-full border border-border hover:border-gold/50 hover:bg-gold/10 transition-colors focus:outline-none cursor-pointer bg-transparent no-print shrink-0"
                 aria-label="Open Assistant (Ctrl+J)"
                 title="Assistant (Ctrl+J)"
                 id="header-assistant-trigger"
@@ -380,7 +388,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
             <button
               onClick={() => setTheme(isDark ? "light" : "dark")}
-              className="relative h-9 w-9 grid place-items-center rounded-full border border-border hover:border-gold/50 transition-colors focus:outline-none cursor-pointer bg-transparent no-print"
+              className="relative h-8 w-8 sm:h-9 sm:w-9 grid place-items-center rounded-full border border-border hover:border-gold/50 transition-colors focus:outline-none cursor-pointer bg-transparent no-print shrink-0"
               aria-label="Toggle Theme"
               id="theme-toggle"
             >
@@ -390,18 +398,20 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Moon className="h-4 w-4 text-muted-foreground" />
               )}
             </button>
-            <NotificationBell />
-            {/* User menu with Sign Out */}
+            <div className="shrink-0">
+              <NotificationBell />
+            </div>
+            {/* User menu with Sign Out & Avatar */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-2 pl-3 border-l border-border hover:opacity-80 transition-opacity focus:outline-none cursor-pointer"
+                  className="flex items-center gap-1.5 sm:gap-2 pl-1.5 sm:pl-3 border-l border-border hover:opacity-80 transition-opacity focus:outline-none cursor-pointer shrink-0"
                   id="user-menu-trigger"
                 >
-                  <div className="text-right hidden sm:block">
-                    <div className="text-sm leading-tight font-medium">{displayName}</div>
-                    <div className="text-[11px] text-muted-foreground leading-tight">
+                  <div className="text-right hidden xl:block max-w-[130px]">
+                    <div className="text-sm leading-tight font-medium truncate">{displayName}</div>
+                    <div className="text-[11px] text-muted-foreground leading-tight truncate">
                       {displayRole}
                     </div>
                   </div>
@@ -410,10 +420,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                     person={currentUser}
                     name={displayName}
                     isLoading={isSwitchingAccount}
-                    className="h-9 w-9 rounded-md shrink-0"
+                    className="h-8 w-8 sm:h-9 sm:w-9 rounded-full ring-1 ring-border/60 shrink-0 aspect-square"
                     data-testid="app-shell-user-avatar"
                   />
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block" />
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden sm:block shrink-0" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
@@ -575,7 +585,9 @@ function MaintenanceNotice() {
 
       if (cancelled) return;
       if (error) {
-        console.warn("[maintenance] Could not load maintenance window", error.message);
+        if (!error.message?.includes("schema cache") && error.code !== "PGRST205") {
+          console.warn("[maintenance] Could not load maintenance window", error.message);
+        }
         return;
       }
       setNotice((data?.[0] as MaintenanceWindowNotice | undefined) ?? null);

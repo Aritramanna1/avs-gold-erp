@@ -26,6 +26,8 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (request.method !== "GET") return;
+  if (url.protocol !== "http:" && url.protocol !== "https:") return;
+  if (url.origin !== self.location.origin) return;
 
   // Never intercept Supabase or authenticated API traffic
   if (
@@ -52,8 +54,15 @@ self.addEventListener("fetch", (event) => {
           cached ??
           fetch(request).then((res) => {
             if (res.ok) {
-              const clone = res.clone();
-              caches.open(CACHE).then((c) => c.put(request, clone));
+              try {
+                const clone = res.clone();
+                caches
+                  .open(CACHE)
+                  .then((c) => c.put(request, clone).catch(() => undefined))
+                  .catch(() => undefined);
+              } catch {
+                // Ignore clone/put issues
+              }
             }
             return res;
           }),

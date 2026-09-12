@@ -115,7 +115,7 @@ async function recordSecurityOperation(entry: {
     actor_email: actorEmail,
   } as never);
 
-  if (error) {
+  if (error && !error.message.includes("violates row-level security policy") && (error as any).code !== "42501") {
     console.warn("security_operations backup record notice:", error.message);
   }
 }

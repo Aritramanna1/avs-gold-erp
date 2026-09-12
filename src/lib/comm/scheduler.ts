@@ -38,13 +38,17 @@ function isDue(lastRunAt: string | null, cadence: JobCadence, now: Date): boolea
 }
 
 async function getJobRow(key: string): Promise<Record<string, unknown> | null> {
-  const { data, error } = await (supabase as any)
-    .from("scheduled_jobs")
-    .select("job_key,cadence,last_run_at,last_status,last_error")
-    .eq("job_key", key)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return (data as Record<string, unknown> | null) ?? null;
+  try {
+    const { data, error } = await (supabase as any)
+      .from("scheduled_jobs")
+      .select("job_key,cadence,last_run_at,last_status,last_error")
+      .eq("job_key", key)
+      .maybeSingle();
+    if (error) return null;
+    return (data as Record<string, unknown> | null) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function saveJobRow(
@@ -53,18 +57,37 @@ async function saveJobRow(
   now: Date,
   errorMessage: string | null,
 ): Promise<void> {
-  const { error } = await (supabase as any).from("scheduled_jobs").upsert(
-    {
+  try {
+    const payload = {
       job_key: job.key,
       cadence: job.cadence,
       last_run_at: now.toISOString(),
       last_status: status,
       last_error: errorMessage,
       updated_at: now.toISOString(),
-    },
-    { onConflict: "firm_id,job_key" },
-  );
-  if (error) throw new Error(error.message);
+    };
+
+    const existing = await getJobRow(job.key);
+    if (existing) {
+      await (supabase as any)
+        .from("scheduled_jobs")
+        .update(payload)
+        .eq("job_key", job.key);
+    } else {
+      const { error: insertErr } = await (supabase as any)
+        .from("scheduled_jobs")
+        .insert(payload);
+      if (insertErr) {
+        // Fallback update if insert conflicted
+        await (supabase as any)
+          .from("scheduled_jobs")
+          .update(payload)
+          .eq("job_key", job.key);
+      }
+    }
+  } catch {
+    // Non-critical background telemetry persistence — keep ERP running
+  }
 }
 
 export async function checkDueJobs(

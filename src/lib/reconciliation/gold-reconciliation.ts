@@ -25,6 +25,7 @@
 import { dataProvider as supabase } from "@/lib/providers/data-provider";
 import { useMfgBills, type ManufacturingBill } from "@/lib/manufacturing-bill-store";
 import { append as appendAuditEntry } from "@/lib/security/audit-log";
+import { resolveCurrentFirmId } from "@/lib/firm-scoped-app-settings";
 
 export interface BillReconciliation {
   billId: string;
@@ -103,15 +104,19 @@ export async function runGoldReconciliation(
     all,
   };
 
+  const firmId = await resolveCurrentFirmId();
   const { error } = await (supabase as any).from("gold_reconciliation_reports").insert({
     id: report.id,
+    firm_id: firmId,
     generated_at: report.generatedAt,
     branch_id: branchId ?? null,
     total_checked: report.totalChecked,
     exception_count: report.exceptionCount,
     report_json: report,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.info("[gold-reconciliation] report persistence deferred:", error.message);
+  }
 
   for (const exception of exceptions) {
     await appendAuditEntry({

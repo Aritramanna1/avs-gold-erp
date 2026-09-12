@@ -146,8 +146,14 @@ async function seedDefaultGrades(): Promise<void> {
       is_system: grade.isSystem,
       sort_order: grade.sortOrder,
     } as never);
-    if (error && !error.message.includes("duplicate")) {
-      console.warn("[purity-grades] seed:", error.message);
+    if (error) {
+      if (error.code === "42501" || error.message.includes("violates row-level security policy")) {
+        // Table is RLS restricted for current role; fallback in-memory grades will be used
+        return;
+      }
+      if (!error.message.includes("duplicate")) {
+        console.warn("[purity-grades] seed:", error.message);
+      }
     }
   }
 }

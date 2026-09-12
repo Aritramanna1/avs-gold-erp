@@ -161,8 +161,10 @@ async function fetchAllRequests(): Promise<ApprovalRequest[]> {
     const { data, error } = await client.from("approval_requests" as any).select("id, data");
     if (error || !data) throw error ?? new Error("No data");
     return (data as unknown as Array<{ id: string; data: ApprovalRequest }>).map((row) => row.data);
-  } catch (error) {
-    console.error("[ApprovalWorkflow] Could not fetch approval requests from Supabase:", error);
+  } catch (error: any) {
+    if (error?.code !== "PGRST205" && !error?.message?.includes("schema cache")) {
+      console.error("[ApprovalWorkflow] Could not fetch approval requests from Supabase:", error);
+    }
     return [];
   }
 }
