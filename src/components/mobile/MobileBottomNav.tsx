@@ -3,7 +3,7 @@ import { Home, ShoppingBag, Hammer, Landmark, MoreHorizontal } from "lucide-reac
 import { hapticLight } from "@/lib/native/haptics";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-/** Clean separation: Home · Retail · Manufacturing · Accounts · More */
+/** AVS-57 leftover: Home · Sell · Make · Money · More (routes unchanged; no mega rewrite). */
 const TABS = [
   {
     to: "/app",
@@ -13,7 +13,7 @@ const TABS = [
   },
   {
     to: "/billing",
-    i18nKey: "group_retail",
+    i18nKey: "mobile_sell",
     icon: ShoppingBag,
     match: (p: string) =>
       p.startsWith("/billing") ||
@@ -23,7 +23,7 @@ const TABS = [
   },
   {
     to: "/workshop",
-    i18nKey: "group_manufacturing",
+    i18nKey: "mobile_make",
     icon: Hammer,
     match: (p: string) =>
       p.startsWith("/workshop") ||
@@ -38,7 +38,7 @@ const TABS = [
   },
   {
     to: "/ledger",
-    i18nKey: "group_accounts",
+    i18nKey: "mobile_money",
     icon: Landmark,
     match: (p: string) =>
       p.startsWith("/ledger") ||

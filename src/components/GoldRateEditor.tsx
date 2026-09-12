@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -236,11 +237,11 @@ export function GoldRateEditor({ open, onOpenChange }: GoldRateEditorProps) {
         <DialogHeader>
           <div className="flex items-center gap-2 mb-1">
             <Coins className="h-5 w-5 text-gold" />
-            <DialogTitle className="font-serif text-xl text-gold">Update Metal Rates</DialogTitle>
+            <DialogTitle className="font-serif text-xl text-gold">Set today's gold rate</DialogTitle>
           </div>
           <DialogDescription className="text-muted-foreground text-sm">
-            Set the live rates for primary gold purities (24K, 22K, 18K) and silver. These direct
-            the ERP's pricing, valuation, and billing calculations.
+            Enter today's bhav for 24K / 22K / 18K (and silver). Saves into existing rate helpers —
+            does not invent a market rate. Daily Bhav book stays under Control → Rates.
           </DialogDescription>
         </DialogHeader>
 
@@ -462,6 +463,17 @@ export function GoldRateEditor({ open, onOpenChange }: GoldRateEditorProps) {
           </div>
         </div>
 
+        <p className="text-xs text-muted-foreground">
+          Prefer the full book?{" "}
+          <Link
+            to="/control/rates"
+            className="text-gold underline font-medium"
+            onClick={() => onOpenChange(false)}
+          >
+            Open Daily Bhav
+          </Link>
+        </p>
+
         <DialogFooter className="gap-2 sm:gap-0 mt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
@@ -474,7 +486,7 @@ export function GoldRateEditor({ open, onOpenChange }: GoldRateEditorProps) {
               id="gold-rate-save-btn"
             >
               <Shield className="h-4 w-4" />
-              Update Rates
+              Save today's rate
             </Button>
           )}
         </DialogFooter>

@@ -2,6 +2,7 @@
  * list_attention_items — VIEW-only read model (AVS-54 / AVS-37).
  * SELECT-equivalent. No ledger/stock/tax writes. No ack/snooze/post.
  * KARIGAR overdue threshold N is TBD — do not invent (no silent 30).
+ * Home MVP teaser (AVS-32) consumes the same list via fixLabel CTAs.
  */
 import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useSettings } from "@/lib/settings-store";
@@ -15,6 +16,8 @@ export type AttentionItem = {
   title: string;
   href: string;
   severity: AttentionSeverity;
+  /** Plain one-line fix verb for Home CTA (optional for non-Home consumers). */
+  fixLabel?: string;
 };
 
 export type ListAttentionItemsResult = { items: AttentionItem[] };
@@ -33,6 +36,7 @@ export function listAttentionItems(): ListAttentionItemsResult {
       title: "Today's gold rate is not set",
       href: "/control/rates",
       severity: "P0",
+      fixLabel: "Set today's gold rate",
     });
   }
 
@@ -45,6 +49,7 @@ export function listAttentionItems(): ListAttentionItemsResult {
       title: "Business name is blank — fill firm settings",
       href: "/settings",
       severity: "P0",
+      fixLabel: "Open settings",
     });
   }
 

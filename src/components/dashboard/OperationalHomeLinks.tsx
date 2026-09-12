@@ -116,7 +116,7 @@ export function OperationalHomeLinks() {
   return (
     <section className="mb-6" aria-labelledby="operational-home-heading">
       <h2 id="operational-home-heading" className="erp-section-title mb-3">
-        Daily operations
+        More operations
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
         {LINKS.map((item) => {
