@@ -24,47 +24,94 @@ $planCode = trim($data['plan_code'] ?? $data['planId'] ?? '');
 $tenantId = trim($data['tenant_id'] ?? $data['firmId'] ?? '');
 $billingPeriod = trim($data['billing_period'] ?? 'monthly');
 $customReturnUrl = trim($data['return_url'] ?? '');
+$itemType = trim($data['type'] ?? '');
+$credits = intval($data['credits'] ?? 0);
+$platformInvoiceId = trim($data['platform_invoice_id'] ?? $data['platformInvoiceId'] ?? $data['invoice_id'] ?? '');
+$directAmountPaise = intval($data['amount_paise'] ?? $data['amountPaise'] ?? 0);
 
-if (empty($planCode)) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Plan code is required']);
-    exit;
-}
-
-// ── 1. Authoritative Server-Side Plan Resolution ────────────────────────────
-// Ensure price is NEVER taken from client input
+// ── 1. Authoritative Server-Side Item & Pricing Resolution ───────────────────
 $plan = null;
-$planRes = supabaseRequest("rest/v1/platform_plans?code=eq.{$planCode}&is_active=eq.true&limit=1", 'GET', null, true);
-if ($planRes['ok'] && !empty($planRes['data'])) {
-    $plan = $planRes['data'][0];
-}
+$amountPaise = 0;
+$currency = 'INR';
 
-// Fallback to built-in plan tier defaults if DB row is not yet seeded
-if (!$plan) {
-    $defaultCatalog = [
-        'avs_mtg' => ['id' => 'plan_mtg', 'name' => 'AVS MTG Express', 'price_minor' => 499900, 'currency' => 'INR', 'trial_days' => 14],
-        'avs_manufacturing_10k' => ['id' => 'plan_10k', 'name' => 'AVS Manufacturing 10K', 'price_minor' => 999900, 'currency' => 'INR', 'trial_days' => 14],
-        'avs_manufacturing_30k' => ['id' => 'plan_30k', 'name' => 'AVS Manufacturing 30K', 'price_minor' => 2999900, 'currency' => 'INR', 'trial_days' => 14],
-        'avs_manufacturing_50k' => ['id' => 'plan_50k', 'name' => 'AVS Manufacturing 50K Pro', 'price_minor' => 4999900, 'currency' => 'INR', 'trial_days' => 14],
+if ($itemType === 'credits' || $credits > 0 || strpos($planCode, 'credits_') === 0) {
+    if ($credits <= 0 && strpos($planCode, 'credits_') === 0) {
+        $credits = intval(substr($planCode, 8));
+    }
+    if ($credits < 100) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Minimum credit purchase is 100 credits (₹100)']);
+        exit;
+    }
+    // 1 Credit = ₹1.00 = 100 paise
+    $amountPaise = $credits * 100;
+    $planCode = 'credits_' . $credits;
+    $plan = [
+        'id' => $planCode,
+        'name' => "AVS Credits Top-up ({$credits} Credits)",
+        'price_minor' => $amountPaise,
+        'currency' => 'INR',
     ];
-    $plan = $defaultCatalog[$planCode] ?? null;
+} elseif ($itemType === 'invoice' || !empty($platformInvoiceId)) {
+    if ($directAmountPaise <= 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invoice payment amount must be greater than 0']);
+        exit;
+    }
+    $amountPaise = $directAmountPaise;
+    $planCode = 'inv_' . ($platformInvoiceId ?: 'direct');
+    $plan = [
+        'id' => $planCode,
+        'name' => "Platform Invoice " . ($platformInvoiceId ?: 'Payment'),
+        'price_minor' => $amountPaise,
+        'currency' => 'INR',
+    ];
+} else {
+    // Standard Plan Purchase
+    if (empty($planCode)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Plan code is required']);
+        exit;
+    }
+
+    $planRes = supabaseRequest("rest/v1/platform_plans?code=eq.{$planCode}&is_active=eq.true&limit=1", 'GET', null, true);
+    if ($planRes['ok'] && is_array($planRes['data']) && !empty($planRes['data']) && is_array($planRes['data'][0]) && isset($planRes['data'][0]['price_minor'])) {
+        $plan = $planRes['data'][0];
+    }
+
+    // Fallback catalog
+    if (!$plan) {
+        $defaultCatalog = [
+            'avs_mtg' => ['id' => 'plan_mtg', 'name' => 'AVS MTG Express', 'price_minor' => 499900, 'currency' => 'INR', 'trial_days' => 14],
+            'avs_manufacturing_10k' => ['id' => 'plan_10k', 'name' => 'AVS Manufacturing 10K', 'price_minor' => 999900, 'currency' => 'INR', 'trial_days' => 14],
+            'avs_manufacturing_30k' => ['id' => 'plan_30k', 'name' => 'AVS Manufacturing 30K', 'price_minor' => 2999900, 'currency' => 'INR', 'trial_days' => 14],
+            'avs_manufacturing_50k' => ['id' => 'plan_50k', 'name' => 'AVS Manufacturing 50K Pro', 'price_minor' => 4999900, 'currency' => 'INR', 'trial_days' => 14],
+        ];
+        $plan = $defaultCatalog[$planCode] ?? null;
+    }
+
+    if (!$plan) {
+        http_response_code(404);
+        echo json_encode(['error' => "Plan '{$planCode}' not found or inactive"]);
+        exit;
+    }
+
+    $amountPaise = intval($plan['price_minor'] ?? 0);
+    if ($billingPeriod === 'annual') {
+        // 12 months with standard 15% annual discount
+        $amountPaise = intval(round($amountPaise * 12 * 0.85));
+    }
 }
 
-if (!$plan) {
-    http_response_code(404);
-    echo json_encode(['error' => "Plan '{$planCode}' not found or inactive"]);
+if ($amountPaise <= 0) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Calculated order amount must be greater than zero']);
     exit;
-}
-
-$amountPaise = intval($plan['price_minor'] ?? 0);
-if ($billingPeriod === 'annual') {
-    // 12 months with standard 15% annual discount
-    $amountPaise = intval(round($amountPaise * 12 * 0.85));
 }
 
 $currency = $plan['currency'] ?? 'INR';
 $gatewayConfig = getAuthoritativePaymentConfig();
-$mode = $gatewayConfig['mode']; // TEST or LIVE
+$mode = $gatewayConfig['mode']; // LIVE or TEST
 $activeKeyId = $gatewayConfig['active']['key_id'];
 $activeKeySecret = $gatewayConfig['active']['key_secret'];
 $returnUrl = !empty($customReturnUrl) ? $customReturnUrl : $gatewayConfig['active']['return_url'];
@@ -117,16 +164,34 @@ if (!empty($activeKeyId) && !empty($activeKeySecret)) {
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
     curl_close($ch);
 
     $orderData = json_decode($response, true);
     if ($httpCode >= 200 && $httpCode < 300 && !empty($orderData['id'])) {
         $razorpayOrderId = $orderData['id'];
+    } else {
+        if ($mode === 'LIVE') {
+            http_response_code(502);
+            $errMsg = $orderData['error']['description'] ?? ($curlErr ?: "Razorpay Order creation failed (HTTP {$httpCode})");
+            echo json_encode([
+                'success' => false,
+                'error' => $errMsg,
+                'upstream_code' => $httpCode,
+                'details' => $orderData,
+            ]);
+            exit;
+        }
     }
 }
 
-// In TEST/mock mode or when credentials are not yet entered, generate sandbox order ID
+// In TEST/mock mode only, generate sandbox order ID fallback
 if (empty($razorpayOrderId)) {
+    if ($mode === 'LIVE') {
+        http_response_code(500);
+        echo json_encode(['error' => 'Unable to create Razorpay live order. Verify API credentials.']);
+        exit;
+    }
     $razorpayOrderId = 'order_test_' . substr(md5($internalPaymentId), 0, 16);
 }
 

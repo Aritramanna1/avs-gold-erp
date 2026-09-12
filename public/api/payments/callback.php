@@ -109,21 +109,35 @@ if ($internalPayment) {
     $internalPayment['razorpay_payment_id'] = $razorpayPaymentId;
 }
 
-// ── 5. Activate Tenant Subscription ─────────────────────────────────────────
+// ── 5. Activate Tenant Subscription or Grant Credits ─────────────────────────
 $now = time();
 $periodEnd = date('c', $now + ($daysToAdd * 86400));
 
-$subRecord = [
-    'tenant_id' => $tenantId,
-    'plan_code' => $planCode,
-    'status' => SUB_STATUS_ACTIVE,
-    'current_period_start' => date('c', $now),
-    'current_period_end' => $periodEnd,
-    'updated_at' => date('c'),
-];
+if (strpos($planCode, 'credits_') === 0) {
+    $credits = intval(substr($planCode, 8));
+    supabaseRequest('rest/v1/rpc/grant_tenant_credits', 'POST', [
+        'p_credit_amount' => $credits,
+        'p_entry_type' => 'purchase',
+        'p_description' => "Purchased {$credits} credits via Razorpay ({$razorpayPaymentId})",
+        'p_metadata' => [
+            'razorpay_payment_id' => $razorpayPaymentId,
+            'razorpay_order_id' => $razorpayOrderId,
+            'internal_payment_id' => $internalPayment['id'] ?? null,
+        ],
+    ], true);
+} else {
+    $subRecord = [
+        'tenant_id' => $tenantId,
+        'plan_code' => $planCode,
+        'status' => SUB_STATUS_ACTIVE,
+        'current_period_start' => date('c', $now),
+        'current_period_end' => $periodEnd,
+        'updated_at' => date('c'),
+    ];
 
-// Upsert tenant subscription in Supabase
-supabaseRequest('rest/v1/tenant_subscriptions', 'POST', $subRecord, true);
+    // Upsert tenant subscription in Supabase
+    supabaseRequest('rest/v1/tenant_subscriptions', 'POST', $subRecord, true);
+}
 
 // ── 6. Automated Invoice Generation & Email Dispatch ────────────────────────
 $tenantContext = resolveTenantBillingContext($tenantId);

@@ -182,6 +182,36 @@ export async function startPlanPurchase(planCode: string, productId = DEFAULT_AV
 }
 
 export async function startInvoicePayment(platformInvoiceId: string, amountPaise: number) {
+  try {
+    const res = await fetch("/api/payments/create-order.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "invoice",
+        platform_invoice_id: platformInvoiceId,
+        amount_paise: amountPaise,
+        return_url:
+          typeof window !== "undefined"
+            ? `${window.location.origin}/settings/license?payment=callback`
+            : undefined,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        return {
+          ok: true,
+          orderId: data.razorpay_order_id,
+          amountPaise: data.amount_paise,
+          keyId: data.key_id,
+          invoiceId: data.internal_payment_id,
+          returnUrl: typeof data.return_url === "string" ? data.return_url : undefined,
+        };
+      }
+    }
+  } catch {
+    // Fallback
+  }
   return callPaymentApi("create_order", { platformInvoiceId, amountPaise });
 }
 
@@ -200,6 +230,36 @@ export async function verifyPaymentCallback(input: {
 }
 
 export async function startCreditTopUp(credits: number, walletType: "ai" | "whatsapp" = "ai") {
+  try {
+    const res = await fetch("/api/payments/create-order.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "credits",
+        credits,
+        walletType,
+        return_url:
+          typeof window !== "undefined"
+            ? `${window.location.origin}/settings/license?payment=callback`
+            : undefined,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        return {
+          ok: true,
+          orderId: data.razorpay_order_id,
+          amountPaise: data.amount_paise,
+          keyId: data.key_id,
+          invoiceId: data.internal_payment_id,
+          returnUrl: typeof data.return_url === "string" ? data.return_url : undefined,
+        };
+      }
+    }
+  } catch {
+    // Fallback
+  }
   return callPaymentApi("credit_topup", { credits, walletType });
 }
 

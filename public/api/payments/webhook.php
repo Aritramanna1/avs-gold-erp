@@ -108,15 +108,29 @@ switch ($event) {
             $billingPeriod = $pmtRecord['billing_period'] ?? 'monthly';
             $days = ($billingPeriod === 'annual') ? 365 : 30;
 
-            // Activate tenant subscription
-            supabaseRequest('rest/v1/tenant_subscriptions', 'POST', [
-                'tenant_id' => $tenantId,
-                'plan_code' => $planCode,
-                'status' => SUB_STATUS_ACTIVE,
-                'current_period_start' => date('c'),
-                'current_period_end' => date('c', time() + ($days * 86400)),
-                'updated_at' => date('c'),
-            ], true);
+            // Activate tenant subscription or Grant Credits
+            if (strpos($planCode, 'credits_') === 0) {
+                $credits = intval(substr($planCode, 8));
+                supabaseRequest('rest/v1/rpc/grant_tenant_credits', 'POST', [
+                    'p_credit_amount' => $credits,
+                    'p_entry_type' => 'purchase',
+                    'p_description' => "Webhook credit topup ({$paymentId})",
+                    'p_metadata' => [
+                        'razorpay_payment_id' => $paymentId,
+                        'razorpay_order_id' => $orderId,
+                        'event_id' => $eventId,
+                    ],
+                ], true);
+            } else {
+                supabaseRequest('rest/v1/tenant_subscriptions', 'POST', [
+                    'tenant_id' => $tenantId,
+                    'plan_code' => $planCode,
+                    'status' => SUB_STATUS_ACTIVE,
+                    'current_period_start' => date('c'),
+                    'current_period_end' => date('c', time() + ($days * 86400)),
+                    'updated_at' => date('c'),
+                ], true);
+            }
 
             // Automatically generate & email invoice
             $invoiceGenerated = generateAndStorePlatformInvoice(

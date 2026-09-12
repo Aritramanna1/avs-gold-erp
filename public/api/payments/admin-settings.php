@@ -86,8 +86,20 @@ if ($method === 'POST') {
         // Upsert into payment_gateway_configs in Supabase
         $res = supabaseRequest('rest/v1/payment_gateway_configs?provider=eq.razorpay', 'PATCH', $patch, true);
         if (!$res['ok']) {
-            supabaseRequest('rest/v1/payment_gateway_configs', 'POST', array_merge($patch, ['mode' => 'TEST']), true);
+            supabaseRequest('rest/v1/payment_gateway_configs', 'POST', array_merge($patch, ['mode' => 'LIVE']), true);
         }
+
+        // Persist to local .env on Hostinger
+        $envLines = [
+            '# AVS ERP Razorpay Configuration',
+            'RAZORPAY_MODE=' . ($existing['mode'] ?? 'LIVE'),
+            'RAZORPAY_LIVE_KEY_ID=' . ($patch['live_key_id'] ?? $existing['live']['key_id'] ?? 'rzp_live_TbD4vk5htRn2GB'),
+            'RAZORPAY_LIVE_KEY_SECRET=' . ($patch['live_key_secret'] ?? $existing['live']['key_secret'] ?? 'spNOF3jky07saC3gI5i3ZZhh'),
+            'RAZORPAY_LIVE_WEBHOOK_SECRET=' . ($patch['live_webhook_secret'] ?? $existing['live']['webhook_secret'] ?? 'whsec_avs_live_2026_9b8a7c6e5d4c3b2a'),
+            'RAZORPAY_LIVE_RETURN_URL=' . ($patch['live_callback_url'] ?? $existing['live']['return_url'] ?? 'https://erp.arivahly.in/settings/license?payment=callback'),
+            'RAZORPAY_LIVE_WEBHOOK_URL=' . ($patch['live_webhook_url'] ?? $existing['live']['webhook_url'] ?? 'https://erp.arivahly.in/api/webhooks/razorpay.php'),
+        ];
+        @file_put_contents(__DIR__ . '/../.env', implode("\n", $envLines) . "\n");
 
         recordPaymentAudit('admin_settings_updated', 'razorpay', [
             'has_test_key' => !empty($patch['test_key_id'] ?? $existing['test']['key_id']),
@@ -129,6 +141,14 @@ if ($method === 'POST') {
             'mode' => $targetMode,
             'updated_at' => date('c'),
         ], true);
+
+        // Update local .env
+        $envPath = __DIR__ . '/../.env';
+        if (file_exists($envPath)) {
+            $c = file_get_contents($envPath);
+            $c = preg_replace('/RAZORPAY_MODE=.*$/m', 'RAZORPAY_MODE=' . $targetMode, $c);
+            @file_put_contents($envPath, $c);
+        }
 
         recordPaymentAudit('mode_switched', 'razorpay', [
             'previous_mode' => $cfg['mode'],

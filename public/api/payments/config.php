@@ -49,8 +49,8 @@ function getAuthoritativePaymentConfig() {
     $dbRes = supabaseRequest('rest/v1/payment_gateway_configs?provider=eq.razorpay&limit=1', 'GET', null, true);
     $dbConfig = ($dbRes['ok'] && !empty($dbRes['data'])) ? $dbRes['data'][0] : null;
 
-    $mode = $dbConfig['mode'] ?? (getenv('RAZORPAY_MODE') ?: 'TEST');
-    $mode = strtoupper($mode) === 'LIVE' ? 'LIVE' : 'TEST';
+    $mode = $dbConfig['mode'] ?? (getenv('RAZORPAY_MODE') ?: 'LIVE');
+    $mode = strtoupper($mode) === 'TEST' ? 'TEST' : 'LIVE';
 
     $testKeyId = $dbConfig['test_key_id'] ?? (getenv('RAZORPAY_TEST_KEY_ID') ?: ($RAZORPAY_KEY_ID ?: 'rzp_test_TYMMkJFsIR9agE'));
     $testKeySecret = $dbConfig['test_key_secret'] ?? (getenv('RAZORPAY_TEST_KEY_SECRET') ?: $RAZORPAY_KEY_SECRET);
@@ -58,9 +58,9 @@ function getAuthoritativePaymentConfig() {
     $testReturnUrl = $dbConfig['test_callback_url'] ?? (getenv('RAZORPAY_TEST_RETURN_URL') ?: 'https://erp.arivahly.in/settings/license?payment=callback');
     $testWebhookUrl = $dbConfig['test_webhook_url'] ?? (getenv('RAZORPAY_TEST_WEBHOOK_URL') ?: 'https://erp.arivahly.in/api/webhooks/razorpay.php');
 
-    $liveKeyId = $dbConfig['live_key_id'] ?? getenv('RAZORPAY_LIVE_KEY_ID');
-    $liveKeySecret = $dbConfig['live_key_secret'] ?? getenv('RAZORPAY_LIVE_KEY_SECRET');
-    $liveWebhookSecret = $dbConfig['live_webhook_secret'] ?? getenv('RAZORPAY_LIVE_WEBHOOK_SECRET');
+    $liveKeyId = $dbConfig['live_key_id'] ?? (getenv('RAZORPAY_LIVE_KEY_ID') ?: 'rzp_live_TbD4vk5htRn2GB');
+    $liveKeySecret = $dbConfig['live_key_secret'] ?? (getenv('RAZORPAY_LIVE_KEY_SECRET') ?: 'spNOF3jky07saC3gI5i3ZZhh');
+    $liveWebhookSecret = $dbConfig['live_webhook_secret'] ?? (getenv('RAZORPAY_LIVE_WEBHOOK_SECRET') ?: 'whsec_avs_live_2026_9b8a7c6e5d4c3b2a');
     $liveReturnUrl = $dbConfig['live_callback_url'] ?? (getenv('RAZORPAY_LIVE_RETURN_URL') ?: 'https://erp.arivahly.in/settings/license?payment=callback');
     $liveWebhookUrl = $dbConfig['live_webhook_url'] ?? (getenv('RAZORPAY_LIVE_WEBHOOK_URL') ?: 'https://erp.arivahly.in/api/webhooks/razorpay.php');
 

@@ -63,9 +63,9 @@ if (empty($rawUrl) || $isDead) {
 }
 $SUPABASE_SERVICE_ROLE_KEY = getenv('SUPABASE_SERVICE_ROLE_KEY') ?: '';
 
-$RAZORPAY_KEY_ID = getenv('RAZORPAY_KEY_ID') ?: '';
-$RAZORPAY_KEY_SECRET = getenv('RAZORPAY_KEY_SECRET') ?: '';
-$RAZORPAY_WEBHOOK_SECRET = getenv('RAZORPAY_WEBHOOK_SECRET') ?: '';
+$RAZORPAY_KEY_ID = getenv('RAZORPAY_KEY_ID') ?: getenv('RAZORPAY_LIVE_KEY_ID') ?: 'rzp_live_TbD4vk5htRn2GB';
+$RAZORPAY_KEY_SECRET = getenv('RAZORPAY_KEY_SECRET') ?: getenv('RAZORPAY_LIVE_KEY_SECRET') ?: 'spNOF3jky07saC3gI5i3ZZhh';
+$RAZORPAY_WEBHOOK_SECRET = getenv('RAZORPAY_WEBHOOK_SECRET') ?: getenv('RAZORPAY_LIVE_WEBHOOK_SECRET') ?: 'whsec_avs_live_2026_9b8a7c6e5d4c3b2a';
 
 $WHATSAPP_VERIFY_TOKEN = getenv('WHATSAPP_VERIFY_TOKEN') ?: 'mtj_avs_whatsapp_secure_2026';
 $WHATSAPP_ACCESS_TOKEN = getenv('WHATSAPP_ACCESS_TOKEN') ?: '';
@@ -116,10 +116,11 @@ function supabaseRequest($endpoint, $method = 'GET', $data = null, $useServiceRo
     $error = curl_error($ch);
     curl_close($ch);
 
+    $decoded = json_decode($response, true);
     return [
         'ok' => $httpCode >= 200 && $httpCode < 300,
         'status' => $httpCode,
-        'data' => json_decode($response, true) ?: $response,
+        'data' => ($decoded !== null) ? $decoded : $response,
         'error' => $error ?: ($httpCode >= 400 ? $response : null)
     ];
 }
