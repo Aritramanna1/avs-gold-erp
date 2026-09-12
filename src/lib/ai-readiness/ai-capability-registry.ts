@@ -234,13 +234,14 @@ export const AI_CAPABILITY_REGISTRY: Record<string, AICapabilityDefinition> = {
   AI_CREATE_TASK: {
     id: "AI_CREATE_TASK",
     name: "Create Operational Task",
-    description: "Assign follow-up, stock verification, or customer communication tasks to staff.",
+    description:
+      "AVS-68: PREPARE draft operational/follow-up task card; human confirm required before any write. Uses tip universal-task-store — no invented DB schemas.",
     module: "core",
     allowedRoles: ["owner", "admin", "supervisor", "saas_admin"],
     requiredPermissions: ["tasks.edit"],
-    allowedOperations: ["PREPARE", "EXECUTE"],
+    allowedOperations: ["PREPARE"],
     classification: "PREPARE",
-    approvalRequired: false,
+    approvalRequired: true,
     tenantScoped: true,
     branchScoped: true,
     auditRequired: true,
@@ -346,16 +347,17 @@ export const AI_CAPABILITY_REGISTRY: Record<string, AICapabilityDefinition> = {
   AI_RECOMMEND_REORDER: {
     id: "AI_RECOMMEND_REORDER",
     name: "Recommend Fast-Moving Reorders",
-    description: "Analyze stock turnover and recommend manufacturing dhadi batches for low-stock items.",
+    description:
+      "AVS-69: SUGGEST-ONLY reorder ideas from tip stock/gold data. Human accept required; never auto-writes ledger/stock. Empty/partial OK — does not invent quantities.",
     module: "inventory",
     allowedRoles: ["owner", "admin", "supervisor", "saas_admin"],
     requiredPermissions: ["stock.view"],
     allowedOperations: ["RECOMMEND"],
     classification: "RECOMMEND",
-    approvalRequired: false,
+    approvalRequired: true,
     tenantScoped: true,
     branchScoped: true,
-    auditRequired: false,
+    auditRequired: true,
     enabled: true,
   },
   AI_RECOMMEND_FOLLOWUP: {

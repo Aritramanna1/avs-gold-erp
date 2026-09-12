@@ -27,6 +27,8 @@ import {
   PAYMENT_EXECUTE_REQUIRED,
   SETTLEMENT_EXECUTE_REQUIRED,
 } from "@/lib/ai-execute/high-risk-execute-gate";
+import { prepareCreateTaskDraft } from "@/lib/assistant/tool-create-task";
+import { computeReorderSuggestions } from "@/lib/assistant/tool-recommend-reorder";
 
 export const MCP_TOOL_REGISTRY: Record<string, MCPToolDefinition<any, any>> = {
   // ── 1. CORE NAMESPACE ───────────────────────────────────────────────────────
@@ -199,6 +201,67 @@ export const MCP_TOOL_REGISTRY: Record<string, MCPToolDefinition<any, any>> = {
         routeKey: typeof params.routeKey === "string" ? params.routeKey : null,
         phrase: typeof params.phrase === "string" ? params.phrase : null,
       });
+    },
+  },
+
+  // AVS-68 — create_task PREPARE (draft + human confirm; no auto write)
+  "core.create_task": {
+    name: "core.create_task",
+    version: "v1",
+    description:
+      "AVS-68 PREPARE: draft an operational/follow-up task card for human confirmation. Returns structured draft only — does not write until confirm. Uses tip universal-task-store (no invented DB schemas).",
+    namespace: "core",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Task title" },
+        dueDate: { type: "string", description: "ISO due date" },
+        priority: { type: "string", description: "CRITICAL | HIGH | MEDIUM | LOW" },
+        assignedStaff: { type: "string" },
+        description: { type: "string" },
+        phrase: { type: "string", description: "Natural-language create-task phrase" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        ok: { type: "boolean" },
+        prepareOnly: { type: "boolean" },
+        requiresConfirmation: { type: "boolean" },
+        draft: { type: "object" },
+        message: { type: "string" },
+        actionRoute: { type: "string" },
+      },
+    },
+    allowedRoles: ["owner", "admin", "supervisor", "saas_admin"],
+    requiredPermissions: ["tasks.edit"],
+    tenantScoped: true,
+    branchScoped: true,
+    readWriteLevel: "PREPARE",
+    approvalRequired: true,
+    auditRequired: true,
+    rateLimit: { maxPerMinute: 20 },
+    enabled: true,
+    handler: async (params, _context) => {
+      const prepared = prepareCreateTaskDraft({
+        phrase: typeof params.phrase === "string" ? params.phrase : null,
+        title: typeof params.title === "string" ? params.title : null,
+        dueDate: typeof params.dueDate === "string" ? params.dueDate : null,
+        priority: typeof params.priority === "string" ? params.priority : null,
+        assignedStaff: typeof params.assignedStaff === "string" ? params.assignedStaff : null,
+        description: typeof params.description === "string" ? params.description : null,
+      });
+      if (!prepared.ok) {
+        return { ok: false, prepareOnly: true, requiresConfirmation: true, message: prepared.message };
+      }
+      return {
+        ok: true,
+        prepareOnly: true,
+        requiresConfirmation: true,
+        draftStatus: "DRAFT_REQUIRES_HUMAN_CONFIRM",
+        draft: prepared.draft,
+        actionRoute: "/communications/",
+      };
     },
   },
 
@@ -855,6 +918,45 @@ export const MCP_TOOL_REGISTRY: Record<string, MCPToolDefinition<any, any>> = {
   },
 
   // ── 5. INVENTORY NAMESPACE ──────────────────────────────────────────────────
+  // AVS-69 — recommend_reorder RECOMMEND (suggest-only; never auto-write stock/ledger)
+  "inventory.recommend_reorder": {
+    name: "inventory.recommend_reorder",
+    version: "v1",
+    description:
+      "AVS-69 RECOMMEND: suggest-only reorder ideas from tip stock/gold data. Uses tip low-stock threshold (rule_low_stock_alert quantity < 3). Empty/partial OK — does not invent quantities. Never writes stock or ledger.",
+    namespace: "inventory",
+    inputSchema: {
+      type: "object",
+      properties: {
+        category: { type: "string", description: "Optional category filter" },
+      },
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        ok: { type: "boolean" },
+        suggestOnly: { type: "boolean" },
+        suggestions: { type: "array" },
+        scannedAvailableItems: { type: "integer" },
+        note: { type: "string" },
+      },
+    },
+    allowedRoles: ["owner", "admin", "supervisor", "saas_admin"],
+    requiredPermissions: ["stock.view"],
+    tenantScoped: true,
+    branchScoped: true,
+    readWriteLevel: "RECOMMEND",
+    approvalRequired: true,
+    auditRequired: true,
+    rateLimit: { maxPerMinute: 20 },
+    enabled: true,
+    handler: async (params, _context) => {
+      return computeReorderSuggestions({
+        category: typeof params.category === "string" ? params.category : null,
+      });
+    },
+  },
+
   "inventory.search_stock": {
     name: "inventory.search_stock",
     version: "v1",

@@ -266,6 +266,34 @@ export const AUTHORIZED_ERP_TOOLS: ToolRegistryItem[] = [
       routeKey: { type: "string" },
     },
   },
+
+  // AVS-68 — create_task PREPARE
+  {
+    name: "create_task",
+    domain: "knowledge",
+    riskLevel: 2,
+    description:
+      "AVS-68 PREPARE: draft operational/follow-up task for human confirm before write. Tip universal-task-store only.",
+    requiredPermissions: ["tasks.edit"],
+    parameters: {
+      title: { type: "string" },
+      dueDate: { type: "string" },
+      priority: { type: "string" },
+      assignedStaff: { type: "string" },
+      phrase: { type: "string" },
+    },
+  },
+
+  // AVS-69 — recommend_reorder RECOMMEND
+  {
+    name: "recommend_reorder",
+    domain: "inventory",
+    riskLevel: 0,
+    description:
+      "AVS-69 RECOMMEND: suggest-only reorder from tip stock. Never invents quantities; never auto-writes stock/ledger.",
+    requiredPermissions: ["stock.view"],
+    parameters: { category: { type: "string" }, phrase: { type: "string" } },
+  },
 ];
 
 export async function auditAssistantAction(args: {
@@ -2255,6 +2283,64 @@ export async function executeConfirmedAction(
         errorMessage: gate.ok ? undefined : gate.message,
       });
       return { success: gate.ok, message: gate.message };
+    }
+
+    // AVS-68 — create_task confirm → tip universal-task-store only
+    if (payload.actionType === "create_task") {
+      const { commitCreateTaskDraft } = await import("./tool-create-task");
+      const draft = {
+        title: String(details.title || ""),
+        description: String(details.description || details.title || ""),
+        assignedStaff: String(details.assignedStaff || "Unassigned"),
+        dueDate: String(details.dueDate || new Date().toISOString()),
+        priority: (details.priority || "MEDIUM") as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
+        linkedEntityType: (details.linkedEntityType || "Finance") as
+          | "Customer"
+          | "Lead"
+          | "Quotation"
+          | "Appointment"
+          | "Repair"
+          | "Inventory"
+          | "Finance",
+        linkedEntityId: String(details.linkedEntityId || "ops"),
+        linkedEntityLabel: String(details.linkedEntityLabel || "Operational follow-up"),
+      };
+      if (!draft.title.trim()) {
+        return { success: false, message: "Task title missing — confirm cancelled." };
+      }
+      const record = commitCreateTaskDraft(draft);
+      await auditAssistantAction({
+        actionKey: "execute_create_task",
+        actionType: "mutate",
+        targetType: "task",
+        targetId: record.id,
+        status: "executed",
+        requiresConfirmation: true,
+        requestPayload: draft,
+        resultPayload: { taskCode: record.taskCode, id: record.id },
+      });
+      return {
+        success: true,
+        message: `Task saved to tip universal store: ${record.taskCode} — ${record.title}. Open Communications to review.`,
+      };
+    }
+
+    // AVS-69 — recommend_reorder accept = acknowledgement only (NO stock/ledger write)
+    if (payload.actionType === "recommend_reorder") {
+      await auditAssistantAction({
+        actionKey: "accept_recommend_reorder",
+        actionType: "suggest",
+        targetType: "inventory",
+        status: "confirmed",
+        requiresConfirmation: true,
+        requestPayload: details,
+        resultPayload: { suggestOnly: true, wroteStock: false, wroteLedger: false },
+      });
+      return {
+        success: true,
+        message:
+          "Reorder suggestions acknowledged. No stock or ledger was written. Open Stock to act manually.",
+      };
     }
 
     // Unwired action types must not report fake success.

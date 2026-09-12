@@ -34,6 +34,14 @@ import {
   extractSearchQuery,
 } from "./assistant-tool-registry";
 import { toolOpenRoute, looksLikeNavigateIntent } from "./tool-open-route";
+import {
+  toolCreateTask,
+  looksLikeCreateTaskIntent,
+} from "./tool-create-task";
+import {
+  toolRecommendReorder,
+  looksLikeRecommendReorderIntent,
+} from "./tool-recommend-reorder";
 import { deductCredits, checkServiceCreditAvailability } from "./credit-engine";
 import { prepareMultimodalDraftCard } from "./multimodal-service";
 
@@ -152,6 +160,24 @@ export function matchLocalIntent(userQuery: string): IntentMatchResult {
     return {
       toolName: "openRoute",
       confidence: 0.97,
+      entities: { query: userQuery },
+    };
+  }
+
+  // AVS-68 — create_task PREPARE
+  if (looksLikeCreateTaskIntent(q)) {
+    return {
+      toolName: "create_task",
+      confidence: 0.96,
+      entities: { query: userQuery },
+    };
+  }
+
+  // AVS-69 — recommend_reorder SUGGEST ONLY
+  if (looksLikeRecommendReorderIntent(q)) {
+    return {
+      toolName: "recommend_reorder",
+      confidence: 0.96,
       entities: { query: userQuery },
     };
   }
@@ -502,6 +528,10 @@ export async function executeERPTool(
       return toolPreparePaymentDraft(userMessage);
     case "prepare_settlement_draft":
       return toolPrepareSettlementDraft(userMessage);
+    case "create_task":
+      return toolCreateTask(userMessage);
+    case "recommend_reorder":
+      return toolRecommendReorder(userMessage);
     default:
       return toolSearchParty(userMessage);
   }
