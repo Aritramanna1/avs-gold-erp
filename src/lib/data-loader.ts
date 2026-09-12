@@ -617,6 +617,23 @@ export async function pullAppSettings(): Promise<void> {
   if (data?.data) {
     const payload = data.data as any;
     let firm = { ...(payload.firm ?? useSettings.getState().firm) };
+    // SETTINGS-01: map legacy flat seed keys into nested firm.* when present
+    if (payload && typeof payload === "object") {
+      const flat = payload as Record<string, unknown>;
+      const pick = (k: string) => {
+        const v = flat[k];
+        return typeof v === "string" && v.trim() ? v.trim() : undefined;
+      };
+      firm = {
+        ...firm,
+        shopName: firm.shopName || pick("shopName") || pick("shop_name") || firm.shopName,
+        phone: firm.phone || pick("phone") || firm.phone,
+        address: firm.address || pick("address") || firm.address,
+        ownerName: firm.ownerName || pick("ownerName") || pick("owner_name") || firm.ownerName,
+        email: firm.email || pick("email") || firm.email,
+        gstin: firm.gstin || pick("gstin") || firm.gstin,
+      };
+    }
     const shop = String(firm?.shopName ?? "").trim();
     const wasContaminated = !shop || CONTAMINATED_SHOP_NAMES.has(shop);
     if (organizationName && wasContaminated) {
