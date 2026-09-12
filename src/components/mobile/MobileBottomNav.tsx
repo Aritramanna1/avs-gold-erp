@@ -1,9 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, ShoppingBag, Hammer, Landmark, MoreHorizontal } from "lucide-react";
+import { Home, ShoppingBag, Package, Hammer, Landmark, MoreHorizontal } from "lucide-react";
 import { hapticLight } from "@/lib/native/haptics";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-/** AVS-57 leftover: Home · Sell · Make · Money · More (routes unchanged; no mega rewrite). */
+/** AVS-57: Home · Sell · Stock · Make · Money · More (dedicated Stock tab split from Make). */
 const TABS = [
   {
     to: "/app",
@@ -22,6 +22,12 @@ const TABS = [
       (p.startsWith("/people") && !p.includes("employees")),
   },
   {
+    to: "/stock",
+    i18nKey: "mobile_stock",
+    icon: Package,
+    match: (p: string) => p.startsWith("/stock") || p.startsWith("/barcode"),
+  },
+  {
     to: "/workshop",
     i18nKey: "mobile_make",
     icon: Hammer,
@@ -31,10 +37,8 @@ const TABS = [
       p.startsWith("/melt") ||
       p.startsWith("/refinery") ||
       p.startsWith("/conversion") ||
-      p.startsWith("/barcode") ||
       p.startsWith("/manufacturing") ||
-      p.startsWith("/repair") ||
-      p.startsWith("/stock"),
+      p.startsWith("/repair"),
   },
   {
     to: "/ledger",

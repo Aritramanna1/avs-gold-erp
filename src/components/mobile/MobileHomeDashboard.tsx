@@ -11,13 +11,10 @@ import {
   type HomeDashboardSummary,
 } from "@/lib/home-dashboard-query";
 import { withTimeout } from "@/lib/performance/resilient-async";
-<<<<<<< HEAD
 import { triggerGoldRateEditor } from "@/components/app-shell";
 import { listAttentionItems } from "@/lib/attention/list-attention-items";
 import { Button } from "@/components/ui/button";
-=======
 import { APP_NAME } from "@/lib/app-info";
->>>>>>> 4ea03cf (fix(branding): BUG-014 Ornexa contact/chrome to AVS (legal + auth chrome))
 
 export function MobileHomeDashboard() {
   const firm = useSettings((s) => s.firm);

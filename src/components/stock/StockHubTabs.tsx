@@ -32,7 +32,7 @@ export function StockHubTabs({ active }: { active: StockHubTabId }) {
           <Link
             key={tab.id}
             to="/stock"
-            search={(prev) => ({
+            search={(prev: any) => ({
               ...prev,
               tab: tab.id,
               // Reset ready-stock list filters when leaving Ready
