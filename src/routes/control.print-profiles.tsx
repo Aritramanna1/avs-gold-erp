@@ -1,7 +1,7 @@
 /**
  * Canonical Route: /control/print-profiles
  * Universal Document Engine & Millimeter-Calibrated Print Profiles
- * Master Reference: docs/MASTER/DOCUMENT_TEMPLATE_ENGINE.md & PRINT_PROFILE_MASTER.md
+ * Master Reference: docs/DOCUMENT_TEMPLATE_ENGINE.md & docs/PRINT_PROFILE_MASTER.md (print masters live under docs/, not docs/MASTER/)
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { guardRoute } from "@/lib/permissions";
