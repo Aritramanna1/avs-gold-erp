@@ -22,6 +22,11 @@ import { MASTER_CHART_OF_ACCOUNTS, generateJournalForTransaction } from "@/lib/d
 import { calculateTaxDecision } from "@/lib/statutory-tax-engine";
 import { searchKnowledgeRepository } from "@/lib/assistant/knowledge-repository";
 import { resolveOpenRoute } from "@/lib/assistant/nl-navigate-routes";
+import {
+  gateHighRiskExecute,
+  PAYMENT_EXECUTE_REQUIRED,
+  SETTLEMENT_EXECUTE_REQUIRED,
+} from "@/lib/ai-execute/high-risk-execute-gate";
 
 export const MCP_TOOL_REGISTRY: Record<string, MCPToolDefinition<any, any>> = {
   // ── 1. CORE NAMESPACE ───────────────────────────────────────────────────────
@@ -1304,6 +1309,60 @@ export const MCP_TOOL_REGISTRY: Record<string, MCPToolDefinition<any, any>> = {
     }),
   },
 
+  "karigar.execute_karigar_settlement": {
+    name: "karigar.execute_karigar_settlement",
+    version: "v1",
+    description: "EXECUTE stub for karigar settlement. Requires approval + isConfirmed. Never auto-posts or invents ledger lines.",
+    namespace: "karigar",
+    inputSchema: {
+      type: "object",
+      properties: {
+        karigarId: { type: "string" },
+        settlementGoldMg: { type: "number" },
+        settlementCashPaise: { type: "number" },
+        draftSettlementId: { type: "string" },
+        isConfirmed: { type: "boolean", description: "Explicit human confirm. Required. Never inferred." },
+      },
+      required: ["karigarId", "isConfirmed"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        committed: { type: "boolean" },
+        refused: { type: "boolean" },
+        status: { type: "string" },
+        message: { type: "string" },
+      },
+    },
+    allowedRoles: ["owner", "admin", "accountant", "saas_admin"],
+    requiredPermissions: ["settlement.execute"],
+    tenantScoped: true,
+    branchScoped: false,
+    readWriteLevel: "EXECUTE",
+    approvalRequired: true,
+    auditRequired: true,
+    rateLimit: { maxPerMinute: 8 },
+    enabled: true,
+    handler: async (params, _context) => {
+      const gate = gateHighRiskExecute({
+        kind: "settlement",
+        isConfirmed: params.isConfirmed,
+        fields: {
+          karigarId: params.karigarId,
+          settlementGoldMg: params.settlementGoldMg,
+          settlementCashPaise: params.settlementCashPaise,
+        },
+        requiredKeys: [...SETTLEMENT_EXECUTE_REQUIRED],
+      });
+      return {
+        ...gate,
+        capabilityId: "AI_EXECUTE_SETTLEMENT",
+        draftSettlementId: params.draftSettlementId ?? null,
+        karigarId: params.karigarId,
+      };
+    },
+  },
+
   "karigar.record_over_loss": {
     name: "karigar.record_over_loss",
     version: "v1",
@@ -1759,6 +1818,62 @@ export const MCP_TOOL_REGISTRY: Record<string, MCPToolDefinition<any, any>> = {
       partyId: params.partyId,
       amountPaise: params.amountPaise,
     }),
+  },
+
+  "finance.execute_payment": {
+    name: "finance.execute_payment",
+    version: "v1",
+    description: "EXECUTE stub for payment voucher. Requires approval + isConfirmed. Never auto-posts or invents ledger lines.",
+    namespace: "finance",
+    inputSchema: {
+      type: "object",
+      properties: {
+        partyId: { type: "string" },
+        amountPaise: { type: "number" },
+        paymentType: { type: "string", enum: ["inward", "outward"] },
+        paymentMode: { type: "string", enum: ["cash", "bank", "upi", "card"] },
+        draftVoucherId: { type: "string" },
+        isConfirmed: { type: "boolean", description: "Explicit human confirm. Required. Never inferred." },
+      },
+      required: ["partyId", "amountPaise", "paymentType", "isConfirmed"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        committed: { type: "boolean" },
+        refused: { type: "boolean" },
+        status: { type: "string" },
+        message: { type: "string" },
+      },
+    },
+    allowedRoles: ["owner", "admin", "accountant", "saas_admin"],
+    requiredPermissions: ["payments.execute"],
+    tenantScoped: true,
+    branchScoped: true,
+    readWriteLevel: "EXECUTE",
+    approvalRequired: true,
+    auditRequired: true,
+    rateLimit: { maxPerMinute: 8 },
+    enabled: true,
+    handler: async (params, _context) => {
+      const gate = gateHighRiskExecute({
+        kind: "payment",
+        isConfirmed: params.isConfirmed,
+        fields: {
+          partyId: params.partyId,
+          amountPaise: params.amountPaise,
+          paymentType: params.paymentType,
+        },
+        requiredKeys: [...PAYMENT_EXECUTE_REQUIRED],
+      });
+      return {
+        ...gate,
+        capabilityId: "AI_EXECUTE_PAYMENT",
+        draftVoucherId: params.draftVoucherId ?? null,
+        partyId: params.partyId,
+        amountPaise: params.amountPaise,
+      };
+    },
   },
 
   "finance.prepare_expense": {

@@ -186,6 +186,33 @@ export const MCPDiagnosticsPanel: React.FC = () => {
           )
         );
         break;
+      case "finance.execute_payment":
+        setToolArgsJson(
+          JSON.stringify(
+            {
+              partyId: "cust_1",
+              amountPaise: 100000,
+              paymentType: "outward",
+              isConfirmed: false,
+            },
+            null,
+            2
+          )
+        );
+        break;
+      case "karigar.execute_karigar_settlement":
+        setToolArgsJson(
+          JSON.stringify(
+            {
+              karigarId: "karigar_gopal_1",
+              settlementGoldMg: 10000,
+              isConfirmed: false,
+            },
+            null,
+            2
+          )
+        );
+        break;
       default:
         setToolArgsJson("{}");
     }
@@ -397,11 +424,14 @@ export const MCPDiagnosticsPanel: React.FC = () => {
                         <option value="finance.get_account_balance">finance.get_account_balance (Discrete Dimensions)</option>
                         <option value="finance.get_gold_balance">finance.get_gold_balance (995 Basis)</option>
                         <option value="finance.get_ledger">finance.get_ledger</option>
+                        <option value="finance.prepare_payment">finance.prepare_payment (Prepare)</option>
+                        <option value="finance.execute_payment">finance.execute_payment (EXECUTE stub)</option>
                       </optgroup>
                       <optgroup label="Karigar & Workshop">
                         <option value="karigar.get_karigar_balance">karigar.get_karigar_balance</option>
                         <option value="karigar.get_pending_karigar_settlement">karigar.get_pending_karigar_settlement</option>
                         <option value="karigar.prepare_karigar_settlement">karigar.prepare_karigar_settlement (Write/Prepare)</option>
+                        <option value="karigar.execute_karigar_settlement">karigar.execute_karigar_settlement (EXECUTE stub)</option>
                       </optgroup>
                       <optgroup label="Reporting">
                         <option value="reports.daily_sales_report">reports.daily_sales_report</option>

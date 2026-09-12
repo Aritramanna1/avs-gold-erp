@@ -62,7 +62,7 @@ export interface TimelineEvent {
 
 export interface ActionPayload {
   actionId: string;
-  actionType: "whatsapp_send" | "gold_issue" | "create_voucher" | "export_report";
+  actionType: "whatsapp_send" | "gold_issue" | "create_voucher" | "export_report" | "execute_payment" | "execute_settlement";
   title: string;
   description: string;
   requiresConfirmation: boolean;

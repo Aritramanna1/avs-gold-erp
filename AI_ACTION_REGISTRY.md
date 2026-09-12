@@ -101,3 +101,19 @@ This document serves as the master registry for all conversational and automated
 
 ---
 *This registry maps natural language intents to the strict schema requirements of the underlying Ornexa ERP. The Assistant will automatically read the tenant's configuration to append Custom Fields to these workflows.*
+
+## 9. Prepare / Execute Payment (HIGH-RISK)
+- **Action Key:** `prepare_payment` / MCP `finance.prepare_payment` → `finance.execute_payment`
+- **Capability:** `AI_PREPARE_PAYMENT` then `AI_EXECUTE_PAYMENT` (`approvalRequired: true`)
+- **Required Inputs:** `partyId`, `amountPaise`, `paymentType`
+- **Confirmation Level:** High — explicit `isConfirmed` on Confirm & Execute. Never auto.
+- **Posting:** EXECUTE is a **stub**. It refuses unless confirmed AND fields present. It does **not** invent ledger / money movement. Commit on Accounts (`/control/accounts`).
+- **Audit Event:** `execute_payment_confirm_accepted` / `execute_payment_refused`
+
+## 10. Prepare / Execute Karigar Settlement (HIGH-RISK)
+- **Action Key:** `prepare_settlement` / MCP `karigar.prepare_karigar_settlement` → `karigar.execute_karigar_settlement`
+- **Capability:** `AI_PREPARE_SETTLEMENT` then `AI_EXECUTE_SETTLEMENT` (`approvalRequired: true`)
+- **Required Inputs:** `karigarId` plus `settlementGoldMg` and/or `settlementCashPaise`
+- **Confirmation Level:** High — explicit `isConfirmed`. Never auto from chat "yes".
+- **Posting:** EXECUTE stub only. No invented metal/cash post. Commit on Settlement (`/settlement/new`).
+- **Audit Event:** `execute_settlement_confirm_accepted` / `execute_settlement_refused`

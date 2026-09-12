@@ -25,6 +25,8 @@ import {
   toolGetDocument,
   toolSearchCatalogue,
   toolPrepareGoldIssueDraft,
+  toolPreparePaymentDraft,
+  toolPrepareSettlementDraft,
   toolPrepareWhatsAppInvoiceAction,
   toolCreateSupportTicket,
   toolQueryKnowledgeBase,
@@ -190,6 +192,23 @@ export function matchLocalIntent(userQuery: string): IntentMatchResult {
   if (q.includes("create job") || q.includes("assign job") || q.includes("new job")) {
     return { toolName: "action_create_job", confidence: 1.0 };
   }
+  if (
+    q.includes("prepare payment") ||
+    q.includes("draft payment") ||
+    q.includes("record payment") ||
+    (q.includes("pay") && (q.includes("rs") || q.includes("rupee") || q.includes("inr") || q.includes("₹")))
+  ) {
+    return { toolName: "prepare_payment_draft", confidence: 0.94, entities: { query: userQuery } };
+  }
+  if (
+    q.includes("prepare settlement") ||
+    q.includes("draft settlement") ||
+    q.includes("karigar settlement") ||
+    q.includes("karigar hisab")
+  ) {
+    return { toolName: "prepare_settlement_draft", confidence: 0.94, entities: { query: userQuery } };
+  }
+
   if (q.includes("issue gold") || q.includes("transfer gold") || q.includes("give gold")) {
     return { toolName: "action_issue_gold", confidence: 1.0 };
   }
@@ -479,6 +498,10 @@ export async function executeERPTool(
       return toolPrepareWhatsAppInvoiceAction(userMessage);
     case "openRoute":
       return toolOpenRoute(userMessage);
+    case "prepare_payment_draft":
+      return toolPreparePaymentDraft(userMessage);
+    case "prepare_settlement_draft":
+      return toolPrepareSettlementDraft(userMessage);
     default:
       return toolSearchParty(userMessage);
   }

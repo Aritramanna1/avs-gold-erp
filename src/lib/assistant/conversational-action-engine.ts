@@ -269,6 +269,77 @@ const REGISTRY: Record<string, ActionDefinition> = {
       data: draft.extractedFields,
     }),
   },
+  prepare_payment: {
+    actionKey: "prepare_payment",
+    requiredFields: ["partyId", "amountPaise", "paymentType"],
+    optionalFields: ["paymentMode"],
+    prompts: {
+      partyId: "Which party is this payment for? (name or id)",
+      amountPaise: "What is the amount in rupees?",
+      paymentType: "Is this inward (receive) or outward (pay)?",
+      paymentMode: "Cash, UPI, bank, or card?",
+    },
+    generatePreviewCard: (draft) => ({
+      type: "voucher_draft",
+      title: "PREPARE payment draft (not posted)",
+      summary: "HIGH-RISK payment draft. Confirm on the card — never auto-posts.",
+      actionRoute: "/control/accounts",
+      actionPayload: {
+        actionId: `draft_pay_${Date.now()}`,
+        actionType: "execute_payment",
+        title: "Confirm payment EXECUTE",
+        description:
+          "HIGH-RISK: EXECUTE stub refuses unless isConfirmed and required fields are present. No ledger invented.",
+        requiresConfirmation: true,
+        isConfirmed: false,
+        details: {
+          capabilityId: "AI_EXECUTE_PAYMENT",
+          ...draft.extractedFields,
+        },
+      },
+      kpis: [
+        { label: "Party", value: draft.extractedFields.partyId },
+        { label: "Amount", value: String(draft.extractedFields.amountPaise ?? "missing") },
+        { label: "Type", value: draft.extractedFields.paymentType },
+      ],
+      data: { ...draft.extractedFields, approvalRequired: true },
+    }),
+  },
+  prepare_settlement: {
+    actionKey: "prepare_settlement",
+    requiredFields: ["karigarId"],
+    optionalFields: ["settlementGoldMg", "settlementCashPaise"],
+    prompts: {
+      karigarId: "Which karigar is this settlement for?",
+      settlementGoldMg: "Gold to settle (grams)? Leave blank if cash-only.",
+      settlementCashPaise: "Cash to settle (rupees)? Leave blank if metal-only.",
+    },
+    generatePreviewCard: (draft) => ({
+      type: "voucher_draft",
+      title: "PREPARE settlement draft (not posted)",
+      summary: "HIGH-RISK settlement draft. Confirm on the card — never auto-posts.",
+      actionRoute: "/settlement/new",
+      actionPayload: {
+        actionId: `draft_settle_${Date.now()}`,
+        actionType: "execute_settlement",
+        title: "Confirm settlement EXECUTE",
+        description:
+          "HIGH-RISK: EXECUTE stub refuses unless isConfirmed and required fields are present. No ledger invented.",
+        requiresConfirmation: true,
+        isConfirmed: false,
+        details: {
+          capabilityId: "AI_EXECUTE_SETTLEMENT",
+          ...draft.extractedFields,
+        },
+      },
+      kpis: [
+        { label: "Karigar", value: draft.extractedFields.karigarId },
+        { label: "Gold mg", value: String(draft.extractedFields.settlementGoldMg ?? "—") },
+        { label: "Cash paise", value: String(draft.extractedFields.settlementCashPaise ?? "—") },
+      ],
+      data: { ...draft.extractedFields, approvalRequired: true },
+    }),
+  },
 };
 
 export function startActionDraft(
@@ -340,7 +411,20 @@ export function processDraftInput(userInput: string): {
     ) {
       const card = def.generatePreviewCard(activeDraft);
       const payload = card.actionPayload;
+      const highRiskNoAuto =
+        activeDraft.actionKey === "prepare_payment" ||
+        activeDraft.actionKey === "prepare_settlement" ||
+        payload?.actionType === "execute_payment" ||
+        payload?.actionType === "execute_settlement";
       activeDraft = null;
+      if (highRiskNoAuto) {
+        return {
+          reply:
+            "HIGH-RISK draft ready. Click Confirm & Execute on the card. Payment/settlement never auto-posts from chat.",
+          card,
+          completed: true,
+        };
+      }
       if (!payload) {
         return {
           reply: "Could not execute — draft action payload is missing.",
@@ -350,7 +434,7 @@ export function processDraftInput(userInput: string): {
       return {
         reply: "Executing confirmed action…",
         completed: true,
-        executePayload: payload,
+        executePayload: { ...payload, isConfirmed: true },
       };
     }
   }
