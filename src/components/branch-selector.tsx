@@ -29,7 +29,7 @@ export function BranchSelector() {
 
   return (
     <div className="flex items-center gap-2 shrink-0" id="branch-selector-container">
-      <span className="hidden lg:inline text-xs font-mono text-muted-foreground">
+      <span className="hidden 2xl:inline text-xs font-mono text-muted-foreground">
         Current Branch:
       </span>
       {canSwitch && activeBranches.length > 1 ? (

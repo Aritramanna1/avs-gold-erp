@@ -83,16 +83,16 @@ export function ChargeTokenBadge() {
         type="button"
         onClick={() => setIsOpen(true)}
         className={cn(
-          "flex items-center gap-1.5 min-h-12 px-3 py-2 rounded-full text-xs font-semibold transition-all border shrink-0 cursor-pointer",
+          "flex items-center gap-1.5 h-8 px-2.5 py-1 rounded-full text-xs font-semibold transition-all border shrink-0 cursor-pointer",
           isLowBalance
             ? "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20 animate-pulse"
             : "bg-gold/10 text-gold border-gold/30 hover:bg-gold/20 hover:border-gold/50",
         )}
         title={`Credits left: ${balance.toLocaleString()}. Buy credits.`}
       >
-        <Coins className="h-4 w-4 shrink-0" />
+        <Coins className="h-3.5 w-3.5 shrink-0" />
         <span>{loading ? "..." : balance.toLocaleString()}</span>
-        <span className="hidden xl:inline text-[11px] opacity-90">Credits left</span>
+        <span className="hidden 2xl:inline text-[11px] opacity-90">Credits</span>
         {isLowBalance && (
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
         )}

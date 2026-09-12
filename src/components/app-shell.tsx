@@ -311,7 +311,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => {
                 dispatchKeyboardAction(KEYBOARD_EVENTS.COMMAND_PALETTE);
               }}
-              className="hidden xl:flex items-center gap-2 rounded-full border border-border/80 bg-background/70 px-3 py-1.5 text-xs text-muted-foreground hover:border-gold/50 hover:bg-gold/5 hover:text-foreground transition-all cursor-pointer w-44 2xl:w-72 shadow-sm shrink"
+              className="hidden xl:flex items-center gap-2 rounded-full border border-border/80 bg-background/70 px-3 py-1.5 text-xs text-muted-foreground hover:border-gold/50 hover:bg-gold/5 hover:text-foreground transition-all cursor-pointer w-44 2xl:w-64 shadow-sm shrink"
               data-testid="desktop-global-search"
               id="desktop-global-search-btn"
               title="Global Search & Quick Actions (Ctrl+K)"
@@ -327,13 +327,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="hidden lg:flex shrink-0">
               <UniversalActionMenu />
             </div>
-            <div className="hidden 2xl:flex shrink-0">
-              <ChargeTokenBadge />
-            </div>
           </div>
 
           {/* Right section: switcher, branch, tools, avatar & profile */}
           <div className="flex items-center gap-1 sm:gap-2 md:gap-3 shrink-0 pr-0.5 sm:pr-1">
+            <div className="hidden 2xl:flex shrink-0">
+              <ChargeTokenBadge />
+            </div>
             <div className="hidden lg:flex items-center gap-2 shrink-0" data-desktop-chrome>
               <BusinessSwitcher />
             </div>
