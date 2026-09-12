@@ -329,17 +329,17 @@ export function AssistantWorkspace() {
           })}
         </div>
 
-        {/* Credit Wallet Badge */}
+        {/* AI & WhatsApp credit balance */}
         <div className="p-3 border-t border-border/70 bg-card/90">
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5 font-medium text-foreground">
               <Coins className="h-4 w-4 text-gold" />
-              <span>Credit Wallet</span>
+              <span>AI & WhatsApp credits</span>
             </div>
             <span className="font-mono font-bold text-gold">{wallet.creditBalance}</span>
           </div>
           <p className="mt-1 text-[10px] text-muted-foreground">
-            {wallet.consumedThisMonth} credits used this month (AI &amp; WhatsApp)
+            {wallet.consumedThisMonth} used this month (AI & WhatsApp only — support is free)
           </p>
         </div>
       </div>

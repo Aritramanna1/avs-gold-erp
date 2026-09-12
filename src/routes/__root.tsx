@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { RouteErrorFallback } from "@/components/app-error-boundary";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { CookieConsentBanner } from "@/components/compliance/CookieConsentBanner";
+import { TawkWidget } from "@/components/support/TawkWidget";
 import { KeyboardCheatSheet } from "@/components/keyboard/KeyboardCheatSheet";
 
 const PrintPreviewModal = lazy(() =>
@@ -323,6 +324,7 @@ function RootComponent() {
                 </Suspense>
               </CatchBoundary>
             </div>
+            <TawkWidget />
             <CookieConsentBanner />
             <Toaster position="top-center" />
           </LanguageProvider>

@@ -1,6 +1,23 @@
 import { dataProvider } from "@/lib/providers/data-provider";
 
 const supabase = dataProvider as any;
+
+/** SaaS Help / STF support must never burn tenant credits (AVS-64). */
+export const SUPPORT_CREDIT_SERVICE_CODES_BLOCKLIST = [
+  'ai_action_exec',
+  'wa_utility',
+  'ai_cloud',
+  'whatsapp',
+] as const;
+
+export function assertSupportPathNeverBurnsCredits(serviceCode?: string): void {
+  // createSupportTicket and Help/STF flows must not call deduct_tenant_credits.
+  // If a future path passes a service code here, fail closed.
+  if (serviceCode && SUPPORT_CREDIT_SERVICE_CODES_BLOCKLIST.includes(serviceCode as any)) {
+    throw new Error('Support desk must not burn tenant credits.');
+  }
+}
+
 const SUPPORT_RPC_TIMEOUT_MS = 8000;
 
 export type SupportTicket = {
@@ -215,6 +232,8 @@ async function ensureConversation(ticketId: string, firmId: string): Promise<str
 }
 
 export async function createSupportTicket(input: CreateSupportTicketInput): Promise<SupportTicket> {
+  assertSupportPathNeverBurnsCredits();
+
   const subject = cleanSubject(input.subject);
   const description = cleanBody(input.description);
   const category = (input.category ?? "staff").trim().slice(0, 80) || "staff";

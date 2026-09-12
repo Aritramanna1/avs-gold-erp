@@ -75,7 +75,7 @@ export function CreditsTab() {
         orderId: orderData.orderId,
         amountPaise: orderData.amountPaise,
         keyId: orderData.keyId,
-        description: `Top-up ${amt} AI & WhatsApp Credits`,
+        description: `Buy ${amt} AI & WhatsApp credits`,
         onSuccess: () => void onPaymentSuccess(),
         onFailure: (reason) => markFailed(reason),
         onDismiss: () => {},
@@ -106,10 +106,10 @@ export function CreditsTab() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
         <div>
           <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-            <Coins className="h-5 w-5 text-amber-500" /> Tenant Credit Centre & Usage Wallet
+            <Coins className="h-5 w-5 text-amber-500" /> AI & WhatsApp credits
           </h3>
           <p className="text-xs text-muted-foreground">
-            Prepaid balance for AI assistant, WhatsApp messaging, and metered automations.
+            Balance used only for AI chat and WhatsApp messages. Help and support tickets never use credits.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -127,17 +127,17 @@ export function CreditsTab() {
             onClick={() => setIsTopUpOpen(!isTopUpOpen)}
             className="h-8 text-xs gap-1 bg-amber-500 hover:bg-amber-600 text-white"
           >
-            <PlusCircle className="h-3.5 w-3.5" /> Top-Up Credits
+            <PlusCircle className="h-3.5 w-3.5" /> Buy credits
           </Button>
         </div>
       </div>
 
-      {/* Top-up Drawer / Form */}
+      {/* Buy Drawer / Form */}
       {isTopUpOpen && (
         <Card className="p-4 border-amber-500/30 bg-amber-500/5 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              <PlusCircle className="h-4 w-4 text-amber-500" /> Instant Credit Purchase
+              <PlusCircle className="h-4 w-4 text-amber-500" /> Buy credits
             </h4>
             <span className="text-[11px] text-muted-foreground">
               1 Credit = ₹1.00 Value Equivalent
@@ -176,7 +176,7 @@ export function CreditsTab() {
               disabled={processing}
               className="h-8 text-xs self-end bg-amber-500 hover:bg-amber-600 text-white"
             >
-              {processing ? "Processing..." : "Confirm Top-Up"}
+              {processing ? "Processing..." : "Pay now"}
             </Button>
           </div>
         </Card>
@@ -185,7 +185,7 @@ export function CreditsTab() {
       {checkout ? (
         <PaymentCheckoutCard
           title={`${checkout.credits.toLocaleString("en-IN")} credits`}
-          subtitle="Instant top-up for AI and WhatsApp usage"
+          subtitle="Adds credits for AI chat and WhatsApp only"
           amountPaise={checkout.amountPaise}
           orderId={checkout.orderId}
           keyId={checkout.keyId}
@@ -346,7 +346,7 @@ export function CreditsTab() {
       {/* Recent Ledger Transactions Table */}
       <div className="rounded-md border border-border/80 bg-card p-4 space-y-3 shadow-sm">
         <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-          <History className="h-4 w-4 text-muted-foreground" /> Usage & top-up history
+          <History className="h-4 w-4 text-muted-foreground" /> Usage & purchase history
         </h4>
         {!wallet?.usage?.recent_entries || wallet.usage.recent_entries.length === 0 ? (
           <p className="text-xs text-muted-foreground py-4 text-center">
