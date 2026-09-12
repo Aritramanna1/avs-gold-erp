@@ -334,13 +334,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="hidden 2xl:flex shrink-0">
               <ChargeTokenBadge />
             </div>
-            <div className="hidden lg:flex items-center gap-2 shrink-0" data-desktop-chrome>
-              <BusinessSwitcher />
-            </div>
             <div className="md:hidden shrink-0">
               <MobileAccountSheet />
             </div>
-            <div className="hidden 2xl:block shrink-0" data-desktop-chrome>
+            <div className="hidden lg:block shrink-0" data-desktop-chrome>
               <BranchSelector />
             </div>
 
