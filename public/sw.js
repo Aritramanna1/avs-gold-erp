@@ -2,8 +2,8 @@
  * Ornexa app-shell service worker — static assets only.
  * Does NOT cache Supabase API responses or business data.
  */
-const CACHE = "ornexa-shell-v2";
-const SHELL_ASSETS = ["/", "/index.html", "/site.webmanifest", "/favicon.ico"];
+const CACHE = "ornexa-shell-v3";
+const SHELL_ASSETS = ["/site.webmanifest", "/favicon.ico"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -16,7 +16,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))),
+      .then((keys) => Promise.all(keys.map((k) => caches.delete(k)))),
   );
   self.clients.claim();
 });
@@ -38,11 +38,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigation: network-first (fresh HTML for deploys)
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request).catch(() => caches.match("/index.html").then((r) => r ?? fetch(request))),
-    );
+  // Never cache HTML / navigation requests — always fetch fresh HTML so updates are instant
+  if (request.mode === "navigate" || url.pathname === "/" || url.pathname.endsWith(".html")) {
     return;
   }
 

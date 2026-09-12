@@ -29,7 +29,12 @@ if (typeof window !== "undefined") {
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    void navigator.serviceWorker
+      .register("/sw.js")
+      .then((reg) => {
+        reg.update().catch(() => undefined);
+      })
+      .catch(() => undefined);
   });
 }
 
