@@ -16,6 +16,7 @@ import {
 import { type ReactNode, useState, useEffect, useRef } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSettings } from "@/lib/settings-store";
+import { useCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
 import { useBusinessRules } from "@/lib/business-rules-store";
 import { GoldRateEditor } from "@/components/GoldRateEditor";
 import { QuickCommandPalette } from "@/components/layout/QuickCommandPalette";
@@ -82,7 +83,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Narrow selectors, not the whole store: the shell must not re-render on
   // every unrelated setState the startup pull storm fires (orders, ledger,
   // etc.). It only depends on these three slices.
-  const goldRatePerGramPaise = useSettings((s) => s.goldRatePerGramPaise);
+  const goldRatePerGramPaise = useCurrentGoldRatePaise();
   const firm = useSettings((s) => s.firm);
   const branding = useSettings((s) => s.branding);
   const currentUserRole = useSettings((s) => s.currentUserRole);
