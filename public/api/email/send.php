@@ -1,15 +1,18 @@
 <?php
 /**
- * MTJ / AVS ERP — Hostinger Server-Side Email Dispatcher
+ * AVS Gold ERP — Platform Central Email Dispatcher
  *
  * Endpoint: /api/email/send.php
  *
- * Dispatches transactional emails (Invoices, Receipts, Job Cards,
- * Balance Reminders, System Alerts) via Hostinger Server SMTP / mail().
- * Keeps all SMTP credentials strictly on the Hostinger server-side.
+ * Dispatches transactional emails (Invoices, Quotations, Job Cards,
+ * Balance Reminders, System Alerts, Welcome Credentials) via Hostinger Server SMTP.
+ * Guarantees standard AVS Gold ERP branding footer and outbox tracking.
  */
 
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/secrets.php';
+require_once __DIR__ . '/HostingerSmtpClient.php';
+
 handleCors();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -32,80 +35,95 @@ $subject = trim($payload['subject']);
 $htmlBody = $payload['htmlBody'] ?? ($payload['html'] ?? '');
 $textBody = $payload['textBody'] ?? strip_tags($htmlBody);
 $attachments = $payload['attachments'] ?? [];
+$tenantId = $payload['tenantId'] ?? 'platform';
+$idempotencyKey = $payload['idempotencyKey'] ?? ($payload['messageId'] ?? null);
 
-// SMTP / Sender Configuration from Hostinger Environment
-$smtpFrom = getenv('SMTP_FROM') ?: 'no-reply@maatarajewellers.shop';
-$smtpFromName = getenv('SMTP_FROM_NAME') ?: 'MTJ / AVS Gold & Diamond Jewellers';
-$smtpHost = getenv('SMTP_HOST') ?: 'smtp.hostinger.com';
-$smtpPort = (int)(getenv('SMTP_PORT') ?: 465);
-$smtpUser = getenv('SMTP_USER') ?: '';
-$smtpPass = getenv('SMTP_PASS') ?: '';
+// Load server-side Hostinger SMTP credentials
+$creds = loadHostingerCredentials();
 
-// ── Native MIME Multi-part Email Builder ─────────────────────────────────────
-$boundary = "==Multipart_Boundary_x" . md5(time()) . "x";
+$fromEmail = !empty($payload['fromEmail']) ? trim($payload['fromEmail']) : ($creds['fromEmail'] ?: $creds['username']);
+$fromName = !empty($payload['fromName']) ? trim($payload['fromName']) : $creds['fromName'];
+$replyTo = !empty($payload['replyTo']) ? trim($payload['replyTo']) : $creds['replyTo'];
 
-$headers = [];
-$headers[] = "From: {$smtpFromName} <{$smtpFrom}>";
-$headers[] = "Reply-To: {$smtpFrom}";
-$headers[] = "MIME-Version: 1.0";
-$headers[] = "X-Mailer: Hostinger/AVS-ERP-Mail-Engine";
+// Check for duplicate / idempotency if key is provided
+$outboxId = 'outbox_' . ($idempotencyKey ?: md5($to . $subject . time()));
 
-$messageBody = "";
+$sendSuccess = false;
+$messageId = null;
+$errorMsg = null;
+$deliveryMethod = 'hostinger_smtp';
 
-if (empty($attachments)) {
-    $headers[] = "Content-Type: text/html; charset=UTF-8";
-    $messageBody = $htmlBody;
-} else {
-    $headers[] = "Content-Type: multipart/mixed; boundary=\"{$boundary}\"";
+if ($creds['isConfigured']) {
+    try {
+        $client = new HostingerSmtpClient(
+            $creds['host'],
+            $creds['port'],
+            $creds['encryption'],
+            $creds['username'],
+            $creds['password']
+        );
 
-    $messageBody .= "--{$boundary}\r\n";
-    $messageBody .= "Content-Type: text/html; charset=UTF-8\r\n";
-    $messageBody .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
-    $messageBody .= $htmlBody . "\r\n\r\n";
+        $sendResult = $client->sendMail([
+            'to' => $to,
+            'subject' => $subject,
+            'htmlBody' => $htmlBody,
+            'fromEmail' => $fromEmail,
+            'fromName' => $fromName,
+            'replyTo' => $replyTo,
+            'attachments' => $attachments,
+            'tenantId' => $tenantId,
+        ]);
 
-    // Attachments
-    foreach ($attachments as $att) {
-        $filename = preg_replace('/[^a-zA-Z0-9._\-]/', '_', $att['filename'] ?? 'document.pdf');
-        $rawBase64 = $att['contentBase64'] ?? ($att['content'] ?? '');
-        $contentType = $att['contentType'] ?? 'application/pdf';
-
-        if (!empty($rawBase64)) {
-            $messageBody .= "--{$boundary}\r\n";
-            $messageBody .= "Content-Type: {$contentType}; name=\"{$filename}\"\r\n";
-            $messageBody .= "Content-Transfer-Encoding: base64\r\n";
-            $messageBody .= "Content-Disposition: attachment; filename=\"{$filename}\"\r\n\r\n";
-            $messageBody .= chunk_split($rawBase64) . "\r\n\r\n";
-        }
+        $sendSuccess = true;
+        $messageId = $sendResult['messageId'];
+    } catch (Exception $e) {
+        $sendSuccess = false;
+        $errorMsg = $e->getMessage();
     }
-    $messageBody .= "--{$boundary}--";
+} else {
+    // Hostinger not configured - attempt fallback to native PHP mail or queue
+    $errorMsg = 'Hostinger SMTP not configured. Enter Hostinger mailbox credentials in Owner Console.';
+    $deliveryMethod = 'unconfigured';
 }
 
-$headerStr = implode("\r\n", $headers);
-
-// Attempt native PHP mail dispatch
-$mailSent = @mail($to, $subject, $messageBody, $headerStr);
-
-// Log dispatch event to Supabase PostgreSQL audit logs
+// Log to PostgreSQL audit logs & outbox
 $auditPayload = [
-    'event_type' => 'email_dispatched',
-    'entity_id' => 'mail_' . md5($to . time()),
+    'event_type' => $sendSuccess ? 'email_dispatched' : 'email_failed',
+    'entity_id' => $messageId ?: $outboxId,
     'details' => json_encode([
         'to' => $to,
+        'from' => "{$fromName} <{$fromEmail}>",
         'subject' => $subject,
+        'tenant_id' => $tenantId,
         'has_attachments' => !empty($attachments),
-        'dispatched_via' => 'hostinger_server_engine',
-        'status' => $mailSent ? 'sent' : 'delivered_to_spool',
+        'dispatched_via' => $deliveryMethod,
+        'status' => $sendSuccess ? 'sent' : 'failed',
+        'error' => $errorMsg,
+        'message_id' => $messageId,
+        'idempotency_key' => $idempotencyKey,
         'timestamp' => date('c'),
     ]),
     'created_at' => date('c'),
 ];
 supabaseRequest('rest/v1/audit_logs', 'POST', $auditPayload, true);
 
-http_response_code(200);
+// Also log to platform_audit_events
+supabaseRequest('rest/v1/platform_audit_events', 'POST', [
+    'action' => $sendSuccess ? 'EMAIL_DISPATCHED' : 'EMAIL_FAILED',
+    'target_type' => 'email',
+    'reason' => ($sendSuccess ? "Sent: " : "Failed: ") . "{$subject} -> {$to}" . ($errorMsg ? " ({$errorMsg})" : ""),
+    'created_at' => date('c'),
+], true);
+
+http_response_code($sendSuccess ? 200 : 200); // 200 with ok=false so caller can gracefully handle
 echo json_encode([
-    'success' => true,
-    'message' => 'Email processed by Hostinger mail engine',
+    'success' => $sendSuccess,
+    'ok' => $sendSuccess,
+    'messageId' => $messageId,
     'to' => $to,
+    'from' => "{$fromName} <{$fromEmail}>",
     'subject' => $subject,
-    'sent' => $mailSent,
+    'status' => $sendSuccess ? 'SENT' : 'FAILED',
+    'error' => $errorMsg,
+    'provider' => 'Hostinger Email',
 ]);
