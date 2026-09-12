@@ -1506,7 +1506,6 @@ export async function executeConfirmedAction(
     // AVS-64: Help / support tickets never burn credits
     if (
       payload.targetType === "platform_support_tickets" ||
-      payload.actionKey === "create_support_ticket" ||
       String(payload.details?.ticketNo ?? "").startsWith("TKT-") ||
       String(payload.details?.ticketNo ?? "").startsWith("STF-")
     ) {
