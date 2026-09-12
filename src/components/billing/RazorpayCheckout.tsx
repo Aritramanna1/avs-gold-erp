@@ -263,6 +263,7 @@ export function PaymentCheckoutCard({
   orderId,
   keyId,
   invoiceNo,
+  internalPaymentId,
   testMode,
   onSuccess,
   onFailure,
@@ -275,6 +276,8 @@ export function PaymentCheckoutCard({
   orderId: string;
   keyId: string;
   invoiceNo?: string;
+  /** Maps to callback.php internal_payment_id so invoice PDF+email can run. */
+  internalPaymentId?: string;
   testMode?: boolean;
   onSuccess?: () => void;
   onFailure?: (reason?: string) => void;
@@ -304,6 +307,7 @@ export function PaymentCheckoutCard({
         amountPaise={amountPaise}
         keyId={keyId}
         invoiceNo={invoiceNo}
+        internalPaymentId={internalPaymentId}
         label="Complete payment"
         onSuccess={onSuccess}
         onFailure={onFailure}

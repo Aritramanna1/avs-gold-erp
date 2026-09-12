@@ -126,12 +126,7 @@ $subRecord = [
 supabaseRequest('rest/v1/tenant_subscriptions', 'POST', $subRecord, true);
 
 // ── 6. Automated Invoice Generation & Email Dispatch ────────────────────────
-$tenantContext = [
-    'id' => $tenantId,
-    'name' => 'AVS Gold Jeweller',
-    'registered_email' => 'admin@arivahly.in',
-    'state_code' => '27',
-];
+$tenantContext = resolveTenantBillingContext($tenantId);
 
 $invoice = generateAndStorePlatformInvoice($internalPayment ?: [
     'id' => $internalPaymentId ?: 'pay_ord_mock',
