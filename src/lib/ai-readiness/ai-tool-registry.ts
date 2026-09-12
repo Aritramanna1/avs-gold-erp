@@ -15,6 +15,7 @@ import { useOrders } from "@/lib/orders-store";
 import { useWorkerGoldBook } from "@/lib/worker-gold-book-store";
 import { mgToGrams } from "@/lib/gold";
 import { getCurrentGoldRatePaise } from "@/lib/bullion-rate-service";
+import { resolveOpenRoute } from "@/lib/assistant/nl-navigate-routes";
 
 export interface AIToolDefinition {
   name: string;
@@ -687,6 +688,25 @@ export const AI_TOOL_REGISTRY: Record<string, AIToolDefinition> = {
         dueDate: params.dueDate,
         priority: params.priority,
       };
+    },
+  },
+
+  // AVS-67 — NL navigate / openRoute (AVS-4 hubs only)
+  open_route: {
+    name: 'open_route',
+    description:
+      'Map natural-language intents or route keys to existing AVS-4 hubs only (Sell, Stock, Make, Money). Returns navigate/openRoute href + title. Clear miss when unmapped. READ only — no writes.',
+    permissionLevel: 0,
+    parameters: [
+      { name: 'phrase', type: 'string', description: 'Navigate phrase e.g. open sell', required: false },
+      { name: 'routeKey', type: 'string', description: 'sell | stock | make | money', required: false },
+    ],
+    handler: async (params) => {
+      const result = resolveOpenRoute({
+        routeKey: params.routeKey != null ? String(params.routeKey) : null,
+        phrase: params.phrase != null ? String(params.phrase) : null,
+      });
+      return { status: result.ok ? 'success' : 'miss', ...result };
     },
   },
 };

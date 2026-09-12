@@ -31,6 +31,7 @@ import {
   auditAssistantAction,
   extractSearchQuery,
 } from "./assistant-tool-registry";
+import { toolOpenRoute, looksLikeNavigateIntent } from "./tool-open-route";
 import { deductCredits, checkServiceCreditAvailability } from "./credit-engine";
 import { prepareMultimodalDraftCard } from "./multimodal-service";
 
@@ -141,6 +142,16 @@ export function matchLocalIntent(userQuery: string): IntentMatchResult {
 
   if (q === "ok" || q === "okay" || q === "thanks" || q === "thank you" || q === "got it") {
     return { toolName: "conversation_acknowledgement", confidence: 1.0 };
+  }
+
+
+  // AVS-67 — NL navigate / openRoute (AVS-4 hubs only)
+  if (looksLikeNavigateIntent(q)) {
+    return {
+      toolName: "openRoute",
+      confidence: 0.97,
+      entities: { query: userQuery },
+    };
   }
 
   // 0.5. Universal Action Engine Triggers
@@ -449,6 +460,8 @@ export async function executeERPTool(
       return toolPrepareGoldIssueDraft(userMessage);
     case "prepare_whatsapp_invoice_action":
       return toolPrepareWhatsAppInvoiceAction(userMessage);
+    case "openRoute":
+      return toolOpenRoute(userMessage);
     default:
       return toolSearchParty(userMessage);
   }
